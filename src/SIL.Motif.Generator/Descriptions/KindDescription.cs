@@ -24,7 +24,7 @@ namespace SIL.Motif.Generator.Descriptions;
 /// <item><c>hand-corrected</c> — manually verified and, where necessary, corrected against a cited source
 /// after a prior automated error; the regenerator preserves this text verbatim rather than overwriting it.</item>
 /// <item><c>unsourced</c> — no upstream source has been found yet. The description is an unverified claim,
-/// per ADR 0023's amendment: "draft should mean nobody has checked this against a source yet."</item>
+/// per ADR 0013's amendment: "draft should mean nobody has checked this against a source yet."</item>
 /// <item><c>no-source-exists</c> — searched for exhaustively and found nowhere, with the search itself
 /// cited in <see cref="SourceDetail"/> (<see cref="Harvest.DescriptionExemptions"/>). Distinct from
 /// <c>unsourced</c>, which is an open question rather than an answered one.</item>

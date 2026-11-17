@@ -17,7 +17,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// The CLI's first Layer-1 authoring surface (ADR 0009 decision 1): <c>compose-author-lexeme-form</c>
+/// The CLI's first Layer-1 authoring surface (ADR 0013 decision 1): <c>compose-author-lexeme-form</c>
 /// resolves one authored intent against a live project into <see cref="AuthorLexemeFormComposer"/>'s
 /// operations, appends them to a draft the agent never enumerated by hand, and carries the intent
 /// forward as non-hashed provenance rather than dropping it or folding it into the digest.

@@ -597,7 +597,7 @@ internal sealed class TrialJobHandler
         return GdrSyncChecker.Check(cache, new GdrExampleEvidenceRepository(database), ledger);
     }
 
-    // ADR 0119: advisory only, so a failed check is logged and leaves the report without it.
+    // ADR 0005: advisory only, so a failed check is logged and leaves the report without it.
     internal static GdrCheckResponse? GdrSyncAdvisory(string jobId, Func<GdrCheckResponse?> check)
     {
         try { return check(); }

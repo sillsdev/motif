@@ -5,16 +5,16 @@ namespace SIL.Motif.Tests.Analysis;
 
 /// <summary>
 /// <see cref="AnalysisAggregateResponse"/> — the whole-response record, and specifically the two
-/// obligations ADR 0038 decisions 5 and 8 place on it: a missing Assessment is a valid, useful answer on
+/// obligations ADR 0020 decisions 12 and 15 place on it: a missing Assessment is a valid, useful answer on
 /// its own, and a stale one is rendered by the type itself, in the past tense, never as a bare number.
 /// </summary>
 /// <remarks>
 /// Modelled directly on <c>GrammarCoverageFigureTests</c>' rendering tests, which pin the same discipline
 /// on <see cref="Parser.GrammarCoverageFigure"/> — this response reuses that idea rather than inventing a
-/// second one, per ADR 0038 decision 8's own instruction.
+/// second one, per ADR 0020 decision 15's own instruction.
 /// <list type="number">
 /// <item>No Assessment on record must not read as an error or an empty response — the manual side is the
-/// test suite and stands on its own (ADR 0038 decision 5).</item>
+/// test suite and stands on its own (ADR 0020 decision 12).</item>
 /// <item><see cref="AnalysisAggregateResponse.DescribeAssessmentState"/> has no parameterless overload,
 /// so a caller cannot state the automatic side's freshness without naming what "current" means.</item>
 /// <item>A stale Assessment is described in the past tense, naming what moved — never suppressed and

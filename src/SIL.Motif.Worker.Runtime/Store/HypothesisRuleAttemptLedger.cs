@@ -3,7 +3,7 @@ using SIL.Motif.Contract.Parsimony.RuleAttempts;
 namespace SIL.Motif.Worker.Store;
 
 /// <summary>
-/// The hypothesis ledger read as rule attempts (ADR 0116, 0117). A hypothesis answers a same-shape group when it passed or
+/// The hypothesis ledger read as rule attempts (ADR 0011, 0022). A hypothesis answers a same-shape group when it passed or
 /// failed, which needs a recorded test, and its change text is the group's full shape key or its string correspondence
 /// (such as <c>V&gt;@final</c>) and its environment is blank or the group's environment ids. Either verdict clears the hold;
 /// a proposed or superseded hypothesis does not. One seek on the shape index per group: O(log n + k).

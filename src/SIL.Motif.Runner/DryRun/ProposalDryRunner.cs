@@ -21,7 +21,7 @@ namespace SIL.Motif.Runner.DryRun;
 /// <summary>
 /// Stage C's Run: applies each operation to a <see cref="DryRunScratch"/> — a throwaway copy of the
 /// project — snapshotting the target before and after, diffing the two into expected effects, and
-/// binding an anchor a later Apply must match. See ADR 0006 decision 1 (read-back inside the open
+/// binding an anchor a later Apply must match. See ADR 0017 decision 3 (read-back inside the open
 /// task sees true, synchronously-applied engine state).
 /// </summary>
 /// <remarks>
@@ -38,12 +38,12 @@ namespace SIL.Motif.Runner.DryRun;
 /// it</b>. The copy is discarded instead (<see cref="DryRunScratch.Dispose"/>). That is why this method
 /// no longer classifies operations by whether they might leave a derived cache stale: staleness came
 /// from <c>UndoStack.Rollback</c> skipping forward-only setter hooks, and there is no rollback here to
-/// skip them (ADR 0016).
+/// skip them (ADR 0017).
 /// </para>
 /// <para>
 /// <b>The scratch reads the project as it was last saved</b>, so the host must save before calling this
 /// or the anchor will describe a baseline the live cache has already moved past — reported at Apply as
-/// drift that did not really happen. See ADR 0016, "Save first, and recovery is reload".
+/// drift that did not really happen. See ADR 0017, "Save first, and recovery is reload".
 /// </para>
 /// </remarks>
 public static class ProposalDryRunner
@@ -120,7 +120,7 @@ public static class ProposalDryRunner
               $"({scratch.Provenance}; {touchedTargets.Count} target object(s): " +
               string.Join(", ", touchedTargets.Select(t => t.Value)) + ").";
 
-        // Binds a subsequent Apply to exactly this evaluated baseline (docs/adr/0004, decision 3).
+        // Binds a subsequent Apply to exactly this evaluated baseline (docs/adr/0017, decision 4).
         var anchor = new BoundDryRunAnchor(
             IntentDigest: intentDigest,
             FootprintDigest: footprintDigest,

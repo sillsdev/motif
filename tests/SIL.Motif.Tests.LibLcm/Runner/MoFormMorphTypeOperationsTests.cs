@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.Runner;
 /// Round-trip proof for <c>MoForm.MorphType</c> (<c>rel/atomic</c>, <c>set|clear</c>)
 /// against a real project. This field feeds <c>UpdateHomographs</c> (<c>MorphTypeRASideEffects</c>);
 /// the DryRun runs on a throwaway copy and never mutates this cache, so no dispose/reload is needed
-/// between DryRun and Apply (ADR 0016).
+/// between DryRun and Apply (ADR 0017).
 /// </summary>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class MoFormMorphTypeOperationsTests : IDisposable

@@ -2,7 +2,7 @@ namespace SIL.Motif.Model.DryRun;
 
 /// <summary>
 /// Binds a subsequent Apply to the specific evaluated baseline a prior <see cref="DryRun"/> read, and
-/// to the specific Proposal content that DryRun evaluated. Apply is bound to a prior DryRun (ADR 0004
+/// to the specific Proposal content that DryRun evaluated. Apply is bound to a prior DryRun (ADR 0012
 /// decision 3): a bare apply with no bound DryRun is a hard error, an anchor whose
 /// <see cref="IntentDigest"/> does not match the Proposal presented at apply time is a hard error
 /// (this anchor was never bound to that content), and a moved footprint (this anchor's

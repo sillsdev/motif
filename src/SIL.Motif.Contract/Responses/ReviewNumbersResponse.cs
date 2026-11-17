@@ -9,7 +9,7 @@ public enum ReviewComparability
     /// <summary>There was no earlier Correctness Assessment, so only the Trial's own counts exist.</summary>
     NoEarlierAssessment,
 
-    /// <summary>The two Assessments were made by different Assessors, so ADR 0042 forbids comparing them.</summary>
+    /// <summary>The two Assessments were made by different Assessors, so ADR 0020 forbids comparing them.</summary>
     DifferentAssessor,
 
     /// <summary>The two Assessments measured no word in common.</summary>

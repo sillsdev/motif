@@ -21,14 +21,14 @@ namespace SIL.Motif.Tests.Runner;
 /// <summary>
 /// Round-trip proof for <c>LexEntry.LexemeForm</c> (owning/atomic, <c>create|delete</c>)
 /// against a real project — a field needing hand-written
-/// entity-construction validity (ADR 0014), because <c>MoForm</c> is
+/// entity-construction validity (ADR 0013), because <c>MoForm</c> is
 /// abstract and which concrete class to build depends on the authored morph type.
 /// </summary>
 /// <remarks>
 /// Both verbs feed <c>UpdateHomographs</c> (<c>MorphTypeRASideEffects</c>/<c>LexemeFormOASideEffects</c>),
 /// which used to matter here: a DryRun mutated this cache and rolled back, rollback does not refresh
 /// those derived caches, so each round-trip had to dispose and reload the project between DryRun and
-/// Apply. The DryRun now runs on a throwaway copy, so it does not — see ADR 0016.
+/// Apply. The DryRun now runs on a throwaway copy, so it does not — see ADR 0017.
 /// </remarks>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class LexEntryLexemeFormOperationsTests : IDisposable

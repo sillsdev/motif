@@ -96,7 +96,7 @@ public static class InterlinearTextFileNaming
     /// <summary>
     /// Builds the same collision-proof <c>&lt;title&gt;-&lt;guid&gt;</c> string <see cref="BuildFileName"/>
     /// uses as a filename stem, for a caller that keys a record by it instead — <c>texts.json</c> keys every
-    /// selected Text this way (ADR 0045 decision 1).
+    /// selected Text this way (ADR 0009 decision 12).
     /// </summary>
     public static string BuildKey(InterlinearTextProjection projection)
     {

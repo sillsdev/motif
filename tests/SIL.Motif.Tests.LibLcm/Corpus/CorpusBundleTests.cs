@@ -15,8 +15,7 @@ namespace SIL.Motif.Tests.Corpus;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>The seam these tests hold in place.</b> linguistic-assistant knows how to pull eBible and OPUS, strip
-/// their markup, and find the per-translation licence rows. Motif knows none of that. A bundle is the
+/// <b>The seam these tests hold in place.</b> an external fetcher retrieves and prepares text and its licence metadata. A bundle is the
 /// paperwork that travels with the text, and it is the only thing on this seam — so the failure modes worth
 /// testing are all "the bundle claimed something that was not true", because those are what turn into a
 /// published figure over text nobody can account for.

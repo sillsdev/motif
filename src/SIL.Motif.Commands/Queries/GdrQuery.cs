@@ -44,7 +44,7 @@ public static class GdrQuery
     }
 
     /// <summary>
-    /// Checks the Grammar Design Records against the grammar in the current Baseline (ADR 0119): rules and affix processes
+    /// Checks the Grammar Design Records against the grammar in the current Baseline (ADR 0005): rules and affix processes
     /// without a section, links to deleted objects, and examples that no longer parse as their section says, read from the
     /// Trial and Assessment rows already stored. It parses nothing. The warning count is what the loop's completion test reads.
     /// </summary>

@@ -22,7 +22,7 @@ public static class RepoPaths
 
     /// <summary>
     /// Hand-written descriptions, one per authorable field, required for every emitted kind
-    /// (ADR 0023 decision 5 as amended). A companion file rather than a manifest column: it grows per
+    /// (ADR 0013 decision 7 as amended). A companion file rather than a manifest column: it grows per
     /// family as families ship, where the inventory is a fixed 898-row projection of the model.
     /// </summary>
     public static string DefaultDescriptionsPath(string? startDirectory = null) =>

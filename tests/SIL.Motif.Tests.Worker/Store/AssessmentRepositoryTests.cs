@@ -961,7 +961,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     /// <summary>
-    /// The trap ADR 0042's Trial amendment names: promotion must happen before the sweep, and the promoted
+    /// The trap ADR 0020's Trial amendment names: promotion must happen before the sweep, and the promoted
     /// Assessment must survive by identity, not by hoping the sweep never learns to run first.
     /// </summary>
     [Fact]

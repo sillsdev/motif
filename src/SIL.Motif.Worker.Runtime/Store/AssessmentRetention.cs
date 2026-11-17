@@ -15,10 +15,10 @@ namespace SIL.Motif.Worker.Store;
 /// <remarks>
 /// An Assessment is kept when a Report cites it, a pin or a retained invocation holds it, it is the project's
 /// current Assessment, or a surviving Assessment names it as the measurement it replaces, transitively. Removal
-/// never rewrites a surviving row: a Report keeps its frozen binding and a replacement keeps its lineage (ADR 0042),
+/// never rewrites a surviving row: a Report keeps its frozen binding and a replacement keeps its lineage (ADR 0020),
 /// and an Assessment is never detached from its Proposal, because one without a Proposal is Baseline evidence.
 /// A frozen Parsimony Report cites its saved Assessment inputs. A saved Difference cites its two Assessments by id
-/// but carries what it needs by value, so it keeps neither alive (ADR 0067).
+/// but carries what it needs by value, so it keeps neither alive (ADR 0021).
 /// </remarks>
 internal static class AssessmentRetention
 {

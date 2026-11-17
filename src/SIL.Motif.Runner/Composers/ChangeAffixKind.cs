@@ -47,7 +47,7 @@ public static class ChangeAffixKindIntentParser
 /// <summary>
 /// Lowers a change of an affix's kind to a new grammatical info of the other kind, a relink of every sense, ad hoc
 /// morpheme prohibition and parser-analysis morph bundle that used the old one, and the deletion of the old one.
-/// Black's guidance is to pick a kind and change it later, so the choice (ADR 0079) stays reversible in place;
+/// Black's guidance is to pick a kind and change it later, so the choice (ADR 0004) stays reversible in place;
 /// what the new kind cannot hold is reported as a related object, not refused.
 /// </summary>
 public static class ChangeAffixKindComposer

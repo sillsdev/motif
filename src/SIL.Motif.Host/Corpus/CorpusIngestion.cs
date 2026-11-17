@@ -27,9 +27,8 @@ public sealed record DocumentMetadata(
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>In plain terms:</b> this is how text gets into Motif. Something outside — usually linguistic-assistant,
-/// which already knows how to pull eBible and OPUS — produces the text and what is known about it, and this
-/// takes it in, hashes it, and records both. From here on, everything Motif says about a grammar's reach is
+/// <b>In plain terms:</b> this is how text gets into Motif. An external fetcher produces the text and
+/// what is known about it; Motif takes it in, hashes it, and records both. From here on, everything Motif says about a grammar's reach is
 /// said about text that arrived through this door with its origin attached.
 /// </para>
 /// <para>

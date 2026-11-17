@@ -416,7 +416,7 @@ public class FwDataProjectLoader
     /// disposing the returned cache cannot persist writing-system changes to the process's global repository.
     /// </summary>
     /// <remarks>
-    /// For a throwaway scratch (ADR 0016), persisting writing-system changes is wrong: a Dry Run scratch
+    /// For a throwaway scratch (ADR 0017), persisting writing-system changes is wrong: a Dry Run scratch
     /// is a proposal being tried and discarded. See <see cref="DiscardingGlobalWritingSystemRepository"/>
     /// for the mechanism. <see cref="LoadCache"/> remains the method for a real, persisted project open.
     /// </remarks>
@@ -488,7 +488,7 @@ public class FwDataProjectLoader
     /// projects itself (the Change Set contract's Application Receipt semantics):
     /// <c>SIL.Motif.Runner.Apply.ProposalApplier.Apply</c> commits its unit of work but never calls
     /// this — it is the host's job, called only after every unit of work has closed (never while a
-    /// task is open — ADR 0005 decision 3; ADR 0006 decision 4). The save guarantee is pinned by
+    /// task is open — ADR 0017 decision 7; ADR 0017 decision 5). The save guarantee is pinned by
     /// `ABackendWriteFailureDoesNotReturnASuccessfulSave`.
     /// </summary>
     /// <remarks>
@@ -531,14 +531,14 @@ public class FwDataProjectLoader
     /// once, and it throws rather than degrading if a future liblcm renames it, because silently
     /// falling back to the asynchronous behaviour would restore a bug whose symptom points at the wrong
     /// component entirely. <b>Making a synchronous save publicly reachable is an upstream ask on
-    /// liblcm</b> (ADR 0016), and this reflection is what should be
+    /// liblcm</b> (ADR 0017), and this reflection is what should be
     /// deleted when it lands.
     /// </para>
     /// <para>
     /// <b>The writing systems are saved too.</b> A writing system lives in the project's
     /// <c>WritingSystemStore</c>, outside the <c>.fwdata</c> file and outside the unit of work, so committing
     /// the backend alone left a changed writing system in memory: a file copy, a Trial's exported candidate
-    /// and a reload all read the old LDML (ADR 0096). Saving writes only the writing systems that changed.
+    /// and a reload all read the old LDML (ADR 0014). Saving writes only the writing systems that changed.
     /// </para>
     /// </remarks>
     public virtual void Save(LcmCache cache)
@@ -610,7 +610,7 @@ public class FwDataProjectLoader
                 "CompleteAllCommits() to wait on, so Save cannot guarantee the .fwdata file is current. " +
                 "Refusing rather than returning from a save that has not saved: a Dry Run copies the " +
                 "file immediately afterwards, and a stale copy produces a false 'footprint drift' " +
-                "report on apply (ADR 0016).");
+                "report on apply (ADR 0017).");
         }
 
         flush.Invoke(backend, null);

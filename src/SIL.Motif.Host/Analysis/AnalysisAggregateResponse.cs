@@ -3,7 +3,7 @@ namespace SIL.Motif.Host.Analysis;
 /// <summary>
 /// Which Assessment, if any, the automatic side of an <see cref="AnalysisAggregateResponse"/> came from —
 /// the naming <c>GrammarCoverageFigure</c> requires of every figure it renders, carried here instead so
-/// this response can honour the same rule (ADR 0038 decision 8).
+/// this response can honour the same rule (ADR 0020 decision 15).
 /// </summary>
 public sealed record AnalysisAssessmentProvenance(string SelectionName, string SelectionSha256, string GrammarSourceSha256);
 
@@ -17,11 +17,11 @@ public sealed record AnalysisAssessmentProvenance(string SelectionName, string S
 /// <c>null</c> when no Assessment was on record at the time this response was built — in which case every
 /// <see cref="WordFormAnalysisAggregate.AutomaticAnalyses"/> in <see cref="WordForms"/> is also
 /// <c>null</c>, and the response is still useful: the manual side is the test suite and needs no parser at
-/// all (ADR 0038 decision 5). When not <c>null</c>, names the corpus and grammar the automatic side
+/// all (ADR 0020 decision 12). When not <c>null</c>, names the corpus and grammar the automatic side
 /// describes, exactly as <see cref="Parser.GrammarCoverageFigure"/> already requires for a coverage figure.
 /// </param>
 /// <param name="UnanalysedReach">
-/// ADR 0038 decision 7's one counted figure about word forms nobody has analysed — see
+/// ADR 0020 decision 14's one counted figure about word forms nobody has analysed — see
 /// <see cref="UnanalysedReachFigure"/>. <c>null</c> under exactly the same condition as
 /// <see cref="Assessment"/> being <c>null</c>: with no Assessment on record, whether the grammar parses any
 /// given word form is not knowable, so there is nothing to count.
@@ -76,7 +76,7 @@ public sealed record AnalysisAggregateResponse
     /// <summary>
     /// The sentence a report prints about the automatic side. <b>The only way to render that state, and
     /// deliberately so</b> — no parameterless overload, following <c>GrammarCoverageFigure.Describe</c>'s
-    /// exact discipline (ADR 0038 decision 8): a caller cannot state whether the automatic analyses are
+    /// exact discipline (ADR 0020 decision 15): a caller cannot state whether the automatic analyses are
     /// current without naming what current means, so this can never be rendered as a bare, undated claim.
     /// </summary>
     /// <remarks>

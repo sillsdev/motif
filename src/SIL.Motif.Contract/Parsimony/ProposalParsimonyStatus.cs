@@ -194,7 +194,7 @@ public sealed record ProposalParsimonyGroup(ParsimonyMeasureGroup Group, Proposa
 
 /// <summary>
 /// Whether Parsimony has measured a Proposal's candidate, and what it found, for one Proposal. It is advisory and
-/// has no single score and no per-group score (ADR 0060 and ADR 0080): a failure, timeout or cancellation here never
+/// has no single score and no per-group score (ADR 0022 and ADR 0022): a failure, timeout or cancellation here never
 /// changes the Trial, Readiness or Apply. Findings are fetched with the existing Report commands.
 /// </summary>
 /// <param name="SchemaVersion">Always 1.</param>

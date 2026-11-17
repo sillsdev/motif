@@ -34,7 +34,7 @@ public class Slice4CatalogWriterTests
 
             var operationFile = Read(tempRoot, written, "WfiWordformSpellingStatus.g.cs");
             Assert.Contains("\"analysis/wfiWordform/setSpellingStatus\"", operationFile);
-            // Both derived verbs, no exception (ADR 0022 decision 1). Clear writes the zero member.
+            // Both derived verbs, no exception (ADR 0013 decision 4). Clear writes the zero member.
             Assert.Contains("\"analysis/wfiWordform/clearSpellingStatus\"", operationFile);
             Assert.Contains("SpellingStatus = 0", operationFile);
             Assert.Contains("GetRequiredInteger", operationFile);

@@ -19,7 +19,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>Rationales and Comments are checked as FieldWorks Markdown against the project's Baseline (ADR 0099).</summary>
+/// <summary>Rationales and Comments are checked as FieldWorks Markdown against the project's Baseline (ADR 0006).</summary>
 [Collection(LcmCacheParallelCollections.Group3)]
 public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) : IDisposable
 {

@@ -13,7 +13,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
-/// Enforces ADR 0043's third invariant — every catalogued command has a CLI verb, and the reverse — by
+/// Enforces ADR 0018's third invariant — every catalogued command has a CLI verb, and the reverse — by
 /// pinning <see cref="CommandCatalog.All"/> and <see cref="CliVerbCatalog.All"/> equal by command name,
 /// alongside the shape both catalogs depend on holding: unique command names, unique request types, and
 /// a stable, non-colliding refusal-code vocabulary. Also pins the command/CLI source boundary: no
@@ -259,7 +259,7 @@ public sealed class CommandCatalogParityTests
 
     /// <summary>
     /// No command file renders to the console, serializes JSON itself, or crosses into a CLI namespace
-    /// (ADR 0043 decision 1 and 2) — the <c>CommandResult</c>/<c>error: </c> guard for the same boundary
+    /// (ADR 0018 decision 1) — the <c>CommandResult</c>/<c>error: </c> guard for the same boundary
     /// lives beside <see cref="SIL.Motif.Tests.Commands.ProposalCommandOutcomeTests.CommandsRendersNothingItself"/>.
     /// </summary>
     [Fact]

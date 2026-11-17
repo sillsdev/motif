@@ -95,7 +95,7 @@ public sealed class WritingSystemInventoryTests : IDisposable
             mutators.Count == 0,
             "WritingSystemInventory has gained a mutating method: " +
             string.Join(", ", mutators.Select(m => m.Name)) +
-            ". Writing systems are edited in FieldWorks (ADR 0034's state/change boundary).");
+            ". Writing systems are edited in FieldWorks (ADR 0003's state/change boundary).");
 
         Assert.Contains("FieldWorks", WritingSystemInventory.EditingIsAFieldWorksJob);
     }

@@ -28,7 +28,7 @@ namespace SIL.Motif.Tests.Commands;
 /// </para>
 /// <para>
 /// The fingerprint skips Motif's own <c>.motif.db</c>, which deliberately lives beside the project
-/// (ADR 0041 decision 1) and is created on first open. That is the one file a capture may add, so the
+/// (ADR 0023 decision 1) and is created on first open. That is the one file a capture may add, so the
 /// success case asserts it by name rather than letting the filter quietly hide it.
 /// </para>
 /// </remarks>
@@ -64,7 +64,7 @@ public sealed class SourceProjectIsNeverWrittenTests : IDisposable
 
         Assert.True(outcome.Succeeded);
         Assert.Equal(before, Fingerprint(projectFolder));
-        // The one file Motif does add beside the project is its own store (ADR 0041 decision 1).
+        // The one file Motif does add beside the project is its own store (ADR 0023 decision 1).
         Assert.True(File.Exists(Path.ChangeExtension(fwDataPath, ".motif.db")));
     }
 

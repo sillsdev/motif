@@ -2,7 +2,7 @@ namespace SIL.Motif.Spikes.LabelHarvest;
 
 /// <summary>
 /// Harvests FieldWorks' own linguist-facing vocabulary into <c>manifest/fieldworks-labels.tsv</c>, per
-/// ADR 0023 decision 5. Three mechanisms carry a label: the <c>.fwlayout</c>/<c>Parts</c> slice registry,
+/// ADR 0013 decision 7. Three mechanisms carry a label: the <c>.fwlayout</c>/<c>Parts</c> slice registry,
 /// <c>strings-en.xml</c>, and <c>toolConfiguration.xml</c>. This tool implements a prior investigation of
 /// those sources rather than redoing it.
 /// </summary>

@@ -93,7 +93,7 @@ public sealed record WordAnalysis(int Index, string Word, int ElapsedMs, WordOut
 
 /// <summary>
 /// A completed batch run, with the provenance a grammar coverage figure is required to carry
-/// (ADR 0032 §4).
+/// (ADR 0019 §8).
 /// </summary>
 /// <remarks>Batch termination does not establish completion of every word's search.</remarks>
 public sealed record BatchAnalysis(

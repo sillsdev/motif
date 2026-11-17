@@ -4,7 +4,7 @@ The reconciled output of two independent reviews of `manifest/hcloader-surface.t
 constructs by **semantic authoring intent**, one analysing **structural shape and totality**. Companion
 to [API surface layer 1](api-surface-layer1.md) (the LibLCM half) and grounded in the field-level
 [HC grammar map](hc-grammar-map.md). Coverage target is **T2, "C# `HCLoader` complete"**
-([ADR 0010](adr/0010-hermitcrab-experimentation-is-the-primary-purpose.md)), assuming PanGloss reaches
+([ADR 0001](adr/0001-people-work-through-five-things-diagnostics-are-behind-a-switch.md)), assuming PanGloss reaches
 parity — so metathesis, reduplication, circumfixes, and clitic-as-affix are all in scope.
 
 ## The surface, as data
@@ -109,7 +109,7 @@ review ran an **exhaustive grep and found zero references** to `Slots`, `Proclit
 **The evidence wins: the settled doc was wrong.** Only `PrefixSlots` and `SuffixSlots` are read,
 collapsed as `SuffixSlotsRS.Concat(PrefixSlotsRS.Reverse())`. The other three are FieldWorks UI/legacy
 surface, invisible to the parser, and the API must not promise them.
-[HC surface scope](hc-surface-scope.md) and the [grammar map](hc-grammar-map.md) are corrected.
+The [grammar map](hc-grammar-map.md) records the corrected surface.
 
 ## What an author cannot reach — the 321, by cause
 

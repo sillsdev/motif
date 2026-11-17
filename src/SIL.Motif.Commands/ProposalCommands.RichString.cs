@@ -18,7 +18,7 @@ public static partial class ProposalCommands
     /// <summary>
     /// Adds a person's edit of one String field, or one writing system of a MultiString field, to the pending-changes
     /// Draft, or updates the edit the Draft already holds for that field and writing system, creating the Draft when
-    /// there is none (ADR 0095 decision 4). An edit back to the text it began from takes the earlier edit out.
+    /// there is none (ADR 0006 decision 4). An edit back to the text it began from takes the earlier edit out.
     /// </summary>
     public static CommandOutcome<ComposedOperationsResponse> StageTextRichString(StageTextRichStringRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion ?? MotifProductVersion.CurrentText, (database, project) =>

@@ -115,7 +115,7 @@ public static class ParsimonyViewsCommand
                     new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion, bundle.GrammarFactsSha256),
                     new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion, bundle.EvidenceSha256),
                     null, null, [], ParsimonyEvidenceScopeKind.ProjectApproved);
-                // Facts are discarded after the Reports are written (ADR 0086); only findings' views were kept.
+                // Facts are discarded after the Reports are written (ADR 0022); only findings' views were kept.
                 var frozen = ParsimonyViewsQuery.NeedsFacts(request.Query.View)
                     ? artifacts.FindFrozenView(bundle.BundleId, request.Query.View,
                         ParsimonyViewsQuery.FilterDigest(request.Query.Filters))

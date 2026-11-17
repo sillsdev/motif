@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.Contract;
 /// </summary>
 /// <remarks>
 /// This is a test rather than a convention because the target creeps back silently: the next person who
-/// wants a compatibility shim adds a second moniker, nothing fails, and the reason it was retired (ADR 0043)
+/// wants a compatibility shim adds a second moniker, nothing fails, and the reason it was retired (ADR 0018)
 /// is lost.
 /// </remarks>
 public sealed class CompatibilityTargetTests

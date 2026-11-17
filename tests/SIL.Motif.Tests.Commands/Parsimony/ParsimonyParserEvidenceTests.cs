@@ -48,7 +48,7 @@ public sealed class ParsimonyParserEvidenceTests : IDisposable
     }
 
     [Fact]
-    public void GuessedStringUsesTheExistingAdr0027Matcher()
+    public void GuessedStringUsesTheExistingSameAnalysisMatcher()
     {
         var parserCase = Case("kita", new ParseAnalysis([new ParseMorph(
             GuidText(_rejectedForm), GuidText(_msa), null, "rejected-allomorph")]));

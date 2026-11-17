@@ -16,7 +16,7 @@ public sealed record CliVerbDescriptor(
     string Section, string Verb, string CommandName, IReadOnlyList<string> UsageLines);
 
 /// <summary>
-/// The sole enumeration of Motif's CLI invocation paths (ADR 0043 decision 3): one entry per
+/// The sole enumeration of Motif's CLI invocation paths (ADR 0018 decision 2): one entry per
 /// <c>CommandCatalog</c> command, naming the CLI verb that reaches it. <c>PrintUsage</c> iterates this
 /// rather than repeating its own list of verbs and usage text.
 /// </summary>

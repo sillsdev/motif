@@ -6,7 +6,7 @@ namespace SIL.Motif.Worker.Jobs;
 
 /// <summary>
 /// Releases the Assessments, run directories and source copies of Trials a newer completed Trial of the same
-/// Proposal has replaced (ADR 0113). The latest Trial is never touched, so an un-applied Proposal keeps what its
+/// Proposal has replaced (ADR 0023). The latest Trial is never touched, so an un-applied Proposal keeps what its
 /// verdict, Apply and the gates read.
 /// </summary>
 internal static class SupersededTrialRetention

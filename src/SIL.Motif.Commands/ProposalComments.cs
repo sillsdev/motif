@@ -11,7 +11,7 @@ namespace SIL.Motif.Commands;
 /// The Comments on a Proposal. An agent may add one, with a label it chose for itself, and never edits or deletes
 /// one; a person adds, edits and deletes any. The label is shown to readers and is no identity check. Comments
 /// freeze when the Proposal is decided, as the Rationale does. A Comment is FieldWorks Markdown; one with findings
-/// saves, returns them, and never blocks Finalize or Apply (ADR 0099).
+/// saves, returns them, and never blocks Finalize or Apply (ADR 0006).
 /// </summary>
 /// <remarks>
 /// Edit and delete take no author because only a person may call them; an agent-facing surface registers them

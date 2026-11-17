@@ -4,15 +4,15 @@ using SIL.Motif.Generator.Join;
 namespace SIL.Motif.Generator.Checks;
 
 /// <summary>
-/// ADR 0022 decision 3: derive <c>Verbs</c> and <c>ComparisonClass</c> for every in-scope row and
+/// ADR 0013 decision 4: derive <c>Verbs</c> and <c>ComparisonClass</c> for every in-scope row and
 /// fail the build, naming the row, if the manifest disagrees and the row is not one of the cited
 /// <see cref="ComparisonClassDerivation.Exceptions"/>. Also checks
 /// <see cref="Derivation.GroupDerivation"/>'s prefix table is total over every declaring class
-/// actually present (ADR 0024 decision 2) — <b>not</b> the same thing as agreeing with the
+/// actually present (ADR 0013 decision 6) — <b>not</b> the same thing as agreeing with the
 /// manifest's <c>Group</c>/domain column, which it deliberately never reads.
 /// </summary>
 /// <remarks>
-/// ADR 0022's prose asserts "exactly five" <c>ComparisonClass</c> exceptions, but the manifest has
+/// ADR 0013's prose asserts "exactly five" <c>ComparisonClass</c> exceptions, but the manifest has
 /// seven — <c>PhPhonData.Contexts</c> and <c>.FeatConstraints</c> are two more, a documented
 /// pooled-storage case the ADR's count predates. This check is fail-closed rather than advisory
 /// specifically because of that gap: a specification's stated count is not proof against the data
@@ -53,13 +53,13 @@ public static class ManifestConsistencyChecker
 
         if (mismatches.Count > 0)
             throw new GeneratorException(
-                "Manifest row(s) disagree with the ADR 0022 derivation and are not among the cited " +
+                "Manifest row(s) disagree with the ADR 0013 derivation and are not among the cited " +
                 "exceptions (ComparisonClassDerivation.Exceptions):\n" + string.Join("\n", mismatches));
     }
 
     /// <summary>
     /// Every declaring class present in the joined model must resolve to a group — an unrecognized
-    /// class-name prefix fails the build naming the class (ADR 0024 decision 2), independent of
+    /// class-name prefix fails the build naming the class (ADR 0013 decision 6), independent of
     /// <c>Scope</c>: the table's totality is a fact about <c>GroupDerivation</c> covering LibLCM's
     /// class set, not about which fields are currently authorable.
     /// </summary>
@@ -80,7 +80,7 @@ public static class ManifestConsistencyChecker
 
         if (unresolved.Count > 0)
             throw new GeneratorException(
-                "Class(es) with no entry in the closed group-prefix table (ADR 0024 decision 2): " +
+                "Class(es) with no entry in the closed group-prefix table (ADR 0013 decision 6): " +
                 string.Join(", ", unresolved));
     }
 }

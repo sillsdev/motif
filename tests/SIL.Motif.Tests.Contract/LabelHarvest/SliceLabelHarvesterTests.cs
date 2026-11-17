@@ -44,7 +44,7 @@ public class SliceLabelHarvesterTests
     [Fact]
     public void FwLayout_resolves_a_composite_ref_to_its_real_field_via_the_supplied_map()
     {
-        // Reproduces the MoInflAffixSlot.Name case (ADR 0023): EditSlot's ref is "NameAllA", not bare "Name".
+        // Reproduces the MoInflAffixSlot.Name case (ADR 0013): EditSlot's ref is "NameAllA", not bare "Name".
         const string fixture = """
             <LayoutInventory>
               <layout class="MoInflAffixSlot" type="detail" name="EditSlot">

@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.Projection;
 /// <summary>
 /// Extracts every "figure" a rendered report's text carries — a double-quoted value, or a bare
 /// id/digest-shaped token — and asserts each is one of the JSON's own leaf values, emitted from the
-/// same projection. This is the acceptance test for ADR 0021 decision 2, made mechanical: a figure the
+/// same projection. This is the acceptance test for ADR 0018 decision 1, made mechanical: a figure the
 /// text states that the JSON does not is exactly what "the projection layer was skipped" would produce.
 /// </summary>
 /// <remarks>

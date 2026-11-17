@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.Generator;
 /// <c>GroupDerivation</c>/<c>ConstructDerivation</c>/<c>KindNameDerivation</c> the checks elsewhere use —
 /// including the one case that would be wrong if group/construct were read off the manifest's
 /// <c>domain</c>/<c>Construct</c> columns instead of derived: <c>MoForm</c> is manifest-domain
-/// <c>lexical</c> (ADR 0024's 15 <c>Mo*</c> exceptions) but derived-group <c>grammar</c>, so
+/// <c>lexical</c> (ADR 0013's 15 <c>Mo*</c> exceptions) but derived-group <c>grammar</c>, so
 /// <c>MoForm.Form</c>/<c>MoForm.IsAbstract</c> must land under <c>grammar/moForm/...</c>, not
 /// <c>lexical/...</c>.
 /// </summary>
@@ -48,7 +48,7 @@ public class BasicFieldSpecBuilderTests
         var model = MotifModelLoader.Load();
         var moFormRow = model.Rows.Single(r => r.DeclaringClass == "MoForm" && r.FieldName == "Form");
 
-        // Manifest.Group holds the manifest's domain column (ADR 0024): this row's value is "lexical".
+        // Manifest.Group holds the manifest's domain column (ADR 0013): this row's value is "lexical".
         Assert.Equal("lexical", moFormRow.Manifest.Group);
 
         var spec = BasicFieldSpecBuilder.Build(moFormRow);

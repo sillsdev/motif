@@ -32,7 +32,7 @@ public sealed record RewriteLexemeFormIntent(
 /// CIRCUMFLEX ACCENT, U+0304 COMBINING MACRON and U+030C COMBINING CARON. Every other mark, such as the tilde U+0303
 /// of a Cebuano n-tilde, is kept. Wolff uses grave for a following glottal stop, acute for quantity and caron for
 /// exceptional stress. A fold loses those distinctions in parser forms; keeping a Citation Form alone cannot
-/// make them available to morphology or phonology. Use explicit rewrites when grammar conditions on them (ADR 0090).
+/// make them available to morphology or phonology. Use explicit rewrites when grammar conditions on them (ADR 0015).
 /// </summary>
 public static class LexemeFormFolding
 {

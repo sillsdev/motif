@@ -5,7 +5,7 @@ Reverse-engineered from `FieldWorks/Src/LexText/ParserCore/HCLoader.cs` (2837 li
 `liblcm/MasterLCModel.xml`, `machine/src/SIL.Machine.Morphology.HermitCrab/`, and PanGloss's
 independent Rust port.
 
-**This map is the requirement.** Per [ADR 0010](adr/0010-hermitcrab-experimentation-is-the-primary-purpose.md),
+**This map is the requirement.** Per [ADR 0001](adr/0001-people-work-through-five-things-diagnostics-are-behind-a-switch.md),
 Motif's grammar API is exactly the set of LibLCM inputs `HCLoader` consumes — nothing less, nothing
 pointless. It is a **versioned dependency**: when HCLoader or HC changes, this map is re-derived and the
 API re-checked.
@@ -88,7 +88,7 @@ Motif must be able to **predict and report** these, because HCLoader mostly will
 `RealizationalAffixProcessRule` exists in HermitCrab, but `HCLoader` never builds one —
 `LoadInflAffixProcessRule` carries `// TODO: use realizational affix process rules` and always emits a
 plain `AffixProcessRule`. **Realizational morphology is therefore not achievable through the FieldWorks
-path, whatever Motif writes to LibLCM.** ADR 0010's "everything HC supports must be authorable" has this
+path, whatever Motif writes to LibLCM.** ADR 0001's "everything HC supports must be authorable" has this
 one documented exception, and Motif must not promise it.
 
 ## Two ingestion paths — and which semantics are authoritative

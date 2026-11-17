@@ -2,8 +2,8 @@
 
 Each recipe gives **where it lives** (owner and factory), **how to wire it**, its **parser reach** in
 PanGloss v0.5.x, and the **traps**. "HCLoader" is FieldWorks' C# parser loader; PanGloss has its own
-importer. Citations for every line are in `docs/research/grammar-authoring/liblcm-recipes.md` (same
-section numbers) and `flexicon-harvest-grammar.md`. Factories come from the cache's service locator.
+importer. The supporting investigations and their original source paths are listed in
+`docs/references/grammar-authoring.md`. Factories come from the cache's service locator.
 
 When Motif gains an operation for a construct, that operation replaces its recipe here.
 

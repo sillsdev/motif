@@ -14,7 +14,7 @@ namespace SIL.Motif.Runner.Composers;
 /// existing senses.
 /// </summary>
 /// <remarks>
-/// This is the composer's own authoring surface (ADR 0009 decision 1), not a Layer-0 operation
+/// This is the composer's own authoring surface (ADR 0013 decision 1), not a Layer-0 operation
 /// payload: it is never hashed or dispatched by <see cref="OperationHandlerRegistry"/> itself, only
 /// lowered by <see cref="AuthorLexemeFormComposer.Build"/> into the ordinary, closed-schema
 /// operations that are. <see cref="Entry"/> and, when supplied, <see cref="Sense"/> must already

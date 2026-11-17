@@ -23,7 +23,7 @@ namespace SIL.Motif.Tests.App.RealClient;
 
 /// <summary>
 /// A Discussion edited as FieldWorks Markdown (SIL.TextEditing ADR 0035) in a project built at run time from
-/// <see cref="SeededGdrs"/> (ADR 0076): the window, the real stores and commands, and LibLCM in place of FieldWorks.
+/// <see cref="SeededGdrs"/> (ADR 0002): the window, the real stores and commands, and LibLCM in place of FieldWorks.
 /// </summary>
 [Trait("MotifTestLevel", "Integration")]
 [Collection(LcmCacheTestCollection.Name)]

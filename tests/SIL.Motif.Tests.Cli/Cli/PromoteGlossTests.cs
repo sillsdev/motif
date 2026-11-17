@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
 /// <c>promote-gloss</c> — the only sanctioned route from the Motif store into the language project
-/// (ADR 0036 decision 2): a <c>lexical/lexSense/setGloss</c> operation whose value is
+/// (ADR 0023 decision 1): a <c>lexical/lexSense/setGloss</c> operation whose value is
 /// evidenced by a stored corpus, carrying that corpus's origin forward as non-hashed provenance so a
 /// licence obligation (e.g. CC-BY-SA attribution) is never lost between the evidence and the entry it
 /// justified.

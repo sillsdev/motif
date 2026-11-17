@@ -30,7 +30,7 @@ public static class GdrReader
         Records(cache).Select(entry => Summary(cache, entry)).ToArray();
 
     /// <summary>
-    /// The records with their live Discussion paragraphs, for the sync check (ADR 0119), which reads styles, runs and
+    /// The records with their live Discussion paragraphs, for the sync check (ADR 0005), which reads styles, runs and
     /// links straight from the project and needs no wire conversion.
     /// </summary>
     internal static IReadOnlyList<GdrStructure> ReadStructure(LcmCache cache) => Records(cache).Select(entry =>
@@ -139,7 +139,7 @@ public static class GdrReader
     }
 
     /// <summary>
-    /// A link to the object at the FieldWorks Markdown project path <paramref name="path"/> (ADR 0031), such as
+    /// A link to the object at the FieldWorks Markdown project path <paramref name="path"/> (ADR 0007), such as
     /// <c>/lexicon/entry-1(2)</c> or <c>/lists/list-1/item-1</c>, as a run's object data naming the project
     /// <paramref name="projectName"/> and the FieldWorks tool that opens the object. A sense opens at its entry, as
     /// FieldWorks' own links do. A path that is malformed, names nothing, names more than one object, or names an object

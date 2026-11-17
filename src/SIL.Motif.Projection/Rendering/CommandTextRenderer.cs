@@ -7,7 +7,7 @@ namespace SIL.Motif.Projection.Rendering;
 
 /// <summary>
 /// Turns each read-surface projection into the same text a reviewer reads at a terminal — a pure
-/// function of the projection, never of anything the projection itself does not carry (ADR 0021
+/// function of the projection, never of anything the projection itself does not carry (ADR 0013
 /// decision 2). <see cref="ProjectionJson.Serialize{T}"/> is the other renderer over the same
 /// object, so every figure below also appears in that JSON by construction.
 /// </summary>

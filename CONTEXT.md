@@ -10,14 +10,14 @@ owns the data and is the only authority on it) and **PanGloss** (which parses wi
 The smallest durable unit a Proposal is made of, named for its field and its verb —
 `grammar/fsFeatDefn/setAbbreviation`. Named for the musical sense: the smallest recognizable unit that
 recurs and is developed across a work. This is the hashed vocabulary a digest is computed over, so it
-does not churn ([ADR 0021](docs/adr/0021-cli-is-the-full-surface-layer-1-churns.md)).
+does not churn ([ADR 0013](docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md)).
 _Avoid_: command, CRUD+ operation, mutation, edit
 
 **Intent**:
 A unit of linguistic purpose an author states, which Lowering turns into the several Motif operations
 that realize it — `AuthorLexemeForm`, `AuthorFeatureStructure`. What an agent addresses; the verb
 surface may churn beneath a stable operation vocabulary
-([ADR 0029](docs/adr/0029-agents-address-layer-1-only.md)).
+([ADR 0013](docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md)).
 _Avoid_: macro, template, high-level operation, composite
 
 **Composer**:
@@ -25,7 +25,7 @@ The catalogued command that turns one Intent into Motif operations, together wit
 them consistent, such as reusing an existing analysis rather than adding a duplicate. It is named for the intent a
 linguist would recognise (`compose-author-stem-name`), never for a field or a language, and it is the same command
 whether a person runs it from the command line or an agent calls it as a tool
-([ADR 0069](docs/adr/0069-the-agent-api.md)).
+([ADR 0009](docs/adr/0009-assistants-reach-motif-through-one-agent-api.md)).
 _Avoid_: setter, endpoint, builder, wizard
 
 **Phenomenon**:
@@ -45,7 +45,7 @@ The represented phonological sequence in a parser form, which may distinguish se
 running spelling omits. Ordinary FieldWorks morphology and ordered rules retain those distinctions until final
 written realization; a parser form stays nonabstract and its phonemes have nonempty representations.
 Citation Form may keep the selected source headword
-([ADR 0090](docs/adr/0090-underlying-distinctions-survive-until-the-grammar-realizes-the-written-form.md)).
+([ADR 0015](docs/adr/0015-phonology-and-allomorphy-are-authored-as-fieldworks-authors-them.md)).
 _Avoid_: hidden phoneme flag, empty grapheme, pre-parser folding
 
 **Subject**:
@@ -63,21 +63,21 @@ _Avoid_: compilation, translation, expansion
 A stored, named set of Motif operations that is reviewable as one unit. It owns its attached
 Assessments, has a lifecycle, and can be applied to a language project or discarded. A Proposal does
 not combine unrelated changes, and belongs to exactly one project: the same change in two projects is
-two Proposals, each Applied on its own.
+two Proposals, each Applied on its own. The desktop supports several Proposals and comparisons of alternatives; motif-Bible handles one Proposal at a time.
 _Avoid_: PR, change set, change group, patch, branch
 
 **Request**:
-Something a linguist asked an AI assistant to fix: a word, a Warning or a Matrix cell, with an optional note in
-the linguist's own words. A Proposal answers a Request; the Request is answered when that Proposal is
+Something a person asks Claude about by naming it to Claude in Claude Desktop (the window has no Ask Claude), with an optional note in
+the person's own words. A Request targets a Proposal, Comment, Guide section, word, word group or Passage. A Proposal answers a Request; the Request is answered when that Proposal is
 finalized, and reopens if the Proposal is withdrawn or superseded before a decision
-([ADR 0094](docs/adr/0094-requests-how-a-linguist-asks-an-assistant-for-a-proposal.md)).
+([ADR 0008](docs/adr/0008-requests-how-a-person-asks-claude-for-a-proposal.md)).
 _Avoid_: task, ticket, ask, job, inbox item
 
 **Draft**:
 A Proposal that is still being authored: it has an id and a name, and no committed revision yet.
 Finalizing does not move it anywhere — it commits the first immutable revision and changes the
 Proposal's state. A Draft is therefore a phase of a Proposal's life, never a separate thing kept
-somewhere else ([ADR 0041](docs/adr/0041-the-database-is-the-only-store.md) decision 3).
+somewhere else ([ADR 0023](docs/adr/0023-one-store-beside-each-project-inside-a-byte-budget.md) decision 3).
 _Avoid_: working copy, staging area, scratch proposal, uncommitted proposal
 
 **Proposal status**:
@@ -93,7 +93,7 @@ _Avoid_: state, closed-out, archived, cancelled
 **Rationale**:
 A Proposal's account of what it changes and why, in FieldWorks Markdown, written and revised by people and agents
 while the Proposal is open. Finalize requires it, with no checker findings; once Ready, a revision with findings is
-refused and the last clean one stays (ADR 0099). It records the Proposal content it was written for, so a reader can see when
+refused and the last clean one stays (ADR 0006). It records the Proposal content it was written for, so a reader can see when
 later changes have left it out of date. Its earlier versions are kept until the Proposal is decided, then dropped; the
 latest stays, frozen. A reply belongs in a **Comment**.
 _Avoid_: description (that is Help text), summary, commit message
@@ -105,29 +105,39 @@ freeze when the Proposal is decided. The window also records, as a Comment, whic
 that no longer fits. A Comment is a label for readers, not an approval.
 _Avoid_: note, review, sign-off, annotation
 
-**Grammar Design Record**:
-A living page about one grammar topic of a language project, such as how word-initial sounds change: what the grammar
-does and why. It keeps one permanent ID and title, is stored in the FieldWorks project, and is rewritten in place;
-the Proposals that touched it are its history. Agents read it before changing the objects it describes. Also GDR.
-_Avoid_: design doc, wiki page, note, decision log
+**Conversation**:
+The Comments on a Proposal, where a person and Claude discuss its changes and the decisions still to make.
+_Avoid_: chat log, separate discussion record
 
-**GDR sync check**:
-`gdr check`: compares the Grammar Design Records with the grammar in the Baseline and warns about a rule or affix process
-no record links, a section that links a deleted object, and an example word that no longer parses as its section says,
-from the Trial and Assessment rows already stored (ADR 0119). Every finding is a warning, and a warning means the work is
-not finished.
-_Avoid_: GDR lint, GDR validation
+**Grammar Guide**:
+The readable story of a language's grammar, organised into Guide parts and Guide sections. It belongs to the
+FieldWorks project and is Motif's grammar sketch.
+_Avoid_: GDR, Grammar Design Record, ADR
+
+**Guide part**:
+A top-level grouping of the Grammar Guide, such as “Nouns”.
+_Avoid_: chapter (a chapter is a scripture Passage)
+
+**Guide section**:
+One topic within a Guide part, such as “4.2 Noun plural”, written to the section template. Its judgement calls
+live in its Decisions part, never in separate records.
+_Avoid_: record, entry
+
+**Guide check**:
+Advice about whether the Grammar Guide agrees with the grammar and its examples. Its findings never block a
+Proposal or Apply.
+_Avoid_: GDR sync check, Guide validation, approval gate
 
 **FieldWorks Markdown**:
 The Markdown form of FieldWorks text: a strict profile of Pandoc Markdown, marked by `fwmd: 1` in its front matter,
 that people and agents read and edit and that the clipboard carries. FieldWorks still stores the text; the Markdown is
-a view of it (ADR 0089, SIL.TextEditing ADR 0028).
-_Avoid_: GDR Markdown (for the general format), FWMD (in prose), source (for the stored text)
+a view of it (ADR 0006, SIL.TextEditing ADR 0028).
+_Avoid_: Guide text (for the general format), GDR Markdown, FWMD (in prose), source (for the stored text)
 
-**GDR Markdown**:
-A **Grammar Design Record**'s text as **FieldWorks Markdown**, written to the GDR template (title, ID, abstract, body
-sections). It is not a format of its own: it has no notation, links or checks beyond FieldWorks Markdown's.
-_Avoid_: GDR profile, agent Markdown, extended Markdown
+**Guide text**:
+The Grammar Guide as FieldWorks Markdown, with sections for How it works, Examples, Exceptions, Decisions,
+Open questions and In the grammar. It uses the same format as other FieldWorks text.
+_Avoid_: GDR Markdown, GDR profile, agent Markdown, extended Markdown
 
 **Project path**:
 How FieldWorks Markdown names a FieldWorks object in a link: a path in a designed tree of the project, such as
@@ -144,7 +154,7 @@ _Avoid_: preview project, backup, baseline
 **Home** (of a project):
 Where a project's lexicon and grammar really live: a FieldWorks project (.fwdata) or an FW Lite project's history (a
 Harmony log). A Proposal is applied to the Home; everything else is built from it
-([ADR 0101](docs/adr/0101-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md)).
+([ADR 0026](docs/adr/0026-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md)).
 _Avoid_: source (that is the Paratext project), master copy, database, backend
 
 **Build**:
@@ -169,14 +179,14 @@ The source a Motif operation or phonology example was taken from — a section o
 dictionary entry, a corpus passage — recorded as a `source` and an optional `locator` such as a page or
 section. It is review metadata:
 citing a source, or a different one, never changes what a Proposal does or its intent digest. It names where a
-change came from, never who made it ([ADR 0064](docs/adr/0064-every-operation-can-cite-its-source.md)).
+change came from, never who made it ([ADR 0007](docs/adr/0007-a-proposal-has-one-lifecycle-a-conversation-citations-and-one-apply-path.md)).
 _Avoid_: author, attribution, reference (for a cited source), provenance (the contract field that holds it)
 
 **Construct**:
 One of the ~30 grammar things a Proposal can be about — a stratum, a natural class, an affix template,
 a phonological rule. **The unit in which grammar support is staged and delivered**, and hand-authored
 because the grouping is linguistic judgement. It used to double as the middle segment of an operation's
-name; it no longer does ([ADR 0023](docs/adr/0023-derived-kind-names-required-descriptions.md)) — that
+name; it no longer does ([ADR 0013](docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md)) — that
 segment is derived from the declaring class. Construct is now purely about *what work ships together*.
 _Avoid_: entity, class, feature
 
@@ -197,42 +207,48 @@ all Input referrers recreates the constraint when LibLCM collects the old one. A
 items inside multi-item contexts is refused because FieldWorks' loader cannot discover it; another reference
 outside those iterations makes it discoverable. An unrepresentable context
 still prevents an editable intent
-([ADR 0088](docs/adr/0088-phonological-rules-are-edited-in-place-and-hold-one-item-each-side.md)).
+([ADR 0015](docs/adr/0015-phonology-and-allomorphy-are-authored-as-fieldworks-authors-them.md)).
 _Avoid_: sound change (for the stored rule), multi-item rule
 
 **Judgement call**:
 A choice the sources leave to the analyst, such as whether an affix, reduplication included, is derivational or
 inflectional. Linguistic decisions follow Andy Black's paper and guidance; a judgement call belongs to the person
-or agent who makes it, recorded with a rationale. Whatever LibLCM can hold, Motif allows, and it refuses only an
-invalid model; Grammar Health and Parsimony advise and never forbid
-([ADR 0079](docs/adr/0079-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)). Changes
+or agent who makes it, with its rationale in the Guide section's Decisions part. Whatever LibLCM can hold, Motif
+allows, and it refuses only an invalid model; Grammar Health and Parsimony advise and never forbid
+([ADR 0004](docs/adr/0004-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)). Changes
 to ADRs, `AGENTS.md`, `CLAUDE.md` and this file go straight to `main`, which is how decisions are made visible.
 _Avoid_: override, exception, waiver
 
-## Stages of use
+## Working with texts and grammar
 
-**Grow**:
-The first stage of using Motif: simple local analysis to get the text at hand working, one chapter at a time, with
-Errors only, a speed light, Proposals and GDRs. Tagline: "Find the Pattern in the Words"
-([ADR 0100](docs/adr/0100-motif-has-two-stages-grow-and-polish.md)).
-_Avoid_: Build, Explore, Workshop
+**Diagnostics**:
+The views of the grammar's machinery: grammar warnings, Parsimony, speed by rule and parser trace. They are shown
+only when a person turns on the Diagnostics switch, which is off by default for each person.
+_Avoid_: Polish, Polish stage
 
-**Polish**:
-The second stage: making the grammar ready for everyone, with deployment, FST, Warnings, speed targets, coverage and
-Parsimony, besides Proposals and GDRs. Tagline: "Make It Ready for Everyone". People move back and forth between
-Grow and Polish.
-_Avoid_: Deploy, Release, Publish, Production, Send
+**Progress**:
+How much of each Passage has approved analyses, guesses or no analysis, shown as counts.
+_Avoid_: Matrix, parser score
 
-## Scripture in the Paratext flow
+Retired terms: **Stage of use**, **Grow** and **Polish** are replaced by work through Sources, approving analyses,
+the Grammar Guide, Claude and Proposals. **Matrix** is removed; Progress describes work on the texts
+([ADR 0001](docs/adr/0001-people-work-through-five-things-diagnostics-are-behind-a-switch.md)).
 
-**Source** (of scripture):
-A Corpus with one versification: a whole Paratext project, or a folder of corpus files. Its chapters are its
-Documents, and it is worked with like any other Corpus. Motif reads its text and never copies it
-into the FieldWorks project ([ADR 0110](docs/adr/0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md)).
+**Purpose is not a product term.** Scripture, academic and general audience are design lenses for personas only;
+they are never shown in the window or stored.
+
+## Sources and passages
+
+**Source**:
+The texts a person works from: a Paratext project or USFM, FieldWorks texts, or plain-text or JSONL documents.
+A Source is a kind of Corpus: a scripture Source has one versification, its chapters are its Documents, and it is worked
+with like any other Corpus. Motif reads texts where they are and never copies them into the FieldWorks project;
+judgements about their words belong to the language project
+([ADR 0024](docs/adr/0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md)).
 _Avoid_: import, corpus copy, home
 
 **Passage**:
-One chapter of a Source, which is that Source's Document; for any other Corpus, one Document.
+One chapter of a scripture Source, which is that Source's Document; for any other Corpus, one Document.
 
 **Context** (in context):
 The chapters of a Source the work is about now, written as a range such as `GEN-ROM; 1CO 13-15`.
@@ -261,7 +277,7 @@ project holds rather than a state the Assessment carries. Motif stores Assessmen
 never renders a verdict from one. A Proposal review report presents this evidence at summary, failures and
 full levels. Its red flags state observed regressions, not a verdict; their absence means only "not bad",
 never "good". Incomplete evidence is labelled Incomplete, not Failed
-([ADR 0091](docs/adr/0091-proposal-review-report-three-levels-and-red-flags-no-verdict.md)).
+([ADR 0021](docs/adr/0021-a-trial-review-report-has-three-levels-and-no-verdict.md)).
 _Avoid_: parse report, evaluation, score, verdict, PanGloss run
 
 **Assessor**:
@@ -296,7 +312,7 @@ _Avoid_: type, category, measure, metric
 The measure of how much the parser did for a word, a rule or a whole run: every unit of work PanGloss reserved while
 parsing, shown as a percent change against the Baseline, for example "about 12% more parser work". "This grammar takes less work to parse the words" means fewer parser work. The
 **parser work limit** is the per-word bound on it, 20,000,000 by default. It counts the same quantity, not analysis attempts.
-PanGloss's own names (`work_steps`, `--step-cap`) stay where Motif reads or passes them.
+PanGloss's own names (`work_steps`, `--step-cap`) stay where Motif reads or passes them. The speed light is green, yellow or red; its hover may show the parser-step count.
 _Avoid_: work steps, steps, step cap, step limit, attempts
 
 **Parse completion**:
@@ -315,7 +331,7 @@ An analysis a FieldWorks project holds for a word form that no person has approv
 produced it: FieldWorks' parser, its guesser, or nobody. FieldWorks' own name for these is "Analysis
 Candidates", and it offers them in texts as guesses, coloured tan. The window shows a candidate as
 **Unknown**, the Opinion FieldWorks' User Opinion menu gives it
-([ADR 0049](docs/adr/0049-fieldworks-opinions-and-now-after-apply.md)). One of the five things a project
+([ADR 0027](docs/adr/0027-the-window-follows-fieldworks.md)). One of the five things a project
 can hold for a word that Motif compares an Assessment against: not present, candidate, approved,
 disapproved, or an incorrect spelling. FieldWorks' parser re-judges candidates whenever it runs, and deletes
 one it no longer produces unless a text uses it.
@@ -353,7 +369,7 @@ _Avoid_: reviewed, checked, seen, approved, needs a look
 
 **Parser agreement**:
 Whether the current Assessment still produces what FieldWorks holds for a word, judged by the same-analysis
-rule of [ADR 0027](docs/adr/0027-what-counts-as-the-same-word-analysis.md): agreeing (an approved analysis
+rule of [ADR 0020](docs/adr/0020-a-job-produces-assessments-and-scope-decides-comparability.md): agreeing (an approved analysis
 the parser still builds, or a disapproved one it no longer builds), a conflict, or a suggestion (the parser
 builds an analysis FieldWorks lacks). A word whose search did not complete, was skipped or was not assessed
 has no agreement either way — an unfinished search never shows that the parser does not produce something.
@@ -379,7 +395,7 @@ _Avoid_: parse success, grammar coverage, first match
 
 **Difference**:
 A saved comparison of one Trial's before and after parses for one Text, set against the Approved
-expectations in the Baseline the Trial measured ([ADR 0067](docs/adr/0067-proposal-difference-against-human-decisions.md)).
+expectations in the Baseline the Trial measured ([ADR 0021](docs/adr/0021-a-trial-review-report-has-three-levels-and-no-verdict.md)).
 It is a standalone result, not an Assessment kind: it cites the Trial's two Assessments by id and carries
 every fact it needs by value, so it does not keep them alive. There is one per Proposal, Text and reference
 (a person's decisions or a program's), so several sit side by side, and a new one replaces only the one for the same
@@ -396,26 +412,26 @@ _Avoid_: Difference, grammar delta
 **Dry Run**:
 What a Proposal would do, computed by applying it to a throwaway copy of the project and reading the
 effects back from the engine — never by predicting them. The live model is not mutated
-([ADR 0016](docs/adr/0016-scratch-cache-copy-not-undo.md)). A Draft can be Dry Run as well as a revision;
+([ADR 0017](docs/adr/0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md)). A Draft can be Dry Run as well as a revision;
 the result is identified by the content it ran against, so editing the Draft afterwards leaves it describing
 the earlier content.
 _Avoid_: assessment, preview, plan, simulation
 
 **Store budget**:
 The housekeeping target for a project's Motif store, 100 MB, with a larger target for the per-user folders of
-runs, sources and Baselines ([ADR 0082](docs/adr/0082-stores-and-user-data-stay-inside-a-byte-budget.md)); neither
+runs, sources and Baselines ([ADR 0023](docs/adr/0023-one-store-beside-each-project-inside-a-byte-budget.md)); neither
 is a guaranteed physical ceiling. A Proposal releases unneeded computed evidence at committed close or after
 seven days without Proposal activity even while open, keeping authored content and written summaries with bounded
-examples ([ADR 0093](docs/adr/0093-proposals-release-computed-data-on-close-and-after-seven-days-untouched.md)).
+examples ([ADR 0023](docs/adr/0023-one-store-beside-each-project-inside-a-byte-budget.md)).
 Primary Corpus files and metadata have no size cap and are never evicted; stored per-occurrence analysis follows
 computed-evidence retention, while its frozen language summary tables remain durable history
-([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)).
+([ADR 0024](docs/adr/0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md)).
 _Avoid_: quota, disk limit, cache size
 
 **Proposal activity**:
 An authored edit or a Dry Run, Trial or Assessment run against a Proposal; viewing or reading stored results
 does not count. It determines the seven-day retention of that Proposal's computed evidence, independently of its
-status ([ADR 0093](docs/adr/0093-proposals-release-computed-data-on-close-and-after-seven-days-untouched.md)).
+status ([ADR 0023](docs/adr/0023-one-store-beside-each-project-inside-a-byte-budget.md)).
 _Avoid_: last viewed, last opened, access time
 
 **Baseline**:
@@ -423,7 +439,7 @@ A saved, minimal, file-backed copy of a project's grammar and lexicon, from whic
 Dry Run scratches. It holds what a Proposal changes and what the engine needs to reproduce its behaviour, but not the
 Evidence it is measured against, and no linked media bytes. A Baseline is replaced explicitly, not merely because time
 passed. It may be captured from a project FieldWorks holds open, in which case it is the state as of FieldWorks' last
-save ([ADR 0109](docs/adr/0109-evidence-is-separate-from-the-baseline-and-always-current.md)).
+save ([ADR 0020](docs/adr/0020-a-job-produces-assessments-and-scope-decides-comparability.md)).
 _Avoid_: snapshot (a Proposal snapshot is a different thing), backup, session cache, live model
 
 **Evidence**:
@@ -462,27 +478,8 @@ current evidence set and a Trial's have the same shape, so a page cannot tell th
 _Avoid_: context, source, data context, snapshot, Evidence (that is the input, not the measured result)
 
 **Proposal mode**:
-The window's state while a Proposal is open: a context bar names it and says when its Trial was run. The
-bar's view switch (Today, Today → Proposal, Proposal) shows only on a page that follows it, now the Overview,
-Texts, Warnings and Timing, and chooses whether that page shows today's evidence set, the Proposal's Trial evidence set or
-both; every other page shows today's. Each such page runs the same query once for each set, only while it is shown
-and once for each Proposal, Trial and choice of words, and says in a note what is paired and what stays today's; a
-value one set lacks reads as none, never as zero or as the other set's number, and a read still running reads as
-reading, never as an earlier key's number. Timing and the Texts matrix pair only when both sets cover the same
-words; the matrix holds the Proposal's side as counts and an index of the values the word list reads for each word (its cell,
-parser work and time), never the Trial's rows, and lets go of it when the Proposal is left or another Proposal or Trial is open. The Texts words under the
-matrix are the Proposal's in the Proposal view, where a Trial word today's matrix lacks is counted but not listed, and
-carry a With This Proposal column in the pair; the places under a cell follow the same choice; a Moved By This Proposal chip narrows the words to those the Proposal puts in a different cell than today, over the words both sides have, and is dropped with the Proposal;
-the Lists tab reads each list's words and places the same way, and What Changed in the pair lists the words that
-moved from one cell today to another with the Proposal, over the words both sides have, counting the rest and
-holding only positions that go when the Proposal does; the Proposal view lists the same moves, since a move is a
-word's cell today and its cell with the Proposal. Choosing a view is
-not an evidence change, so no page reloads, re-reads or re-applies for it, and the choice comes back when a
-following page is shown again. Texts, Warnings and Timing each keep a delta badge beside their sidebar entry (its tooltip and accessible name say what it counts) while a
-Proposal is open, from numbers the page has already read: the net change in the Same column's words, the findings gained or lost
-and the percentage change in parser work; a page that has not read its side, holds a side over other words or finds
-no change shows none. In the Proposal view a headline stands alone, with today's breakdown left
-to the Today view. Leave, or Esc when nothing else uses it, returns to today.
+The window's state while the person works on a selected Proposal. Where a comparison is available, Today,
+Today → Proposal and Proposal distinguish the current project's evidence from the Proposal's Trial evidence.
 _Avoid_: compare mode, diff view, Proposal page, branch
 
 **Looked at**:
@@ -502,7 +499,7 @@ The final non-mutating comparison against the live model immediately before Appl
 measured evidence still matches the project; it is not the earlier, reusable Dry Run.
 It runs per change as well as per Proposal: each change carries the wordform and analysis identities it
 touches and the Baseline token it was made against, and a change whose inputs are gone or different fails
-and blocks Apply ([ADR 0046](docs/adr/0046-pages-not-stages.md)). The CLI verb is `preflight`; the window
+and blocks Apply ([ADR 0028](docs/adr/0028-the-window-is-one-workspace-of-pages-on-a-fixed-grid.md)). The CLI verb is `preflight`; the window
 never shows the word.
 _Avoid_: dry run, assessment, validation pass
 
@@ -527,8 +524,8 @@ _Avoid_: staleness, conflict, merge failure
 **Apply**:
 Writing a Proposal's changes into the FieldWorks project, always a person's act and always one-way: Motif
 has no unapply. To test before it, a person
-has Proposals, Dry Run and Trials ([ADR 0016](docs/adr/0016-scratch-cache-copy-not-undo.md),
-[ADR 0005](docs/adr/0005-schema-operations-non-undoable-uow.md)).
+has Proposals, Dry Run and Trials ([ADR 0017](docs/adr/0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md),
+[ADR 0017](docs/adr/0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md)).
 _Avoid_: commit, save, publish, roll back
 
 **Apply Authorization**:
@@ -553,7 +550,7 @@ _Avoid_: application receipt, success result, audit log
 **Parsimony review**:
 An advisory Report that offers specific grammar recommendations along two named axes: parsimony and
 restrictiveness. Each recommendation states its evidence tier, scope, and limitations; it does not decide
-whether a grammar is good or a change may be applied ([ADR 0060](docs/adr/0060-parsimony-evidence-and-advisory-dispositions.md)).
+whether a grammar is good or a change may be applied ([ADR 0022](docs/adr/0022-parsimony-and-grammar-warnings-advise-and-blocking-is-opt-in.md)).
 _Avoid_: grammar fitness, grammar score, health check
 
 **Parsimony recommendation**:
@@ -565,7 +562,7 @@ _Avoid_: lint, warning, verdict
 A word that newly parses under a Trial and is in the project's texts or carries an Approved analysis. A word
 that newly parses only as a generated probe form is a generated gain. The Trial report keeps the two apart and
 sets attested gains against the grammar size delta, the objects a Proposal adds by kind; its advisory gain gate
-reports when too many objects buy too few attested words ([ADR 0114](docs/adr/0114-trial-reports-split-attested-from-generated-gains-and-record-grammar-size.md)).
+reports when too many objects buy too few attested words ([ADR 0021](docs/adr/0021-a-trial-review-report-has-three-levels-and-no-verdict.md)).
 _Avoid_: gained words (unqualified), coverage gain
 
 **Measure**:
@@ -581,7 +578,7 @@ _Avoid_: view, search
 **Measure group**:
 One of the two sets the registered Measures fall into, chosen by what a Measure reads: the Grammar group or the Text
 group. `parsimony --group grammar|text|all` runs one or both. A group is not a score
-([ADR 0080](docs/adr/0080-parsimony-runs-in-two-groups-grammar-and-text.md)).
+([ADR 0022](docs/adr/0022-parsimony-and-grammar-warnings-advise-and-blocking-is-opt-in.md)).
 _Avoid_: tier (alone), suite, profile
 
 **Grammar group**:
@@ -609,7 +606,7 @@ _Avoid_: fix, autofix, script, playbook
 **Kept view**:
 A drill-down result a Parsimony finding points to, computed while the grammar facts were still open and stored with
 its bundle. The facts are then discarded, so a view no finding points to answers "not kept" and needs the measures run
-again ([ADR 0086](docs/adr/0086-parsimony-keeps-reports-and-drill-down-rows-and-discards-grammar-facts.md)).
+again ([ADR 0022](docs/adr/0022-parsimony-and-grammar-warnings-advise-and-blocking-is-opt-in.md)).
 _Avoid_: cached view, frozen facts
 
 **Parsimony note**:
@@ -638,7 +635,7 @@ _Avoid_: rejected word, parser failure, absence
 A person's durable choice for one Parsimony recommendation: fix, keep, ask, or defer. It is tied to the
 recommendation's exact identity and relevant evidence; new relevant evidence brings the item back for review.
 Disposition data belongs to the FieldWorks project as Notebook judgment revisions
-([ADR 0056](docs/adr/0056-human-judgments-belong-to-the-fieldworks-project.md)).
+([ADR 0003](docs/adr/0003-motif-writes-only-what-fieldworks-can-create.md)).
 _Avoid_: approval, Apply authorization, dismissal
 
 **Human judgment**:
@@ -661,7 +658,7 @@ _Avoid_: deleted findings, dismissed warnings, hidden items
 **Report**:
 A query over stored evidence that produces statistics and findings. A Report can use an Assessment, frozen
 Parsimony evidence, or both; a Parsimony Report may have no Assessment and is always advisory. Configured
-regression behavior for other Report kinds follows [ADR 0042](docs/adr/0042-a-job-produces-assessments-an-assessor-makes-them.md).
+regression behavior for other Report kinds follows [ADR 0020](docs/adr/0020-a-job-produces-assessments-and-scope-decides-comparability.md).
 _Avoid_: score, verdict, metric, dashboard, health check
 
 **Check Run**:
@@ -682,7 +679,7 @@ _Avoid_: query, sample, filter, scope, subset, test set, corpus descriptor
 A named, immutable revision of explicit underlying forms paired with expected surface forms, declared
 generation context and optional Citations. Stored in the project database and embedded by exact revision
 and executable content in a Phonology Check. It is distinct from a Selection of words to parse; it adds no
-permanent lexical entries ([ADR 0065](docs/adr/0065-phonology-example-sets-are-advisory-evidence.md)).
+permanent lexical entries ([ADR 0022](docs/adr/0022-parsimony-and-grammar-warnings-advise-and-blocking-is-opt-in.md)).
 _Avoid_: word list, corpus, Selection, gold analyses
 
 **Phonology Check**:
@@ -732,7 +729,7 @@ _Avoid_: reload, sync, auto-refresh, update
 The window's page where a person reads, together, what applying their pending changes would write (the Dry
 Run), what it would do to the numbers (an Assessment of the touched words) and whether each change still fits
 (Preflight). A page, not a lifecycle step: reading it is not recorded, grants nothing and gates nothing, and
-the CLI has no `review` verb ([ADR 0046](docs/adr/0046-pages-not-stages.md)). Its button is "Apply to
+the CLI has no `review` verb ([ADR 0028](docs/adr/0028-the-window-is-one-workspace-of-pages-on-a-fixed-grid.md)). Its button is "Apply to
 FieldWorks project", which is Apply. The pending changes are a Draft Proposal in the Motif store, shown to
 the linguist only as "N changes not applied yet".
 _Avoid_: approval, sign-off, review decision, save
@@ -768,7 +765,7 @@ _Avoid_: cache, session, connection
 Project workflow records — Proposals, Drafts, jobs, Assessments, Reports, Receipts, Harvests, the Corpus index,
 stored corpus analysis and its durable summaries, and the applied index — live in the project's paired sibling
 database. Primary Corpus files and their metadata sidecar live under the project folder's `corpora/` directory
-([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)). Parsimony Report bindings are stored here,
+([ADR 0024](docs/adr/0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md)). Parsimony Report bindings are stored here,
 but reviewed negatives and dispositions remain durable data in the FieldWorks project. File-backed
 Baselines and disposable parser and grammar-analysis artifacts live separately under the Motif worker root, which defaults on Windows to
 `%LOCALAPPDATA%\SIL\Motif` and can be changed with `MOTIF_WORKER_ROOT`. Content digests identify
@@ -793,7 +790,7 @@ _Avoid_: registered project, workspace, recent project, project list
 **Queue order**:
 The position a job holds in the single ordered run of work across every Known project. It is stored,
 not derived from when a row last changed, so moving a job changes what runs next rather than only what a
-list displays ([ADR 0041](docs/adr/0041-the-database-is-the-only-store.md) decision 6).
+list displays ([ADR 0023](docs/adr/0023-one-store-beside-each-project-inside-a-byte-budget.md) decision 6).
 _Avoid_: priority, rank, position, sort order
 
 **Motif job runner**:
@@ -801,7 +798,7 @@ The one on-demand process for a logged-in Windows user that takes work which mus
 durable jobs, project queues, Baseline refreshes, and PanGloss orchestration. It claims work from the
 paired database; nothing sends it requests, and it answers none. It never owns a FieldWorks user's live
 `LcmCache`. Called *the worker* in documents written before 2026-08-26, when it also served a named-pipe
-protocol that [ADR 0040](docs/adr/0040-one-api-the-cli.md) withdrew.
+protocol that [ADR 0018](docs/adr/0018-one-command-catalog-behind-the-cli-window-and-mcp.md) withdrew.
 _Avoid_: server, service, daemon, project host, worker
 
 **Motif API**:
@@ -848,12 +845,12 @@ _Avoid_: using this for corpus material
 A body of running text collected for a project, preserving its Documents, order, repetitions, source
 information and any attributed qualification. Its files are primary project assets outside the FieldWorks model,
 with no size cap or automatic eviction. A particular segmentation and analysis interpret that material; neither is the Corpus
-itself ([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)).
+itself ([ADR 0024](docs/adr/0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md)).
 _Avoid_: text, texts, dataset, word list, sample
 
 **Document**:
 One source unit within a Corpus, preserving running text in order with repetitions. Its boundary scopes
-contexts and counts; n-gram models must not run across it. It keeps its identity when edited; a content hash
+contexts and counts; n-gram models must not run across it. A plain-text document is identified by its path relative to the Source folder; a JSONL document by its id. A rename or changed id keeps approvals marked changed since, and a duplicate JSONL id refuses to load the Source and names the id. It keeps its identity when edited; a content hash
 distinguishes the version a measurement or Harvest used. It is never a FieldWorks Text.
 _Avoid_: text, article, item, record
 
@@ -861,7 +858,7 @@ _Avoid_: text, article, item, record
 A named, reusable definition for finding material in Corpora and producing or updating a curated FieldWorks
 Text, with an explanation, regex or filters, source references and a destination Text. People and agents can
 edit it; the definition belongs to the FieldWorks project. It is distinct from a Harvest, which records a use
-([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)).
+([ADR 0024](docs/adr/0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md)).
 _Avoid_: Recipe, corpus group, approval rule, run
 
 **Harvest**:
@@ -901,7 +898,7 @@ Each part retains its own analysis and Language candidates. Alternatives remain 
 the primary split or multiplying the count of source Occurrences. A character can be word-forming in one
 interpretation and punctuation in another. If any alternative is analyzed, the Occurrence is analyzed;
 misses of its other alternatives are ignored for failure, misspelling and no-analysis counts, flags and squiggles
-([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)).
+([ADR 0024](docs/adr/0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md)).
 _Avoid_: replacement profile, discarded split, correction
 
 **Dictionary pack**:
@@ -971,7 +968,7 @@ _Avoid_: HC XML, export, projection
 > *Renamed 2026-08-09.* **Feature coverage** was called *grammar coverage* until the two were being used in
 > one sentence. The name moved to the measure people reach for it to mean — *how much of the language does
 > this grammar handle* — and the feature-combination measure took the name that says what it counts.
-> Documents written before that date use the old sense; `docs/grammar-coverage-design.md` is about **feature
+> Documents written before that date use the old sense; `docs/feature-coverage.md` is about **feature
 > coverage** despite its filename, which is left alone because it is cited by name elsewhere.
 >
 > **Grammar coverage and feature coverage answer opposite questions** and a grammar can score well on one and
@@ -982,12 +979,12 @@ _Avoid_: HC XML, export, projection
 One row per field in LibLCM's model, recording what is in scope and which Construct it belongs to. Those
 two are human judgement that exists nowhere else. Verbs and comparison behaviour are **derived** from
 LibLCM's own structural declarations and checked against the manifest, not taken from it
-([ADR 0022](docs/adr/0022-structure-is-derived-policy-is-five-rows.md)).
+([ADR 0013](docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md)).
 _Avoid_: inventory, schema, spec
 
 **Group**:
 The first segment of an operation kind — **`lexical`**`/lexSense/setGloss`. **Derived** from the declaring
-class's LibLCM prefix family ([ADR 0024](docs/adr/0024-group-is-derived-domain-is-editorial.md)). Its job is
+class's LibLCM prefix family ([ADR 0013](docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md)). Its job is
 namespacing and versioning granularity: what changes together when LibLCM changes. **Not** a statement about
 who should review something.
 _Avoid_: domain, namespace, area
@@ -1002,7 +999,7 @@ _Avoid_: group, category, class
 **Class segment**:
 The middle segment of an operation kind — `lexical/`**`lexSense`**`/setGloss`. **Derived**, as the LibLCM
 class where the field is declared with its first letter lowercased
-([ADR 0023](docs/adr/0023-derived-kind-names-required-descriptions.md)). Deliberately ugly and never
+([ADR 0013](docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md)). Deliberately ugly and never
 curated: what a human needs in order to understand an operation lives in its **description**, which nothing
 hashes. **Not the same thing as a Construct** — that word means a staging unit and nothing else now.
 _Avoid_: construct, name map, mapping table, alias list
@@ -1011,7 +1008,7 @@ _Avoid_: construct, name map, mapping table, alias list
 The required, never-hashed one-to-three sentences explaining a documented thing — an operation, a command,
 a window control, a glossary term. For an operation it is seeded from the labels FieldWorks already shows
 linguists. Free to improve at any time, because no digest depends on it. It must not restate its Title and
-must record its source ([ADR 0047](docs/adr/0047-generated-help-walkthroughs-and-docs-site.md)).
+must record its source ([ADR 0029](docs/adr/0029-help-walkthroughs-and-the-docs-site-come-from-one-source.md)).
 _Avoid_: comment, doc, label, summary
 
 **Ordered grammar**:

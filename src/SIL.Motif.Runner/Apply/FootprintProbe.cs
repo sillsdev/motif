@@ -12,8 +12,8 @@ namespace SIL.Motif.Runner.Apply;
 /// <summary>
 /// Reads a Proposal's CURRENT footprint — the live, pre-mutation state of every target its
 /// operations touch — without mutating anything or opening any unit of work. Used by
-/// <see cref="ProposalApplier.Apply"/>'s pre-flight drift check (ADR 0004 decision 3): a bare read is
-/// legal at any transaction state (ADR 0006 decision 1), so this probe can run before Apply opens its
+/// <see cref="ProposalApplier.Apply"/>'s pre-flight drift check (ADR 0017 decision 4): a bare read is
+/// legal at any transaction state (ADR 0017 decision 3), so this probe can run before Apply opens its
 /// own committing unit of work.
 /// </summary>
 /// <remarks>

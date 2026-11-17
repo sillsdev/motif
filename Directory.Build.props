@@ -1,6 +1,6 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)SilVersions.props" />
-  <!-- Language version, nullable, warnings as errors, deterministic: shared with textediting/ (ADR 0092). -->
+  <!-- Language version, nullable, warnings as errors, deterministic: shared with textediting/ (ADR 0006). -->
   <Import Project="$(MSBuildThisFileDirectory)Directory.Build.Common.props" />
 
   <PropertyGroup Condition="'$(MOTIF_PACKAGE_INTERMEDIATE_ROOT)' != ''">

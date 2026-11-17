@@ -103,7 +103,7 @@ public sealed record WordOccurrence(
 /// <summary>One analysis the project holds, as morphs a person reads, with a key to compare it by.</summary>
 /// <param name="Key">
 /// Equal for two analyses exactly when FieldWorks would call them the same analysis: same morph count and, per
-/// morph, the same form, grammatical info and inflection type. Sense is not part of it (ADR 0027).
+/// morph, the same form, grammatical info and inflection type. Sense is not part of it (ADR 0020).
 /// </param>
 /// <param name="Morphs">The morphs in order, with form, gloss, category and a FieldWorks link.</param>
 public sealed record ProjectAnalysis(string Key, IReadOnlyList<ParserReadingMorph> Morphs)

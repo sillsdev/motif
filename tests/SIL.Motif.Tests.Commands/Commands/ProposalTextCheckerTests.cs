@@ -4,7 +4,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>When a Rationale or Comment check needs the project, and which reports are findings (ADR 0099).</summary>
+/// <summary>When a Rationale or Comment check needs the project, and which reports are findings (ADR 0006).</summary>
 public sealed class ProposalTextCheckerTests
 {
     private const string Guid = "11111111-2222-4333-8444-555555555555";

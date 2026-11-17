@@ -240,7 +240,7 @@ internal sealed class EvidenceBundlePipeline
         _checks.FactsIntegrity(build.FactsPath);
         var measures = Render(inputs, build.FactsPath, stagedEvidence, build.Assessments, build.MeasureIds,
             build.AssessmentIds, build.IncludeDispositionProjection, stages, cancellation, out var frozen);
-        // Nothing after the render needs the facts (ADR 0086).
+        // Nothing after the render needs the facts (ADR 0022).
         _checks.BeforeFactsDiscard?.Invoke(build.FactsPath, staging);
         DiscardFacts(build.FactsPath);
         var first = measures[0];
@@ -259,7 +259,7 @@ internal sealed class EvidenceBundlePipeline
     /// so the caller builds fresh. A Baseline job reuses only Baseline-origin bundles; a candidate-origin
     /// bundle is never reused, because its identity needs the facts model fingerprint, which exists only after
     /// PanGloss has run, and its key does not cover the Assessment contents, so the same key would not prove the
-    /// same evidence (ADR 0060). A Baseline-origin reuse renders the disposition projection a Baseline job stores.
+    /// same evidence (ADR 0022). A Baseline-origin reuse renders the disposition projection a Baseline job stores.
     /// A candidate job also passes <paramref name="reuseComparisonBefore"/>: the before side an earlier candidate job
     /// built from this Baseline is the same facts and evidence the Baseline job would write, because both come from
     /// the same Baseline project file, parser, facts schema, evidence schema and scope, all of which the key pins, and
@@ -292,7 +292,7 @@ internal sealed class EvidenceBundlePipeline
                 var sourceDigest = ProjectDigest(baseline.FwDataPath);
                 _ = ParserAssessmentMaterial.Read(database, assessmentIds, baseline.Token, sourceDigest,
                     parserDigest, out _);
-                // No facts remain, so reuse stored Reports; a measure with no stored Report is a miss (ADR 0086).
+                // No facts remain, so reuse stored Reports; a measure with no stored Report is a miss (ADR 0022).
                 var stored = StoredReportsFor(bundle, measureIds, !reuseComparisonBefore);
                 if (stored is null) continue;
                 stages?.Enter("validate");
@@ -368,7 +368,7 @@ internal sealed class EvidenceBundlePipeline
                 var reportInput = ReportInput.FromParsimonyFiles(inputs, factsPath, evidencePath, assessments, measureId);
                 produced.Add((measureId, producer.Produce(reportInput, session, cancellation)));
             }
-            // Keep the views findings point to now, while the facts can still be read (ADR 0086).
+            // Keep the views findings point to now, while the facts can still be read (ADR 0022).
             stages?.Enter("freeze");
             frozen = ParsimonyViewsQuery.Freeze(session, produced.SelectMany(item =>
                 item.Rendered.ParsimonyFindings ?? []));

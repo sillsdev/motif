@@ -11,7 +11,7 @@ namespace SIL.Motif.Worker.Store;
 /// </param>
 /// <param name="RenderedText">
 /// The presentation computed at measurement time, stored so a later reader never needs the Assessor that
-/// made the underlying Assessment to still be reachable (ADR 0042's Report amendment).
+/// made the underlying Assessment to still be reachable (ADR 0020's Report amendment).
 /// </param>
 public sealed record ReportRecord(
     string ReportId,

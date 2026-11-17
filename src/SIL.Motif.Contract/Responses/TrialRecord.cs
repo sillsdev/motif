@@ -69,7 +69,7 @@ public sealed record TrialRecord(
 
     /// <summary>
     /// For a Proposal that removes an exception feature: whether the Trial words kept the same readings before and after
-    /// (ADR 0118, built on ADR 0115). Null for any other Proposal and for a Trial that has not finished.
+    /// (ADR 0015, built on ADR 0015). Null for any other Proposal and for a Trial that has not finished.
     /// </summary>
     public ReadingIdentityResult? ReadingIdentity { get; init; }
 

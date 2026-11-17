@@ -39,7 +39,7 @@ public sealed class MeasureCatalogTests
     {
         foreach (var id in new[] { "P-tag-polarity-majority", "P-variant-same-shape", "P-lexeme-near-duplicate" })
             Assert.NotNull(MeasureCatalog.Find(id)!.QueryId);
-        // Needs per-rule context matches PanGloss does not expose yet (ADR 0116, PanGloss ask).
+        // Needs per-rule context matches PanGloss does not expose yet (ADR 0022, PanGloss ask).
         Assert.Null(MeasureCatalog.Find("P-tag-implied-by-context")!.QueryId);
         Assert.All(BlockingPolicy.BlockCapable, id => Assert.NotNull(MeasureCatalog.Find(id)));
     }

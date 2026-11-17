@@ -4,14 +4,14 @@ namespace SIL.Motif.Generator.Derivation;
 
 /// <summary>
 /// <c>Verbs</c> is a pure function of <c>(Kind, Card)</c> — seven combinations, zero exceptions,
-/// across all 412 authorable rows (ADR 0022 decision 1). Nothing here reads the manifest; this *is*
+/// across all 412 authorable rows (ADR 0013 decision 4). Nothing here reads the manifest; this *is*
 /// the authority the manifest's <c>Verbs</c> column is checked against
 /// (<see cref="Checks.ManifestConsistencyChecker"/>), not the other way around.
 /// </summary>
 public static class VerbDerivation
 {
     /// <summary>The pipe-separated verb string for one field's structural shape, in the manifest's
-    /// own ordering convention (ADR 0022).</summary>
+    /// own ordering convention (ADR 0013).</summary>
     public static string Derive(FieldKind kind, FieldCard? card) => (kind, card) switch
     {
         (FieldKind.Basic, null) => "set|clear",
@@ -23,7 +23,7 @@ public static class VerbDerivation
         (FieldKind.Rel, FieldCard.Seq) => "addRef|removeRef|move",
         _ => throw new GeneratorException(
             $"No verb mapping for (Kind={kind}, Card={(card is null ? "null" : card.ToString())}) — " +
-            "this (Kind, Card) combination is not one of the seven ADR 0022 declares, which should be " +
+            "this (Kind, Card) combination is not one of the seven ADR 0013 declares, which should be " +
             "structurally impossible for a field parsed out of MasterLCModel.xml."),
     };
 

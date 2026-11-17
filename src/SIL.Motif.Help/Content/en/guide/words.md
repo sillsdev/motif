@@ -12,7 +12,7 @@ When the parser has read a word, its row shows how many analyses it built, for e
 
 ## Opening a word
 
-Choose a row to open its word card and, beside it, the list of places it occurs. This is the same panel [Passage](guide:passage) uses. Tick the places you mean, pick the reading to keep, then choose **Approve**. Only the ticked places are staged, and nothing reaches FieldWorks until you choose **Apply**. **Ask Claude** records a Request about the word. **Not a Word** marks the spelling as not a word for the whole project.
+Choose a row to open its word card and, beside it, the list of places it occurs. This is the same panel [Passage](guide:passage) uses. Tick the places you mean, pick the reading to keep, then choose **Approve**. Only the ticked places are staged, and nothing reaches FieldWorks until you choose **Apply**. **Not a Word** marks the spelling as not a word for the whole project.
 
 The filter chips narrow the rows by where the project stands, and the search box narrows them by spelling. The rows load as you scroll, so a long list stays quick.
 

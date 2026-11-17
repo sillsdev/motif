@@ -96,7 +96,11 @@
     "F07",
     "F08",
     "F09",
-    "F10"
+    "F10",
+    "L05",
+    "L06",
+    "L07",
+    "L08"
   ],
   "human_sample": {
     "initial_21_keys": 21,
@@ -116,16 +120,24 @@
   },
   "content": [
     {
-      "path": "docs/adr/0058-the-agent-edit-loop.md",
-      "sha256": "1074982743efd5ed3f4038961ee8f8bf2e2ae620e3f5d7e78c9c4c88f07f8428"
+      "path": "docs/adr/0009-assistants-reach-motif-through-one-agent-api.md",
+      "sha256": "b537e7d80d36ef84471aa4933fce3520552caece2c99ffcff4f18dd119cde3b4"
     },
     {
-      "path": "docs/adr/0059-measuring-agents-fairly.md",
-      "sha256": "cb32189bf093e72ff85bd7882e45fe9756ddeefe18918d75fc51f8a4e6860e02"
+      "path": "docs/adr/0010-measuring-agents-fairly.md",
+      "sha256": "a228fb34c74db0f3751c230b1fb6f405e3fbaaf4d765292bbab2b49caf56512a"
     },
     {
       "path": "docs/references/README.md",
-      "sha256": "d4f4da7aa12b4dc20d8ff491859d76e63e52f17337d9d1397154b6e99fbff922"
+      "sha256": "07ba0ad3e2868b8a470ff8823ab0f46c6a78ec719bac0498e77b4ef7ff6b797c"
+    },
+    {
+      "path": "docs/references/agents-and-skills.md",
+      "sha256": "df9ed11d4715a1301b09fab0db00aeb67f5c5239b82b20b416fa93a735266856"
+    },
+    {
+      "path": "docs/references/corpora-and-word-evidence.md",
+      "sha256": "43156015d6280c201c6fc612cb133f8df07b40a2c1d01d4290314df12412c229"
     },
     {
       "path": "docs/references/fieldworks/black-conceptual-introduction.md",
@@ -168,6 +180,18 @@
       "sha256": "a8a7e0d87155b528083f79c1f67e7ed790d80010b8cba92b822566b6c56a2368"
     },
     {
+      "path": "docs/references/generator-and-manifest.md",
+      "sha256": "81c7c69b6f73ae965d9a0c793c0ad631f157a04882908b22b5d71b88ebecca9c"
+    },
+    {
+      "path": "docs/references/grammar-authoring.md",
+      "sha256": "6ec46f9f63ec398f61e40ba395639dbd6e0af6c777c72721281760f9213cd936"
+    },
+    {
+      "path": "docs/references/harmony-and-fw-lite.md",
+      "sha256": "86525994b1d0b5076f9a1620a61f5f9dfd73c5f16fe985ba3c74123a6e367cd0"
+    },
+    {
       "path": "docs/references/industry/ace.md",
       "sha256": "cb359694611f4865a622342203d2b7576437ef438f96806a5499f5521f4a0546"
     },
@@ -196,8 +220,24 @@
       "sha256": "090ede7f66e08aa0546e206b39ab9590ae8aca7cab3792ee9ebb17afd2d0aff1"
     },
     {
+      "path": "docs/references/installers-and-release.md",
+      "sha256": "8496f7b21898d3a567203bc6a0e0c14a41274aa8bae622cce7b049093720ae47"
+    },
+    {
+      "path": "docs/references/liblcm-and-fieldworks-hazards.md",
+      "sha256": "ac79884c466294b8887d6d92317cff7450ddd806433ae716845a83748b4a51b7"
+    },
+    {
+      "path": "docs/references/linguistics/describing-morphosyntax.md",
+      "sha256": "ce8f05ff754ddac4050393e809932844dec326cb75aac0c98106c159e1aefd2b"
+    },
+    {
       "path": "docs/references/linguistics/fieldwork.md",
       "sha256": "503d004ae8d86072bd56e410ea2a0ec40a878f9dc8bc8447c882b2d24dfcc984"
+    },
+    {
+      "path": "docs/references/linguistics/grambank.md",
+      "sha256": "edbf7b001872df462940629ee598af5beab90475a9e1942ef0368514e189ad76"
     },
     {
       "path": "docs/references/linguistics/leipzig-glossing.md",
@@ -208,16 +248,36 @@
       "sha256": "cc827e0104457588f7ba687478da71fb24c4f217fdb17ff56d7ede2e29db7805"
     },
     {
+      "path": "docs/references/linguistics/paws.md",
+      "sha256": "65aa90b92a2603de5ab2d179fa91c1b4b2bd2423146c93ae344697e82d7e1d4e"
+    },
+    {
+      "path": "docs/references/linguistics/wals.md",
+      "sha256": "315e1e1ecc50232279c59526b3cc4a32dc1653146ce57883a0e5bcc2212a88cd"
+    },
+    {
       "path": "docs/references/linguistics/word-structure.md",
       "sha256": "f7b69d77a223e27f9c67a22c7dadf7b1d93e5ea675dcdde8b5583844b961b770"
     },
     {
+      "path": "docs/references/parser-performance.md",
+      "sha256": "0f63fc68f538b092725ccb9aafe8aaef55403b797e4d403de60d42c99a2d5637"
+    },
+    {
       "path": "docs/references/sources.json",
-      "sha256": "e4d70afddc240c0ce2cca1f44cef2556bf8ed5b5b7768e3c5c31e6dab72512d0"
+      "sha256": "634738cd98d2f01fdfcfe7a40ee33031ea8e1bcc6d3e4a7a23e425b5570cf7f4"
+    },
+    {
+      "path": "docs/references/synthetic-samples.md",
+      "sha256": "4453fdf9647b58d019261f2b781b9df53047ebf06804261c82ab7216dedb4d9e"
+    },
+    {
+      "path": "docs/references/word-analysis-comparison.md",
+      "sha256": "38f748eaf69cd66d9487a1d2854ad5c3ce69f85e9e96d187526db0a6e160d95d"
     },
     {
       "path": "evals/oracle/v1/README.md",
-      "sha256": "9223bd5b90647b62c9697feee23994d5c3037a3fe89217f9469a5edb75f33627"
+      "sha256": "456f037033cef34adf12342bfe1a35e8d14765bc171107a1237293539e8ab470"
     },
     {
       "path": "evals/oracle/v1/judge-ruling.schema.json",
@@ -293,7 +353,7 @@
     },
     {
       "path": "evals/oracle/v1/rules.md",
-      "sha256": "6d10e2b4a6f18689517125966da2699c455355db8e36efd8bf783a99cfd27215"
+      "sha256": "2b02de453f5b804a021a069e328b93b4031f4552479e52e293bbc55aa5fff70f"
     },
     {
       "path": "evals/oracle/v1/rulings.md",
@@ -305,7 +365,7 @@
     },
     {
       "path": "pangloss-release.json",
-      "sha256": "f6dd7165aec9cdc3c59501c875da2203ecf9fd693c4ba681f057df065fa81ed4"
+      "sha256": "186c32cbed8a8e2351b79ce7f4a8584599c477ffa2bcce61d316fd3899e5d0e0"
     },
     {
       "path": "plugin/references/crosswalk.md",
@@ -521,7 +581,7 @@
     },
     {
       "path": "plugin/skills/linguistic-consultant/SKILL.md",
-      "sha256": "24128689d1c5164a1c71e4284f070d3a46233fa78e1e1f52c4101f62980d7380"
+      "sha256": "04757509505e919e116a4648cd2076d819b9a19e3ec947e8cbc5e40f64a3a7b5"
     },
     {
       "path": "plugin/skills/linguistic-consultant/references/bibliography.md",
@@ -550,6 +610,10 @@
     {
       "path": "plugin/skills/linguistic-consultant/references/personas.md",
       "sha256": "af081d8c12686bd4b7bcd1ab2be1441f18a50b2ddefe24ed5d4fd14ff38298e3"
+    },
+    {
+      "path": "plugin/skills/linguistic-consultant/references/starter-morphology-interview.md",
+      "sha256": "9e9bf21fba7b2f614528d951b968dec39afd7c4670752e2338e63581488560d0"
     },
     {
       "path": "tools/Sync-SkillCrosswalk.py",

@@ -5,7 +5,7 @@ using SIL.Motif.Host.Assess;
 namespace SIL.Motif.Worker.Store;
 
 /// <summary>
-/// Finds the completed Trials a newer completed Trial of the same Proposal replaces (ADR 0113). A newer Trial replaces
+/// Finds the completed Trials a newer completed Trial of the same Proposal replaces (ADR 0023). A newer Trial replaces
 /// an older one only when it covers at least the older one's Assessment kinds and words, so a later narrower Trial
 /// never hides an Apply-ready Assessment; a Trial whose scope cannot be read is never replaced and never replaces.
 /// </summary>

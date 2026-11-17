@@ -2,7 +2,7 @@
 #
 # Adds the classification columns to manifest/liblcm-inventory.tsv, turning it into the type
 # system the kind generator reads. See docs/api-surface-layer1.md, docs/api-surface-hc.md,
-# docs/change-set-contract.md, docs/hc-grammar-map.md, docs/issues.md (B7, D1, D2, E3) for the
+# docs/proposal-contract.md and docs/hc-grammar-map.md for the
 # decisions this script mechanizes. Re-run after any inventory regeneration; do not hand-edit
 # the output TSV.
 #
@@ -258,7 +258,7 @@ Set-Override 'LexDb' 'AllomorphIndex' 'observable-not-authorable' 'Engine-mainta
 Set-Override 'LexDb' 'LexicalFormIndex' 'observable-not-authorable' 'Engine-maintained reverse index over lexical forms; read for lookup, never directly added/removed by an author.'
 
 # --- Unsupported: explicit "do not offer as a control" / scoped-out surfaces ---
-Set-Override 'StPara' 'StyleRules' 'unsupported' 'TextPropBinary style blobs are scoped out of v1 as configuration, not authorable linguistic intent (ADR 0009 #2).'
+Set-Override 'StPara' 'StyleRules' 'unsupported' 'TextPropBinary style blobs are scoped out of v1 as configuration, not authorable linguistic intent (ADR 0013 #2).'
 Set-Override 'PhEnvironment' 'AMPLEStringSegment' 'unsupported' 'Never read by HCLoader; a near-miss sibling of StringRepresentation on the same class, explicitly listed in the "generates no kind" set.'
 Set-Override 'PhEnvironment' 'LeftContext' 'unsupported' 'Collapse-criterion amendment 2: via PhEnvironment the context graph is dead (HCLoader reads only StringRepresentation); the environment construct is string-authored only.'
 Set-Override 'PhEnvironment' 'RightContext' 'unsupported' 'Collapse-criterion amendment 2: via PhEnvironment the context graph is dead (HCLoader reads only StringRepresentation); the environment construct is string-authored only.'
@@ -316,7 +316,7 @@ $ComparisonClassRationale = @{
     (K 'PhSegRuleRHS' 'LeftContext')    = 'Correction E3: part of the per-rule alpha-variable traversal; index is identity.'
     (K 'PhSegRuleRHS' 'RightContext')   = 'Correction E3: part of the per-rule alpha-variable traversal; index is identity.'
     (K 'PhPhonData' 'FeatConstraints')  = 'Correction E3: index-as-identity was mislocated here; a move on this pool is semantically inert (pooled-but-private storage, not the traversal HCLoader walks).'
-    (K 'PhPhonData' 'Contexts')         = 'Pooled-but-private storage (change-set-contract.md): members are addressed by reference from Input/StrucDesc, never by pool position.'
+    (K 'PhPhonData' 'Contexts')         = 'Pooled-but-private storage (proposal-contract.md): members are addressed by reference from Input/StrucDesc, never by pool position.'
 }
 
 # ---------------------------------------------------------------------------
@@ -349,7 +349,7 @@ $unconfirmedFieldKeys = @( (K 'FsFeatStruc' 'FeatureDisjunctions') )
 #    verified against OverridesLing_Lex.cs / OverridesLing_MoClasses.cs /
 #    RepositoryAdditions.cs. Deleted 2026-08-06 with the column itself: no Dry Run
 #    rolls back any more, so nothing needs to know which fields would have suffered
-#    if one did. See docs/adr/0016-scratch-cache-copy-not-undo.md. This mattered
+#    if one did. See docs/adr/0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md. This mattered
 #    because the list was hand-maintained and would have had to grow with every
 #    field added to the catalog, forever.
 # ---------------------------------------------------------------------------

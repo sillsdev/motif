@@ -56,7 +56,7 @@ public sealed partial class ReviewEntryViewModel : ObservableObject
         _ => "Unchecked",
     };
 
-    /// <summary>The complete fit status, including when a grammar change is checked under ADR 0046.</summary>
+    /// <summary>The complete fit status, including when a grammar change is checked under ADR 0028.</summary>
     public string TableFitDescription => Change?.ReviewFitText ?? "Checked on Apply";
 
     public string FitGlyph => Change is { IsNoLongerFits: true } ? "✗"

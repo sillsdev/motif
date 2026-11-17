@@ -845,7 +845,7 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.False(Directory.Exists(destination));
     }
 
-    // ADR 0045 decision 2: a Handoff with no Assessment is valid, not a degraded one.
+    // ADR 0009 decision 12: a Handoff with no Assessment is valid, not a degraded one.
     [Fact]
     public void NoAssessOmitsAssessmentJsonButStillWritesGrammarAndTexts()
     {

@@ -160,7 +160,7 @@ try
     if (command is not null && !commandPolicy.IsAvailable(command))
         return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"), error, command);
 
-    // Every invocation naming a project upserts it into the machine store (ADR 0041 decision 4).
+    // Every invocation naming a project upserts it into the machine store (ADR 0023 decision 4).
     if (flags.TryGetValue("project", out var projectForRegistry) &&
         commandName is not ("project initialize" or "project tag" or "project tag --set"))
     {
@@ -170,7 +170,7 @@ try
             return RefuseProjectTag(tagFailure, flags.ContainsKey("json"), error);
     }
 
-    // Every migrated read surface renders both ways from one projection (ADR 0021 decision 2).
+    // Every migrated read surface renders both ways from one projection (ADR 0018 decision 1).
     asJson = flags.ContainsKey("json");
     CommandResult result;
     // RenderProposal below already fully renders text or JSON; the bottom printer must not wrap it again.

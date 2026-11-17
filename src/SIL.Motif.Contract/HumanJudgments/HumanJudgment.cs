@@ -78,7 +78,7 @@ public abstract record NegativeJudgmentTarget;
 /// <summary>No reading of this surface is acceptable within the recorded context.</summary>
 public sealed record SurfaceNegativeTarget : NegativeJudgmentTarget;
 
-/// <summary>Only this ordered morphology is forbidden, following ADR 0027.</summary>
+/// <summary>Only this ordered morphology is forbidden, following ADR 0020.</summary>
 public sealed record ReadingNegativeTarget(IReadOnlyList<NegativeJudgmentMorph> Morphs) : NegativeJudgmentTarget;
 
 /// <summary>Authoritative parser identity with conditional guessed WS and captured readable captions.</summary>

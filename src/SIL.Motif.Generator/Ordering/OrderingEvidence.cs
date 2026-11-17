@@ -7,7 +7,7 @@ namespace SIL.Motif.Generator.Ordering;
 /// <remarks>
 /// <para>
 /// <b>Evidence, not authority.</b> <c>ComparisonClass</c> stays derived from <c>Card</c> with a closed
-/// exception table (ADR 0022 decision 2); nothing here feeds that derivation. What this answers is the
+/// exception table (ADR 0013 decision 4); nothing here feeds that derivation. What this answers is the
 /// question the derivation cannot:
 /// <em>is the rule right for this particular row?</em> The manifest trust audit found that it is
 /// not always — <c>MoAlloAdhocProhib.Allomorphs</c> is <c>positional</c> by the rule, but the model says

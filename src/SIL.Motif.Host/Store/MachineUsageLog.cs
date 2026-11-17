@@ -4,7 +4,7 @@ using SIL.Motif.Projection.Usage;
 namespace SIL.Motif.Host.Store;
 
 /// <summary>
-/// Writes <see cref="UsageLogEntry"/> rows to the machine store's <c>Usage</c> table — the home ADR 0021
+/// Writes <see cref="UsageLogEntry"/> rows to the machine store's <c>Usage</c> table — the home ADR 0013
 /// decision 4's usage log requires. It is a database rather than a file because several <c>motif</c>
 /// invocations may run at once, and two processes appending to one file interleave where two connections
 /// into one SQLite database do not.

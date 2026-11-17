@@ -41,7 +41,7 @@ that uses it. Definition should have ensure semantics:
 
 Motif's own reserved `MotifJudgmentData` and `MotifJudgmentId` String fields on `RnGenericRec` are the only
 definitions Motif installs for itself, and only through the confirmed `project initialize` command
-([ADR 0056](adr/0056-human-judgments-belong-to-the-fieldworks-project.md)).
+([ADR 0003](adr/0003-motif-writes-only-what-fieldworks-can-create.md)).
 
 ### Rare: metadata update or destructive migration
 

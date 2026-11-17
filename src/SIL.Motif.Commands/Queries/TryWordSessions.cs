@@ -11,7 +11,7 @@ using SIL.Motif.Worker.Projects;
 namespace SIL.Motif.Commands.Queries;
 
 /// <summary>
-/// The warm parser sessions behind Try a Word: one resident PanGloss per open project (ADR 0044 amendment). A long-lived host (the MCP
+/// The warm parser sessions behind Try a Word: one resident PanGloss per open project (ADR 0019 amendment). A long-lived host (the MCP
 /// server, the App) enables them; a one-shot CLI process keeps the cold path because it would exit before a second word could use the load.
 /// </summary>
 public static class TryWordSessions

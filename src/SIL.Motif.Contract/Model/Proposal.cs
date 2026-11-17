@@ -13,7 +13,7 @@ namespace SIL.Motif.Contract.Model;
 /// <see cref="Requires"/>, and <see cref="Operations"/> (order is authoritative and hashed).
 ///
 /// Non-semantic (excluded from the intent digest): <see cref="ProposalId"/> — uniquely minted at
-/// creation, content-independent, frozen (ADR 0004) — and <see cref="Extensions"/>.
+/// creation, content-independent, frozen (ADR 0012) — and <see cref="Extensions"/>.
 /// </remarks>
 public sealed record Proposal
 {

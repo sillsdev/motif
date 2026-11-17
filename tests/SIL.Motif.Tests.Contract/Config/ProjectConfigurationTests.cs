@@ -8,7 +8,7 @@ namespace SIL.Motif.Tests.Config;
 /// <summary>
 /// Covers <c>&lt;project&gt;.motif.toml</c>'s resolution: the documented defaults when it is absent, its
 /// refusal to guess at a malformed or unrecognised declaration, and that a declared scope survives being
-/// written back out (ADR 0042 decisions 3 and 5).
+/// written back out (ADR 0020 decisions 3 and 5).
 /// </summary>
 public sealed class ProjectConfigurationTests : IDisposable
 {

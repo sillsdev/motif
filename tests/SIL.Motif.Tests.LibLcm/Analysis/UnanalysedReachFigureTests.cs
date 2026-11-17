@@ -4,7 +4,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Analysis;
 
 /// <summary>
-/// <see cref="UnanalysedReachFigure"/> — ADR 0038 decision 7's one counted figure about word forms
+/// <see cref="UnanalysedReachFigure"/> — ADR 0020 decision 14's one counted figure about word forms
 /// nobody has analysed, and the caveat that must travel with it: it is evidence about reach, never about
 /// correctness, because a rising figure is equally consistent with the grammar improving and with it
 /// getting looser.
@@ -43,7 +43,7 @@ public class UnanalysedReachFigureTests
     {
         var figure = new UnanalysedReachFigure(unanalysed, parsed);
 
-        // The warning does not weaken or vanish at the extremes - it is unconditional (ADR 0038 decision 7).
+        // The warning does not weaken or vanish at the extremes - it is unconditional (ADR 0020 decision 14).
         Assert.Contains("reach, not correctness", figure.Describe());
     }
 }

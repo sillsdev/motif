@@ -3,7 +3,7 @@ namespace SIL.Motif.Host.Assess;
 /// <summary>
 /// The registered set of report kinds one Motif installation knows how to produce. Adding a kind is
 /// registering another <see cref="IReportProducer"/> here — never a new verb and never a new <c>case</c> in
-/// a caller, which is the property ADR 0042's Reports amendment asks for.
+/// a caller, which is the property ADR 0020's Reports amendment asks for.
 /// </summary>
 public sealed class ReportCatalog
 {

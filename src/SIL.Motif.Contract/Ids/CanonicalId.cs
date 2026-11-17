@@ -165,7 +165,7 @@ public readonly struct CanonicalId : IEquatable<CanonicalId>
     /// <summary>
     /// Mints a unique, content-independent, time-ordered id: a 48-bit millisecond Unix timestamp
     /// (big-endian, most significant byte first) followed by 80 cryptographically random bits
-    /// (ADR 0004 decision 2).
+    /// (ADR 0012 decision 2).
     /// </summary>
     public static CanonicalId Mint(string prefix = "")
     {
@@ -231,7 +231,7 @@ public readonly struct CanonicalId : IEquatable<CanonicalId>
 
     /// <summary>
     /// Orders ids by byte-ordinal comparison of the UTF-8 encoding of <see cref="Value"/> (prefix included), per
-    /// ADR 0007 decision 2. Required wherever order feeds a digest or canonical serialization.
+    /// ADR 0012 decision 10. Required wherever order feeds a digest or canonical serialization.
     /// </summary>
     public static System.Collections.Generic.IComparer<CanonicalId> SpellingOrder { get; } =
         System.Collections.Generic.Comparer<CanonicalId>.Create((a, b) => Utf8Ordinal.Compare(a.Value, b.Value));

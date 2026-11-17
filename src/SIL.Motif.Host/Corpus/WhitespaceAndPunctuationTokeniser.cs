@@ -16,7 +16,7 @@ namespace SIL.Motif.Host.Corpus;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Every rule below is a deliberate choice, not an oversight</b> — <c>docs/adr/0036</c> decision 4 says
+/// <b>Every rule below is a deliberate choice, not an oversight</b> — <c>docs/adr/0024</c> decision 6 says
 /// tokenisation decides most of what "unparsed" means, so what looks like a minor detail here is the
 /// difference between a real grammar gap and a self-inflicted one:
 /// </para>

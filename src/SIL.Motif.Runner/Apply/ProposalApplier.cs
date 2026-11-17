@@ -36,11 +36,11 @@ namespace SIL.Motif.Runner.Apply;
 /// </remarks>
 public static class ProposalApplier
 {
-    /// <param name="cache">The already-loaded, already-exclusively-writable project (ADR 0006 decision 4).</param>
+    /// <param name="cache">The already-loaded, already-exclusively-writable project (ADR 0017 decision 5).</param>
     /// <param name="proposal">The Proposal to apply.</param>
     /// <param name="anchor">
     /// The <see cref="BoundDryRunAnchor"/> a prior <see cref="SIL.Motif.Runner.DryRun.ProposalDryRunner.Run"/>
-    /// call produced against this same baseline (ADR 0004 decision 3). Required: a bare apply with no
+    /// call produced against this same baseline (ADR 0017 decision 4). Required: a bare apply with no
     /// bound DryRun is a hard error (<see cref="PreconditionRefusal"/>), and so is one bound to
     /// a different Proposal's content (<see cref="BoundDryRunAnchor.IntentDigest"/> mismatch) — an
     /// anchor authorizes exactly the content its DryRun evaluated, never a substitute with the same
@@ -49,7 +49,7 @@ public static class ProposalApplier
     /// </param>
     /// <param name="applierIdentity">
     /// Opaque, host-supplied applier identity: FieldWorks supplies its configured user when it has
-    /// one, an agent supplies its own name (for example <c>linguistic-assistant</c>), and empty is
+    /// one, an agent supplies its own name (for example <c>external-host</c>), and empty is
     /// permitted — the runner is stateless and never infers identity itself. Must not contain
     /// <c>|</c> or a control character, and must be at most
     /// <see cref="AppliedLogFormat.MaxUserLength"/> characters.
@@ -65,7 +65,7 @@ public static class ProposalApplier
     /// derived caches stale and nothing here can repair that, so the obligation lands on the caller:
     /// <b>if this throws, discard <paramref name="cache"/> and reload the project from the file that
     /// was saved before the Dry Run</b> — strictly stronger than the rollback, since reload also
-    /// discards the non-undoable schema phase (ADR 0005) rollback cannot reach (ADR 0016).
+    /// discards the non-undoable schema phase (ADR 0017) rollback cannot reach (ADR 0017).
     /// </remarks>
     /// <param name="mode">
     /// <c>person</c> (the default) or <c>autonomous</c>, recorded in the applied-log entry and so in the Receipt.
@@ -116,7 +116,7 @@ public static class ProposalApplier
         {
             throw new PreconditionRefusal(
                 PreconditionKind.DryRunMissing,
-                "Apply requires a prior bound DryRun (docs/adr/0004, decision 3): call " +
+                "Apply requires a prior bound DryRun (docs/adr/0017, decision 4): call " +
                 "ProposalDryRunner.Run first and pass its BoundDryRunAnchor here. A bare " +
                 "apply with no bound DryRun is a hard error.");
         }
@@ -125,7 +125,7 @@ public static class ProposalApplier
         var fullIntentDigest = ContractIntentDigest.Compute(proposal);
         var intentDigestHex = StripSha256Prefix(fullIntentDigest);
 
-        // Idempotence first: reading the applied-log needs no unit of work (docs/adr/0006 decision 1).
+        // Idempotence first: reading the applied-log needs no unit of work (docs/adr/0017 decision 3).
         if (ProjectAppliedLog.TryFindByProposalId(cache, proposalGuid, out var existingEntry))
         {
             if (!string.Equals(existingEntry!.IntentDigest, intentDigestHex, StringComparison.Ordinal))
@@ -172,7 +172,7 @@ public static class ProposalApplier
                 "compared with the project. Run a fresh Dry Run and apply with the anchor it produces.");
         }
 
-        // Drift check (docs/adr/0004 decision 3): re-read footprint, hard-stop if it no longer matches the anchor.
+        // Drift check (docs/adr/0017 decision 4): re-read footprint, hard-stop if it no longer matches the anchor.
         var currentFootprintDigest = FootprintProbe.ComputeCurrentFootprintDigest(cache, proposal);
         if (!string.Equals(currentFootprintDigest, anchor.FootprintDigest, StringComparison.Ordinal))
         {

@@ -18,7 +18,7 @@ try {
     $archive = [System.IO.Compression.ZipFile]::Open($archivePath, [System.IO.Compression.ZipArchiveMode]::Create)
     try {
         foreach ($name in @("tunnel-client$suffix", "cloudflared$suffix", 'cloudflared-manifest.json', 'LICENSE', 'NOTICE',
-                'tunnel-client-linux-amd64-licenses.txt', '../outside')) {
+                'tunnel-client-v0.0.20-linux-amd64-licenses.txt', '../outside')) {
             $entry = $archive.CreateEntry($name)
             $writer = [System.IO.StreamWriter]::new($entry.Open())
             try { $writer.Write("test $name") } finally { $writer.Dispose() }

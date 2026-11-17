@@ -13,7 +13,7 @@ using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>The <c>parsimony --rule-attempts</c> check: the same-shape rule-attempt requirement over a plan file (ADR 0116).</summary>
+/// <summary>The <c>parsimony --rule-attempts</c> check: the same-shape rule-attempt requirement over a plan file (ADR 0022).</summary>
 public static class RuleAttemptCommands
 {
     /// <summary>

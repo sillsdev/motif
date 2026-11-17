@@ -16,7 +16,7 @@ using SIL.Motif.Host.Texts;
 namespace SIL.Motif.Commands.Handoff;
 
 /// <summary>
-/// Writes the five core files ADR 0045 puts in an AI Handoff and, for a one-word Handoff, its trace file.
+/// Writes the five core files ADR 0009 puts in an AI Handoff and, for a one-word Handoff, its trace file.
 /// Every file lands in a sibling <c>.incoming-&lt;guid&gt;</c> directory first; only a validated listing is
 /// moved to its destination.
 /// </summary>

@@ -4,7 +4,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Generator;
 
 /// <summary>
-/// <c>{group}/{construct}/{verb}{FieldName}</c> (ADR 0023 decision 1).
+/// <c>{group}/{construct}/{verb}{FieldName}</c> (ADR 0013 decision 5).
 /// </summary>
 public class KindNameDerivationTests
 {

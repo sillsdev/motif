@@ -8,7 +8,7 @@ Choose a word to open the word panel beside the reader, or under it in a narrow 
 
 Pick the analysis to keep, then choose **Approve**. The button names the number of places. Motif stages one pending change for each ticked place, and a place shows as staged only after its change has been written. Nothing reaches FieldWorks until you choose **Apply** in [Proposals](guide:proposals). A reading that Motif only guessed is staged the same way, so it stays your decision.
 
-The panel also holds **Ask Claude**, which asks about the word, and **Not a Word**, which marks the spelling as not a word for the whole project, not only at the ticked places.
+The panel also holds **Not a Word**, which marks the spelling as not a word for the whole project, not only at the ticked places.
 
 ## Keys
 

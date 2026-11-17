@@ -5,7 +5,7 @@ namespace SIL.Motif.Runner.DryRun;
 
 /// <summary>
 /// A single-use, throwaway <see cref="LcmCache"/> that a Dry Run is allowed to mutate and nobody is
-/// allowed to revert. See ADR 0016.
+/// allowed to revert. See ADR 0017.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -119,7 +119,7 @@ public sealed class DryRunScratch : IDisposable
                 "A Dry Run scratch is single-use and this one has already been used " +
                 $"(provenance: {Provenance}). Its project now contains the previous run's mutations, so a " +
                 "second Dry Run here would compute a baseline the live project was never in. Discard this " +
-                "scratch and make another (ADR 0016).");
+                "scratch and make another (ADR 0017).");
         }
 
         _consumed = true;

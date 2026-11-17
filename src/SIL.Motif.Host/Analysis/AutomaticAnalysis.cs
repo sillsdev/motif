@@ -15,7 +15,7 @@ namespace SIL.Motif.Host.Analysis;
 /// byte-for-byte as a match/mismatch verdict. This
 /// field exists to distinguish and de-duplicate automatic analyses among themselves, not to be diffed
 /// against the manual side. Reporting them side by side, without inferring agreement or disagreement from
-/// whether the strings happen to match, is ADR 0038 decision 6's "Motif does not attribute cause" applied
+/// whether the strings happen to match, is ADR 0020 decision 13's "Motif does not attribute cause" applied
 /// to identity as well as to cause.
 /// </param>
 /// <param name="MorphBreakdown">

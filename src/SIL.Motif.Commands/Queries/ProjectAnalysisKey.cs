@@ -8,7 +8,7 @@ namespace SIL.Motif.Commands.Queries;
 /// <summary>
 /// The <see cref="ProjectAnalysis.Key"/> a parser reading would have if the project held it, so a reading can
 /// be compared with the analysis chosen at one occurrence: equal exactly when the two have the same morphs,
-/// grammatical info and inflection types, in order (ADR 0027 and ADR 0038).
+/// grammatical info and inflection types, in order (ADR 0020 and ADR 0020).
 /// </summary>
 public static class ProjectAnalysisKey
 {

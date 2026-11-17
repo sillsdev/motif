@@ -5,7 +5,7 @@ namespace SIL.Motif.Scripture;
 /// The Motif operations that write Sources must use exactly this mapping.
 /// </summary>
 /// <remarks>
-/// The list follows the Grammar Design Records list of ADR 0083: an unowned possibility list under
+/// The list follows the Grammar Design Records list of ADR 0005: an unowned possibility list under
 /// <c>LangProject.CheckListsOC</c>, found by its Name text, with one item per Source and no sub-items.
 /// <list type="bullet">
 /// <item><description>List Name: <see cref="ListName"/>, in any writing system. People may edit the list in FieldWorks.</description></item>

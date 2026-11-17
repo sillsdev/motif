@@ -1,7 +1,7 @@
 > **Window words.** People see "Update to current project" for what this document calls rebase, and "no longer fits" for
 > an item that cannot be carried over; the glossary term is Update baseline (`CONTEXT.md`). Each such item offers Use
 > mine, Use FieldWorks or Fix with chatbot, with both versions viewable and copyable. See
-> `docs/superpowers/specs/2026-11-02-grammar-design-records-design.md`, section 6. The engineering content below is unchanged.
+> [ADR 0006 D4](adr/0006-rich-text-is-fieldworks-markdown-in-the-shared-textediting-field.md#d4-editing-sessions-retain-the-original-guard-drift-holds-the-whole-apply). The engineering content below is unchanged.
 
 # Conflict, warning, and rebase semantics
 
@@ -113,7 +113,7 @@ intent. Re-evaluation or rebase may not update:
 The Proposal intent digest remains unchanged after re-evaluation because runner evidence is not
 embedded in intent. Any actual Proposal amendment, including an authored-anchor rewrite,
 produces a new intent digest while preserving the frozen `proposalId`
-(see [identity](change-set-contract.md#change-set-identity-vs-content-digest)).
+(see [identity](proposal-contract.md#proposal-identity-vs-content-digest)).
 
 ### Removing a stored analysis
 
@@ -181,7 +181,7 @@ A membership change to the object itself is always shown — a lexeme joining a 
 a change to that lexeme. The template's or class's own internal churn is not shown, unless placing the
 lexeme there is what the Proposal is doing. The normative definition and the migratable
 per-property classification live in the
-[comparison footprint](change-set-contract.md#comparison-footprint). Effect comparison remains the
+[comparison footprint](proposal-contract.md#comparison-footprint). Effect comparison remains the
 final word; the footprint is what makes the cheap "still clean?" check possible.
 
 ## Diagnostic requirements

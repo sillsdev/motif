@@ -1,8 +1,8 @@
 # FieldWorks label harvest
 
 Built by `spikes/SIL.Motif.Spikes.LabelHarvest` per
-[ADR 0023](../docs/adr/0023-derived-kind-names-required-descriptions.md) decision 5, implementing what
-[the research note](../docs/research/2026-08-05-fieldworks-user-facing-names.md) found. This document does
+[ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md) decision 5, implementing what
+[the research note](../docs/references/generator-and-manifest.md) found. This document does
 not redo that investigation — it reports what the tool actually produced when run against it.
 
 ## Sources read
@@ -31,7 +31,7 @@ not anticipated from the research note alone:
   `PartIdFieldResolver` builds a `(class, id-suffix) -> field` table from every `Parts/*.xml` part id (all
   1,210 multi-hyphen ids sampled split cleanly into exactly three segments: `Class-Type-Suffix`) and resolves
   through it before falling back to the literal `ref`. Without this, the harvest would have missed the
-  exact `MoInflAffixSlot.Name` "Name" vs. "Slot Name" conflict ADR 0023 itself cites as the demonstration
+  exact `MoInflAffixSlot.Name` "Name" vs. "Slot Name" conflict ADR 0013 itself cites as the demonstration
   that labels are per-view — the naive scrape records two unrelated pseudo-fields instead of one field with
   two labels.
 - **`CellarParts.xml` has a real typo:** `<bin class="CmSemanticDomain>">` — a stray `>` baked into the
@@ -100,7 +100,7 @@ of them rather than picking one:
 
 A further **38 rows are `CmPossibility` class-only labels, and every one of them is `ambiguous`** —
 "Confidence Level", "Restriction", "Status", "Position", "Academic Domain", … — which is not scraper noise
-but exactly ADR 0023's own finding: the "kind" name for a bare `CmPossibility` object is a runtime fact
+but exactly ADR 0013's own finding: the "kind" name for a bare `CmPossibility` object is a runtime fact
 about which list owns it, not a class fact, so *of course* every list's tool/strings-en label disagrees with
 every other list's. The harvest reproduces that finding as data instead of asserting it. (101 class-level rows across
 all classes are flagged `ambiguous` in total; the other 63 belong to classes whose `ClassNames` label
@@ -115,7 +115,7 @@ but "Lexical Relations" — plural — in its tool label.)
 - `LexEntry.LexemeForm` → **"Lexeme Form"**, single label, no ambiguity — about as good as this vocabulary
   gets.
 - `MoInflAffixSlot.Name` → **"Name"** (generic layout) vs. **"Slot Name"** (the `EditSlot` layout) — the
-  exact case ADR 0023 cites; both are recorded, `ambiguous`.
+  exact case ADR 0013 cites; both are recorded, `ambiguous`.
 - `LexEntry.CitationForm` → **"Citation Form"** (the entry-editing layout) vs. **"Lexeme"** (the field's own
   default `Parts.xml` slice, which also carries the tooltip *"The Citation Form is used to override the
   Lexeme Form as the headword in the printed dictionary."*) — a real, previously-undocumented instance of
@@ -147,7 +147,7 @@ lexicon and grammar content fields reviewed and phrased for linguists — and si
 generated/internal/bookkeeping fields live, which is the right shape for a *seed*, not a concern. The one
 real fitness problem the harvest surfaces on its own: FieldWorks' own vocabulary disagrees with itself
 constantly (212 of 768 rows, 27.6%, are flagged `ambiguous`), so this data cannot be substituted for
-descriptions mechanically — a human still has to pick, per ADR 0023's decision 5 design.
+descriptions mechanically — a human still has to pick, per ADR 0013's decision 7 design.
 
 ## Output
 

@@ -48,7 +48,7 @@ public sealed record WarningHandoffScope(
     string Message, string? Code, WarningDisplayState State, bool HasUnfollowedConnections);
 
 /// <summary>
-/// Writes the core AI Handoff files (ADR 0045) by composing the commands that already exist:
+/// Writes the core AI Handoff files (ADR 0009) by composing the commands that already exist:
 /// <see cref="BaselineCaptureCommand"/> for a Baseline-only export, <see cref="AssessCommand"/> for a fresh
 /// Assessment, or a selected retained invocation, which supplies its own Baseline, Selection, evidence, and
 /// Assessment identities.

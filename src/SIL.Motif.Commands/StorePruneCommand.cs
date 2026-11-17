@@ -25,7 +25,7 @@ public sealed record StorePruneRequest(string ProjectPath, long? ByteBudget = nu
 /// the surviving Assessments by the first reason that keeps them, and <c>RunDirectoriesKept</c> the project's run
 /// directories by reason. <c>SourcesRemoved</c>, <c>BaselinesRemoved</c>, <c>UserDataBytesRemoved</c>,
 /// <c>UserDataBytesKept</c> and <c>UserDataKept</c> describe the sweep of the per-user data folder that
-/// <c>store prune</c> runs afterwards (ADR 0082).
+/// <c>store prune</c> runs afterwards (ADR 0023).
 /// </summary>
 public sealed record StorePruneResponse(int AssessmentsRemoved, long BytesBefore, long BytesAfter, bool CheckpointComplete,
     int InvocationDirectoriesRemoved = 0, int UnownedDirectoriesKept = 0, long UnownedBytesKept = 0,

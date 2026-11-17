@@ -5,7 +5,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Assess;
 
 /// <summary>
-/// Covers the pure join logic (ADR 0042's amendment "comparability is a join on words, not containment of
+/// Covers the pure join logic (ADR 0020's amendment "comparability is a join on words, not containment of
 /// scopes"): what gates a comparison, what is merely context that annotates it, and which shared words end
 /// up itemised as a change.
 /// </summary>

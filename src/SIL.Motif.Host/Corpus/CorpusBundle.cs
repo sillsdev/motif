@@ -14,8 +14,7 @@ public sealed record BundleEntry(DocumentSource Source, DocumentMetadata Metadat
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>In plain terms:</b> linguistic-assistant knows how to pull eBible and OPUS, how to strip their markup,
-/// and where each translation's licence is recorded. Motif knows none of that and should not learn it. A
+/// <b>In plain terms:</b> an external fetcher retrieves and prepares text and records its licence. A
 /// bundle is the paperwork that travels with the text: here is what I fetched, here is where it came from,
 /// here is what each piece of it is licensed for.
 /// </para>

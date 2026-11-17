@@ -9,7 +9,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>The GDR sync check reads example words from stored Assessment rows and never parses (ADR 0119).</summary>
+/// <summary>The GDR sync check reads example words from stored Assessment rows and never parses (ADR 0005).</summary>
 public sealed class GdrExampleEvidenceRepositoryTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-gdr-evidence", Guid.NewGuid().ToString("N"));

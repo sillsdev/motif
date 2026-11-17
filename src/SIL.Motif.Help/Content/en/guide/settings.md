@@ -32,9 +32,9 @@ Default Proposal Checks sets how thorough Motif's grammar check is when it runs 
 
 The choice is remembered for this user on this computer and applies to the next grammar check. Results already shown keep the choice they were checked with. The command line's [Check a grammar](cmd:grammar%20check) accepts `--stored-analyses` to override it for one run.
 
-## Assistant connections and file Handoff
+## File Handoff
 
-Choose **Assistant Connections** in the section navigator for client setup and connection actions. Only the ChatGPT tunnel has a measured connection status; configuring Claude does not prove that a Claude session is connected. Select the assistants you want to connect and follow the instructions shown for the selected client.
+Settings has no Assistant Connections and no API key; Claude is reached through the MCP in Claude Desktop (see [Connect an assistant](guide:ai-assistants)).
 
 Turn on **Show Hand Off by Copying Files** to use the file Handoff controls in Settings. When you request a Handoff for selected words, Motif opens those controls with the words selected. Choose the write action yourself and review the data-sensitivity notice before sharing the files.
 

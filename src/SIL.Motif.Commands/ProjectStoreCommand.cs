@@ -354,7 +354,7 @@ public static class ProjectStoreCommand
         facts["exceptionType"] = exception.GetType().FullName ?? exception.GetType().Name;
     }
 
-    /// <summary>Gives the caller an actionable message after a live-project lock refusal (ADR 0030).</summary>
+    /// <summary>Gives the caller an actionable message after a live-project lock refusal (ADR 0017).</summary>
     internal static string ProjectInUseMessage(string fwDataPath, string verb) =>
         $"Cannot {verb}: the project '{Path.GetFileNameWithoutExtension(fwDataPath)}' is in use by " +
         "another program — most likely FieldWorks, or another Motif command that has not finished. " +

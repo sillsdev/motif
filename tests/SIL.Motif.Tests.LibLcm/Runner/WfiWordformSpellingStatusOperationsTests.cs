@@ -68,7 +68,7 @@ public sealed class WfiWordformSpellingStatusOperationsTests : IDisposable
         Assert.Equal("0", effect.Before["value"]);
         Assert.Equal("2", effect.After["value"]);
 
-        // The dry run must not have mutated the live cache (ADR 0016).
+        // The dry run must not have mutated the live cache (ADR 0017).
         Assert.Equal(0, wordform.SpellingStatus);
     }
 
@@ -115,7 +115,7 @@ public sealed class WfiWordformSpellingStatusOperationsTests : IDisposable
         var expected = Assert.Single(dryRun.ExpectedEffects);
         Assert.Equal("2", expected.Before["value"]);
         Assert.Equal("0", expected.After["value"]);
-        Assert.Equal(2, wordform.SpellingStatus); // the dry run left the live cache alone (ADR 0016)
+        Assert.Equal(2, wordform.SpellingStatus); // the dry run left the live cache alone (ADR 0017)
 
         var receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests");
 

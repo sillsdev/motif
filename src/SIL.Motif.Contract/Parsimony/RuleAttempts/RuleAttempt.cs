@@ -13,7 +13,7 @@ public sealed record RuleAttempt(string ShapeKey, string Rule, string Prediction
 }
 
 /// <summary>
-/// Where rule attempts are read from. The hypothesis ledger backs it (ADR 0117); only the CLI writes the ledger, so a
+/// Where rule attempts are read from. The hypothesis ledger backs it (ADR 0011); only the CLI writes the ledger, so a
 /// review or a check depends on this read-only lookup.
 /// </summary>
 public interface IRuleAttemptLedger

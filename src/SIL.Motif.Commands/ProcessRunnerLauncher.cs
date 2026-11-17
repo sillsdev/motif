@@ -16,7 +16,7 @@ namespace SIL.Motif.Commands;
 /// woken again rather than left stopped until someone happens to start it by hand.
 /// </summary>
 /// <remarks>
-/// No protocol exists between this and the runner it starts (ADR 0041 decision 5): the two rendezvous
+/// No protocol exists between this and the runner it starts (ADR 0018 decision 5): the two rendezvous
 /// through nothing but the named ownership mutex the runner already guards itself with, so spawning is
 /// unconditional — an already-alive runner makes this a no-op, and keeps its own settings — and
 /// best-effort: a runner that cannot start leaves the row queued for the next enqueue to wake instead of
@@ -187,7 +187,7 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
             ? "SIL.Motif.Worker.exe"
             : "SIL.Motif.Worker";
 
-        // Beside the host, built or published alike: one artifact, one version (ADR 0040 decision 5).
+        // Beside the host, built or published alike: one artifact, one version (ADR 0018 decision 4).
         var sibling = Path.Combine(AppContext.BaseDirectory, fileName);
         return File.Exists(sibling) ? sibling : null;
     }

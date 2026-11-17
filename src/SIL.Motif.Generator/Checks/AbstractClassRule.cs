@@ -3,7 +3,7 @@ using SIL.Motif.Generator.Model;
 namespace SIL.Motif.Generator.Checks;
 
 /// <summary>
-/// ADR 0023 decision 2: "<c>create</c> and <c>delete</c> name a concrete class; every other verb
+/// ADR 0013 decision 5: "<c>create</c> and <c>delete</c> name a concrete class; every other verb
 /// names the declaring class." The kind's <em>construct</em> segment is always
 /// <c>lowerFirst(DeclaringClass)</c> with no exception (<see cref="Derivation.ConstructDerivation"/>)
 /// — what this rule actually checks is the object a <c>create</c>/<c>delete</c> would instantiate or
@@ -40,6 +40,6 @@ public static class AbstractClassRule
         if (targetClass.Abstract)
             throw new GeneratorException(
                 $"{declaringClass}.{fieldName}: a '{verb}' kind would target '{targetClass.Id}', which is " +
-                "abstract — no such object can exist (ADR 0023 decision 2).");
+                "abstract — no such object can exist (ADR 0013 decision 5).");
     }
 }

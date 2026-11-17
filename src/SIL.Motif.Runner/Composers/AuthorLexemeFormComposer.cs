@@ -11,7 +11,7 @@ namespace SIL.Motif.Runner.Composers;
 
 /// <summary>
 /// Lowers one <see cref="AuthorLexemeFormIntent"/> into the ordinary, closed-schema Layer-0
-/// operations that realize it — Motif's first Layer-1 composer (ADR 0009 decision 1). One authored
+/// operations that realize it — Motif's first Layer-1 composer (ADR 0013 decision 1). One authored
 /// construct becomes up to three operations: <c>lexical/lexEntry/createLexemeForm</c>, then
 /// (only when <see cref="AuthorLexemeFormIntent.IsAbstract"/> is true)
 /// <c>grammar/moForm/setIsAbstract</c> targeting the form the first operation creates, then (only
@@ -21,7 +21,7 @@ namespace SIL.Motif.Runner.Composers;
 /// <remarks>
 /// <para>
 /// <b>Composer, not primitive.</b> <see cref="Build"/> takes <c>(cache, intent)</c> because it must
-/// resolve every reference the intent names and fail closed before authoring anything — ADR 0009
+/// resolve every reference the intent names and fail closed before authoring anything — ADR 0013
 /// decision 1's "composers are project-reading; the primitive builder is pure." The returned
 /// operations add zero permanent contract surface: dispatch, validation, and lowering for all three
 /// kinds already exist and are exercised directly, not reimplemented here.

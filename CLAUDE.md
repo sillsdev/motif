@@ -2,5 +2,7 @@
 
 Follow [AGENTS.md](AGENTS.md); it holds this repository's rules for all agents.
 
-- Linguistic decisions follow Andy Black's paper and guidance. Derivational versus inflectional and similar judgement calls belong to the person or agent making them; what LibLCM can hold, Motif allows. See [ADR 0079](docs/adr/0079-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md).
+- Linguistic decisions follow Andy Black's paper and guidance. Derivational versus inflectional and similar judgement calls belong to the person or agent making them; what LibLCM can hold, Motif allows. See [ADR 0004](docs/adr/0004-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md).
 - Updates to ADRs, AGENTS.md, CLAUDE.md and CONTEXT.md are committed directly to main, without a PR. That is the project's visibility and messaging mechanism.
+
+- Edit changed decisions in their existing ADR; use a new number only for a new topic. The ADR index carries the historical crosswalk.

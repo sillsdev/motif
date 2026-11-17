@@ -52,7 +52,7 @@ never be used for matching.
 
 An opaque, host-supplied string passed on apply. The runner is stateless and never infers identity.
 FieldWorks supplies its configured user when it has one; an agent supplies its own name, for example
-`linguistic-assistant`. Empty is permitted and means the host did not supply one.
+`external-host`. Empty is permitted and means the host did not supply one.
 
 ## Exclusions
 
@@ -81,7 +81,7 @@ leaves no entry. Exactly one entry is written per applied Proposal.
   under consideration is surfaced — same identity, different content — rather than reported as a clean
   "already applied." Matching is on the stable `proposalId`; the digest catches drift in what that
   identity refers to (the Flyway/Liquibase checksum pattern; see
-  [ADR 0004](adr/0004-prerequisite-graph-stable-ids-bound-apply.md)).
+  [ADR 0012](adr/0012-a-proposal-is-an-ordered-list-of-operations-with-a-canonical-digest.md)).
 - The log says nothing about non-Motif edits. Projects will carry manual FieldWorks edits
   indefinitely and those leave no entry. The log is a positive record of Motif applications only.
 - The log travels inside the project, so restoring an older backup correctly restores the older log.
@@ -94,7 +94,7 @@ never drops one, so two operators applying different Proposals and then syncing 
 entries. For that union to be free of a spurious order-ambiguity note, FieldWorks must register
 `CmResource` as GUID-keyed and order-irrelevant — the pattern Chorus's own append-only `.ChorusNotes`
 log already uses. That registration lives in FLExBridge.
-See [ADR 0003](adr/0003-feasibility-findings.md).
+See [ADR 0012](adr/0012-a-proposal-is-an-ordered-list-of-operations-with-a-canonical-digest.md).
 
 The one collision is two entries written under the *same* `Version` GUID with different `Name` text —
 a race applying the same Proposal on two diverged copies before either syncs. Chorus keeps one and

@@ -5,7 +5,7 @@ namespace SIL.Motif.Contract.Ids;
 
 /// <summary>
 /// Byte-ordinal comparison of the UTF-8 encoding of a string. Unordered collections in the intent
-/// projection sort by this comparator (ADR 0007 decision 2), never by decode-as-GUID, and never by
+/// projection sort by this comparator (ADR 0012 decision 10), never by decode-as-GUID, and never by
 /// .NET's UTF-16 <see cref="StringComparer.Ordinal"/>, which can disagree with UTF-8 byte order for
 /// characters outside the Basic Multilingual Plane.
 /// </summary>

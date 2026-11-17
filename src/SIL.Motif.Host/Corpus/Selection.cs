@@ -11,7 +11,7 @@ namespace SIL.Motif.Host.Corpus;
 /// <b>Why this has to exist at all.</b> A grammar coverage percentage is meaningless without saying which words it
 /// was measured over — the same grammar can score anywhere from 0% to 100% depending on the sample, and a
 /// number that silently changes because someone else's Chorus sync added or removed a wordform is worse
-/// than no number (ADR 0032 §4).
+/// than no number (ADR 0019 §8).
 /// A selection's hash is what makes that drift detectable rather than invisible.
 /// </para>
 /// <para>

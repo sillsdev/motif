@@ -17,7 +17,7 @@ namespace SIL.Motif.Commands;
 /// <remarks>
 /// <para>
 /// <see cref="Catalog"/> is the whole registry: adding a kind means registering another
-/// <see cref="IReportProducer"/> there, never adding a case here or a new verb (ADR 0042's Reports
+/// <see cref="IReportProducer"/> there, never adding a case here or a new verb (ADR 0020's Reports
 /// amendment). The report registry requires no <see cref="SIL.Motif.Host.Parser.PanGlossParser"/>-backed
 /// Assessor — every kind registered so far renders from an Assessment's own stored rows, and needs none.
 /// </para>

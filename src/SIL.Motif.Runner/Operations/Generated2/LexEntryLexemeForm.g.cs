@@ -2,7 +2,7 @@
 // Produced by SIL.Motif.Generator emit; edit the emitter and regenerate after a gated build.
 // Source: LexEntry.LexemeForm (owning/atomic MoForm, create|delete).
 // Ordinary payload: {morphType,ws,text}. Process payload: {class:"MoAffixProcess",morphType}.
-// Concrete selection and process initialization are typed Runner policy (ADR 0023).
+// Concrete selection and process initialization are typed Runner policy (ADR 0013).
 // </auto-generated>
 using System;
 using System.Collections.Generic;

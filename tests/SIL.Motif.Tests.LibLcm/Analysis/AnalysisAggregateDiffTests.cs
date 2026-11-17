@@ -4,7 +4,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Analysis;
 
 /// <summary>
-/// <see cref="AnalysisAggregateDiff"/> — ADR 0038 decision 5's "what changed is the difference between two
+/// <see cref="AnalysisAggregateDiff"/> — ADR 0020 decision 12's "what changed is the difference between two
 /// responses", computed from the manual analyses only. There is no separate change-tracking type in this
 /// codebase; this is the whole thing.
 /// </summary>
@@ -14,18 +14,18 @@ namespace SIL.Motif.Tests.Analysis;
 /// <item><b>Established, updated and removed are three separate lists, never netted.</b> Deleting the
 /// last approved analysis on a word form must show up as <c>Removed</c> and must not cancel out against,
 /// or be indistinguishable from, an <c>Established</c> entry elsewhere — netting them is exactly the
-/// failure ADR 0038 names: a shrinking test suite would look identical to a growing one.</item>
+/// failure ADR 0020 names: a shrinking test suite would look identical to a growing one.</item>
 /// <item><b>Removing the last approved analysis never reads as an improvement anywhere.</b> There is no
 /// "net" or "score" field on <see cref="ManualAnalysisDiff"/> for a caller to misread — only four lists,
 /// and <c>Removed</c> having an entry is the entire story.</item>
 /// <item><b>A vanished word form is reported separately from a removed analysis set.</b> The word form
-/// object disappearing entirely (ADR 0038 decision 3: no tombstone, no forwarding record) is a different,
+/// object disappearing entirely (ADR 0020 decision 10: no tombstone, no forwarding record) is a different,
 /// more serious fact than the same word form persisting with zero approved analyses, and conflating them
 /// would make a data loss and a deliberate cleanup look like the same event.</item>
 /// <item><b>Comparison is by content digest, never by any per-object or per-response identity.</b> Two
 /// <see cref="ApprovedAnalysis"/> records with the same <see cref="ApprovedAnalysis.ContentDigest"/> but
 /// different origins (as they would be if rebuilt from a re-created <c>WfiAnalysis</c> with identical
-/// content, per ADR 0038 decision 3) must not register as a change.</item>
+/// content, per ADR 0020 decision 10) must not register as a change.</item>
 /// <item><b>Count-only changes and freshly-unanalysed word forms produce no diff entry.</b> Occurrence
 /// counts are text churn, and a brand-new word form with no manual analysis carries no expectation
 /// (decision 7) — neither is a test change.</item>
@@ -71,7 +71,7 @@ public class AnalysisAggregateDiffTests
     [Fact]
     public void ABrandNewWordFormWithNoApprovedAnalysis_ProducesNoDiffEntryAtAll()
     {
-        // A word nobody has analysed carries no expectation (ADR 0038 decision 7): mere appearance is no change.
+        // A word nobody has analysed carries no expectation (ADR 0020 decision 14): mere appearance is no change.
         var before = Response();
         var after = Response(Wordform("w1", "mbali"));
 
@@ -140,7 +140,7 @@ public class AnalysisAggregateDiffTests
     public void AWordFormThatDisappearsEntirely_IsVanished_NotRemoved()
     {
         var before = Response(Wordform("w1", "mbali", Approved("d1")));
-        var after = Response(); // w1 is simply gone, e.g. merged away per ADR 0038 decision 3
+        var after = Response(); // w1 is simply gone, e.g. merged away per ADR 0020 decision 10
 
         var diff = AnalysisAggregateDiff.Compute(before, after);
 
@@ -154,7 +154,7 @@ public class AnalysisAggregateDiffTests
     [Fact]
     public void ContentDigestEqualityIsWhatMatters_NotWhereTheRecordCameFrom()
     {
-        // Same ContentDigest is identity (ADR 0038 decision 3); differing OccurrenceCount/MorphBreakdown are churn.
+        // Same ContentDigest is identity (ADR 0020 decision 10); differing OccurrenceCount/MorphBreakdown are churn.
         var before = Response(Wordform(
             "w1", "mbali", new ApprovedAnalysis("same-digest", "root-SFX (old count)", Occurrences(4))));
         var after = Response(Wordform(

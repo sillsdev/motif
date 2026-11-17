@@ -7,7 +7,7 @@ namespace SIL.Motif.Worker.Store;
 
 /// <summary>
 /// Reads the newest stored parse outcome of example words from the Assessment rows a Trial or Assessment already wrote
-/// (ADR 0119). It never parses. Newest first, at most <see cref="AssessmentCap"/> Assessments are tried, and each is asked
+/// (ADR 0005). It never parses. Newest first, at most <see cref="AssessmentCap"/> Assessments are tried, and each is asked
 /// only for the words still unsettled, through the <c>(AssessmentId, Word)</c> index: O(examples log rows) per Assessment.
 /// A word-set binding is followed to the Assessment that owns the rows, as every other word read does.
 /// </summary>

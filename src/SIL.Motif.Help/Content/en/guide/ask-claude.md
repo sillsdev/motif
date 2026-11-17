@@ -1,9 +1,7 @@
-# Ask Claude
+# Working with Claude
 
-Choose **Claude** in the top bar to open the Requests panel beside the current page. Closing it returns to your work. The panel lists open Requests for the current project, including your note and when you asked. **Refresh Requests** reads them again; **Show More Requests** loads another page when available. **Withdraw** takes an open Request back.
+Claude is not in Motif's window. You work with Claude in Claude Desktop, through the MCP, and there is no Ask Claude action, Claude button or panel in Motif.
 
-**Ask Claude** on a word or warning records a Request about that exact item. Add an optional note, then choose **Ask**. A Request waits for an assistant to draft a Proposal; it does not apply a change or approve an analysis. Requests about Proposals, comparisons and Grammar Guide sections are unavailable until those targets are supported.
+In Claude Desktop, name a Proposal, a Comment, a Grammar Guide section, a word, a word group or a Passage, with an optional note. Claude records a Request about that exact item. A Request waits for Claude to draft a Proposal; it does not apply a change or approve an analysis.
 
-The panel contains no conversation or live Claude connection indicator. Work with Claude in its own application. **Set Up Claude in Settings** opens the supported assistant setup actions. Installing or configuring a client does not establish an active Claude session. See [Connect an assistant](guide:ai-assistants).
-
-Opening another project clears the previous project's Requests. Read and review a Proposal in **Proposals** before deciding whether to Apply it.
+Read and review a returned Proposal in **Proposals** before deciding whether to Apply it. Opening another project clears the previous project's Requests. To set up Claude Desktop, see [Connect an assistant](guide:ai-assistants).

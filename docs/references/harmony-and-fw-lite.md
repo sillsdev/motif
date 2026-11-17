@@ -1,0 +1,15 @@
+# Harmony and FW Lite findings
+
+The source/build direction in ADR 0026 is Proposed. These investigations and spikes are evidence about possible mechanisms, not proof of a finished migration.
+
+An earlier design demoted dual authority because the then-current runtime, absent effect and Proposal model, and grammar ordering and ownership gaps made the boundary unsafe. A later direction uses one Home and derives the FieldWorks project; it must still preserve identity and report materialization failures rather than repair them silently.
+
+Harmony's default for unknown changes is to throw; the inspected FW Lite configuration preserves opaque changes, skips them during replay and can replay them after a model-version upgrade declares the type. The server can relay the opaque JSON. Preview has no public outer transaction across `AddChanges`; a scratch copy is needed. Deletes, references, ordered lists and validation need explicit policies. Selective materialization can retain shared history while marking refused or orphaned effects; it does not make concurrent grammar edits automatically compatible.
+
+MiniLcm is a smaller portable projection of LibLCM, with different shapes as well as names. A versioned crosswalk is more useful than assuming renaming makes the models equivalent. Interlinearizer separates reusable analysis payloads from per-occurrence links and uses token snapshots; reanchoring can leave an approval stale and has ambiguous duplicate-token cases. FieldWorks' analysis adjuster works on a single paragraph edit when its parse is current; importer behavior in the examined scripture case was not verified.
+
+A Linux .NET 10 format spike registered new types and changes and passed 10 tests. It needed custom polymorphic registration and tables before version reconciliation. An ordered-list spike passed 19 tests, including three properties across 1,000 seeds each; ambiguous moved-member choices and unplaceable merges remained design questions.
+
+An export/rebuild spike preserved examined grammar and lexical GUIDs with no build errors. One 2,000-word sample matched 1,936 outcomes initially; investigation attributed 34 differing words to omitted do-not-parse flags and 30 to a flattened category hierarchy. A throwaway correction of both reached 2,000/2,000 for that sample, not proof for every project. The same investigation found flattened subsenses and other fields not carried by that prototype. The source reports no benchmark machine or date for these format and export experiments.
+
+Sources: `docs/source-build/plan-a-harmony-rejection.md@0697348c8`; `docs/source-build/harmony-edge-cases.md@0697348c8`; `docs/source-build/q4-q6-mapping.md@0697348c8`; `docs/source-build/q7-texts.md@0697348c8`; `docs/source-build/q14-fw-reanchor.md@0697348c8`; `docs/source-build/spike-export.md@0697348c8`; `docs/source-build/spike-export-diffs.md@0697348c8`; `docs/source-build/spike-format.md@0697348c8`; `docs/source-build/spike-order.md@0697348c8`; `docs/research/2026-08-01-harmony-selective-materialization-review.md@0697348c8`; `docs/research/2026-08-01-minilcm-liblcm-terminology-audit.md@0697348c8`.

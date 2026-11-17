@@ -63,7 +63,7 @@ public abstract record WarmParseResult
 /// <summary>Limits of the resident parsers, with the owner-decided defaults.</summary>
 public sealed record WarmPanGlossOptions
 {
-    /// <summary>The memory ceiling for the life of a session (3 GB, ADR 0044).</summary>
+    /// <summary>The memory ceiling for the life of a session (3 GB, ADR 0019).</summary>
     public ulong MemoryCeilingBytes { get; init; } = 3UL * 1024 * 1024 * 1024;
     /// <summary>A session unused this long is stopped.</summary>
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromMinutes(10);
@@ -78,7 +78,7 @@ public sealed record WarmPanGlossOptions
 }
 
 /// <summary>
-/// Resident <c>pangloss serve</c> processes, one per project, so a word costs a parse instead of a load (ADR 0044,
+/// Resident <c>pangloss serve</c> processes, one per project, so a word costs a parse instead of a load (ADR 0019,
 /// long-lived parser session). Each request takes machine-queue admission; the process lives in its own containment
 /// job with the memory ceiling for its whole life. Requests to one session run one at a time, in order.
 /// A cancel kills the process; any failure falls back to the cold path for that word. A session is keyed by project and

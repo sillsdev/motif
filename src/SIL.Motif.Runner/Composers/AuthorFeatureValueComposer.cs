@@ -21,7 +21,7 @@ namespace SIL.Motif.Runner.Composers;
 /// <b>Composer, not primitive.</b> <see cref="Build"/> takes <c>(cache, intent)</c> because it must
 /// resolve both references and refuse before authoring anything -- the same split
 /// <see cref="AuthorFeatureStructureComposer"/> follows. Two refusals only the composer can make,
-/// because the raw <c>create</c> operation (ADR 0022 §4) enforces neither:
+/// because the raw <c>create</c> operation (ADR 0013 §8) enforces neither:
 /// </para>
 /// <list type="bullet">
 /// <item><description><b>Duplicate.</b> Two specifications for the same feature on one structure is a

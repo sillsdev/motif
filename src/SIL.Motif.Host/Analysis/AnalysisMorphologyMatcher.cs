@@ -3,7 +3,7 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.Analysis;
 
-/// <summary>Compares ordered word analyses by their morphological identity under ADR 0027.</summary>
+/// <summary>Compares ordered word analyses by their morphological identity under ADR 0020.</summary>
 public static class AnalysisMorphologyMatcher
 {
     /// <summary>

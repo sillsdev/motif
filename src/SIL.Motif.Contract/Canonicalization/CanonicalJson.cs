@@ -7,7 +7,7 @@ namespace SIL.Motif.Contract.Canonicalization;
 /// (Anders Rundgren / Samuel Erdtman's <c>org.webpki</c> canonicalizer, ported to C#; distributed
 /// as the <c>jsoncanonicalizer</c> NuGet package). We deliberately do not hand-roll JCS's
 /// member-name sort order or ES6 number serialization — a Python or Rust reimplementation of either
-/// diverges from .NET's own output (ADR 0007).
+/// diverges from .NET's own output (ADR 0012).
 /// </summary>
 public static class CanonicalJson
 {

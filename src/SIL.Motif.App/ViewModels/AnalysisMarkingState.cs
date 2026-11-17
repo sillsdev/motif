@@ -192,7 +192,7 @@ public sealed record StagedMarkingTransition(string Now, string AfterApply,
 /// <param name="IsUncertain">Whether the pending change's fit with the current project is uncertain.</param>
 /// <param name="NoLongerFits">Whether the pending change no longer fits the current project.</param>
 /// <param name="IsUnread">Whether the occurrence has no persisted Read marker.</param>
-/// <remarks>Reading opinions and staged changes follow the Approved, Disapproved, and Unknown model in ADR 0049.</remarks>
+/// <remarks>Reading opinions and staged changes follow the Approved, Disapproved, and Unknown model in ADR 0027.</remarks>
 public sealed record AnalysisMarkingState(
     IReadOnlyList<FieldWorksAnalysisMarking> FieldWorksAnalyses,
     AnalysisMarkingClass PanGlossClass,

@@ -8,7 +8,7 @@ namespace SIL.Motif.Generator.Emit;
 /// <c>ObjectSnapshot</c>, modelled on the hand-written <c>LexSenseSnapshotter</c>.
 /// MultiUnicode/MultiString fields go through <c>MultiAlternativesFieldSnapshotting.ReadAlternatives</c>
 /// (which converts each populated alternative's writing-system handle to its tag before storing —
-/// handles are per-cache and must never be persisted, docs/adr/0016 amended); Boolean fields go
+/// handles are per-cache and must never be persisted, docs/adr/0017 amended); Boolean fields go
 /// through <c>BooleanFieldAlternatives.ToAlternatives</c> — see that type's remarks for why a scalar
 /// value reuses the same alternatives-map shape.
 /// </summary>

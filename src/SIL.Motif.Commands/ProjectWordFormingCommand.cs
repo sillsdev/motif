@@ -21,7 +21,7 @@ namespace SIL.Motif.Commands;
 /// </para>
 /// <para>
 /// This is the direct, human-only way to add word-forming characters when no Dry Run or Trial is wanted. It only
-/// adds characters. <c>compose-set-character-class</c> (ADR 0096) is the Proposal way, and the only way to move a
+/// adds characters. <c>compose-set-character-class</c> (ADR 0014) is the Proposal way, and the only way to move a
 /// character back to punctuation. The parser needs more than the writing system: each character a word can
 /// contain must also be a phoneme grapheme, which
 /// <c>compose-author-phoneme</c> authors in a Proposal.

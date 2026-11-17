@@ -7,7 +7,7 @@ namespace SIL.Motif.Host.Corpus;
 /// <remarks>
 /// <para>
 /// <b>Why this is an interface at all.</b> At corpus scale, tokenisation decides most of what "unparsed"
-/// means (ADR 0036 decision 4): a form invented by splitting on
+/// means (ADR 0024 decision 6): a form invented by splitting on
 /// an apostrophe fails to parse and reads as a gap in the grammar rather than as the tokenisation artefact it
 /// actually is. SIL.Machine's <c>LatinWordTokenizer</c> is the house candidate for real use, but this project
 /// takes no dependency on SIL.Machine — this interface is the seam a SIL.Machine-backed implementation drops

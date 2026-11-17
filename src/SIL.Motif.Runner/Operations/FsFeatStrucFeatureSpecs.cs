@@ -15,11 +15,11 @@ namespace SIL.Motif.Runner.Operations;
 /// <summary>
 /// Names the two <c>FsFeatStruc.FeatureSpecs</c> operation kinds -- the first hand-written grammar
 /// owning/<b>col</b> slot, alongside the owning/atomic <c>MoStemMsa.MsFeatures</c> and
-/// <c>LexEntry.LexemeForm</c> precedents (ADR 0022 §4, "creation validity"). Two decisions this
+/// <c>LexEntry.LexemeForm</c> precedents (ADR 0013 §8, "creation validity"). Two decisions this
 /// family had to make that those precedents did not:
 /// <list type="bullet">
 /// <item><description><b>Concrete subclass:</b> <c>FsFeatureSpecification</c> is <c>abstract="true"</c>,
-/// so <c>create</c> must name a concrete subclass (ADR 0023 decision 2). <c>FsClosedValue</c> is the
+/// so <c>create</c> must name a concrete subclass (ADR 0013 decision 5). <c>FsClosedValue</c> is the
 /// one built here -- the ordinary case, an enumerated choice against a closed feature (e.g.
 /// Number=Singular). <c>FsOpenValue</c>, <c>FsComplexValue</c>, <c>FsDisjunctiveValue</c>,
 /// <c>FsNegatedValue</c>, and <c>FsSharedValue</c> are out of scope: nothing in Motif authors them
@@ -85,7 +85,7 @@ public static class FsFeatStrucFeatureSpecsPayload
 /// Lowers <see cref="FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs"/>: creates a bare
 /// <c>FsClosedValue</c> with the authored identity and adds it to <c>featStruc.FeatureSpecsOC</c>.
 /// </summary>
-/// <remarks>Must run inside an already-open unit of work (ADR 0006 decision 5).</remarks>
+/// <remarks>Must run inside an already-open unit of work (ADR 0017 decision 5).</remarks>
 public static class FsFeatStrucFeatureSpecsCreateLowering
 {
     public static IFsFeatureSpecification Apply(LcmCache cache, IFsFeatStruc featStruc, Guid newSpecId)

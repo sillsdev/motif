@@ -12,7 +12,7 @@
       "sources": [
         "Black §2.4",
         "Black §3.10",
-        "ADR 0027"
+        "ADR 0020"
       ]
     },
     {
@@ -25,8 +25,8 @@
       ],
       "sources": [
         "Subset Principle",
-        "ADR 0027",
-        "ADR 0049"
+        "ADR 0020",
+        "ADR 0027"
       ]
     },
     {
@@ -38,8 +38,8 @@
         "EditAllomorphCondition"
       ],
       "sources": [
+        "ADR 0020",
         "ADR 0027",
-        "ADR 0049",
         "Black §3.1.3"
       ]
     },
@@ -71,7 +71,7 @@
       "sources": [
         "Black §2.1.2",
         "position-class morphology",
-        "ADR 0026"
+        "ADR 0012"
       ]
     },
     {
@@ -84,7 +84,7 @@
       ],
       "sources": [
         "Black §2.1.2.2",
-        "ADR 0027",
+        "ADR 0020",
         "paired parser verification"
       ]
     },

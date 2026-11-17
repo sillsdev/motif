@@ -46,7 +46,7 @@ internal static class ProposalDifferenceSummaries
         record.Selection.Name, record.Selection.Sha256, record.TokeniserName, record.TokeniserVersion)
         { GrammarExportFormat = record.Invocation?.GrammarExportFormat };
 
-    // ADR 0042: a differing parser or tokeniser only annotates; a side with no recorded parser is no mismatch.
+    // ADR 0020: a differing parser or tokeniser only annotates; a side with no recorded parser is no mismatch.
     private static string[] Warnings(AssessmentRecord before, AssessmentRecord after, string reference,
         IReadOnlyList<ProposalDifferenceUnreadableEvidence>? unreadable)
     {

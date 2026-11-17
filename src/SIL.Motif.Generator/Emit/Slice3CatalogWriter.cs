@@ -4,7 +4,7 @@ namespace SIL.Motif.Generator.Emit;
 
 /// <summary>
 /// Emission orchestrator for the 78 rows <see cref="Slice3FieldSelector"/> selects —
-/// ADR 0025's parser-first shape (<c>HcReachable=yes</c>), restricted to the three generic shapes
+/// ADR 0013's parser-first shape (<c>HcReachable=yes</c>), restricted to the three generic shapes
 /// slices 1/2 already built (basic <c>MultiUnicode</c>/<c>MultiString</c>/<c>Boolean</c>
 /// <c>set|clear</c>, <c>rel/atomic</c> <c>set|clear</c>, <c>rel/col</c>/<c>rel/seq</c>
 /// <c>addRef|removeRef</c>), across every declaring class rather than only <c>LexEntry</c>/<c>MoForm</c>.

@@ -56,7 +56,7 @@ public class MasterLcModelParserTests
     [Fact]
     public void Parse_RealModel_MoFormIsAbstract()
     {
-        // The live example for the abstract-class rule (ADR 0023 decision 2, Checks/AbstractClassRule.cs).
+        // The live example for the abstract-class rule (ADR 0013 decision 5, Checks/AbstractClassRule.cs).
         var moForm = ParseRealModel().Classes.Single(c => c.Id == "MoForm");
         Assert.True(moForm.Abstract);
     }

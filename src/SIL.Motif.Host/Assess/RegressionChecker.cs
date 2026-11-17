@@ -19,7 +19,7 @@ public sealed record CorrectnessAssessment(
     IReadOnlyList<AssessedWord> Words);
 
 /// <summary>
-/// Whether applying would be a regression (ADR 0042 decision 5): coverage dropping, or a word that carried
+/// Whether applying would be a regression (ADR 0020 decision 5): coverage dropping, or a word that carried
 /// an approved analysis no longer producing one. Both signals are computed from the same pair of
 /// <c>Correctness</c> Assessments — the second is the sharper, word-level form of the first, not a second
 /// measurement.
@@ -60,7 +60,7 @@ public sealed record RegressionFinding(
 
 /// <summary>
 /// Compares a candidate's <c>Correctness</c> Assessment against the project's previous current one
-/// (ADR 0042 decision 5). Never gates by itself — a caller decides, from its own configuration, whether a
+/// (ADR 0020 decision 5). Never gates by itself — a caller decides, from its own configuration, whether a
 /// finding blocks <c>apply</c>.
 /// </summary>
 public static class RegressionChecker
@@ -70,7 +70,7 @@ public static class RegressionChecker
 
     /// <summary>
     /// <c>null</c> when there is nothing to regress against yet (no previous Assessment), or when the two
-    /// are not comparable at all — not <c>Correctness</c>-kind, or made by different Assessors (ADR 0042
+    /// are not comparable at all — not <c>Correctness</c>-kind, or made by different Assessors (ADR 0020
     /// decision 1) — since neither case is a regression finding one way or the other.
     /// </summary>
     /// <exception cref="AmbiguousWordCasesException">
@@ -88,7 +88,7 @@ public static class RegressionChecker
         }
         catch (ComparisonRefusalException exception) when (exception is not AmbiguousWordCasesException)
         {
-            // Different Assessors: ADR 0042 decision 1 says these were never comparable in the first place.
+            // Different Assessors: ADR 0020 decision 1 says these were never comparable in the first place.
             return null;
         }
         var shared = comparison.SharedWords.ToHashSet(StringComparer.Ordinal);

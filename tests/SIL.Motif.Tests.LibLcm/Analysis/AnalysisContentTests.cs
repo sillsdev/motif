@@ -5,7 +5,7 @@ namespace SIL.Motif.Tests.Analysis;
 
 /// <summary>
 /// <see cref="AnalysisContent.ComputeDigest"/> — Motif's mirror of FieldWorks' own
-/// <c>ParseAnalysis.MatchesIWfiAnalysis</c>, the content shape ADR 0038 decision 3 requires analyses be
+/// <c>ParseAnalysis.MatchesIWfiAnalysis</c>, the content shape ADR 0020 decision 10 requires analyses be
 /// compared by, since a <c>WfiAnalysis</c> GUID is not durable identity.
 /// </summary>
 /// <remarks>
@@ -15,13 +15,13 @@ namespace SIL.Motif.Tests.Analysis;
 /// name the same <c>MorphRA</c>/<c>MsaRA</c>/<c>InflTypeRA</c> guids digest identically no matter which
 /// <c>WfiAnalysis</c> or <c>WfiMorphBundle</c> objects they came from. This is the entire reason a digest
 /// exists instead of a GUID — get it wrong and an analysis edited into an equivalent new object silently
-/// reads as a different test, exactly the bug ADR 0038 exists to avoid.</item>
+/// reads as a different test, exactly the bug ADR 0020 exists to avoid.</item>
 /// <item>The digest must be sensitive to morph order, morph count, and each of the three references
 /// independently — an insensitive digest calls two linguistically different analyses "the same test" and
 /// quietly stops checking one of them.</item>
 /// <item>Sense and word-level category never enter this type at all — there is no field for them, so a
 /// human's sense choice cannot silently split what would otherwise be one test into two, or vice versa
-/// (ADR 0027, which this codebase treats as settled: the parser cannot supply either).</item>
+/// (ADR 0020, which this codebase treats as settled: the parser cannot supply either).</item>
 /// </list>
 /// </remarks>
 public class AnalysisContentTests
@@ -29,7 +29,7 @@ public class AnalysisContentTests
     [Fact]
     public void ContentBuiltFromSeparateEqualBundleLists_DigestsIdentically()
     {
-        // Stands in for the same analysis recreated as a new WfiAnalysis (ADR 0038 decision 3): instance id irrelevant.
+        // Same analysis recreated as a new WfiAnalysis (ADR 0020 decision 10): instance id irrelevant.
         var a = new List<MorphBundleContent> { new("morph-1", "msa-1", "infl-1") };
         var b = new List<MorphBundleContent> { new("morph-1", "msa-1", "infl-1") };
 

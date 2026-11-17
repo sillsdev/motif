@@ -12,7 +12,7 @@ using SIL.Motif.Host.Corpus;
 namespace SIL.Motif.Commands.Catalog;
 
 /// <summary>
-/// The sole enumeration of Motif's command handlers (ADR 0043 decision 3): one entry per public
+/// The sole enumeration of Motif's command handlers (ADR 0018 decision 2): one entry per public
 /// handler in <see cref="ProposalCommands"/>, <see cref="PendingChanges"/>,
 /// <see cref="CorpusCommands"/>, <see cref="ConfigCommands"/>,
 /// <see cref="ReportCommands"/>, <see cref="CompareCommands"/>, <see cref="ReviewNumbersCommand"/>,
@@ -356,7 +356,7 @@ public static class CommandCatalog
             CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("request ask-again", typeof(AskAgainRequest), typeof(RequestCreatedResponse),
             CommandSurface.Released, AgentClass.HumanOnly),
-        // HypothesisCommands: the ledger is CLI-only (ADR 0117); nothing here is an MCP tool.
+        // HypothesisCommands: the ledger is CLI-only (ADR 0011); nothing here is an MCP tool.
         new CommandDescriptor("hypothesis add", typeof(AddHypothesisRequest), typeof(HypothesisResponse),
             CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("hypothesis test", typeof(RecordHypothesisTestRequest), typeof(HypothesisResponse),

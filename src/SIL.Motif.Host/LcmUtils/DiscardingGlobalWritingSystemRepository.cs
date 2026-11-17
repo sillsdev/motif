@@ -16,7 +16,7 @@ namespace SIL.Motif.Host.LcmUtils;
 /// <see cref="SIL.LCModel.BackendProviderType.kXMLWithMemoryOnlyWsMgr"/>), also skips the project's own
 /// local LDML store: <c>BackendProvider.InitializeWritingSystemManager</c> returns before wiring either
 /// repository, so every writing system is re-synthesized from its bare language tag. That reproduces
-/// the exact loss ADR 0016 measured and rejected for <c>kMemoryOnly</c> — 0 of 4 writing systems
+/// the exact loss ADR 0017 measured and rejected for <c>kMemoryOnly</c> — 0 of 4 writing systems
 /// value-equal on a ~152k-object project, collation gone — for the sake of skipping a save that a throwaway scratch
 /// should skip far more cheaply.
 /// </para>

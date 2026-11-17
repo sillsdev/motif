@@ -59,7 +59,7 @@ public static class MotifStoreUpgrade
         }
     }
 
-    /// <summary>The first store schema whose Difference summaries have the shape current code reads (ADR 0067).</summary>
+    /// <summary>The first store schema whose Difference summaries have the shape current code reads (ADR 0021).</summary>
     internal const int FirstSummarySchema = 56;
 
     // Only a decided or deferred Proposal's newest Difference per Text is carried; a Trial makes the rest again.

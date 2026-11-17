@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.Analysis;
 
 /// <summary>
 /// <see cref="AnalysisAggregateReader.Read"/>'s computation of
-/// <see cref="AnalysisAggregateResponse.UnanalysedReach"/> — ADR 0038 decision 7's one counted figure —
+/// <see cref="AnalysisAggregateResponse.UnanalysedReach"/> — ADR 0020 decision 14's one counted figure —
 /// against a real <c>LcmCache</c>. <see cref="UnanalysedReachFigureTests"/> covers the figure's own
 /// rendering in isolation; this class is the one place that proves the population it counts is built
 /// correctly from wordforms, <c>SpellingStatus</c> and a <see cref="StoredAssessment"/> together.
@@ -92,7 +92,7 @@ public sealed class AnalysisAggregateReaderUnanalysedReachTests : IDisposable
 
         var response = AnalysisAggregateReader.Read(_cache, Assessment(Parsed("zzReachHasManual")));
 
-        // Has a test already: not part of the unanalysed population at all (ADR 0038 decision 7).
+        // Has a test already: not part of the unanalysed population at all (ADR 0020 decision 14).
         Assert.Equal(0, response.UnanalysedReach!.UnanalysedCount);
     }
 

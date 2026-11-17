@@ -152,7 +152,7 @@ internal static class CommentHygiene
     private static readonly Regex BinOrObj = new(@"[\\/](bin|obj)[\\/]", Blind);
     private static readonly Regex CommentMarker = new("///?", Exact);
     private static readonly Regex HttpUrl = new("https?://", Blind);
-    private static readonly Regex ResearchLink = new(@"docs/research/[A-Za-z0-9._/-]+\.md", Blind);
+    private static readonly Regex ResearchLink = new(@"docs/references/[A-Za-z0-9._/-]+\.md", Blind);
 
     private static string _repoRoot = "";
     private static readonly HashSet<string> DeclaredNames = new(StringComparer.Ordinal);

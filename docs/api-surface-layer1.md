@@ -3,7 +3,7 @@
 The reconciled output of two independent reviews of `manifest/liblcm-inventory.tsv` — one grouping by
 **semantic authoring intent**, one by **syntactic/structural shape**. Semantics decides *what the
 constructs are*; structure decides *whether the result is total and unambiguous*. Implements
-[ADR 0009](adr/0009-layered-api-primitives-and-composers.md).
+[ADR 0013](adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md).
 
 ## Scope, computed rather than assumed
 
@@ -14,7 +14,7 @@ plus the declared `CmPossibility` subclasses in-scope lists use, minus the deriv
 **473 in-scope properties across 95 classes.** Basic: MultiUnicode 52, MultiString 51, Unicode 35,
 Integer 28, Boolean 25, String 10, Time 5, Guid 2, TextPropBinary 1. Relations: owning/atomic 69,
 rel/atomic 57, owning/col 39, rel/col 38, owning/seq 33, rel/seq 28. (An earlier count of 478/96
-included 5 `TextTag` rows later demoted as a scope over-inclusion — [issue D5](issues.md).)
+included 5 `TextTag` rows later demoted as a scope over-inclusion.)
 
 A naming heuristic got this wrong in **both** directions, which is why it is computed:
 
@@ -49,7 +49,7 @@ Applied to the hard cases:
 | Case | Decision |
 | --- | --- |
 | `PhNCSegments` / `PhNCFeatures` | **One** `naturalClass` — segments-vs-features is means-selection, same linguistic claim |
-| The four MSA classes | **One construct family and namespace, four distinct `create*` kinds.** Payload shapes are nearly disjoint, and MSA subtype *is* the primary grammatical assertion. Shared `MoMorphSynAnalysis` setters generate once. This refines ADR 0009's illustrative "three MSA classes are all `msa`" |
+| The four MSA classes | **One construct family and namespace, four distinct `create*` kinds.** Payload shapes are nearly disjoint, and MSA subtype *is* the primary grammatical assertion. Shared `MoMorphSynAnalysis` setters generate once. This refines ADR 0013's illustrative "three MSA classes are all `msa`" |
 | `PartOfSpeech` vs `CmPossibility` | **Stands alone** — 12 grammar-engineering fields, and a POS author is not tagging a list |
 | Other named `CmPossibility` subclasses | **Each gets its own construct**, however few extra fields. Once LibLCM *names* a subclass, validation and the runner pattern-match on class identity — an `addRef` into `LexDb.MorphTypes` must create a `MoMorphType`, never a bare `CmPossibility`. Generic `possibility` is the fallback only for lists with no dedicated subclass |
 | `MoStemAllomorph` / `MoAffixAllomorph` | **One** `allomorph` — the concrete is fully determined by the chosen morph type |
@@ -85,7 +85,7 @@ Sig-category is *specific* (one declared destination class) or *CmObject* (heter
 
 **25 handlers** implement roughly **1,100 generated kind strings** — the handler count is what drives
 implementation effort; the kind count is only surface area. The basic-type half is exactly **8**
-handlers (4 shape families × set/clear), matching ADR 0009's "~8 type handlers" estimate; the
+handlers (4 shape families × set/clear), matching ADR 0013's "~8 type handlers" estimate; the
 relation/owning half adds ~17 that estimate did not cover.
 
 Only **9 of 11 basic sigs occur in-scope**, and just 7 materially (Guid 2, TextPropBinary 1 are
@@ -96,12 +96,12 @@ marginal): `GenDate` and `Binary` occur **only** out-of-scope, so their handlers
 All 69 in-scope `owning/atomic` fields are reachable via **`create`-into-occupied, with implicit
 detach** — closing the critical gap the adversarial review raised. The argument is structural, not
 preference: `set` is barred from owning slots; a whole-object `replace` verb is the Kubernetes
-`managedFields` anti-pattern ADR 0009 rejects; `reparent` moves an *existing* object cross-owner and has
+`managedFields` anti-pattern ADR 0013 rejects; `reparent` moves an *existing* object cross-owner and has
 nothing to move here; and `delete`-then-`create` would trigger a full ownership cascade when LibLCM's
 own overwrite semantics are a **detach, not a cascade** — destroying more than the engine does. `create`
 already carries `owner`/`ownerField`/`placement`, so extending it to detach the incumbent is the minimal
 change and mirrors the engine. The displaced occupant is a **disclosed orphan effect**; a composer that
-can prove it has no other referent emits an explicit `delete` (ADR 0009 §6).
+can prove it has no other referent emits an explicit `delete` (ADR 0013 §9).
 
 ### Comparison class
 
@@ -165,7 +165,7 @@ map may substitute a domain-meaningful synonym (`SubPossibilities` → `addSubca
    `LexEntry.MainEntriesOrSenses`, `LexEntryRef.{ComponentLexemes,PrimaryLexemes,ShowComplexFormsIn}`,
    `LexReference.Targets`, `MoPhonolRuleApp.Rule`, `PhPhonRuleFeat.Item`).
 4. Per-field kinds are what make a `Guid`-sig field distinguishable from GUID-shaped text — the
-   structural reason ADR 0009 rejects a runtime field-name parameter.
+   structural reason ADR 0013 rejects a runtime field-name parameter.
 
 ## Not authorable vs. authorable-but-HC-inert
 
@@ -205,7 +205,7 @@ and every reference to them are inert.
    would have invited magic-number authoring. `classify.ps1` added the manifest's `EnumValues`
    column (issue B7): a confirmed `value=Name` mapping for 11 fields, `unknown` for 2 more pending
    a citation, and blank (magnitude, deliberately not an enum) for the remaining 15.
-2. **`reparent` is confirmed only for `owning/seq`.** All three ADR 0008 examples are sequences;
+2. **`reparent` is confirmed only for `owning/seq`.** All three ADR 0012 examples are sequences;
    atomic and collection reparent are structurally plausible but unevidenced — treat as unconfirmed
    pending a conformance vector.
 3. **Fixed — the third ordering mode has a home.** `classify.ps1` added the manifest's
@@ -213,7 +213,7 @@ and every reference to them are inert.
    `unordered`, `positional`, and `feeding`.
 4. **Writing systems and custom fields have no inventory row at all** — `LangProject.*Wss` are
    space-joined ID strings. Both families are real but not derivable from this manifest; they are the
-   open field space (ADR 0009 §4).
+   open field space (ADR 0013 §2).
 5. **Needs HCLoader-read confirmation before shipping kinds:** `FsFeatStruc.FeatureDisjunctions`,
    `FsDisjunctiveValue`, `FsNegatedValue`, `FsSharedValue`, `MoAdhocProhibGr`.
 6. **Coordinated multi-field rules invisible in any single row** — `LexReference`'s floor-of-2, the five

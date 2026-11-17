@@ -15,7 +15,7 @@ public static class StringsEnHarvester
     /// from <c>Lists/areaConfiguration.xml</c> (<see cref="ToolConfigHarvester.HarvestOwnerFieldToClass"/>).
     /// Entries in the <c>PossibilityListItemTypeNames</c> group whose key is not in this map are dropped
     /// rather than guessed, because which class actually owns that list is a runtime fact this file alone
-    /// does not carry (ADR 0023, decision 1's evidence).</param>
+    /// does not carry (ADR 0013, decision 5's evidence).</param>
     /// <param name="knownClasses">The set of class names known to the manifest, used to reject
     /// <c>AlternativeTitles</c> entries whose id prefix is a UI concept (e.g. <c>Concordance</c>) rather than
     /// an LCM class.</param>

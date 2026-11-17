@@ -168,7 +168,7 @@ public sealed class EvidenceArtifactPublisher
         var directory = Path.GetFullPath(stagingDirectory);
         EnsureOwnedDirectory(directory);
         var files = Directory.EnumerateFileSystemEntries(directory).Order(StringComparer.Ordinal).ToArray();
-        // Grammar facts are discarded after the render (ADR 0086), so a bundle holds the evidence file alone.
+        // Grammar facts are discarded after the render (ADR 0022), so a bundle holds the evidence file alone.
         var expected = new[] { Path.Combine(directory, "evidence.sqlite") };
         if (!files.SequenceEqual(expected, StringComparer.Ordinal))
             throw new InvalidDataException("A Parsimony staging directory must contain exactly its evidence SQLite file.");

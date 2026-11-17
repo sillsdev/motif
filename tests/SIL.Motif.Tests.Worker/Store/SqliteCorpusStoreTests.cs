@@ -9,8 +9,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Store;
 
 /// <summary>
-/// <see cref="SqliteCorpusStore"/> round-trips a Corpus through the embedded database ADR 0036 decision 6
-/// assigns it to, and its aggregate reads (<see cref="ICorpusStore.List"/>, <see cref="ICorpusStore.Exists"/>)
+/// <see cref="SqliteCorpusStore"/> round-trips a Corpus through the embedded database used for corpus metadata, and its aggregate reads (<see cref="ICorpusStore.List"/>, <see cref="ICorpusStore.Exists"/>)
 /// touch a table that carries no document text at all.
 /// </summary>
 public sealed class SqliteCorpusStoreTests : IDisposable

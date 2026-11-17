@@ -20,7 +20,7 @@ namespace SIL.Motif.Tests.Runner;
 /// Round-trip proof for the three <c>rel/col</c>/<c>rel/seq</c>
 /// <c>addRef</c>/<c>removeRef</c> fields against a real project: <c>LexEntry.DialectLabels</c>
 /// (<c>rel/seq</c>), <c>.DoNotPublishIn</c>, <c>.DoNotShowMainEntryIn</c> (both <c>rel/col</c>). None
-/// need a dispose/reload dance between DryRun and Apply (ADR 0016), because no DryRun touches the
+/// need a dispose/reload dance between DryRun and Apply (ADR 0017), because no DryRun touches the
 /// live cache at all.
 /// </summary>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]

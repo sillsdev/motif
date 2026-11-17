@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.Handoff;
 
 /// <summary>
 /// Pins <c>read_results.py</c> as an embedded resource and its <c>--help</c> output as a
-/// teaching surface (ADR 0045's own description): a reader who runs nothing but <c>--help</c> must still
+/// teaching surface (ADR 0009's own description): a reader who runs nothing but <c>--help</c> must still
 /// learn what the three JSON files are and that <c>handoff.md</c> is the file that introduces all of them.
 /// Round-trip coverage against a real, writer-produced Handoff lives in
 /// <see cref="HandoffWriterTests.ThePythonHelperReadsBackTheWordAndTextRecordsTheWriterActuallyWrote"/>.

@@ -1762,12 +1762,12 @@
   "trial": {
     "title": "Trial a Proposal",
     "description": "Measures a Proposal on a throwaway copy and records review evidence. Read observed red flags, incomplete cases and retained details before deciding what to do.",
-    "source": "Authored from ADR 0058 and the typed command contract."
+    "source": "Authored from ADR 0009 and the typed command contract."
   },
   "trial --wait": {
     "title": "Read Trial progress",
     "description": "Waits for a Trial job and reads its state. Read the stored review report after the Trial completes.",
-    "source": "Authored from ADR 0058 and the typed command contract."
+    "source": "Authored from ADR 0009 and the typed command contract."
   },
   "motif_grammar": {
     "title": "Read grammar",
@@ -1832,7 +1832,7 @@
   "new": {
     "title": "Start a Proposal",
     "description": "Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.",
-    "source": "Authored from ADR 0058 and the typed command contract.",
+    "source": "Authored from ADR 0009 and the typed command contract.",
     "guides": [
       "workflow"
     ],
@@ -1849,7 +1849,7 @@
   "finalize": {
     "title": "Finalize a Proposal",
     "description": "Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.",
-    "source": "Authored from ADR 0058 and the typed command contract."
+    "source": "Authored from ADR 0009 and the typed command contract."
   },
   "dry-run": {
     "title": "Dry Run a Proposal",
@@ -1859,12 +1859,12 @@
   "dry-run --wait": {
     "title": "Read a Dry Run",
     "description": "Waits for the Dry Run of a Draft or finalized Proposal and reads its effects. Content and Baseline identify whether the evidence remains current.",
-    "source": "Authored from ADR 0058 and the typed command contract."
+    "source": "Authored from ADR 0009 and the typed command contract."
   },
   "remove-operations": {
     "title": "Remove Draft operations",
     "description": "Removes explicit operations from a Draft while respecting declared dependencies. Revise and measure the content again before Finalize. Only a person can Apply.",
-    "source": "Authored from ADR 0058 and the typed command contract."
+    "source": "Authored from ADR 0009 and the typed command contract."
   },
   "add-set-gloss": {
     "title": "Set a sense gloss",

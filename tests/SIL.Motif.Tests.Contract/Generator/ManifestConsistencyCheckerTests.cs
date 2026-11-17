@@ -8,9 +8,9 @@ using Xunit;
 namespace SIL.Motif.Tests.Generator;
 
 /// <summary>
-/// ADR 0022 decision 3: the build fails, naming the row, when a manifest row's <c>Verbs</c> or
+/// ADR 0013 decision 4: the build fails, naming the row, when a manifest row's <c>Verbs</c> or
 /// <c>ComparisonClass</c> disagrees with the derivation and is not one of the cited exceptions in
-/// <see cref="Derivation.ComparisonClassDerivation.Exceptions"/>. Also ADR 0024 decision 2's totality
+/// <see cref="Derivation.ComparisonClassDerivation.Exceptions"/>. Also ADR 0013 decision 6's totality
 /// check, exercised end to end here via <see cref="ManifestConsistencyChecker.CheckGroupIsTotal"/>
 /// against real joined rows.
 /// </summary>

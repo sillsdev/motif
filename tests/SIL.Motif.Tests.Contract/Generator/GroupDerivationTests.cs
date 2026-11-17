@@ -6,7 +6,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Generator;
 
 /// <summary>
-/// The kind's first segment: a closed table over the declaring class's name prefix (ADR 0024
+/// The kind's first segment: a closed table over the declaring class's name prefix (ADR 0013
 /// decision 2). This is deliberately never checked against the manifest's own <c>Group</c>/domain
 /// column — see the class-level remarks on <c>GroupDerivation</c> — so these tests pin only the
 /// derivation's own behavior: known examples, and totality over every class actually present.
@@ -41,7 +41,7 @@ public class GroupDerivationTests
     [Fact]
     public void Derive_IsTotalOverEveryDeclaringClassInTheRealManifest()
     {
-        // ADR 0024 decision 2: this table must be total, so every declaring class (~180) must resolve.
+        // ADR 0013 decision 6: this table must be total, so every declaring class (~180) must resolve.
         var classes = ManifestTsvParser.Parse(RepoPaths.DefaultManifestPath())
             .Select(r => r.Class)
             .Distinct()

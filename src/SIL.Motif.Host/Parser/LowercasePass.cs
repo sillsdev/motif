@@ -5,7 +5,7 @@ using SIL.Motif.Host.LcmUtils;
 namespace SIL.Motif.Host.Parser;
 
 /// <summary>
-/// FieldWorks' lowercase second pass, which lives here in the host layer and never in the parser (ADR 0078).
+/// FieldWorks' lowercase second pass, which lives here in the host layer and never in the parser (ADR 0019).
 /// </summary>
 /// <remarks>
 /// <para>

@@ -13,7 +13,7 @@ namespace SIL.Motif.Commands.Store;
 /// </summary>
 public sealed class DraftDocument
 {
-    /// <summary>Minted at <c>new</c> time and frozen thereafter (ADR 0004).</summary>
+    /// <summary>Minted at <c>new</c> time and frozen thereafter (ADR 0012).</summary>
     public string ProposalId { get; set; } = "";
 
     public Dictionary<string, string> ContractVersions { get; set; } = new();
@@ -28,7 +28,7 @@ public sealed class DraftDocument
     /// <summary>
     /// One entry per Layer-1 composer call that contributed operations to this draft — the composer's
     /// name and its exact authored input, folded into the committed Proposal's <c>extensions</c> at
-    /// <c>finalize</c> (ADR 0009 decision 1). Non-hashed: it round-trips as provenance for a reviewer,
+    /// <c>finalize</c> (ADR 0013 decision 1). Non-hashed: it round-trips as provenance for a reviewer,
     /// never as an input the intent digest depends on.
     /// </summary>
     public List<JsonElement> ComposerProvenance { get; set; } = new();
@@ -36,7 +36,7 @@ public sealed class DraftDocument
     /// <summary>
     /// One entry per <c>promote-gloss</c> call that contributed an operation to this draft — the
     /// corpus a promoted value was evidenced by, folded into the committed Proposal's <c>extensions</c>
-    /// at <c>finalize</c> (ADR 0036 decision 2). Non-hashed: a licence obligation a promoted stem
+    /// at <c>finalize</c> (ADR 0023 decision 1). Non-hashed: a licence obligation a promoted stem
     /// carries must survive for a reader, but must never make the same authored content hash
     /// differently depending on which corpus a reviewer cited it against.
     /// </summary>

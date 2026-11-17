@@ -467,7 +467,7 @@ public static partial class ProposalCommands
 
     /// <summary>
     /// Runs <see cref="AuthorLexemeFormComposer"/> against a live project and appends the operations
-    /// it resolves to a draft — the CLI's first Layer-1 authoring surface (ADR 0009 decision 1). The
+    /// it resolves to a draft — the CLI's first Layer-1 authoring surface (ADR 0013 decision 1). The
     /// agent authors one intent rather than enumerating up to three operations by hand; the intent
     /// itself is recorded as non-hashed provenance on the eventual Proposal, never entering its intent
     /// digest.
@@ -506,7 +506,7 @@ public static partial class ProposalCommands
 
     /// <summary>
     /// Adds a <c>lexical/lexSense/setGloss</c> operation evidenced by a stored corpus — the only
-    /// sanctioned route from the Motif store into the language project (ADR 0036 decision 2). The
+    /// sanctioned route from the Motif store into the language project (ADR 0023 decision 1). The
     /// corpus's origin travels with the operation as non-hashed provenance, so a licence obligation a
     /// promoted value carries (e.g. CC-BY-SA attribution) is never lost between the evidence and the
     /// dictionary entry it justified. An optional citation records the source of that value separately.
@@ -937,7 +937,7 @@ public static partial class ProposalCommands
     private static readonly string[] WithdrawableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Withdraw);
     private static readonly string[] SupersedableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Supersede);
 
-    /// <summary>Moves a Proposal to <c>deferred</c>: still wanted, not currently applicable (ADR 0031 decision 4).</summary>
+    /// <summary>Moves a Proposal to <c>deferred</c>: still wanted, not currently applicable (ADR 0007 decision 3).</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Defer(DeferRequest request) =>
         TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Deferred,
@@ -1220,7 +1220,7 @@ public static partial class ProposalCommands
 
     /// <summary>
     /// Removes one or more operations from a draft (created by <see cref="New"/> or reopened by
-    /// <see cref="Reopen"/>), applying ADR 0021 decision 6: a removal with no dependents
+    /// <see cref="Reopen"/>), applying ADR 0007 decision 7: a removal with no dependents
     /// just happens; a removal that would orphan a dependent operation warns and names every
     /// consequence, then requires <c>Force</c>; a removal whose consequences cannot be
     /// honestly enumerated (a cascading <c>delete</c> operation — see
@@ -1679,9 +1679,9 @@ public static partial class ProposalCommands
 
     /// <remarks>
     /// A failed apply rolls back, and a rollback is not an Undo: LexEntry headword/homograph and
-    /// MoStemAllomorph monomorphemic caches can be left stale, and ADR 0005's non-undoable schema
+    /// MoStemAllomorph monomorphemic caches can be left stale, and ADR 0017's non-undoable schema
     /// phase can survive outright. There is no field list to consult and nothing here can repair it —
-    /// the rule is unconditional (ADR 0016): a caller must discard this <see cref="LcmCache"/> and
+    /// the rule is unconditional (ADR 0017): a caller must discard this <see cref="LcmCache"/> and
     /// reload the project rather than reuse it after a failed apply.
     /// </remarks>
     public static CommandOutcome<ApplyProjection> Apply(ApplyRequest request)
@@ -1986,7 +1986,7 @@ public static partial class ProposalCommands
 
             var manifest = ProposalRecordMapping.ToManifest(record);
 
-            // ADR 0004 decision 3: a bare apply with no bound DryRun is a hard error, checked before loading the project.
+            // ADR 0017 decision 4: a bare apply with no bound DryRun is a hard error, checked before loading the project.
             if (manifest.Anchor is null)
             {
                 return CommandOutcome<ApplyProjection>.Refused(new Refusal(
@@ -2295,7 +2295,7 @@ public static partial class ProposalCommands
         }
         catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
         {
-            // A failed apply rolled back, not Undo: derived caches may be stale (ADR 0016) -- see the remarks above.
+            // A failed apply rolled back, not Undo: derived caches may be stale (ADR 0017) -- see the remarks above.
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                 "apply.drift", FailureReason.StoreInconsistent,
                 ex.Message +

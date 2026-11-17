@@ -40,6 +40,10 @@ projects a change reaches; a hand-picked list of projects let breaks through to 
 The second downloads six pinned files from public `sillsdev/machine` and checks each one's sha256; `test.ps1` stays offline and does not run either. A lander's report lists the
 passed, failed and skipped counts for each project.
 
+**A clean rebase can land without a new gate.** A rebase with no file overlap with the new base, on a branch whose
+full gate already passed, lands without a new gate. If the rebased files overlap files changed on the base, rerun
+the affected projects' tests first. If the rebase had any conflict, rerun the full gate.
+
 **Batch landing.** A queue of reviewed branches may land as one batch, so the gate runs once instead of once per branch.
 Stack the branches on one integration branch cut from the current `origin/main`, by cherry-pick, with no merge commits.
 Regenerate the goldens and counts (Help golden, Mcp goldens, registry counts, ADR numbers) in one separate commit
@@ -51,7 +55,7 @@ CONTEXT, glossaries). Batching changes nothing else: `./test.ps1 -All` with a fr
 `-SkipBuild`, and at most two suites at once (`MOTIF_TEST_SLOTS=2`) stay as they are. The report lists the branches with
 their commit SHAs and the passed, failed and skipped counts for each project.
 
-**The text editor library is the sealed folder `textediting/` (ADR 0092).** It has its own build, solution, rules (`textediting/AGENTS.md`) and ADRs, and its own CI job (`.github/workflows/textediting.yml`); `build.ps1` and `test.ps1` build only the textediting projects Motif references, at net10.0: `SIL.Motif.App` uses the core library and `SIL.TextEditing.Avalonia`; `SIL.Motif.Host` uses `SIL.TextEditing.Project` (with `.LCModel` and `.Markdown`) for the `gdr` read verbs; `SIL.Motif.Runner` uses `SIL.TextEditing.LCModel` for liblcm's load-back rules on rich-text edits (ADR 0095). Reference them with `SetTargetFramework="TargetFramework=net10.0"`, never `AdditionalProperties`: a global property reaches only some paths to a shared textediting project, and MSBuild then builds it twice into one `obj` folder at once. Nothing in it may reference Motif except `Directory.Build.Common.props` and `SilVersions.props`, and Motif projects are never added to its solution nor its projects to `Motif.sln`. Raising `SilVersions.props` re-tests its .NET Framework 4.8 line.
+**The text editor library is the sealed folder `textediting/` (ADR 0006).** It has its own build, solution, rules (`textediting/AGENTS.md`) and ADRs, and its own CI job (`.github/workflows/textediting.yml`); `build.ps1` and `test.ps1` build only the textediting projects Motif references, at net10.0: `SIL.Motif.App` uses the core library and `SIL.TextEditing.Avalonia`; `SIL.Motif.Host` uses `SIL.TextEditing.Project` (with `.LCModel` and `.Markdown`) for the `gdr` read verbs; `SIL.Motif.Runner` uses `SIL.TextEditing.LCModel` for liblcm's load-back rules on rich-text edits (ADR 0006). Reference them with `SetTargetFramework="TargetFramework=net10.0"`, never `AdditionalProperties`: a global property reaches only some paths to a shared textediting project, and MSBuild then builds it twice into one `obj` folder at once. Nothing in it may reference Motif except `Directory.Build.Common.props` and `SilVersions.props`, and Motif projects are never added to its solution nor its projects to `Motif.sln`. Raising `SilVersions.props` re-tests its .NET Framework 4.8 line.
 
 **One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
 `N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two). CI is uncapped: no `-m`, no slot, and xUnit keeps its own thread default.
@@ -77,7 +81,7 @@ which skips when the parser is absent on an ordinary developer machine. Release 
 requires both pinned dependencies and treats any parser- or evaluation-set-dependent skips as incomplete
 validation.
 
-**Never commit grammar or FieldWorks project data to Motif** ([ADR 0076](docs/adr/0076-grammar-data-never-belongs-in-motif.md)).
+**Never commit grammar or FieldWorks project data to Motif** ([ADR 0002](docs/adr/0002-grammar-data-never-belongs-in-motif.md)).
 This ban includes real, synthetic, self-authored, self-generated, agent-generated, converted, benchmark, conformance and
 test-fixture payloads, regardless of provenance, licence, size or regression-test need. It covers grammar
 XML/JSON/YAML, project files and SQLite stores, snapshots, backups, exports, archives, and serialized
@@ -268,7 +272,7 @@ To interpret a Parsimony finding for a linguist, or to stage its fix, keep, ask 
 locks, paths, native libraries, stored timestamps or the Avalonia dispatcher, or when a test fails only on
 CI's Ubuntu or macOS jobs, read [`cross-platform`](.claude/skills/cross-platform/SKILL.md).
 
-**The vocabulary changed on 2026-07-31** ([ADR 0015](docs/adr/0015-proposal-assessment-dry-run-vocabulary.md)).
+**The vocabulary changed on 2026-07-31** ([ADR 0020](docs/adr/0020-a-job-produces-assessments-and-scope-decides-comparability.md)).
 `Proposal` replaces *change set*; `Dry Run` is the LibLCM-side evaluation; `Assessment` means a PanGloss
 run and nothing else. Documents written before that date use the old words — they are historical
 records, not counter-examples.
@@ -279,7 +283,7 @@ from `pangloss-release.json`. Headless layout invariants are the layout gate: th
 default developer loop, and the full grid runs at System level.
 
 Screenshots are optional and default off, and never gate READY, DONE or landing ([ADR
-0075](docs/adr/0075-headless-checks-are-the-ui-gate-screenshots-are-for-people.md)). Leave
+0030](docs/adr/0030-all-automated-testing-is-headless.md)). Leave
 `MOTIF_SCREENSHOTS` unset for batch gates and READY validation. Keep the capture harness, matrix and
 walkthrough infrastructure; set `MOTIF_SCREENSHOTS` when making a new design, publishing website media
 or recording walkthrough video, and use `pwsh ./tools/Capture-Screens.ps1` to regenerate, review, and
@@ -296,8 +300,7 @@ failed gate or missing final result means validation is incomplete.
 the intent is identical and the mechanics are adapted for C#.
 
 A comment explains what the code cannot: why this, why not the obvious alternative, what breaks if you
-change it. Code says what it does, git says when, and `docs/plan-motif.md` and `docs/issues.md` say
-where the project is — a comment duplicating any of those three will eventually contradict it.
+change it. Code says what it does, git says when, and GitHub issues track open work — a comment duplicating any of those three will eventually contradict it.
 
 | Check | Standard |
 |---|---|
@@ -356,7 +359,7 @@ Page-only styles go in `Tokens/Components/<Page>Scoped.axaml` instead, included 
 
 ## Help text and the documentation site
 
-**Every Released command ships with its Help text** ([ADR 0047](docs/adr/0047-generated-help-walkthroughs-and-docs-site.md)):
+**Every Released command ships with its Help text** ([ADR 0029](docs/adr/0029-help-walkthroughs-and-the-docs-site-come-from-one-source.md)):
 a Title of at most 30 characters and a one-to-three-sentence Description in `src/SIL.Motif.Help/Content/en/commands.json`, and a
 Help page at `src/SIL.Motif.Help/Content/en/commands/<slug>.md`. `HelpCatalogTests.EnglishCatalogCoversEveryReleasedCommandAndRequiredTerms`
 fails the suite when a Released command lacks any of them, so adding or promoting a command means writing them.
@@ -368,7 +371,7 @@ seconds; after an intended edit, run `pwsh ./tools/Update-HelpGolden.ps1 -Config
 Help pages and Guide pages are plain CommonMark read by three readers — `motif help`, the window and the site —
 so they carry no front matter, MDX or HTML. Cross-links name codes, not URLs: `[text](cmd:assess)`,
 `[text](term:proposal)`, with multi-word codes percent-encoded (`cmd:baseline%20capture`) and Released commands
-only. Every statement about the window or the CLI must match the code; the window's words (ADR 0046) on Guide
+only. Every statement about the window or the CLI must match the code; the window's words (ADR 0028) on Guide
 pages, the CLI's on command and agent pages. English is the source; other languages arrive through Crowdin as
 sibling folders, so never hard-code English text where a Title or Description would do.
 
@@ -399,7 +402,7 @@ site step and uploads bin/Release/media.
    (`requires`, `dependsOn`) and never infers one from array position. **No two operations in a finalized
    Proposal may address the same slot** — `(target, field, discriminator)`, where the discriminator is the
    writing system for `Multi*` fields and the member id for collections — so there is nothing else for
-   position to mean. Amended by [ADR 0026](docs/adr/0026-order-is-declared-not-positional.md); previously
+   position to mean. Amended by [ADR 0012](docs/adr/0012-a-proposal-is-an-ordered-list-of-operations-with-a-canonical-digest.md); previously
    read "operation array order is authoritative, never silently reorder."
 6. Rebase may refresh baseline-relative evidence or unambiguous placement anchors. It may not
    alter target, verb, value, identity, create/delete intent, or operation order.
@@ -408,7 +411,7 @@ site step and uploads bin/Release/media.
 8. Portable entity IDs use a 22-character unpadded base64url suffix encoding exactly 128 bits.
    Prefix and provenance are optional and unenforced.
 9. Never use `Guid.ToByteArray()` or `new Guid(byte[])` for canonical ID conversion. Use textual
-   GUID/network byte order as specified in `docs/change-set-contract.md`.
+   GUID/network byte order as specified in `docs/proposal-contract.md`.
 10. Same-type GUID collisions always warn about overwrite/reuse. Wrong-type collisions are genuine
     semantic conflicts unless an explicit storage-GUID override is authored.
 11. Custom-field `flid` values are cache-local implementation details, never portable identity.
@@ -420,7 +423,7 @@ site step and uploads bin/Release/media.
     Unicode and NFSC for rich strings.
 15. The runner is storage-agnostic. Do not add Git, database, review, permission, or hosting logic.
 16. Do not vendor or submodule LibLCM. Use pinned packages with a documented local-package override.
-17. **Every ADR and every plan section opens with one or two sentences a non-specialist can read**,
+17. **Every ADR opens with one or two sentences a non-specialist can read**,
     before any internal detail. Say what changes for someone using the product and why it matters;
     then use the internal vocabulary freely for the rest. The identifiers, cross-references, and
     class names below that opener are the point of these documents and must stay. This is a
@@ -428,39 +431,23 @@ site step and uploads bin/Release/media.
     read on, the body is for whoever implements or audits it. A status line like "Slice A built;
     the poisoning guard now fires for real" fails the rule — it names machinery only.
 18. **Linguistic decisions follow Andy Black's paper and guidance, and a judgement call belongs to whoever
-    makes it** ([ADR 0079](docs/adr/0079-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)).
+    makes it** ([ADR 0004](docs/adr/0004-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)).
     Derivational versus inflectional, and the same choice for reduplication, is a judgement a person or an
     agent may make and record with a rationale. Whatever LibLCM can hold, Motif allows: refuse only an invalid
     model, never a preferred analysis, and let Grammar Health and Parsimony advise without blocking.
 19. **ADRs, `AGENTS.md`, `CLAUDE.md` and `CONTEXT.md` changes are committed straight to `main`**, fast-forward
-    only, with no pull request or branch review: that is how the project makes decisions visible. This
-    repository has no `CLAUDE.md`; this file is the agent instructions.
+    only, with no pull request or branch review: that is how the project makes decisions visible. `CLAUDE.md` points to this file for the agent instructions.
 
-18. **Project store upgrades preserve authored data.** Opening an older project store carries Proposals and
+20. **Project store upgrades preserve authored data.** Opening an older project store carries Proposals and
     other authored data into a fresh current-schema store, retains the old store as a backup, and discards
     computed results for recomputation. Newer schemas are refused. The machine store retains its own policy.
 
 ## Compatibility targets
 
 **One runtime, one target: `net10.0`, everywhere.** Every Motif project — `SIL.Motif.Contract` included —
-targets `net10.0` and nothing else
-([ADR 0043](docs/adr/0043-one-command-catalog-two-front-ends.md)). `net8.0` is not a target anywhere in this
-repository, and neither is `net48`: no Motif assembly loads in a `net48` host to *run* Motif, because a
-separate FieldWorks reaches Motif by running the `motif` executable and reading its JSON, and a unified
-FieldWorks, should one ever exist, is `net10.0` too — its own Avalonia work is that same move.
+targets `net10.0` and nothing else ([ADR 0018](docs/adr/0018-one-command-catalog-behind-the-cli-window-and-mcp.md)). A separate FieldWorks invokes `motif` and reads JSON; it does not load a Motif assembly. The textediting library has its own target frameworks and rules.
 
-`SIL.Motif.Contract` still crosses a process boundary **as shapes only**: it has no LibLCM reference, and
-non-.NET runners — the Python and Rust ones its project file already names — read it as the normative,
-RFC 8785-canonicalised description of Motif's field and response shapes. That is a wire description, never a
-binary compatibility promise to `net48`: nothing left needs to *load* Contract in a `net48` process, only to
-read it as a specification, which carries no target-framework requirement at all.
-
-[ADR 0040](docs/adr/0040-one-api-the-cli.md) decision 3 argued the opposite — that `netstandard2.0` survives
-on any assembly something outside Motif references, which kept it on Contract and, until retirement, on the
-Runner. [ADR 0043](docs/adr/0043-one-command-catalog-two-front-ends.md) supersedes that decision: the `net48`
-host it was written for is going away, so there is nothing left for a second target framework to buy. ADR
-0040's other decisions — the database as the only coordination boundary between Motif's own processes, one
-shipped artifact at one version, no shared-XML peering — are unaffected and still bind.
+The machine database is the coordination boundary between Motif processes; one shipped artifact has one version, and processes do not peer through shared XML.
 
 All LibLCM-dependent projects pin `SIL.LCModel 11.0.0-beta0182` through `SilVersions.props`.
 
@@ -497,3 +484,9 @@ An operation family is incomplete until it has:
 For a whole-graph owning delete, also enumerate and bind every owned object, inspect all live incoming
 references, remove explicitly allowed external links before deletion, and verify that Apply removed every
 bound member. Generated delete kinds name one domain scope; they do not authorize generic cascade deletion.
+
+## Decision and inventory maintenance
+
+Edit a changed decision in its existing ADR; git keeps the history. Reserve new ADR numbers for new topics, never create supersession chains, and keep historical numbers in the ADR index crosswalk. The docs hygiene gate checks duplicate numbers, references and links.
+
+The raw LibLCM inventory currently lacks a committed generator. Until one exists, independently verify regenerated input and compare it with the committed inventory; classification alone does not prove raw inventory completeness.

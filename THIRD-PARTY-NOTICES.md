@@ -23,3 +23,12 @@ The installed payload contains this file and the `licenses/` directory. `release
 `licenses/sources.json` records where the retained upstream texts came from. `licenses/nuget-packages.json` is generated from the App, CLI and runner's restored dependency graphs during packaging. It identifies direct and transitive packages by exact version, preserves their declared licence or licence URL, and lists licence and notice files supplied in those packages. Each package's original `.nuspec` is retained beside any supplied texts, including its attribution and repository metadata. This inventory may include build dependencies that do not appear as executable code in the payload.
 
 A licence declaration in package metadata is evidence, not a replacement for its licence text or other distribution obligations. Some packages do not contain a licence file. The release review must reconcile metadata with the retained source texts, retain any additional attribution required for native binaries and font files, and establish corresponding-source availability where a licence requires it. The dependency inventory alone does not complete that review.
+
+## Black's FieldWorks conceptual introduction
+
+`docs/parser-help/workflow/sources/black-flex-conceptual-intro-fulltext.txt` is the verbatim extraction
+of H. Andrew Black's *A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer*
+(SIL, 3 July 2025), shipped with FieldWorks as `Helps/WW-ConceptualIntro/ConceptualIntroFLEx.pdf`.
+This third-party document is **separately licensed and not covered by Motif's MIT licence**. It is freely
+available and made to ship with FieldWorks. Motif retains it, including its explanatory examples, under
+the named document exception in ADR 0002; that exception does not apply to other grammar or language data.

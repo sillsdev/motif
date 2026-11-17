@@ -71,8 +71,8 @@ failures and harness defects, grades Proposal effects by independent read-back, 
 Episodes in Price to solve. This is evaluation machinery, not published evidence that AI can build a
 working grammar in weeks.
 
-Sources: Help `guide/ai-handoff.md`, `guide/ai-assistants.md`; `docs/current-architecture.md`;
-ADRs 0058/0059; `plugin/CONTEXT.md`; `docs/agent-plugin-release-smoke.md`; commits `602fecffe`, `12fa14efa`.
+Sources: Help `guide/ai-handoff.md`, `guide/ai-assistants.md`; `docs/architecture.md`;
+ADRs 0009/0059; `plugin/CONTEXT.md`; `docs/agent-plugin-release-smoke.md`; commits `602fecffe`, `12fa14efa`.
 
 ## Proposal review: infrastructure and remaining window work
 
@@ -87,7 +87,7 @@ ahead. Proposal authoring covers supported composers, not arbitrary properties o
 surface. The FieldWorks save-boundary integration contract is specified, not evidence of a shipped
 FieldWorks integration.
 
-Sources: ADR 0061; `src/SIL.Motif.App/ViewModels/WorkspaceContext.cs`, `OverviewPageModel.cs`,
+Sources: ADR 0007; `src/SIL.Motif.App/ViewModels/WorkspaceContext.cs`, `OverviewPageModel.cs`,
 `TimingPageModel.cs`, `WarningsPageModel.cs`; Help `guide/change-an-analysis.md`; commits `ca07aa36e`,
 `a709b96bf`; `AGENTS.md` FieldWorks integration contract.
 
@@ -105,7 +105,7 @@ evidence changes bring a finding back. Fix is a guide note, not an automatic rep
 updates say so. Reports do not grant Readiness or gate Apply. Repeated requests reuse Baseline evidence
 and run only the requested measure.
 
-Sources: ADR 0060; `docs/parsimony-evidence-contract.md`; Help `guide/parsimony-findings.md` and
+Sources: ADR 0022; `docs/parsimony-evidence-contract.md`; Help `guide/parsimony-findings.md` and
 `guide/parsimony/`; commits `602fecffe`, `7747c392d`, `9beb760ba`, `e281ceee8`.
 
 ## PanGloss: compatibility and useful diagnostics
@@ -149,7 +149,7 @@ shared grammar library remain future work. Feature coverage remains a separate d
 grammar-health findings do not prove it has shipped.
 
 Sources: PanGloss `docs/benchmark-matrix.md`, `CHANGELOG.md`, `docs/spell-checking-plan.md`,
-`docs/natural-phrases-plan.md`, `rust/README.md`; Motif `docs/grammar-coverage-design.md`, `CONTEXT.md`.
+`docs/natural-phrases-plan.md`, `rust/README.md`; Motif `docs/feature-coverage.md`, `CONTEXT.md`.
 
 ## Engineering work behind the week
 

@@ -150,7 +150,7 @@ public sealed record RenderedReport(string Kind, string Text)
 }
 
 /// <summary>
-/// Raised when a report kind cannot be produced from the Assessment it was asked about — ADR 0042 decision
+/// Raised when a report kind cannot be produced from the Assessment it was asked about — ADR 0020 decision
 /// 4's *"this scope did not collect X"*, never a zero indistinguishable from a real one.
 /// </summary>
 public sealed class ReportRefusalException : Exception
@@ -164,7 +164,7 @@ public sealed class ReportRefusalException : Exception
 /// <summary>
 /// Produces one report kind from a closed <see cref="ReportInput"/> family. Registered into a
 /// <see cref="ReportCatalog"/>, never dispatched by name in a caller's own switch — that is the whole
-/// point of the registry (ADR 0042 decision 4's amendment on Reports).
+/// point of the registry (ADR 0020 decision 4's amendment on Reports).
 /// </summary>
 /// <remarks>
 /// <see cref="Produce"/>'s <c>assessors</c> parameter exists so a kind that needs to ask the Assessor that

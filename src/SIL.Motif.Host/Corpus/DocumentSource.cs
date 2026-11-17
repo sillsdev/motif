@@ -7,10 +7,9 @@ namespace SIL.Motif.Host.Corpus;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Both are supported and the file case is the expected one.</b> The normal pipeline has an external tool —
-/// linguistic-assistant, in Python — do the fetching, the cleaning and the licence lookup, then hand Motif
-/// finished files. That tool already knows about eBible's verse-per-line layout, OPUS's alignment XML and the
-/// TLS interception on corporate networks; none of that belongs in Motif.
+/// <b>Both are supported and the file case is the expected one.</b> The normal pipeline has an external fetcher do the
+/// fetching, cleaning and licence lookup, then hand Motif finished files. Source-specific layouts and
+/// retrieval policy belong to that fetcher.
 /// </para>
 /// <para>
 /// The URL case exists because a one-off ingestion should not require a detour through another program, and

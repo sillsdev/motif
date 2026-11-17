@@ -2,7 +2,7 @@
 
 Motif keeps each displayed language string beside its writing-system tag, so a front end can use the project's font and direction. Display settings are captured with the Baseline and remain readable when the saved project copy is unavailable.
 
-[ADR 0051](adr/0051-writing-system-display-follows-fieldworks.md) requires FieldWorks' settings APIs, precedence and fallbacks, with no Avalonia or App dependency in the resolution layer. WritingSystemDisplay in SIL.Motif.Contract is the shared record. Its closed schema is src/SIL.Motif.Contract/Schemas/writing-system-display.schema.json, embedded in the assembly. JSON uses the projection camel-case convention; canonical digests use RFC 8785.
+[ADR 0016](adr/0016-sil-icu-and-writing-system-display-follow-fieldworks.md) requires FieldWorks' settings APIs, precedence and fallbacks, with no Avalonia or App dependency in the resolution layer. WritingSystemDisplay in SIL.Motif.Contract is the shared record. Its closed schema is src/SIL.Motif.Contract/Schemas/writing-system-display.schema.json, embedded in the assembly. JSON uses the projection camel-case convention; canonical digests use RFC 8785.
 
 | Field | Meaning |
 | --- | --- |

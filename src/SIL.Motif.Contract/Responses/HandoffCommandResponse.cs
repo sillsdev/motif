@@ -17,7 +17,7 @@ public sealed record HandoffCommandResponse(
     /// <summary>The retained invocation exported by this Handoff, or null for a Baseline-only Handoff.</summary>
     public string? InvocationId { get; init; }
 
-    /// <summary>The text a person pastes into the chat alongside the dragged files (ADR 0045 decision 5).</summary>
+    /// <summary>The text a person pastes into the chat alongside the dragged files (ADR 0009 decision 13).</summary>
     public string PastedHeader { get; init; } = string.Empty;
 
     /// <summary>The exact content written to the folder's own <c>handoff.md</c>.</summary>

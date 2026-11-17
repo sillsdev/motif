@@ -18,7 +18,7 @@ public sealed record LoadedMotifModel(
 
 /// <summary>
 /// The generator's single entry point: resolve <c>MasterLCModel.xml</c>, parse it, parse the
-/// manifest, join the two fail-closed, run the derivation-consistency checks ADR 0022/0024
+/// manifest, join the two fail-closed, run the derivation-consistency checks ADR 0013/0024
 /// require, and report model coverage. It emits nothing — turning
 /// <see cref="LoadedMotifModel.Rows"/> into operation code is a separate concern this loader does
 /// not take on.
@@ -44,7 +44,7 @@ public static class MotifModelLoader
 
         var rows = ModelManifestJoiner.Join(model.Fields, manifestRows);
 
-        // ADR 0022 decision 3, ADR 0024 decision 2: both checks fail closed, naming the bad row/class first.
+        // ADR 0013 decision 4, ADR 0013 decision 6: both checks fail closed, naming the bad row/class first.
         ManifestConsistencyChecker.CheckVerbsAndComparisonClass(rows);
         ManifestConsistencyChecker.CheckGroupIsTotal(rows);
 

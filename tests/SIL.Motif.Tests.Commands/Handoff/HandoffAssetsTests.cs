@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.Handoff;
 /// <summary>
 /// Pins the pasted-header template — one of the two static assets left once <c>reference/</c> and its
 /// embedded copies of <c>grammar-format.md</c>, <c>flextext-json-format.md</c> and <c>hc-mechanics.md</c>
-/// are gone (ADR 0045 decision 6): it is embedded in <see cref="SIL.Motif.Commands"/>, its links resolve as
+/// are gone (ADR 0009 decision 14): it is embedded in <see cref="SIL.Motif.Commands"/>, its links resolve as
 /// raw Markdown rather than a rendered GitHub page, and no asset's prose leaks a path local to whichever
 /// machine wrote it. The other asset, <c>read_results.py</c>, is pinned in
 /// <see cref="HandoffPythonHelperTests"/>.
@@ -37,7 +37,7 @@ public sealed class HandoffAssetsTests
         Assert.Contains("{{PROJECT_NAME}}", template, StringComparison.Ordinal);
     }
 
-    // A `blob` URL serves rendered HTML, not the Markdown the header promises (ADR 0045's own defect note).
+    // A `blob` URL serves rendered HTML, not the Markdown the header promises (ADR 0009's own defect note).
     [Fact]
     public void TheStarterPromptTemplateLinksRawGitHubRatherThanBlobUrls()
     {

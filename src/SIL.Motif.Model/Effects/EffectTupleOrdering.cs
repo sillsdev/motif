@@ -8,7 +8,7 @@ using SIL.Motif.Contract.Ids;
 namespace SIL.Motif.Model.Effects;
 
 /// <summary>
-/// Orders effect tuples by id spelling (the digest order of ADR 0007 decision 2) and field, then by canonical
+/// Orders effect tuples by id spelling (the digest order of ADR 0012 decision 10) and field, then by canonical
 /// UTF-8 payload bytes when those keys tie.
 /// The sort includes only the payload parts the caller emits; excluded evidence cannot affect ordering.
 /// </summary>

@@ -15,7 +15,7 @@ namespace SIL.Motif.App.ViewModels;
 /// <remarks>
 /// <para>
 /// A command writes its message for the CLI's reader, an agent, so it may name a Draft or suggest a
-/// <c>motif …</c> command line. The window's reader is a linguist, and ADR 0046 decision 3 keeps those words
+/// <c>motif …</c> command line. The window's reader is a linguist, and ADR 0028 decision 3 keeps those words
 /// off the screen. <see cref="Sentence"/> uses the compile diagnostic's plain summary when available;
 /// otherwise it is looked up by <see cref="Refusal.Code"/>.
 /// </para>

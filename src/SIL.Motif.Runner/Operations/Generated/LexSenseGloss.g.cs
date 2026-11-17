@@ -77,7 +77,7 @@ public static class ClearGlossPayload
 /// LibLCM write it performs: <c>sense.Gloss.set_String(wsHandle, ...)</c>.
 /// </summary>
 /// <remarks>
-/// Must run inside an already-open unit of work (ADR 0006 decision 5) — the caller owns
+/// Must run inside an already-open unit of work (ADR 0017 decision 5) — the caller owns
 /// opening and closing/rolling back that unit of work.
 /// </remarks>
 public static class SetGlossLowering
@@ -99,7 +99,7 @@ public static class ClearGlossLowering
 /// operation, producing the one <see cref="ExpectedEffect"/> it causes. Shared by
 /// <see cref="SIL.Motif.Runner.DryRun.ProposalDryRunner"/> (which rolls the surrounding unit of work
 /// back afterward) and <see cref="SIL.Motif.Runner.Apply.ProposalApplier"/> (which commits it) —
-/// both read back the true post-mutation state the same way (docs/adr/0006, decision 1).
+/// both read back the true post-mutation state the same way (docs/adr/0017, decision 3).
 /// </summary>
 internal sealed class SetGlossOperationHandler : IOperationHandler
 {

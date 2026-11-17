@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.Assess;
 /// <summary>
 /// The seam itself, exercised against a fake Assessor rather than PanGloss: an Assessor declares which
 /// kinds it can produce for a scope, and a request for one it did not declare is a refusal naming the kind
-/// and the reason (ADR 0042 decision 1 and its amendment on Assessment kind) — pinned by
+/// and the reason (ADR 0020 decision 1 and its amendment on Assessment kind) — pinned by
 /// `AskingForAnUndeclaredKind_RefusesNamingTheKindAndTheReason`.
 /// </summary>
 public sealed class AssessorSeamTests

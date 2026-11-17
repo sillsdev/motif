@@ -2,19 +2,19 @@ namespace SIL.Motif.Generator.Derivation;
 
 /// <summary>
 /// The kind's <em>first</em> segment: a closed table over the declaring class's name, derived —
-/// never read off the manifest's own <c>Group</c> column, which ADR 0024 renamed <em>domain</em>
+/// never read off the manifest's own <c>Group</c> column, which ADR 0013 renamed <em>domain</em>
 /// and repurposed as hand-authored editorial routing ("who should review a change"). The two
-/// deliberately disagree on 53 rows by design (ADR 0024 decision 1) — <b>do not</b> compare this
+/// deliberately disagree on 53 rows by design (ADR 0013 decision 6) — <b>do not</b> compare this
 /// derivation's output against the manifest column; <see cref="Checks.ManifestConsistencyChecker"/>
 /// checks <c>Verbs</c> and <c>ComparisonClass</c> against the manifest for exactly this reason, and
 /// pointedly does not check this one.
 /// </summary>
 /// <remarks>
 /// <para>
-/// ADR 0024 decision 2 requires only that the table be closed, total over the classes actually
+/// ADR 0013 decision 6 requires only that the table be closed, total over the classes actually
 /// present, and that an unrecognized prefix fail the build rather than guess. It does not require
 /// reproducing the hand-authored <c>domain</c> column — "accuracy against the old column is no
-/// longer a criterion" (ADR 0024, "Decision" preamble) — so this table is free to be the simplest
+/// longer a criterion" (ADR 0013, "Decision" preamble) — so this table is free to be the simplest
 /// thing that is total: <see cref="ClassOverrides"/> resolves the handful of classes a shared prefix
 /// would get wrong, checked before <see cref="PrefixTable"/>, which is ordered longest-prefix-first
 /// so a more specific entry (e.g. <c>"ConstChart"</c>) is never shadowed by a shorter one that
@@ -24,7 +24,7 @@ namespace SIL.Motif.Generator.Derivation;
 /// Five groups are used: LibLCM's own module boundaries (<c>grammar</c> for morphology/phonology/
 /// feature-structure classes, <c>lexical</c> for the dictionary, <c>lists</c> for the
 /// <c>CmPossibility</c> family) plus <c>system</c> for administrative/import/Scripture machinery and
-/// <c>analysis</c> for the word-analysis family ADR 0025 brought into scope — mirroring the five
+/// <c>analysis</c> for the word-analysis family ADR 0013 brought into scope — mirroring the five
 /// values the manifest README documents for its own (differently-sourced) <c>Group</c>/domain column,
 /// without being derived from it.
 /// </para>
@@ -34,12 +34,12 @@ public static class GroupDerivation
     /// <summary>Overrides checked before PrefixTable: a shared prefix would give the wrong answer here.</summary>
     private static readonly IReadOnlyDictionary<string, string> ClassOverrides = new Dictionary<string, string>
     {
-        // ADR 0025 word-analysis family: CmAgent/StTxtPara would otherwise fall to Cm*/St* -> system.
+        // ADR 0013 word-analysis family: CmAgent/StTxtPara would otherwise fall to Cm*/St* -> system.
         ["CmAgent"] = "analysis",
         ["StTxtPara"] = "analysis",
         ["Segment"] = "analysis",
 
-        // List scaffolding itself (ADR 0023's example: CmPossibility.Name -> lists/...), not ordinary Cm*.
+        // List scaffolding itself (ADR 0013's example: CmPossibility.Name -> lists/...), not ordinary Cm*.
         ["CmPossibility"] = "lists",
         ["CmPossibilityList"] = "lists",
 
@@ -64,7 +64,7 @@ public static class GroupDerivation
         ("Ds", "analysis"),                // discourse data (DsChart, DsConstChart, DsDiscourseData)
         ("Fs", "grammar"),                 // feature structures
         ("Lex", "lexical"),                // the dictionary
-        ("Mo", "grammar"),                 // morphology (ADR 0024 notes 15 of these are hand-called
+        ("Mo", "grammar"),                 // morphology (ADR 0013 notes 15 of these are hand-called
                                             // lexical instead; the derived rule does not reproduce that split)
         ("Ph", "grammar"),                 // phonology
         ("Pub", "system"),                 // publication settings
@@ -97,7 +97,7 @@ public static class GroupDerivation
             return bestGroup;
 
         throw new GeneratorException(
-            $"'{declaringClass}' matches no entry in the closed group-prefix table (ADR 0024 decision 2). " +
+            $"'{declaringClass}' matches no entry in the closed group-prefix table (ADR 0013 decision 6). " +
             "Add it to GroupDerivation before this class can appear in a generated kind.");
     }
 }

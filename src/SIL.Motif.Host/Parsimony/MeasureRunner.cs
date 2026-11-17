@@ -557,7 +557,7 @@ public static partial class MeasureRunner
                 item.Signature,
                 disapprovedAnalysisGuids = JsonSerializer.Deserialize<string[]>(item.AnalysisGuidsJson),
                 completion = "complete",
-                comparison = "ADR 0027 ordered Form/MSA/inflection-type identity",
+                comparison = "ADR 0020 ordered Form/MSA/inflection-type identity",
             });
             return new ParsimonyFinding(
                 $"{measure.Id}:{item.WordformGuid}:{item.Signature}", measure.Id, measure.Axis, measure.Tier,

@@ -39,7 +39,7 @@ public sealed class GeneratedSlice3OperationsTests : IDisposable
     [Fact]
     public void SetThenClear_CmPossibilityAbbreviation_MultiUnicode_RoundTripsThroughDryRunAndApply()
     {
-        // A part of speech IS-A CmPossibility (ADR 0023), so it's a valid target for a base-class field.
+        // A part of speech IS-A CmPossibility (ADR 0013), so it's a valid target for a base-class field.
         var pos = FindAnyPartOfSpeech();
         var target = CanonicalId.FromGuid(pos.Guid);
         var wsTag = _cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultAnalWs);

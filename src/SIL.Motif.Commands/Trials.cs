@@ -140,7 +140,7 @@ public static class Trials
                 !JobStateMachine.IsTerminal(candidate.Job.Status))
             .Concat(candidates.Where(candidate => candidate.Job.Status != JobStatus.Completed &&
                 JobStateMachine.IsTerminal(candidate.Job.Status)));
-        // Only the first choice counts, so an older Trial's verdict never shows as current (ADR 0113).
+        // Only the first choice counts, so an older Trial's verdict never shows as current (ADR 0023).
         var first = preferred.FirstOrDefault();
         if (first is null) return null;
         var record = TryBuildRecord(first, context, includeWordResults);

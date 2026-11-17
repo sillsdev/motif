@@ -7,7 +7,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Generator;
 
 /// <summary>
-/// ADR 0023 decision 2: a <c>create</c>/<c>delete</c> kind naming an abstract class fails, since no
+/// ADR 0013 decision 5: a <c>create</c>/<c>delete</c> kind naming an abstract class fails, since no
 /// such object can exist. <c>MoForm</c> is the plan's own live example
 /// (<c>LexEntry.LexemeForm</c>, owning/atomic, <c>Sig = MoForm</c>).
 /// </summary>

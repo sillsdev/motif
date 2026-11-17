@@ -8,7 +8,7 @@ namespace SIL.Motif.Generator.Descriptions;
 /// <remarks>
 /// <para>
 /// Read-only, like every other manifest artifact the generator touches. Descriptions are seeded per family as
-/// it ships (ADR 0023 decision 5, as amended), so this file grows over time and is expected to be
+/// it ships (ADR 0013 decision 7, as amended), so this file grows over time and is expected to be
 /// incomplete — which is why
 /// <see cref="Checks.DescriptionCheck"/> checks the kinds actually being emitted rather than every row in
 /// the manifest.
@@ -70,7 +70,7 @@ public static class KindDescriptionTsvParser
                 SourceDetail: columns[6],
                 SourceHash: columns[7]);
 
-            // One description per field, else text depends on read order (ADR 0026's class of defect).
+            // One description per field, else text depends on read order (ADR 0012's class of defect).
             if (seen.TryGetValue(row.Key, out var firstLine))
                 throw new GeneratorException(
                     $"'{path}' line {i + 1}: '{row.Key}' already has a description on line {firstLine}. " +

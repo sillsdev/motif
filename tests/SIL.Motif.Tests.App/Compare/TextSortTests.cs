@@ -6,7 +6,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App.Compare;
 
-/// <summary>The three-way sort with invented placeholder text (ADR 0076): who made each change, and which overlap.</summary>
+/// <summary>The three-way sort with invented placeholder text (ADR 0002): who made each change, and which overlap.</summary>
 public sealed class TextSortTests
 {
     private static readonly TextProps Italic = new(new Dictionary<int, (int, int)> { [TextPropertyNumbers.Italic] = (0, 1) }, new Dictionary<int, string>());

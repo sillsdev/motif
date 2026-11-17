@@ -18,7 +18,7 @@ using SIL.TextEditing.LCModel;
 
 namespace SIL.Motif.Runner.Operations;
 
-/// <summary>Names the generic edit of a StText-valued field's paragraphs (ADR 0095).</summary>
+/// <summary>Names the generic edit of a StText-valued field's paragraphs (ADR 0006).</summary>
 public static class TextParagraphsOperationKinds
 {
     public const string Set = "text/setParagraphs";
@@ -350,7 +350,7 @@ internal sealed class TextStyleUnknownException(string style, bool paragraph)
         new Dictionary<string, string> { ["style"] = style, ["styleKind"] = paragraph ? "paragraph" : "character" });
 
 /// <summary>
-/// The field, or its alternative in <paramref name="ws"/>, no longer holds the text the edit began from (ADR 0095
+/// The field, or its alternative in <paramref name="ws"/>, no longer holds the text the edit began from (ADR 0006
 /// decision 3); the facts name the owner, the field and, for an alternative, its writing system.
 /// </summary>
 

@@ -5,7 +5,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-// Trials read back correctly once a newer Trial released the Assessments of the ones it superseded (ADR 0113).
+// Trials read back correctly once a newer Trial released the Assessments of the ones it superseded (ADR 0023).
 public sealed class TrialsAfterReleaseTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.TrialsAfterReleaseTests",

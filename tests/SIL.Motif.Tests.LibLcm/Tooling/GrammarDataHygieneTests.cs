@@ -67,7 +67,7 @@ public sealed class GrammarDataHygieneTests
         {
             var payload = RuntimePayload(temp);
             Assert.Contains(GrammarDataHygiene.Inspect("renamed.bin", payload), f => f.Rule == "populated-grammar-structure" && f.Severity == FindingSeverity.Reject);
-            // ADR 0092: only textediting/'s conformance fixtures are spared the record-shape rule, and only that rule.
+            // ADR 0006: only textediting/'s conformance fixtures are spared the record-shape rule, and only that rule.
             Assert.DoesNotContain(GrammarDataHygiene.Inspect("textediting/tests/conformance/records/x.json", payload), f => f.Rule == "populated-grammar-structure");
             Assert.Contains(GrammarDataHygiene.Inspect("textediting/src/x.json", payload), f => f.Rule == "populated-grammar-structure");
             Assert.Contains(GrammarDataHygiene.Inspect("textediting/tests/conformance/p.fwdata", payload), f => f.Severity == FindingSeverity.Reject);

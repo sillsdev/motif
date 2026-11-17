@@ -145,7 +145,7 @@ public sealed class EvidenceRetentionCleaner
         return new WorkspaceCleanupResult(deleted, failures);
     }
 
-    // Reclaims published directories that no row or claim names (ADR 0086).
+    // Reclaims published directories that no row or claim names (ADR 0022).
     private void RecoverUnregisteredBundles(string projectKey, EvidenceArtifactPublisher publisher,
         List<string> deleted, List<WorkspaceCleanupFailure> failures)
     {

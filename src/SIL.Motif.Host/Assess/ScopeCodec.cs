@@ -7,7 +7,7 @@ using SIL.Motif.Contract.Phonology;
 namespace SIL.Motif.Host.Assess;
 
 /// <summary>
-/// The closed set of shapes a stored Assessment's scope can take (ADR 0042 decision 3: a scope is embedded
+/// The closed set of shapes a stored Assessment's scope can take (ADR 0020 decision 3: a scope is embedded
 /// by content, not by reference). A Trial's scope describes a measurement; a Difference's describes a
 /// comparison already made between two other Assessments — the two carry different information and are
 /// never forced into one shape with everything nullable.
@@ -48,7 +48,7 @@ public abstract record StoredScope
 }
 
 /// <summary>
-/// The one module that writes a scope to <c>Assessments.ScopeJson</c> and reads it back (ADR 0042 decision
+/// The one module that writes a scope to <c>Assessments.ScopeJson</c> and reads it back (ADR 0020 decision
 /// 3). A Trial's writer and <c>compare</c>'s writer both go through <see cref="Write"/>; every reader —
 /// coverage, correctness, difference, and regression checking — goes through <see cref="ReadTrial"/> or
 /// <see cref="ReadDifference"/>. None of those five needs to know the wire shape the other four use.

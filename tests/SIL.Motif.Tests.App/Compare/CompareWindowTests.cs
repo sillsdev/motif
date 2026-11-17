@@ -15,7 +15,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App.Compare;
 
-/// <summary>The window that compares two versions of a field, headless, with invented placeholder text (ADR 0076).</summary>
+/// <summary>The window that compares two versions of a field, headless, with invented placeholder text (ADR 0002).</summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class CompareWindowTests(AvaloniaHeadlessFixture avalonia)
 {

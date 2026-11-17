@@ -53,7 +53,7 @@ public static class FieldWorksHelpFieldMap
             "class-generic",
             "HelpTopicPaths.resx has 21 per-list keys for this one field (ProdRestrictEdit, confidenceEdit, " +
             "statusEdit, genresEdit, ...) and no canonical one, because the field is CmPossibility's, shared " +
-            "by 13 descendant lists (ADR 0023 decision 2/4). All 38 Abbreviation pages under " +
+            "by 13 descendant lists (ADR 0013 decision 5). All 38 Abbreviation pages under " +
             "Field_Descriptions were read: every one says \"the abbreviation of the name of the current " +
             "<this list's item>\", and this page is the one whose wording carries no list-specific noun"),
 

@@ -2,7 +2,7 @@ namespace SIL.Motif.Host.Analysis;
 
 /// <summary>
 /// Of the correctly-spelled word forms carrying no manual analysis, how many the grammar parses —
-/// ADR 0038 decision 7's one counted figure about the unanalysed. <c>null</c> on
+/// ADR 0020 decision 14's one counted figure about the unanalysed. <c>null</c> on
 /// <see cref="AnalysisAggregateResponse.UnanalysedReach"/> whenever no Assessment is on record, because
 /// nothing about the parser side is knowable at all in that case.
 /// </summary>
@@ -11,7 +11,7 @@ namespace SIL.Motif.Host.Analysis;
 /// figure describes. "Correctly spelled" excludes only word forms whose <c>WfiWordform.SpellingStatus</c>
 /// is <c>Incorrect</c>; the default, undecided, is included, because excluding it would silently treat
 /// "nobody has judged this yet" as "known to be wrong". A word form nobody has analysed carries no
-/// expectation of its own (ADR 0038 decision 7) — this count is the only thing reported about it.
+/// expectation of its own (ADR 0020 decision 14) — this count is the only thing reported about it.
 /// </param>
 /// <param name="ParsedCount">
 /// Of <see cref="UnanalysedCount"/>, how many the grammar produced at least one analysis for, per the
@@ -22,7 +22,7 @@ public sealed record UnanalysedReachFigure(int UnanalysedCount, int ParsedCount)
 {
     /// <summary>
     /// The sentence a report prints. <b>The only way to render this figure as prose</b>, so the caveat
-    /// ADR 0038 decision 7 requires cannot be dropped by a caller who only wants the numbers in words.
+    /// ADR 0020 decision 14 requires cannot be dropped by a caller who only wants the numbers in words.
     /// </summary>
     /// <remarks>
     /// Nobody has checked these words, so a rising count is equally consistent with the grammar improving

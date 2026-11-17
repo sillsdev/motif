@@ -114,7 +114,7 @@ internal static class ReleasePathwayReplay
     {
         var root = Path.GetFullPath(scriptFolder);
         if (!Directory.Exists(root)) throw new DirectoryNotFoundException($"Walkthrough folder not found: {root}");
-        // A walkthrough written for the tests' scripted parser has a release twin under release/ (ADR 0054).
+        // A walkthrough written for the tests' scripted parser has a release twin under release/ (ADR 0031).
         var releasePath = Path.GetFullPath(Path.Combine(root, "release", id + ".walkthrough.json"));
         var path = File.Exists(releasePath)
             ? releasePath

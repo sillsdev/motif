@@ -42,7 +42,7 @@ namespace SIL.Motif.Tests.Cli;
 /// </summary>
 /// <remarks>
 /// A workflow test, not an end-to-end one: no process boundary is crossed here. Whether the shipped
-/// executables do this is <c>RunnerSpineTests</c>' subject. <c>dry-run</c> is a job (ADR 0041 decision 7),
+/// executables do this is <c>RunnerSpineTests</c>' subject. <c>dry-run</c> is a job (ADR 0018 decision 6),
 /// so <see cref="RunDryRun"/> stands in for the real runner: it records a Baseline pointing at this
 /// project's own saved file and drains exactly one queued job through the real <see cref="DryRunJobHandler"/>.
 /// </remarks>

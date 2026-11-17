@@ -32,7 +32,7 @@ public sealed class ProposalCommandOutcomeTests
 
     /// <summary>
     /// No file under <c>SIL.Motif.Commands</c> renders its own text any more: rendering, including the
-    /// <c>error: </c> prefix, is the CLI's job alone (ADR 0043 decision 2).
+    /// <c>error: </c> prefix, is the CLI's job alone (ADR 0018 decision 1).
     /// </summary>
     [Fact]
     public void CommandsRendersNothingItself()

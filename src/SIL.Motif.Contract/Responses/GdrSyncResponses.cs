@@ -3,7 +3,7 @@ using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.Contract.Responses;
 
-/// <summary>The finding codes of the GDR sync check (ADR 0119). Every finding is a warning.</summary>
+/// <summary>The finding codes of the GDR sync check (ADR 0005). Every finding is a warning.</summary>
 public static class GdrSyncCodes
 {
     /// <summary>The project has rules or affix processes and no Grammar Design Record at all.</summary>

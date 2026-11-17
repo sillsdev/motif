@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.Projection;
 /// <summary>
 /// Every read-surface projection, rendered to text and to JSON from hand-built data — no live
 /// project needed, because a projection is a plain record and rendering is a pure function of it
-/// (ADR 0021 decision 2). Each test pins that the text carries no figure the JSON lacks, and that
+/// (ADR 0018 decision 1). Each test pins that the text carries no figure the JSON lacks, and that
 /// rendering the same projection twice produces byte-identical text.
 /// </summary>
 public sealed class ProjectionRenderingTests

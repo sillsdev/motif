@@ -15,7 +15,7 @@ public sealed record TrialStandingText(string Status, string Sentence, string Ac
 /// <summary>
 /// The one table of what the window says about a Proposal's Trial, as <see cref="WindowRefusal"/> is for refusals.
 /// The bar, the Proposals page, the Review blocker and the word card all read it, so a new standing is one enum
-/// value in Contract and one row here. None of it names a Trial, a Draft or a Baseline (ADR 0046 decision 3).
+/// value in Contract and one row here. None of it names a Trial, a Draft or a Baseline (ADR 0028 decision 3).
 /// </summary>
 public static class TrialStandingWords
 {

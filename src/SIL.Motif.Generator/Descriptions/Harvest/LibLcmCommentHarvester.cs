@@ -8,7 +8,7 @@ namespace SIL.Motif.Generator.Descriptions.Harvest;
 /// Reads the same <c>MasterLCModel.xml</c> <see cref="Model.MasterLcModelParser"/> reads, but for a different
 /// purpose: pulling the <c>&lt;comment&gt;</c> prose off each field declaration rather than its
 /// class/sig/card shape. Kept separate from <see cref="Model.MasterLcModelParser"/> deliberately — that
-/// parser feeds the operation-shape derivations (ADR 0022) and touching its output shape for a
+/// parser feeds the operation-shape derivations (ADR 0013) and touching its output shape for a
 /// documentation concern would widen its blast radius for no reason. This one feeds
 /// <see cref="KindDescriptionRefresher"/> and <see cref="Ordering.OrderingEvidenceHarvester"/> — both
 /// documentation-shaped consumers of the same prose.

@@ -30,7 +30,7 @@ namespace SIL.Motif.Generator.Emit;
 /// this selector does not yield.
 /// </para>
 /// <para>
-/// <b>Why <c>HcReachable=yes</c> is the filter, not "all 239 shape-matching rows".</b> ADR 0025 is
+/// <b>Why <c>HcReachable=yes</c> is the filter, not "all 239 shape-matching rows".</b> ADR 0013 is
 /// the parser-first slice's own authority: the 150 rows it marks <c>HcReachable=yes</c> are exactly
 /// "everything the parser touches, plus the material you judge it against" — the stated priority
 /// for what this generator builds next. Of those 150, 4 already have a generated kind (<c>MoForm.Form</c>,

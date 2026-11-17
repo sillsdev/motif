@@ -55,7 +55,7 @@ public sealed record AssessedWord(
 /// </summary>
 /// <param name="GrammarSourceSha256">
 /// The parser's hash of the grammar source it read. This is the "grammar identity" half of
-/// ADR 0032 §4's provenance requirement, and it
+/// ADR 0019 §8's provenance requirement, and it
 /// comes free — no need for Motif to hash anything itself.
 /// </param>
 /// <param name="DiagnosticCount">
@@ -84,7 +84,7 @@ public sealed record AssessReport(
 /// <para>
 /// An index outside the table throws rather than yielding a placeholder. A silently-dropped morpheme would
 /// make an analysis look shorter than it is, and morph count is one of the things
-/// ADR 0027 gates equality on — so a placeholder here
+/// ADR 0020 gates equality on — so a placeholder here
 /// could make two different analyses compare equal.
 /// </para>
 /// </remarks>
@@ -172,7 +172,7 @@ public static class AssessReportParser
             throw new InvalidOperationException(
                 $"An analysis references {what} key {index}, outside the report's {keyTable.Count}-entry " +
                 "keyTable. Refusing rather than dropping it: a missing morpheme shortens the analysis, and " +
-                "morph count is part of what decides whether two analyses are the same (ADR 0027).");
+                "morph count is part of what decides whether two analyses are the same (ADR 0020).");
 
         return keyTable[index];
     }

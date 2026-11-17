@@ -75,7 +75,7 @@ public static class Readiness
                 reasons.Add($"its Assessment did not measure changed word(s): {string.Join(", ", missing)}");
         }
         var lacking = candidate.Words.Where(Lacks).ToArray();
-        // A capitalised word the parser cannot read as written is covered by its complete lowercase row (ADR 0078).
+        // A capitalised word the parser cannot read as written is covered by its complete lowercase row (ADR 0019).
         lacking = lacking.Where(word => !(word.Morphology is { InvalidShape: true } && lowercaseOf?.Invoke(word.Word) is { } lower &&
             candidate.Words.Any(other => string.Equals(other.Word, lower, StringComparison.Ordinal) && !Lacks(other)))).ToArray();
         // A derived twin of invalid shape is left out; a twin the person typed is in the Selection and counts.

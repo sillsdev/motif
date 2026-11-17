@@ -73,7 +73,7 @@ public sealed record CorpusDocument(
 /// </summary>
 /// <remarks>
 /// <para>
-/// Never part of the language project — see ADR 0036. A FieldWorks <c>Text</c> is an interlinearised document
+/// Never part of the language project — see ADR 0023. A FieldWorks <c>Text</c> is an interlinearised document
 /// inside the project and is a different thing with a confusingly similar name; this is deliberately not
 /// called one.
 /// </para>

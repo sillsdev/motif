@@ -7,7 +7,7 @@ namespace SIL.Motif.Contract.Parsing;
 /// no floating-point fields, so a float appearing in an operation's desired-value payload can only
 /// be an unsupported custom-field type; forbidding it at parse time closes the open
 /// floating-point-determinism question rather than deferring it to a lossy formatter choice
-/// (ADR 0007 decision 4).
+/// (ADR 0012 decision 11).
 /// </summary>
 /// <remarks>
 /// Does not apply to <c>confidence</c>, which is explicitly excluded from the intent digest and so
@@ -25,7 +25,7 @@ public static class JsonNumberPolicy
                 {
                     throw new ContractParseException(
                         $"Floating-point value at '{path}' ({raw}) is forbidden; only integral " +
-                        "numbers are permitted in semantic operation content. See ADR 0007.");
+                        "numbers are permitted in semantic operation content. See ADR 0012.");
                 }
                 break;
 

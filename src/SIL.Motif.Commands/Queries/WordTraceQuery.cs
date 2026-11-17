@@ -156,7 +156,7 @@ public static class WordTraceQuery
             var outcome = Trace(request.Word);
             var elapsedMs = (int)clock.ElapsedMilliseconds;
             var result = Shape(outcome, request, elapsedMs);
-            // FieldWorks' lowercase second pass: its own wordform, parsed even when this one parsed (ADR 0078).
+            // FieldWorks' lowercase second pass: its own wordform, parsed even when this one parsed (ADR 0019).
             if (result.Succeeded && LowercasePass.ForProjectIfNeeded(baseline.FwDataPath, [request.Word]).LowercaseOf(request.Word) is { } lower)
             {
                 clock.Restart();

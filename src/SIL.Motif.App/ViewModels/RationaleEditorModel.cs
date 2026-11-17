@@ -15,7 +15,7 @@ using TextDocument = SIL.TextEditing.Document;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// A Proposal's Rationale in the shared rich field (ADR 0099): shown read-only, and for an open Proposal made editable
+/// A Proposal's Rationale in the shared rich field (ADR 0006): shown read-only, and for an open Proposal made editable
 /// with Edit, then saved through the rationale command or cancelled. A save with findings shows them under the
 /// field; when a Ready Proposal does not take it, the person's text stays in the field. The kept versions can be
 /// restored into the field until the Proposal is decided. A Rationale that does not read as FieldWorks Markdown is

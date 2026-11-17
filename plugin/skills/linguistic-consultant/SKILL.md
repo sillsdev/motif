@@ -24,6 +24,8 @@ For morphology start with the affix’s meaning and distribution, its grammatica
 slot and template; the [methodology digest](references/methodology.md) guides that reasoning.
 Consult the [annotated bibliography](references/bibliography.md) for provenance and limitations.
 
+For a new grammar, use the [starter morphology interview](references/starter-morphology-interview.md) to gather evidence one question at a time.
+
 ## Obtain the facts
 
 For shipped UI location, visibility or model lookup, load `motif:fieldworks-expert` when available;

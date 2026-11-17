@@ -7,7 +7,7 @@ namespace SIL.Motif.Spikes.LabelHarvest;
 /// composite <c>Parts/*.xml</c> part definition instead, whose id embeds the real field plus a
 /// writing-system-scope suffix (e.g. <c>MoInflAffixSlot-Detail-NameAllA</c> wraps
 /// <c>&lt;slice field="Name"&gt;</c>; the fwlayout ref is <c>NameAllA</c>, not <c>Name</c>). Confirmed by
-/// direct inspection while building this harvester — ADR 0023's own "Name" vs "Slot Name" example on
+/// direct inspection while building this harvester — ADR 0013's own "Name" vs "Slot Name" example on
 /// MoInflAffixSlot only round-trips to the real field once this indirection is resolved; without it,
 /// <c>NameAllA</c> is recorded as a synthetic pseudo-field distinct from <c>Name</c>, silently hiding the
 /// exact per-view conflict the ADR describes.

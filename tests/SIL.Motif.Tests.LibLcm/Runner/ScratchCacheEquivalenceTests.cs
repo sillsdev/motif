@@ -10,7 +10,7 @@ using Xunit.Abstractions;
 namespace SIL.Motif.Tests.Runner;
 
 /// <summary>
-/// ADR 0016: does a scratch cache actually work, and is it equivalent to the live cache it came from?
+/// ADR 0017: does a scratch cache actually work, and is it equivalent to the live cache it came from?
 /// </summary>
 /// <remarks>
 /// These run against <see cref="TestFixtures.PristineProjectFixture"/>'s small seeded project, so they
@@ -66,7 +66,7 @@ public class ScratchCacheEquivalenceTests : IDisposable
         var sense = _live.ServiceLocator.GetInstance<ILexSenseRepository>().AllInstances().OrderBy(s => s.Guid).First();
         var originalGloss = sense.Gloss.AnalysisDefaultWritingSystem?.Text;
 
-        // Mutate the SCRATCH: ADR 0016's whole point is that a dry run may mutate freely here.
+        // Mutate the SCRATCH: ADR 0017's whole point is that a dry run may mutate freely here.
         var scratchSense = scratch.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(sense.Guid);
         SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
         {
@@ -133,7 +133,7 @@ public class ScratchCacheEquivalenceTests : IDisposable
 
     /// <summary>
     /// Pins the measured hazard as a test rather than a note: if liblcm ever attaches a real writing-system
-    /// store to a memory-only cache, this fails and ADR 0016's single-path decision can be revisited.
+    /// store to a memory-only cache, this fails and ADR 0017's single-path decision can be revisited.
     /// </summary>
     [Fact]
     public void InMemoryCopy_LosesWritingSystemDefinitions_WhichIsWhyStrategyChoiceMatters()
@@ -154,7 +154,7 @@ public class ScratchCacheEquivalenceTests : IDisposable
     /// The measurement that removed the choice: a memory-only copy of a FILE-LOADED scratch — one whose
     /// writing systems are provably intact — still loses them, because the loss belongs to the target
     /// backend rather than the source. So "build losslessly, then fan out cheaply" is not available, and
-    /// ADR 0016 settles on the file path alone.
+    /// ADR 0017 settles on the file path alone.
     /// </summary>
     [Fact]
     public void InMemoryCopy_OfALosslessScratch_IsStillLossy_WhichIsWhyThereIsOnlyOneCanonicalPath()
@@ -171,7 +171,7 @@ public class ScratchCacheEquivalenceTests : IDisposable
 
         Assert.False(report.IsUsableForWritingSystemSensitiveWork,
             "if this ever passes, liblcm has started attaching a real writing-system store to memory-only " +
-            "caches, and ADR 0016's single-path decision can be revisited");
+            "caches, and ADR 0017's single-path decision can be revisited");
     }
 
     private void Log(ScratchComparison.ComparisonReport report)

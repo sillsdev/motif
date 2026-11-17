@@ -1,60 +1,20 @@
-# GDRs: the human interface, always in sync
+# Grammar Guide and sync
 
-People interact with the grammar through its Grammar Design Records. A GDR is the linguistic analysis as
-linguists write it: prose, symbolic notation and worked examples ("this phonological rule does X; see these 5
-examples"). Claude translates GDRs into FieldWorks rules. A GDR is a living page per topic with a permanent
-`GDR-n` id, not an ADR; the why of each change stays in Proposals.
+The Grammar Guide is the project's readable account of its grammar. Sections have stable `GDR-n` identities;
+Proposals explain changes. Consult [ADR 0005](../../../../docs/adr/0005-the-grammar-guide.md) for the
+accepted Guide structure, generated blocks and sync contract.
 
-## Sync rule
+When a Proposal changes a grammar object, read the relevant Guide section and record the chosen mechanism,
+evidence, decisions and uncertainty alongside the change. Consult [black-guidance.md](black-guidance.md),
+[mechanism-ladder.md](mechanism-ladder.md) and the findings in `docs/references/grammar-authoring.md`.
 
-The owner's decision (#178): a Proposal that changes a rule, affix process or the objects behind a GDR section
-changes that section in the same Proposal. The Trial review report carries the same check as advisory `GdrSync` lines for the
-post-Proposal project (ADR 0119); Finalize does not. Run the check `motif gdr check --project <fwdata>` (ADR 0119) with
-`MOTIF_DEVELOPER_COMMANDS=1` after the Proposal is applied to the project and its Baseline is captured. It reports every rule or
-affix process no GDR links, every section that links a deleted object, and every example word whose stored Trial or
-Assessment row no longer parses as the section says. It parses nothing: put the example words in the Trial's words
-so the rows exist. A warning, including an unverified example, fails the completion criterion and the Proposal waits.
-Done when `gdr check` reports the GDRs in sync, which means every rule and affix process touched maps to a GDR section and
-every example in it was re-read from the grammar as it stands after the change (live examples, not remembered ones).
-Write examples under an `Examples` heading, with the cited morphemes linked in the same row, and false parses under `False
-parses`.
+A section has **How it works**, **Examples**, **Exceptions**, **Decisions**, **Open questions** and
+**In the grammar**, in that order. A part uses `#`, a section `##`, and template parts `###`. Generated
+content is a view; the importer ignores its marked blocks. Use FieldWorks Markdown and preserve object links
+and stable IDs. Do not turn a working guess into a decision.
 
-## Before writing or changing a GDR
-
-Consult Andy Black's guidance and the other research each time: [black-guidance.md](black-guidance.md),
-[mechanism-ladder.md](mechanism-ladder.md) and `docs/research/grammar-authoring/own-guidance-review.md`. State in the GDR which
-mechanism was chosen and why a lower rung did not do. Read the GDR index at Proposal start and the section
-bodies of the topics you touch.
-
-## Shape of a GDR
-
-Template spec: `docs/superpowers/specs/2026-11-02-grammar-design-records-design.md` (23 topics in 7 groups;
-sound processes 8, rule ordering and exceptions 9, allomorph selection 18, exceptions and false parses 22 are
-the ones rule hypotheses touch). Text is FieldWorks Markdown
-(`docs/superpowers/specs/2026-11-03-gdr-markdown-design.md`; links such as `[[rule:Name]]`, `[[w:word]]`,
-`{v}` for vernacular). Sections: Abstract, Analysis (prose and symbolic notation), Examples (a table of stem,
-form, gloss, 5 or more rows, including an exception), Exceptions, Open questions, Sources.
-
-```
-GDR-18 Allomorph selection
-Abstract: Nasal prefixes such as [mang-]{v} assimilate to the stem's first consonant, which often drops.
-## Analysis
-One underlying form; the nasal takes the place of a following consonant and voiceless stops delete.
-Stated as one rule, [[rule:Nasal assimilation]], because it is regular across stems.
-## Examples
-| Stem | Prefixed | Gloss |
-| [[w:palit]] | [[w:mamalit]] | 'buy' |
-## Exceptions
-Lexically marked stems keep their first consonant: [[exc:Keeps first consonant]].
-```
-
-Write a GDR in the shape of its hypothesis: the pattern, the rule in notation, the predicted forms that were
-attested, the exceptions with polarity, the verdict from `rule-hypothesis-test`, and the speaker judgements
-that settled open points, and any FieldWorks limitation that forced the majority to carry a tag. The speaker
-never sees the GDR. Linguists comment on the Proposal, not on the GDR.
-
-## Route
-
-An agent writes a GDR only through a Proposal, as a Motif operation effective at Apply; people edit in
-FieldWorks directly. A GDR edit remembers its base text; when it no longer fits, stop on that GDR and
-amend, never overwrite.
+The accepted CLI direction is `guide …`, without `gdr` aliases; the current implementation still exposes the
+developer command `motif gdr check --project <fwdata>` until that rename is implemented. The check reads the
+captured project and existing Trial rows; it does not parse. Missing links, unverified examples and other
+findings are advisory, including in the Trial review report. Include relevant words in a subsequent Trial when
+there is no conclusive row. A warning does not block Finalize, Apply or Trial success.

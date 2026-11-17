@@ -4,8 +4,8 @@ using Xunit;
 namespace SIL.Motif.Tests.Analysis;
 
 /// <summary>
-/// <see cref="WordFormAnalysisAggregate"/> — the per-word-form record ADR 0038 decision 2 requires to be
-/// a set of analyses, never "the analysis", plus the three-state automatic side ADR 0038 decision 5 needs.
+/// <see cref="WordFormAnalysisAggregate"/> — the per-word-form record ADR 0003 decision 4 requires to be
+/// a set of analyses, never "the analysis", plus the three-state automatic side ADR 0020 decision 12 needs.
 /// </summary>
 /// <remarks>
 /// Rules defended here, in order of how much damage getting them wrong would do:
@@ -45,7 +45,7 @@ public class WordFormAnalysisAggregateTests
         var wordform = new WordFormAnalysisAggregate(
             "wordform-guid-1", "mbali", new[] { first, second }, AutomaticAnalyses: null);
 
-        // The unit is a set (ADR 0038 decision 2): both ambiguous readings survive, at their own digest.
+        // The unit is a set (ADR 0003 decision 4): both ambiguous readings survive, at their own digest.
         Assert.Equal(2, wordform.ManualAnalyses.Count);
         Assert.Contains(first, wordform.ManualAnalyses);
         Assert.Contains(second, wordform.ManualAnalyses);
@@ -83,7 +83,7 @@ public class WordFormAnalysisAggregateTests
         };
         var wordform = new WordFormAnalysisAggregate("w1", "mbali", Array.Empty<ApprovedAnalysis>(), many);
 
-        // A plain count, not a verdict (ADR 0038 decision 6): ambiguity vs looseness is unsaid.
+        // A plain count, not a verdict (ADR 0020 decision 13): ambiguity vs looseness is unsaid.
         Assert.Equal(3, wordform.AutomaticAnalysisCount);
     }
 }

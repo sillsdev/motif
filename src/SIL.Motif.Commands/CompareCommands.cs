@@ -16,7 +16,7 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Commands;
 
 /// <summary>
-/// The <c>compare</c> verb. ADR 0042's amendment: comparison is a join on the word, and <c>compare</c> is
+/// The <c>compare</c> verb. ADR 0020's amendment: comparison is a join on the word, and <c>compare</c> is
 /// sugar over producing an Assessment of the <c>Difference</c> kind, stored and citable — never a separate
 /// transient mechanism. This computes the join, records the result through
 /// <see cref="AssessmentRepository"/> exactly like any other Assessment, and renders it through the same
@@ -32,7 +32,7 @@ public static class CompareCommands
     /// <remarks>
     /// The stored Difference inherits the Assessor its two inputs share: a difference between two
     /// measurements made by one Assessor is itself a measurement of that Assessor's making, and requiring
-    /// the two inputs to agree is what makes the shared-Assessor rule (ADR 0042 decision 1) enforce itself —
+    /// the two inputs to agree is what makes the shared-Assessor rule (ADR 0020 decision 1) enforce itself —
     /// a difference cannot be produced from inputs that disagree, because there would be no single Assessor
     /// left to attribute it to.
     /// </remarks>

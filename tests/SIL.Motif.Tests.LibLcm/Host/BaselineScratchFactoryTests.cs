@@ -70,7 +70,7 @@ public sealed class BaselineScratchFactoryTests : IDisposable
         var factory = new BaselineScratchFactory();
         using (var scratch = factory.OpenSingleUse(_publishedFwDataPath))
         {
-            // The only public evidence of where the scratch's cache actually lives (ADR 0016).
+            // The only public evidence of where the scratch's cache actually lives (ADR 0017).
             Assert.Contains(_publishedRoot, scratch.Provenance);
             ProposalDryRunner.Run(scratch, BuildSetGlossProposal("mutated for assertion 2"));
         }

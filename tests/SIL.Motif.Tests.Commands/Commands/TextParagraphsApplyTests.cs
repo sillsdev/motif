@@ -28,7 +28,7 @@ namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
 /// A person's paragraph edit of a rich-text field, staged in the pending-changes Draft and applied to a project
-/// built at run time from <see cref="SeededGdrs"/> (ADR 0076), then read back through <c>gdr show</c>.
+/// built at run time from <see cref="SeededGdrs"/> (ADR 0002), then read back through <c>gdr show</c>.
 /// </summary>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)

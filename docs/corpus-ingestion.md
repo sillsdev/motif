@@ -4,9 +4,8 @@
 text. This is how that text arrives, where it comes from, and what stops Motif publishing something it is not
 allowed to.
 
-The division of labour, decided in [ADR 0037](adr/0037-fetching-lives-outside-motif.md): **an external tool
-fetches and cleans; Motif ingests and records.** In practice the external tool is linguistic-assistant, in
-Python, which already knows how to pull eBible.
+The division of labour, decided in [ADR 0024](adr/0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md): **an external tool
+fetches and cleans; Motif ingests and records.** An external fetcher supplies files and their provenance.
 
 ## The two sources
 
@@ -181,19 +180,16 @@ surveillance: it says what a figure was computed over. See `B28`.
 the parser's output between runs does not exist. That is `MOT-20`, and it is what makes a figure cheap to
 re-read rather than re-earn.
 
-**Storage is files.** [ADR 0036](adr/0036-motif-has-its-own-data-store.md) decision 6 puts Corpora in an
+**Storage is files.** [ADR 0023](adr/0023-one-store-beside-each-project-inside-a-byte-budget.md) decision 6 puts Corpora in an
 embedded database; ingestion goes through `ICorpusStore` so that change will not reach it.
 
-## What linguistic-assistant still owes
+## External fetchers
 
-Its eBible pipeline (`research/corpus/ebible/{config,fetch,read,build}.py`) stops at parallel rows. What is
-missing is the step that emits a bundle: the per-translation licence rows it needs are already in eBible's
-`licences.tsv`. For OPUS there is nothing yet; `opustools` would supply the fetch.
-
-Nothing in Motif blocks on either — a bundle can be written by hand, and the tests do exactly that.
+A fetcher may emit a bundle with document paths and licence metadata. A bundle can also be written by hand;
+Motif does not depend on a particular fetching program.
 
 ## Related
 
-- [ADR 0036](adr/0036-motif-has-its-own-data-store.md) — why Motif has a store of its own, and why none of
+- [ADR 0023](adr/0023-one-store-beside-each-project-inside-a-byte-budget.md) — why Motif has a store of its own, and why none of
   this enters the FieldWorks project
-- [ADR 0037](adr/0037-fetching-lives-outside-motif.md) — why fetching is somebody else's job
+- [ADR 0024](adr/0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md) — why fetching is somebody else's job

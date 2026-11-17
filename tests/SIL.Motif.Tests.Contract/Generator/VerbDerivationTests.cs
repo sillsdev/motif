@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.Generator;
 
 /// <summary>
 /// The seven <c>(Kind, Card)</c> -> <c>Verbs</c> combinations, zero exceptions
-/// (ADR 0022 decision 1).
+/// (ADR 0013 decision 4).
 /// </summary>
 public class VerbDerivationTests
 {

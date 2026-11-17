@@ -6,12 +6,12 @@ namespace SIL.Motif.Generator.Derivation;
 /// <summary>
 /// <c>ComparisonClass</c> is <c>card == seq</c> → <c>positional</c>, everything else →
 /// <c>unordered</c>, with cited exceptions where the base rule gives the wrong answer for a
-/// documented reason (ADR 0022 decision 2).
+/// documented reason (ADR 0013 decision 4).
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>There are seven exceptions, in two categories that mean opposite things</b> — not the "exactly
-/// five" ADR 0022's prose states (pinned by
+/// five" ADR 0013's prose states (pinned by
 /// <c>ManifestConsistencyCheckerTests.CheckVerbsAndComparisonClass_RealInScopeRows_AllAgreeWithDerivation</c>
 /// in <c>tests/SIL.Motif.Tests.Contract/Generator</c>, which checks this derivation against the real, current
 /// manifest). The check that enforces agreement with this table is fail-closed rather than advisory
@@ -20,7 +20,7 @@ namespace SIL.Motif.Generator.Derivation;
 /// </para>
 /// <para>
 /// <b>Category 1 — order carries <em>more</em> than position</b> (<see cref="OrderCarriesMeaningExceptions"/>,
-/// 5 rows, ADR 0022 decision 2's own enumeration): a field whose base-rule answer would be
+/// 5 rows, ADR 0013 decision 4's own enumeration): a field whose base-rule answer would be
 /// <c>unordered</c> or <c>positional</c> in the ordinary sense, but where the actual sequence
 /// encodes something extra — disjunctive first-match order (<c>feeding</c>) or an item's index
 /// serving as its identity (<c>index-as-identity</c>).
@@ -44,7 +44,7 @@ public static class ComparisonClassDerivation
         // Position -> Allomorph.Index, disjunctive block (LexEntry.cs:45-50, Allomorph.cs:127-152, Morpher.cs:361-369).
         [new FieldKey("LexEntry", "AlternateForms")] = "feeding",
 
-        // Feeding/bleeding rule order (MasterLCModel.xml:4496-4498; docs/research/2026-08-03-manifest-trust-audit.md).
+        // Feeding/bleeding rule order (MasterLCModel.xml:4496-4498; docs/references/generator-and-manifest.md).
         [new FieldKey("PhPhonData", "PhonRules")] = "feeding",
 
         // Alpha-variable pools, assigned by first-appearance traversal: position *is* identity, not rank.

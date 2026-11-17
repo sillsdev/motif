@@ -29,7 +29,7 @@ The Text create projects, per Text, its identity, name, paragraphs, segments and
 rationale names the create; it is one composite operation, so no per-field kind is generated for them, and
 `ordering-evidence.tsv` records the two positional ones.
 Closed shapes, ownership, normalization and evidence refresh are specified in the
-[Proposal contract](../docs/change-set-contract.md).
+[Proposal contract](../docs/proposal-contract.md).
 
 ## Companion files
 
@@ -51,11 +51,11 @@ one silently would bake a view-specific label into a contract. 768 rows covering
 
 **`kind-descriptions.tsv` — copied from a source, not written.** One sentence per authorable field saying
 *when an agent should reach for this operation*, which is the job a two-word label cannot do. Required by
-[ADR 0023](../docs/adr/0023-derived-kind-names-required-descriptions.md) decision 5 as amended: the build
+[ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md) decision 5 as amended: the build
 fails if a description is missing **or if it merely restates the label**. Written per family as it ships;
 93 rows today.
 
-The `Reviewed` column records provenance, and [issue D8](../docs/issues.md) is why it is not optional — the
+The `Reviewed` column records provenance and is required because the
 first large batch of freely-paraphrased descriptions was 8% wrong, four of them saying the exact opposite of
 what the model means, and a backwards sentence reads just as fluently as a correct one. Five values:
 
@@ -93,10 +93,10 @@ to skip the Windows-only step), then `refresh-descriptions`, then commit both fi
 One row per in-scope field whose `ComparisonClass` is not `unordered` (64 today), carrying the sentences of
 its `MasterLCModel.xml` comment that speak to ordering, the citation, which ordering words the selection
 matched, and a `sha256:` digest of the quote. **Evidence, not authority** — `ComparisonClass` stays derived
-from `Card` ([ADR 0022](../docs/adr/0022-structure-is-derived-policy-is-five-rows.md) decision 2), and
+from `Card` ([ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md) decision 2), and
 nothing reads this file at build time. It answers the question the derivation cannot ask about itself:
 *is the rule right for this row?* 32 of the 64 have an explicit statement; 32 rest on `card=seq` alone and
-are named in [the census](../docs/research/2026-08-11-ordering-claims-census.md). Re-harvest with
+are named in [the census](../docs/references/generator-and-manifest.md). Re-harvest with
 `dotnet run --project src/SIL.Motif.Generator -- harvest-ordering-evidence` (model only — no FieldWorks
 checkout needed).
 
@@ -143,15 +143,15 @@ blank/`n/a` for every row where `Scope != in`.
 | `Kind` | `basic` (value) / `owning` / `rel` (reference) |
 | `Sig` | value type, or destination class for relations |
 | `Card` | `atomic` / `col` / `seq` |
-| `HcReferenced` | raw name-only join against [`hcloader-surface.tsv`](hcloader-surface.tsv): `name-referenced` or `no`. Precursor to `HcReachable`, which corrects the false positives a bare-name join produces (see issue D1 in [issues.md](../docs/issues.md)). |
-| `Construct` | the layer-1 construct this field belongs to (`lexEntry`, `msa`, `phoneme`, `rewriteRule`, …; the possibility family fans out to a multi-construct string) — see [ADR 0009](../docs/adr/0009-layered-api-primitives-and-composers.md) and [API surface layer 1](../docs/api-surface-layer1.md). 54 distinct constructs across the in-scope rows. |
-| `Group` | `grammar` / `lexical` / `system` / `lists` / `analysis` — **the editorial domain: who should review a change**, per [ADR 0024](../docs/adr/0024-group-is-derived-domain-is-editorial.md). It is *not* the first segment of an operation's name; that segment is derived from the declaring class and the two deliberately disagree on 53 rows. `analysis` was added by [ADR 0025](../docs/adr/0025-parser-first-build-order.md). |
+| `HcReferenced` | raw name-only join against [`hcloader-surface.tsv`](hcloader-surface.tsv): `name-referenced` or `no`. Precursor to `HcReachable`, which corrects the false positives a bare-name join produces. |
+| `Construct` | the layer-1 construct this field belongs to (`lexEntry`, `msa`, `phoneme`, `rewriteRule`, …; the possibility family fans out to a multi-construct string) — see [ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md) and [API surface layer 1](../docs/api-surface-layer1.md). 54 distinct constructs across the in-scope rows. |
+| `Group` | `grammar` / `lexical` / `system` / `lists` / `analysis` — **the editorial domain: who should review a change**, per [ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md). It is *not* the first segment of an operation's name; that segment is derived from the declaring class and the two deliberately disagree on 53 rows. `analysis` was added by [ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md). |
 | `Classification` | what kind of field this is for kind-generation purposes: `semantic-operation` (core authorable content), `supporting-detail` (secondary/administrative), `unsupported` (explicitly not offered as a control), `internal` (import residue, singleton roots), `derived-read-only` (engine-computed), `runner-bookkeeping` (the applied-log's reuse of `CmResource`), `observable-not-authorable` (engine-maintained reverse index). |
-| `ComparisonClass` | how instances of this field compare for drift/effect purposes: `unordered`, `positional`, `index-as-identity` (alpha-variable pools — [issue B8](../docs/issues.md)), `feeding` (order encodes rule interaction — [issue B8](../docs/issues.md)). |
+| `ComparisonClass` | how instances of this field compare for drift/effect purposes: `unordered`, `positional`, `index-as-identity` (alpha-variable pools), `feeding` (order encodes rule interaction). |
 | `Verbs` | the CRUD verb subset this field's `(Kind, Card)` shape generates (`set|clear`, `create|delete`, `create|delete|move|reparent`, `addRef|removeRef`, `addRef|removeRef|move`), or `n/a` when `Classification` marks the field non-authorable. |
 | `HcReachable` | does `HCLoader` actually read this field — `yes` / `no` / `unconfirmed`, corrected from `HcReferenced` against the curated surface map (see [the HC grammar map](../docs/hc-grammar-map.md)). |
-| `EnumValues` | for the 28 in-scope `Integer` fields only: a confirmed `value=Name;...` mapping, `unknown` (named-enum-shaped but no confirming code found), or blank (a magnitude, not an enumeration) — [issue B7](../docs/issues.md). |
-| `Rationale` | required prose for every in-scope row, citing the classification decision and folding in any `ComparisonClass`/`HcReachable`/`EnumValues` notes. Distinguishes a cited source from a generic field-name-heuristic default — see [issue B18](../docs/issues.md). |
+| `EnumValues` | for the 28 in-scope `Integer` fields only: a confirmed `value=Name;...` mapping, `unknown` (named-enum-shaped but no confirming code found), or blank (a magnitude, not an enumeration). |
+| `Rationale` | required prose for every in-scope row, citing the classification decision and folding in any `ComparisonClass`/`HcReachable`/`EnumValues` notes. Distinguishes a cited source from a generic field-name-heuristic default. |
 
 ### `Scope` is computed, not guessed
 
@@ -172,7 +172,7 @@ A naming heuristic was wrong in **both** directions, which is why this is comput
   in-scope fields.
 
 **In scope: 494 properties across 100 classes** (494 = 214 `basic` + 148 `owning` + 132 `rel`). Was 473
-across 95 until [ADR 0025](../docs/adr/0025-parser-first-build-order.md) brought in 21 analysis rows —
+across 95 until [ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md) brought in 21 analysis rows —
 the approval half of word analysis, which has durable identity. Occurrence assignment
 (`Segment.Analyses`) came in later with the Text create, which brings the count to 505, and `CmAgent.Version` came in with the agent evaluation kind
 (`analysis/wfiAnalysis/addAgentEvaluations` writes `CmAgent.Name`, `Version` and `Human`), which brings it to 506. Basic —
@@ -181,7 +181,7 @@ TextPropBinary 1. Relations — owning/atomic 69, rel/atomic 57, owning/col 39, 
 rel/seq 28. Excluded as `trace`: 28 props across 9 classes.
 
 An earlier count of 478 properties across 96 classes included 5 `TextTag` rows later demoted as a
-scope over-inclusion — see [issue D5](../docs/issues.md). The numbers above are post-D5 and were
+scope over-inclusion; the numbers above were
 recomputed directly from the TSV, not adjusted by hand from the old figures.
 
 **This file is the drift-detection artifact.** Regenerating it after a LibLCM package bump must produce
@@ -192,7 +192,7 @@ no diff; any diff is a model change requiring review and (re)classification.
 Classification has shipped (commit `66fe792`). Every in-scope row carries all ten classification
 columns — **zero in-scope rows are unclassified** — turning `liblcm-inventory.tsv` from a raw
 inventory into the type system the (not-yet-written) kind generator is meant to read: per
-[ADR 0009](../docs/adr/0009-layered-api-primitives-and-composers.md) and
+[ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md) and
 [API surface layer 1](../docs/api-surface-layer1.md), each field's `Construct`, `Classification`,
 `ComparisonClass`, `Verbs`, `HcReachable` (does `HCLoader` read it — see
 [the HC grammar map](../docs/hc-grammar-map.md)) and `EnumValues` (for the 28
@@ -202,9 +202,9 @@ each one means and the value set it takes.
 [`classify.ps1`](classify.ps1) is the mechanized, checked-in, re-runnable producer of these columns.
 **But it has fallen behind the file, and rerunning it now loses work:** as of 2026-08-06 it rewrites 26
 rows — the `CmAgent`/`TextTag`/`Wfi*` families — reverting the `Group`/`HcReachable`/`Rationale` values
-that [ADR 0025](../docs/adr/0025-parser-first-build-order.md)'s analysis-approval scoping set by hand,
+that [ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md)'s analysis-approval scoping set by hand,
 because the script does not know about that ADR. Treat it as a **first-pass tool**, and diff its output
-against the committed file before accepting it. See [issue D7](../docs/issues.md).
+against the committed file before accepting it.
 
 ### What genuinely still remains
 
@@ -214,14 +214,13 @@ against the committed file before accepting it. See [issue D7](../docs/issues.md
 - **`manifest/generate-inventory.ps1` does not exist.** The raw first-nine-column inventory was
   produced by ad-hoc commands rather than a committed script, so the drift gate this file's opening
   section promises ("regenerating it after a LibLCM package bump must produce no diff") cannot
-  actually be re-run yet. Tracked as [issue D6](../docs/issues.md).
+  actually be re-run yet.
 - **Confidence caveats.** `HcReachable` is `unconfirmed` for 7 in-scope rows pending an HCLoader-read
-  citation ([issue B17](../docs/issues.md) calls out `MoMorphSynAnalysis.Components`/`GlossBundle`
-  specifically). Most rows carry no citation — **but this stopped being a risk on 2026-08-05.** The
+  citation, including `MoMorphSynAnalysis.Components` and `GlossBundle`. Most rows carry no citation — **but this stopped being a risk on 2026-08-05.** The
   generator no longer trusts these columns: `Verbs` and `ComparisonClass` are **derived** from LibLCM's own
   structural declarations with five cited exceptions, and the build fails on any unexplained departure
-  ([ADR 0022](../docs/adr/0022-structure-is-derived-policy-is-five-rows.md)); the operation name is derived
-  from the declaring class ([ADR 0023](../docs/adr/0023-derived-kind-names-required-descriptions.md)). A
+  ([ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md)); the operation name is derived
+  from the declaring class ([ADR 0013](../docs/adr/0013-the-operation-catalog-is-generated-from-the-liblcm-model.md)). A
   missing citation on a computed value is not a defect. What still rests on human judgement, and where a
   citation therefore earns its place: `Scope`, `Construct` (what ships together), `Group` (who reviews), and
   the five order-carries-meaning rows.

@@ -1,345 +1,132 @@
-# Architecture and decided design
+# Current architecture
 
-> **Historical architecture proposal.** This document preserves an earlier product design and does not describe the current implementation. Use the [current architecture overview](current-architecture.md) for present project references, process boundaries and ownership.
+Motif provides a command-line tool and a desktop application for working with FieldWorks language projects. Both front ends call the same typed command handlers, while the loaded LibLCM cache remains owned by the caller that opened the project.
 
-## Purpose
+## Front ends and shared commands
 
-**Primary purpose — the grammar-experimentation loop.** A person or an AI working on a language asks
-*"what if we change this — does the text parse better?"* Motif makes that loop safe, repeatable, and
-comparable: author intent → assess the exact state delta → project the would-be grammar to HermitCrab
-XML → PanGloss parses a text and returns a report → compare with earlier runs → apply or discard.
-**Everything HermitCrab supports must be authorable through this API, in a friendly way**; HC construct
-coverage — not merely LibLCM model coverage — is what defines grammar completeness. Iteration speed,
-comparability, and reversibility are therefore product requirements, not optimizations. See
-[ADR 0010](adr/0010-hermitcrab-experimentation-is-the-primary-purpose.md).
+`SIL.Motif.Cli` maps command-line arguments to typed requests. `SIL.Motif.App` calls those same commands in-process; it does not launch the CLI or parse its JSON output. The command catalog is the shared handler inventory, and the CLI catalog maps that inventory to command names and usage.
 
-Underneath that: LibLCM is a mature object model with factories, repositories, ownership rules,
-references, persistence, and battle-tested undo/redo. It does not provide a portable, reviewable
-language for describing a coherent model change. Existing tools can manipulate LibLCM, but their APIs,
-transaction guarantees, and merge semantics differ.
+## Desktop window
 
-This repository supplies one canonical semantic change language and one C# implementation that
-all other tools call.
+The window registers Progress, Texts, Words, Grammar Guide, Proposals, optional Diagnostics and Settings. The shell owns the rail, header, health strip and assistant slot; pages supply their own optional panes. Diagnostics defaults off, and disabling it cancels its reads and removes its page from the visual tree. The health strip reads stored overview facts and offers the shared Diagnostics setting; it does not start a parser. Its median is shown in the focusable details flyout only when recorded.
 
-## Placement
+Texts and Words share the current Selection reader and word rows. Grammar Guide uses typed GDR list and show queries. Proposal standings and discussions use the existing Proposal commands; Apply and word-trace behavior are project-scoped components for the Proposal and word surfaces. Project changes cancel and join their work before state is replaced. Missing or stale measurements remain absent.
 
-The runner starts in an independent C# repository and is published as versioned NuGet packages.
-It may eventually move into the LibLCM repository as a separate package, but its namespaces,
-contract, fixtures, and consumers must not depend on that future move.
+## Project references
 
-It does not initially live in:
+The command line and desktop app use the same code to handle Motif work. A separate Worker program runs long jobs, so the front end can return while queued work continues.
 
-- `SIL.LCModel.dll`, because the contract is still being validated and has an independent release
-  and compatibility surface;
-- FieldWorks, because headless and non-FieldWorks clients must not depend on a desktop application;
-- Flexicon, GramTrans, or FlexToolsMCP, because Python/tool-specific behavior must not become the
-  normative executor.
-
-Those projects are not competitors but the motivating clients, adapters, and sources of use cases.
-This runner exists to give them one mechanical, repeatable, reviewable, sequenceable, and rebasable
-way to update the LibLCM model for dictionaries and grammars, replacing the raw property mutation each
-hand-rolls today:
-
-- Linguistic Assistant — an AI QA/documentation assistant that emits canonical Change Sets (lexical,
-  morphophonology, and bilingual tiers) and targets this runner as its conforming applier;
-- PanGloss — a Rust HermitCrab/FST parser whose grammar-fix handoffs are realized as Change Sets
-  against the LibLCM grammar model;
-- Flexicon ([github.com/MattGyverLee/flexicon](https://github.com/MattGyverLee/flexicon)) — a Python
-  (`pyflexicon`) LibLCM wrapper for FLEx projects;
-- FlexToolsMCP ([github.com/MattGyverLee/FlexToolsMCP](https://github.com/MattGyverLee/FlexToolsMCP))
-  — an MCP server over FLEx lexicon data;
-- GramTrans ([github.com/MattGyverLee/GramTrans](https://github.com/MattGyverLee/GramTrans)) —
-  grammar-component transfer between FLEx projects.
-
-They are expected to be refactored to call this compiled runner rather than each reimplementing apply,
-ordering, delete-closure, and conflict semantics. FieldWorks should present previews, collect
-approval, coordinate its shell undo behavior, call this runner, and show receipts. No client
-reinterprets the JSON independently.
-
-## Package shape
-
-The initial solution should separate:
-
-1. `SIL.Motif.Contract`
-   - immutable contract DTOs;
-   - closed JSON serialization;
-   - schema/version validation;
-   - RFC 8785 canonical JSON;
-   - intent digest;
-   - canonical 128-bit ID utilities;
-   - no LibLCM dependency.
-2. `SIL.Motif.Model`
-   - canonical semantic snapshot;
-   - model-surface coverage manifest;
-   - LibLCM normalization adapters;
-   - semantic and artifact digests.
-3. `SIL.Motif.Runner`
-   - identity resolution;
-   - assessment and expected effects;
-   - semantic lowering into an output-only mutation plan;
-   - preconditions and conflict diagnostics;
-   - atomic apply, read-back, invariant validation, and receipt.
-4. `SIL.Motif.Diff`
-   - two-way mechanical diff;
-   - common-ancestor three-way comparison;
-   - deterministic ordered-sequence edit synthesis.
-5. `SIL.Motif.Cli`
-   - optional process/JSON adapter for Python and isolated evaluation;
-   - owns project lifecycle only as a host, never as core semantics.
-6. `SIL.Motif.HermitCrab`
-   - the HermitCrab authoring-surface projection (`Expand`/reverse-HCLoader), a versioned projection
-     rather than canonical intent, owned alongside the runner as its own package and CLI verbs per
-     [ADR 0001](adr/0001-hermitcrab-projection-not-canonical.md).
-7. Test and conformance projects
-   - contract unit tests;
-   - LibLCM integration tests;
-   - normative JSON fixtures;
-   - supported LibLCM/FieldWorks compatibility tests.
-
-Exact assembly count may be reduced if dependency boundaries remain enforceable. In particular,
-the contract package must remain LibLCM-free and the runner must remain UI-free.
-
-## Three artifacts, not one mutable document
-
-### Canonical Change Set
-
-Portable ordered semantic intent. It is not intrinsically tied to one baseline and contains no
-runner-filled mutable fields.
-
-### Change Set Assessment
-
-Read-only evaluation of one intent digest against one semantic baseline. It records applicability,
-resolved identities, before-state evidence, mutation plan, expected effects, warnings, conflicts,
-impact, and runtime/model versions. This summary is not exhaustive; the
-[contract](change-set-contract.md#assessment) lists the normative fields, including ingestibility and
-effect drift.
-
-### Application Receipt
-
-The realized atomic transition:
+These arrows show direct `<ProjectReference>` edges in the current project files; they do not show package dependencies or runtime process launches.
 
 ```text
-baselineSemanticDigest --intentDigest--> resultSemanticDigest
+SIL.Motif.App -> SIL.Motif.Commands, SIL.Motif.Contract, SIL.Motif.Help
+SIL.Motif.Cli -> SIL.Motif.Commands, SIL.Motif.Host, SIL.Motif.Runner, SIL.Motif.Worker.Runtime,
+                 SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Projection, SIL.Motif.Help,
+                 SIL.Motif.Mcp
+SIL.Motif.Commands -> SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.Model,
+                      SIL.Motif.Projection, SIL.Motif.Runner, SIL.Motif.LiveHost,
+                      SIL.Motif.Help, SIL.Motif.Worker.Runtime
+SIL.Motif.Host -> SIL.Motif.Help, SIL.Motif.Projection, SIL.Motif.Runner
+SIL.Motif.LiveHost -> SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Projection, SIL.Motif.Runner
+SIL.Motif.Mcp -> SIL.Motif.Commands, SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.Help,
+                 SIL.Motif.Runner, SIL.Motif.Worker.Runtime
+SIL.Motif.Model -> SIL.Motif.Contract
+SIL.Motif.Projection -> SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Runner
+SIL.Motif.Runner -> SIL.Motif.Contract, SIL.Motif.Model
+SIL.Motif.Worker -> SIL.Motif.Worker.Runtime
+SIL.Motif.Worker.Runtime -> SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.LiveHost
+SIL.Motif.Contract -> (no Motif project references)
+SIL.Motif.Generator -> (no Motif project references)
+SIL.Motif.Help -> (no Motif project references)
 ```
 
-It includes per-operation outcomes, accepted warnings, mappings such as canonical entity ID to
-storage GUID, and runner/LibLCM versions.
+`SIL.Motif.Contract` contains request and response shapes and has no LibLCM reference. `SIL.Motif.Projection` contains projections that need LibLCM types. All Motif projects target `net10.0`; integrations outside .NET use the CLI's JSON shapes rather than loading a Motif assembly in a `net48` process.
 
-Keeping these separate prevents previewing a Change Set from changing its identity. A convenience
-API may return them together, but their hashes and schemas remain independent.
+Reusable job, store, and project-runtime code lives in `SIL.Motif.Worker.Runtime`. `SIL.Motif.Commands` and the product CLI reference that library. `SIL.Motif.Worker` remains a separate executable that starts the runtime; it is discovered beside the running front end.
 
-A later host save may produce a separate `ArtifactAttestation` linking a Receipt to an exact
-`.fwdata` byte digest. It cannot be part of the core Receipt because core application deliberately
-does not save the project.
+Only the CLI test project adds a build-only project reference to `SIL.Motif.Worker`, with
+`ReferenceOutputAssembly="false"` and `Private="false"`. This makes the apphost available to
+sibling-process tests without adding the executable to the product CLI's references.
 
-## Public semantic layer and private lowering layer
+## AI assistants
 
-The public operation vocabulary expresses meaningful actions such as create an entry, add a sense,
-set an alternative, attach a reference, clear a field, delete an entity, or move an ordered item.
+`motif mcp` serves Motif to an AI assistant over standard input and output. The server lives in `SIL.Motif.Mcp`, which the CLI references; it is a server rather than a catalogued command, so it has no JSON result of its own. It builds its tools from the shared command catalog: a command becomes a tool when its surface is Released or Advanced AI and its agent class is not HumanOnly, so Apply and other human-only commands are never tools. A launch `--profile` selects which tools are shown, and every diagnostic goes to standard error. Every project-reading tool takes a `project` argument naming a Known project; the server holds no current project. Commands on the `AdvancedAi` surface are catalogued, shown and dispatched only while Advanced AI mode is on, which `motif settings advanced-ai on|off` or the window's setting changes; the server reads that preference at launch and, while the mode is off, starts with no tools. [ADR 0009](adr/0009-assistants-reach-motif-through-one-agent-api.md) defines the edit loop an assistant follows: it can Dry Run and Trial a Draft before finalizing it, and every result names the content and Baseline it ran against.
 
-The runner lowers these into a `LibLCM Mutation Plan` containing exact factories, owners, fields,
-references, sequence positions, and cleanup effects. The plan is deterministic output and may be
-shown to reviewers. It is never executable input supplied by callers.
+## Reading stored evidence
 
-There is no operation for:
+Stored results keep the project state and measurement time that supplied them, even after FieldWorks saves again. Parsing chosen words again changes their main answers only when the caller explicitly requests replacement; an exploratory measurement remains separate.
 
-- arbitrary property assignment;
-- invoking a method by name;
-- embedding C#, Python, or expressions;
-- reflection-based access;
-- raw `.fwdata` XML patches.
+`CurrentEvidenceQuery` selects the exact Baseline and Default Selection before creating one `AssessmentEvidenceSet`. Uses, Warnings, Overview, default Timing and reopened Assess responses consume its effective words and object times. `ReplaceAssessmentId` records the complete ParseTime run being updated; replacements must share its Baseline and stay within its word set. Each word carries a `WordMeasurementOrigin` naming its producing Assessment, invocation and measurement time. Explicit historical Timing reads retain the named run's original rows unless the caller supplies overrides, which use the same overlay policy.
 
-If a legitimate model feature is missing, add and version a semantic operation.
+Stored analyses, individual opinions, expected readings and Word Analyses links come from the captured Baseline for every resolved word, including added words outside chosen Texts. Parser morphology identities are resolved there too. Readers open private disposable file-backed copies, so concurrent pages and CLI processes never compete for ownership of the published Baseline. All populated writing-system forms preserve their wordform and analysis identities; an ambiguous form has known membership and no invented navigation target. The private cache and files are disposed before plain records leave the read. The Released `word-context` CLI verb and the window trace session call `WordContextQuery` for the same word context independently of Selection membership or an Assessment, with the exact Baseline token and its source-save and publication times; an expected-token mismatch or missing Baseline file is refused.
 
-## Cache and transaction ownership
+Timing describes the selected measurement's Baseline relationship separately from the current project's freshness. A historical run keeps its own captured save when retained invocation evidence supplies it; it never borrows another Baseline's save time. Warning word joins likewise require the token of the Baseline whose grammar was checked and available captured analysis context. Unavailable context leaves affected words unknown. Numeric Timing does not open a LibLCM cache; Overview requests context for stored findings or when at least two completed words with Approved analyses have no parse, so it can show their shared lost morphemes. It hydrates the already-selected snapshot through `ReadWordContext`, without reselecting run pointers; unavailable context retains numeric evidence and marks associations unavailable. The window adopts changed replacement components even when the root Assessment is unchanged, refreshing the reader, Progress and stored Diagnostics projections without running PanGloss.
 
-Core APIs accept an already-loaded `LcmCache`. They do not:
+`open` and manual `analyses` inspect disposable copies of the saved project, preserving the original owner's lock. Assessment `analyses` reads the exact Baseline named by that measurement: the retained invocation's copy, or the current copy only when its token matches. Missing captured context is refused instead of substituting live facts. Its response records `projectContext` separately from caller-supplied current digests, so a later save never changes historical manual evidence. `log` and the semantic composers read disposable copies of the current saved project; the log includes Apply receipts saved after an older Baseline. Read-only `preflight` and pending-change fit checks use independent readers of the Baseline when its source save matches, otherwise a validated copy of the saved live file. They preserve later-edit detection while FieldWorks holds its own project. Apply checks original-project ownership separately before finalizing pending changes or queuing its Dry Run. Warning rollups likewise retain attribution completeness and limitations: exact known matches remain counted, candidates stay separate, and unfollowed routes qualify both aggregate and per-kind totals.
 
-- open a project;
-- choose a project path;
-- save or close it;
-- dispose the cache;
-- manage external file backups or locks.
+A failed parser invocation remains visible after reopening the project, with a plain grammar summary,
+fatal issues and repair advice before the folded raw output. `ParserRefusals` keeps the latest refusal
+against its exact Baseline token; a successful parse clears that token's refusal, and a replacement
+Baseline selects no refusal from an earlier capture. Command refusals and CLI failure envelopes retain
+`parserDiagnostic` alongside the original parser message, exit status and streams in their facts.
+The diagnostic reader prefers PanGloss's `compile_error` JSON and also reads the PanGloss 0.6 Debug
+conversion format defensively, grouping duplicate fatal issues by authored identity.
 
-Preview and assessment are non-mutating.
+## Report inputs and grammar evidence
 
-Apply uses one outer LibLCM `UndoableUnitOfWorkHelper` for the entire Change Set's data operations.
-Rollback remains enabled until all operations execute, the model is read back, and postconditions and
-invariants pass. Only then is the unit committed. Custom-field (metadata) operations are the
-exception: they run first in a separate non-undoable unit of work and are one-way; see
-[ADR 0005](adr/0005-schema-operations-non-undoable-uow.md).
+A Report keeps an explanation beside the frozen measurements and project facts that support it. Some grammar advice can be read before any words have been parsed.
 
-There is no partial-apply mode. Individual operation services construct or execute inside the
-provided application scope; they never own a nested transaction.
+`IReportProducer` accepts a closed `ReportInput`: a stored Assessment, or a validated frozen Parsimony bundle with zero or more explicitly named Assessment references. Existing coverage, correctness, and difference producers still require their existing Assessment material and name the missing capability on refusal. `ReportResponse.AssessmentId` is nullable for Report kinds that have no Assessment link.
 
-**Schema operations are a separate non-undoable phase.** Custom-field definition is a metadata
-change, not a data change: `AddCustomField` is untracked and cannot be rolled back, and saving while
-a data task is open corrupts the project (Flexicon's 1,392-sense loss). Mirroring FieldWorks'
-own "Add Custom Field" path, Motif runs the custom-field family first in its own non-undoable unit
-of work, never saves while a task is open, and treats those schema changes as one-way — a data-phase
-rollback leaves a benign defined-but-empty field, not orphaned data. See
-[ADR 0005](adr/0005-schema-operations-non-undoable-uow.md) and [Flexicon harvest](flexicon-harvest.md).
+Parsimony input bindings identify the Baseline token, source kind, candidate when present, grammar model, derived-file schema and byte digests, optional Selection and expectation revision, and referenced Assessments. `grammar-facts.sqlite` and `evidence.sqlite` are disposable files; Report renderings and their bindings stay in the Motif store. Reviewed negatives and Parsimony dispositions belong to the FieldWorks project as one Data Notebook `RnGenericRec` per judgment revision. The record keeps a readable sentence and optional plain-text reason in its Description, a visible ID in the reserved `MotifJudgmentId` String, and hash-sealed JSON in the reserved `MotifJudgmentData` String. [ADR 0003](adr/0003-motif-writes-only-what-fieldworks-can-create.md) and the [Human judgment contract](human-judgment-contract.md) define that boundary.
 
-LibLCM undo/redo is the v1 rollback mechanism. Do not build a shadow project, handwritten inverse
-log, or filesystem transaction. The apply API returns either an Application Receipt or a typed
-Application Failure; it never returns both. If rollback itself fails, throw a dedicated critical
-exception after collecting all safely available diagnostics. The runner cannot mark LibLCM's cache
-object as poisoned, so the exception contract requires the host to discard that cache instance.
+Project initialization is a separate confirmed, HumanOnly command, `project initialize`, in the shared catalog, with the same original-project ownership requirement as Apply. It creates the definition only; it is never implicit in opening, authoring or Apply. Its pinned XML-backend recovery proof is a prerequisite for judgment reads/writes. Ordinary judgment Intents stage Draft changes and use existing Dry Run, Preflight and Apply. The Runner receives the loaded cache; LiveHost owns lock, save and recovery. Derived projections bind native Opinions and Notebook revisions to the exact Baseline or candidate scratch. A meaningful judgment edit changes the human-input digest independently of parser grammar fingerprints. A Suppressed set is derived from those captured revisions and exact finding evidence, not a canonical SQLite table. Pending choices and invalid/conflicting heads cannot suppress current findings.
 
-Apply requires exclusive write access for its duration. LibLCM does not enforce single-writer — a
-colliding `Save` or `BeginUndoTask` (a host autosave, or a shutdown save on a background thread) calls
-`Rollback(0)` and destroys the open change set — so the host must guarantee no other writer runs during
-apply, and the runner treats an unexpected transaction state at task end as an external-collision
-diagnostic rather than its own rollback. A rolled-back apply must also invalidate the derived caches
-LibLCM's rollback leaves stale (headword, homograph, monomorphemic-morph) or discard the cache, and
-lowering must never open a nested unit of work. See
-[ADR 0006](adr/0006-engine-reality-apply-readback-preflight.md).
+The `ReportCommands` catalog registers each producer once. The generic `report` command still accepts an Assessment ID; Parsimony Reports are built by the Advanced AI `parsimony` commands, which run as Worker jobs, capture the grammar facts and evidence files, and record dispositions with `parsimony dispose`, `parsimony revise` and `parsimony retract`. `parsimony --group grammar|text|all` (CLI and MCP `group`) runs one group from a single definition in `MeasureCatalog`: the Grammar group needs no Texts and captures a Baseline when none is current; the Text group reads the saved Parsimony Selection, a pointer kept beside the Default Selection that `selection set-parsimony` writes. A Parsimony Report is always advisory and does not affect Readiness or Apply. Other Report kinds retain their configured regression behavior.
 
-FieldWorks integration may require an application-provided transaction/undo coordinator so the
-runner participates correctly in the shell's undo stack. This changes host coordination, not the
-one-change-set atomicity rule.
+## Live FieldWorks navigation
 
-## Model coverage
+Captured facts stay readable when FieldWorks has changed, but links open only destinations the saved project still holds. Replacing a project at the same filename never authorizes links into the replacement.
 
-Version 1.0 must classify 100% of the supported LibLCM model surface, even though it need not make
-every member mutable.
+`SavedProjectNavigation` reads the saved `.fwdata` without opening a live LibLCM cache. It compares the LangProject GUID to the selected Baseline and checks each destination GUID and class for its FieldWorks tool. An unreadable or malformed identity, a missing target, or a target of another class leaves the link unavailable. Uses, stored word and morphology rows, Texts, warning links, pending-change display readings and trace capture share this policy. Cached links are checked again when projected; captured labels and producer advice remain readable. The check describes the saved file at query time, independently of Baseline integrity, measurement freshness, or changes still unsaved in FieldWorks.
 
-Generate a raw inventory from LibLCM metadata and check in a reviewed classification manifest.
-Every class and field is classified as one of:
+Morpheme inspection requires recorded authored identity before reading FieldWorks facts or exact uses. Opaque GUID-looking keys, missing quality and scoped local keys retain their captured trace details without becoming authored objects. Natural-class notation in an environment supplies no resolved object GUID: its reach stays unavailable with an explicit attribution limit, while direct natural-class context references still establish exact rule or allomorph reach.
 
-- `semantic-operation`;
-- `supporting-detail`;
-- `custom-field`;
-- `derived-read-only`;
-- `internal`;
-- `runner-bookkeeping`;
-- `unsupported`;
-- `observable-not-authorable` — engine-maintained reverse indices (`LexDb.AllomorphIndex`,
-  `.LexicalFormIndex`): read for lookup, never directly added to or removed from by an author.
+## Process coordination and project ownership
 
-`custom-field` has no manifest row today — custom fields are not LibLCM inventory members at all
-([issue B12](issues.md)) — but the value is reserved for when they gain one.
+Motif uses SQLite for process-shared workflow state and coordination. A machine store tracks known projects and usage; each project's Motif database holds its workflow, jobs and retained evidence. The CLI and Worker coordinate through those stores. They do not make Motif's database a second authority for FieldWorks language data.
 
-`runner-bookkeeping` marks model surface this runner writes but deliberately omits from the semantic
-projection and from expected effects — currently only the
-[applied-change log](applied-log.md). It is distinct from `unsupported`: the runner does write here,
-and the exclusion is what keeps timestamps and identities out of every digest.
+The caller supplies an already-loaded `LcmCache` and owns its project lifetime and persistence. LibLCM operations use that cache; the caller decides when the live project is saved. A scratch cache is used when a caller needs evaluation without changing the live project. See the [Proposal contract](proposal-contract.md), the [Proposal lifecycle](proposal-lifecycle.md) and [ADR 0020](adr/0020-a-job-produces-assessments-and-scope-decides-comparability.md) for their normative rules.
 
-Semantic properties additionally carry a **comparison class** — unordered, positionally ordered, or
-semantically ordered (feeding) — declaring how far drift comparison reaches into neighbors. See
-[comparison footprint](change-set-contract.md#comparison-footprint). It is reviewed and
-reclassifiable like any other manifest attribute.
+Connections to a project's sibling `<project>.motif.db` remain pooled while its `MotifDatabase` owner is
+open; disposing the last owner clears the process pool before releasing the database use lease. File-backed
+scratch copies omit the paired Motif database, its SQLite sidecars and `.fwdata.lock`. Access to the shared
+writing-system repository is serialized across processes by a lock keyed to its resolved path.
 
-Members on the HermitCrab-projected `Ph*`/`Mo*`/`Fs*` surface additionally carry a **frame/fill tag**
-(structure-establishing versus structure-filling) — the single classification that drives both
-fail-closed expansion and coverage; see
-[HermitCrab projection](hermitcrab-projection.md#coverage-manifest-unification).
+Motif invokes PanGloss through a child process. The Host contains the process adapter and translates the supported request and result into typed Motif data. The CLI and desktop application both reach that adapter through shared commands; neither front end defines a separate parser protocol.
 
-CI fails when an upgraded LibLCM package introduces or changes an unclassified member, when a
-classification has no rationale, or when an operation family does not cover its declared model
-surface. Humans approve classifications.
+## Word display in the window
 
-This is the guard against a supposedly complete diff silently ignoring data.
+A word looks and behaves the same wherever the window shows it, because every list, the Texts reader strip and the word card are drawn by one module. Changing what FieldWorks holds for a word goes through the same two buttons in every place.
 
-## Versioning
+`Controls/WordPresentation` holds the module ([ADR 0028](adr/0028-the-window-is-one-workspace-of-pages-on-a-fixed-grid.md)): `WordRow` for list rows, `WordStripToken` for the Texts reader strip, `WordCard` for the opened card and `MorphemePanel` for interlinear morphology. A list hosts its rows in a `WordListSlot`, whose `WordListPolicy` resolves one set of column widths for the heading and every row from token-defined bounds. A recycled row builds its cells once per word revision, not again for layout-only changes; a morpheme panel builds its parts once per measure.
 
-Compatibility is **detected, not declared**. A version number is a human claim about behavior, and
-the failure most worth catching is a change wrongly believed compatible — exactly what a claim cannot
-catch. This design already observes behavior directly, so observation governs and version numbers
-serve a much smaller role. See
-[ADR 0002](adr/0002-effect-comparison-over-declared-compatibility.md).
+`Views/WordDispositionButtons` puts two buttons on the strip and the card. The opinion mark opens tiles for each stored analysis, and the add count lists PanGloss analyses FieldWorks does not hold. `ViewModels/WordDisposition` derives both from the word's `AnalysisMarkingState`. A tile stages its choice through the word's `StageMarkingChoiceForTokenCommand`, so staging and undo use the same change owner.
 
-Three mechanisms, each with one job:
+## Help ownership today
 
-1. **Strict closed parsing** decides whether a Change Set can be ingested at all. It is the only
-   mechanism that can, because an operation the runner does not understand cannot be lowered, so no
-   behavior exists to observe.
-2. **Declared group versions** make that refusal actionable — naming what to upgrade to or rewrite.
-   They are not inputs to a compatibility computation.
-3. **Effect comparison** decides whether an ingestible Change Set still means what it meant, by
-   re-assessing and diffing `expectedEffects` against the recorded Assessment.
+The `SIL.Motif.Help` project supplies shared Help data to the CLI, App and site. Its authored files live under `src/SIL.Motif.Help/Content/` and are embedded with logical resource names beginning `help/`, so runtime readers continue to load `help/<locale>/...`.
 
-The governing cut for digests is **interface versions may enter them; implementation versions never
-do**:
+## Normative references
 
-| Axis | Kind | Where it appears |
-| --- | --- | --- |
-| Contract group versions | interface | intent digest |
-| `projectionVersion` | interface | semantic digest preimage |
-| Runner version | implementation | Assessment/Receipt provenance |
-| LibLCM assembly/model version | implementation | Assessment/Receipt provenance |
-| Coverage-manifest version | implementation | Assessment/Receipt provenance |
+- [CLI and command API](cli-api.md) — current entry points and generated command reference.
+- [Semantic change contract](proposal-contract.md) — Proposal and operation shapes.
+- [Proposal lifecycle](proposal-lifecycle.md) — current workflow semantics.
+- [ADR 0020](adr/0020-a-job-produces-assessments-and-scope-decides-comparability.md) — Assessment kinds, Assessors and compatible scopes.
+- [FieldWorks integration contract](../AGENTS.md#compatibility-targets) — the save-boundary command and response fields.
 
-A runner patch release must never change an identity, so implementation versions stay out of every
-preimage while remaining reported provenance.
+### Texts Sources and Passage
 
-### Effect comparison
+The Texts page owns a Sources pane and a Passage reader. `SourcesViewModel` calls typed Source adapters for the applied Baseline's metadata. Folder and Current changes use the local Source commands; adding a Paratext Source or changing its Context stages through `ProposalCommands` and reloads the shared pending Proposal owner. Metadata reads are bound to the listed Baseline and cancelled or ignored after a project, Source or Context reload.
 
-Version drift and baseline drift are the same event: the world moved under a recorded Assessment. They
-are handled by one rule. When a Change Set is re-assessed or applied against a prior Assessment, any
-difference in `expectedEffects` is a typed diagnostic carrying the full delta, resolved by
-application policy and never auto-accepted.
-
-Comparison is over effects, not the Mutation Plan. An improved lowering yields a different plan and
-identical effects; treating plan inequality as drift would warn on every upgrade and train operators
-to click through the warnings that matter. A changed default, by contrast, moves the effects and is
-therefore surfaced — which is the property being protected.
-
-### Contract groups
-
-Contract versions are **per endpoint group**. Operation `kind` is already group-namespaced
-(`lexical/entry/create`); the leading segment is the group, aligned to the coverage manifest's
-coherent domain families. A Change Set declares a `contractVersions` map naming exactly the groups
-its operations use, validated as neither short nor padded, so the hashed map depends only on authored
-content and never on the runner's own version table. There is no independent per-*operation* version.
-
-Released semantics are immutable within a group's major version. A runner that cannot honor a
-declared group version rejects the Change Set and names the group, the version required, and the
-version it carries. This repository does not maintain a compatibility matrix or a governed
-additive/non-additive classification; effect comparison supersedes both.
-
-### Projection stability
-
-The semantic projection is **additive-stable**: members semantically indistinguishable from absent
-are omitted entirely, so classifying a newly shipped LibLCM member is digest-preserving for every
-model that does not populate it. Where LibLCM distinguishes unset from set-to-default, the projection
-must too.
-
-`projectionVersion` bumps only on observable projection change — altered normalization, non-additive
-reclassification, changed rich-text classification. It is folded into the semantic digest preimage,
-so additive upgrades preserve stored digests while non-additive changes cannot produce colliding hex.
-
-A digest mismatch across projection versions is not a broken lineage. It is the trigger to re-assess
-and compare effects. Additive stability exists to keep that re-assessment rare; folding the version
-into the preimage exists so two different projections cannot yield equal hex.
-
-The one genuine coupling between projection and contract is caught by the same oracle: if the
-projection stops distinguishing something an operation can set, that operation has become a semantic
-no-op, and the effect delta makes it visible rather than leaving it to a version bump nobody
-classified correctly.
-
-Unknown operation kinds or semantic properties are rejected. Optional tool data lives only in an
-explicit `extensions` object and is ignored by execution and excluded from semantic-state and
-intent digests unless a later contract explicitly states otherwise.
-
-## Storage boundary
-
-The runner receives Change Sets from “somewhere” and returns Assessments and Receipts. It provides
-content hashes and lineage facts so another system can use Git, a database, an object store, or a
-combination.
-
-This repository does not decide:
-
-- whether Change Sets are Git commits;
-- whether `.fwdata` checkpoints are versioned;
-- how proposals are discussed or approved;
-- how review queues and permissions work;
-- how 1,000 projects are hosted.
-
-An `.fwdata` file may be stored as an opaque checkpoint, but it is never automatically merged.
-
-## Parallel candidate evaluation
-
-Do not assume a live `LcmCache` is thread-safe or cheaply cloneable. Initial parallelism should use
-isolated processes and independently opened temporary project snapshots behind the same runner
-contract. In-memory cloning can be added later only after LibLCM behavior is proven.
+FieldWorks Text choices keep using `SelectionViewModel` and the shared Selection reader. Their GUID occurrence anchors remain separate from external Source/chapter locators. External Passage text and unified FieldWorks/.txt/JSONL Source identities are unavailable through the current Source contract, so choosing external metadata hides the FieldWorks reader instead of presenting unrelated text. No Paratext content is copied into FieldWorks.

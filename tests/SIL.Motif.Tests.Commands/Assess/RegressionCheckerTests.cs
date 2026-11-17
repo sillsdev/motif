@@ -7,7 +7,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Assess;
 
 /// <summary>
-/// Covers what counts as a regression (ADR 0042 decision 5): coverage dropping, and an approved analysis no
+/// Covers what counts as a regression (ADR 0020 decision 5): coverage dropping, and an approved analysis no
 /// longer being produced. Both signals come from a pair of <c>Correctness</c> Assessments, never from a bare
 /// percentage.
 /// </summary>

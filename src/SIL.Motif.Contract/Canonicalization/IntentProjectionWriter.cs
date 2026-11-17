@@ -13,7 +13,7 @@ namespace SIL.Motif.Contract.Canonicalization;
 /// includes in the digest — contract group versions, the declared prerequisite (if any),
 /// operation order, operation IDs, kinds, targets and new entity IDs, desired values, dependencies,
 /// and explicit storage-GUID overrides. Unordered collections are presorted by byte-ordinal
-/// comparison of the UTF-8 encoding of the canonical identity string (ADR 0007 decision 2). The
+/// comparison of the UTF-8 encoding of the canonical identity string (ADR 0012 decision 10). The
 /// output still needs RFC 8785
 /// canonicalization (member-name sort order, ES6 number formatting, escaping) — that is
 /// <see cref="IntentDigest"/>'s job via the JCS reference implementation.

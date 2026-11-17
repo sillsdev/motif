@@ -55,7 +55,7 @@ operation count is review burden, not a pass condition.
 
 If the parser or read-back contradicts the packet, repair the task as a Harness defect before comparison.
 A valid packet exposing an agent’s wrong result is an Agent failure. Cloud failures pause the Agent budget
-and are retried under ADR 0059; neither Cloud failures nor Harness defects become agent failures.
+and are retried under ADR 0010; neither Cloud failures nor Harness defects become agent failures.
 
 A parser cannot decide whether an unattested reading is linguistically acceptable. Remaining linguistic
 disputes go to a qualified person in a grill session: show competing interpretations, the contrast that
@@ -86,4 +86,4 @@ Judge recipe; rerun agents only when task inputs changed. Preserve old records w
 Results say **“agrees with Oracle v1”**, name the exact recipe digest, report Oracle/model overlap, Judge
 models/effort, raw pair disagreement, resolved decisions and all excluded/unscored counts. No claim of
 linguistic correctness follows merely from agreement. The acceptance loop and 21-task comparison budget
-remain those of ADR 0059; this lane does not replace them with large-sample significance gates.
+remain those of ADR 0010; this lane does not replace them with large-sample significance gates.

@@ -7,7 +7,7 @@ public sealed class PanGlossMemoryLimitSettingException(string message) : Except
 
 /// <summary>
 /// The memory ceiling for one parser run: the point at which Motif stops PanGloss so the rest of the machine,
-/// which other programs and agents share, keeps its memory (ADR 0048).
+/// which other programs and agents share, keeps its memory (ADR 0019).
 /// </summary>
 /// <remarks>
 /// The setting is the environment variable named by <see cref="Variable"/>. Unset, the ceiling is

@@ -20,7 +20,7 @@ public sealed record GdrShowRequest(string ProjectPath, string Id, BaselineToken
 public sealed record GdrLinkToPathRequest(string ProjectPath, string Path, BaselineToken? ExpectedBaseline = null);
 
 /// <summary>
-/// Checks that the Grammar Design Records are in sync with the grammar in the current Baseline (ADR 0119): every rule and
+/// Checks that the Grammar Design Records are in sync with the grammar in the current Baseline (ADR 0005): every rule and
 /// affix process has a section, no section cites a deleted object, and every example still parses as its section says
 /// by the latest Trial or Assessment rows already stored.
 /// </summary>

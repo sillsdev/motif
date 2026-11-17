@@ -11,7 +11,7 @@ namespace SIL.Motif.Contract.Retirement;
 
 /// <summary>
 /// Closed, pure authoring codec. Structural validation cannot replace the authoritative LibLCM census,
-/// semantic prohibition check, frozen expectation translation or atomic Apply of ADR 0057.
+/// semantic prohibition check, frozen expectation translation or atomic Apply of ADR 0015.
 /// </summary>
 public static class AllomorphRetirementCodec
 {

@@ -28,9 +28,9 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// The trap ADR 0042's Trial amendment names, driven through the real <c>apply</c> verb on a real project:
+/// The trap ADR 0020's Trial amendment names, driven through the real <c>apply</c> verb on a real project:
 /// applying promotes the Proposal's candidate Assessment to current, and a sweep of the Proposal's own
-/// working Assessments must not take the promoted one with it. Also covers regression gating (ADR 0042
+/// working Assessments must not take the promoted one with it. Also covers regression gating (ADR 0020
 /// decision 5), including the default refusal and an explicit forced Apply.
 /// </summary>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]

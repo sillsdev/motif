@@ -142,7 +142,7 @@ public sealed class RunnerSpineTests : IDisposable
     }
 
     /// <summary>
-    /// ADR 0041 decision 7's "must not simply fail" for a Dry Run job against a project with no
+    /// ADR 0018 decision 6's "must not simply fail" for a Dry Run job against a project with no
     /// published Baseline, driven by the real runner rather than a direct handler call — and Task 8's
     /// two inherited findings closed together: parking asks for the Baseline it needs (a
     /// <c>baseline-refresh</c> the sweep enqueues on its own), and once that publishes, the parked row

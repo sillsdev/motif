@@ -2,7 +2,7 @@
 
 The bounded context for the skills Motif publishes with its agent server. Proposal, Assessment and the rest of
 Motif's change vocabulary live in the root [CONTEXT.md](../CONTEXT.md) and are not repeated here.
-Decisions and their reasoning: [docs/research/2026-09-09-fieldworks-skills-research.md](../docs/research/2026-09-09-fieldworks-skills-research.md).
+Decisions and their reasoning: [agent and skill findings](../docs/references/agents-and-skills.md).
 
 ## The package
 

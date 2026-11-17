@@ -1,6 +1,6 @@
 # CLI and command API
 
-This page is a current orientation to Motif's command surface, not a second command specification. Older CLI-only, `net48`/`netstandard2.0`, and `--store` descriptions are superseded; the [current architecture overview](current-architecture.md) describes today's front ends, process coordination and targets.
+This page is a current orientation to Motif's command surface, not a second command specification. Older CLI-only, `net48`/`netstandard2.0`, and `--store` descriptions are superseded; the [current architecture overview](architecture.md) describes today's front ends, process coordination and targets.
 
 ## Shared command source
 
@@ -48,7 +48,7 @@ FieldWorks integration follows the save-boundary contract: release the project, 
 
 ## Normative references
 
-- [Current architecture](current-architecture.md) — actual project-reference graph and ownership boundaries.
-- [Semantic change contract](change-set-contract.md) — portable Proposal input and semantic rules.
+- [Current architecture](architecture.md) — actual project-reference graph and ownership boundaries.
+- [Semantic change contract](proposal-contract.md) — portable Proposal input and semantic rules.
 - [Proposal lifecycle](proposal-lifecycle.md) — workflow and state transitions.
 - [Shared Help and agent Guides](../src/SIL.Motif.Help/Content/en/guide/) — product explanations for CLI and desktop readers.

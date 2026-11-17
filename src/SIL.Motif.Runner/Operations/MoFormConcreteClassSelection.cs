@@ -7,7 +7,7 @@ namespace SIL.Motif.Runner.Operations;
 /// <summary>
 /// The hand-written validity logic <c>LexEntry.LexemeForm</c>'s <c>create</c> kind needs because
 /// <c>MoForm</c> is <c>abstract="true"</c> — no such object can exist, so a <c>create</c> must name a
-/// concrete subclass instead (ADR 0023 decision 2). The manifest cannot derive this mapping from
+/// concrete subclass instead (ADR 0013 decision 5). The manifest cannot derive this mapping from
 /// <c>MasterLCModel.xml</c> alone, since the standard morph types are seeded data, not a model
 /// declaration it names. Which concrete class a lexeme form should be is exactly this kind of fact: the
 /// nineteen standard FieldWorks morph types (root, stem, prefix, suffix, ...) are seeded data with

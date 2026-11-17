@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.Generator;
 
 /// <summary>
 /// <c>card == seq</c> -> <c>positional</c>, everything else -> <c>unordered</c>, with cited
-/// exceptions (ADR 0022 decision 2). ADR 0022's prose cites exactly five; checking the derivation
+/// exceptions (ADR 0013 decision 4). ADR 0013's prose cites exactly five; checking the derivation
 /// against the real, current manifest (<see cref="ManifestConsistencyCheckerTests"/>) surfaced two
 /// more — <c>PhPhonData.Contexts</c> and <c>.FeatConstraints</c> — that are just as cited (the
 /// manifest's own <c>Rationale</c> column explains both), just not in the ADR's enumeration. See the
@@ -31,7 +31,7 @@ public class ComparisonClassDerivationTests
     [Fact]
     public void Exceptions_HasExactlySevenEntries()
     {
-        // 5 from ADR 0022's own prose + 2 pooled-storage corrections found against the real manifest.
+        // 5 from ADR 0013's own prose + 2 pooled-storage corrections found against the real manifest.
         Assert.Equal(7, ComparisonClassDerivation.Exceptions.Count);
     }
 

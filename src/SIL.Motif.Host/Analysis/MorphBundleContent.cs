@@ -11,7 +11,7 @@ namespace SIL.Motif.Host.Analysis;
 /// <remarks>
 /// <para>
 /// <b>Deliberately not the bundle's own GUID, and not <c>SenseRA</c> or word-level <c>CategoryRA</c>
-/// either.</b> ADR 0027 establishes —
+/// either.</b> ADR 0020 establishes —
 /// against FieldWorks source, not by inference — that the parser never sets Sense or Category
 /// (<c>ParseFiler.ProcessAnalysis</c> has no assignment to either), so gating agreement on them would
 /// fail every analysis a human enriched with a sense choice, for a reason that has nothing to do with
@@ -26,7 +26,7 @@ namespace SIL.Motif.Host.Analysis;
 /// </para>
 /// <para>
 /// <b>The guessed-string leg of <c>MatchesIWfiAnalysis</c> is deliberately absent, and that is not an
-/// omission to be tidied up later.</b> ADR 0027 describes the gate as the three references "with the
+/// omission to be tidied up later.</b> ADR 0020 describes the gate as the three references "with the
 /// guessed-string handling", so the difference is worth being precise about. FieldWorks' fourth condition is
 /// <c>current.GuessedString == null || EquivalentFormString(mb.Form, current.GuessedString)</c>, where
 /// <c>current</c> is a <i>parser</i> morph — it exists to compare a fresh parse result against a stored
@@ -48,7 +48,7 @@ public sealed record MorphBundleContent(string? MorphGuid, string? MsaGuid, stri
 /// <summary>
 /// Computes a content digest for an ordered list of <see cref="MorphBundleContent"/> — Motif's mirror of
 /// <c>ParseAnalysis.MatchesIWfiAnalysis</c>'s shape, used as the identity for a <c>WfiAnalysis</c> in
-/// place of its GUID (ADR 0038 decision 3).
+/// place of its GUID (ADR 0020 decision 10).
 /// </summary>
 /// <remarks>
 /// <para>

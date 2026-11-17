@@ -18,7 +18,7 @@ public sealed record GdrParagraphChange(int Index, string? Key, Paragraph Conten
 }
 
 /// <summary>
-/// A person's pending edit of one Discussion, measured against the text it began from (ADR 0083 §4), so a later reader can
+/// A person's pending edit of one Discussion, measured against the text it began from (ADR 0005 §5), so a later reader can
 /// tell whether the project changed since. Later sessions on the same record replace it rather than adding another.
 /// </summary>
 /// <param name="RecordId">The record's canonical id.</param>

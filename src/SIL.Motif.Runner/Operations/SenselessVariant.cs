@@ -7,7 +7,7 @@ namespace SIL.Motif.Runner.Operations;
 
 /// <summary>
 /// Decides when an entry may be left with no sense. LibLCM's CreateVariantEntryAndBackRef makes a variant entry with a
-/// lexeme form and a variant reference and no sense, so that shape is one FieldWorks produces (ADR 0112). The parser
+/// lexeme form and a variant reference and no sense, so that shape is one FieldWorks produces (ADR 0003). The parser
 /// loads such an entry only through its variant reference and a component with a stem analysis, pinned by
 /// `RealParserSenselessVariantTests`.
 /// </summary>

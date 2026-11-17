@@ -5,7 +5,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Analysis;
 
 /// <summary>
-/// Structural pins for two of ADR 0038's constraints that a behavioural test alone cannot guarantee stays
+/// Structural pins for two of ADR 0020's constraints that a behavioural test alone cannot guarantee stays
 /// true as the types evolve: that established/updated/removed can never be summed into one score, and that
 /// nothing in this namespace offers a field implying which of two simultaneous changes caused the other.
 /// </summary>
@@ -31,7 +31,7 @@ public class AnalysisAggregateStructuralConstraintsTests
     [Fact]
     public void NoTypeInTheAggregateExposesAFieldNamingACause()
     {
-        // ADR 0038 decision 6: Motif reports facts side by side and declines to infer which caused which.
+        // ADR 0020 decision 13: Motif reports facts side by side and declines to infer which caused which.
         var suspectWords = new[] { "Cause", "Caused", "Because", "Reason", "Why", "Attribut", "DueTo" };
 
         foreach (var type in TypesUnderConstraint)
@@ -42,7 +42,7 @@ public class AnalysisAggregateStructuralConstraintsTests
                 {
                     Assert.False(
                         property.Name.Contains(word, StringComparison.OrdinalIgnoreCase),
-                        $"{type.Name}.{property.Name} reads as a causal-attribution field, which ADR 0038 " +
+                        $"{type.Name}.{property.Name} reads as a causal-attribution field, which ADR 0020 " +
                         "decision 6 forbids: Motif reports facts side by side and never infers which caused which.");
                 }
             }
@@ -52,7 +52,7 @@ public class AnalysisAggregateStructuralConstraintsTests
     [Fact]
     public void ManualAnalysisDiff_HasNoNumericOrBooleanFieldThatCouldActAsANetScore()
     {
-        // ADR 0038 decision 5: established, updated and removed are reported separately and never netted.
+        // ADR 0020 decision 12: established, updated and removed are reported separately and never netted.
         var numericOrBooleanProperties = typeof(ManualAnalysisDiff)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.PropertyType == typeof(int) || p.PropertyType == typeof(bool)

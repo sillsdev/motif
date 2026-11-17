@@ -5,7 +5,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Generator;
 
 /// <summary>
-/// <c>lowerFirst(DeclaringClass)</c>, verbatim, no prefix stripping (ADR 0023 decision 1).
+/// <c>lowerFirst(DeclaringClass)</c>, verbatim, no prefix stripping (ADR 0013 decision 5).
 /// </summary>
 public class ConstructDerivationTests
 {

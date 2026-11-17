@@ -184,7 +184,7 @@ public sealed partial class CompareViewModel : ObservableObject
 
     /// <summary>
     /// Adds a bulk change for the checked words: their parser readings as Unknown, or an Incorrect spelling. Opinions
-    /// change one analysis at a time, in the text (ADR 0049), so no opinion kind is accepted here.
+    /// change one analysis at a time, in the text (ADR 0027), so no opinion kind is accepted here.
     /// </summary>
     public IAsyncRelayCommand<string> ProposeCommand { get; }
 

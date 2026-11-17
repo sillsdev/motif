@@ -10,7 +10,7 @@ namespace SIL.Motif.Contract.Model;
 /// history.
 /// </summary>
 /// <remarks>
-/// The set of an operation's dependencies is unordered for digest purposes (ADR 0007 decision 2);
+/// The set of an operation's dependencies is unordered for digest purposes (ADR 0012 decision 10);
 /// the natural ordering authored in <c>operations</c> already carries the primary sequencing
 /// intent.
 /// </remarks>

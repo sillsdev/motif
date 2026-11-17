@@ -44,7 +44,7 @@ public static class ModelPathResolver
         if (File.Exists(packageCachePath))
             return new ModelPathResult(packageCachePath, ModelPathSource.NuGetPackageCache);
 
-        // Fallback only, never required; the path is ADR 0014's: liblcm/src/SIL.LCModel/MasterLCModel.xml.
+        // Fallback only, never required; the path is ADR 0013's: liblcm/src/SIL.LCModel/MasterLCModel.xml.
         var checkoutRoot = libLcmCheckoutRoot ?? Environment.GetEnvironmentVariable("MOTIF_LIBLCM_CHECKOUT");
         string? checkoutPath = null;
         if (!string.IsNullOrWhiteSpace(checkoutRoot))

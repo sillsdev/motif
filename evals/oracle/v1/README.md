@@ -8,8 +8,8 @@ a fixed Judge pair measures agreement with those keys across every Arm.
 qualification were performed in this lane. The qualification examples are authored synthetic fixtures,
 not accepted Oracle keys. They are a rehearsal packet, never live comparison evidence.
 
-The normative rules are [ADR 0059](../../../docs/adr/0059-measuring-agents-fairly.md) and
-[ADR 0058](../../../docs/adr/0058-the-agent-edit-loop.md). The [manifest](manifest.json) pins the
+The normative rules are [ADR 0010](../../../docs/adr/0010-measuring-agents-fairly.md) and
+[ADR 0009](../../../docs/adr/0009-assistants-reach-motif-through-one-agent-api.md). The [manifest](manifest.json) pins the
 models, effort, prompts and content digests; [rules](rules.md) govern acceptance. Reference records
 are in [the library](../../../docs/references/README.md); all industry records meet its date cutoff.
 All roles load [linguistic-consultant](../../../plugin/skills/linguistic-consultant/SKILL.md) and its

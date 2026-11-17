@@ -41,7 +41,7 @@ public static class StripVariantSensesIntentParser
 /// Turns variant entries that copy their main entry's sense into sense-less variants of that sense: it repoints the
 /// variant reference at the main sense when it names the main entry, then deletes the copied senses and their analyses.
 /// The variant keeps its lexeme form, allomorphs and environments. A sense-less variant of a sense is what LibLCM's
-/// CreateVariantEntryAndBackRef makes, and the parser reads it as that sense's stem (ADR 0112). An entry is refused when
+/// CreateVariantEntryAndBackRef makes, and the parser reads it as that sense's stem (ADR 0003). An entry is refused when
 /// anything refers to its copied sense or analysis, or when the main sense has no stem analysis.
 /// </summary>
 public static class StripVariantSensesComposer

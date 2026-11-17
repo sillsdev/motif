@@ -14,7 +14,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// A Draft is a <c>Proposals</c> row (ADR 0041 decision 3); <c>discard-draft</c> is the only verb that
+/// A Draft is a <c>Proposals</c> row (ADR 0007 decision 2); <c>discard-draft</c> is the only verb that
 /// removes one. A never-finalized Draft has no committed revision behind it, so its row is deleted
 /// outright. A Draft <c>reopen</c> produced carries its source Proposal's committed <c>ProposalRevisions</c>
 /// and <c>Decisions</c> forward under the same id instead, so discarding it clears only the two columns

@@ -4,7 +4,7 @@ namespace SIL.Motif.Host.LcmUtils;
 
 /// <summary>
 /// Creates the throwaway <see cref="LcmCache"/> a Dry Run mutates, by either of the two candidate
-/// strategies, so they can be compared rather than assumed (ADR 0016).
+/// strategies, so they can be compared rather than assumed (ADR 0017).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -46,7 +46,7 @@ public class ScratchCacheFactory
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Retained as the comparison point that settled ADR 0016, and because it is the only way to capture the
+    /// Retained as the comparison point that settled ADR 0017, and because it is the only way to capture the
     /// source's <i>uncommitted</i> edits. It materializes every source object before copying because the
     /// mixed lazy/materialized copy path can reuse source-cache HVOs and collide with target-cache HVOs.
     /// Consequently it incurs the memory and serialization cost of the entire source project.
@@ -60,7 +60,7 @@ public class ScratchCacheFactory
     /// form-comparison rest on, so a Dry Run here can be silently wrong rather than slow.
     /// </para>
     /// <para>
-    /// Using this for a Dry Run requires reopening ADR 0016.
+    /// Using this for a Dry Run requires reopening ADR 0017.
     /// </para>
     /// </remarks>
     public virtual LcmCache CreateInMemoryCopy(LcmCache source, string scratchName = "motif-scratch")
@@ -89,7 +89,7 @@ public class ScratchCacheFactory
     }
 
     /// <summary>
-    /// <b>THE CANONICAL PATH</b> (ADR 0016). Copies the project's files to
+    /// <b>THE CANONICAL PATH</b> (ADR 0017). Copies the project's files to
     /// <paramref name="destinationRoot"/> and opens the copy normally: ~50 ms to copy plus ~550 ms to open at
     /// ~152k objects, and the result was equivalent to the live cache on every axis measured — objects,
     /// entries, text, custom-field flids, and all four writing systems value-equal.
@@ -102,7 +102,7 @@ public class ScratchCacheFactory
     /// <para>
     /// <b>So the caller must save first.</b> A save commits what the user already authored; it does not add
     /// anything, while validating against a state the live cache has already left produces an anchor that
-    /// is stale on arrival and an apply that reports drift which never happened. ADR 0016 makes
+    /// is stale on arrival and an apply that reports drift which never happened. ADR 0017 makes
     /// save-before-copy the host precondition. Use <see cref="FwDataProjectLoader.Save"/>, which waits for
     /// the write to actually reach disk — <c>Commit()</c> alone does not, and that asynchrony was found the
     /// hard way.

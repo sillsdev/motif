@@ -31,7 +31,7 @@ namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
 /// A person's rich-text edit of a sense's Definition, one writing system at a time, staged in the pending-changes Draft
-/// and applied to a project built at run time with placeholder text (ADR 0076), then read back from the Baseline.
+/// and applied to a project built at run time with placeholder text (ADR 0002), then read back from the Baseline.
 /// </summary>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)

@@ -1144,7 +1144,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         RunAndFinish(handler, secondJob);
         var afterSecond = _assessments.ListByProposal(proposalId);
 
-        // The newer Trial supersedes the first, so only the latest Trial's Assessments stay (ADR 0113).
+        // The newer Trial supersedes the first, so only the latest Trial's Assessments stay (ADR 0023).
         var kept = Assert.Single(afterSecond);
         Assert.NotEqual(firstAssessmentId, kept.AssessmentId);
         Assert.Throws<KeyNotFoundException>(() => _assessments.Get(firstAssessmentId));

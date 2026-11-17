@@ -25,6 +25,8 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
 3. Ask which project to use when the choice is unclear. Pass the chosen project's path as `project` to
    every later project tool call. There is no current project.
 
+For a new grammar, use the `motif:linguistic-consultant` skill for its starter morphology interview.
+
 ## Read before drafting
 
 1. Call `motif_overview` to understand the project's grammar and saved state.

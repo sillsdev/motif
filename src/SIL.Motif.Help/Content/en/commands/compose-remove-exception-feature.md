@@ -16,6 +16,6 @@ Read the output before you finalize:
 - **Affixes.** It does not edit affix From or To Exception Features. An affix that requires the removed feature matches no stem afterwards and its readings disappear. The output counts these analyses and keeps the feature; edit them with `compose-edit-exception-features` or `compose-edit-derivational-affix-restriction`.
 - **Widening.** A rule branch that required only this feature applies to every stem afterwards; the output warns you.
 
-Run a Trial after Dry Run. The Trial prints the reading-identity proof (ADR 0115) for the words it parsed: how many words kept the same readings, and each reading lost or newly allowed.
+Run a Trial after Dry Run. The Trial prints the reading-identity proof (ADR 0015) for the words it parsed: how many words kept the same readings, and each reading lost or newly allowed.
 
 The command stages operations in a Draft and does not change the saved FieldWorks project. Finalize the Proposal for a person to review and Apply.

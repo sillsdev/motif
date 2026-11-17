@@ -4,7 +4,7 @@ These sources help reviewers explain a grammar change and check an assistant’s
 The summaries preserve the difference between linguistic judgment, storage definitions and parser behavior.
 
 Industry sources are dated 2025-07-01 or later; linguistics and FieldWorks sources have no date cutoff.
-All records were inspected on 2026-10-09. Each contains a full citation, locator, authored summary,
+Each record gives its inspection date. Each contains a full citation, locator, authored summary,
 short attributed excerpt and licence status. No full texts, real project data, images or books are stored.
 An online copy does not establish an open licence. Quotes in these records remain with their cited owners;
 the repository’s MIT licence applies to our authored prose, not a blanket relicensing of excerpts.
@@ -15,6 +15,10 @@ the repository’s MIT licence applies to our authored prose, not a blanket reli
 | L02 | [morphosyntax](linguistics/morphosyntax.md) | 2006 | Copyright Cambridge University Press; no open licence established |
 | L03 | [fieldwork](linguistics/fieldwork.md) | 2015-02-12 | Copyright Palgrave Macmillan; subscription book, no open licence established |
 | L04 | [leipzig glossing](linguistics/leipzig-glossing.md) | 2015-05-31 | Public rules; no explicit open licence found on inspected page; excerpt only |
+| L05 | [describing morphosyntax](linguistics/describing-morphosyntax.md) | 1997 | Copyright Cambridge University Press; topic summary only |
+| L06 | [PAWS](linguistics/paws.md) | undated | SIL documentation; separate prose licence not established |
+| L07 | [Grambank](linguistics/grambank.md) | 2023 | CC BY 4.0; topics only |
+| L08 | [WALS](linguistics/wals.md) | 2013 | CC BY 4.0; topics only |
 | F01 | [black conceptual introduction](fieldworks/black-conceptual-introduction.md) | 2025-07-03 | SIL-authored training prose; open redistribution licence not established |
 | F02 | [black workshop](fieldworks/black-workshop.md) | 2026 | SIL-authored workshop prose; open redistribution licence not established |
 | F03 | [lexicography](fieldworks/lexicography.md) | 2016-10-11 | SIL-authored help prose; no open redistribution licence established |
@@ -44,3 +48,18 @@ is an explicit upstream follow-up. Source records F07–F10 pin the released UI,
 
 The consultant carries its own paraphrased bibliography inside its folder, so installing the skill
 requires no access to this repository. Oracle and Judge prompts remain internal under `evals/oracle/v1/`.
+
+## Engineering findings
+
+Condensed investigations live alongside the cited-source records above. Each names its historical source and distinguishes measured results from decisions.
+
+- [LibLCM and FieldWorks hazards](liblcm-and-fieldworks-hazards.md)
+- [Parser and build performance](parser-performance.md)
+- [Generator and manifest](generator-and-manifest.md)
+- [Word analysis comparison](word-analysis-comparison.md)
+- [Installers and release](installers-and-release.md)
+- [Grammar authoring](grammar-authoring.md)
+- [Harmony and FW Lite](harmony-and-fw-lite.md)
+- [Corpora and word evidence](corpora-and-word-evidence.md)
+- [Agents and skills](agents-and-skills.md)
+- [Synthetic sample provenance](synthetic-samples.md)

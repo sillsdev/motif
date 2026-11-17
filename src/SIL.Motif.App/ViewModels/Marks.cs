@@ -240,7 +240,7 @@ public static class MarkGlyphs
 }
 
 /// <summary>
-/// The window's one set of words for marks (ADR 0046, ADR 0049): every outcome word, every capitalised opinion
+/// The window's one set of words for marks (ADR 0028, ADR 0027): every outcome word, every capitalised opinion
 /// label, and the meaning an opinion and an outcome have together. A view takes its words from here rather than
 /// spelling them, so Analyze texts, the Matrix and Lists never disagree.
 /// </summary>

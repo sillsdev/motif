@@ -7,7 +7,7 @@ using SIL.Motif.Contract.Jobs;
 namespace SIL.Motif.Host.Assess;
 
 /// <summary>
-/// The closed set of measurements an Assessor can produce (ADR 0042's amendment "an Assessment is one
+/// The closed set of measurements an Assessor can produce (ADR 0020's amendment "an Assessment is one
 /// <i>kind</i> of measurement"). Adding a member is a deliberate act, not a convenience: it is what lets a
 /// Report later say a kind was never collected, rather than guess at one nobody declared.
 /// </summary>
@@ -58,7 +58,7 @@ public static class AssessmentKindNames
 }
 
 /// <summary>
-/// What a run was told to do (ADR 0042 decision 3): which words, what to collect, and what limit to apply.
+/// What a run was told to do (ADR 0020 decision 3): which words, what to collect, and what limit to apply.
 /// </summary>
 /// <remarks>
 /// <b>Deliberately excludes which grammar was measured.</b> Grammar is the one axis decision 3 allows to
@@ -121,7 +121,7 @@ public abstract record AssessmentScope
 }
 
 /// <summary>
-/// The closed set of shapes an Assessment's raw material can take (ADR 0042's amendment on Reports: an
+/// The closed set of shapes an Assessment's raw material can take (ADR 0020's amendment on Reports: an
 /// Assessor returns raw form — <i>"a SQLite database, analyses of specific words"</i>). Sealed to a private
 /// constructor so only the declared nested shapes can ever exist, the same discipline <see cref="AssessmentKind"/>
 /// applies by being an enum: a caller can exhaustively switch over which one a kind produced.
@@ -130,7 +130,7 @@ public abstract record AssessmentRaw
 {
     private AssessmentRaw() { }
 
-    /// <summary>A file the Assessor itself owns the format of (ADR 0041 decision 9, ADR 0042 decision 8).</summary>
+    /// <summary>A file the Assessor itself owns the format of (ADR 0023 decision 5, ADR 0020 decision 4).</summary>
     /// <param name="Path">Where the file lives.</param>
     /// <param name="Digest">
     /// The digest of what was actually written, hashed from the bytes on disk rather than trusted from the
@@ -181,7 +181,7 @@ public sealed record ProducedAssessment(
 
 /// <summary>
 /// Raised when an Assessor will not produce a requested kind. Carries the kind and, in
-/// <see cref="Exception.Message"/>, the reason — the mechanism ADR 0042 decision 4 needs so a caller can
+/// <see cref="Exception.Message"/>, the reason — the mechanism ADR 0020 decision 4 needs so a caller can
 /// say <i>this scope did not collect X</i> rather than receive a zero indistinguishable from a real one.
 /// </summary>
 public sealed class AssessorRefusalException : Exception
@@ -234,7 +234,7 @@ public sealed class AssessorUnavailableException : Exception
 /// <see cref="ProduceAsync"/> will do, because the two can never disagree.
 /// </para>
 /// <para>
-/// That is the mechanism ADR 0042 decision 4 needs: a caller learns <i>this Assessor does not produce
+/// That is the mechanism ADR 0020 decision 4 needs: a caller learns <i>this Assessor does not produce
 /// X</i>, naming the reason, rather than a partial answer or a zero indistinguishable from a grammar whose
 /// rules cost nothing. A Report reading a stored Assessment later answers from what was actually collected
 /// and recorded, not by asking the Assessor a second time — its binary may by then be gone.

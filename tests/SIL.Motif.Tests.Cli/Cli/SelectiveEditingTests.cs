@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
 /// Selective Proposal editing (duplicate, remove, split) — the removal rule decided by
-/// ADR 0021, decision 6:
+/// ADR 0007, decision 7:
 /// <list type="number">
 /// <item>a removal with no dependents just happens;</item>
 /// <item>a removal that orphans a dependent warns and names every consequence, then requires

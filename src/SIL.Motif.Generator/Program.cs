@@ -71,7 +71,7 @@ public static class Program
         var model = MotifModelLoader.Load();
         var repoRoot = RepoPaths.FindRepoRoot();
 
-        // Frozen: Generated/Slice2, pinned by `GeneratedCatalogWriterTests`. Slice3/4 widen ADR 0025 shapes further.
+        // Frozen: Generated/Slice2, pinned by `GeneratedCatalogWriterTests`. Slice3/4 widen ADR 0013 shapes further.
         var written = GeneratedCatalogWriter.WriteAll(model, repoRoot)
             .Concat(Emit.Slice2CatalogWriter.WriteAll(model, repoRoot))
             .Concat(Emit.Slice3CatalogWriter.WriteAll(model, repoRoot))
@@ -165,7 +165,7 @@ public static class Program
         return 0;
     }
 
-    /// <summary>Rewrites ordering-evidence.tsv; unconsumed downstream (ADR 0022: ComparisonClass=f(Card)).</summary>
+    /// <summary>Rewrites ordering-evidence.tsv; unconsumed downstream (ADR 0013: ComparisonClass=f(Card)).</summary>
     private static int RunHarvestOrderingEvidence()
     {
         var outputPath = RepoPaths.DefaultOrderingEvidencePath();

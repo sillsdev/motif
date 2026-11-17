@@ -5,7 +5,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Handoff;
 
 /// <summary>
-/// Pins <c>handoff.md</c>'s own contract (ADR 0045 decision 4): capped at 100 lines — the mechanism that
+/// Pins <c>handoff.md</c>'s own contract (ADR 0009 decision 13): capped at 100 lines — the mechanism that
 /// keeps it from becoming the seventeen-file explainer it replaced — and the pasted header's per-run
 /// substitution (decision 5).
 /// </summary>

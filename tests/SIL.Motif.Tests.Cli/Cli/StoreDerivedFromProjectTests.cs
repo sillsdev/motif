@@ -11,7 +11,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// The defect ADR 0041 decision 2 exists to close: <c>--store</c> defaulted to <c>./.motif</c>, so a
+/// The defect ADR 0023 decision 2 exists to close: <c>--store</c> defaulted to <c>./.motif</c>, so a
 /// Proposal's address was the working directory a command happened to run from rather than the
 /// project it was about. These pin that the paired database is derived from <c>--project</c> alone.
 /// </summary>
@@ -107,7 +107,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
     }
 
     /// <summary>
-    /// The break the ADR 0041 amendment records: <c>add-corpus</c> writing a corpus keyed by the
+    /// The break the ADR 0023 amendment records: <c>add-corpus</c> writing a corpus keyed by the
     /// working directory while <c>promote-gloss</c> reads the corpus keyed by the project would make a
     /// corpus invisible the moment the two commands run from different directories. Both are keyed by
     /// <c>--project</c> alone, so the corpus is visible from anywhere.

@@ -69,13 +69,13 @@ public sealed class AnalysisAggregateReaderRealProjectTests : IDisposable
             _cache.LangProject.DefaultUserAgent.SetEvaluation(second, Opinions.approves);
         });
 
-        // Reads only human-approved analyses; must not invoke the parser (ADR 0038 decision 5).
+        // Reads only human-approved analyses; must not invoke the parser (ADR 0020 decision 12).
         var response = AnalysisAggregateReader.Read(_cache);
 
         var read = response.WordForms.Single(w => w.WordformGuid == wordform.Guid.ToString());
         Assert.Equal("zzMotifTestWord", read.Form);
 
-        // The unit is a set, not "the analysis" (ADR 0038 decision 2): both approved readings are present.
+        // The unit is a set, not "the analysis" (ADR 0003 decision 4): both approved readings are present.
         Assert.Equal(2, read.ManualAnalyses.Count);
         Assert.NotEqual(read.ManualAnalyses[0].ContentDigest, read.ManualAnalyses[1].ContentDigest);
 
@@ -181,7 +181,7 @@ public sealed class AnalysisAggregateReaderRealProjectTests : IDisposable
             _cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.approves);
         });
 
-        // No StoredAssessment argument at all - ADR 0038 decision 5: this must not fall back to parsing.
+        // No StoredAssessment argument at all - ADR 0020 decision 12: this must not fall back to parsing.
         var response = AnalysisAggregateReader.Read(_cache);
 
         Assert.False(response.HasAssessment);

@@ -81,7 +81,7 @@ Read the project through the registered Motif MCP tools. In code mode, discover 
         registrationArguments = $registration; mcpConfig = $config; bridge = $bridge; bridgeArguments = $bridgeArguments }
 }
 
-# The server starts without a project (ADR 0058), so a trial names its one Known project by this file name.
+# The server starts without a project (ADR 0009), so a trial names its one Known project by this file name.
 $script:ABProjectName = 'project'
 
 function Get-ABProjectName { return $script:ABProjectName }

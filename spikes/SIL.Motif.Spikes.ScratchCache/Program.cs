@@ -5,7 +5,7 @@ using SIL.Motif.Host.LcmUtils;
 namespace SIL.Motif.Spikes.ScratchCache;
 
 /// <summary>
-/// Spike harness for ADR 0016. Times both candidate scratch strategies and compares each resulting cache
+/// Spike harness for ADR 0017. Times both candidate scratch strategies and compares each resulting cache
 /// against the live one.
 /// </summary>
 /// <remarks>
@@ -85,7 +85,7 @@ public static class Program
 
             // --- Strategy A, fanned out: should beat copying from HOT, pristine surrogates holding raw XML.
             var (derivedScratch, derivedCopyMs) = Timed(() => factory.CreateInMemoryCopy(coldScratch, "scratch-derived"));
-            timings.Add(("A: derived copy from the PRISTINE scratch", derivedCopyMs, "ADR 0016's cheap fan-out"));
+            timings.Add(("A: derived copy from the PRISTINE scratch", derivedCopyMs, "ADR 0017's cheap fan-out"));
 
             // --- Strategy A, from a hot cache --------------------------------------------------
             var (fluffed, warmMs) = Timed(() => live.ServiceLocator.GetInstance<ICmObjectRepository>().AllInstances().Count());
@@ -165,7 +165,7 @@ public static class Program
         Console.WriteLine();
     }
 
-    // States ADR 0016's three falsification criteria, so a run either clears them or does not.
+    // States ADR 0017's three falsification criteria, so a run either clears them or does not.
     private static void PrintVerdict(List<(string Label, double Ms, string Note)> timings, ScratchComparison.ComparisonReport[] reports)
     {
         double Ms(string fragment) => timings.First(t => t.Label.Contains(fragment, StringComparison.Ordinal)).Ms;
@@ -175,7 +175,7 @@ public static class Program
         var derived = Ms("PRISTINE scratch");
         var filePath = Ms("B: file copy");
 
-        Header("Verdict against ADR 0016's falsification criteria");
+        Header("Verdict against ADR 0017's falsification criteria");
 
         var ratio = derived <= 0 ? double.PositiveInfinity : hot / derived;
         Console.WriteLine($"1. fan-out is cheaper than re-copying from hot : {(ratio > 2 ? "HOLDS" : "FAILS")}  (hot/derived = {ratio:N1}x)");

@@ -15,7 +15,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli.Store;
 
 /// <summary>
-/// A Draft has no committed revision, so it has no intent digest (ADR 0041 decision 3):
+/// A Draft has no committed revision, so it has no intent digest (ADR 0007 decision 2):
 /// <see cref="ProposalRecordMapping.ToManifest"/> must carry that absence through as <c>null</c>,
 /// never flatten it to <c>""</c> — the sentinel this test exists to keep out.
 /// </summary>

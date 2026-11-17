@@ -8,7 +8,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>A Proposal's Rationale shown and edited in the shared rich field (ADR 0099).</summary>
+/// <summary>A Proposal's Rationale shown and edited in the shared rich field (ADR 0006 decision 5).</summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
 {

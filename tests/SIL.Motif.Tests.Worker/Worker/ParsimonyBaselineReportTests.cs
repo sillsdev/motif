@@ -2971,7 +2971,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var first = await RunReportAsync(handler, "P-adhoc-duplicate");
         var other = await RunReportAsync(handler, "P-allo-alternation-family");
 
-        // A bundle keeps no grammar facts, so a measure it holds no Report for needs a fresh build (ADR 0086).
+        // A bundle keeps no grammar facts, so a measure it holds no Report for needs a fresh build (ADR 0022).
         Assert.Equal(2, BundleCount());
         Assert.NotEqual(first.Response.Inputs.BundleId, other.Response.Inputs.BundleId);
         Assert.Equal("P-allo-alternation-family", Assert.Single(other.Response.MeasureRuns).MeasureId);

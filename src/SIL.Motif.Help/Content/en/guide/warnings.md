@@ -6,6 +6,6 @@ Each row groups findings with the same recorded diagnostic code and shows the ac
 
 Named FieldWorks objects open only through verified destinations supplied with their evidence. Missing objects and project settings have no object link. Motif shows evidence and names; read and edit rules in FieldWorks.
 
-Word evidence distinguishes exact identity uses, possible membership matches and spelling matches. A membership or spelling match alone does not establish that a word uses the object. A partial or unavailable full count stays unavailable. **Show Words** brings the selected finding's recorded word list into view. **Ask Claude** records a Request about that exact warning; it never applies a change. There is no **Hide This Warning** action.
+Word evidence distinguishes exact identity uses, possible membership matches and spelling matches. A membership or spelling match alone does not establish that a word uses the object. A partial or unavailable full count stays unavailable. **Show Words** brings the selected finding's recorded word list into view. **Hide This Warning** hides one finding (its rule plus its object) for you only. Hidden warnings are listed under **Settings → Hidden Warnings**, where you can unhide them. The warning count shows how many are hidden. Hiding never changes the grammar.
 
 Save grammar edits in FieldWorks and refresh Motif to obtain current evidence. A warning is advice, not an additional Apply condition. See [Diagnostics](guide:diagnostics) for the page's other tab and Proposal evidence.

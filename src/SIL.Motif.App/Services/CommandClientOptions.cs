@@ -23,7 +23,7 @@ public sealed record CommandClientOptions(
     /// <summary>
     /// The installed window's settings, resolved once from the environment exactly as the command line
     /// resolves them (<see cref="ProcessRunnerLauncher.FromEnvironment"/>), so by default the window and the
-    /// CLI name one worker root and one parser (ADR 0040). The runner is a per-user singleton: one already
+    /// CLI name one worker root and one parser (ADR 0018). The runner is a per-user singleton: one already
     /// running, started with other settings, keeps them, and the window's launch starts no second one, pinned
     /// by `KickingWhenARunnerIsAlreadyAliveDoesNotStartASecondOwner`.
     /// </summary>

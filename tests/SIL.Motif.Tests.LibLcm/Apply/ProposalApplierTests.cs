@@ -64,7 +64,7 @@ public sealed class ProposalApplierTests : IDisposable
         const string applierIdentity = "motif-tests";
         const string description = "Stage D test: revise sense gloss";
 
-        // --- 1. First apply: a real commit, not a rollback. Bound to a prior dry run (ADR 0004 §3). ---
+        // --- 1. First apply: a real commit, not a rollback. Bound to a prior dry run (ADR 0017 §4). ---
         var dryRun = ScratchDryRun.Of(_cache, proposal);
         var receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, applierIdentity, description);
 
@@ -253,7 +253,7 @@ public sealed class ProposalApplierTests : IDisposable
         Assert.Empty(ProjectAppliedLog.ReadAll(_cache));
     }
 
-    // --- Defect 2 (ADR 0004 §3): apply is bound to a prior DryRun. ---
+    // --- Defect 2 (ADR 0017 §4): apply is bound to a prior DryRun. ---
 
     [Fact]
     public void Apply_WithNullAnchor_IsAHardError()
@@ -377,12 +377,12 @@ public sealed class ProposalApplierTests : IDisposable
 
     /// <remarks>
     /// This is the only rollback left in Motif, and it is forced by atomicity rather than chosen
-    /// (AGENTS.md rule 4; ADR 0016). What this
+    /// (AGENTS.md rule 4; ADR 0017). What this
     /// test no longer asserts is as important as what it does: there is no "the cache is now flagged
     /// non-reusable" check, because the flag, the field list that fed it, and the exception it threw
     /// were all deleted. The obligation moved to the host as an unconditional rule — if Apply throws,
     /// reload — which needs no per-field knowledge and is strictly stronger, since reload also discards
-    /// ADR 0005's non-undoable schema phase that a rollback cannot reach.
+    /// ADR 0017's non-undoable schema phase that a rollback cannot reach.
     /// </remarks>
     /// <remarks>
     /// op2's payload (not its target) is malformed, so <c>SetGlossPayload.Parse</c> throws only once the

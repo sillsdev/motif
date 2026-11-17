@@ -19,8 +19,8 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins the owner's ruling that the window speaks a linguist's words: one action, "Parse all words", and
-/// FieldWorks' Approved, Disapproved and Unknown. Assessment stays the CLI's word (ADR 0015); the window, its
-/// refusals and the Help Guide pages never show it, nor the words ADR 0049 retired.
+/// FieldWorks' Approved, Disapproved and Unknown. Assessment stays the CLI's word (ADR 0020); the window, its
+/// refusals and the Help Guide pages never show it, nor the words ADR 0027 retired.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed partial class WindowWordsTests

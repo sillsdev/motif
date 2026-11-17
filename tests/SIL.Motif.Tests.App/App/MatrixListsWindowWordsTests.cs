@@ -18,7 +18,7 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture avalonia)
 {
-    // Retired by ADR 0049 or by the owner's column words; the window's pages never show them.
+    // Retired by ADR 0027 or by the owner's column words; the window's pages never show them.
     [GeneratedRegex(@"\b(candidates?|reject(ed)?|violations?|can[’']?t happen|cannot happen|assessment|assessed|capped|agrees|timed[- ]out|conflicts?|extra)\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex RetiredWord();

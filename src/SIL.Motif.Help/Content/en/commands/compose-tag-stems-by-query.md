@@ -12,7 +12,7 @@ motif compose-tag-stems-by-query --project language.fwdata --draft tag-d-final \
 **Polarity.** The query selects the stems the rule or affix should treat as in the class. What FieldWorks can express decides which stems carry the tag:
 
 - `"gate":"rule"`: a phonological rule can require a feature or exclude it. Motif tags the smaller of the matching stems and the other stems in scope, and says which: tag the matching stems and give the rule `requiredFeatures`, or tag the others and give it `excludedFeatures` (`compose-edit-phonological-rule-features`).
-- `"gate":"affix"` (the default): an affix's From Exception Features only require a feature. Motif tags the matching stems even when the others are fewer, and says so in its output as a FieldWorks limitation. It adds no negative mechanism (ADR 0112).
+- `"gate":"affix"` (the default): an affix's From Exception Features only require a feature. Motif tags the matching stems even when the others are fewer, and says so in its output as a FieldWorks limitation. It adds no negative mechanism (ADR 0003).
 
 `"action":"untag"` removes the feature from the matching stems that carry it. A stem already in the wanted state is skipped, so the command can be repeated.
 

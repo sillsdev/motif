@@ -9,7 +9,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Generator;
 
 /// <summary>
-/// ADR 0023 decision 5 as amended: a description is mandatory for every emitted kind, and one that merely
+/// ADR 0013 decision 7 as amended: a description is mandatory for every emitted kind, and one that merely
 /// restates the title fails. The second half is what these tests are mostly about — presence alone was the
 /// bar the original decision left unspecified, and the label harvest showed why that is not enough (768
 /// labels, 20 with prose).

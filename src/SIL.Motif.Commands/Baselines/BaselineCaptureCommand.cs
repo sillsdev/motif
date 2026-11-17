@@ -167,7 +167,7 @@ public static class BaselineCaptureCommand
         }, timeProvider: timeProvider);
     }
 
-    // A captured project is one the machine knows about, whichever front end captured it (ADR 0043).
+    // A captured project is one the machine knows about, whichever front end captured it (ADR 0018).
     private static KnownProjectRegistrationFailure? RecordKnownProject(string managedRoot, ProjectLocator project)
     {
         var failure = KnownProjectRecorder.TryRecord(managedRoot, project);

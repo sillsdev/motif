@@ -63,7 +63,7 @@ ON parse-results.json's TRACES
 -----------------------------
 No Motif release writes a trace into parse-results.json yet -- the batch pass that produces every
 word's outcome and timing ships before the traced pass does. The routines in the TRACES section
-below are written against the shape ADR 0045 describes for when tracing lands: a traced word's
+below are written against the shape ADR 0009 describes for when tracing lands: a traced word's
 record carries the derivation tree PanGloss's own `pangloss parse <grammar> <word> --trace
 --trace-format=json` produced, verbatim, plus a short derived summary built from that same tree.
 They have not been exercised against a real trace, because none exists yet to exercise them
@@ -254,7 +254,7 @@ def trace_deepest_rule(tree: dict) -> str | None:
 
 
 def summarize_trace(tree: dict) -> dict:
-    """Build the one-line-summary fields ADR 0045 describes, directly from a raw trace tree.
+    """Build the one-line-summary fields ADR 0009 describes, directly from a raw trace tree.
 
     Used only as a fallback when a record's own precomputed summary is absent. The tree carries
     no PanGloss step-budget counter -- `MaxApplicationCount` in PanGloss's own failure reasons is

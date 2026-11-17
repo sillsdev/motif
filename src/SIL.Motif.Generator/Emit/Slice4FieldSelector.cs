@@ -23,7 +23,7 @@ namespace SIL.Motif.Generator.Emit;
 /// <c>LexEntryRef.RefType</c>, <c>PhSegmentRule.Direction</c>, ...) belong to families this selector
 /// does not target. Filtering on domain group is the same discipline <see cref="Slice3FieldSelector"/>
 /// applies with <c>HcReachable=yes</c>: the shape is general, and the group filter — not the template —
-/// is what scopes it to one family. <c>analysis</c> is the family this shape targets (ADR 0025's
+/// is what scopes it to one family. <c>analysis</c> is the family this shape targets (ADR 0013's
 /// analysis-approval treatment), and <c>WfiWordform.SpellingStatus</c> is the only row in it with this
 /// shape.
 /// </para>

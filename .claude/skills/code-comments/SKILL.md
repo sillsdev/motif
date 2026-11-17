@@ -24,8 +24,7 @@ plan-shaped.
 **A comment explains what the code cannot: why this, why not the obvious alternative, what breaks if
 you change it. Everything else is noise or a lie waiting to happen.**
 
-Code says what it does. Git says when and by whom. `docs/plan-motif.md` and `docs/issues.md` say where
-the project is. A comment that duplicates any of those three has no reason to exist and will
+Code says what it does. Git says when and by whom. GitHub issues track open work. A comment that duplicates any of those three has no reason to exist and will
 eventually contradict its source.
 
 ## Forbidden in source code, without exception
@@ -55,12 +54,12 @@ reasons — an issue reference **rots**, while a `docs/…md` path is merely **u
 
 ### The ADR carve-out, and its limit
 
-**ADR citations are allowed.** `docs/adr/` records are immutable by construction — an ADR is amended
-or superseded in place with its number intact, never renumbered — which is exactly the property plan
-sections and issue IDs lack. `ADR 0022 decision 1` is a stable coordinate.
+**ADR citations are allowed.** `docs/adr/` numbers are stable — a decision is edited
+in place with its number intact, never renumbered — which is exactly the property plan
+sections and issue IDs lack. `ADR 0013 decision 4` is a stable coordinate.
 
 **The limit:** cite an ADR for a *decision*, never for a *status*. "Verbs are derived, not authored
-(ADR 0022 decision 1)" is durable. "ADR 0022 says five rows" was true, became false, and sat in a
+(ADR 0013 decision 4)" is durable. "ADR 0013 says five rows" was true, became false, and sat in a
 heading for six days — an ADR number does not make the sentence around it true. Quote the constraint,
 cite the number, and do not paraphrase the ADR's own claims about counts.
 
@@ -141,8 +140,8 @@ So an API doc either says the thing, or points at something anyone can open:
 
 | Instead of | Write |
 |---|---|
-| `docs/adr/0016-scratch-cache-copy-not-undo.md` | `ADR 0016` — the number is the stable coordinate; the path is not |
-| `docs/change-set-contract.md` | "the Proposal contract" |
+| `docs/adr/0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md` | `ADR 0017` — the number is the stable coordinate; the path is not |
+| `docs/proposal-contract.md` | "the Proposal contract" |
 | `docs/applied-log.md` | "the applied log format" |
 | `manifest/README.md` | "the manifest README" |
 | `See docs/research/2026-08-06-parser-timing-measured.md` | the measurement itself, in a sentence |

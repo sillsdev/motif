@@ -9,7 +9,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>A rule attempt is a hypothesis on the shape, passed or failed; it clears the opt-in hold (ADR 0116, 0117).</summary>
+/// <summary>A rule attempt is a hypothesis on the shape, passed or failed; it clears the opt-in hold (ADR 0011, 0022).</summary>
 public sealed class RuleAttemptLedgerTests : IDisposable
 {
     private const string Optin = "P-variant-same-shape";

@@ -7,7 +7,7 @@ namespace SIL.Motif.Generator.Emit;
 
 /// <summary>
 /// Emits only the owning fields needed by sound-system intents. Concrete factories are explicit policy;
-/// neither a caller-supplied field name nor reflection can select a construction path (ADR 0029).
+/// neither a caller-supplied field name nor reflection can select a construction path (ADR 0013).
 /// </summary>
 public static class OwningCreateCatalogWriter
 {

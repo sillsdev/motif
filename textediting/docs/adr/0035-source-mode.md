@@ -24,7 +24,7 @@ rest of that plan (VS Code, the language server) waits until after FieldWorks Ma
    host receives nothing until the text is clean.
 6. **No new write route.** On leaving, the Markdown is imported through the same reader and checker as paste and the
    record reader, and the host stages it as it stages any rich edit (in Motif, `text/setParagraphs` or
-   `text/setRichString`, Motif ADR 0095).
+   `text/setRichString`, Motif ADR 0006).
 7. **The conflict viewer stays rich-only.** If the host reports that the field changed underneath while it is in
    source mode, the host returns it to rich mode first (after the person fixes or throws away errors).
 

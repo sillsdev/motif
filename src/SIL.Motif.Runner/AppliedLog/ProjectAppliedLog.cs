@@ -24,7 +24,7 @@ public static class ProjectAppliedLog
     /// <summary>
     /// Enumerates every successfully-parsed <c>Motif</c>-prefixed entry currently in the project.
     /// Reading a <c>CmResource</c>'s properties is a plain getter and legal at any transaction
-    /// state (docs/adr/0006, decision 1), so this never requires an open unit of work.
+    /// state (docs/adr/0017, decision 3), so this never requires an open unit of work.
     /// </summary>
     public static IReadOnlyList<AppliedLogEntry> ReadAll(
         LcmCache cache, Action<string, string>? onUnparseableEntry = null)
@@ -65,7 +65,7 @@ public static class ProjectAppliedLog
     /// <c>ICmResourceFactory</c>, adds it to <c>LexDb.ResourcesOC</c>, and sets its
     /// <c>Version</c>/<c>Name</c>. Must run inside an already-open unit of work (mirrors
     /// <see cref="SIL.Motif.Runner.Operations.SetGlossLowering"/>: the caller owns opening,
-    /// committing, and rolling back that unit of work — see docs/adr/0006, decision 5).
+    /// committing, and rolling back that unit of work — see docs/adr/0017, decision 5).
     /// </summary>
     public static void WriteEntry(LcmCache cache, AppliedLogEntry entry)
     {

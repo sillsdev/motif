@@ -14,7 +14,7 @@ namespace SIL.Motif.Tests.Runner;
 /// <summary>
 /// Proof, on a real project: <see cref="ProposalDryRunner.Run"/> reads back real LibLCM
 /// state (not the intent) to compute expected effects for a <c>lexical/lexSense/setGloss</c> change
-/// set, is deterministic, and never leaves a mutation committed. Per ADR 0006 decision 1, LibLCM's
+/// set, is deterministic, and never leaves a mutation committed. Per ADR 0017 decision 3, LibLCM's
 /// side effects — ownership cascade, computed defaults — apply synchronously as each mutation
 /// happens, so a before/after snapshot diff taken inside the still-open, never-committed unit of
 /// work sees the true cascaded state without needing to replay or predict it.
@@ -92,7 +92,7 @@ public sealed class ProposalDryRunnerTests : IDisposable
     /// Two tests named DryRun_SetGloss_UnflaggedKind_DoesNotMarkCachePoisoned and
     /// DryRun_FlaggedKind_MarksCachePoisoned stood here, guarding a hand-maintained list of fields whose
     /// derived caches a rollback would leave stale. Both are gone with the rollback
-    /// (ADR 0016). What replaces them is not
+    /// (ADR 0017). What replaces them is not
     /// another classification but the two properties the new design actually rests on: the scratch is
     /// genuinely mutated (so read-back is real), and it can only be used once (so a baseline is always
     /// a baseline the live project was really in).

@@ -44,7 +44,7 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
    minority by the encoding that tags the fewest objects among those FieldWorks can express: a stem exception
    feature (ProdRestrict) where the rule or allomorph can require or exclude it. FieldWorks affix restrictions
    take only positive requirements; where that forces the majority to carry the tag, record it in the
-   hypothesis record and the GDR as a FieldWorks limitation and invent no negative mechanism (ADR 0112).
+   hypothesis record and the GDR as a FieldWorks limitation and invent no negative mechanism (ADR 0003).
    Start permissive and restrict on speaker-rejected forms. A list is allowed only when a FAIL is on record
    for that shape, or the fact is lexical (TAKESMU case in
    [references/hypothesis-record.md](references/hypothesis-record.md)). Done when the encoding follows the
@@ -72,7 +72,7 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
 
 ## Completion
 
-A hypothesis is finished when its ledger row has a verdict (`motif hypothesis decide`; the ledger is in the Motif store, ADR 0117), its encoding follows the verdict (rule for PASS;
+A hypothesis is finished when its ledger row has a verdict (`motif hypothesis decide`; the ledger is in the Motif store, ADR 0011), its encoding follows the verdict (rule for PASS;
 list only after FAIL or for a lexical fact; speaker questions queued for UNDECIDED), and its GDR matches the
 rules as Trial left them. A brief for a hypothesis-first package uses
 [references/brief-template.md](references/brief-template.md).

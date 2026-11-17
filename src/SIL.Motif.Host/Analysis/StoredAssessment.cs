@@ -13,7 +13,7 @@ namespace SIL.Motif.Host.Analysis;
 /// (<see cref="AssessReport.GrammarSourceSha256"/>, which the parser hands back for free) and the word
 /// set's identity (<see cref="Selection.Sha256"/>) together, and this is where a caller who already
 /// ran <c>PanGlossParser.Assess</c> hands both over. <b>Producing this pair is exactly the slow,
-/// explicitly-invoked step ADR 0038 decision 5 keeps out of the read path</b> — nothing in this namespace
+/// explicitly-invoked step ADR 0020 decision 12 keeps out of the read path</b> — nothing in this namespace
 /// runs the parser; a <see cref="StoredAssessment"/> only ever arrives already made.
 /// </remarks>
 public sealed record StoredAssessment(AssessReport Report, Selection Selection);

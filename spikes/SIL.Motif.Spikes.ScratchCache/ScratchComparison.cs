@@ -8,7 +8,7 @@ namespace SIL.Motif.Spikes.ScratchCache;
 /// <summary>
 /// Compares a scratch <see cref="LcmCache"/> against the live cache it was derived from, on the axes the
 /// research identified as the real risks. Timing is the easy question; equivalence is the one that could
-/// invalidate ADR 0016's design rather than merely its parameters.
+/// invalidate ADR 0017's design rather than merely its parameters.
 /// </summary>
 public static class ScratchComparison
 {

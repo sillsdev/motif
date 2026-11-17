@@ -105,7 +105,7 @@ narrow its tests. Do not claim a full .NET run for Markdown-only work.
 For UI, layout, progress, shared-control, or window-copy changes, do not report DONE until the final
 source passes `pwsh ./test.ps1 -All -Configuration Release` with `MOTIF_PANGLOSS_EXE` pointing to the
 pinned executable in `pangloss-release.json`. Headless layout, reachability, contrast and automation-id tests
-are the UI gate ([ADR 0075](adr/0075-headless-checks-are-the-ui-gate-screenshots-are-for-people.md)); leave
+are the UI gate ([ADR 0030](adr/0030-all-automated-testing-is-headless.md)); leave
 `MOTIF_SCREENSHOTS` unset. Report every skipped test category. Record the tested source SHA, the completed command,
 parser path/version, and any required Windows-only follow-up. A missing parser, a failed gate, or a missing final
 result means validation is incomplete. Screenshots never gate READY, DONE or landing; set `MOTIF_SCREENSHOTS` only

@@ -142,6 +142,10 @@ else {
         exit 1
     }
 
+    Write-Step 'documentation hygiene'
+    & (Join-Path $repoRoot 'tools/DocsHygiene/Check-Docs.ps1') -Root $repoRoot
+    if ($LASTEXITCODE -ne 0) { exit 1 }
+
     Write-Step 'design-token hygiene'
     Push-Location $repoRoot
     try { & dotnet run --file tools/TokenHygiene/token-hygiene.cs --artifacts-path (Get-MotifToolArtifactsPath $repoRoot 'token-hygiene') }
@@ -261,7 +265,7 @@ if ($helpDiffers) {
 }
 
 Write-Host ''
-$hygieneText = if ($SkipHygiene) { 'hygiene skipped' } else { 'comment and design-token hygiene' }
+$hygieneText = if ($SkipHygiene) { 'hygiene skipped' } else { 'comment, documentation and design-token hygiene' }
 Write-Host "Build OK: $hygieneText, restore, $targetText compiles, PanGloss interface gate and Help golden all passed." -ForegroundColor Green
 exit 0
 }

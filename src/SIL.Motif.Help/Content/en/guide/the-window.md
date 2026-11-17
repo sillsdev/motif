@@ -10,4 +10,4 @@ The health strip shows the project facts that are available. Open its details by
 
 Diagnostics is off by default. Turn it on from the health details or **View → Diagnostics** to add **Diagnostics** to the rail. Its two tabs show recorded grammar **Warnings** and **Speed by Rule**. Turning Diagnostics off hides the page and returns to Progress if it was open.
 
-[Settings](guide:settings) contains display preferences, project options, assistant connections and the optional file Handoff. For keyboard navigation, see [Keyboard shortcuts](guide:keyboard-shortcuts).
+[Settings](guide:settings) contains display preferences, project options and the optional file Handoff. For keyboard navigation, see [Keyboard shortcuts](guide:keyboard-shortcuts).

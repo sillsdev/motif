@@ -13,7 +13,7 @@ namespace SIL.Motif.Host.RichText;
 
 /// <summary>A Rationale or Comment as it is to be stored, and what a reader would see as wrong in it.</summary>
 /// <param name="Text">The text as written, with only the tidy-ups that keep its meaning when it is clean.</param>
-/// <param name="Findings">Only what a reader would see as wrong (ADR 0099 decision 4); empty when the text is clean.</param>
+/// <param name="Findings">Only what a reader would see as wrong (ADR 0006 decision 6); empty when the text is clean.</param>
 public sealed record CheckedProposalText(string Text, IReadOnlyList<TextFinding> Findings)
 {
     /// <summary>Whether the text has no findings.</summary>
@@ -26,9 +26,9 @@ public sealed record CheckedProposalText(string Text, IReadOnlyList<TextFinding>
 }
 
 /// <summary>
-/// Checks a Proposal's Rationale or Comment as FieldWorks Markdown (ADR 0099). Unmarked text is the project's default
+/// Checks a Proposal's Rationale or Comment as FieldWorks Markdown (ADR 0006). Unmarked text is the project's default
 /// analysis writing system. Every error the parser reports is a finding unless it is only a spelling note or a code
-/// span, which is plain analysis text (ADR 0099 rule 9), and so are a link to a deleted object and what a CommonMark reader would show differently from FieldWorks: a list that starts
+/// span, which is plain analysis text (ADR 0006 rule 8), and so are a link to a deleted object and what a CommonMark reader would show differently from FieldWorks: a list that starts
 /// inside a paragraph, or a numbered list FieldWorks would renumber. The text is stored as written; when it is clean,
 /// line endings become LF, trailing whitespace at its end goes and a path link gains its <c>guid=</c>, and only if
 /// reading the tidied text gives the same paragraphs.
@@ -108,7 +108,7 @@ public static class ProposalTextChecker
         return diagnostic.Severity == MarkdownSeverity.Error ? !TidyUps.Contains(diagnostic.Id) : AlsoVisible.Contains(diagnostic.Id);
     }
 
-    // Where CommonMark reads a code span: its backticks are plain text (ADR 0099 rule 9), never a finding.
+    // Where CommonMark reads a code span: its backticks are plain text (ADR 0006 rule 8), never a finding.
     private static (int Start, int End)[] CodeSpans(MarkdownParseResult parsed) =>
         Markdig.Syntax.MarkdownObjectExtensions.Descendants<CodeInline>(Markdig.Markdown.Parse(parsed.Source, Located))
             .Select(code => (code.Span.Start, code.Span.End + 1)).ToArray();

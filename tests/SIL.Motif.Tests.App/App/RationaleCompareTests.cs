@@ -13,7 +13,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>Concurrent Rationale edits resolved through the shared viewer, entirely headless (ADR 0099).</summary>
+/// <summary>Concurrent Rationale edits resolved through the shared viewer, entirely headless (ADR 0006).</summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class RationaleCompareTests
 {

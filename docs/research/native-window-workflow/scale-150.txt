@@ -1,2 +1,0 @@
-SelectedScale=150%
-SelectedScale=100% (Recommended)

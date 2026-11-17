@@ -18,7 +18,7 @@ namespace SIL.Motif.Model.DryRun;
 /// A human-readable description of the footprint-scoped baseline the effects were read back
 /// against. Stage C does not compute a whole-project baseline digest: whole-project snapshot work
 /// (onboarding, two-way diff, a first baseline digest) is inherently expensive and is budgeted
-/// separately from the interactive per-footprint pre-flight path this dryRunner takes (ADR 0006
+/// separately from the interactive per-footprint pre-flight path this dryRunner takes (ADR 0017
 /// decision 2).
 /// </param>
 /// <param name="ExpectedEffects">
@@ -32,7 +32,7 @@ namespace SIL.Motif.Model.DryRun;
 /// </param>
 /// <param name="Anchor">
 /// The <see cref="BoundDryRunAnchor"/> this DryRun produced, binding a subsequent Apply to
-/// this exact evaluated baseline (ADR 0004 decision 3). Persisted by the CLI's <c>dry-run</c>
+/// this exact evaluated baseline (ADR 0017 decision 4). Persisted by the CLI's <c>dry-run</c>
 /// command and required by <c>apply</c>.
 /// </param>
 public sealed record DryRun(

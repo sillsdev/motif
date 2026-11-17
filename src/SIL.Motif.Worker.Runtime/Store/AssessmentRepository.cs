@@ -31,7 +31,7 @@ public interface IAssessmentRepository
 {
     /// <summary>
     /// Records one Assessment together with its words and analyses, in one transaction — a half-written
-    /// Assessment must never be observable. Assessments are immutable (ADR 0042 decision 2): recording
+    /// Assessment must never be observable. Assessments are immutable (ADR 0020 decision 2): recording
     /// under an id that already exists is a genuine primary-key collision, not an upsert.
     /// </summary>
     void Record(NewAssessmentRecord assessment);
@@ -90,7 +90,7 @@ public interface IAssessmentRepository
         string kind, string baselineToken, IReadOnlyList<string>? assessmentIds, IReadOnlyCollection<string> wordForms);
 
     /// <summary>
-    /// Promotes one Assessment to be the project's current Assessment (ADR 0042 decision 2): a pointer
+    /// Promotes one Assessment to be the project's current Assessment (ADR 0020 decision 2): a pointer
     /// the project holds, not a state the Assessment carries.
     /// </summary>
     /// <exception cref="KeyNotFoundException">No Assessment is recorded under this id.</exception>
@@ -102,7 +102,7 @@ public interface IAssessmentRepository
 
     /// <summary>
     /// Deletes the Assessments recorded against one Proposal that nothing else still needs, except
-    /// <paramref name="exceptAssessmentId"/> — the sweep purge-on-apply drives (ADR 0042's Trial amendment). A
+    /// <paramref name="exceptAssessmentId"/> — the sweep purge-on-apply drives (ADR 0020's Trial amendment). A
     /// promoted candidate must always be named here by its exact id: this call, not the order it runs in relative
     /// to promotion, is what keeps it out of the sweep. An Assessment a Report cites, a pin or retained invocation
     /// holds, that is current, or that a surviving Assessment replaces is kept, and no surviving row is rewritten.
@@ -248,7 +248,7 @@ public sealed record AssessmentRecord(
 
 /// <summary>
 /// Where a caller turns one recorded Assessment into the narrower view it actually needs — a Report's, a
-/// comparison's, or a regression check's (ADR 0042's projections). Kept beside <see cref="AssessmentRecord"/>
+/// comparison's, or a regression check's (ADR 0020's projections). Kept beside <see cref="AssessmentRecord"/>
 /// itself rather than beside each narrower type: those live in <c>SIL.Motif.Host</c>, which this module
 /// depends on and never the reverse, so this is the one place able to see both the row and every view of it.
 /// </summary>

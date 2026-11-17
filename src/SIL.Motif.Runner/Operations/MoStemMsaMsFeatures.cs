@@ -14,7 +14,7 @@ namespace SIL.Motif.Runner.Operations;
 
 /// <summary>
 /// Names the two <c>MoStemMsa.MsFeatures</c> operation kinds — the first hand-written grammar
-/// owning/atomic slot alongside the lexical <c>LexEntry.LexemeForm</c> precedent (ADR 0022 §4,
+/// owning/atomic slot alongside the lexical <c>LexEntry.LexemeForm</c> precedent (ADR 0013 §8,
 /// "creation validity"). Unlike <c>LexemeForm</c>, an empty <c>FsFeatStruc</c> is already a valid one
 /// (LibLCM imposes no minimum on <c>FeatureSpecs</c>), so this create carries no required payload;
 /// populating actual feature values is a separate operation against the created object's own identity.
@@ -60,7 +60,7 @@ public static class MoStemMsaMsFeaturesPayload
 /// <remarks>
 /// Exactly one owning-atomic assignment, never delete-plus-create — the same change-class rule
 /// <c>LexEntryLexemeFormCreateLowering</c> follows. Must run inside an already-open unit of work
-/// (ADR 0006 decision 5).
+/// (ADR 0017 decision 5).
 /// </remarks>
 public static class MoStemMsaMsFeaturesCreateLowering
 {

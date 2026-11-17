@@ -40,7 +40,7 @@ public sealed class GeneratedBasicFieldOperationsTests : IDisposable
     /// <summary>
     /// <c>MoForm.Form</c> feeds LexEntry headword and homograph caches. That once forced a dispose/reload
     /// between DryRun and Apply, since a rollback left those derived caches stale. The DryRun now mutates
-    /// a copy and deletes it (ADR 0016), so this field
+    /// a copy and deletes it (ADR 0017), so this field
     /// round-trips exactly like the MultiUnicode and boolean fields above, with no ceremony needed.
     /// </summary>
     [Fact]

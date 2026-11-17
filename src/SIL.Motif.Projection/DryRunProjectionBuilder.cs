@@ -21,7 +21,7 @@ public static class DryRunProjectionBuilder
 
     private static IReadOnlyList<ProposalOperationView> OrderOperations(Proposal proposal)
     {
-        // Keyed by identity, so a dependency spelled with another prefix still names its operation (ADR 0068).
+        // Keyed by identity, so a dependency spelled with another prefix still names its operation (ADR 0012).
         var operations = proposal.Operations.ToDictionary(item => item.OperationId);
         if (operations.Values.SelectMany(operation => operation.DependsOn)
             .Any(dependency => !operations.ContainsKey(dependency.OperationId)))

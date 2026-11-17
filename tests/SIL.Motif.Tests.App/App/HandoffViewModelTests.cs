@@ -207,7 +207,7 @@ public sealed class HandoffViewModelTests
         Assert.Equal(OperatingSystem.IsWindows(), handoff.Files.Count == 1);
     }
 
-    // ADR 0045 decision 13: what leaves the machine is stated once beside the tiles, not read from a file.
+    // ADR 0009 decision 13: what leaves the machine is stated once beside the tiles, not read from a file.
     [Fact]
     public void DataSensitivitySentenceNamesWhatLeavesTheMachine()
     {
@@ -231,7 +231,7 @@ public sealed class HandoffViewModelTests
         Assert.Equal(expectedKind, HandoffFileViewModel.KindFromRelativePath(relativePath));
     }
 
-    // The pasted header and handoff.md are generated per run (ADR 0045 decisions 4 and 5), not a static asset.
+    // The pasted header and handoff.md are generated per run (ADR 0009 decision 13), not a static asset.
     [Fact]
     public async Task RunningPopulatesThePastedHeaderAndHandoffMarkdownFromTheResponse()
     {

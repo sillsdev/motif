@@ -6,7 +6,7 @@ namespace SIL.Motif.Host.Config;
 
 /// <summary>
 /// One declared Assessment scope: which words, which Assessor, what to collect, and the
-/// per-word time and analysis-parser work limits (ADR 0042 decision 3).
+/// per-word time and analysis-parser work limits (ADR 0020 decision 3).
 /// </summary>
 /// <remarks>
 /// <c>Query</c> names which words a scope wants, in words a future query language will interpret; it is
@@ -82,7 +82,7 @@ public sealed record AssessmentScopeConfiguration
 
 /// <summary>
 /// A project's resolved Assessment configuration: its declared scopes, its regression policy, and whether
-/// applying sweeps a Proposal's working artifacts (ADR 0042 decisions 3 and 5).
+/// applying sweeps a Proposal's working artifacts (ADR 0020 decisions 3 and 5).
 /// </summary>
 /// <remarks>
 /// Always fully resolved — every field is populated, whether from <c>&lt;project&gt;.motif.toml</c> or from
@@ -121,7 +121,7 @@ public sealed record ProjectConfiguration
     /// <summary>Every declared Assessment scope, at least one.</summary>
     public IReadOnlyList<AssessmentScopeConfiguration> Scopes { get; }
 
-    /// <summary>Whether a regression blocks <c>apply</c> (ADR 0042 decision 5). Off by default.</summary>
+    /// <summary>Whether a regression blocks <c>apply</c> (ADR 0020 decision 5). Off by default.</summary>
     public bool GateOnRegression { get; }
 
     /// <summary>Whether applying a Proposal sweeps its Trials, Dry Runs and Assessments. On by default.</summary>
@@ -136,10 +136,10 @@ public sealed record ProjectConfiguration
     /// <summary>The gain gate over attested gains per grammar object added; advisory by default.</summary>
     public GainGatePolicy GainGate { get; }
 
-    /// <summary>Parsimony measure ids the project opted in to blocking on (ADR 0116); empty means advisory everywhere.</summary>
+    /// <summary>Parsimony measure ids the project opted in to blocking on (ADR 0022); empty means advisory everywhere.</summary>
     public IReadOnlyList<string> ParsimonyBlockOn { get; }
 
-    /// <summary>Orthographic fold rules for near-duplicate lexemes, each <c>from&gt;to</c> (ADR 0116); none by default, Cebuano sets <c>iy&gt;y</c>.</summary>
+    /// <summary>Orthographic fold rules for near-duplicate lexemes, each <c>from&gt;to</c> (ADR 0022); none by default, Cebuano sets <c>iy&gt;y</c>.</summary>
     public IReadOnlyList<string> ParsimonyFold { get; }
 
     /// <summary>The documented configuration for a project with no <c>.motif.toml</c>.</summary>

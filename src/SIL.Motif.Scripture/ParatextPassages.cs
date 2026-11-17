@@ -13,7 +13,7 @@ public sealed record ParatextPassage(string Locator, string Hash, IReadOnlyList<
 /// <summary>One verse row in the Source's own versification.</summary>
 public sealed record ParatextVerse(string Reference, string AnchorReference, string Text);
 
-/// <summary>A tokenizer word with its permanent, one-based verse anchor (ADR 0110).</summary>
+/// <summary>A tokenizer word with its permanent, one-based verse anchor (ADR 0024).</summary>
 public sealed record ParatextWord(string Anchor, string Verse, string Surface);
 
 /// <summary>Reads Paratext chapters through Machine and applies the permanent anchor policy.</summary>

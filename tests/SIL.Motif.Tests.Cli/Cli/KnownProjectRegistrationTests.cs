@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
 /// Every invocation that names a project upserts it into the machine store's <c>KnownProjects</c> on the
-/// way past (ADR 0041 decision 4) — there is no separate <c>motif register</c> verb.
+/// way past (ADR 0023 decision 4) — there is no separate <c>motif register</c> verb.
 /// </summary>
 public sealed class KnownProjectRegistrationTests : IDisposable
 {

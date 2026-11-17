@@ -30,7 +30,7 @@ public enum AssessmentStage
 
 /// <summary>
 /// One reported progress step, for a human-mode caller to print as a diagnostic line — never JSON, and
-/// never console output the command itself writes (ADR 0043 decision 1).
+/// never console output the command itself writes (ADR 0018 decision 1).
 /// </summary>
 /// <param name="Completed">
 /// How much of this stage's observed work is done, or <c>0</c> when the stage has no such count.

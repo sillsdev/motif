@@ -40,7 +40,7 @@ public sealed record FrozenExpectedReading(
 public sealed record FrozenHumanEvaluation(string Evaluation, string Agent, string Opinion);
 
 /// <summary>
-/// Ordered authoritative morphology for unchanged ADR 0027 comparison, with captured bundle text kept
+/// Ordered authoritative morphology for unchanged ADR 0020 comparison, with captured bundle text kept
 /// separately from identity. Guessed text/WS stays conditional; ordinary retirement requires neither.
 /// </summary>
 public sealed record FrozenExpectationMorph(

@@ -44,7 +44,7 @@ public static partial class MeasureRunner
             f => f.FindingId, StringComparer.Ordinal).ToArray(), null);
     }
 
-    // O(variant links): one shape key per link, hash-grouped; five or more of one shape suggest a rule (ADR 0116).
+    // O(variant links): one shape key per link, hash-grouped; five or more of one shape suggest a rule (ADR 0022).
     internal static ParsimonyMeasureResult DecideVariantSameShape(MeasureDefinition measure, VariantShapeInput input,
         MeasureContext context)
     {

@@ -78,7 +78,7 @@ public class GrammarCoverageFigureTests
     }
 
     [Fact]
-    public void Compute_CitesTheFullProvenanceSetAdr0032Requires()
+    public void Compute_CitesTheFullProvenanceSetStemLexiconRequires()
     {
         var batch = Batch(("mbali", WordOutcome.Analysed));
         var selection = Selection.Create("test-selection-3", new[] { "mbali" });

@@ -2,7 +2,7 @@ namespace SIL.Motif.Generator.Emit;
 
 /// <summary>
 /// Every derived fact the basic <c>set|clear</c> templates need for one field, computed from a
-/// <see cref="Join.JoinedRow"/> via the same derivations (<c>ADR 0023</c>/<c>ADR 0024</c>) already
+/// <see cref="Join.JoinedRow"/> via the same derivations (<c>ADR 0013</c>/<c>ADR 0013</c>) already
 /// established — nothing here is re-decided, only assembled.
 /// </summary>
 /// <param name="TargetInterface">The LibLCM interface a resolved target is cast to:

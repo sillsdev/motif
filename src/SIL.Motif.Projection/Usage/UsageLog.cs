@@ -31,7 +31,7 @@ public sealed record AdjacentCommandPair(string First, string Second, int Count)
 /// <param name="CallCounts">How many times each command was recorded.</param>
 /// <param name="BackToBack">
 /// Every ordered pair of commands that ran one immediately after the other, with how often that
-/// pairing occurred — the signal ADR 0021 decision 4 calls "a candidate composite report."
+/// pairing occurred — the signal ADR 0018 decision 2 calls "a candidate composite report."
 /// </param>
 public sealed record UsageSummary(
     IReadOnlyDictionary<string, int> CallCounts,
@@ -39,7 +39,7 @@ public sealed record UsageSummary(
 
 /// <summary>
 /// A session-scoped record of which read-surface commands were called, how often, and in what
-/// sequence — the evidence ADR 0021 decision 4 asks for towards scope 2's screen list. It never
+/// sequence — the evidence ADR 0018 decision 2 asks for towards scope 2's screen list. It never
 /// carries a project path, entity id, gloss, or any other authored content: every entry is a
 /// command name plus its argument shape, built by <see cref="UsageArgumentShape"/>.
 /// </summary>

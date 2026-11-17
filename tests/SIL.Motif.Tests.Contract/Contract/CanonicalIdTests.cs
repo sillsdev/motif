@@ -9,12 +9,12 @@ namespace SIL.Motif.Tests.Contract;
 /// Canonical id parsing, validation, GUID round-trip (network-order bytes), and minting, per
 /// the Change Set contract's "IDs and GUID mapping" (a 22-character unpadded base64url suffix
 /// decoding to the 16 canonical bytes, mapped left-to-right onto the textual GUID's bytes — never
-/// .NET's mixed-endian <c>Guid.ToByteArray()</c>) and ADR 0004 decision 2 (a <c>changeSetId</c> is a
+/// .NET's mixed-endian <c>Guid.ToByteArray()</c>) and ADR 0012 decision 2 (a <c>changeSetId</c> is a
 /// content-independent, uniquely minted 128-bit id, frozen at creation).
 /// </summary>
 public class CanonicalIdTests
 {
-    // The fixed byte-vector documented in docs/change-set-contract.md, "IDs and GUID mapping".
+    // The fixed byte-vector documented in docs/proposal-contract.md, "IDs and GUID mapping".
     private static readonly byte[] FixedVectorBytes =
     {
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,

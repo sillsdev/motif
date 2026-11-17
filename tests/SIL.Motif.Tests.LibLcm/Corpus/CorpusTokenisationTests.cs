@@ -14,7 +14,7 @@ namespace SIL.Motif.Tests.Corpus;
 /// only <see cref="Selection.Create"/> sorts and deduplicates. Doing either step twice, or in the
 /// wrong place, destroys information the other corpus consumers (frequency ranking, n-gram sequence) need.</item>
 /// <item>A form invented by splitting on word-internal punctuation reads as a grammar gap that is really a
-/// tokenisation bug — the specific failure <c>docs/adr/0036</c> decision 4 calls out by name.</item>
+/// tokenisation bug — the specific failure <c>docs/adr/0024</c> decision 6 calls out by name.</item>
 /// <item>Provenance has to survive the bridge intact, including its refusals: an unattested corpus must
 /// still be unable to support an accuracy figure once it has been tokenised.</item>
 /// <item>Two corpora tokenised differently are not comparable, so the declared tokenisation is binding and
@@ -188,7 +188,7 @@ public class CorpusTokenisationTests
 
         Assert.Equal(corpus.Provenance, descriptor.Provenance);
 
-        // Not a back door around ADR 0036 decision 5: no qualification means no accuracy claims, before or after.
+        // Not a back door around ADR 0024 decision 13: no qualification means no accuracy claims, before or after.
         Assert.False(descriptor.SupportsAccuracyClaims);
     }
 
@@ -220,7 +220,7 @@ public class CorpusTokenisationTests
         var ex = Assert.Throws<InvalidOperationException>(
             () => CorpusTokenisation.ToSelection(corpus, new WhitespaceAndPunctuationTokeniser()));
 
-        // Differently-tokenised corpora aren't comparable (ADR 0036 decision 4); message must name both values.
+        // Differently-tokenised corpora aren't comparable (ADR 0024 decision 6); message must name both values.
         Assert.Contains("SIL.Machine LatinWordTokenizer", ex.Message);
         Assert.Contains("3.6.2", ex.Message);
         Assert.Contains("whitespace-and-punctuation", ex.Message);

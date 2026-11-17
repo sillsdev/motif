@@ -44,7 +44,7 @@ public static class AuthorVariantEntryIntentParser
 /// <summary>
 /// Creates a sense-less variant entry in one step: the entry, its lexeme form with morph type and environments, and a
 /// variant reference to the main sense. LibLCM's CreateVariantEntryAndBackRef makes the same shape (a lexeme form and a
-/// variant reference, no sense and no analysis), the path ADR 0112 requires a composer to cite. The parser then reads the variant as the main sense's stem.
+/// variant reference, no sense and no analysis), the path ADR 0003 requires a composer to cite. The parser then reads the variant as the main sense's stem.
 /// </summary>
 public static class AuthorVariantEntryComposer
 {

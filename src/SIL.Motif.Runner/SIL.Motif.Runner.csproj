@@ -3,7 +3,7 @@
   <PropertyGroup>
     <!--
       Single-targeted: a separate FieldWorks reaches Motif only by running the `motif` executable and
-      reading its JSON (ADR 0043), so the Runner never needs to be loadable inside a `net48` host.
+      reading its JSON (ADR 0018), so the Runner never needs to be loadable inside a `net48` host.
     -->
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
@@ -11,7 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
     <ProjectReference Include="..\SIL.Motif.Model\SIL.Motif.Model.csproj" />
-    <!-- liblcm's own load-back rules for text properties, so a rich-text edit refuses what liblcm could not read (ADR 0095). -->
+    <!-- liblcm's own load-back rules for text properties, so a rich-text edit refuses what liblcm could not read (ADR 0006). -->
     <ProjectReference Include="..\..\textediting\src\SIL.TextEditing.LCModel\SIL.TextEditing.LCModel.csproj" SetTargetFramework="TargetFramework=net10.0" />
   </ItemGroup>
 

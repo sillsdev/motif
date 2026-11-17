@@ -26,7 +26,7 @@ public interface IOperationHandler
     /// <summary>
     /// Resolves the operation's target, snapshots it, applies the lowering inside the caller's
     /// already-open unit of work, re-snapshots, and returns the one <see cref="ExpectedEffect"/> this
-    /// caused. Must not open or close any unit of work itself (docs/adr/0006, decision 5).
+    /// caused. Must not open or close any unit of work itself (docs/adr/0017, decision 5).
     /// </summary>
     /// <param name="touchedTargets">Appended with the resolved target's <see cref="CanonicalId"/>,
     /// so callers can report which objects a Proposal touched.</param>
@@ -35,7 +35,7 @@ public interface IOperationHandler
 
     /// <summary>
     /// Reads the target's CURRENT, pre-mutation footprint with no mutation and no unit of work at
-    /// all — legal at any transaction state (docs/adr/0006, decision 1). Returns an
+    /// all — legal at any transaction state (docs/adr/0017, decision 3). Returns an
     /// <see cref="ExpectedEffect"/> whose <c>Before</c> and <c>After</c> are the same value; only
     /// <c>Before</c> participates in <see cref="FootprintDigest"/>. Do not resolve proposed references
     /// merely to validate them: a dependency may create them after this read. Validate them when

@@ -16,7 +16,7 @@ using SIL.Motif.Runner.Resolution;
 
 namespace SIL.Motif.Runner.Operations;
 
-/// <summary>Names the generic edit of one String field or one writing system of a MultiString field (ADR 0095).</summary>
+/// <summary>Names the generic edit of one String field or one writing system of a MultiString field (ADR 0006).</summary>
 public static class TextRichStringOperationKinds
 {
     public const string Set = "text/setRichString";

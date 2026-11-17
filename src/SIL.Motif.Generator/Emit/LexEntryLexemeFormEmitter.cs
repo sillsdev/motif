@@ -8,7 +8,7 @@ namespace SIL.Motif.Generator.Emit;
 /// <summary>
 /// Emits lexeme-form creation and deletion with an ordinary written-form payload and a separate,
 /// closed MoAffixProcess payload. Concrete form selection and process cleanup are typed Runner policy;
-/// operation kind names remain derived from the owning field (ADR 0023).
+/// operation kind names remain derived from the owning field (ADR 0013).
 /// </summary>
 public static class LexEntryLexemeFormEmitter
 {
@@ -48,7 +48,7 @@ public static class LexEntryLexemeFormEmitter
         // Produced by SIL.Motif.Generator emit; edit the emitter and regenerate after a gated build.
         // Source: LexEntry.LexemeForm (owning/atomic MoForm, create|delete).
         // Ordinary payload: {morphType,ws,text}. Process payload: {class:"MoAffixProcess",morphType}.
-        // Concrete selection and process initialization are typed Runner policy (ADR 0023).
+        // Concrete selection and process initialization are typed Runner policy (ADR 0013).
         // </auto-generated>
         using System;
         using System.Collections.Generic;

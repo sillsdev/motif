@@ -18,7 +18,7 @@ public static partial class ProposalCommands
 {
     /// <summary>
     /// Adds a person's paragraph edit of one rich-text field to the pending-changes Draft, or updates the edit the
-    /// Draft already holds for that field, creating the Draft when there is none (ADR 0095 decision 4).
+    /// Draft already holds for that field, creating the Draft when there is none (ADR 0006 decision 4).
     /// </summary>
     /// <remarks>
     /// An edit that changes and removes nothing takes the field's earlier edit out of the Draft. Each editable class

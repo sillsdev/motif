@@ -15,7 +15,7 @@ namespace SIL.Motif.Generator.Descriptions.Harvest;
 /// </summary>
 /// <remarks>
 /// <c>manifest/fieldworks-labels.tsv</c> already harvests <c>strings-en.xml</c>, the <c>.fwlayout</c> slice
-/// system and tool/area config (ADR 0023 decision 5's amendment: "only 20 rows carry any prose"). This is a
+/// system and tool/area config (ADR 0013 decision 7's amendment: "only 20 rows carry any prose"). This is a
 /// fourth, previously-unharvested source, called out explicitly in this task because it is where those 20
 /// prose rows actually live — <c>ContextHelp.xml</c> is a different file from anything
 /// <c>SIL.Motif.Spikes.LabelHarvest</c> reads.

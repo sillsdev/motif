@@ -7,7 +7,7 @@ namespace SIL.Motif.Host.Analysis;
 public sealed record AnalysisOccurrenceLink(string SegmentGuid, int AnalysisIndex);
 
 /// <summary>
-/// One human-approved analysis on a word form — one member of the <i>set</i> ADR 0038 decision 2 calls
+/// One human-approved analysis on a word form — one member of the <i>set</i> ADR 0003 decision 4 calls
 /// "the durable test". A word form with several genuinely ambiguous readings carries several of these;
 /// nothing here collapses them.
 /// </summary>

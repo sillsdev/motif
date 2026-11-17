@@ -5,7 +5,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
-/// Pins the command catalog's dependencies (ADR 0043), including Help's Parsimony recipe metadata
+/// Pins the command catalog's dependencies (ADR 0018), including Help's Parsimony recipe metadata
 /// used to caption finding-based dispositions.
 /// </summary>
 public sealed class CommandsProjectReferenceTests

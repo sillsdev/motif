@@ -11,7 +11,7 @@ using SIL.TextEditing.LCModel;
 namespace SIL.Motif.Runner.Operations;
 
 /// <summary>
-/// What the two rich-text kinds (ADR 0095) share: reading and writing runs and their properties in a payload, with
+/// What the two rich-text kinds (ADR 0006) share: reading and writing runs and their properties in a payload, with
 /// liblcm's own load-back rules, and building, writing-system lookup and fingerprinting of a stored string's runs.
 /// Every refusal names the kind whose payload is being read.
 /// </summary>

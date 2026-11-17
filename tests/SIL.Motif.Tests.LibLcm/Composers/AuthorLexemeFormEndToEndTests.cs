@@ -186,7 +186,7 @@ public sealed class AuthorLexemeFormEndToEndTests
         requires: null,
         operations: operations);
 
-    /// <summary>Dry-runs against a throwaway file-copy scratch, never the live cache (ADR 0016).</summary>
+    /// <summary>Dry-runs against a throwaway file-copy scratch, never the live cache (ADR 0017).</summary>
     private static DryRunModel RunDryRun(FwDataProjectLoader loader, LcmCache cache, Proposal proposal)
     {
         loader.Save(cache);

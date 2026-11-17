@@ -5,7 +5,7 @@ using SIL.Motif.Generator.Join;
 namespace SIL.Motif.Generator.Checks;
 
 /// <summary>
-/// ADR 0023 decision 5: every emitted kind must carry a hand-written description, and
+/// ADR 0013 decision 7: every emitted kind must carry a hand-written description, and
 /// <b>the build fails if one is missing or if it merely restates the title.</b>
 /// </summary>
 /// <remarks>
@@ -77,7 +77,7 @@ public static class DescriptionCheck
             {
                 failures.Add(
                     $"{key}: no description. Add one to manifest/kind-descriptions.tsv saying when an agent " +
-                    "should reach for this operation (ADR 0023 decision 5).");
+                    "should reach for this operation (ADR 0013 decision 7).");
                 continue;
             }
 

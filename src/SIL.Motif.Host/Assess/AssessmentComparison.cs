@@ -7,7 +7,7 @@ namespace SIL.Motif.Host.Assess;
 
 /// <summary>
 /// The four fields of an Assessment that decide whether, and how, it joins with another
-/// (ADR 0042's amendment "comparability is a join on words, not containment of scopes"): which Assessor made
+/// (ADR 0020's amendment "comparability is a join on words, not containment of scopes"): which Assessor made
 /// it, which kind it is, its tokeniser identity, and the per-word rows the join is computed over. Everything
 /// else an Assessment carries — engine, limits, which corpus the words came from — is context a comparison
 /// annotates with, never gates on.
@@ -67,7 +67,7 @@ public sealed record WordChange(string Word, WordChangeKind Kind, string FromOut
 
 /// <summary>
 /// Raised when two Assessments cannot be compared at all. Never raised for a differing word set or a
-/// differing tokeniser — ADR 0042's amendment makes both of those context that annotates the comparison
+/// differing tokeniser — ADR 0020's amendment makes both of those context that annotates the comparison
 /// rather than gates it.
 /// </summary>
 public class ComparisonRefusalException : Exception
@@ -108,7 +108,7 @@ public sealed record AssessmentComparison(
 }
 
 /// <summary>
-/// Joins two Assessments on the word (ADR 0042's amendment). What must match to compare at all is the
+/// Joins two Assessments on the word (ADR 0020's amendment). What must match to compare at all is the
 /// Assessor (decision 1: two Assessments compare only when they share one) and the kind (the amendment: kind
 /// is part of an Assessment's identity and what a comparison matches on alongside the word). Everything
 /// else — engine, limits, which corpus the words came from, and the tokeniser — is context: a differing word

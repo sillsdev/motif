@@ -7,7 +7,7 @@
     <!--
       This project must never take a dependency on LibLCM. It is consumed by non-.NET runners
       (Python/Rust) as the normative description of Change Set shape, canonical-ID rules, and
-      RFC 8785 canonicalization/digest behavior. See docs/change-set-contract.md.
+      RFC 8785 canonicalization/digest behavior. See docs/proposal-contract.md.
     -->
   </PropertyGroup>
 

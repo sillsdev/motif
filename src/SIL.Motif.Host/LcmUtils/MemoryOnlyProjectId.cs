@@ -4,7 +4,7 @@ namespace SIL.Motif.Host.LcmUtils;
 
 /// <summary>
 /// A minimal <see cref="IProjectIdentifier"/> for an in-memory scratch cache
-/// (<see cref="BackendProviderType.kMemoryOnly"/>), as required by ADR 0016.
+/// (<see cref="BackendProviderType.kMemoryOnly"/>), as required by ADR 0017.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -22,7 +22,7 @@ namespace SIL.Motif.Host.LcmUtils;
 /// <para>
 /// Note that a memory-only cache's writing systems are therefore synthesized from the bare language tag
 /// and carry none of the source project's collation, valid-character, font, or keyboard settings. That is
-/// a documented hazard of the scratch design, not a defect in this class — see ADR 0016's amendment.
+/// a documented hazard of the scratch design, not a defect in this class — see ADR 0017's amendment.
 /// </para>
 /// </remarks>
 public sealed class MemoryOnlyProjectId : IProjectIdentifier

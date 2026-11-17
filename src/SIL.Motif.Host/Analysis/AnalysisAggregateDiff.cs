@@ -5,7 +5,7 @@ public sealed record ManualAnalysisChange(string WordformGuid, string Form);
 
 /// <summary>
 /// What changed between two <see cref="AnalysisAggregateResponse"/> readings, computed from the
-/// <b>manual</b> analyses only. There is no separate change-tracking type in this codebase — ADR 0038
+/// <b>manual</b> analyses only. There is no separate change-tracking type in this codebase — ADR 0020
 /// decision 5 makes this diff the whole answer to "what changed": differences in the automatic analyses
 /// are grammar coverage moving, differences in counts are text churn, and what remains — differences in
 /// the manual analyses — is a test being established, updated, or removed.
@@ -22,7 +22,7 @@ public sealed record ManualAnalysisChange(string WordformGuid, string Form);
 /// </param>
 /// <param name="Removed">
 /// Word forms that had at least one approved analysis before and have none now. <b>Never netted against
-/// <see cref="Established"/> or read as an improvement</b> (ADR 0038 decision 5 and hard constraint):
+/// <see cref="Established"/> or read as an improvement</b> (ADR 0020 decision 12 and hard constraint):
 /// deleting the last approved analysis on a word form improves every raw count while reducing what is
 /// checked, and this is often the routinely correct thing to do — reported plainly, exactly like
 /// <see cref="Established"/> and <see cref="Updated"/>, never flagged or celebrated.
@@ -30,7 +30,7 @@ public sealed record ManualAnalysisChange(string WordformGuid, string Form);
 /// <param name="Vanished">
 /// Word forms present in the earlier response and absent from the later one — the word form object itself
 /// disappeared from the project, distinct from <see cref="Removed"/> (whose word forms still exist with
-/// zero approved analyses). ADR 0038 decision 3: <c>CmObject.MergeObject</c> deletes the source object
+/// zero approved analyses). ADR 0020 decision 10: <c>CmObject.MergeObject</c> deletes the source object
 /// with no forwarding record, so a vanished word form is reported as vanished and Motif does not chase it
 /// or guess what it might have become.
 /// </param>
@@ -62,7 +62,7 @@ public static class AnalysisAggregateDiff
         {
             if (!afterByGuid.TryGetValue(guid, out var afterWordform))
             {
-                // Vanished (the word form itself is gone, ADR 0038 decision 3), distinct from removed (it still exists).
+                // Vanished (the word form itself is gone, ADR 0020 decision 10), distinct from removed (it still exists).
                 vanished.Add(new ManualAnalysisChange(guid, beforeWordform.Form));
                 continue;
             }
@@ -74,7 +74,7 @@ public static class AnalysisAggregateDiff
         {
             if (beforeByGuid.ContainsKey(guid)) continue; // already classified above
 
-            // New to this reading; reported only if it carries an expectation now (none = none, ADR 0038 decision 7).
+            // New to this reading; reported only if it carries an expectation now (none = none, ADR 0020 decision 14).
             if (afterWordform.ManualAnalyses.Count > 0)
                 established.Add(new ManualAnalysisChange(guid, afterWordform.Form));
         }
@@ -99,7 +99,7 @@ public static class AnalysisAggregateDiff
         }
         else if (beforeDigests.Count > 0 && afterDigests.Count == 0)
         {
-            // Routinely correct (ADR 0038 decision 5) but never rendered as an improvement, whatever the counts show.
+            // Routinely correct (ADR 0020 decision 12) but never rendered as an improvement, whatever the counts show.
             removed.Add(new ManualAnalysisChange(guid, after.Form));
         }
         else if (beforeDigests.Count > 0 && !beforeDigests.SetEquals(afterDigests))

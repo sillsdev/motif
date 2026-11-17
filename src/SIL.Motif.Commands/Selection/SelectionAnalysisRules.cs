@@ -61,7 +61,7 @@ public static class SelectionAnalysisRules
     /// <summary>Unknown stored opinions share the same comparison label as Candidate.</summary>
     public static string NormalizeOpinion(string? opinion) => opinion is null or "unknown" ? ReadingGrade.Candidate : opinion;
 
-    /// <summary>Whether the comparison offers an unstaged opinion or parser action under ADR 0049.</summary>
+    /// <summary>Whether the comparison offers an unstaged opinion or parser action under ADR 0027.</summary>
     public static bool NeedsALook(SelectionAnalysisClassification classification,
         IReadOnlyDictionary<string, string> opinions)
     {

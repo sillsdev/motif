@@ -78,7 +78,7 @@ public sealed record SeededProject(
     /// Writes the seed into <paramref name="cache"/> and returns the identity of everything it made.
     /// </summary>
     /// <remarks>
-    /// Two phases, mirroring ADR 0005: the custom-field definitions go in their own non-undoable unit of
+    /// Two phases, mirroring ADR 0017: the custom-field definitions go in their own non-undoable unit of
     /// work first, then the lexical data in a second, so the schema mutation is never left inside an open
     /// task the way Flexicon's was.
     /// </remarks>

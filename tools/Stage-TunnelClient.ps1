@@ -42,7 +42,7 @@ try {
                 try { $stream.CopyTo($output) } finally { $output.Dispose() }
             } finally { $stream.Dispose() }
         }
-        $licences = @($archive.Entries | Where-Object { $_.FullName -cmatch '^tunnel-client-[a-z0-9-]+-licenses\.txt$' })
+        $licences = @($archive.Entries | Where-Object { $_.FullName -cmatch '^tunnel-client-[a-z0-9.-]+-licenses\.txt$' })
         if ($licences.Count -ne 1) { throw 'The tunnel-client archive must contain one licence report.' }
         $stream = $licences[0].Open()
         try {

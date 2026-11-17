@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 namespace SIL.Motif.Worker.Store;
 
 /// <summary>
-/// Drops a Proposal Difference's word detail once its Proposal is decided or deferred, keeping the summary (ADR 0067).
+/// Drops a Proposal Difference's word detail once its Proposal is decided or deferred, keeping the summary (ADR 0021).
 /// </summary>
 internal static class ProposalDifferenceRetention
 {

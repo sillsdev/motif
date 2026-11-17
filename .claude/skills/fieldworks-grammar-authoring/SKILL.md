@@ -62,8 +62,6 @@ record GDRs) is `grammar-discovery-loop`.
 
 ## Sources
 
-The evidence behind every recipe, with file and line citations, is in `docs/research/grammar-authoring/`:
-`liblcm-recipes.md` (LibLCM, FieldWorks `HCLoader`, PanGloss source), `flexicon-harvest-grammar.md`
-(Flexicon, FLExTools, FlexToolsMCP), and `own-guidance-review.md` (our guidance and Andy Black's).
+The supporting investigations and their original source paths are in `docs/references/grammar-authoring.md`.
 Linguists get the same content in plain words on the Learn page *Modelling a grammar the parser can use*
 (`src/SIL.Motif.Help/Content/en/guide/learn/modelling-a-grammar-the-parser-can-use.md`).

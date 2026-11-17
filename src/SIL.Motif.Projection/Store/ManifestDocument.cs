@@ -41,13 +41,13 @@ public sealed class ManifestDocument
     /// pointer, exactly like a git ref moving to point at a new commit. <c>finalize</c> sets this to
     /// the newly committed object's digest on both a first commit and an amend; the id
     /// (<see cref="ProposalId"/>) never changes, only this pointer does. <c>null</c> for a Draft: it
-    /// has no committed revision yet, so there is nothing for this pointer to name (ADR 0041 decision 3).
+    /// has no committed revision yet, so there is nothing for this pointer to name (ADR 0007 decision 2).
     /// </summary>
     public string? CurrentIntentDigest { get; set; }
 
     /// <summary>
     /// The <see cref="BoundDryRunAnchor"/> recorded by the most recent <c>dry-run</c> against
-    /// <see cref="CurrentIntentDigest"/>'s content (ADR 0004 decision 3). <c>null</c> when no dry run
+    /// <see cref="CurrentIntentDigest"/>'s content (ADR 0017 decision 4). <c>null</c> when no dry run
     /// has been computed yet, or after an amend invalidates the prior one (it was bound to the
     /// previous content's footprint/effect digest). <c>apply</c> requires this to be present and not
     /// stale — a bare apply with no bound DryRun is a hard error.

@@ -94,13 +94,13 @@ public sealed record RationaleRevisionView(long RevisionId, string Markdown, str
 public sealed record ProposalTextChangedResponse(string ProposalId, string Field, string? UpdatedUtc, bool CommentsChanged)
 {
     /// <summary>
-    /// What a reader would see as wrong in the Rationale as saved (ADR 0099); empty when it is clean. A Draft's
+    /// What a reader would see as wrong in the Rationale as saved (ADR 0006); empty when it is clean. A Draft's
     /// Rationale saves with findings, but the Draft cannot be finalized until they are fixed.
     /// </summary>
     public IReadOnlyList<TextFinding> Findings { get; init; } = [];
 
     /// <summary>
-    /// The Rationale as stored: the text written, tidied when it is clean (ADR 0099). The base for its next edit;
+    /// The Rationale as stored: the text written, tidied when it is clean (ADR 0006). The base for its next edit;
     /// null for a note.
     /// </summary>
     public string? Text { get; init; }
@@ -119,7 +119,7 @@ public sealed record ProposalCommentChangedResponse(string ProposalId, long Comm
 
 /// <summary>
 /// Something a reader would see as wrong in a Rationale or Comment read as FieldWorks Markdown: unreadable markup, a
-/// link to an object not in the project, an unknown writing system or style (ADR 0099 decision 4).
+/// link to an object not in the project, an unknown writing system or style (ADR 0006 decision 6).
 /// </summary>
 /// <param name="Id">The checker's stable finding id, such as <c>fwmd.link.not-found</c>.</param>
 /// <param name="Line">The 1-based line of the text the finding starts on.</param>
