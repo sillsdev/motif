@@ -19,7 +19,7 @@ One record per hypothesis; one hypothesis per brief. The record is a row of the 
 | size_delta | objects added (entries, allomorphs, variants, MSAs, tags, features, rules, environments), attested held-out types gained, ratio (`objects_added`, `attested_types_gained`) |
 | word_questions | the batch asked or queued, and answers (`questions`; `hypothesis answer` records an answer) |
 | status | proposed, passed, failed, superseded |
-| gdr | the GDR id and section changed, or "none: reason" (`hypothesis link --guide GDR-n --guide-section …` or `--guide-none …`) |
+| guide | the Guide id and section changed, or "none: reason" (`hypothesis link --guide GDR-n --guide-section …` or `--guide-none …`) |
 | proposal | Proposal id(s) (`hypothesis link --proposal …`) |
 | superseded_by | id, when a later hypothesis replaces this one (`hypothesis decide --status superseded --superseded-by H-n`) |
 

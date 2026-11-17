@@ -151,7 +151,7 @@ public static class GdrQuery
         "The Baseline changed before this record was read. Refresh and try again."));
 
     private static CommandOutcome<T> EmptyId<T>() where T : class => CommandOutcome<T>.Refused(new Refusal(
-        RefusalCodes.GdrEmptyId, FailureReason.InvalidArgument, "Name a Grammar Design Record, for example GDR-1."));
+        RefusalCodes.GdrEmptyId, FailureReason.InvalidArgument, "Name a Grammar Guide section, for example GDR-1."));
 
     private static CommandOutcome<T> NotFound<T>(string id) where T : class => CommandOutcome<T>.Refused(new Refusal(
         RefusalCodes.GdrNotFound, FailureReason.NotFound, $"No Grammar Guide section is named '{id}'."));

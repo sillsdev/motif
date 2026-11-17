@@ -26,7 +26,7 @@ public interface IGdrExampleEvidence
 public sealed record GdrLedgerLink(string HypothesisId, string GdrId, string? Section);
 
 /// <summary>
-/// The Guide check check (ADR 0005). One pass over the grammar's rules and affix processes, one over the records' paragraphs
+/// The Guide check (ADR 0005). One pass over the grammar's rules and affix processes, one over the records' paragraphs
 /// and runs, one batched read of example words: O(rules + sections + examples). It never opens a unit of work and never parses.
 /// </summary>
 public static class GdrSyncChecker
@@ -72,7 +72,7 @@ public static class GdrSyncChecker
                 missing.Take(SubjectCap).Select(guid => guid.ToString("D")).ToArray()));
         }
 
-        // The ledger's own links: a passed hypothesis names a Guide section and section that must still exist.
+        // The ledger's own links: a passed hypothesis names a Guide section and heading that must still exist.
         foreach (var link in ledger)
         {
             var record = records.FirstOrDefault(candidate => string.Equals(candidate.Abbreviation, link.GdrId, StringComparison.OrdinalIgnoreCase));

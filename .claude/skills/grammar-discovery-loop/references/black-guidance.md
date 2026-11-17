@@ -1,6 +1,6 @@
-# Andy Black's guidance, for grammar and GDR decisions
+# Andy Black's guidance, for grammar and Guide decisions
 
-Read before writing or changing a GDR and before choosing a mechanism. The ladder is in
+Read before writing or changing a Guide section and before choosing a mechanism. The ladder is in
 [mechanism-ladder.md](mechanism-ladder.md). Line numbers (P:) refer to Black's conceptual introduction to FLEx
 grammar modelling; cite them, not this page. Repository analysis of the same material:
 `docs/references/grammar-authoring.md`.

@@ -462,7 +462,7 @@ public sealed record ReviewSummary(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public RuleAttemptSummary? RuleAttempts { get; init; }
 
-    /// <summary>The advisory GDR sync check of the post-Proposal project (ADR 0005); absent when it could not run.</summary>
+    /// <summary>The advisory Guide check of the post-Proposal project (ADR 0005); absent when it could not run.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SIL.Motif.Contract.Responses.GdrCheckResponse? GdrSync { get; init; }
 

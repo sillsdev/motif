@@ -64,7 +64,7 @@ public static partial class ProposalCommands
                             var live = GdrReader.Show(cache, target.Value);
                             var alternative = live?.TitleAlternatives.FirstOrDefault(item =>
                                 string.Equals(item.WritingSystem, payload.Ws, StringComparison.OrdinalIgnoreCase));
-                            if (alternative is null) throw new InvalidOperationException("The target is not a GDR with that writing system.");
+                            if (alternative is null) throw new InvalidOperationException("The target is not a Guide section with that writing system.");
                             if (alternative.Text.Normalize(NormalizationForm.FormD) != payload.Expected.Text.Normalize(NormalizationForm.FormD) ||
                                 alternative.Digest != payload.Expected.Runs)
                                 throw new GdrMarkdownRefusal(RefusalCodes.TextFieldStale, "The CmPossibility.Name title changed since editing began.");

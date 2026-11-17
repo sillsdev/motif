@@ -148,7 +148,7 @@ public sealed class HypothesisRepository
     }
 
     /// <summary>
-    /// The Guide link of every passed hypothesis that has one, for the Guide check check (ADR 0005): one scan of the passed rows,
+    /// The Guide link of every passed hypothesis that has one, for the Guide check (ADR 0005): one scan of the passed rows,
     /// O(h) for h hypotheses and never the Guide text, which stays in the project.
     /// </summary>
     public IReadOnlyList<(string HypothesisId, string GdrId, string? GdrSection)> PassedGdrLinks()

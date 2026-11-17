@@ -19,7 +19,7 @@ public sealed class TrialGdrSyncAdvisoryTests
             Assert.Null(TrialJobHandler.GdrSyncAdvisory("job-1", () => throw new InvalidOperationException("boom")));
         }
         finally { Console.SetError(original); }
-        Assert.Contains("Trial 'job-1' could not run the advisory Guide check check", captured.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Trial 'job-1' could not run the advisory Guide check", captured.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
