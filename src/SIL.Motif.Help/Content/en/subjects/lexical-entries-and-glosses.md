@@ -36,8 +36,8 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 
 Data brought in from another source usually carries a licence, such as GPL-3.0 or CC BY-SA, that must stay with the data. Motif keeps that **Attribution** in the project itself, in two places that FieldWorks already has, and adds no field:
 
-1. **Per entry:** a short tag `<source>@<revision> <licence>`, such as `lang-sme@9ba7be7 GPL-3.0`, in the entry's Bibliography, written in an analysis writing system. FieldWorks exports the Bibliography as a bibliography note, so the tag survives a `.fwdata` save and a LIFT round trip.
-2. **Per project:** one notice in the project's Description, `Attribution: <source>@<revision> <licence>`, once for each source and revision.
+1. **Per entry:** a short tag `{source}@{revision} {licence}`, such as `lang-sme@9ba7be7 GPL-3.0`, in the entry's Bibliography, written in an analysis writing system. FieldWorks exports the Bibliography as a bibliography note, so the tag survives a `.fwdata` save and a LIFT round trip.
+2. **Per project:** one notice in the project's Description, `Attribution: {source}@{revision} {licence}`, once for each source and revision.
 
 Both are Proposal changes, so each goes through a Draft, a Dry Run and a person's Apply like any other change:
 
@@ -47,7 +47,7 @@ Both are Proposal changes, so each goes through a Draft, a Dry Run and a person'
 To attribute data already in the project, for example entries applied earlier without a tag:
 
 1. Write the ids of those entries, one per line, to a file.
-2. Stage `compose-set-entry-attribution --entries-file <file> --tag "<source>@<revision> <licence>"` in a Draft, then `compose-set-project-attribution` with the same tag in that Draft.
+2. Stage `compose-set-entry-attribution --entries-file {file} --tag "{source}@{revision} {licence}"` in a Draft, then `compose-set-project-attribution` with the same tag in that Draft.
 3. Run a Dry Run, review the Difference, and let a person Apply.
 
 Both commands are idempotent and keep other text. Running them again stages nothing for an entry or project that already carries the tag, and existing Bibliography and Description text stays. The same source and revision under a different licence is refused rather than stated twice, because a person decides which licence applies.
