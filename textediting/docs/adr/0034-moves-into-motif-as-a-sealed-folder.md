@@ -66,7 +66,7 @@ History stays in Motif. The import commit names the SIL.TextEditing commit it ca
 
 **Done at the move (2026-11-06).** The folder was imported from SIL.TextEditing c23cc53, replacing Motif's
 `external/SIL.TextEditing` submodule, whose one consumer, `SIL.Motif.App`, now references `textediting/src`. Motif's side
-is its ADR 0092; the shared-settings file is Motif's `Directory.Build.Common.props`. Files are as at c23cc53 except the
+is its ADR 0006, “Rich text is FieldWorks Markdown in the shared textediting field”; the shared-settings file is Motif's `Directory.Build.Common.props`. Files are as at c23cc53 except the
 ones this move changed, and `SIL.TextEditing.sln` and `run.cmd`, which Motif stores with LF line ends. Restore also reads
 Motif's `nuget.config` (nuget.org only), which the gate's path filter includes; `tools/Check-Sealed.ps1` fails if any
 other file above the folder (a `Directory.Build.targets`, `.editorconfig` or `global.json`) would reach its build.
