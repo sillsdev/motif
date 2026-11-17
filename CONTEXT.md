@@ -174,13 +174,26 @@ Finalizing is not needed to measure a Proposal: a Draft can be Dry Run and Trial
 likes.
 _Avoid_: finish, submit, commit, publish
 
+**Lexicon import**:
+Bringing a lexicon from outside into a project as Drafts, from a LIFT file only. Motif accepts LIFT 0.13 as a clean
+superset: standard LIFT wherever LIFT has a place, and a small published set of extensions that each map onto one
+FieldWorks field. Other sources are converted to LIFT by tools outside Motif. It is exempt from the gain gate, never
+from the no-loss checks ([ADR 0033](docs/adr/0033-lexicon-import-accepts-only-lift-and-lowers-through-composers.md)).
+_Avoid_: merge (FieldWorks' LIFT merge is a different thing), JSONL import, dictionary load
+
+**Attribution**:
+The source and licence of imported lexicon data, kept in the project: a short tag `<source>@<revision> <licence>` in
+each entry's Bibliography, and one notice in the project's Description. It adds no new FieldWorks field
+([ADR 0033](docs/adr/0033-lexicon-import-accepts-only-lift-and-lowers-through-composers.md) D8).
+_Avoid_: Citation (review metadata on a Proposal's operations), credit, provenance
+
 **Citation**:
 The source a Motif operation or phonology example was taken from — a section of a published grammar, a
 dictionary entry, a corpus passage — recorded as a `source` and an optional `locator` such as a page or
 section. It is review metadata:
 citing a source, or a different one, never changes what a Proposal does or its intent digest. It names where a
 change came from, never who made it ([ADR 0007](docs/adr/0007-a-proposal-has-one-lifecycle-a-conversation-citations-and-one-apply-path.md)).
-_Avoid_: author, attribution, reference (for a cited source), provenance (the contract field that holds it)
+_Avoid_: author, reference (for a cited source), provenance (the contract field that holds it); the licence tag that travels with imported data is **Attribution**
 
 **Construct**:
 One of the ~30 grammar things a Proposal can be about — a stratum, a natural class, an affix template,
@@ -522,8 +535,8 @@ different. The window says such a change "no longer fits".
 _Avoid_: staleness, conflict, merge failure
 
 **Apply**:
-Writing a Proposal's changes into the FieldWorks project, always a person's act and always one-way: Motif
-has no unapply. To test before it, a person
+Writing a Proposal's changes into the FieldWorks project, a person's act or, in Autonomous mode, an agent's act
+that needs a green **Gate**, and always one-way: Motif has no unapply. To test before it, a person
 has Proposals, Dry Run and Trials ([ADR 0017](docs/adr/0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md),
 [ADR 0017](docs/adr/0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md)).
 _Avoid_: commit, save, publish, roll back
@@ -631,12 +644,12 @@ A human-confirmed forbidden form or reading used as negative evidence. A FieldWo
 a negative for that reading only, not for the whole word.
 _Avoid_: rejected word, parser failure, absence
 
-**Disposition**:
+**Ruling**:
 A person's durable choice for one Parsimony recommendation: fix, keep, ask, or defer. It is tied to the
 recommendation's exact identity and relevant evidence; new relevant evidence brings the item back for review.
-Disposition data belongs to the FieldWorks project as Notebook judgment revisions
+Ruling data belongs to the FieldWorks project as Notebook judgment revisions
 ([ADR 0003](docs/adr/0003-motif-writes-only-what-fieldworks-can-create.md)).
-_Avoid_: approval, Apply authorization, dismissal
+_Avoid_: approval, Apply authorization, dismissal, disposition (now a word's final state, see **Disposition**)
 
 **Human judgment**:
 A durable choice about a Parsimony recommendation, a human-confirmed forbidden example, or a withdrawal of
@@ -766,7 +779,7 @@ Project workflow records — Proposals, Drafts, jobs, Assessments, Reports, Rece
 stored corpus analysis and its durable summaries, and the applied index — live in the project's paired sibling
 database. Primary Corpus files and their metadata sidecar live under the project folder's `corpora/` directory
 ([ADR 0024](docs/adr/0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md)). Parsimony Report bindings are stored here,
-but reviewed negatives and dispositions remain durable data in the FieldWorks project. File-backed
+but reviewed negatives and rulings remain durable data in the FieldWorks project. File-backed
 Baselines and disposable parser and grammar-analysis artifacts live separately under the Motif worker root, which defaults on Windows to
 `%LOCALAPPDATA%\SIL\Motif` and can be changed with `MOTIF_WORKER_ROOT`. Content digests identify
 immutable intent and evidence, but neither storage location is content-addressed. There is no merge
@@ -839,9 +852,23 @@ _Avoid_: supervised mode, MCP mode, linguist mode
 
 **Autonomous mode**:
 An AI acting as an autonomous linguist through the CLI, usually started by a developer to take a grammar
-from source to working parser. It may Apply. It never forces past Readiness, and it applies only with
-measured evidence that parsing did not regress.
+from source to working parser. It may Apply. It never forces past Readiness, and it applies only when the
+project's **Gate** is green.
 _Avoid_: auto mode, unsupervised, API mode, "the API" for the CLI
+
+**Autonomous audience**:
+The commands that exist for an Autonomous-mode run, named as one audience in the command catalog and listed in help:
+the draft lifecycle of the run's own Drafts, project creation, store upgrade and relocation, and scratch work. A
+person declares it explicitly; it replaces the developer-commands switch. Its commands are never MCP tools.
+_Avoid_: developer commands, developer surface, agent commands
+
+**Gate**:
+The project's own verdict on a Trial, declared once in its configuration: **green** when no declared word was lost
+and every declared word was measured, **loss** when an attested word or a confirmed reading was lost, and
+**unmeasured** when a word that parsed before was stopped by a budget or timeout. A new second reading on an
+attested word keeps the Gate from being green. `apply --autonomous` refuses without a green Gate. The Trial review
+report itself still gives people no verdict ([ADR 0021](docs/adr/0021-a-trial-review-report-has-three-levels-and-no-verdict.md) D16).
+_Avoid_: verdict (for people), pass/fail, quality gate, gain gate (a different, advisory check)
 
 **Text**:
 FieldWorks' term, kept for FieldWorks' meaning: an interlinearised document **in the language project**.
@@ -888,6 +915,13 @@ Repeated instances remain distinct. A Corpus Occurrence is bound to a Document v
 a FieldWorks Text occurrence uses its saved FieldWorks context. In a Source, it is located by book, chapter,
 verse and word number, such as `MAT 5:3#2`. Sharing a Wordform assigns no approved reading.
 _Avoid_: token, Wordform (for the instance), analysis, word place, Source place
+
+**Disposition**:
+A word type's final state in a Corpus: approved, parsed, or decided to need no analysis, such as punctuation, a
+numeral or a misspelling. A Corpus is done when every word type in it has a Disposition. Decisions about non-words
+live in the Motif store, keyed by Corpus. The word types are those Motif's writing-system tokeniser yields, the same
+one the Source index uses. A person's choice on a Parsimony recommendation is a **Ruling**, not a Disposition.
+_Avoid_: word state, word ledger, status, Ruling
 
 **Word-forming character**:
 A character that belongs inside a word under a writing system's segmentation rules, including Unicode defaults,
