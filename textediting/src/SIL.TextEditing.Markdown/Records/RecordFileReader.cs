@@ -434,7 +434,7 @@ namespace SIL.TextEditing.Markdown.Records
             if (kind == null)
             {
                 Report(RecordDiagnosticIds.UnknownKind, MarkdownSeverity.Error, "The schema has no record kind '" + kindName + "'.", record.Value.Start, record.Value.End,
-                    null, _schema.Kinds.Select(k => k.Name).ToList(), ReaderContext.NearestNames(kindName, _schema.Kinds.Select(k => k.Name)));
+                    null, _schema.Kinds.Select(k => k.Name).ToList(), NearestNamesFinder.Find(kindName, _schema.Kinds.Select(k => k.Name)));
                 return null;
             }
             var document = new RecordDocument(kindName);
@@ -450,7 +450,7 @@ namespace SIL.TextEditing.Markdown.Records
                 if (index < 0)
                 {
                     Report(RecordDiagnosticIds.UnknownKey, MarkdownSeverity.Error, "'" + key + "' is not a key of a record file's front matter.", pair.Key.Start, pair.Key.End,
-                        null, null, ReaderContext.NearestNames(key, FrontMatterKeys));
+                        null, null, NearestNamesFinder.Find(key, FrontMatterKeys));
                     continue;
                 }
                 if (index < order && !reportedOrder)
@@ -560,7 +560,7 @@ namespace SIL.TextEditing.Markdown.Records
                         if (p.Key.Value != "lang" && p.Key.Value != "dir" && p.Key.Value != "font")
                         {
                             Report(RecordDiagnosticIds.UnknownKey, MarkdownSeverity.Error, "A writing system has lang, dir and font, not '" + p.Key.Value + "'.", p.Key.Start, p.Key.End,
-                                null, null, ReaderContext.NearestNames(p.Key.Value, new[] { "lang", "dir", "font" }));
+                                null, null, NearestNamesFinder.Find(p.Key.Value, new[] { "lang", "dir", "font" }));
                             continue;
                         }
                         string? v = TopString(p);
@@ -659,7 +659,7 @@ namespace SIL.TextEditing.Markdown.Records
                         if (type.Field("class") == null) names.Insert(0, "class");
                         if (type.HasGuid) names.Insert(0, "guid");
                         Report(RecordDiagnosticIds.UnknownField, MarkdownSeverity.Error, "'" + key + "' is not a field of " + type.Name + ".", pair.Key.Start, pair.Key.End,
-                            null, null, ReaderContext.NearestNames(key, names));
+                            null, null, NearestNamesFinder.Find(key, names));
                         continue;
                     }
                     if (body != null && field == body)
@@ -1317,7 +1317,7 @@ namespace SIL.TextEditing.Markdown.Records
             if (_inner is IWritingSystemChecker checker) return checker.CheckWritingSystem(tag);
             if (_inner.IsKnown(tag)) return null;
             var known = (_inner as IKnownWritingSystems)?.KnownTags;
-            var nearest = known == null ? null : ReaderContext.NearestNames(tag, known);
+            var nearest = known == null ? null : NearestNamesFinder.Find(tag, known);
             return new MarkdownProblem("'" + tag + "' is not a writing system of this project." + (nearest == null ? string.Empty : " Nearest: " + string.Join(", ", nearest) + "."));
         }
 

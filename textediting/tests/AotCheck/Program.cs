@@ -25,15 +25,24 @@ Console.WriteLine(clusters.Count == 2 ? "ok" : "unexpected");
 }
 
 {
-    var checker = new RegistryWritingSystems(new[] { "en", "ceb", "ceb-x-old" }, "en", "ceb");
-    var options = new MarkdownOptions { WritingSystems = checker };
-    var known = MarkdownConverter.Parse("[known]{ws=ceb}", options);
-    var unknown = MarkdownConverter.Parse("[unknown]{ws=ceb-x-oldd}", options);
-    bool good = known.Diagnostics.Count == 0 && unknown.Diagnostics.Count == 1
-        && unknown.Diagnostics[0].Id == MarkdownDiagnosticIds.WsUnknown
-        && unknown.Diagnostics[0].Choices.Count == 3
-        && unknown.Diagnostics[0].Nearest.Count == 1
-        && unknown.Diagnostics[0].Nearest[0] == "ceb-x-old";
+    // The list-backed and the repository-backed constructors must give the same answers.
+    var checkers = new[]
+    {
+        new RegistryWritingSystems(new[] { "en", "ceb", "ceb-x-old" }, "en", "ceb"),
+        new RegistryWritingSystems(new InventoryRepository("en", "ceb", "ceb-x-old"), "en", "ceb"),
+    };
+    bool good = true;
+    foreach (var checker in checkers)
+    {
+        var options = new MarkdownOptions { WritingSystems = checker };
+        var known = MarkdownConverter.Parse("[known]{ws=ceb}", options);
+        var unknown = MarkdownConverter.Parse("[unknown]{ws=ceb-x-oldd}", options);
+        good &= known.Diagnostics.Count == 0 && unknown.Diagnostics.Count == 1
+            && unknown.Diagnostics[0].Id == MarkdownDiagnosticIds.WsUnknown
+            && unknown.Diagnostics[0].Choices.Count == 3
+            && unknown.Diagnostics[0].Nearest.Count == 1
+            && unknown.Diagnostics[0].Nearest[0] == "ceb-x-old";
+    }
     Console.WriteLine(good ? "inventory ok" : "inventory unexpected");
     if (!good) return 1;
 }

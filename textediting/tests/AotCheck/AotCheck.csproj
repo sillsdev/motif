@@ -29,10 +29,10 @@
     <ProjectReference Include="..\..\src\SIL.TextEditing.Avalonia\SIL.TextEditing.Avalonia.csproj" />
     <ProjectReference Include="..\..\src\SIL.TextEditing.Markdown\SIL.TextEditing.Markdown.csproj" />
     <ProjectReference Include="..\..\src\SIL.TextEditing.WritingSystems\SIL.TextEditing.WritingSystems.csproj" />
-    <TrimmerRootAssembly Include="SIL.TextEditing.WritingSystems" />
     <TrimmerRootAssembly Include="SIL.TextEditing" />
     <TrimmerRootAssembly Include="SIL.TextEditing.Avalonia" />
     <TrimmerRootAssembly Include="SIL.TextEditing.Markdown" />
+    <TrimmerRootAssembly Include="SIL.TextEditing.WritingSystems" />
     <TrimmerRootAssembly Include="Markdig.Signed" />
     <TrimmerRootDescriptor Include="libpalaso-roots.xml" />
   </ItemGroup>
