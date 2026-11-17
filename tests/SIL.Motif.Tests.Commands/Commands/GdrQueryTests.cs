@@ -295,6 +295,96 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public void RepeatedRecordClicksResolveStylesOncePerBaseline()
+    {
+        var catalogs = new GdrStyleCatalogCache();
+        var path = ProjectWithGdrs(captureBaseline: true);
+        var first = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"), catalogs).Value!;
+        var second = GdrQuery.Show(new GdrShowRequest(path, "GDR-1a"), catalogs).Value!;
+        var third = GdrQuery.Show(new GdrShowRequest(path, "GDR-2"), catalogs).Value!;
+        var baseline = ReadBaseline(path);
+
+        Assert.Equal(1, catalogs.For(baseline.FwDataPath, baseline.Token).ResolutionPasses);
+        Assert.Same(first.Styles, second.Styles);
+        Assert.Same(first.Styles, third.Styles);
+        Assert.NotEmpty(first.Discussion);
+        Assert.Empty(third.Discussion);
+    }
+
+    [Fact]
+    public void RecordOnlyWritingSystemsAreCachedWithoutChangingOtherRecordsInventories()
+    {
+        var catalogs = new GdrStyleCatalogCache();
+        var path = ProjectWithGdrs(captureBaseline: true, cache =>
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                cache.ServiceLocator.WritingSystemManager.GetOrSet("de", out var german);
+                SeededGdrs.Records(cache).PossibilitiesOS[1].Name.set_String(german.Handle,
+                    TsStringUtils.MakeString("Titel", german.Handle));
+            }));
+        var first = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"), catalogs).Value!;
+        var extra = GdrQuery.Show(new GdrShowRequest(path, "GDR-2"), catalogs).Value!;
+        var firstAgain = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"), catalogs).Value!;
+        var extraAgain = GdrQuery.Show(new GdrShowRequest(path, "GDR-2"), catalogs).Value!;
+        var baseline = ReadBaseline(path);
+
+        Assert.Equal(2, catalogs.For(baseline.FwDataPath, baseline.Token).ResolutionPasses);
+        Assert.DoesNotContain(firstAgain.WritingSystems, ws => ws.Tag == "de");
+        Assert.Contains(extra.WritingSystems, ws => ws.Tag == "de");
+        Assert.All(extra.Styles, style => Assert.True(style.ByWritingSystem.ContainsKey("de")));
+        Assert.Same(first.Styles, firstAgain.Styles);
+        Assert.Same(extra.Styles, extraAgain.Styles);
+    }
+
+    [Fact]
+    public void ANewBaselineRefreshesStylesAndWritingSystemsAndProjectsNeverShareThem()
+    {
+        var catalogs = new GdrStyleCatalogCache();
+        var path = ProjectWithGdrs(captureBaseline: true);
+        var before = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"), catalogs).Value!;
+        var oldBaseline = ReadBaseline(path);
+        var oldCatalog = catalogs.For(oldBaseline.FwDataPath, oldBaseline.Token);
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var emphasis = cache.LangProject.StylesOC.Single(style => style.Name == "Emphasis");
+                var rules = TsStringUtils.MakePropsBldr();
+                rules.SetIntPropValues((int)FwTextPropType.ktptItalic, (int)FwTextPropVar.ktpvEnum, 0);
+                emphasis.Rules = rules.GetTextProps();
+                cache.ServiceLocator.WritingSystemManager.GetOrSet("de", out var german);
+                cache.ServiceLocator.WritingSystems.AnalysisWritingSystems.Add(german);
+                cache.ServiceLocator.WritingSystems.CurrentAnalysisWritingSystems.Add(german);
+            });
+            new FwDataProjectLoader().Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path),
+            Path.Combine(_root, Guid.NewGuid().ToString("N"))).Succeeded);
+
+        var after = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"), catalogs).Value!;
+        var current = ReadBaseline(path);
+        var newCatalog = catalogs.For(current.FwDataPath, current.Token);
+        Assert.NotEqual(before.Baseline, after.Baseline);
+        Assert.NotSame(oldCatalog, newCatalog);
+        Assert.Equal(1, oldCatalog.ResolutionPasses);
+        Assert.Equal(1, newCatalog.ResolutionPasses);
+        Assert.Equal(1, before.Styles.Single(style => style.Name == "Emphasis")
+            .ByWritingSystem[before.DefaultAnalysis].Ints[TextPropertyNumbers.Italic].Value);
+        Assert.Equal(0, after.Styles.Single(style => style.Name == "Emphasis")
+            .ByWritingSystem[after.DefaultAnalysis].Ints[TextPropertyNumbers.Italic].Value);
+        Assert.DoesNotContain(before.WritingSystems, ws => ws.Tag == "de");
+        Assert.Contains(after.WritingSystems, ws => ws.Tag == "de");
+        Assert.Contains(after.Styles, style => style.ByWritingSystem.ContainsKey("de"));
+
+        var otherPath = ProjectWithGdrs(captureBaseline: true);
+        var other = GdrQuery.Show(new GdrShowRequest(otherPath, "GDR-1"), catalogs).Value!;
+        Assert.NotSame(after.Styles, other.Styles);
+        Assert.DoesNotContain(other.WritingSystems, ws => ws.Tag == "de");
+        var again = GdrQuery.Show(new GdrShowRequest(path, "GDR-2"), catalogs).Value!;
+        Assert.Contains(again.WritingSystems, ws => ws.Tag == "de");
+    }
+
+    [Fact]
     public void ShowAcceptsTheCanonicalIdAsWellAsTheNumber()
     {
         var path = ProjectWithGdrs(captureBaseline: true);
@@ -480,6 +570,10 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
 
         Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(baselineFile)));
     }
+
+    private static BaselineRecord ReadBaseline(string projectPath) => ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText,
+        (database, project) => CommandOutcome<BaselineRecord>.Success(
+            new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project))!)).Value!;
 
     private static string BaselineFile(string projectPath) => ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText,
         (database, project) => CommandOutcome<string>.Success(

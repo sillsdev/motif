@@ -47,8 +47,9 @@ public static class GdrReader
     /// <summary>
     /// The record whose number or canonical id is <paramref name="id"/>, or null. A link naming the project
     /// <paramref name="projectName"/>, or the open copy's own name, is a link into this project.
+    /// An optional <paramref name="styleCatalog"/> reuses resolved styles across reads of one immutable project copy.
     /// </summary>
-    public static GdrShowResponse? Show(LcmCache cache, string id, string? projectName = null)
+    public static GdrShowResponse? Show(LcmCache cache, string id, string? projectName = null, GdrStyleCatalog? styleCatalog = null)
     {
         var wanted = id.Normalize(NormalizationForm.FormD);
         var entries = Records(cache).ToArray();
@@ -106,7 +107,7 @@ public static class GdrReader
             }).ToArray();
         var titles = Alternatives(record.Name);
         var descriptions = Alternatives(record.Description);
-        var resolved = ResolveAll(styles, styleKinds.Keys, wsTags);
+        var resolvedStyles = styleCatalog?.Read(styles, styleKinds, wsTags) ?? ReadStyles(styles, styleKinds, wsTags);
         return new GdrShowResponse(Summary(cache, entry), converted)
         {
             TitleAlternatives = titles,
@@ -114,8 +115,7 @@ public static class GdrReader
             Position = Array.IndexOf(entries, entry) + 1,
             DefaultVernacular = writingSystems.DefaultVernacular,
             DefaultAnalysis = writingSystems.DefaultAnalysis,
-            Styles = styleKinds.Select(pair => new GdrStyle(pair.Key, pair.Value, wsTags.ToDictionary(tag => tag,
-                tag => Properties(resolved[pair.Key][tag]), StringComparer.Ordinal))).ToArray(),
+            Styles = resolvedStyles,
             WritingSystems = wsTags.Select(tag =>
             {
                 var info = writingSystems.DescribeWritingSystem(tag) ?? WritingSystemInfo.Default(tag);
@@ -277,6 +277,14 @@ public static class GdrReader
         var abbreviation = Real(cache, record.Abbreviation).Normalize(NormalizationForm.FormD);
         return (abbreviation.Length > 0 && string.Equals(abbreviation, id, StringComparison.OrdinalIgnoreCase)) ||
                string.Equals(CanonicalId.FromGuid(record.Guid).Value, id, StringComparison.Ordinal);
+    }
+
+    internal static IReadOnlyList<GdrStyle> ReadStyles(ProjectStyles styles,
+        SortedDictionary<string, GdrStyleKind> kinds, SortedSet<string> tags)
+    {
+        var resolved = ResolveAll(styles, kinds.Keys, tags);
+        return Array.AsReadOnly(kinds.Select(pair => new GdrStyle(pair.Key, pair.Value,
+            tags.ToDictionary(tag => tag, tag => Properties(resolved[pair.Key][tag]), StringComparer.Ordinal).AsReadOnly())).ToArray());
     }
 
     private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, PropertyBag>> ResolveAll(ProjectStyles styles,
