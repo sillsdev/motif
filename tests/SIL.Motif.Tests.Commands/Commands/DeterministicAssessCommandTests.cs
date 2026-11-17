@@ -2022,6 +2022,26 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void AnOutOfMemoryDuringAssessIsRefusedAsAssessOutOfMemoryNamingTheWorkaround_AndRecordsNothing()
+    {
+        using var seeded = NewSeededScratch();
+        var assessor = new FakeAssessor("memory-hungry", CollectedKinds,
+            _ => throw new OutOfMemoryException("Insufficient memory to continue the execution of the program."));
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), assessor, NewInvoker(),
+            onProgress: null, CancellationToken.None);
+
+        var refusal = outcome.Refusal!;
+        Assert.Equal("assess.out-of-memory", refusal.Code);
+        Assert.Equal(FailureReason.Refused, refusal.Reason);
+        Assert.Contains("ObjectTiming", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("fewer words", refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(seeded.FwDataPath, refusal.Facts!["projectPath"]);
+        Assert.Empty(OpenRepository(seeded.FwDataPath).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
+    }
+
+    [Fact]
     public void AnAssessorThatCouldNotRunItsParser_IsRefusedAsParserUnavailable_AndRecordsNothing()
     {
         using var seeded = NewSeededScratch();

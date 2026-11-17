@@ -35,6 +35,30 @@ public sealed class ProgramUnexpectedFailureTests(PristineProjectFixture pristin
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public void OutOfMemoryIsARefusalAndNeverStoreInconsistent(bool asJson)
+    {
+        var (path, proposalId) = CreateProposal();
+
+        var result = Run(path, proposalId, asJson, new OutOfMemoryException("injected memory failure"));
+
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
+        Assert.NotEqual(FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent), result.ExitCode);
+        Assert.Empty(result.Output);
+        if (asJson)
+        {
+            var envelope = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
+            Assert.Equal("cli.out-of-memory", envelope.Code);
+            Assert.Equal(FailureReason.Refused, envelope.Reason);
+        }
+        else
+        {
+            Assert.StartsWith("cli.out-of-memory: injected memory failure", result.Error, StringComparison.Ordinal);
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public void CancellationUsesTheCancelledFailureInJsonAndText(bool asJson)
     {
         var (path, proposalId) = CreateProposal();

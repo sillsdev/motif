@@ -2955,6 +2955,17 @@ catch (OperationCanceledException ex)
         error.WriteLine($"cli.cancelled: {message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.Cancelled);
 }
+catch (OutOfMemoryException ex)
+{
+    // A memory shortage says nothing about the store, so it is a refusal, not the "something broke" bucket.
+    var message = string.IsNullOrWhiteSpace(ex.Message) ? "The CLI ran out of memory." : ex.Message;
+    if (asJson)
+        error.WriteLine(ProjectionJson.Serialize(
+            new FailureEnvelope(FailureReason.Refused, message, code: HostRefusalCodes.CliOutOfMemory)));
+    else
+        error.WriteLine($"{HostRefusalCodes.CliOutOfMemory}: {message}");
+    return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
+}
 catch (Exception ex)
 {
     // Nothing decided this; it escaped. That is a bug, not a refusal, and it gets its own code.

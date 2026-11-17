@@ -15,6 +15,8 @@ public static class HostRefusalCodes
 
     /// <summary>The CLI was cancelled before its command finished.</summary>
     public const string CliCancelled = "cli.cancelled";
+    /// <summary>The CLI process ran out of memory outside any command that anticipated it.</summary>
+    public const string CliOutOfMemory = "cli.out-of-memory";
     /// <summary>The CLI hit an error no command anticipated.</summary>
     public const string CliUnexpected = "cli.unexpected";
 

@@ -54,6 +54,12 @@ internal static class WorkerRuntime
         {
             return await RunWorkerAsync(args).ConfigureAwait(false);
         }
+        catch (OutOfMemoryException exception)
+        {
+            // Shortage of memory is a refusal, never a sign the store is inconsistent.
+            Console.Error.WriteLine("error: " + exception.Message);
+            return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
+        }
         catch (Exception exception)
         {
             // Escaped everything: reported and exited, the way the CLI treats an escaped exception.

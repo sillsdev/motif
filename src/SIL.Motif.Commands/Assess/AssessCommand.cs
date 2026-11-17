@@ -137,6 +137,25 @@ public static class AssessCommand
         IReadOnlyCollection<string>? alsoProtect = null)
     {
         ArgumentNullException.ThrowIfNull(request);
+        try
+        {
+            return RunMeasured(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission,
+                frozenLimits, recordBudgetStop, reuseParserPath, writingSystemId, alsoProtect);
+        }
+        // Memory pressure is no corruption: nothing was saved, and a cheaper run is the cure.
+        catch (OutOfMemoryException)
+        {
+            return CommandOutcome<AssessCommandResponse>.Refused(
+                AssessOutOfMemoryRefusal.From(request.ProjectPath, request.Selection?.Words.Count));
+        }
+    }
+
+    private static CommandOutcome<AssessCommandResponse> RunMeasured(
+        AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission,
+        TrialLimits? frozenLimits, bool recordBudgetStop, string? reuseParserPath, string? writingSystemId,
+        IReadOnlyCollection<string>? alsoProtect)
+    {
         ArgumentNullException.ThrowIfNull(assessor);
         ArgumentNullException.ThrowIfNull(invoker);
         var started = System.Diagnostics.Stopwatch.StartNew();
