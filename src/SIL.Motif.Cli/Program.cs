@@ -2700,10 +2700,11 @@ try
                 return Usage(UsageLineFor("store upgrade"), asJson);
             }
             if (positionals is ["relocate"] && flags.TryGetValue("project", out var relocateProject) &&
-                flags.Keys.All(key => key is "project" or "confirm" or "json"))
+                flags.Keys.All(key => key is "project" or "confirm" or "match-by-name" or "json"))
             {
                 result = RenderCommand(StoreRelocateCommand.Run(
-                    new StoreRelocateRequest(relocateProject, flags.GetValueOrDefault("confirm"))));
+                    new StoreRelocateRequest(relocateProject, flags.GetValueOrDefault("confirm"),
+                        flags.ContainsKey("match-by-name"))));
                 break;
             }
             if (positionals is ["relocate"]) return Usage(UsageLineFor("store relocate"), asJson);

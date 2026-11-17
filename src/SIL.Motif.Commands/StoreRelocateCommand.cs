@@ -10,18 +10,20 @@ namespace SIL.Motif.Commands;
 
 /// <summary>
 /// The project at its new path, whose sibling Motif store should be pointed at it, and the confirmation phrase
-/// <see cref="StoreRelocateCommand.ConfirmationPhrase"/>.
+/// <see cref="StoreRelocateCommand.ConfirmationPhrase"/>. <c>MatchByName</c> states that the project is the same one
+/// although Motif cannot prove it from a LibLCM project GUID.
 /// </summary>
-public sealed record StoreRelocateRequest(string ProjectPath, string? Confirmation = null);
+public sealed record StoreRelocateRequest(string ProjectPath, string? Confirmation = null, bool MatchByName = false);
 
 /// <summary>
 /// The store file, the project path it was registered to and the one it serves now, and when. <c>Changed</c> is
 /// <c>false</c> when the store already pointed at <c>NewProjectPath</c>, so nothing was recorded.
 /// <c>IdentityEvidence</c> says what showed the two paths hold one project: <c>project-guid</c> when the store's
-/// Baselines or the old project file carried the LibLCM project GUID, or <c>name</c> when only the project name did.
+/// Baselines or the old project file carried the LibLCM project GUID, or <c>name</c> when the caller asserted it.
+/// <c>OldProjectStillExists</c> is <c>true</c> when the file at the old path remains, as after a copy.
 /// </summary>
 public sealed record StoreRelocateResponse(string StorePath, string OldProjectPath, string NewProjectPath,
-    DateTimeOffset RelocatedUtc, bool Changed, string IdentityEvidence);
+    DateTimeOffset RelocatedUtc, bool Changed, string IdentityEvidence, bool OldProjectStillExists = false);
 
 /// <summary>
 /// Points the Motif store beside a copied or moved project at the project's new path.
@@ -30,7 +32,8 @@ public sealed record StoreRelocateResponse(string StorePath, string OldProjectPa
 /// <para>
 /// The store is relocated only when the new path holds the project the store belongs to: the LibLCM project GUID
 /// of the new file must equal the GUID in the store's Baselines or in the file at the old path when that still
-/// exists; with neither to compare, the project name the store is bound to decides. A different project is refused
+/// exists. With neither to compare the command refuses, unless the caller passes <c>MatchByName</c>, which records the
+/// basis as <c>name</c>; the project name the store is bound to must match either way. A different project is refused
 /// with <see cref="RefusalCodes.StoreOtherProject"/> and the store is left byte for byte as it was, pinned by `ADifferentProjectIsRefusedAndTheStoreIsLeftAsItWas`.
 /// </para>
 /// <para>
@@ -50,6 +53,9 @@ public static partial class StoreRelocateCommand
 
     /// <summary>The refusal code reported when no Motif store sits beside the project.</summary>
     public const string NoStoreCode = "store.relocate-no-store";
+
+    /// <summary>The refusal code reported when no project GUID can show the paths hold one project.</summary>
+    public const string IdentityUnprovenCode = "store.relocate-identity-unproven";
 
     /// <summary>Points the store beside <see cref="StoreRelocateRequest.ProjectPath"/> at that project.</summary>
     public static CommandOutcome<StoreRelocateResponse> Run(StoreRelocateRequest request) =>
@@ -92,10 +98,12 @@ public static partial class StoreRelocateCommand
         {
             var result = MotifDatabase.Relocate(storePath, project, registration =>
             {
-                evidence = CheckSameProject(registration, project, newGuid, storePath);
+                evidence = CheckSameProject(registration, project, newGuid, storePath, request.MatchByName);
+                return evidence;
             }, timeProvider: timeProvider);
             return CommandOutcome<StoreRelocateResponse>.Success(new StoreRelocateResponse(storePath,
-                result.OldFwDataPath, result.NewFwDataPath, result.RelocatedUtc, result.Changed, evidence));
+                result.OldFwDataPath, result.NewFwDataPath, result.RelocatedUtc, result.Changed, evidence,
+                result.Changed && File.Exists(result.OldFwDataPath)));
         }
         catch (StoreRelocationRefusedException exception)
         {
@@ -124,7 +132,7 @@ public static partial class StoreRelocateCommand
     }
 
     private static string CheckSameProject(StoreRegistration registration, ProjectLocator project, string newGuid,
-        string storePath)
+        string storePath, bool matchByName)
     {
         var registered = registration.Registered;
         if (!StringComparer.Ordinal.Equals(registered.FieldWorksProjectIdentity, project.FieldWorksProjectIdentity))
@@ -138,7 +146,15 @@ public static partial class StoreRelocateCommand
             !StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(registered.FullFwDataPath), project.FullFwDataPath) &&
             FwDataProjectGuid.TryRead(registered.FullFwDataPath) is { } oldGuid)
             known.Add(oldGuid);
-        if (known.Count == 0) return "name";
+        if (known.Count == 0)
+        {
+            if (matchByName) return "name";
+            throw new StoreRelocationRefusedException(IdentityUnprovenCode,
+                $"Motif cannot show that '{project.FullFwDataPath}' is the project this store belongs to: the store holds no " +
+                $"Baseline and the project file at '{registered.FullFwDataPath}' is gone or unreadable, so there is no language " +
+                $"project GUID to compare with {newGuid}. If you know it is the same project, run the command again with " +
+                "--match-by-name. The store was not changed.");
+        }
         if (known.Any(guid => !string.Equals(guid, newGuid, StringComparison.OrdinalIgnoreCase)))
             throw Other(registered, project, storePath,
                 $"its project has the language project GUID {known.First(g => !string.Equals(g, newGuid, StringComparison.OrdinalIgnoreCase))}, " +

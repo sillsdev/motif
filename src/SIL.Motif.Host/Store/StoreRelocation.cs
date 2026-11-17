@@ -23,26 +23,29 @@ public sealed partial class MotifDatabase
 {
     /// <summary>
     /// Points the store at <paramref name="newProject"/> and appends a <c>StoreRelocations</c> row naming the old path,
-    /// the new path and the time, in one transaction under the creation lock and an exclusive use lease.
+    /// the new path, the time and the basis, in one transaction under the creation lock and an exclusive use lease.
     /// </summary>
     /// <param name="path">The sibling Motif database path beside the new project.</param>
     /// <param name="newProject">The project the store should serve from now on.</param>
-    /// <param name="approve">Throws <see cref="StoreRelocationRefusedException"/> when the store does not belong to that project.</param>
+    /// <param name="approve">
+    /// Returns the basis for treating the paths as one project (<c>project-guid</c> or <c>name</c>), or throws
+    /// <see cref="StoreRelocationRefusedException"/> when the store does not belong to that project.
+    /// </param>
     /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
     /// <param name="timeProvider">The clock for the recorded time, or <see langword="null"/> for system time.</param>
     /// <exception cref="MotifStoreLockException">Another Motif process holds the store open.</exception>
     public static StoreRelocationResult Relocate(string path, ProjectLocator newProject,
-        Action<StoreRegistration> approve, TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null)
+        Func<StoreRegistration, string> approve, TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(approve);
         var descriptor = Describe(path, newProject, MotifSchema.CurrentSchema, MotifProductVersion.Current);
         return MotifSqliteStore.WithExclusiveAccess(path, descriptor, ownershipPatience, (connection, transaction, schema) =>
         {
             var (stored, _) = MotifSchema.ReadMetadata(connection, transaction);
-            approve(new StoreRegistration(stored, ReadBaselineGuids(connection, transaction)));
             var now = timeProvider?.GetUtcNow() ?? DateTimeOffset.UtcNow;
             if (StringComparer.Ordinal.Equals(stored.FullFwDataPath, newProject.FullFwDataPath))
                 return new StoreRelocationResult(stored.FullFwDataPath, newProject.FullFwDataPath, now, false);
+            var basis = approve(new StoreRegistration(stored, ReadBaselineGuids(connection, transaction)));
 
             if (schema < MotifSchema.CurrentSchema) Execute(connection, transaction, MotifSchema.StoreRelocationDdl);
             Execute(connection, transaction, "UPDATE MotifMetadata SET FullFwDataPath = $new WHERE Id = 1;",
@@ -52,9 +55,9 @@ public sealed partial class MotifDatabase
                 Execute(connection, transaction, "UPDATE Baselines SET FwDataPath = $new WHERE FwDataPath = $old;",
                     ("$new", newProject.FullFwDataPath), ("$old", stored.FullFwDataPath));
             Execute(connection, transaction,
-                "INSERT INTO StoreRelocations (OldFwDataPath, NewFwDataPath, RelocatedUtc) VALUES ($old, $new, $at);",
+                "INSERT INTO StoreRelocations (OldFwDataPath, NewFwDataPath, RelocatedUtc, Basis) VALUES ($old, $new, $at, $basis);",
                 ("$old", stored.FullFwDataPath), ("$new", newProject.FullFwDataPath),
-                ("$at", now.ToString("O", CultureInfo.InvariantCulture)));
+                ("$at", now.ToString("O", CultureInfo.InvariantCulture)), ("$basis", basis));
             return new StoreRelocationResult(stored.FullFwDataPath, newProject.FullFwDataPath, now, true);
         });
     }

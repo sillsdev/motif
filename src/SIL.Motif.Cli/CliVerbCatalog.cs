@@ -441,7 +441,7 @@ public static class CliVerbCatalog
             new[] { "store delete-refused --project <fwdata> [--json]" }),
         new CliVerbDescriptor(
             "Project", "store", "store relocate",
-            new[] { "store relocate --project <fwdata> --confirm \"" + SIL.Motif.Commands.StoreRelocateCommand.ConfirmationPhrase + "\" [--json]" }),
+            new[] { "store relocate --project <fwdata> --confirm \"" + SIL.Motif.Commands.StoreRelocateCommand.ConfirmationPhrase + "\" [--match-by-name] [--json]" }),
         new CliVerbDescriptor(
             "Project", "store", "store prune",
             new[] { "store prune --project <fwdata> [--json]" }),

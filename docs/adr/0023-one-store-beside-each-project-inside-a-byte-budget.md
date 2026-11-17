@@ -81,7 +81,9 @@ columns by name, clear discarded-evidence references, verify, retain a versioned
 then replace. Unparseable Proposal revisions remain intact and are identified in the upgrade report.
 Source/output inspection leaves the source untouched. MCP cannot initiate an upgrade. Refuse newer schemas;
 the machine store retains its separate policy. No blanket refusal/recreation of older project stores is
-permitted in place of preserving authored work.
+permitted in place of preserving authored work. `store relocate` points a copied store at its project's new
+path after confirmation and a project-identity check, and records the old path, new path, time and basis in the
+store's `StoreRelocations` history, which an upgrade carries like other authored records.
 
 Keep authored Proposal records and the written frozen review summaries/bounded examples of ADR 0021,
 Difference summaries eligible under that contract, durable corpus language summary tables and Harvest

@@ -43,8 +43,9 @@ public sealed class StoreRelocateCommandTests : IDisposable
         var opened = ProjectStoreCommand.Run(Copy, MotifProductVersion.CurrentText,
             (_, project) => CommandOutcome<string>.Success(project.FullFwDataPath));
         Assert.True(opened.Succeeded, opened.Refusal?.Message);
-        var rows = Query(StoreOf(Copy), "SELECT OldFwDataPath, NewFwDataPath, RelocatedUtc FROM StoreRelocations;");
-        Assert.Equal([$"{Path.GetFullPath(Original)}|{Path.GetFullPath(Copy)}|{at:O}"], rows);
+        var rows = Query(StoreOf(Copy), "SELECT OldFwDataPath, NewFwDataPath, RelocatedUtc, Basis FROM StoreRelocations;");
+        Assert.Equal([$"{Path.GetFullPath(Original)}|{Path.GetFullPath(Copy)}|{at:O}|project-guid"], rows);
+        Assert.True(result.Value.OldProjectStillExists);
     }
 
     [Fact]
@@ -103,15 +104,69 @@ public sealed class StoreRelocateCommandTests : IDisposable
     }
 
     [Fact]
-    public void WithNoGuidEvidenceTheProjectNameDecidesAndTheResultSaysSo()
+    public void WithNoGuidEvidenceTheRelocationIsRefusedAndNamesTheFlag()
+    {
+        CopyProject(ProjectGuid);
+        File.Delete(Original);
+        var before = File.ReadAllBytes(StoreOf(Copy));
+
+        var result = StoreRelocateCommand.Run(Confirmed(Copy));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(StoreRelocateCommand.IdentityUnprovenCode, result.Refusal!.Code);
+        Assert.Contains("--match-by-name", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(ProjectGuid, result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(before, File.ReadAllBytes(StoreOf(Copy)));
+    }
+
+    [Fact]
+    public void WithNoGuidEvidenceTheMatchByNameFlagRelocatesAndRecordsTheBasis()
     {
         CopyProject(ProjectGuid);
         File.Delete(Original);
 
-        var result = StoreRelocateCommand.Run(Confirmed(Copy));
+        var result = StoreRelocateCommand.Run(Confirmed(Copy) with { MatchByName = true });
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         Assert.Equal("name", result.Value!.IdentityEvidence);
+        Assert.False(result.Value.OldProjectStillExists);
+        Assert.Equal(["name"], Query(StoreOf(Copy), "SELECT Basis FROM StoreRelocations;"));
+    }
+
+    [Fact]
+    public void TheMatchByNameFlagDoesNotOverrideAGuidThatDiffers()
+    {
+        CopyProject(OtherGuid);
+
+        var result = StoreRelocateCommand.Run(Confirmed(Copy) with { MatchByName = true });
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(RefusalCodes.StoreOtherProject, result.Refusal!.Code);
+    }
+
+    [Fact]
+    public void AnOlderSchemaStoreIsRelocatedThenUpgradedByTheNormalPathKeepingItsBackupAndRow()
+    {
+        CopyProject(ProjectGuid);
+        const int olderSchema = 71;
+        using (var old = new SqliteConnection($"Data Source={StoreOf(Copy)};Pooling=False"))
+        {
+            old.Open();
+            using var command = old.CreateCommand();
+            command.CommandText = $"PRAGMA user_version = {olderSchema}; DROP TABLE StoreRelocations;";
+            command.ExecuteNonQuery();
+        }
+        var at = new DateTimeOffset(2026, 11, 16, 9, 30, 0, TimeSpan.Zero);
+
+        var relocated = StoreRelocateCommand.Run(Confirmed(Copy), new FixedClock(at));
+
+        Assert.True(relocated.Succeeded, relocated.Refusal?.Message);
+        var opened = ProjectStoreCommand.Run(Copy, MotifProductVersion.CurrentText,
+            (_, project) => CommandOutcome<string>.Success(project.FullFwDataPath));
+        Assert.True(opened.Succeeded, opened.Refusal?.Message);
+        Assert.True(File.Exists(StoreOf(Copy) + $".schema{olderSchema}.bak"));
+        Assert.Equal([$"{Path.GetFullPath(Original)}|{Path.GetFullPath(Copy)}|{at:O}|project-guid"],
+            Query(StoreOf(Copy), "SELECT OldFwDataPath, NewFwDataPath, RelocatedUtc, Basis FROM StoreRelocations;"));
     }
 
     [Fact]

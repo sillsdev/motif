@@ -679,7 +679,7 @@ public static class MotifSchema
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true)],
         "StoreRelocations" =>
         [C("RelocationId", "INTEGER", false, 1), C("OldFwDataPath", "TEXT", true), C("NewFwDataPath", "TEXT", true),
-            C("RelocatedUtc", "TEXT", true)],
+            C("RelocatedUtc", "TEXT", true), C("Basis", "TEXT", true)],
         "HypothesisProposals" =>
         [C("HypothesisId", "TEXT", true, 1), C("ProposalId", "TEXT", true, 2), C("LinkedUtc", "TEXT", true)],
         "HypothesisTests" =>
@@ -864,7 +864,8 @@ public static class MotifSchema
             RelocationId INTEGER PRIMARY KEY AUTOINCREMENT,
             OldFwDataPath TEXT NOT NULL,
             NewFwDataPath TEXT NOT NULL,
-            RelocatedUtc TEXT NOT NULL
+            RelocatedUtc TEXT NOT NULL,
+            Basis TEXT NOT NULL CHECK (Basis IN ('project-guid', 'name'))
         );
 
         """;

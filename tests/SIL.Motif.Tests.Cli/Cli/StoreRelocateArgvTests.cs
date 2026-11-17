@@ -48,6 +48,7 @@ public sealed class StoreRelocateArgvTests : IDisposable
         Assert.True(document.RootElement.GetProperty("changed").GetBoolean());
         Assert.Equal(Path.GetFullPath(Copy), document.RootElement.GetProperty("newProjectPath").GetString());
         Assert.Equal(Path.GetFullPath(Original), document.RootElement.GetProperty("oldProjectPath").GetString());
+        Assert.True(document.RootElement.GetProperty("oldProjectStillExists").GetBoolean());
     }
 
     [Fact]

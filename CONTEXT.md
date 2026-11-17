@@ -780,7 +780,7 @@ Pointing a Motif store that was copied or moved with its project at the project'
 It happens only when the new path holds the same project (same LibLCM project GUID where the store or the old file
 gives one), after confirmation and with neither the project nor the store held, and the store records the old path,
 the new path and the time. It does not move a Home or any file; it changes which path the store is registered to.
-_Avoid_: rehome, adopt, repair
+_Avoid_: re-home, rehome, adopt, repair
 
 **Machine store**:
 The single database for one logged-in user, holding what belongs to the installation rather than to any

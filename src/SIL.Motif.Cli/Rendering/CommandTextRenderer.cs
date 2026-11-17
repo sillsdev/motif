@@ -64,7 +64,8 @@ public static class CommandTextRenderer
             StorePruneResponse r => RenderStorePrune(r),
             StoreRelocateResponse r => string.Format(CultureInfo.CurrentCulture,
                 r.Changed ? CliStrings.StoreRelocateFormat : CliStrings.StoreRelocateUnchangedFormat,
-                r.OldProjectPath, r.NewProjectPath, r.IdentityEvidence) + Environment.NewLine,
+                r.OldProjectPath, r.NewProjectPath, r.IdentityEvidence) +
+                (r.OldProjectStillExists ? CliStrings.StoreRelocateOldStillExists : "") + Environment.NewLine,
             DryRunProjection p => ProjectionText.Render(p),
             RetirementProposalReviewProjection p => ProjectionText.Render(p),
             RetirementReviewQueryResponse r => RenderRetirementReview(r),

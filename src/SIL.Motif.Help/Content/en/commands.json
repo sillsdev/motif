@@ -36,7 +36,7 @@
   },
   "store relocate": {
     "title": "Point a copied store at its new project path",
-    "description": "After a project and its Motif store are copied or moved together, points the store at the project's new path so commands stop refusing it as another project's. It checks the new path holds the same project, needs confirmation, and records the old path, new path and time in the store.",
+    "description": "After a project and its Motif store are copied or moved together, points the store at the project's new path so commands stop refusing it as another project's. It checks the new path holds the same project, needs confirmation, and records the old path, new path, time and basis in the store.",
     "source": "Hand-written from the store relocation behavior."
   },
   "store prune": {
