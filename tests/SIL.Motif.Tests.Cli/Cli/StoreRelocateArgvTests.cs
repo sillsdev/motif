@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
@@ -23,7 +24,8 @@ public sealed class StoreRelocateArgvTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_root, "a"));
         Directory.CreateDirectory(Path.Combine(_root, "b"));
         Directory.CreateDirectory(_workerRoot);
-        const string text = "<languageproject>\n<rt class=\"LangProject\" guid=\"0d1f9e4a-5b3c-4a8e-9f10-2c3d4e5f6a7b\">\n</rt>\n</languageproject>\n";
+        var text = "<languageproject>\n<rt class=\"LangProject\" guid=\"" + Guid.Parse("0d1f9e4a-5b3c-4a8e-9f10-2c3d4e5f6a7b") +
+            "\">\n</rt>\n</languageproject>\n";
         File.WriteAllText(Original, text);
         File.WriteAllText(Copy, text);
         Assert.True(ProjectStoreCommand.Run(Original, MotifProductVersion.CurrentText,
