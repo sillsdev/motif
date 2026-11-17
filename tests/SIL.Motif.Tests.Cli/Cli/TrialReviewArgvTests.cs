@@ -172,10 +172,10 @@ public sealed class TrialReviewArgvTests
 
         Assert.Equal(TrialGateState.Loss, gate.State);
         Assert.Equal(3, gate.LostWords);
-        Assert.Equal(Program.TrialLossExitCode, Program.TrialGateExitCode(gate));
-        Assert.NotEqual(0, Program.TrialGateExitCode(gate));
-        Assert.NotEqual(Program.TrialGateExitCode(gate), Program.TrialGateExitCode(gate with { State = TrialGateState.Unmeasured }));
-        Assert.Equal(0, Program.TrialGateExitCode(gate with { State = TrialGateState.Green }));
+        Assert.Equal(SIL.Motif.Cli.Program.TrialLossExitCode, SIL.Motif.Cli.Program.TrialGateExitCode(gate));
+        Assert.NotEqual(0, SIL.Motif.Cli.Program.TrialGateExitCode(gate));
+        Assert.NotEqual(SIL.Motif.Cli.Program.TrialGateExitCode(gate), SIL.Motif.Cli.Program.TrialGateExitCode(gate with { State = TrialGateState.Unmeasured }));
+        Assert.Equal(0, SIL.Motif.Cli.Program.TrialGateExitCode(gate with { State = TrialGateState.Green }));
     }
 
     [Fact]
