@@ -74,6 +74,8 @@ the playground, edit the Markdown beside the field and press Apply; `MarkdownTab
   ([ADR 0028](docs/adr/0028-fieldworks-markdown-is-a-pandoc-profile.md)).
 - **Records as files.** A whole record as one file: a YAML frame typed by a schema that is data, FieldWorks Markdown in the rich values,
   and a JSON Schema for editors ([ADR 0032](docs/adr/0032-record-files-yaml-frame.md)).
+- **FieldWorks Markdown on the clipboard.** `FieldWorksMarkdownClipboardForm` ships in `SIL.TextEditing.Markdown`, including full
+  front matter and read findings through `OnRead`. Hosts register it; the playground does so. See [clipboard forms](docs/formats/clipboard.md).
 - **The host stays in charge.** The host owns data and undo ([ADR 0003](docs/adr/0003-host-owns-data-and-undo.md)), and supplies the
   dictionaries, keyboards, clipboard forms, language services and the blocks a field allows.
 - **Ready for native AOT.** `SIL.TextEditing`, `SIL.TextEditing.Avalonia` and `SIL.TextEditing.Markdown` are trimmable and AOT-compatible on
@@ -141,7 +143,7 @@ Directories recurse over `*.md` in ordinal full-path order; explicit files may h
 
 `format` prints canonical Markdown for one input. Several expanded inputs require `--write` or `--check`. `--write` rewrites files;
 `--check` returns 1 if any input differs from canonical text. These flags are mutually exclusive; stdin supports stdout and check but
-cannot be rewritten. All inputs are analysed and prepared before writing; an input error or a checker error prevents writes.
+cannot be rewritten. All inputs are analysed and prepared before writing; an input error or a checker error in a formattable file prevents writes.
 Record files without a schema are named on stderr with “needs --schema”, skipped, and cause exit 1 while the other files are processed.
 
 `--schema <file.json>` on either command loads serialized [record-schema data](docs/formats/record-files.md#saving-and-loading-a-record-schema)
@@ -209,8 +211,7 @@ Planned, not built:
 - **Real tables** in the field ([motif#46](https://github.com/sillsdev/motif/issues/46), [tables plan](docs/formats/tables.md#planned-real-tables-in-the-field)).
 - **Project record I/O** and the record schema built from liblcm metadata, in `SIL.TextEditing.Project`
   ([ADR 0031](docs/adr/0031-shared-editing-and-interchange-layer.md), [ADR 0033](docs/adr/0033-block-features.md)).
-- **Editor integration**: an inline WYSIWYG and Markdown source mode, and a VS Code extension with a language server. The playground's
-  Markdown pane supports source editing. Source mode is settled by [ADR 0035](docs/adr/0035-source-mode.md);
+- **VS Code integration**: an extension with a language server remains planned. The field's source mode is settled by [ADR 0035](docs/adr/0035-source-mode.md);
   [ADR 0036](docs/adr/0036-editor-integration-context-and-cli.md) records the CLI and context decisions. The remaining editor-integration
   choices are parked ([motif#57](https://github.com/sillsdev/motif/issues/57)).
 - **Retiring the liblcm refusals** once FieldWorks pins a liblcm with its fixes [#410](https://github.com/sillsdev/liblcm/issues/410), [#413](https://github.com/sillsdev/liblcm/issues/413) and [#414](https://github.com/sillsdev/liblcm/issues/414) ([motif#50](https://github.com/sillsdev/motif/issues/50)).

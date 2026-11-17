@@ -153,6 +153,9 @@ record-data:
   null. So the Norwegian writing system `no` is written `"no"`
   (`records/01-frame.json`, "a partial file whose root names a plain field: record-data holds that field only; the writing system no is a
   quoted key").
+- **A value on the same line follows its key's colon with one space.** A tab or several spaces there is
+  `fwmd.yaml.scalar-style` (information), with a fix replacing just the separator with one space. This concerns block mappings;
+  indentation tabs remain errors, and flow collections have their own finding.
 - **The schema types every value**, not YAML. A plain `no` in a text field is the text "no", with the information `fwmd.yaml.unquoted`:
 
 <!-- fixture: records/02-traps.json | the Norway problem: a plain no in a text field is the text no, with information | file -->
@@ -252,7 +255,9 @@ Here `comment` is a field of one paragraph, so the writer writes `|-`.
 `root:` names what the file holds. Agents usually write partial files.
 
 - The first few segments of the path name the record. How many depends on the record kind: two for `lexicon/entry`
-  (`/lexicon/palit(2)`), three for `lists/item` (`/lists/GDR/GDR-47`).
+  (`/lexicon/palit(2)`), three for `lists/item` (`/lists/GDR/GDR-47`). The first segment must equal the part of the kind name
+  before its first slash, without a homograph or GUID suffix: `lexicon/entry` requires `/lexicon`, and `lists/item` requires `/lists`.
+  `/objects/<guid>` is not an alias for those kinds; it would require an explicit kind whose first folder is `objects`.
 - Each further segment is a field of an owned object, followed by a 1-based index for a sequence or collection: `/lexicon/palit(2)/senses/1`.
   `record-data` then holds that object's fields.
 - A fragment names a field, and after a dot one writing system: `#gloss`, `#definition.en`.
