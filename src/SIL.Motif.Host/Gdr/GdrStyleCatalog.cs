@@ -12,7 +12,12 @@ public sealed class GdrStyleCatalog
     private readonly object _gate = new();
     private readonly Dictionary<string, IReadOnlyList<GdrStyle>> _styles = new(StringComparer.Ordinal);
 
-    internal int ResolutionPasses { get; private set; }
+    private int _resolutionPasses;
+
+    internal int ResolutionPasses
+    {
+        get { lock (_gate) return _resolutionPasses; }
+    }
 
     internal IReadOnlyList<GdrStyle> Read(ProjectStyles styles, SortedDictionary<string, GdrStyleKind> kinds,
         SortedSet<string> tags)
@@ -22,7 +27,7 @@ public sealed class GdrStyleCatalog
             var key = string.Join('\0', tags);
             if (_styles.TryGetValue(key, out var cached)) return cached;
             var resolved = GdrReader.ReadStyles(styles, kinds, tags);
-            ResolutionPasses++;
+            _resolutionPasses++;
             _styles.Add(key, resolved);
             return resolved;
         }

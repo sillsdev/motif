@@ -407,6 +407,24 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public async Task ParallelRecordClicksResolveStylesOnce()
+    {
+        var catalogs = new GdrStyleCatalogCache();
+        var path = ProjectWithGdrs(captureBaseline: true);
+        using var start = new Barrier(4);
+        var reads = Enumerable.Range(0, 4).Select(index => Task.Run(() =>
+        {
+            start.SignalAndWait();
+            return GdrQuery.Show(new GdrShowRequest(path, index % 2 == 0 ? "GDR-1" : "GDR-2"), catalogs);
+        })).ToArray();
+        var responses = await Task.WhenAll(reads);
+        Assert.All(responses, response => Assert.True(response.Succeeded, response.Refusal?.Message));
+        Assert.All(responses, response => Assert.Same(responses[0].Value!.Styles, response.Value!.Styles));
+        var baseline = ReadBaseline(path);
+        Assert.Equal(1, catalogs.For(baseline.FwDataPath, baseline.Token).ResolutionPasses);
+    }
+
+    [Fact]
     public void ShowAcceptsTheCanonicalIdAsWellAsTheNumber()
     {
         var path = ProjectWithGdrs(captureBaseline: true);
