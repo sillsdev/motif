@@ -15,9 +15,9 @@ namespace SIL.Motif.Contract.Requests;
 /// <param name="ReplaceAssessmentId">The prior complete Assessment to replace for an explicit reparse.</param>
 /// <param name="BudgetSeconds">Whole-run time limit in seconds; null uses the saved Parsing setting.</param>
 /// <param name="FullObjectTimingDetail">Retain object detail for every word in a bounded explicit Selection.</param>
-/// <param name="CollectObjectTiming">Ask for per-object timing explicitly, as listing ObjectTiming in <c>collect</c> does:
-/// the pre-flight row estimate that skips it for a large run does not apply. The row budget still caps stored word
-/// detail and the per-object totals stay exact.</param>
+/// <param name="Collect">The collector names (ParseTime, Correctness, ObjectTiming, ...) as the scope's <c>collect</c> in
+/// <c>.motif.toml</c> takes them; null keeps the default from the toml or the built-in one. A non-null list is an explicit
+/// collect: the pre-flight row estimate that skips per-object timing does not apply, and an unknown name is refused.</param>
 public sealed record AssessRequest(
     string ProjectPath,
     SelectionRequest? Selection = null,
@@ -26,4 +26,4 @@ public sealed record AssessRequest(
     string? ReplaceAssessmentId = null,
     bool FullObjectTimingDetail = false,
     int? BudgetSeconds = null,
-    bool CollectObjectTiming = false);
+    IReadOnlyList<string>? Collect = null);

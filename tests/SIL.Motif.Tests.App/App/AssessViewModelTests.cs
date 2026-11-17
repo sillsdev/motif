@@ -127,29 +127,36 @@ public sealed class AssessViewModelTests
         Assert.Equal("assessment/one", request.RetrySourceAssessmentId);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task AParseRequestsObjectTimingExplicitlyOnlyWhileDiagnosticsIsOn(bool diagnostics)
-    {
-        var (fake, _, assess) = NewViewModel();
-        assess.CollectObjectTiming = () => diagnostics;
-        fake.AssessCompletesWith(NewResponse());
-
-        await assess.RunCommand.ExecuteAsync(null);
-
-        Assert.Equal(diagnostics, Assert.Single(fake.AssessRequests).CollectObjectTiming);
-    }
-
     [Fact]
-    public async Task TheWorkspaceWiresDiagnosticsToTheParseRequest()
+    public async Task AParseListsObjectTimingAmongItsCollectorsWhileDiagnosticsIsOn()
     {
         var fake = new FakeCommandClient();
         var context = WorkspaceContextTests.NewContext(fake);
-
-        Assert.False(context.Assess.CollectObjectTiming());
         context.Diagnostics = true;
-        Assert.True(context.Assess.CollectObjectTiming());
+        fake.AssessCompletesWith(NewResponse());
+        context.Assess.ProjectPath = ProjectPath;
+        context.Selection.AllWordforms = true;
+
+        await context.Assess.RunCommand.ExecuteAsync(null);
+
+        var collect = Assert.Single(fake.AssessRequests).Collect;
+        Assert.Contains("ObjectTiming", collect!);
+        Assert.Contains("ParseTime", collect!);
+        await context.StopProjectWorkAsync();
+    }
+
+    [Fact]
+    public async Task AParseLeavesTheCollectDefaultWhileDiagnosticsIsOff()
+    {
+        var fake = new FakeCommandClient();
+        var context = WorkspaceContextTests.NewContext(fake);
+        fake.AssessCompletesWith(NewResponse());
+        context.Assess.ProjectPath = ProjectPath;
+        context.Selection.AllWordforms = true;
+
+        await context.Assess.RunCommand.ExecuteAsync(null);
+
+        Assert.Null(Assert.Single(fake.AssessRequests).Collect);
         await context.StopProjectWorkAsync();
     }
 

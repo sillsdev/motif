@@ -59,6 +59,8 @@ public sealed record AssessmentTimingEvidence(
     /// The timing rows Assess expected when it left per-object timing out of the run, or null when it was collected.
     /// </summary>
     public long? SkippedEstimatedRows { get; init; }
+    /// <summary>The row limit <see cref="SkippedEstimatedRows"/> was measured against; null when none was skipped or the run predates it.</summary>
+    public long? SkippedRowBudget { get; init; }
     /// <summary>Total object time for all measured words, when any timer was recorded.</summary>
     public long? AttributedNs { get; init; }
     /// <summary>Sum of each word's nonnegative residual outside object timers.</summary>

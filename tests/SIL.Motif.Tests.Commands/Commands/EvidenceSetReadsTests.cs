@@ -515,7 +515,7 @@ public sealed class EvidenceSetReadsTests : IDisposable
         using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
         var words = new[] { new AssessedWord("cat", "analysed", []) { ElapsedMs = 10 } };
         var evidence = new AssessmentTimingEvidence([], 0, false, 0)
-        { StatisticsUnavailable = true, SkippedEstimatedRows = 1_234_567 };
+        { StatisticsUnavailable = true, SkippedEstimatedRows = 1_234_567, SkippedRowBudget = 250_000 };
         new AssessmentRepository(fixture.Database).Record(new NewAssessmentRecord(
             "skipped-timing", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "scope",
             new AssessmentSubject.Words(Selection.Create("Default", ["cat"]), "whitespace", "1"),

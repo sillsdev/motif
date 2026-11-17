@@ -83,6 +83,22 @@ public sealed class ProgressNextRowsTests
     }
 
     [Fact]
+    public async Task ANonDraftProposalThatNeedsAnotherTryCountsAsWaiting()
+    {
+        var fake = new FakeCommandClient();
+        fake.ProposalStandingsCompleteWith(new ProposalStandings([WaitingCard(),
+            WaitingCard() with { ProposalId = "proposal/other", Group = ProposalGroup.NeedsAnotherTry }], 0));
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProgressPageModel(context);
+        try
+        {
+            await context.OpenProjectAsync("project.fwdata");
+            Assert.Equal(2, page.WaitingProposals);
+        }
+        finally { await context.StopProjectWorkAsync(); }
+    }
+
+    [Fact]
     public async Task NextListsOnlyWaitingProposalsAndNeverARequestRow()
     {
         var fake = new FakeCommandClient();

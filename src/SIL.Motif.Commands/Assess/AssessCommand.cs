@@ -320,12 +320,14 @@ public static class AssessCommand
                 var supportedKinds = assessor.SupportedKinds
                     .Where(kind => kind != AssessmentKind.PhonologyExamples).ToArray();
                 IReadOnlyList<AssessmentKind> collected;
-                if (configured.Collect.Count == 0)
+                // A request's list is an explicit collect, exactly as the scope's own list is; null keeps the scope's.
+                var collectNames = request.Collect ?? configured.Collect;
+                if (collectNames.Count == 0)
                 {
                     collected = supportedKinds.Contains(AssessmentKind.Correctness)
                         ? CollectedKinds.Append(AssessmentKind.Correctness).ToArray() : CollectedKinds;
                     // Only the default asks for timing unprompted; an explicit collect or full detail request keeps it.
-                    var estimatedRows = request.FullObjectTimingDetail || request.CollectObjectTiming ? 0
+                    var estimatedRows = request.FullObjectTimingDetail ? 0
                         : ObjectTimingPreflight.EstimateRows(baselineReader.Cache, composition.Selection.Words.Count);
                     if (estimatedRows > ObjectTimingPreflight.RowBudget)
                     {
@@ -335,7 +337,7 @@ public static class AssessCommand
                 }
                 else
                 {
-                    var unknown = configured.Collect.FirstOrDefault(name =>
+                    var unknown = collectNames.FirstOrDefault(name =>
                         !Enum.TryParse<AssessmentKind>(name, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed));
                     if (unknown is not null)
                         return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
@@ -343,7 +345,7 @@ public static class AssessCommand
                             $"The project's assessment scope asks to collect '{unknown}', which is not an Assessment kind.",
                             new Dictionary<string, string> { ["kind"] = unknown }));
                     // Assess always reports parse time, so the scope's list chooses what is collected beside it.
-                    collected = configured.Collect
+                    collected = collectNames
                         .Select(name => Enum.Parse<AssessmentKind>(name, ignoreCase: true))
                         .Prepend(AssessmentKind.ParseTime).Distinct().ToArray();
                 }
@@ -513,7 +515,7 @@ public static class AssessCommand
                     summaryMarkdown = (timingNote?.Message ?? "(no per-object statistics were collected)") + Environment.NewLine;
                     timingEvidence = new AssessmentTimingEvidence([], 0, false, 0)
                     {
-                        StatisticsUnavailable = true, SkippedEstimatedRows = timingNote?.EstimatedRows,
+                        StatisticsUnavailable = true, SkippedEstimatedRows = timingNote?.EstimatedRows, SkippedRowBudget = timingNote?.RowBudget,
                     };
                 }
                 else

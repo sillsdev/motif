@@ -74,6 +74,7 @@ public sealed class OpenProposalDocumentsTests
         Assert.False(documents.CanCompare);
         await documents.StopAsync();
     }
+
     [Fact]
     public async Task AnOpenProposalsTabReadsTheSameAsItsListCard()
     {

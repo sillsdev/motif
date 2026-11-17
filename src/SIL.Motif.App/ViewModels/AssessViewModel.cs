@@ -43,8 +43,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// <summary>The time limit the saved Selection chose itself; null leaves the time to the command's safety net.</summary>
     internal Func<int?> SavedExplicitTimeLimitMs { get; set; } = static () => null;
 
-    /// <summary>Whether Diagnostics is on, so a Parse asks for per-object timing explicitly.</summary>
-    internal Func<bool> CollectObjectTiming { get; set; } = static () => false;
+    /// <summary>The default collectors plus ObjectTiming while Diagnostics is on, so a Parse asks for per-object timing explicitly; null otherwise.</summary>
+    internal Func<IReadOnlyList<string>?> Collect { get; set; } = static () => null;
 
     private (int? Value, bool Read) _loggedTimeLimit;
 
@@ -306,7 +306,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
                 selection = retry with { RetrySourceAssessmentId = _previous?.Measurements
                     .FirstOrDefault(measurement => measurement.Kind == AssessmentKinds.ParseTime)?.AssessmentId };
             var request = new AssessRequest(ProjectPath!, selection, timeLimitMs, requestedParserWorkLimit,
-                CollectObjectTiming: CollectObjectTiming());
+                Collect: Collect());
             return await ParseProgress.TrackAsync(() => _commandClient.AssessAsync(request, this, cancellationToken)).ConfigureAwait(true);
         }
 

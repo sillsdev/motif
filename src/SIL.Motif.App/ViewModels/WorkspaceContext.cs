@@ -159,7 +159,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         ArgumentNullException.ThrowIfNull(baseline);
         Selection = selection;
         Assess = assess;
-        Assess.CollectObjectTiming = () => Diagnostics;
+        Assess.Collect = () => Diagnostics ? DiagnosticsCollect : null;
         assess.Words.UseViewMemory(ViewMemory);
         assess.Trace.UseViewMemory(ViewMemory);
         assess.Compare.UseViewMemory(ViewMemory);
@@ -415,6 +415,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>Registers the setup dialog that is shared by the shell.</summary>
+    // The built-in default collectors with ObjectTiming named, which makes the collect explicit.
+    private static readonly string[] DiagnosticsCollect = ["ParseTime", "ObjectTiming", "Correctness"];
+
     internal void AttachSetup(SetupViewModel setup)
     {
         Setup = setup;

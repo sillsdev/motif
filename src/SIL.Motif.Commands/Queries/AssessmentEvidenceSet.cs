@@ -26,8 +26,8 @@ public sealed class AssessmentEvidenceSet
             HasRetriedWords = limited.Any(evidence => evidence.HasRetriedWords),
             StatisticsUnavailable = limited.Any(evidence => evidence.StatisticsUnavailable),
             SkippedEstimatedRows = limited.Select(evidence => evidence.SkippedEstimatedRows).FirstOrDefault(rows => rows is not null),
-            SkippedRowBudget = limited.Any(evidence => evidence.SkippedEstimatedRows is not null)
-                ? SIL.Motif.Host.PanGloss.PanGlossBatchStatisticsReader.DefaultObjectTimingRowBudget : null };
+            SkippedRowBudget = limited.Where(evidence => evidence.SkippedEstimatedRows is not null)
+                .Select(evidence => evidence.SkippedRowBudget).FirstOrDefault() };
     }
 
     /// <summary>The complete run followed by the explicit replacements contributing answers.</summary>
