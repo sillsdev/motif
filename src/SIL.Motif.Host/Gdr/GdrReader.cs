@@ -25,6 +25,9 @@ public static class GdrReader
     /// <summary>The name of the custom possibility list that holds the records.</summary>
     public const string ListName = "Grammar Guide";
 
+    /// <summary>The name the list had before it was called the Grammar Guide; read when no list has <see cref="ListName"/>.</summary>
+    public const string OldListName = "Grammar Design Records";
+
     /// <summary>The records in list order; empty when the project has no such list.</summary>
     public static IReadOnlyList<GdrSummary> List(LcmCache cache) =>
         Records(cache).Select(entry => Summary(cache, entry)).ToArray();
@@ -215,14 +218,29 @@ public static class GdrReader
 
     private readonly record struct Entry(ICmPossibility Record, ICmPossibility? Parent);
 
-    private static IEnumerable<Entry> Records(LcmCache cache)
+    private static IEnumerable<Entry> Records(LcmCache cache) =>
+        FindList(cache, out _) is { } list ? Outline(list.PossibilitiesOS, null) : [];
+
+    /// <summary>True when the project's list still has <see cref="OldListName"/> and none has <see cref="ListName"/>.</summary>
+    internal static bool UsesOldListName(LcmCache cache)
     {
-        var lists = cache.ServiceLocator.GetInstance<ICmPossibilityListRepository>().AllInstances()
-            .Where(candidate => Texts(candidate.Name).Any(name => name == ListName)).ToArray();
-        if (lists.Length > 1)
+        FindList(cache, out var old);
+        return old;
+    }
+
+    // Both names, or one name twice, is ambiguous: nothing may guess which list the person means.
+    private static ICmPossibilityList? FindList(LcmCache cache, out bool oldName)
+    {
+        var all = cache.ServiceLocator.GetInstance<ICmPossibilityListRepository>().AllInstances().ToArray();
+        var current = all.Where(candidate => Texts(candidate.Name).Any(name => name == ListName)).ToArray();
+        var old = all.Where(candidate => Texts(candidate.Name).Any(name => name == OldListName)).ToArray();
+        oldName = false;
+        if (current.Length + old.Length > 1)
             throw new GdrRefusalException(new Refusal(RefusalCodes.GdrAmbiguous, FailureReason.Refused,
-                $"{lists.Length} possibility lists are named '{ListName}'. Rename or remove all but one in FieldWorks."));
-        return lists.Length == 0 ? [] : Outline(lists[0].PossibilitiesOS, null);
+                $"{current.Length + old.Length} possibility lists are named '{ListName}' or '{OldListName}'. " +
+                "Rename or remove all but one in FieldWorks."));
+        oldName = old.Length == 1;
+        return current.Length == 1 ? current[0] : old.Length == 1 ? old[0] : null;
     }
 
     private static IEnumerable<Entry> Outline(IEnumerable<ICmPossibility> items, ICmPossibility? parent)

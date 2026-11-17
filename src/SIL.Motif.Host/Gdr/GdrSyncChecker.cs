@@ -145,6 +145,11 @@ public static class GdrSyncChecker
                 "example word(s) have no conclusive Trial or Assessment row. Include them in the next Trial's words; nothing was parsed.");
         }
 
+        if (GdrReader.UsesOldListName(cache))
+            findings.Insert(0, new GdrSyncFinding(GdrSyncCodes.ListOldName,
+                $"The list is still named '{GdrReader.OldListName}'. Motif reads it, but rename it to '{GdrReader.ListName}' in FieldWorks (Lists > rename).",
+                null, null, null, 0, []));
+
         var counts = new GdrSyncCounts(records.Count, sections.Count(section => section.Title.Length > 0), linkCount,
             distinct.Length, checkedWords.Count, assessments);
         return new GdrCheckResponse(true, findings.Count == 0, coverage, findings, counts);

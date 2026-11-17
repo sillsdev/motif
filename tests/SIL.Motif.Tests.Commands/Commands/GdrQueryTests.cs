@@ -204,6 +204,36 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public void AListStillNamedGrammarDesignRecordsIsReadAndTheGuideCheckSaysToRenameIt()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true, SeededGdrs.SeedOldListName);
+
+        Assert.NotEmpty(GdrQuery.List(new GdrListRequest(path)).Value!.Records);
+        var check = GdrQuery.Check(new GdrCheckRequest(path)).Value!;
+        var finding = Assert.Single(check.Findings, candidate => candidate.Code == GdrSyncCodes.ListOldName);
+        Assert.Contains("Grammar Guide", finding.Message, StringComparison.Ordinal);
+        Assert.Contains("Grammar Design Records", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AListNamedGrammarGuideReadsWithoutTheOldNameFinding()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true);
+
+        Assert.NotEmpty(GdrQuery.List(new GdrListRequest(path)).Value!.Records);
+        Assert.DoesNotContain(GdrQuery.Check(new GdrCheckRequest(path)).Value!.Findings, finding => finding.Code == GdrSyncCodes.ListOldName);
+    }
+
+    [Fact]
+    public void ListsNamedBothWaysRefuseAsAmbiguous()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true, SeededGdrs.SeedOldNamedList);
+
+        Assert.Equal(RefusalCodes.GdrAmbiguous, GdrQuery.List(new GdrListRequest(path)).Refusal!.Code);
+        Assert.Equal(RefusalCodes.GdrAmbiguous, GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Refusal!.Code);
+    }
+
+    [Fact]
     public void TwoRecordsWithOneAbbreviationRefuseShowByThatNumberButNotById()
     {
         var path = ProjectWithGdrs(captureBaseline: true, SeededGdrs.SeedDuplicateAbbreviation);

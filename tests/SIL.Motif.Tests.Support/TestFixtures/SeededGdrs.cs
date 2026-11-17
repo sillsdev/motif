@@ -162,6 +162,18 @@ public static class SeededGdrs
         list.Name.set_String(cache.DefaultAnalWs, GdrReader.ListName);
     });
 
+    /// <summary>Gives the seeded list the name Motif read before it was called the Grammar Guide.</summary>
+    public static void SeedOldListName(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        Records(cache).Name.set_String(cache.DefaultAnalWs, GdrReader.OldListName));
+
+    /// <summary>Adds a second, empty list named with the old list name next to the seeded Grammar Guide list.</summary>
+    public static void SeedOldNamedList(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+    {
+        var list = cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().Create();
+        cache.LangProject.CheckListsOC.Add(list);
+        list.Name.set_String(cache.DefaultAnalWs, GdrReader.OldListName);
+    });
+
     /// <summary>Makes two styles each based on the other.</summary>
     public static void SeedStyleCycle(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
     {

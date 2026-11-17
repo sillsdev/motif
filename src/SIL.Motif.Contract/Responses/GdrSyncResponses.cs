@@ -6,6 +6,9 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>The finding codes of the Guide check check (ADR 0005). Every finding is a warning.</summary>
 public static class GdrSyncCodes
 {
+    /// <summary>The list is still named "Grammar Design Records", which Motif reads until it is renamed "Grammar Guide".</summary>
+    public const string ListOldName = "guide.list-old-name";
+
     /// <summary>The project has rules or affix processes and no Grammar Guide section at all.</summary>
     public const string NoRecords = "guide.no-records";
 
