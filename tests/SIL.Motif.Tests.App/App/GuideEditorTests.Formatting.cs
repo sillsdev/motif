@@ -116,13 +116,13 @@ public sealed partial class GuideEditorTests
             Assert.True(window.ApplyCharacterStyle(style));
             var button = window.GetLogicalDescendants().OfType<Button>()
                 .Single(item => item.Content is TextBlock text && text.Text == label);
-            var initiallyChecked = (button as ToggleButton)?.IsChecked;
+            var toggle = Assert.IsType<ToggleButton>(button);
+            Assert.True(toggle.IsChecked);
             int before = window.Session!.UndoSteps;
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var run = window.Field!.Editor.Document.Paragraphs[0].Runs[0];
             Assert.Equal(new IntPropValue(TextPropertyNumbers.VariationEnum, TextPropertyNumbers.ToggleOff), run.Props.IntProps[property]);
-            Assert.True(initiallyChecked);
-            Assert.False(Assert.IsType<ToggleButton>(button).IsChecked);
+            Assert.False(toggle.IsChecked);
             Assert.Equal(before + 1, window.Session.UndoSteps);
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             run = window.Field.Editor.Document.Paragraphs[0].Runs[0];

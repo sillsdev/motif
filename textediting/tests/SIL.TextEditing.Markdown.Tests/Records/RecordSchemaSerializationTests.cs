@@ -55,6 +55,17 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             var error = Assert.Throws<FormatException>(() => RecordSchema.FromJson(
                 "{\"version\":" + version + "}"));
             Assert.Contains("Unsupported record schema version " + version, error.Message);
+            Assert.Contains("supported versions are 1 through " + RecordSchema.CurrentVersion, error.Message);
+        }
+
+        [Theory]
+        [InlineData("{\"version\":2.0}")]
+        [InlineData("{\"version\":1e0}")]
+        [InlineData("{\"version\":2,\"id\":\"x\",\"types\":[],\"kinds\":[{\"name\":\"a/b\",\"root\":\"r\",\"pathSegments\":2.0}]}")]
+        public void FloatsAreRefusedAndTheMessageSaysSo(string json)
+        {
+            var error = Assert.Throws<FormatException>(() => RecordSchema.FromJson(json));
+            Assert.Contains("integers only", error.Message);
         }
 
         [Theory]

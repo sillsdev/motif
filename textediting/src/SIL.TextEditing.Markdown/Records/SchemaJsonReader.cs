@@ -129,6 +129,8 @@ namespace SIL.TextEditing.Markdown.Records
             if (i >= s.Length || s[i] < '0' || s[i] > '9') throw new FormatException("Expected an integer.");
             if (s[i] == '0') i++;
             else while (i < s.Length && s[i] >= '0' && s[i] <= '9') i++;
+            if (i < s.Length && (s[i] == '.' || s[i] == 'e' || s[i] == 'E'))
+                throw new FormatException("A record schema holds integers only; the number at " + start + " has a fraction or an exponent.");
             if (!long.TryParse(s.Substring(start, i - start), NumberStyles.AllowLeadingSign,
                 CultureInfo.InvariantCulture, out long value)) throw new FormatException("Integer is out of range.");
             return value;

@@ -199,6 +199,27 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         }
 
         [Fact]
+        public void ARedundantClassIsEquivalentToNoneOnlyWhenTheSchemaSaysTheFieldHasOneType()
+        {
+            var schema = Schema();
+            RecordDocument Single(string? name) => new RecordDocument("records/record")
+            {
+                Data = new RecordObject().Set("single", new RecordObject { Class = name }.Set("text", new RecordScalar("x"))),
+            };
+            RecordDocument Many(string? name) => Document(new RecordObject { Class = name }.Set("text", new RecordScalar("x")));
+            RecordDocument NoteInList(string? name) => new RecordDocument("records/record")
+            {
+                Data = new RecordObject().Set("children", new RecordList().Add(new RecordObject { Class = name }.Set("text", new RecordScalar("x")))),
+            };
+            Assert.True(RecordDocument.AreEquivalent(Single("note"), Single(null), schema));
+            Assert.True(RecordDocument.AreEquivalent(Single(null), Single("note"), schema));
+            Assert.False(RecordDocument.AreEquivalent(Single("note"), Single(null)));
+            Assert.False(RecordDocument.AreEquivalent(Single("note"), Single("tag"), schema));
+            Assert.False(RecordDocument.AreEquivalent(Many("note"), Many(null), schema));
+            Assert.False(RecordDocument.AreEquivalent(NoteInList("note"), NoteInList(null), schema));
+        }
+
+        [Fact]
         public void ClassIsPartOfObjectEmptinessAndDocumentEquivalence()
         {
             var empty = new RecordObject();

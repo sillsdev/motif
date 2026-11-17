@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using SIL.TextEditing.Markdown;
-using SIL.TextEditing.Markdown.Reader;
 using SIL.WritingSystems;
 
 namespace SIL.TextEditing.WritingSystems
@@ -56,7 +55,7 @@ namespace SIL.TextEditing.WritingSystems
         {
             if (tag == null) throw new ArgumentNullException(nameof(tag));
             if (IsKnown(tag)) return null;
-            var nearest = ReaderContext.NearestNames(tag, KnownTags) ?? Array.Empty<string>();
+            var nearest = NearestNamesFinder.Find(tag, KnownTags) ?? Array.Empty<string>();
             return new MarkdownProblem(MarkdownDiagnosticIds.WsUnknown, MarkdownSeverity.Error,
                 "'" + tag + "' is not a writing system of this project."
                 + (nearest.Count == 0 ? string.Empty : " Nearest: " + string.Join(", ", nearest) + "."))

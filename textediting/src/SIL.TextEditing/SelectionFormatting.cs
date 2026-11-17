@@ -7,12 +7,12 @@ namespace SIL.TextEditing
     public static class SelectionFormatting
     {
         /// <summary>True when every included run in the selection has the resolved appearance. An empty or mixed selection
-        /// is false. By default object runs are excluded; a host may supply its own run filter.</summary>
+        /// is false. Underline passes over strikethrough runs, which FieldWorks stores in the same property. By default object runs are excluded; a host may supply its own run filter.</summary>
         public static bool IsOn(DocumentEditor editor, IStyleResolver? styles, int property, Func<Run, bool>? include = null)
         {
             Validate(property);
             bool any = false;
-            foreach (var target in Targets(editor, include))
+            foreach (var target in Targets(editor, styles, property, include))
             {
                 any = true;
                 if (!IsOn(FormatResolver.ResolveChar(target.Key, target.Value, styles, 10), property)) return false;
@@ -27,7 +27,7 @@ namespace SIL.TextEditing
         {
             Validate(property);
             if (!editor.CanFormatSelection) return null;
-            using (var targets = Targets(editor, include).GetEnumerator())
+            using (var targets = Targets(editor, styles, property, include).GetEnumerator())
                 if (!targets.MoveNext()) return null;
             bool enable = !IsOn(editor, styles, property, include);
             editor.Ordered(out var start, out var end);
@@ -41,7 +41,7 @@ namespace SIL.TextEditing
                 for (int i = first; i < last; i++)
                 {
                     var run = edited.Runs[i];
-                    if (!Included(run, include)) continue;
+                    if (!Included(run, include) || IsStrikethrough(FormatResolver.ResolveChar(edited, run, styles, 10), property)) continue;
                     run.Props.IntProps.Remove(property);
                     bool inherited = IsOn(FormatResolver.ResolveChar(edited, run, styles, 10), property);
                     if (inherited != enable)
@@ -54,7 +54,7 @@ namespace SIL.TextEditing
             return delta;
         }
 
-        static IEnumerable<KeyValuePair<Paragraph, Run>> Targets(DocumentEditor editor, Func<Run, bool>? include)
+        static IEnumerable<KeyValuePair<Paragraph, Run>> Targets(DocumentEditor editor, IStyleResolver? styles, int property, Func<Run, bool>? include)
         {
             if (!editor.HasSelection) yield break;
             editor.Ordered(out var start, out var end);
@@ -67,7 +67,8 @@ namespace SIL.TextEditing
                 foreach (var run in paragraph.Runs)
                 {
                     int next = offset + run.Text.Length;
-                    if (offset < to && next > from && Included(run, include))
+                    if (offset < to && next > from && Included(run, include)
+                        && !IsStrikethrough(FormatResolver.ResolveChar(paragraph, run, styles, 10), property))
                         yield return new KeyValuePair<Paragraph, Run>(paragraph, run);
                     offset = next;
                 }
@@ -75,6 +76,10 @@ namespace SIL.TextEditing
         }
 
         static bool Included(Run run, Func<Run, bool>? include) => include != null ? include(run) : !run.IsObject;
+        /// <summary>FieldWorks stores strikethrough as one more value of the underline property, so the underline toggle must
+        /// pass over those runs: they are neither on nor off, and they keep their strikethrough.</summary>
+        static bool IsStrikethrough(CharFormat format, int property) =>
+            property == TextPropertyNumbers.Underline && format.Underline == TextPropertyNumbers.UnderlineStrikethrough;
         static int OnValue(int property) => property == TextPropertyNumbers.Underline ? TextPropertyNumbers.UnderlineSingle : TextPropertyNumbers.ToggleOn;
         static bool IsOn(CharFormat format, int property) => property == TextPropertyNumbers.Bold ? format.Bold :
             property == TextPropertyNumbers.Italic ? format.Italic :
