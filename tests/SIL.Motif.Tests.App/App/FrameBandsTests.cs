@@ -10,6 +10,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views.Shell;
+using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -55,6 +56,44 @@ public sealed class FrameBandsTests
                 window.Close();
             }
 
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    // round2-landrev: a narrow status bar keeps a short count beside Health and still fits the window.
+    [Theory]
+    [InlineData(640, 600, 150, true)]
+    [InlineData(1400, 780, 100, false)]
+    public void TheHealthButtonKeepsACountAtEveryWidthAndFitsTheWindow(int width, int height, int zoom, bool compact)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var (workspace, window) = FakeComposedWindow.Create();
+            try
+            {
+                window.Show();
+                workspace.Context.Health.Overview = SampleOverview.Populated() with
+                {
+                    Warnings = new OverviewWarningsSummary(151, null, null, null)
+                    {
+                        ErrorCount = 136, WarningCount = 11, InformationCount = 4,
+                    },
+                };
+                LayoutInvariantFixtures.Apply(window, new LayoutCell(width, height, zoom));
+                PageScreenshots.SettleLayout(window);
+                var button = window.GetVisualDescendants().OfType<Button>().Single(candidate =>
+                    AutomationProperties.GetAutomationId(candidate) == AutomationIds.HealthStrip);
+                Assert.True(button.IsEffectivelyVisible);
+                var visible = button.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(block => block.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(block.Text))
+                    .Select(block => block.Text!).ToArray();
+                Assert.Contains(compact ? "136 errors" : "136 errors, 11 warnings", visible);
+                if (compact) Assert.DoesNotContain("136 errors, 11 warnings", visible);
+                AssertShownWithoutScrolling(button, window, WorkspacePage.Progress);
+                var bar = button.GetVisualAncestors().OfType<Border>().First(border => border.Classes.Contains("statusBar"));
+                Assert.True(bar.Bounds.Right <= window.ClientSize.Width + 1, "The status bar fits the window width.");
+            }
+            finally { window.Close(); }
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(60));
     }

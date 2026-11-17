@@ -140,7 +140,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             if (_stopped || IsLoading || !CanAddComment) return null;
             if (IsPending)
             {
-                var pending = _context.ProposalApply.Blockers(_review, null, _context.RefreshProjectCommand, null);
+                var pending = _context.ProposalApply.Blockers(_review, _context.Changes.RemoveNonFittingCommand, _context.RefreshProjectCommand, null);
                 return pending.Count == 0 ? null : string.Join(" ", pending.Select(blocker => blocker.Sentence));
             }
             if (IsOutdated) return MotifAppStrings.ProposalDocumentOutdated;
@@ -181,10 +181,16 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         (IsPending ? _context.Changes.TargetProposalId is null : _context.Changes.TargetProposalId == ProposalId &&
             _context.Lens?.ProposalId == ProposalId) && _context.ProposalApply.CanApply(_review, null,
             _context.RefreshProjectCommand, null);
+    /// <summary>Whether this Draft has staged changes that no longer fit, which a person can remove from here.</summary>
+    public bool OffersRemoveNonFitting => IsPending && CanAddComment && _context.Changes.Items.Any(item => item.IsNoLongerFits);
+
+    /// <summary>Removes the staged changes that no longer fit.</summary>
+    public System.Windows.Input.ICommand RemoveNonFittingCommand => _context.Changes.RemoveNonFittingCommand;
+
     public string ApplyBlockReason => PrepareBlockReason is { } cannotStart ? cannotStart :
         !IsPending && _context.Changes.TargetProposalId != ProposalId
         ? MotifAppStrings.ProposalActivateForApply : IsOutdated ? MotifAppStrings.ProposalDocumentOutdated :
-        string.Join(" ", _context.ProposalApply.Blockers(_review, null, _context.RefreshProjectCommand, null)
+        string.Join(" ", _context.ProposalApply.Blockers(_review, _context.Changes.RemoveNonFittingCommand, _context.RefreshProjectCommand, null)
             .Select(blocker => blocker.Sentence));
 
     partial void OnCardChanged(ProposalCardViewModel? value)
@@ -419,6 +425,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         OnPropertyChanged(nameof(CanPrepareApply));
         OnPropertyChanged(nameof(PrepareBlockReason));
         OnPropertyChanged(nameof(ApplyLossNotice));
+        OnPropertyChanged(nameof(OffersRemoveNonFitting));
         PrepareApplyCommand.NotifyCanExecuteChanged();
         MeasurePendingCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanApply));

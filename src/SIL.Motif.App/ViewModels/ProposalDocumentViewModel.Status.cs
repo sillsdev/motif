@@ -33,9 +33,9 @@ public sealed partial class ProposalDocumentViewModel
     public bool ShowsOutdatedNotice => IsOutdated && !ShowsStatus;
 
     /// <summary>The automation id of the status block's Try It or Try Again button.</summary>
-    public string TryAutomationId => AutomationIds.ForProposalTryAgain(ProposalId) + "-inspector";
+    public string TryAutomationId => Card?.InspectorTryAgainAutomationId ?? AutomationIds.ForProposalTryAgain(ProposalId) + "-inspector";
 
-    private void OnDifferenceStatusChanged(object? sender, PropertyChangedEventArgs e) => RaiseStatus();
+    private void OnDifferenceStatusChanged(object? sender, PropertyChangedEventArgs e) => RaiseApply();
 
     private void RaiseStatus()
     {

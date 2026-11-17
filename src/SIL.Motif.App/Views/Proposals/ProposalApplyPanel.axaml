@@ -16,6 +16,9 @@
               IsVisible="{Binding PendingMeasurement.IsMeasuring}" HorizontalAlignment="Left" />
       <views:RefusalBlock DataContext="{Binding PendingMeasurement.Refusal}" />
     </StackPanel>
+    <Button AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalRemoveNonFitting}"
+            Content="{x:Static app:MotifAppStrings.ApplyRemoveNonFitting}" Command="{Binding RemoveNonFittingCommand}"
+            IsVisible="{Binding OffersRemoveNonFitting}" HorizontalAlignment="Left" />
     <Button AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalPrepareApply}"
             Content="{x:Static app:MotifAppStrings.ProposalApplyPrepare}" Command="{Binding PrepareApplyCommand}"
             IsVisible="{Binding CanAddComment}" HorizontalAlignment="Left" />

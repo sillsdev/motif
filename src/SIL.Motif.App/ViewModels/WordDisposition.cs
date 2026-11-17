@@ -69,23 +69,21 @@ public sealed record WordDispositionRow(
 
 /// <summary>
 /// The two buttons a word offers: its opinion mark, which sets what FieldWorks holds for the stored analyses, and a
-/// count of PanGloss readings FieldWorks does not hold, which adds one. Both present the word's existing Set choices
+/// count of PanGloss readings FieldWorks does not hold, which opens the word panel to choose one. Both present the word's existing Set choices
 /// and stage them through the same commands, so Review, Apply and undo are unchanged.
 /// </summary>
 public sealed class WordDisposition
 {
     private WordDisposition(IReadOnlyList<WordDispositionRow> stored, IReadOnlyList<WordDispositionRow> readings,
-        AnalysisMarkingChoice? keep, AnalysisMarkingChoice? addAll, bool spellingStaged, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind,
+        AnalysisMarkingChoice? keep, bool spellingStaged, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind,
         IReadOnlyList<WordMarkingChoice> proposalActions)
     {
         ProposalActions = proposalActions;
         StoredRows = stored;
         Readings = readings;
         KeepFieldWorks = keep;
-        AddAllAsUnknown = addAll;
         IsSpellingStaged = spellingStaged;
         KeepFieldWorksAction = keep is null ? null : bind?.Invoke(keep);
-        AddAllAsUnknownAction = addAll is null ? null : bind?.Invoke(addAll);
     }
 
     /// <summary>Each analysis FieldWorks stores, with tiles for what it should hold.</summary>
@@ -99,12 +97,6 @@ public sealed class WordDisposition
 
     /// <summary>The keep choice bound to the captured word and evidence that supplied the menu.</summary>
     public WordMarkingChoice? KeepFieldWorksAction { get; }
-
-    /// <summary>The choice that adds every PanGloss reading FieldWorks lacks as Unknown, when offered.</summary>
-    public AnalysisMarkingChoice? AddAllAsUnknown { get; }
-
-    /// <summary>The add-all choice bound to the captured word and evidence that supplied the menu.</summary>
-    public WordMarkingChoice? AddAllAsUnknownAction { get; }
 
     /// <summary>Whether a pending change marks the word as an incorrect spelling.</summary>
     public bool IsSpellingStaged { get; }
@@ -211,9 +203,8 @@ public sealed class WordDisposition
         }
 
         var keep = marking.SetChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks);
-        var addAll = marking.SetChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);
         var spelling = staged.Any(change => change.AfterApply == "Incorrect");
-        return new WordDisposition(stored, readings, keep, addAll, spelling, bind, proposalActions ?? []);
+        return new WordDisposition(stored, readings, keep, spelling, bind, proposalActions ?? []);
     }
 
     private static WordDispositionRow StoredRow(FieldWorksAnalysisMarking analysis, int index,

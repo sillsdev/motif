@@ -1,14 +1,14 @@
 <!--
   Window-wide button states and the primary classes.
   A disabled button loses its fill and its label turns faint, so it never reads as a live one; a filter chip
-  keeps its own disabled look.
+  and an action chip keep their own disabled look.
   Classes (add to a Button; no other markup is needed):
     primary          the page's main action: filled with the accent, white label.
     writes-fieldworks  with primary, the one action that writes the FieldWorks project: bold with a heavier edge.
   The actionChip primary variant is its own style and is not touched here.
 -->
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Style Selector="Button:disabled:not(.filterChip) /template/ ContentPresenter#PART_ContentPresenter">
+  <Style Selector="Button:disabled:not(.filterChip):not(.actionChip) /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextFaint}" />
   </Style>

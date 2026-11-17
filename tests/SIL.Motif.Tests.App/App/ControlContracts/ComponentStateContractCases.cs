@@ -112,7 +112,7 @@ internal static class ComponentStateContractCases
                 () => Alone(Press("actionChip", "primary")), stimulus, StatePart.Face,
                 ContentPresenter.BorderBrushProperty, "Intent.Opinion.Approved.Accent");
 
-        const string buttonDisabled = "Button:disabled:not(.filterChip)" + face;
+        const string buttonDisabled = "Button:disabled:not(.filterChip):not(.actionChip)" + face;
         yield return new(buttonDisabled, "disabled", () => Alone(Press()), StateStimulus.Disabled,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
         yield return new(buttonDisabled, "disabled", () => Alone(Press()), StateStimulus.Disabled,

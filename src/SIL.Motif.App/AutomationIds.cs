@@ -395,5 +395,7 @@ public static class AutomationIds
     public const string ProgressReadingParse = "motif-progress-reading-parse";
     // round2-proposal
     public const string ProposalStatus = "motif-proposal-status";
+    // round2-landrev
+    public const string ProposalRemoveNonFitting = "motif-proposal-remove-non-fitting";
     #endregion
 }

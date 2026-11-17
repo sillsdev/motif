@@ -524,6 +524,21 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             CancellationToken.None).ConfigureAwait(true);
     }
 
+    /// <summary>Removes every staged change that no longer fits the Baseline, so a Draft can be checked and applied.</summary>
+    public IAsyncRelayCommand RemoveNonFittingCommand => _removeNonFitting ??= new AsyncRelayCommand(RemoveNonFittingAsync);
+    private IAsyncRelayCommand? _removeNonFitting;
+
+    private async Task RemoveNonFittingAsync()
+    {
+        // One staging action, so a single Undo brings them all back; stop at the first removal that did not happen.
+        using var action = BeginStagingAction();
+        foreach (var change in Items.Where(item => item.IsNoLongerFits).ToList())
+        {
+            await RemoveAsync(change, wholeGroup: false).ConfigureAwait(true);
+            if (Items.Any(item => item.ChangeId == change.ChangeId)) return;
+        }
+    }
+
     private Task RemoveAsync(ChangeViewModel? change) => RemoveAsync(change, wholeGroup: false);
 
     internal Task RemoveGroupAsync(ChangeViewModel change) => RemoveAsync(change, wholeGroup: true);

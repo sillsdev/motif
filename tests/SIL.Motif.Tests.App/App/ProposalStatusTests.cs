@@ -1,6 +1,7 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -33,7 +34,8 @@ public sealed class ProposalStatusTests
     public enum State { Draft, ReadyNoTrial, TrialNoDifference, TrialAndDifference }
 
     private static async Task<(WorkspaceContext Context, OpenProposalDocuments Documents, ProposalDocumentViewModel Document)>
-        OpenAsync(State state, string? builder = null, string? model = null, string? question = null)
+        OpenAsync(State state, string? builder = null, string? model = null, string? question = null,
+        Action<FakeCommandClient>? configure = null)
     {
         var fake = new FakeCommandClient();
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(Guid.NewGuid(), "Genesis 1")],
@@ -55,6 +57,7 @@ public sealed class ProposalStatusTests
         fake.PendingChangesIs(state == State.Draft
             ? new("draft/one", "revision/one", [change], [new ChangeFit("one", true, [])])
             : new PendingChangesSnapshot("one", "revision/one", [], []));
+        configure?.Invoke(fake);
         fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
             new(request.ProposalId, "proposed", "Clarify the gloss", null, "intent/one", [])));
         var context = WorkspaceContextTests.NewContext(fake);
@@ -133,6 +136,92 @@ public sealed class ProposalStatusTests
                     Assert.Contains(StatusBlocks(page).Single().GetVisualDescendants(), control => ReferenceEquals(control, make));
                     return 0;
                 });
+            }
+            finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void ADraftWithAChangeThatNoLongerFitsOffersToRemoveItAndThenHasNoSuchBlocker()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var gone = new PendingChange("gone", "wordform/gone", "gone", "approve", "assessment/one", "reading", ["op"])
+            { StagingIntent = new ChangeIntent("gone", "approve", "wordform/gone", "gone", "assessment/one", null, DisplayReading: "reading") };
+            var gone2 = new PendingChange("gone2", "wordform/gone2", "gone2", "approve", "assessment/one", "reading", ["op"])
+            { StagingIntent = new ChangeIntent("gone2", "approve", "wordform/gone2", "gone2", "assessment/one", null, DisplayReading: "reading") };
+            var kept = new PendingChange("kept", "wordform/kept", "kept", "approve", "assessment/one", "reading", ["op"])
+            { StagingIntent = new ChangeIntent("kept", "approve", "wordform/kept", "kept", "assessment/one", null, DisplayReading: "reading") };
+            var (context, documents, document) = await OpenAsync(State.Draft);
+            try
+            {
+                var fake = (FakeCommandClient)context.Commands;
+                fake.PendingChangesIs(new("draft/one", "revision/two", [gone, gone2, kept],
+                    [new ChangeFit("gone", ChangeFitStatus.NoLongerFits, ["The text changed."]),
+                        new ChangeFit("gone2", ChangeFitStatus.NoLongerFits, ["The text changed."]), new ChangeFit("kept", true, [])]));
+                await context.Changes.ReloadAsync();
+                Assert.True(document.OffersRemoveNonFitting);
+                Assert.Contains(context.ProposalApply.Blockers(null, document.RemoveNonFittingCommand, null, null),
+                    blocker => blocker.Kind == ApplyBlockerKind.NoLongerFits && blocker.Action is not null);
+                await RenderAsync(document, (page, _) =>
+                {
+                    var remove = Assert.Single(page.GetVisualDescendants().OfType<Button>(), button =>
+                        AutomationProperties.GetAutomationId(button) == AutomationIds.ProposalRemoveNonFitting);
+                    Assert.True(remove.IsEffectivelyVisible);
+                    return 0;
+                });
+                await ((IAsyncRelayCommand)document.RemoveNonFittingCommand).ExecuteAsync(null);
+                Assert.False(document.OffersRemoveNonFitting);
+                Assert.Equal(["kept"], context.Changes.Items.Select(item => item.ChangeId));
+                // Both removals are one staging action: a single Undo puts them back.
+                await context.Changes.UndoStagingActionAsync();
+                Assert.Equal(["gone", "gone2", "kept"], context.Changes.Items.Select(item => item.ChangeId).Order());
+                Assert.DoesNotContain(context.ProposalApply.Blockers(null, null, null, null),
+                    blocker => blocker.Kind == ApplyBlockerKind.NoLongerFits);
+            }
+            finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    // round2-landrev: Apply follows the Difference as it is made and as it is forgotten.
+    [Fact]
+    public void MakingADifferenceEnablesApplyOnThePageAndForgettingItDisablesApplyAgain()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (context, documents, document) = await OpenAsync(State.TrialNoDifference, configure: fake =>
+                fake.OnProduceProposalDifference(async (_, _, token) =>
+                {
+                    var response = (await new ProposalDifferenceFixture(3).Read(
+                        new ProposalDifferenceShowRequest("project.fwdata", "one"), token)).Value!;
+                    return CommandOutcome<ProposalDifferenceResponse>.Success(response with
+                    {
+                        Summary = response.Summary with { DifferenceId = "one/newest", TrialJobId = "job/one" },
+                    });
+                }));
+            try
+            {
+                var page = new ProposalDocument { DataContext = document };
+                var window = new MotifTestWindow { Width = 1000, Height = 1200, Content = new ScrollViewer { Content = page } };
+                try
+                {
+                    window.Show();
+                    PageScreenshots.Settle(window);
+                    Assert.False(ApplyButton(page).IsEffectivelyEnabled);
+                    Assert.Contains(VisibleText(page), line => line.Contains(MotifAppStrings.ProposalApplyNeedsDifference, StringComparison.Ordinal));
+
+                    await document.Difference.Maker.RunCommand.ExecuteAsync(null);
+                    PageScreenshots.Settle(window);
+                    Assert.True(document.Difference.IsShown);
+                    Assert.True(ApplyButton(page).IsEffectivelyEnabled);
+                    Assert.DoesNotContain(VisibleText(page), line => line.Contains(MotifAppStrings.ProposalApplyNeedsDifference, StringComparison.Ordinal));
+
+                    document.Difference.Clear();
+                    PageScreenshots.Settle(window);
+                    Assert.False(ApplyButton(page).IsEffectivelyEnabled);
+                    Assert.False(document.CanPrepareApply);
+                }
+                finally { window.Close(); }
             }
             finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromMinutes(2));

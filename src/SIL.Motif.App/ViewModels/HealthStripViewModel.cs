@@ -23,7 +23,7 @@ public sealed partial class HealthStripViewModel : ObservableObject
 
     /// <summary>The last available stored Overview, or null while it is unavailable.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WarningText), nameof(BarText), nameof(HasWarnings), nameof(MedianWorkText), nameof(HasMedianWork), nameof(AccessibleName), nameof(HasSelectionSummary), nameof(SelectionSummary))]
+    [NotifyPropertyChangedFor(nameof(WarningText), nameof(BarText), nameof(CompactText), nameof(HasWarnings), nameof(MedianWorkText), nameof(HasMedianWork), nameof(AccessibleName), nameof(HasSelectionSummary), nameof(SelectionSummary))]
     private OverviewResponse? _overview;
 
     partial void OnOverviewChanged(OverviewResponse? value)
@@ -83,6 +83,16 @@ public sealed partial class HealthStripViewModel : ObservableObject
             : PluralText.Format(MotifAppStrings.WarningsFindingsPattern, count)
         : string.Empty;
 
+    /// <summary>
+    /// The count a narrow status bar keeps beside "Health": just the errors, or the findings total when the
+    /// Overview records no per-level counts.
+    /// </summary>
+    public string CompactText => !_context.Evidence.IsStale && Overview is { IsStale: false, Warnings: { Count: { } count } warnings }
+        ? warnings is { ErrorCount: { } errors }
+            ? PluralText.Format(MotifAppStrings.WarningsErrorsPattern, errors)
+            : PluralText.Format(MotifAppStrings.WarningsFindingsPattern, count)
+        : string.Empty;
+
     /// <summary>Whether a warning count is available.</summary>
     public bool HasWarnings => !_context.Evidence.IsStale && Overview is { IsStale: false, Warnings.Count: not null };
 
@@ -121,6 +131,7 @@ public sealed partial class HealthStripViewModel : ObservableObject
         if (e.PropertyName != nameof(ProjectEvidence.IsStale)) return;
         OnPropertyChanged(nameof(WarningText));
         OnPropertyChanged(nameof(BarText));
+        OnPropertyChanged(nameof(CompactText));
         OnPropertyChanged(nameof(HasWarnings));
         OnPropertyChanged(nameof(MedianWorkText));
         OnPropertyChanged(nameof(HasMedianWork));

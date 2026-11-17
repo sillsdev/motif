@@ -9,7 +9,12 @@
           AutomationProperties.Name="{Binding AccessibleName}">
     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
       <TextBlock Text="{x:Static app:MotifAppStrings.Health}" />
-      <TextBlock Classes="statusFull" Text="{Binding BarText}" IsVisible="{Binding HasWarnings}" />
+      <StackPanel Classes="statusFull">
+        <TextBlock Text="{Binding BarText}" IsVisible="{Binding HasWarnings}" />
+      </StackPanel>
+      <StackPanel Classes="statusCompact">
+        <TextBlock Text="{Binding CompactText}" IsVisible="{Binding HasWarnings}" />
+      </StackPanel>
       <TextBlock Text="{Binding AssistantStateText}" IsVisible="{Binding HasAssistantState}" />
     </StackPanel>
     <Button.Flyout>

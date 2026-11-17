@@ -138,6 +138,8 @@ internal static class CommandContractCases
             ParameterFactory: workspace => workspace.Context.Assess.Compare.Rows[0]),
         new(typeof(ChangesViewModel), nameof(ChangesViewModel.RemoveCommand), typeof(ChangeViewModel), null,
             true, "ReviewUndoRealClientTests.RemoveAnalysisStagesAsRemovedAndUndoUsesTheRealClient"),
+        new(typeof(ChangesViewModel), nameof(ChangesViewModel.RemoveNonFittingCommand), null, null, true,
+            "ProposalStatusTests.ADraftWithAChangeThatNoLongerFitsOffersToRemoveItAndThenHasNoSuchBlocker"),
         new(typeof(DifferenceViewModel), nameof(DifferenceViewModel.ClearCommand), null, null, true,
             "DifferenceViewModelTests.ARerunIsComparedWithTheRunItFoldedInto"),
         new(typeof(DifferenceViewModel), nameof(DifferenceViewModel.OpenWordCommand),

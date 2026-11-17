@@ -628,7 +628,6 @@ public sealed partial class ProposalsPageModel : PageModel
             OnPropertyChanged(nameof(HasSelectedProposal));
             OnPropertyChanged(nameof(ShowSelectProposalPrompt));
             OnPropertyChanged(nameof(SelectedOpenAutomationId));
-            OnPropertyChanged(nameof(SelectedTryAgainAutomationId));
             OnPropertyChanged(nameof(SelectedReopenAutomationId));
             OnPropertyChanged(nameof(SelectedDeleteAutomationId));
         }
@@ -671,9 +670,6 @@ public sealed partial class ProposalsPageModel : PageModel
 
     /// <summary>The Inspector's Open in Review changes id for the selected Proposal.</summary>
     public string? SelectedOpenAutomationId => SelectedProposal?.InspectorOpenAutomationId;
-
-    /// <summary>The Inspector's try-again id for the selected Proposal.</summary>
-    public string? SelectedTryAgainAutomationId => SelectedProposal?.InspectorTryAgainAutomationId;
 
     /// <summary>The Inspector's Reopen id for the selected Proposal.</summary>
     public string? SelectedReopenAutomationId => SelectedProposal?.InspectorReopenAutomationId;
