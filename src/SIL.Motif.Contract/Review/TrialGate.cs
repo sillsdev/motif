@@ -26,3 +26,7 @@ public sealed record TrialGate(
     [property: JsonRequired] IReadOnlyList<string> ExpectedLosses,
     [property: JsonRequired] IReadOnlyList<string> UnexpectedLosses,
     [property: JsonRequired] IReadOnlyList<string> StoppedWords);
+
+/// <summary>A named stopped case with its producer-attributed cause on one side of a Trial.</summary>
+public sealed record TrialStoppedWord(string CaseKey, string Word, Side Side,
+    IReadOnlyList<string> Reasons, IReadOnlyList<string> Details);

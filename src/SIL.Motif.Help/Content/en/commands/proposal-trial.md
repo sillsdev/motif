@@ -9,3 +9,5 @@ motif proposal trial --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" <propos
 Use `--job` or `--report` to pick a particular Trial or saved report, and `--detail failures` or `--detail full` for more of its cases. [Trial a Proposal](cmd:trial) describes every selector.
 
 A Proposal with no Trial returns a "no Trial" result that names the command to start one.
+
+Every stopped word is retained in `report.stoppedWords` with its before or after side, reason codes and specific cause. The same cause appears on the word’s full review page when detail is available. An invalid shape means the parser could not segment the spelling with the phoneme inventory; inspect the recorded explanation before changing the grammar.

@@ -145,6 +145,39 @@ public sealed class TrialReviewArgvTests
     }
 
     [Fact]
+    public void StoppedWordsWithoutBaselineAnalysesKeepTheirNamesAndSpecificCauses()
+    {
+        var invalid = NoAnalysis("canada") with { InvalidShape = true,
+            Refusal = new ParserRefusal("invalid-shape", "Unrecognized segment 'c' at position 0.") };
+        var seed = SeedTrial(_ => ([new("case-canada", "canada", "skipped", invalid)],
+            [new("case-canada", "canada", "skipped", invalid)]), ["canada"]);
+        try
+        {
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            var available = Assert.IsType<AvailableTrialResult>(read.Value);
+            using var json = JsonDocument.Parse(JsonSerializer.Serialize(available, ReviewJson.Options));
+            var stopped = json.RootElement.GetProperty("report").GetProperty("stoppedWords");
+            Assert.Equal(2, stopped.GetArrayLength());
+            Assert.All(stopped.EnumerateArray(), item =>
+            {
+                Assert.Equal("canada", item.GetProperty("word").GetString());
+                Assert.Contains("invalid-evidence", item.GetProperty("reasons").EnumerateArray().Select(r => r.GetString()));
+                Assert.Contains("Unrecognized segment 'c'", item.GetProperty("details")[0].GetString());
+            });
+            var page = TrialReviewReads.ReadStored(seed.Project, new ReviewReadRequest("", seed.Proposal,
+                ReportId: available.Report.ReportId, Detail: DetailLevel.Full, Section: "incomplete"));
+            Assert.True(page.Succeeded, page.Refusal?.Message);
+            var row = Assert.IsType<SIL.Motif.Contract.Review.WordRow>(Assert.Single(Assert.IsType<AvailableTrialResult>(page.Value).Report.Page!.Items));
+            using var rowJson = JsonDocument.Parse(JsonSerializer.Serialize(row, ReviewJson.Options));
+            Assert.Contains("Unrecognized segment 'c'", rowJson.RootElement.GetProperty("after").GetProperty("stopDetails")[0].GetString());
+            Assert.Contains("canada", SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(available));
+            Assert.Contains("Unrecognized segment 'c'", SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(available));
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Fact]
     public void AFinishedTrialJobReturnsItsSummaryReportWithAGate()
     {
         var seed = SeedTrial(_ => ([], []), ["word"]);

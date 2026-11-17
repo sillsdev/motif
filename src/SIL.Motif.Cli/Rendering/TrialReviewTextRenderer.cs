@@ -33,6 +33,9 @@ public static class TrialReviewTextRenderer
             foreach (var flag in report.Summary.Flags)
                 text.AppendLine(flag.Text + ": " + Flag(flag));
         text.AppendLine(report.Summary.Notice);
+        foreach (var stopped in report.StoppedWords ?? [])
+            text.AppendLine(stopped.Word + " (" + stopped.Side.ToString().ToLowerInvariant() + "): " +
+                string.Join(", ", stopped.Reasons) + "; " + string.Join("; ", stopped.Details));
         text.AppendLine($"Incomplete: {Count(report.Summary.Incomplete.AffectedWords)} wordforms; {Count(report.Summary.Incomplete.RequiredCases)} required cases");
         if (report.Limitations.Count != 0 || report.Summary.Incomplete.EvidenceGapCount != 0)
             text.AppendLine("Some comparisons could not be made; see Incomplete and limitations.");
@@ -134,7 +137,8 @@ public static class TrialReviewTextRenderer
         (value.Precision == CoveragePrecision.LowerBound ? " (lower bound)" : "");
     private static string SideSummary(WordSide side) =>
         $"{side.Completion}; readings {Count(side.ObservedReadingCount)}; Approved matched {Count(side.ApprovedMatched)}, " +
-        $"missing {Count(side.ApprovedMissing)}, unknown {Count(side.ApprovedUnknown)}";
+        $"missing {Count(side.ApprovedMissing)}, unknown {Count(side.ApprovedUnknown)}" +
+        (side.StopDetails is { Count: > 0 } details ? "; " + string.Join("; ", details) : "");
 
     private static string Row(ReviewRow row) => row switch
     {

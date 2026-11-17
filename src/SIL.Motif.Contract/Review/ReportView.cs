@@ -212,6 +212,10 @@ public sealed record ReportView(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] TracePage? Trace,
     [property: JsonRequired] IReadOnlyList<ReadTarget> Links) : IJsonOnDeserialized, IJsonOnSerializing
 {
+    /// <summary>Every stopped case, retained independently of the optional detail index.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TrialStoppedWord>? StoppedWords { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 

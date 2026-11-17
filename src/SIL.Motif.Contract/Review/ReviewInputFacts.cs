@@ -69,6 +69,10 @@ public sealed record ReviewCaseSideFacts(
     IReadOnlyList<string> MatchedExpectationIds, IReadOnlyList<string> MissingExpectationIds,
     IReadOnlyList<string> UnknownExpectationIds)
 {
+    /// <summary>The recorded parser explanation or the specific evidence validation failure.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? StopDetails { get; init; }
+
     /// <summary>A case for which the search was not measured.</summary>
     public static ReviewCaseSideFacts NotMeasured { get; } = new(global::SIL.Motif.Contract.Review.Completion.NotMeasured, null, [], [], [], []);
 }

@@ -22,9 +22,29 @@ namespace SIL.Motif.Tests.Commands;
 /// </summary>
 [Collection(LcmCacheParallelCollections.Group2)]
 [Trait("MotifTestLevel", "System")]
-public sealed class DigitAndHyphenRealParserTests(PristineProjectFixture pristine)
+public sealed class DigitAndHyphenRealParserTests(PristineProjectFixture pristine, Xunit.Abstractions.ITestOutputHelper output)
 {
     private const string Version = "1.0";
+
+    [RealParserFact]
+    public async Task ForeignNamesAndAcronymsNeedTheirLettersInThePhonemeInventory()
+    {
+        var words = new[] { "canada", "bocco", "act", "fc", "afcon", "eacj", "tellack", "sadc" };
+        var letters = string.Concat(words).Distinct().Where(letter => letter != 'c').Select(letter => letter.ToString()).ToArray();
+        var path = Prepare(out _, out _, letters);
+        var before = await Parse(path, words);
+        Assert.All(before, word =>
+        {
+            Assert.True(word.InvalidShape, word.Word);
+            Assert.Null(word.Refusal);
+            output.WriteLine(word.Word + ": invalidShape=true; native batch records no segment explanation.");
+        });
+        NewDraft(path, "foreign-letter");
+        Compose(path, "foreign-letter", "compose-author-phoneme", new { name = "c", representations = new[] { "c" } });
+        ApplyDraft(path, "foreign-letter");
+        var after = await Parse(path, words);
+        Assert.All(after, word => Assert.False(word.InvalidShape, word.Word));
+    }
 
     [RealParserFact]
     public async Task DigitsAsPhonemesLetTheOrdinalPrefixParseBesideANumeralWrittenInDigits()

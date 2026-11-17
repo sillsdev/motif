@@ -85,6 +85,10 @@ public sealed record WordSide(
     [property: JsonRequired]
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReadTarget? ReadingPage) : IJsonOnDeserialized, IJsonOnSerializing
 {
+    /// <summary>The recorded parser explanation or the specific evidence validation failure.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? StopDetails { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 

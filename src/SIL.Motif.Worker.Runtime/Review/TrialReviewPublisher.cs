@@ -134,7 +134,13 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
                     (facts.Findings?.Measures.Sum(measure => measure.Limitation is null ? measure.Added.Count : 0) ?? 0), _ => 0 })).ToArray();
         var report = new ReportView("motif.proposal-review-report", 1, "pending", digest, DetailLevel.Summary,
             pins, new Freshness(FreshnessRelation.Unknown, ["freshness-not-checked"]), summary, evidence,
-            limitations, DetailAvailability.Available, [], null, null, null, []);
+            limitations, DetailAvailability.Available, [], null, null, null, [])
+        { StoppedWords = Classify(inputs, before, after).SelectMany(item => new[]
+            {
+                (Side.Before, item.Before), (Side.After, item.After)
+            }.Where(side => side.Item2.Completion is Completion.Stopped or Completion.Unavailable)
+            .Select(side => new TrialStoppedWord(item.CaseKey, item.Word, side.Item1,
+                side.Item2.StopReasons, side.Item2.StopDetails ?? []))).ToArray() };
         var estimate = Math.Min(100_000_001L, checked((long)manifestBytes.Length * 12 + (long)inputs.Cases.Count * 20_000 + 100_000));
         var references = (input.BaselineAssessmentIds ?? []).Concat(input.ReviewBaselines?.SelectMany(part => part.AssessmentIds) ?? [])
             .Concat(AfterAssessments(job.ResultJson)).Concat(["sha256:" + reference.Sha256])
@@ -264,7 +270,8 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
 
     private static ReviewCaseSideFacts SideState(ReviewCaseSideFacts side, TrialReviewObservation? observation) =>
         observation?.Completion == Completion.Stopped
-            ? side with { Completion = Completion.Stopped, StopReasons = observation.StopReasons }
+            ? side with { Completion = Completion.Stopped, StopReasons = observation.StopReasons,
+                StopDetails = ReviewCaseClassifier.InvalidDetails(observation.Morphology) }
             : side;
 
     private static IEnumerable<ReadingRow> Readings(IReadOnlyList<ReviewAssertion> assertions,

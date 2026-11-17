@@ -902,7 +902,7 @@ public sealed partial class ReviewReportRepository
 
     private static WordSide SideFacts(ReviewCaseSideFacts facts, ReadTarget? link, long? readings, SideTotals? totals) =>
         new(facts.Completion, facts.StopReasons, readings, totals?.ApprovedMatched, totals?.ApprovedMissing,
-            totals?.ApprovedUnknown, totals?.ReferenceMatched, totals?.ReferenceMissing, totals?.ReferenceUnknown, null, link);
+            totals?.ApprovedUnknown, totals?.ReferenceMatched, totals?.ReferenceMissing, totals?.ReferenceUnknown, null, link) { StopDetails = facts.StopDetails };
 
     private static (long? Before, long? After) ReadingTotals(SqliteConnection connection, SqliteTransaction transaction,
         string report, string key, bool available)

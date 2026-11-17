@@ -116,7 +116,29 @@ public static class ReviewCaseClassifier
         var completion = evidence is null ? Completion.NotMeasured : observed.Complete ? Completion.Complete :
             evidence.Capped || evidence.TimedOut ? Completion.Stopped : Completion.Unavailable;
         bool? parsed = observed.Readings.Count > 0 ? true : observed.Complete ? false : null;
-        return new ReviewCaseSideFacts(completion, parsed, reasons, matched, missing, unknown);
+        return new ReviewCaseSideFacts(completion, parsed, reasons, matched, missing, unknown)
+        { StopDetails = observed.Complete ? null : InvalidDetails(evidence) };
+    }
+
+    internal static IReadOnlyList<string> InvalidDetails(ParseWordEvidence? evidence)
+    {
+        if (evidence is null) return ["No word evidence was recorded."];
+        var details = new List<string>();
+        if (evidence.Refusal is { } refusal) details.Add(refusal.Code + ": " + refusal.Reason);
+        if (evidence.InvalidShape && evidence.Refusal is null)
+            details.Add("The parser could not segment the word using the phoneme inventory; no segment detail was recorded.");
+        if (evidence.Schema != "fieldworks-parse-analysis/v1") details.Add("Unrecognized morphology schema: " + evidence.Schema);
+        if (evidence.ElapsedMs < 0) details.Add("Negative elapsed milliseconds.");
+        if (evidence.Attempts < 0) details.Add("Negative attempt count.");
+        if (evidence.Capped) details.Add("The parser reached the word's work limit.");
+        if (evidence.TimedOut) details.Add("The parser reached the word's time limit.");
+        details.AddRange(evidence.Unavailable ?? ["Missing unavailable-projection list."]);
+        if (evidence.Analyses is null) details.Add("Missing morphology analyses.");
+        else
+            foreach (var (analysis, index) in evidence.Analyses.Select((analysis, index) => (analysis, index)))
+                if (!Exact(analysis)) details.Add("Reading " + index + " lacks nonempty authoritative Form/MSA/InflType GUIDs.");
+        if (details.Count == 0) details.Add("The evidence word does not match the requested word in Unicode normalization.");
+        return details;
     }
 
     private static (IReadOnlyList<ParseAnalysis> Readings, bool Complete) Observe(ParseWordEvidence? evidence, string word)

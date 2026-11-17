@@ -1821,7 +1821,7 @@
   },
   "proposal trial": {
     "title": "Read a Trial report",
-    "description": "Reads the saved report of a Proposal's Trial: red flags, incomplete cases, counts and stopped words. It reads stored evidence and does not rerun the parser.",
+    "description": "Reads the saved report of a Proposal's Trial: red flags, incomplete cases, counts and every stopped word with its cause. It reads stored evidence and does not rerun the parser.",
     "source": "Authored from ADR 0021 and the typed command contract."
   },
   "trial --wait": {

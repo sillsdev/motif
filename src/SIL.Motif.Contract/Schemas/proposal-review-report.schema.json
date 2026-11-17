@@ -265,9 +265,22 @@
         }
       ]
     },
+    "TrialStoppedWord": {
+      "type": "object",
+      "properties": {
+        "caseKey": { "type": "string" },
+        "word": { "type": "string" },
+        "side": { "$ref": "#/$defs/Side" },
+        "reasons": { "type": "array", "items": { "type": "string" } },
+        "details": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["caseKey", "word", "side", "reasons", "details"],
+      "additionalProperties": false
+    },
     "ReportView": {
       "type": "object",
       "properties": {
+        "stoppedWords": { "type": "array", "items": { "$ref": "#/$defs/TrialStoppedWord" } },
         "schema": {
           "const": "motif.proposal-review-report"
         },
@@ -2516,6 +2529,7 @@
     "WordSide": {
       "type": "object",
       "properties": {
+        "stopDetails": { "type": "array", "items": { "type": "string" } },
         "completion": {
           "$ref": "#/$defs/Completion"
         },
