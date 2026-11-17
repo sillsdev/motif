@@ -324,9 +324,15 @@ public sealed class GdrDiscussionSession
             string.Join("\u0002", change.Content.Runs.Select(run =>
                 run.Ws + "\u0003" + run.Text + "\u0003" + run.ObjData + "\u0003" + Describe(run.Props))))).Concat(edit.Removed));
 
-    private static string Describe(PropertyBag props) => string.Join(",",
-        props.IntProps.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}={pair.Value.Variation}/{pair.Value.Value}")
-            .Concat(props.StrProps.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}:{pair.Value}")));
+    private static string Describe(PropertyBag shown)
+    {
+        var props = GdrDiscussion.ProjectProperties(shown);
+        return string.Join(",",
+            props.IntProps.Where(pair => pair.Key >= 0).OrderBy(pair => pair.Key)
+                .Select(pair => $"{pair.Key}={pair.Value.Variation}/{pair.Value.Value}")
+                .Concat(props.StrProps.Where(pair => pair.Key >= 0).OrderBy(pair => pair.Key)
+                    .Select(pair => $"{pair.Key}:{pair.Value}")));
+    }
 
     private static List<Paragraph> Copy(Document document) => document.Paragraphs.Select(paragraph => paragraph.Clone()).ToList();
 }

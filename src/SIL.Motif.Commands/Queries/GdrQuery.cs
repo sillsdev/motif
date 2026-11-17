@@ -15,6 +15,8 @@ namespace SIL.Motif.Commands.Queries;
 /// <summary>Reads Grammar Guide from the current Baseline, never from the live project.</summary>
 public static class GdrQuery
 {
+    private static readonly GdrStyleCatalogCache StyleCatalogs = new();
+
     /// <summary>Lists the records; with no Baseline the list is empty and says so.</summary>
     public static CommandOutcome<GdrListResponse> List(GdrListRequest request)
     {
@@ -86,7 +88,9 @@ public static class GdrQuery
     }
 
     /// <summary>Reads one record's Discussion with the project's styles and writing systems and any others it uses.</summary>
-    public static CommandOutcome<GdrShowResponse> Show(GdrShowRequest request)
+    public static CommandOutcome<GdrShowResponse> Show(GdrShowRequest request) => Show(request, StyleCatalogs);
+
+    internal static CommandOutcome<GdrShowResponse> Show(GdrShowRequest request, GdrStyleCatalogCache styleCatalogs)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.Id))
@@ -102,7 +106,8 @@ public static class GdrQuery
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
             try
             {
-                var shown = GdrReader.Show(reader.Cache, id, Path.GetFileNameWithoutExtension(request.ProjectPath));
+                var shown = GdrReader.Show(reader.Cache, id, Path.GetFileNameWithoutExtension(request.ProjectPath),
+                    styleCatalogs.For(baseline.FwDataPath, baseline.Token));
                 return shown is null
                     ? NotFound<GdrShowResponse>(id)
                     : CommandOutcome<GdrShowResponse>.Success(shown with { Baseline = baseline.Token, IsStale = IsStale(project, baseline) });

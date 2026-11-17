@@ -25,9 +25,6 @@ public sealed class GdrDiscussion
 
     private const int RightToLeft = 128;
 
-    // What a link's underline and colour were before this view showed it as a link, by link target.
-    private readonly Dictionary<string, LinkLook> _linkLooks;
-
     // The targets of links the project could not resolve, which this view marks as broken.
     private readonly HashSet<string> _brokenLinks;
 
@@ -35,7 +32,7 @@ public sealed class GdrDiscussion
 
     private GdrDiscussion(TextDocument document, IStyleResolver styles, WritingSystemRegistry writingSystems,
         IReadOnlyDictionary<(int Paragraph, int Offset), GdrLinkTarget> targets,
-        IReadOnlyDictionary<string, TextParagraphExpected> expected, Dictionary<string, LinkLook> linkLooks,
+        IReadOnlyDictionary<string, TextParagraphExpected> expected,
         HashSet<string> brokenLinks, GdrShowResponse response)
     {
         _brokenLinks = brokenLinks;
@@ -45,7 +42,6 @@ public sealed class GdrDiscussion
         WritingSystems = writingSystems;
         Targets = targets;
         Expected = expected;
-        _linkLooks = linkLooks;
         ParagraphStyles = response.Styles.Where(style => style.Kind == GdrStyleKind.Paragraph).Select(style => style.Name).ToArray();
         CharacterStyles = response.Styles.Where(style => style.Kind == GdrStyleKind.Character).Select(style => style.Name).ToArray();
         WritingSystemChoices = response.WritingSystems;
@@ -75,9 +71,7 @@ public sealed class GdrDiscussion
     {
         var props = new PropertyBag();
         if (CharacterStyles.Contains(HyperlinkStyle, StringComparer.Ordinal)) props.SetStr(TextPropertyNumbers.NamedStyle, HyperlinkStyle);
-        _linkLooks.TryAdd(objData, LinkLook.Of(props));
-        props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
-        props.SetInt(TextPropertyNumbers.ForeColor, LinkColor, 0);
+        LinkLook.Show(props, broken: false);
         return new Run { Ws = ws, Text = text, Props = props, ObjData = objData };
     }
 
@@ -120,8 +114,7 @@ public sealed class GdrDiscussion
     /// </summary>
     public IReadOnlyList<TextRun> ProjectRuns(Paragraph paragraph) => paragraph.Runs.Where(run => !IsMarker(run)).Select(run =>
     {
-        var props = run.ObjData is { } objData && run.Text != ObjectReplacement
-            ? (_linkLooks.TryGetValue(objData, out var look) ? look : default).Restore(run.Props) : run.Props;
+        var props = ProjectProperties(run.Props);
         var style = props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
         return new TextRun(run.Text, run.Ws, style, Props(props), run.ObjData);
     }).ToArray();
@@ -134,6 +127,9 @@ public sealed class GdrDiscussion
         return Props(props);
     }
 
+    /// <summary>A run's stored properties, with its display underline and colour restored and display metadata removed.</summary>
+    internal static PropertyBag ProjectProperties(PropertyBag props) => LinkLook.Restore(props);
+
     private static TextProps Props(PropertyBag bag) => new(
         bag.IntProps.ToDictionary(pair => pair.Key, pair => (pair.Value.Variation, pair.Value.Value)),
         bag.StrProps.Where(pair => pair.Key != TextPropertyNumbers.NamedStyle).ToDictionary(pair => pair.Key, pair => pair.Value));
@@ -145,7 +141,6 @@ public sealed class GdrDiscussion
         var document = new TextDocument();
         var targets = new Dictionary<(int Paragraph, int Offset), GdrLinkTarget>();
         var expected = new Dictionary<string, TextParagraphExpected>(StringComparer.Ordinal);
-        var linkLooks = new Dictionary<string, LinkLook>(StringComparer.Ordinal);
         var brokenLinks = new HashSet<string>(StringComparer.Ordinal);
         foreach (var source in response.Discussion)
         {
@@ -161,12 +156,10 @@ public sealed class GdrDiscussion
             foreach (var run in source.Runs)
             {
                 var props = Bag(run.Properties);
-                if (run.ObjData is { } objData) linkLooks.TryAdd(objData, LinkLook.Of(props));
                 if (run.Target is { } target)
                 {
                     targets[(document.Paragraphs.Count, offset)] = target;
-                    props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
-                    props.SetInt(TextPropertyNumbers.ForeColor, target.State == GdrLinkState.Broken ? BrokenColor : LinkColor, 0);
+                    LinkLook.Show(props, target.State == GdrLinkState.Broken);
                 }
                 paragraph.Runs.Add(new Run { Ws = run.WritingSystem, Text = run.Text, Props = props, ObjData = run.ObjData });
                 offset += run.Text.Length;
@@ -187,7 +180,7 @@ public sealed class GdrDiscussion
         foreach (var system in response.WritingSystems)
             writingSystems.Add(WritingSystemRegistry.Define(system.Tag, system.DefaultFont, WritingSystemSizePoints,
                 rtl: system.Direction == "rtl"));
-        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets, expected, linkLooks, brokenLinks, response);
+        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets, expected, brokenLinks, response);
     }
 
     /// <summary>
@@ -208,10 +201,7 @@ public sealed class GdrDiscussion
         var copy = paragraph.Clone();
         for (var i = copy.Runs.Count - 1; i >= 0; i--)
             if (IsMarker(copy.Runs[i])) copy.Runs.RemoveAt(i);
-        // A link with no recorded look came from Markdown and had none of its own; AsShown leaves such links alone.
-        foreach (var run in copy.Runs)
-            if (run.ObjData is { } objData && run.Text != ObjectReplacement)
-                run.Props = (_linkLooks.TryGetValue(objData, out var look) ? look : default).Restore(run.Props);
+        foreach (var run in copy.Runs) run.Props = ProjectProperties(run.Props);
         return copy;
     }
 
@@ -219,8 +209,8 @@ public sealed class GdrDiscussion
     /// <paramref name="paragraph"/>, as the project would hold it, shown as this view shows text: a link the project could
     /// not resolve followed by its marker, and a link with no underline or colour of its own underlined and coloured as
     /// this view shows links. A link that has its own, as Markdown can give it, keeps them, so what was typed is what the
-    /// project receives; an underline or colour that is exactly this view's link look reads as that look. The inverse of
-    /// <see cref="AsProject"/>; it records nothing, so reading half-typed Markdown changes no later reading.
+    /// project receives. The inverse of <see cref="AsProject"/>; display properties travel with each run, so reading
+    /// half-typed Markdown changes no later reading.
     /// </summary>
     public Paragraph AsShown(Paragraph paragraph)
     {
@@ -232,11 +222,7 @@ public sealed class GdrDiscussion
             if (run.ObjData is not { } objData || run.Text == ObjectReplacement) continue;
             var broken = _brokenLinks.Contains(objData);
             var own = run.Props.IntProps.ContainsKey(TextPropertyNumbers.Underline) || run.Props.IntProps.ContainsKey(TextPropertyNumbers.ForeColor);
-            if (!own)
-            {
-                run.Props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
-                run.Props.SetInt(TextPropertyNumbers.ForeColor, broken ? BrokenColor : LinkColor, 0);
-            }
+            if (!own) LinkLook.Show(run.Props, broken);
             if (broken) copy.Runs.Insert(++i, Marker(run.Ws));
         }
         return copy;
@@ -261,29 +247,43 @@ public sealed class GdrDiscussion
         return bag;
     }
 
-    // Two links to one target keep their own other properties; only these two are shared, and only as shown.
-    private readonly record struct LinkLook(IntPropValue? Underline, IntPropValue? ForeColor)
+    private static class LinkLook
     {
-        public static LinkLook Of(PropertyBag props) => new(Int(props, TextPropertyNumbers.Underline), Int(props, TextPropertyNumbers.ForeColor));
+        // Each run's display metadata must stay outside FieldWorks' positive property-number space.
+        private const int Shown = -1, Underline = -2, ForeColor = -3;
 
-        public PropertyBag Restore(PropertyBag shown)
+        public static void Show(PropertyBag props, bool broken)
         {
+            if (props.IntProps.ContainsKey(Shown)) return;
+            props.SetInt(Shown, 1, 0);
+            if (props.IntProps.TryGetValue(TextPropertyNumbers.Underline, out var underline))
+                props.IntProps[Underline] = underline;
+            if (props.IntProps.TryGetValue(TextPropertyNumbers.ForeColor, out var color))
+                props.IntProps[ForeColor] = color;
+            props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
+            props.SetInt(TextPropertyNumbers.ForeColor, broken ? BrokenColor : LinkColor, 0);
+        }
+
+        public static PropertyBag Restore(PropertyBag shown)
+        {
+            if (!shown.IntProps.ContainsKey(Shown)) return shown;
             var props = shown.Clone();
             Put(props, TextPropertyNumbers.Underline, Underline, value => value == TextPropertyNumbers.UnderlineSingle);
             Put(props, TextPropertyNumbers.ForeColor, ForeColor, value => value is LinkColor or BrokenColor);
+            props.IntProps.Remove(Shown);
+            props.IntProps.Remove(Underline);
+            props.IntProps.Remove(ForeColor);
             return props;
         }
 
-        private static IntPropValue? Int(PropertyBag props, int number) =>
-            props.IntProps.TryGetValue(number, out var value) ? value : null;
-
-        // The view shows links with variation 0, so a value set any other way, as the toolbar sets it, is the person's.
-        private static void Put(PropertyBag props, int number, IntPropValue? original, Func<int, bool> isShown)
+        // Variation zero is the view's look; another variation is an explicit formatting choice.
+        private static void Put(PropertyBag props, int number, int originalKey, Func<int, bool> isShown)
         {
             if (!props.IntProps.TryGetValue(number, out var value)) return;
-            if (original is { } same && value.Value == same.Value) { props.IntProps[number] = same; return; }
+            var hasOriginal = props.IntProps.TryGetValue(originalKey, out var original);
+            if (hasOriginal && value.Value == original.Value) { props.IntProps[number] = original; return; }
             if (value.Variation != 0 || !isShown(value.Value)) return;
-            if (original is { } kept) props.IntProps[number] = kept;
+            if (hasOriginal) props.IntProps[number] = original;
             else props.IntProps.Remove(number);
         }
     }
