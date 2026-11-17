@@ -95,6 +95,10 @@ public static class TimingAggregation
             median, counts[Math.Max(0, (int)Math.Ceiling(counts.Length * 0.95) - 1)]);
     }
 
+    // PanGloss counts a skipped word's work in its object timings, so only a skipped word with no work drops out.
+    private static AssessedWord[] WordsCarryingWork(IReadOnlyList<AssessedWord> words) =>
+        words.Where(word => word.Outcome != "skipped" || word.ParserWork is > 0).ToArray();
+
     /// <summary>
     /// Parser work by parser object and the unattributed remainder, or nothing unless every word has a total and its
     /// objects' work adds up to it, so the parts always sum to the whole.
@@ -112,7 +116,7 @@ public static class TimingAggregation
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(words);
         var byWord = rows.ToLookup(row => row.Word, StringComparer.Ordinal);
-        words = words.Where(word => word.Outcome != "skipped").ToArray();
+        words = WordsCarryingWork(words);
         if (words.Any(word => word.ParserWork is null)) return ([], ParserWorkAbsence.WordWithoutWork);
         if (words.Any(word => byWord[word.Word].Any(row => row.ParserWork is null ||
                 ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, row.Scope) is null)))
@@ -155,15 +159,14 @@ public static class TimingAggregation
     {
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(evidence);
-        var counted = words.Where(word => word.Outcome != "skipped").ToArray();
+        var counted = WordsCarryingWork(words);
         var rows = evidence.Aggregates;
         if (evidence.HasRetriedWords) return ([], ParserWorkAbsence.RetriedWords);
         if (counted.Any(word => word.ParserWork is null)) return ([], ParserWorkAbsence.WordWithoutWork);
         if (rows.Any(row => row.ParserWork is null || ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope) is null))
             return ([], ParserWorkAbsence.ObjectWithoutWorkOrIdentity);
         if (!rows.Any(row => row.Kind == "unattributed")) return ([], ParserWorkAbsence.NoUnattributedRow);
-        // PanGloss counts skipped words' work in the totals, so the exact sum covers every word with a total.
-        if (rows.Sum(row => row.ParserWork!.Value) != words.Sum(word => word.ParserWork ?? 0))
+        if (rows.Sum(row => row.ParserWork!.Value) != counted.Sum(word => word.ParserWork!.Value))
             return ([], ParserWorkAbsence.SumsDoNotMatch);
         return (rows.GroupBy(row => ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope))
             .Select(group =>

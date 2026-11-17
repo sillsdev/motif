@@ -164,10 +164,10 @@ public sealed class CatalogAggregationTests
     }
 
     [Fact]
-    public void ParserWorkIsAKindOfItsOwnThatAddsUpWithTheRulesAndSkippedWordsStayOut()
+    public void ParserWorkIsAKindOfItsOwnThatAddsUpWithTheRulesAndASkippedWordWithoutWorkStaysOut()
     {
         AssessedWord[] words =
-            [new("a", "analysed", [], 5) { ParserWork = 10 }, new("never", "skipped", [], null) { ParserWork = 500 }];
+            [new("a", "analysed", [], 5) { ParserWork = 10 }, new("never", "skipped", [], null)];
         AssessmentObjectTiming[] rows =
         [
             WorkRow("morph_rule", "rule-r", "R", "a", 6),
@@ -185,6 +185,25 @@ public sealed class CatalogAggregationTests
     private static PanGlossObjectTimingAggregate Totals(string kind, string key, string direction, long? work) =>
         new(kind, key, kind == "unattributed" ? "synthetic" : "authored", direction, key, 1, null, null, null, null)
         { ParserWork = work };
+
+    [Fact]
+    public void WorkByObjectFromWordDetailCountsASkippedWordThatCarriesWork()
+    {
+        AssessedWord[] words = [new("a", "analysed", [], 5) { ParserWork = 10 }, new("1904", "skipped", [], null) { ParserWork = 4 }];
+        AssessmentObjectTiming Row(string word, string kind, string key, long work) =>
+            new(kind, key, kind == "unattributed" ? "synthetic" : "authored", "analysis", "Rule", word, 1, null, 1_000_000)
+                { ParserWork = work };
+        AssessmentObjectTiming[] rows =
+        [
+            Row("a", "morph_rule", "rule-r", 7), Row("a", "unattributed", "unattributed", 3),
+            Row("1904", "morph_rule", "rule-r", 1), Row("1904", "unattributed", "unattributed", 3),
+        ];
+
+        var result = TimingAggregation.ParserWorkByObjectWithReason(rows, words);
+
+        Assert.Null(result.Reason);
+        Assert.Equal(14, result.Rows.Sum(row => row.ParserWork));
+    }
 
     [Fact]
     public void StoredWholeRunTotalsGiveWorkByObjectAndKindWithoutAnyWordDetail()
