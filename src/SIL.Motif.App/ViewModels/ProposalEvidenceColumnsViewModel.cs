@@ -12,6 +12,20 @@ namespace SIL.Motif.App.ViewModels;
 /// <summary>A listed mechanical effect, without an inferred occurrence-level approval decision.</summary>
 public sealed record ProposalEvidenceWord(string Word, string Effect, IRelayCommand ShowPlacesCommand, string? WritingSystemId = null);
 
+/// <summary>One approved word the Trial would stop parsing, with where it occurs when the Difference says.</summary>
+/// <param name="Word">The word.</param>
+/// <param name="Place">Its places in the compared Text, or empty when no Difference lists the word.</param>
+/// <param name="Reason">Why it stops parsing, or empty: no Trial or Proposal record stores a per-word reason.</param>
+/// <param name="WritingSystemId">The writing system the word is drawn in.</param>
+public sealed record ProposalLostApprovedWord(string Word, string Place, string Reason, string? WritingSystemId = null)
+{
+    /// <summary>Whether the word has a place to show.</summary>
+    public bool HasPlace => Place.Length > 0;
+
+    /// <summary>Whether the word has a recorded reason to show.</summary>
+    public bool HasReason => Reason.Length > 0;
+}
+
 /// <summary>Projects complete mechanical observations, preserving unavailable totals and Text scope.</summary>
 public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
 {
@@ -29,6 +43,53 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
     }
 
     public ProposalDifferenceViewModel Difference { get; }
+
+    // round2-deferred: approved words the current Trial would stop parsing, listed first.
+    private IReadOnlyList<LostApprovedWord> _lostWords = [];
+    private int _lostCount;
+
+    /// <summary>The lost approved words that are named, each with its place when the Difference lists it.</summary>
+    public IReadOnlyList<ProposalLostApprovedWord> LostApproved { get; private set; } = [];
+
+    /// <summary>Whether the page names approved words the Trial would stop parsing.</summary>
+    public bool HasLostApproved => _lostCount > 0;
+
+    /// <summary>The heading of the lost list.</summary>
+    public string LostApprovedTitle => MotifAppStrings.ProposalLostApprovedTitle;
+
+    /// <summary>How many approved words would stop parsing: the same count Apply states.</summary>
+    public string LostApprovedCount => PluralText.Format(MotifAppStrings.ProposalLostApprovedCountPattern, _lostCount);
+
+    /// <summary>Says how many lost words are counted and not named, or nothing when all are.</summary>
+    public string LostApprovedMore => _lostCount > _lostWords.Count
+        ? PluralText.Format(MotifAppStrings.ProposalLostApprovedMorePattern, _lostCount - _lostWords.Count) : string.Empty;
+
+    /// <summary>Whether some lost words are counted and not named.</summary>
+    public bool HasLostApprovedMore => LostApprovedMore.Length > 0;
+
+    /// <summary>Sets the lost words from the Proposal's current Trial; none when the Trial is not current or its losses are unknown.</summary>
+    public void SetLostApproved(TrialSummary? trial)
+    {
+        var known = trial is { LostApprovedKnown: true, Freshness: TrialFreshness.Current, LostApproved: > 0 };
+        _lostCount = known ? trial!.LostApproved : 0;
+        _lostWords = known ? trial!.LostApprovedWords : [];
+        RebuildLost();
+    }
+
+    private void RebuildLost()
+    {
+        var places = CanShowFacts ? Difference.EvidenceWords.GroupBy(word => word.Word, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal)
+            : new Dictionary<string, ProposalDifferenceWord>(StringComparer.Ordinal);
+        LostApproved = [.. _lostWords.Select(lost => lost.Word).Select(word => new ProposalLostApprovedWord(word,
+            places.TryGetValue(word, out var found) && Difference.Summary is { } summary
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalLostApprovedPlaceFormat,
+                    PluralText.Format(MotifAppStrings.ProposalDifferenceOccurrenceCountPattern, found.Occurrences),
+                    summary.TextTitle) : string.Empty,
+            string.Empty, _textStyles?.DefaultVernacularId))];
+        foreach (var property in new[] { nameof(LostApproved), nameof(HasLostApproved), nameof(LostApprovedCount),
+                     nameof(LostApprovedMore), nameof(HasLostApprovedMore) }) OnPropertyChanged(property);
+    }
     public IReadOnlyList<ProposalEvidenceWord> WillFillIn { get; private set; } = [];
     public IReadOnlyList<ProposalEvidenceWord> WillChange { get; private set; } = [];
     public bool HasFillIn => CanShowFacts && (WillFillIn.Count > 0 || Complete);
@@ -125,6 +186,7 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
 
     private void Rebuild()
     {
+        RebuildLost();
         var words = CanShowFacts ? Difference.EvidenceWords.Where(word => CompleteFacts(word.Facts)) : [];
         WillFillIn = words.Where(word => word.Facts.Before.ProducedIdentityCount == 0 &&
                 word.Facts.After.ProducedIdentityCount > 0)

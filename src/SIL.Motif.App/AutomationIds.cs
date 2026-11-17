@@ -364,5 +364,10 @@ public static class AutomationIds
     public const string ProposalStatus = "motif-proposal-status";
     // round2-landrev
     public const string ProposalRemoveNonFitting = "motif-proposal-remove-non-fitting";
+    // round2-deferred
+    public const string ProposalLostApproved = "motif-proposal-lost-approved";
+    public const string ProposalsGroupFilters = "motif-proposals-group-filters";
+    public static string ForProposalsFilter(ViewModels.ProposalListFilter filter) =>
+        "motif-proposals-filter-" + filter.ToString().ToLowerInvariant();
     #endregion
 }

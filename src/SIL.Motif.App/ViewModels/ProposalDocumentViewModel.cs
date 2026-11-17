@@ -195,6 +195,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
 
     partial void OnCardChanged(ProposalCardViewModel? value)
     {
+        Evidence.SetLostApproved(IsPending || value?.Card.Group == ProposalGroup.SetAside ? null : value?.Card.Trial);
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(IsPending));

@@ -4265,5 +4265,12 @@ public static class MotifAppStrings
     public static string ProposalStatusReady => Text("MotifApp.ProposalStatusReady");
     public static string ProposalApplyNeedsDifference => Text("MotifApp.ProposalApplyNeedsDifference");
     public static string ProposalApplyDifferenceUnavailable => Text("MotifApp.ProposalApplyDifferenceUnavailable");
+    // round2-deferred
+    public static string ProposalLostApprovedTitle => Text("MotifApp.ProposalLostApprovedTitle");
+    public static string ProposalLostApprovedCountPattern => Text("MotifApp.ProposalLostApprovedCountPattern");
+    public static string ProposalLostApprovedMorePattern => Text("MotifApp.ProposalLostApprovedMorePattern");
+    public static string ProposalLostApprovedPlaceFormat => Text("MotifApp.ProposalLostApprovedPlaceFormat");
+    public static string ProposalsFilterChipFormat => Text("MotifApp.ProposalsFilterChipFormat");
+    public static string ProposalsDeferredEmpty => Text("MotifApp.ProposalsDeferredEmpty");
     #endregion
 }

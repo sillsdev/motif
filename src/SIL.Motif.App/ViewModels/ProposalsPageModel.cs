@@ -474,6 +474,9 @@ public enum ProposalListFilter
     /// <summary>Proposals waiting for a person, including those not tried or needing another try.</summary>
     WaitingForYou,
 
+    /// <summary>Proposals a person put off with Decide Later; they stay open and are reviewed only in Motif.</summary>
+    Deferred,
+
     /// <summary>Applied, declined, superseded or withdrawn Proposals.</summary>
     Closed,
 }
@@ -496,6 +499,13 @@ public sealed record ProposalGroupFilterViewModel(
 {
     /// <summary>Whether the filter can show any rows or is active and can be cleared.</summary>
     public bool CanSelect => Count > 0 || IsActive;
+
+    /// <summary>The filter's name and its count, such as "Deferred (2)".</summary>
+    public string ChipText => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.ProposalsFilterChipFormat, Label, Count);
+
+    /// <summary>The automation id of the filter's button.</summary>
+    public string AutomationId => AutomationIds.ForProposalsFilter(Filter);
 }
 
 /// <summary>What the Proposals page is showing, so loading, empty and refused cannot overlap.</summary>
@@ -738,6 +748,7 @@ public sealed partial class ProposalsPageModel : PageModel
         ProposalListFilter.YourChangesNotAppliedYet => "Nothing in Your changes not applied yet.",
         ProposalListFilter.WaitingForYou => "Nothing in Waiting for you.",
         ProposalListFilter.Closed => "Nothing in Closed.",
+        ProposalListFilter.Deferred => MotifAppStrings.ProposalsDeferredEmpty,
         _ => "Nothing in this group.",
     };
 
@@ -793,6 +804,8 @@ public sealed partial class ProposalsPageModel : PageModel
             CountFor(ProposalListFilter.YourChangesNotAppliedYet)),
         Filter(ProposalListFilter.WaitingForYou, MotifAppStrings.ProposalsWaitingForYou,
             CountFor(ProposalListFilter.WaitingForYou)),
+        // round2-deferred
+        Filter(ProposalListFilter.Deferred, MotifAppStrings.ProposalDeferred, CountFor(ProposalListFilter.Deferred)),
         Filter(ProposalListFilter.Closed, MotifAppStrings.ProposalsClosed, CountFor(ProposalListFilter.Closed)),
     ];
 
@@ -808,6 +821,7 @@ public sealed partial class ProposalsPageModel : PageModel
                 {
                     ListGroup(ProposalListFilter.YourChangesNotAppliedYet, MotifAppStrings.ProposalsPendingChanges, cards),
                     ListGroup(ProposalListFilter.WaitingForYou, MotifAppStrings.ProposalsWaitingForYou, cards),
+                    ListGroup(ProposalListFilter.Deferred, MotifAppStrings.ProposalDeferred, cards),
                     ListGroup(ProposalListFilter.Closed, MotifAppStrings.ProposalsClosed, cards),
                 }
                 .Where(group => group.Cards.Count > 0 &&
@@ -834,9 +848,9 @@ public sealed partial class ProposalsPageModel : PageModel
     private int CountFor(ProposalListFilter filter) => filter switch
     {
         ProposalListFilter.YourChangesNotAppliedYet =>
-            _standings.Proposals.Count(card => card.Group == ProposalGroup.NotAppliedYet),
-        ProposalListFilter.WaitingForYou => _standings.Proposals.Count(card => card.Group is ProposalGroup.WaitingForYou or
-            ProposalGroup.NeedsAnotherTry or ProposalGroup.NotTried),
+            _standings.Proposals.Count(card => IsInFilter(card, filter)),
+        ProposalListFilter.WaitingForYou or ProposalListFilter.Deferred =>
+            _standings.Proposals.Count(card => IsInFilter(card, filter)),
         ProposalListFilter.Closed => _standings.SetAsideCount,
         _ => 0,
     };
@@ -844,17 +858,22 @@ public sealed partial class ProposalsPageModel : PageModel
     private ProposalListGroupViewModel ListGroup(ProposalListFilter filter, string title,
         IReadOnlyDictionary<string, ProposalCardViewModel> cards)
     {
-        var groupCards = _standings.Proposals.Where(card => IsInFilter(card.Group, filter))
+        var groupCards = _standings.Proposals.Where(card => IsInFilter(card, filter))
             .Select(card => cards[card.ProposalId]).ToArray();
         return new ProposalListGroupViewModel(filter, title, groupCards);
     }
 
-    private static bool IsInFilter(ProposalGroup group, ProposalListFilter filter) => filter switch
+    // A Proposal a person deferred lists once, under Deferred, whatever its Trial says.
+    private static bool IsDeferred(ProposalCard card) => card.Status == "deferred" && !card.IsPendingDraft &&
+        !card.IsDraft && card.Group != ProposalGroup.SetAside;
+
+    private static bool IsInFilter(ProposalCard card, ProposalListFilter filter) => filter switch
     {
-        ProposalListFilter.YourChangesNotAppliedYet => group == ProposalGroup.NotAppliedYet,
-        ProposalListFilter.WaitingForYou => group is ProposalGroup.WaitingForYou or
+        ProposalListFilter.YourChangesNotAppliedYet => card.Group == ProposalGroup.NotAppliedYet,
+        ProposalListFilter.Deferred => IsDeferred(card),
+        ProposalListFilter.WaitingForYou => !IsDeferred(card) && card.Group is ProposalGroup.WaitingForYou or
             ProposalGroup.NeedsAnotherTry or ProposalGroup.NotTried,
-        ProposalListFilter.Closed => group == ProposalGroup.SetAside,
+        ProposalListFilter.Closed => card.Group == ProposalGroup.SetAside,
         _ => false,
     };
 
@@ -946,7 +965,7 @@ public sealed partial class ProposalsPageModel : PageModel
             }
             if (UnsavedEditor is { } unsaved &&
                 standings.Proposals.FirstOrDefault(card => card.ProposalId == unsaved.ProposalId) is { } edited &&
-                SelectedGroupFilter is { } filter && !IsInFilter(edited.Group, filter))
+                SelectedGroupFilter is { } filter && !IsInFilter(edited, filter))
             {
                 _pausedGroupFilter = filter;
                 OnPropertyChanged(nameof(IsGroupFilterPaused));
@@ -1023,7 +1042,7 @@ public sealed partial class ProposalsPageModel : PageModel
         // A filter cannot hide the field holding an unsaved edit.
         if (nextFilter is { } hiding && UnsavedEditor is { } editing &&
             _standings.Proposals.FirstOrDefault(card => card.ProposalId == editing.ProposalId) is { } edited &&
-            !IsInFilter(edited.Group, hiding) && KeepsUnsavedEdit(null)) return;
+            !IsInFilter(edited, hiding) && KeepsUnsavedEdit(null)) return;
         ClearPausedFilter();
         SelectedGroupFilter = nextFilter;
         if (SelectedGroupFilter == ProposalListFilter.Closed && !_includeSetAside)

@@ -19,6 +19,11 @@ public enum ProposalGroup
     SetAside,
 }
 
+/// <summary>One approved word a Trial would stop parsing.</summary>
+/// <param name="Word">The word's spelling.</param>
+/// <remarks>A per-word reason field will follow (#259); the list shape is fixed now so adding it changes nothing else.</remarks>
+public sealed record LostApprovedWord(string Word);
+
 /// <summary>How many operations of one kind a Proposal carries, in the words a person reads.</summary>
 /// <param name="Kind">The kind's stable key, such as <c>rule</c> or <c>parse-approved</c>.</param>
 /// <param name="Count">How many changes of this kind the Proposal holds.</param>
@@ -52,6 +57,17 @@ public sealed record TrialSummary(
 {
     /// <summary>Whether the Trial's losses could be compared against complete correctness evidence.</summary>
     public bool LostApprovedKnown { get; init; }
+
+    /// <summary>The most lost words a summary names; <see cref="LostApproved"/> still counts every one.</summary>
+    public const int MostLostWordsNamed = 50;
+
+    /// <summary>
+    /// The words whose approved analysis the Trial no longer builds, taken from
+    /// <c>ReviewNumbersResponse.WordsLosingApprovedAnalysis</c> (the comparison of the earlier and Trial correctness
+    /// Assessments), in the Trial's word order, up to
+    /// <see cref="MostLostWordsNamed"/>. Its length is <see cref="LostApproved"/> unless that is larger.
+    /// </summary>
+    public IReadOnlyList<LostApprovedWord> LostApprovedWords { get; init; } = [];
 
     /// <summary>Parser work measured for this Trial against its Baseline, when available.</summary>
     public TrialWork? Work { get; init; }

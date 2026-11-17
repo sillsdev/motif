@@ -512,6 +512,14 @@
   },
   {
     "view": "Pages/ProposalsPage",
+    "name": "ProposalsGroupFilters",
+    "source": "GroupFilters",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "round2-deferred: one filter button per Proposals group, four at most."
+  },
+  {
+    "view": "Pages/ProposalsPage",
     "name": "OpenProposalTabs",
     "source": "Documents.Items",
     "mode": "paged",
@@ -528,6 +536,13 @@
     "view": "Proposals/ProposalEvidenceColumns",
     "name": "ProposalFillInWords",
     "source": "WillFillIn",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalEvidenceColumns",
+    "name": "ProposalLostApprovedWords",
+    "source": "LostApproved",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },

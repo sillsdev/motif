@@ -8,9 +8,24 @@
   <UserControl.Styles><StyleInclude Source="/Tokens/Components/ProposalsScoped.axaml" /></UserControl.Styles>
   <UserControl.Resources>
     <DataTemplate x:Key="ProposalListPane" x:DataType="vm:ProposalsPageModel">
-      <Grid RowDefinitions="Auto,*,Auto" RowSpacing="{DynamicResource Intent.Space.Related}">
+      <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Intent.Space.Related}">
         <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.BoardOpenProposals}" />
-        <ListBox Grid.Row="1" x:Name="ProposalsRowsItems" ItemsSource="{Binding Rows}"
+        <!-- round2-deferred: a filter per group with its count, so Deferred Proposals have a place to be found. -->
+        <ItemsControl Grid.Row="1" x:Name="ProposalsGroupFilters" ItemsSource="{Binding GroupFilters}"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsGroupFilters}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ProposalGroupFilterViewModel">
+              <Button Classes.primary="{Binding IsActive}" IsVisible="{Binding CanSelect}"
+                      Command="{Binding SelectCommand}" CommandParameter="{Binding Filter}"
+                      AutomationProperties.AutomationId="{Binding AutomationId}"
+                      AutomationProperties.Name="{Binding ChipText}">
+                <TextBlock Text="{Binding ChipText}" TextWrapping="Wrap" />
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ListBox Grid.Row="2" x:Name="ProposalsRowsItems" ItemsSource="{Binding Rows}"
                  SelectedItem="{Binding SelectedProposal, Mode=OneWay}"
                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalsAccessibleName}"
                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsList}">
@@ -29,7 +44,7 @@
             </DataTemplate>
           </ListBox.DataTemplates>
         </ListBox>
-        <Button Grid.Row="2" IsVisible="{Binding HasSetAsideLink}"
+        <Button Grid.Row="3" IsVisible="{Binding HasSetAsideLink}"
                 Command="{Binding ShowSetAsideCommand}" AutomationProperties.Name="{Binding SetAsideLinkText}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsSetAside}">
           <TextBlock Text="{Binding SetAsideLinkText}" />

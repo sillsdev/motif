@@ -21,6 +21,26 @@
     </DataTemplate>
   </UserControl.Resources>
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+    <StackPanel x:Name="ProposalLostApproved" IsVisible="{Binding HasLostApproved}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalLostApproved}"
+                Spacing="{DynamicResource Intent.Space.Compact}">
+      <views:CopyableTextBlock Classes="section-title" Text="{Binding LostApprovedTitle}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding LostApprovedCount}" TextWrapping="Wrap" />
+      <views:ProgressiveItemsControl x:Name="ProposalLostApprovedWords" FullItemsSource="{Binding LostApproved}">
+        <views:ProgressiveItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ProposalLostApprovedWord">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+              <controls:WritingSystemTextBlock Text="{Binding Word}" TextWrapping="Wrap"
+                                               controls:WritingSystemText.Id="{Binding WritingSystemId}"
+                                               controls:WritingSystemText.StyleName="Normal" />
+              <views:CopyableTextBlock Text="{Binding Place}" IsVisible="{Binding HasPlace}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding Reason}" IsVisible="{Binding HasReason}" TextWrapping="Wrap" />
+            </StackPanel>
+          </DataTemplate>
+        </views:ProgressiveItemsControl.ItemTemplate>
+      </views:ProgressiveItemsControl>
+      <views:CopyableTextBlock Text="{Binding LostApprovedMore}" IsVisible="{Binding HasLostApprovedMore}" TextWrapping="Wrap" />
+    </StackPanel>
     <views:CopyableTextBlock Text="{Binding Scope}" IsVisible="{Binding HasScope}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Text="{Binding Availability}" IsVisible="{Binding HasAvailability}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Text="{Binding NotesText}" IsVisible="{Binding HasNotes}" TextWrapping="Wrap" />

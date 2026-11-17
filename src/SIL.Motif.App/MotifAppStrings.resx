@@ -7602,7 +7602,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalUntitledDraft" xml:space="preserve"><value>Untitled Draft</value></data>
   <data name="MotifApp.ProposalUntitled" xml:space="preserve"><value>Untitled Proposal</value></data>
   <data name="MotifApp.ProposalApplyNeedsTrialFormat" xml:space="preserve"><value>Apply is unavailable until this Proposal is tried. Choose {0} at the top of this page.</value></data>
-  <data name="MotifApp.ProposalApplyLosesFormat" xml:space="preserve"><value>Applying would lose the approved analysis of {0}. The places are not listed here.</value></data>
+  <data name="MotifApp.ProposalApplyLosesFormat" xml:space="preserve"><value>Applying would lose the approved analysis of {0}. They are listed at the top of the evidence.</value></data>
   <data name="MotifApp.ProposalApplyLosesNone" xml:space="preserve"><value>Applying would lose no approved analysis.</value></data>
   <data name="MotifApp.ProposalEvidenceUnavailableNextStep" xml:space="preserve"><value>Refresh the project and reopen this Proposal to read its evidence again.</value></data>
   <data name="MotifApp.ApplyBackupNotice" xml:space="preserve"><value>Motif does not back up your project. Back it up in FieldWorks before you apply.</value></data>
@@ -7726,4 +7726,11 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalStatusReady" xml:space="preserve"><value>This Proposal has been tried and its Difference made. You can apply it.</value><comment>Status at the top of a Proposal's page when a current Trial and a Difference exist and nothing blocks Apply.</comment></data>
   <data name="MotifApp.ProposalApplyNeedsDifference" xml:space="preserve"><value>Apply is unavailable: no Difference has been made yet. Choose Make Difference at the top of this page, then come back to apply.</value></data>
   <data name="MotifApp.ProposalApplyDifferenceUnavailable" xml:space="preserve"><value>Apply is unavailable: this Proposal's Difference is not available. Refresh the project and reopen this Proposal.</value></data>
+  <!-- round2-deferred -->
+  <data name="MotifApp.ProposalLostApprovedTitle" xml:space="preserve"><value>Approved Words That Would Stop Parsing</value><comment>Heading above the list of approved words the Trial no longer parses, at the top of a Proposal's evidence.</comment></data>
+  <data name="MotifApp.ProposalLostApprovedCountPattern" xml:space="preserve"><value>{0, plural, one {# approved word would stop parsing if you apply this Proposal.} other {# approved words would stop parsing if you apply this Proposal.}}</value><comment>Sentence under the lost-words heading; the count is the one Apply states. {0} is the number of words.</comment></data>
+  <data name="MotifApp.ProposalLostApprovedMorePattern" xml:space="preserve"><value>{0, plural, one {# more word is counted but not listed.} other {# more words are counted but not listed.}}</value><comment>Said under the lost-words list when more words are lost than the list names. {0} is how many are not named.</comment></data>
+  <data name="MotifApp.ProposalLostApprovedPlaceFormat" xml:space="preserve"><value>{0} in {1}.</value><comment>A lost word's places; {0} is the count of places, such as "3 occurrences", and {1} is the title of the compared Text.</comment></data>
+  <data name="MotifApp.ProposalsFilterChipFormat" xml:space="preserve"><value>{0} ({1})</value><comment>A Proposals list filter: its name and how many Proposals it holds, such as "Deferred (2)".</comment></data>
+  <data name="MotifApp.ProposalsDeferredEmpty" xml:space="preserve"><value>Nothing is deferred.</value><comment>Shown when the Deferred filter is chosen and no Proposal is deferred.</comment></data>
 </root>

@@ -270,6 +270,9 @@ public sealed class ProposalDifferenceRunTests
         var scene = new Shown();
         scene.Cards[0] = scene.Cards[0] with { Status = "deferred" };
         await scene.OpenAsync();
+        // The deferred Proposal lists under Deferred, after the others, so choose it.
+        scene.Page.SelectedProposal = scene.Page.Rows.OfType<ProposalCardViewModel>().Single(row => row.ProposalId == "p/one");
+        await scene.Page.DifferenceReading;
         var difference = scene.Page.Difference;
         Assert.NotEmpty(difference.Words);
         Assert.True(difference.OffersMake);

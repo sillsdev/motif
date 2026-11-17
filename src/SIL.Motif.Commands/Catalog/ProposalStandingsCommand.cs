@@ -242,24 +242,29 @@ public static class ProposalStandingsCommand
             Pair<int>(today?.Accuracy.ApprovedWordCount ?? 0, after?.Accuracy.ApprovedWordCount ?? 0, today is not null,
                 (before, now) => PairedMoves.Count(before, now)),
             Pair(wordTimeToday, after?.Timing.Attribution.WordTimeMs, wordTimeToday is not null, PairedMoves.Time),
-            warnings, lost.Count, noLongerFits) { Work = trial.Work, LostApprovedKnown = lost.Known };
+            warnings, lost.Count, noLongerFits)
+        {
+            Work = trial.Work, LostApprovedKnown = lost.Known, LostApprovedWords = lost.Words,
+        };
     }
 
-    private static (int Count, bool Known) LostApproved(MotifDatabase database, TrialRecord trial, AssessmentRecord? before,
+    private static (int Count, bool Known, IReadOnlyList<LostApprovedWord> Words) LostApproved(MotifDatabase database, TrialRecord trial, AssessmentRecord? before,
         OverviewResponse? after)
     {
-        if (after is null || !trial.AssessmentIds.TryGetValue(AssessmentKinds.Correctness, out var trialId)) return (0, false);
+        if (after is null || !trial.AssessmentIds.TryGetValue(AssessmentKinds.Correctness, out var trialId)) return (0, false, []);
         try
         {
             var comparison = ReviewNumbersCommand.Summarize(before, new AssessmentRepository(database).Get(trialId),
                 trial.Words.Count);
             return (comparison.WordsLosingApprovedAnalysis.Count,
-                comparison is { Comparability: ReviewComparability.Compared, EvidenceComplete: true });
+                comparison is { Comparability: ReviewComparability.Compared, EvidenceComplete: true },
+                [.. comparison.WordsLosingApprovedAnalysis.Take(TrialSummary.MostLostWordsNamed)
+                    .Select(word => new LostApprovedWord(word))]);
         }
         catch (Exception exception) when (exception is ReportRefusalException or ComparisonRefusalException or
             KeyNotFoundException)
         {
-            return (0, false);
+            return (0, false, []);
         }
     }
 
