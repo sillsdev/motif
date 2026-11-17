@@ -61,6 +61,8 @@ internal static class ComposerDefinitions
         new AuthorCircumfixDefinition(),
         new AddMorphoSyntaxAnalysisDefinition(),
         new SetEntryDoNotParseDefinition(),
+        new SetEntryAttributionDefinition(),
+        new SetProjectAttributionDefinition(),
         new RewriteLexemeFormDefinition(),
         new EditAllomorphFormDefinition(),
         new EditCitationFormDefinition(),

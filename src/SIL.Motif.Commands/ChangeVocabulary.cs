@@ -99,6 +99,10 @@ public static class ChangeVocabulary
             [WfiAnalysisOperationKinds.DeleteAnalysis] = Removed,
             [WfiAnalysisOperationKinds.CreateAnalysis] = Added,
             [WfiWordformSpellingStatusOperationKinds.SetSpellingStatus] = Spelling,
+            [LexEntryBibliographyOperationKinds.SetBibliography] =
+                Word("entry-attribution", "entry attribution", "entry attributions", "Record an entry's attribution"),
+            [LangProjectDescriptionOperationKinds.Set] =
+                Word("project-attribution", "project attribution", "project attributions", "Record the project's attribution"),
         };
 
     // The kinds that make one new named thing, whatever language their titles are in.
@@ -131,6 +135,8 @@ public static class ChangeVocabulary
     private static readonly IReadOnlyDictionary<string, (string Named, string Unnamed)> ByComposer =
         new Dictionary<string, (string, string)>(StringComparer.Ordinal)
         {
+            ["SetEntryAttribution"] = ("Record attribution on", "Record the source and licence of imported entries"),
+            ["SetProjectAttribution"] = ("Record project attribution", "Record the source and licence of imported data in the project description"),
             ["EditTextNotes"] = ("Set Note on", "Set the Notes of text segments"),
             ["AuthorPhoneme"] = ("Add phoneme", "Add a phoneme"),
             ["AuthorNaturalClass"] = ("Add natural class", "Add a natural class"),

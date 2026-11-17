@@ -90,6 +90,9 @@ public static partial class SnapshotFields
     /// <summary>Whether the parser's phonological rules stay off the clitic stratum, as ParserParameters holds it; never the rest of that XML.</summary>
     public const string MoMorphDataNotOnClitics = "grammar/moMorphData/notOnClitics";
 
+    /// <summary>The project's Description text per writing system; never the rest of the project.</summary>
+    public const string LangProjectDescription = "project/langProject/description";
+
     /// <summary>The ordered sub-senses owned by a lexical sense.</summary>
     public const string LexSenseSubsenses = "lexical/lexSense/senses";
 
