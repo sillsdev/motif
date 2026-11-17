@@ -1,6 +1,8 @@
 using SIL.Motif.Contract.Jobs;
 using System.Text.Json;
 using SIL.Motif.Contract;
+using Microsoft.Data.Sqlite;
+using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Worker.Jobs;
 
@@ -116,17 +118,24 @@ public sealed class ClaimedJob
         lock (_progressGate)
         {
             if (generation != _progressGeneration) return null;
-            var before = _jobs.Get(_jobId);
-            if (before is null) return null;
-            var detail = phase.Detail is null || StringComparer.Ordinal.Equals(phase.Detail, phase.Stage)
-                ? phase.Stage : phase.Stage + ": " + phase.Detail;
-            var wait = new JobStageProgress("waiting-for-parser-slot", phase.Step, phase.Steps, detail);
-            var waitJson = JsonSerializer.Serialize(wait, MotifJson.CreateOptions());
-            var changed = _jobs.TryUpdateClaimProgress(_jobId, _capturedClaimToken, before.Version,
-                before.ProgressJson, waitJson);
-            if (changed is null) return null;
-            Job = changed;
-            return (changed.Version, before.ProgressJson, waitJson);
+            try
+            {
+                var before = _jobs.Get(_jobId);
+                if (before is null) return null;
+                var detail = phase.Detail is null || StringComparer.Ordinal.Equals(phase.Detail, phase.Stage)
+                    ? phase.Stage : phase.Stage + ": " + phase.Detail;
+                var wait = new JobStageProgress("waiting-for-parser-slot", phase.Step, phase.Steps, detail);
+                var waitJson = JsonSerializer.Serialize(wait, MotifJson.CreateOptions());
+                var changed = _jobs.TryUpdateClaimProgress(_jobId, _capturedClaimToken, before.Version,
+                    before.ProgressJson, waitJson);
+                if (changed is null) return null;
+                Job = changed;
+                return (changed.Version, before.ProgressJson, waitJson);
+            }
+            catch (SqliteException exception) when (SqliteConnections.IsBusy(exception))
+            {
+                return null;
+            }
         }
     }
 
@@ -142,8 +151,16 @@ public sealed class ClaimedJob
         lock (_progressGate)
         {
             if (generation != _progressGeneration) return false;
-            var changed = _jobs.TryUpdateClaimProgress(_jobId, _capturedClaimToken, waitVersion,
-                waitProgressJson, previousProgressJson);
+            JobRecord? changed;
+            try
+            {
+                changed = _jobs.TryUpdateClaimProgress(_jobId, _capturedClaimToken, waitVersion,
+                    waitProgressJson, previousProgressJson);
+            }
+            catch (SqliteException exception) when (SqliteConnections.IsBusy(exception))
+            {
+                return false;
+            }
             if (changed is null) return false;
             Job = changed;
             return true;
@@ -152,19 +169,27 @@ public sealed class ClaimedJob
 
     private JobRecord PublishProgressLocked(string progressJson)
     {
-        var before = _jobs.Get(_jobId) ?? throw new InvalidOperationException("The claimed job no longer exists.");
-        var changed = _jobs.TryUpdateClaimProgress(_jobId, _capturedClaimToken, before.Version,
-            before.ProgressJson, progressJson);
-        if (changed is null)
+        try
         {
-            var current = _jobs.Get(JobId);
-            if (!string.IsNullOrWhiteSpace(_capturedClaimToken) && current?.CancellationRequested == true &&
-                string.Equals(current.ClaimToken, _capturedClaimToken, StringComparison.Ordinal))
-                throw new OperationCanceledException("The job was cancelled before progress could be published.");
-            throw new InvalidOperationException("The claimed job no longer owns the active progress row.");
+            var before = _jobs.Get(_jobId) ?? throw new InvalidOperationException("The claimed job no longer exists.");
+            var changed = _jobs.TryUpdateClaimProgress(_jobId, _capturedClaimToken, before.Version,
+                before.ProgressJson, progressJson);
+            if (changed is null)
+            {
+                var current = _jobs.Get(JobId);
+                if (!string.IsNullOrWhiteSpace(_capturedClaimToken) && current?.CancellationRequested == true &&
+                    string.Equals(current.ClaimToken, _capturedClaimToken, StringComparison.Ordinal))
+                    throw new OperationCanceledException("The job was cancelled before progress could be published.");
+                throw new InvalidOperationException("The claimed job no longer owns the active progress row.");
+            }
+            Job = changed;
+            return changed;
         }
-        Job = changed;
-        return changed;
+        catch (SqliteException exception) when (SqliteConnections.IsBusy(exception))
+        {
+            // Progress is advisory; a transient write conflict must not fail the job.
+            return Job;
+        }
     }
 
     /// <summary>Wraps the job named by <paramref name="jobId"/> as it reads right now.</summary>

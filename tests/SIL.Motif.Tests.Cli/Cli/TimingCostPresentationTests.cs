@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
@@ -38,8 +39,47 @@ public sealed class TimingCostPresentationTests
         var response = new OverviewResponse("project", DateTimeOffset.UtcNow, null, 1, 0, 1, 0, 1, 1, 1,
             "assessment", null, 88, null, null, null!, null!, timing, null);
         var json = TimingPresentation.Overview(response).ToJsonString();
-        Assert.DoesNotContain("765", json);
-        Assert.DoesNotContain("elapsed", json, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("TimeMs", json, StringComparison.OrdinalIgnoreCase);
+        using var document = JsonDocument.Parse(json);
+        AssertPresentationHasNoLocalTimeOrRawWork(document.RootElement);
+    }
+
+    private static void AssertPresentationHasNoLocalTimeOrRawWork(JsonElement value)
+    {
+        var forbidden = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Elapsed", "ElapsedMs", "LocalTime", "TimeMs", "Work", "RawWork", "ParserWork",
+        };
+        AssertNoForbiddenProperties(value, forbidden);
+        AssertNoRawWorkNumber(value);
+    }
+
+    private static void AssertNoForbiddenProperties(JsonElement value, HashSet<string> forbidden)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in value.EnumerateObject())
+            {
+                Assert.DoesNotContain(property.Name, forbidden);
+                AssertNoForbiddenProperties(property.Value, forbidden);
+            }
+        }
+        else if (value.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in value.EnumerateArray()) AssertNoForbiddenProperties(item, forbidden);
+        }
+    }
+
+    private static void AssertNoRawWorkNumber(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var number))
+            Assert.NotEqual(765, number);
+        else if (value.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in value.EnumerateObject()) AssertNoRawWorkNumber(property.Value);
+        }
+        else if (value.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in value.EnumerateArray()) AssertNoRawWorkNumber(item);
+        }
     }
 }

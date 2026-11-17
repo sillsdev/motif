@@ -40,15 +40,13 @@ public sealed class CancelDuringProgressTests
                     using var writerDatabase = MotifDatabase.OpenOwned(databasePath, project,
                         MotifSchema.CurrentSchema, new Version(1, 0));
                     var writerJobs = new JobRepository(writerDatabase);
+                    var progressWriter = ClaimedJob.Of(writerJobs, jobId);
                     for (var progress = 0; progress < 100; progress++)
                     {
-                        try
-                        {
-                            var current = writerJobs.Get(jobId)!;
-                            writerJobs.UpdateProgress(jobId, "{\"completed\":" + progress + "}", current.Version);
+                        progressWriter.PublishStageProgress(new JobStageProgress("progress", 1, 1,
+                            progress.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                        if (writerJobs.Get(jobId)?.ProgressJson is not null)
                             firstWrite.TrySetResult();
-                        }
-                        catch (InvalidOperationException) { }
                         Thread.Yield();
                     }
                 });

@@ -113,6 +113,30 @@ public sealed class ClaimedJobTests : IDisposable
         Assert.Equal(afterMatching, jobs.Get(successor.JobId));
     }
 
+    [Fact]
+    public void StageProgressIsDroppedWhenAnotherWriterHoldsTheDatabase()
+    {
+        var jobs = new JobRepository(_database);
+        var queued = jobs.Create("job-busy-progress", Project, "trial", "{}", Now());
+        jobs.Transition(queued.JobId, JobStatus.Running, queued.Version);
+        var claimed = ClaimedJob.Of(jobs, queued.JobId);
+        const string variable = "MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR";
+        var previous = Environment.GetEnvironmentVariable(variable);
+        try
+        {
+            Environment.SetEnvironmentVariable(variable, _database.FullPath);
+            using var writer = _database.OpenConnection();
+            using var writeLock = writer.BeginTransaction(deferred: false);
+
+            claimed.PublishStageProgress(new JobStageProgress("measure", 1, 2));
+
+            var after = jobs.Get(queued.JobId)!;
+            Assert.Equal(JobStatus.Running, after.Status);
+            Assert.Null(after.ProgressJson);
+        }
+        finally { Environment.SetEnvironmentVariable(variable, previous); }
+    }
+
     private (JobRepository Jobs, ClaimedJob Original, ClaimedJob Successor) ReclaimedTrial()
     {
         var jobs = new JobRepository(_database);
