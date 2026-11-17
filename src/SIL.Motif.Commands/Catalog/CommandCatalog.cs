@@ -215,7 +215,7 @@ public static class CommandCatalog
 
         // Saved default Selection
         new CommandDescriptor("project create", typeof(ProjectCreateRequest),
-            typeof(ProjectCreatedResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+            typeof(ProjectCreatedResponse), CommandSurface.Autonomous, AgentClass.HumanOnly),
         new CommandDescriptor("project word-forming", typeof(ProjectWordFormingRequest),
             typeof(ProjectWordFormingResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("project tag", typeof(ReadProjectTagRequest),
@@ -254,9 +254,9 @@ public static class CommandCatalog
             typeof(WritingSystemsResponse), CommandSurface.Released, AgentClass.Read),
 
         // GdrQuery: the Grammar Guide from the current Baseline.
-        new CommandDescriptor("guide list", typeof(GdrListRequest), typeof(GdrListResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("guide list", typeof(GdrListRequest), typeof(GdrListResponse), CommandSurface.Autonomous, AgentClass.Read),
         new CommandDescriptor("guide show", typeof(GdrShowRequest), typeof(GdrShowResponse), CommandSurface.AdvancedAi, AgentClass.Read),
-        new CommandDescriptor("guide check", typeof(GdrCheckRequest), typeof(GdrCheckResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("guide check", typeof(GdrCheckRequest), typeof(GdrCheckResponse), CommandSurface.Autonomous, AgentClass.Read),
 
         // SourceQuery: Motif Sources from the current Baseline and the local file, behind the developer gate
         new CommandDescriptor("source list", typeof(SourceListRequest), typeof(SourceListResponse), CommandSurface.AdvancedAi, AgentClass.Read),

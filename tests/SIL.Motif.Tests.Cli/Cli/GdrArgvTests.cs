@@ -1,6 +1,7 @@
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
@@ -166,7 +167,7 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
         var arguments = new[] { "guide", options[0], "--project", path }
             .Concat(options[0] == "show" ? new[] { "GDR-1" } : [])
             .Concat(options.Skip(1)).ToArray();
-        var cli = await CliProcess.RunAsync(_root, null, true, arguments);
+        var cli = await RunAutonomousAsync(arguments);
 
         Assert.True(cli.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), cli.Error);
         Assert.Empty(cli.Output);
@@ -258,7 +259,7 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
     {
         var path = ProjectWithBaseline();
 
-        var list = await CliProcess.RunAsync(_root, null, true, "guide", "list", "--project", path, "--json");
+        var list = await RunAutonomousAsync("guide", "list", "--project", path, "--json");
         Assert.True(list.ExitCode == 0, list.Error);
         Assert.Equal(ProjectionJson.Serialize(GdrQuery.List(new GdrListRequest(path)).Value),
             ProjectionJson.Serialize(ProjectionJson.Deserialize<GdrListResponse>(list.Output)));
@@ -280,13 +281,13 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
     {
         var path = ProjectWithBaseline();
 
-        var json = await CliProcess.RunAsync(_root, null, true, "guide", "check", "--project", path, "--json");
+        var json = await RunAutonomousAsync("guide", "check", "--project", path, "--json");
         Assert.True(json.ExitCode == 0, json.Error);
         var wire = ProjectionJson.Deserialize<GdrCheckResponse>(json.Output)!;
         var query = GdrQuery.Check(new GdrCheckRequest(path)).Value!;
         Assert.Equal(ProjectionJson.Serialize(query with { Timing = null }), ProjectionJson.Serialize(wire with { Timing = null }));
 
-        var text = await CliProcess.RunAsync(_root, null, true, "guide", "check", "--project", path);
+        var text = await RunAutonomousAsync("guide", "check", "--project", path);
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains("The Grammar Guide is in sync with the grammar.", text.Output);
         Assert.Contains("Read 4 record(s)", text.Output);
@@ -302,6 +303,13 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
 
         var unknown = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path, "GDR-99");
         Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
+    }
+
+    private Task<(int ExitCode, string Output, string Error)> RunAutonomousAsync(params string[] arguments)
+    {
+        var start = CliProcess.CreateStartInfo(_root, null, developerCommands: true, arguments);
+        start.Environment[CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1";
+        return CliProcess.RunAsync(start);
     }
 
     [Fact]

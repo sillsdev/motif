@@ -56,6 +56,17 @@ public sealed class AutonomousAudienceArgvTests : IDisposable
         Assert.Contains("Usage: motif discard-draft", result.Error, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("preflight --project missing.fwdata --autonomous P-1")]
+    [InlineData("--autonomous preflight --project missing.fwdata P-1")]
+    public void TheAutonomousFlagDoesNotSwallowAPositionalArgument(string commandLine)
+    {
+        var result = Run(commandLine, developer: false, autonomousEnvironment: null);
+
+        Assert.DoesNotContain("Usage: motif preflight", result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("command.autonomous-required", result.Error, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TheDeveloperSurfaceStillNeedsItsOwnSwitchEvenWhenAutonomousIsSet()
     {

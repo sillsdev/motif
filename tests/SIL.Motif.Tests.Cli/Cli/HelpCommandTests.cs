@@ -94,13 +94,13 @@ public sealed class HelpCommandTests
         var projectCreate = CommandCatalog.All.SingleOrDefault(command => command.Name == "project create");
         if (projectCreate is not null)
         {
-            Assert.Equal(CommandSurface.Developer, projectCreate.Surface);
+            Assert.Equal(CommandSurface.Autonomous, projectCreate.Surface);
             Assert.Equal(AgentClass.HumanOnly, projectCreate.Agent);
             Assert.False(projectCreate.IsAgentTool);
-            Assert.Contains("project create", developerNames, StringComparer.Ordinal);
+            Assert.DoesNotContain("project create", developerNames, StringComparer.Ordinal);
             var help = Run("help", "project", "create");
             Assert.Equal(0, help.ExitCode);
-            Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", help.Output, StringComparison.Ordinal);
+            Assert.Contains("MOTIF_AUTONOMOUS=1", help.Output, StringComparison.Ordinal);
         }
     }
 

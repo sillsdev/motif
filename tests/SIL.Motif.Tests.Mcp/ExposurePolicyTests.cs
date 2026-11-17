@@ -11,14 +11,14 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class ExposurePolicyTests
 {
     [Fact]
-    public void GdrShowAloneIsAnAdvancedAiReadAndTheOtherGdrCommandsStayDeveloperOnly()
+    public void GdrShowAloneIsAnAdvancedAiReadAndTheOtherGdrCommandsAreAutonomousOnly()
     {
         var commands = CommandCatalog.All.Where(command => command.Name.StartsWith("guide ", StringComparison.Ordinal)).ToArray();
         Assert.Equal(["guide check", "guide list", "guide show"], commands.Select(command => command.Name).Order(StringComparer.Ordinal));
         foreach (var command in commands)
         {
             Assert.Equal(AgentClass.Read, command.Agent);
-            Assert.Equal(command.Name == "guide show" ? CommandSurface.AdvancedAi : CommandSurface.Developer, command.Surface);
+            Assert.Equal(command.Name == "guide show" ? CommandSurface.AdvancedAi : CommandSurface.Autonomous, command.Surface);
             Assert.Equal(command.Name == "guide show", command.IsAgentTool);
         }
         var routes = AgentTools.All.SelectMany(tool => tool.Routes).Where(route => route.Command.StartsWith("guide ", StringComparison.Ordinal));

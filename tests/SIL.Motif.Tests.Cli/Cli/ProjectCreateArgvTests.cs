@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -18,25 +19,32 @@ public sealed class ProjectCreateArgvTests : IDisposable
         Directory.CreateDirectory(Projects);
     }
 
+    private Task<(int ExitCode, string Output, string Error)> RunAutonomousAsync(params string[] arguments)
+    {
+        var start = CliProcess.CreateStartInfo(WorkerRoot, null, developerCommands: true, arguments);
+        start.Environment[CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1";
+        return CliProcess.RunAsync(start);
+    }
+
     [Fact]
-    public async Task CreationIsADeveloperCommand()
+    public async Task CreationIsAnAutonomousCommand()
     {
         var result = await CliProcess.RunAsync(WorkerRoot, null, developerCommands: false,
             "project", "create", "--into", Projects, "--name", "Kiswahili", "--vernacular", "swh", "--json");
 
         Assert.NotEqual(0, result.ExitCode);
         using var refusal = JsonDocument.Parse(result.Error);
-        Assert.Equal("command.developer-commands-required", refusal.RootElement.GetProperty("code").GetString());
+        Assert.Equal("command.autonomous-required", refusal.RootElement.GetProperty("code").GetString());
         var message = refusal.RootElement.GetProperty("message").GetString()!;
-        Assert.Contains("Developer", message);
+        Assert.Contains("Autonomous", message);
         Assert.Contains("human-only", message);
-        Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", message);
+        Assert.Contains("MOTIF_AUTONOMOUS=1", message);
         var facts = refusal.RootElement.GetProperty("detail");
         Assert.Equal("project create", facts.GetProperty("command").GetString());
-        Assert.Equal("Developer", facts.GetProperty("surface").GetString());
+        Assert.Equal("Autonomous", facts.GetProperty("surface").GetString());
         Assert.Equal("HumanOnly", facts.GetProperty("agentClass").GetString());
-        Assert.Equal("MOTIF_DEVELOPER_COMMANDS", facts.GetProperty("setting").GetString());
-        Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", facts.GetProperty("remedy").GetString());
+        Assert.Equal("MOTIF_AUTONOMOUS", facts.GetProperty("setting").GetString());
+        Assert.Contains("MOTIF_AUTONOMOUS=1", facts.GetProperty("remedy").GetString());
         Assert.Empty(Directory.GetFileSystemEntries(Projects));
     }
 
@@ -47,7 +55,7 @@ public sealed class ProjectCreateArgvTests : IDisposable
     [Fact]
     public async Task CreationPrintsTheProjectAndRecordsItAsKnown()
     {
-        var result = await CliProcess.RunAsync(WorkerRoot, null, developerCommands: true,
+        var result = await RunAutonomousAsync(
             "project", "create", "--into", Projects, "--name", "Kiswahili", "--vernacular", "swh",
             "--vernacular-name", "Kiswahili", "--word-forming", "'", "--json");
 
@@ -69,7 +77,7 @@ public sealed class ProjectCreateArgvTests : IDisposable
     [Fact]
     public async Task AMissingRequiredFlagPrintsTheUsage()
     {
-        var result = await CliProcess.RunAsync(WorkerRoot, null, developerCommands: true,
+        var result = await RunAutonomousAsync(
             "project", "create", "--into", Projects, "--name", "Kiswahili");
 
         Assert.NotEqual(0, result.ExitCode);

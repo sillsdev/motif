@@ -83,7 +83,6 @@ public sealed class AutonomousAudienceTests
     [InlineData("word read-state")]
     [InlineData("inspect")]
     [InlineData("uses")]
-    [InlineData("guide check")]
     [InlineData("store artifacts")]
     [InlineData("pending-changes")]
     public void TheDeveloperDiagnosticsStayOnTheDeveloperSurface(string name) =>

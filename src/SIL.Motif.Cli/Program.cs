@@ -111,6 +111,9 @@ internal static int Run(
     Action<string, Action<string>?> startRunner)
 {
     using var ambient = AmbientEnvironment.Push(environment);
+    // A leading --autonomous is the global flag; it moves behind the verb so the verb is still args[0].
+    if (args is [CommandSurfacePolicy.AutonomousFlag, var leadingVerb, ..var afterVerb])
+        args = [leadingVerb, CommandSurfacePolicy.AutonomousFlag, .. afterVerb];
 if (ArtifactInventoryCli.IsInvocation(args))
     return ArtifactInventoryCli.Run(args, output, error,
         environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
@@ -3522,6 +3525,13 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
             if (name is "word-results" or "refresh-report" or "trace" or "apply")
             {
                 flags[name] = "true";
+                continue;
+            }
+            // --autonomous is a switch, so the token after it stays a positional unless it is an explicit true or false.
+            if (name == CommandSurfacePolicy.AutonomousFlag[2..])
+            {
+                var explicitValue = i + 1 < tokens.Length && tokens[i + 1] is "true" or "false";
+                flags[name] = explicitValue ? tokens[++i] : "true";
                 continue;
             }
             // Canonical ids can start with "--", so recognize those before treating a token as another switch.

@@ -22,7 +22,7 @@ In the window, Undo or a staged parse on a `proposed` Proposal reopens it as a D
 
 `defer` moves a `proposed` Proposal to `deferred`. `reject` accepts `proposed` or `deferred`. `supersede` accepts `proposed`, `deferred` or `rejected`. `reopen` can create a Draft from any finalized status except `applied`; finalizing the Draft makes the Proposal `proposed` again.
 
-Most lifecycle commands (`reopen`, `duplicate`, `discard-draft`, `discard-empty-drafts`, `defer`, `reject`, `supersede`) are on the Autonomous surface, enabled with `MOTIF_AUTONOMOUS=1` or `--autonomous`; Proposal-by-ID `apply` stays on the Developer surface, enabled with `MOTIF_DEVELOPER_COMMANDS=1`; `new` and `finalize` are on the Advanced AI surface, available while Advanced AI mode is on. `apply --all-pending`, which FieldWorks calls, is Released. The window offers Review changes and Apply without either setting.
+Most lifecycle commands (`reopen`, `duplicate`, `discard-draft`, `discard-empty-drafts`, `defer`, `reject`, `supersede`) are on the Autonomous surface, enabled with `MOTIF_AUTONOMOUS=1` or `--autonomous`; Proposal-by-ID `apply` is Released and needs no setting (`MOTIF_AUTONOMOUS=1` or `--autonomous` makes it an Autonomous-mode Apply); `new` and `finalize` are on the Advanced AI surface, available while Advanced AI mode is on. `apply --all-pending`, which FieldWorks calls, is also Released. The window offers Review changes and Apply without either setting.
 
 There is no `approve` command or approval status. Apply depends on evidence, not a person's approval. Status commands do not themselves apply changes.
 
