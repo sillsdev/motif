@@ -627,8 +627,17 @@ public sealed partial class RationaleEditorModel : ObservableObject
     private sealed class LinkStyles : IStyleResolver
     {
         private static readonly PropertyBag Link = LinkLook();
+        private static readonly PropertyBag Body = BodyLook();
 
-        public PropertyBag? Resolve(string styleName, string ws) => styleName == HyperlinkStyle ? Link : null;
+        public PropertyBag? Resolve(string styleName, string ws) => styleName == HyperlinkStyle ? Link : Body;
+
+        // The field's own default is 10 points, small beside the 15 of the page's text; a Rationale reads at body size.
+        private static PropertyBag BodyLook()
+        {
+            var props = new PropertyBag();
+            props.SetInt(TextPropertyNumbers.FontSize, 15000, TextPropertyNumbers.VariationMilliPoint);
+            return props;
+        }
 
         private static PropertyBag LinkLook()
         {

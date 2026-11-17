@@ -413,6 +413,15 @@ public sealed class ProposalCardViewModel : ObservableObject
             WindowTimeText.FormatWithDate(created, _clock))
         : MotifAppStrings.ProposalAgeUnknown;
 
+    /// <summary>Whether the Proposal names who built it; a line with no value is not shown.</summary>
+    public bool HasBuilder => Card.IsPendingDraft || !string.IsNullOrWhiteSpace(Card.Builder);
+
+    /// <summary>Whether the builder recorded a model.</summary>
+    public bool HasModel => !string.IsNullOrWhiteSpace(Card.Model);
+
+    /// <summary>Whether the builder recorded a question.</summary>
+    public bool HasQuestion => !string.IsNullOrWhiteSpace(Card.Question);
+
     /// <summary>The model the builder recorded, or a clear absence.</summary>
     public string ModelText => string.IsNullOrWhiteSpace(Card.Model) ? MotifAppStrings.ProposalModelUnknown :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalModelFormat, Card.Model);

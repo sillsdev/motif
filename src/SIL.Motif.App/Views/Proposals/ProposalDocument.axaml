@@ -11,11 +11,36 @@
   <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
     <views:CopyableTextBlock Classes="displayTitle" Text="{Binding Label}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding StatusText}" TextWrapping="Wrap" />
-    <views:CopyableTextBlock Classes="muted" Text="{Binding Card.BuiltByText}" TextWrapping="Wrap" />
-    <views:CopyableTextBlock Classes="muted" Text="{Binding Card.ModelText}" TextWrapping="Wrap" />
-    <views:CopyableTextBlock Classes="muted" Text="{Binding Card.QuestionText}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding Card.BuiltByText}" IsVisible="{Binding Card.HasBuilder}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding Card.ModelText}" IsVisible="{Binding Card.HasModel}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding Card.QuestionText}" IsVisible="{Binding Card.HasQuestion}" TextWrapping="Wrap" />
+    <StackPanel x:Name="ProposalStatusBlock" Classes="proposalStatus" IsVisible="{Binding ShowsStatus}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalStatus}"
+                Spacing="{DynamicResource Intent.Space.Related}">
+      <views:CopyableTextBlock Text="{Binding StatusSentence}" IsVisible="{Binding HasStatusSentence}" TextWrapping="Wrap" />
+      <Button AutomationProperties.AutomationId="{Binding TryAutomationId}" Classes="primary"
+              Content="{Binding StatusActionText}" Command="{Binding StatusActionCommand}"
+              IsVisible="{Binding HasStatusAction}" HorizontalAlignment="Left" />
+      <StackPanel DataContext="{Binding Difference}" IsVisible="{Binding ShowsMakeControls}" Spacing="{DynamicResource Intent.Space.Related}">
+        <ComboBox x:Name="ProposalEvidenceText" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceText}" ItemsSource="{Binding TextChoices}" SelectedItem="{Binding SelectedText}"
+                  IsEnabled="{Binding !Maker.IsActive}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalDifferenceTextAccessibleName}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:DifferenceTextChoice"><TextBlock Text="{Binding Title}" TextWrapping="Wrap" /></DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Command="{Binding Maker.RunCommand}" HorizontalAlignment="Stretch"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceMake}">
+          <TextBlock Text="{Binding MakeLabel}" TextWrapping="Wrap" />
+        </Button>
+        <Button Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding Maker.CancelCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceCancel}"
+                IsVisible="{Binding Maker.IsActive}" HorizontalAlignment="Left" />
+        <views:CopyableTextBlock AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceProgress}" Text="{Binding Maker.ProgressText}" IsVisible="{Binding Maker.IsActive}" TextWrapping="Wrap" />
+        <views:RefusalBlock DataContext="{Binding Maker.FailureShown}" />
+      </StackPanel>
+    </StackPanel>
     <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalReading}" IsVisible="{Binding IsLoading}" />
-    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDocumentOutdated}" IsVisible="{Binding IsOutdated}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDocumentOutdated}" IsVisible="{Binding ShowsOutdatedNotice}" TextWrapping="Wrap" />
     <views:RefusalBlock DataContext="{Binding DetailRefusal}" />
     <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalRationale}" />
     <views:RationaleEditor x:Name="ProposalRationaleEditor" DataContext="{Binding RationaleEditor}" />

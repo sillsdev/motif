@@ -4321,5 +4321,10 @@ public static class MotifAppStrings
     public static string OccurrencesApproveNothing => Text("MotifApp.OccurrencesApproveNothing");
     public static string WordReadingsButtonName => Text("MotifApp.WordReadingsButtonName");
     public static string WordReadingsTipPattern => Text("MotifApp.WordReadingsTipPattern");
+    // round2-proposal
+    public static string ProposalStatusDraft => Text("MotifApp.ProposalStatusDraft");
+    public static string ProposalStatusReady => Text("MotifApp.ProposalStatusReady");
+    public static string ProposalApplyNeedsDifference => Text("MotifApp.ProposalApplyNeedsDifference");
+    public static string ProposalApplyDifferenceUnavailable => Text("MotifApp.ProposalApplyDifferenceUnavailable");
     #endregion
 }

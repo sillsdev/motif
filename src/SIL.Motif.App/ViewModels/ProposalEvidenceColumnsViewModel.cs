@@ -34,6 +34,7 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
     public bool HasFillIn => CanShowFacts && (WillFillIn.Count > 0 || Complete);
     public bool HasChange => CanShowFacts && (WillChange.Count > 0 || Complete);
     public bool HasApprovedPlaces => false;
+    public bool ShowsPlacesNotice => CanShowFacts;
     public string ApprovedPlacesNotice => MotifAppStrings.ProposalEvidencePlacesUnavailable;
     public bool CanShowFacts => _current && Difference is { IsShown: true, WordDetailKept: true, WordDetailUnreadable: false } &&
         Difference.Summary is { } summary && Compatible(summary);
@@ -48,8 +49,22 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
     public bool HasScope => Scope.Length > 0;
     public string NotesText => string.Join(Environment.NewLine, Difference.Notes);
     public bool HasNotes => Difference.HasNotes;
-    public string Availability => !CanShowFacts ? Unavailable() :
+    public string Availability => !CanShowFacts ? (StatusSaysUnavailable ? string.Empty : Unavailable()) :
         Complete ? string.Empty : MotifAppStrings.ProposalEvidencePartial;
+    public bool HasAvailability => Availability.Length > 0;
+
+    /// <summary>Whether the page's one status block already says why there is no evidence, so this section stays quiet.</summary>
+    public bool StatusSaysUnavailable
+    {
+        get => _statusSaysUnavailable;
+        set
+        {
+            if (!SetProperty(ref _statusSaysUnavailable, value)) return;
+            OnPropertyChanged(nameof(Availability));
+            OnPropertyChanged(nameof(HasAvailability));
+        }
+    }
+    private bool _statusSaysUnavailable;
 
     // Said once; a Difference not made yet is named as such, not called unavailable.
     private string Unavailable() => Difference.State == ProposalDifferenceState.Absent && Difference.ShowsMakeControls
@@ -121,7 +136,7 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
             .Select(word => Row(word, SpellingChanged(word.Facts) ? MotifAppStrings.ProposalSpellingChanged :
                 MotifAppStrings.ProposalReadingChanged)).ToArray();
         foreach (var property in new[] { nameof(WillFillIn), nameof(WillChange), nameof(HasFillIn), nameof(HasChange),
-                     nameof(CanShowFacts), nameof(Complete), nameof(Scope), nameof(HasScope), nameof(Availability), nameof(NotesText), nameof(HasNotes), nameof(FillInCount),
+                     nameof(CanShowFacts), nameof(Complete), nameof(Scope), nameof(HasScope), nameof(Availability), nameof(HasAvailability), nameof(ShowsPlacesNotice), nameof(NotesText), nameof(HasNotes), nameof(FillInCount),
                      nameof(ChangeCount), nameof(ShowsZeroFillIn), nameof(ShowsZeroChange) }) OnPropertyChanged(property);
     }
 

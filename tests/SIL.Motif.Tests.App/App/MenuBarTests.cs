@@ -32,7 +32,7 @@ public sealed class MenuBarTests
         ["Views/HandoffSection.axaml"] = 1,
         ["Views/Pages/ProposalsPage.axaml"] = 4,
         ["Views/Proposals/ProposalCompareSide.axaml"] = 1,
-        ["Views/Proposals/ProposalDocument.axaml"] = 1,
+        ["Views/Proposals/ProposalDocument.axaml"] = 2,
         ["Views/ParsePrompt.axaml"] = 1,
         ["Views/RefusalBlock.axaml"] = 1,
         ["Views/ResultsInTextPanel.axaml"] = 5,

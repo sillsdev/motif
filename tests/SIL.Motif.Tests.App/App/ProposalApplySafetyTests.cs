@@ -40,7 +40,7 @@ public sealed class ProposalApplySafetyTests
 
     private static async Task<(FakeCommandClient Fake, WorkspaceContext Context, OpenProposalDocuments Documents,
         ProposalDocumentViewModel Document)> OpenAsync(bool withTrial, RecordingLauncher? launcher = null,
-        ProposalCard? card = null, bool withTexts = false)
+        ProposalCard? card = null, bool withTexts = false, bool withDifference = false)
     {
         var fake = new FakeCommandClient();
         if (withTexts)
@@ -53,6 +53,7 @@ public sealed class ProposalApplySafetyTests
             fake.Review = new ProposalReviewResponse("one", "intent/one", "revision/one",
                 [new GrammarChangeEntry("entry", 0, "A change", ["op/one"], [], "content", false,
                     "composer", "A change", [], [], [])], trial, new(true, false, false, null, [], false), [], 0);
+            if (withDifference) ProposalStatusFakes.GiveItASavedDifference(fake);
         }
         fake.PendingChangesIs(new PendingChangesSnapshot("one", "revision/one", [], []));
         fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
@@ -80,9 +81,9 @@ public sealed class ProposalApplySafetyTests
                 window.Show();
                 PageScreenshots.Settle(window);
                 var text = VisibleText(page);
-                Assert.Single(text, line => line.Contains("Evidence Is Unavailable", StringComparison.Ordinal));
+                Assert.Single(text, line => line.Contains("Not tried yet", StringComparison.Ordinal));
                 Assert.False(PrepareButton(page).IsEffectivelyEnabled);
-                Assert.Contains(text, line => line.StartsWith("Apply is unavailable:", StringComparison.Ordinal) &&
+                Assert.Contains(text, line => line.StartsWith("Apply is unavailable until", StringComparison.Ordinal) &&
                     line.Contains("Try It", StringComparison.Ordinal));
                 Assert.False(document.CanPrepareApply);
                 Assert.False(document.CanApply);
@@ -118,7 +119,7 @@ public sealed class ProposalApplySafetyTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var launcher = new RecordingLauncher();
-            var (_, context, documents, document) = await OpenAsync(withTrial: true, launcher);
+            var (_, context, documents, document) = await OpenAsync(withTrial: true, launcher, withDifference: true);
             var page = new ProposalDocument { DataContext = document };
             var window = new MotifTestWindow { Width = 1000, Height = 900, Content = new ScrollViewer { Content = page } };
             try

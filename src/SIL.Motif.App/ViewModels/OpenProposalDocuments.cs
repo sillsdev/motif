@@ -17,7 +17,11 @@ public sealed class OpenProposalDocuments : ObservableObject
         _context = context;
         _parsimonyDelay = parsimonyDelay;
         Items = new ReadOnlyObservableCollection<ProposalDocumentViewModel>(_items);
+        _items.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasSeveral));
     }
+
+    /// <summary>Whether more than one Proposal is open, so each needs a button to bring it forward.</summary>
+    public bool HasSeveral => _items.Count > 1;
 
     public ReadOnlyObservableCollection<ProposalDocumentViewModel> Items { get; }
     public ProposalDocumentViewModel? Selected

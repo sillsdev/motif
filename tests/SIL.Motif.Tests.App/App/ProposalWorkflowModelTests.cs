@@ -264,8 +264,6 @@ public sealed class ProposalWorkflowModelTests
     {
         var xaml = File.ReadAllText(System.IO.Path.Combine(
             RepoPaths.FindRepoRoot(), "src", "SIL.Motif.App", "Views", "Pages", "ProposalsPage.axaml"));
-        Assert.Contains("Command=\"{Binding TryAgainCommand}\" CommandParameter=\"{Binding SelectedProposal}\"", xaml,
-            StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding AskToDeleteCommand}\" CommandParameter=\"{Binding SelectedProposal}\"", xaml,
             StringComparison.Ordinal);
         Assert.DoesNotContain("ProposalInspectorActionsTemplate", xaml, StringComparison.Ordinal);

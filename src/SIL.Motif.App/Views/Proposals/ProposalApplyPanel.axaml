@@ -10,8 +10,6 @@
     <views:CopyableTextBlock Text="{Binding ApplyBlockReason}" TextWrapping="Wrap" />
     <views:CopyableTextBlock x:Name="ApplyLossNotice" Text="{Binding ApplyLossNotice}" TextWrapping="Wrap" />
     <StackPanel IsVisible="{Binding IsPending}" Spacing="{DynamicResource Intent.Space.Related}">
-      <Button Content="{x:Static app:MotifAppStrings.ApplyCheckChanges}" Command="{Binding MeasurePendingCommand}"
-              HorizontalAlignment="Left" />
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ReviewApplyMeasuring}"
                                IsVisible="{Binding PendingMeasurement.IsMeasuring}" TextWrapping="Wrap" />
       <Button Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding PendingMeasurement.CancelCommand}"
@@ -28,9 +26,10 @@
                        Command="{Binding OpenBackupHelpCommand}" HorizontalAlignment="Left" />
       <WrapPanel>
         <Button AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalConfirmApply}"
+                Classes="primary writes-fieldworks"
                 Content="{x:Static app:MotifAppStrings.BoardApply}" Command="{Binding ConfirmApplyCommand}"
                 IsEnabled="{Binding CanApply}" />
-        <Button Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding CancelApplyCommand}" />
+        <Button Classes="secondary" Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding CancelApplyCommand}" />
       </WrapPanel>
     </StackPanel>
     <views:RefusalBlock DataContext="{Binding ApplyRefusal}" />

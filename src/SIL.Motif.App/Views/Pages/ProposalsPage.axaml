@@ -75,6 +75,7 @@
           <DataTemplate x:DataType="vm:ProposalDocumentViewModel">
             <StackPanel Classes="proposalTitleRow">
               <Button HorizontalAlignment="Stretch"
+                      IsVisible="{Binding $parent[ItemsControl].((vm:ProposalsPageModel)DataContext).Documents.HasSeveral}"
                       Command="{Binding $parent[ItemsControl].((vm:ProposalsPageModel)DataContext).SelectDocumentCommand}"
                       CommandParameter="{Binding}">
                 <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
@@ -101,12 +102,6 @@
         </ContentControl.DataTemplates>
       </ContentControl>
       <StackPanel IsVisible="{Binding HasSelectedProposal}" Spacing="{DynamicResource Intent.Space.Related}">
-        <Button IsVisible="{Binding SelectedProposal.CanTry}" AutomationProperties.Name="{Binding SelectedProposal.TryText}"
-                AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}"
-                Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"
-                HorizontalAlignment="Left">
-          <TextBlock Text="{Binding SelectedProposal.TryText}" />
-        </Button>
         <WrapPanel IsVisible="{Binding !IsConfirmingDecline}" IsEnabled="{Binding !IsConfirmingDelete}">
           <Button Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding SelectedProposal.CanReopen}"
                   Command="{Binding ReopenCommand}" CommandParameter="{Binding SelectedProposal}" />

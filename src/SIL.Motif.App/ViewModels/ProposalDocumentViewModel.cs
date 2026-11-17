@@ -51,6 +51,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         ConfirmApplyCommand = new AsyncRelayCommand(ConfirmApplyAsync);
         CancelApplyCommand = new RelayCommand(() => IsConfirmingApply = false);
         RefreshCommand = new AsyncRelayCommand(() => RefreshAsync());
+        TryCommand = new AsyncRelayCommand(TryAsync, () => !_stopped);
+        Difference.PropertyChanged += OnDifferenceStatusChanged;
         _context.Evidence.PropertyChanged += OnEvidenceChanged;
         _context.Selection.PropertyChanged += OnSelectionChanged;
         _context.ProposalApply.PropertyChanged += OnApplyChanged;
@@ -92,6 +94,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     public IAsyncRelayCommand ConfirmApplyCommand { get; }
     public IRelayCommand CancelApplyCommand { get; }
     public IAsyncRelayCommand RefreshCommand { get; }
+    /// <summary>Tries this Proposal; the one Try It or Try Again button on the page.</summary>
+    public IAsyncRelayCommand TryCommand { get; }
 
     [ObservableProperty] private ProposalCardViewModel? _card;
     [ObservableProperty] private ProposalDetailProjection? _detail;
@@ -133,7 +137,12 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     {
         get
         {
-            if (_stopped || IsPending || IsLoading || !CanAddComment) return null;
+            if (_stopped || IsLoading || !CanAddComment) return null;
+            if (IsPending)
+            {
+                var pending = _context.ProposalApply.Blockers(_review, null, _context.RefreshProjectCommand, null);
+                return pending.Count == 0 ? null : string.Join(" ", pending.Select(blocker => blocker.Sentence));
+            }
             if (IsOutdated) return MotifAppStrings.ProposalDocumentOutdated;
             var standing = Card?.Standing ?? (_review?.Trial is { Freshness: TrialFreshness.Current }
                 ? TrialStanding.Current : TrialStanding.NotTried);
@@ -141,8 +150,11 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             {
                 var words = TrialStandingWords.For(standing);
                 return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalApplyNeedsTrialFormat,
-                    words.Sentence.TrimEnd('.', ' '), words.Action);
+                    words.Action);
             }
+            if (!Difference.IsShown)
+                return Difference.ShowsMakeControls ? MotifAppStrings.ProposalApplyNeedsDifference
+                    : MotifAppStrings.ProposalApplyDifferenceUnavailable;
             if (_review?.Readiness is not { } readiness) return MotifAppStrings.ApplyReadinessUnavailable;
             return readiness.IsReady ? null : string.Join(" ", readiness.Reasons.Select(reason =>
                 readiness.DroppedGrammar is { } dropped && reason == readiness.DroppedGrammarReason
@@ -165,7 +177,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     });
     private IAsyncRelayCommand? _openBackupHelp;
     public bool CanApply => !_stopped && !IsLoading && !IsOutdated && CanAddComment &&
-        _context.ProjectPath == ProjectPath &&
+        _context.ProjectPath == ProjectPath && (IsPending || Difference.IsShown) &&
         (IsPending ? _context.Changes.TargetProposalId is null : _context.Changes.TargetProposalId == ProposalId &&
             _context.Lens?.ProposalId == ProposalId) && _context.ProposalApply.CanApply(_review, null,
             _context.RefreshProjectCommand, null);
@@ -411,6 +423,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         MeasurePendingCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyBlockReason));
+        RaiseStatus();
     }
 
     private async Task MeasurePendingAsync()
@@ -452,6 +465,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         _stopped = true;
         ++_generation;
         _cancellation?.Cancel();
+        Difference.PropertyChanged -= OnDifferenceStatusChanged;
         _context.Evidence.PropertyChanged -= OnEvidenceChanged;
         _context.Selection.PropertyChanged -= OnSelectionChanged;
         _context.ProposalApply.PropertyChanged -= OnApplyChanged;

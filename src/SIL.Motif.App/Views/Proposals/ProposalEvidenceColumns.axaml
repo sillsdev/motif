@@ -22,7 +22,7 @@
   </UserControl.Resources>
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
     <views:CopyableTextBlock Text="{Binding Scope}" IsVisible="{Binding HasScope}" TextWrapping="Wrap" />
-    <views:CopyableTextBlock Text="{Binding Availability}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{Binding Availability}" IsVisible="{Binding HasAvailability}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Text="{Binding NotesText}" IsVisible="{Binding HasNotes}" TextWrapping="Wrap" />
     <WrapPanel Classes="proposalEvidenceColumns">
       <StackPanel Classes="proposalEvidenceColumn" IsVisible="{Binding HasFillIn}">
@@ -38,15 +38,13 @@
                                        ItemTemplate="{StaticResource EvidenceWord}" />
       </StackPanel>
     </WrapPanel>
-    <views:CopyableTextBlock Text="{Binding ApprovedPlacesNotice}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{Binding ApprovedPlacesNotice}" IsVisible="{Binding ShowsPlacesNotice}" TextWrapping="Wrap" />
     <StackPanel DataContext="{Binding Difference}" Spacing="{DynamicResource Intent.Space.Related}">
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
       <views:CopyableTextBlock Text="{Binding UnboundText}" IsVisible="{Binding HasUnbound}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{Binding OutsideText}" IsVisible="{Binding HasOutside}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{Binding ReferenceNoteText}" IsVisible="{Binding HasReferenceNote}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{Binding UnreadableEvidenceText}" IsVisible="{Binding HasUnreadableEvidence}" TextWrapping="Wrap" />
-      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDifferenceNotTried}"
-                               IsVisible="{Binding ShowsNotTriedNote}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDifferenceNoTexts}"
                                IsVisible="{Binding ShowsNoTextsNote}" TextWrapping="Wrap" />
       <ComboBox x:Name="ProposalSavedEvidence" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceSaved}" ItemsSource="{Binding SavedChoices}" SelectedItem="{Binding SelectedSaved}"
@@ -64,23 +62,6 @@
       <views:CopyableTextBlock Text="{Binding ListedNoteText}" IsVisible="{Binding HasListedNote}" TextWrapping="Wrap" />
       <Button Content="{x:Static app:MotifAppStrings.ProposalDifferenceMoreWords}" Command="{Binding ShowMoreWordsCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceMoreWords}"
               IsVisible="{Binding CanShowMoreWords}" HorizontalAlignment="Left" />
-      <StackPanel IsVisible="{Binding ShowsMakeControls}" Spacing="{DynamicResource Intent.Space.Related}">
-        <ComboBox x:Name="ProposalEvidenceText" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceText}" ItemsSource="{Binding TextChoices}" SelectedItem="{Binding SelectedText}"
-                  IsEnabled="{Binding !Maker.IsActive}"
-                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalDifferenceTextAccessibleName}">
-          <ComboBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:DifferenceTextChoice"><TextBlock Text="{Binding Title}" TextWrapping="Wrap" /></DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-        <Button Command="{Binding Maker.RunCommand}" HorizontalAlignment="Stretch"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceMake}">
-          <TextBlock Text="{Binding MakeLabel}" TextWrapping="Wrap" />
-        </Button>
-        <Button Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding Maker.CancelCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceCancel}"
-                IsVisible="{Binding Maker.IsActive}" HorizontalAlignment="Left" />
-        <views:CopyableTextBlock AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceProgress}" Text="{Binding Maker.ProgressText}" IsVisible="{Binding Maker.IsActive}" TextWrapping="Wrap" />
-        <views:RefusalBlock DataContext="{Binding Maker.FailureShown}" />
-      </StackPanel>
       <StackPanel IsVisible="{Binding HasSelectedWord}" Spacing="{DynamicResource Intent.Space.Related}">
         <views:CopyableTextBlock Text="{Binding SelectedWordTitle}" TextWrapping="Wrap" />
         <ScrollViewer Classes="proposalEvidencePlaces">

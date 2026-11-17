@@ -82,6 +82,7 @@ public sealed class ProposalDocumentApplyTests
             null, new Dictionary<string, string>(), [], false, null, JobStatus.Completed, DateTimeOffset.UtcNow,
             TrialFreshness.Current);
         fake.ReadTrialCompletesWith(trial);
+        ProposalStatusFakes.GiveItASavedDifference(fake);
         fake.PendingChangesIs(new PendingChangesSnapshot("one", "revision/one", [], []));
         fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
             new(request.ProposalId, "proposed", request.ProposalId, null, "intent/one", [])));

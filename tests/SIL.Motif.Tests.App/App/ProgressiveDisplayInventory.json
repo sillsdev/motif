@@ -576,7 +576,7 @@
     "control": "ComboBox"
   },
   {
-    "view": "Proposals/ProposalEvidenceColumns",
+    "view": "Proposals/ProposalDocument",
     "name": "ProposalEvidenceText",
     "source": "TextChoices",
     "mode": "rows",
