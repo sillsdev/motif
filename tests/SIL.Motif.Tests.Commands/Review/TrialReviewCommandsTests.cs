@@ -119,6 +119,54 @@ public sealed class TrialReviewCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task TypedWordsWithoutAProjectIdentityArePublishedAsMeasured()
+    {
+        const string form = "11111111-1111-1111-1111-111111111111";
+        const string msa = "33333333-3333-3333-3333-333333333333";
+        var planned = new[]
+        {
+            new ReviewPlannedCase("c/project", "k/project", "project", "ws", null, [], []),
+            new ReviewPlannedCase("c/kept", "k/kept", "kept", null, null, [], []),
+            new ReviewPlannedCase("c/gained", "k/gained", "gained", null, null, [], []),
+            new ReviewPlannedCase("c/never", "k/never", "never", null, null, [], []),
+        };
+        var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [], [], planned);
+        var digest = "sha256:" + new string('a', 64);
+        var baseline = new BaselineToken("project", digest, "v1", "2026-01-01T00:00:00Z", digest);
+        var reference = ReviewInputArtifacts.Store(_database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
+        var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = _proposal.Value, operations = Array.Empty<object>() });
+        var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference);
+        new JobRepository(_database).RecordInterrupted(Job, "project", "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
+            "{}", "2026-01-01T00:00:00Z", JobStatus.Failed);
+        TrialReviewObservation Observe(string key, string word, bool parses) => new(key, word, "complete",
+            new ParseWordEvidence("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false,
+                parses ? [new ParseAnalysis([new ParseMorph(form, msa, null, null)])] : [], []));
+        TrialReviewEvidence.Save(_database, new TrialReviewLedger(Job, reference,
+            [Observe("c/project", "project", true), Observe("c/kept", "kept", true),
+                Observe("c/gained", "gained", false), Observe("c/never", "never", false)],
+            [Observe("c/project", "project", true), Observe("c/kept", "kept", true),
+                Observe("c/gained", "gained", true), Observe("c/never", "never", false)], []));
+
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var repository = new ReviewReportRepository(_database);
+        var report = repository.ReadManifest(id)!.Summary;
+
+        Assert.Equal(2, report.Summary.Wordforms.Before.Numerator);
+        Assert.Equal(3, report.Summary.Wordforms.After.Numerator);
+        Assert.Equal(4, report.Summary.Wordforms.After.Denominator);
+        Assert.Equal(0, report.Summary.Incomplete.Before.NotMeasured);
+        Assert.Equal(0, report.Summary.Incomplete.After.NotMeasured);
+        var gains = Assert.IsType<GainSummary>(report.Summary.Gains);
+        Assert.Equal(1, gains.AttestedGained + gains.GeneratedGained);
+        foreach (var key in new[] { "c/kept", "c/gained", "c/never" })
+        {
+            var row = repository.ReadWord("project", id, key, 20).Row;
+            Assert.Equal(Completion.Complete, row.Before.Completion);
+            Assert.Equal(Completion.Complete, row.After.Completion);
+        }
+    }
+
+    [Fact]
     public void NoTrialPointsToExplicitProduction()
     {
         var result = new TrialReviewCommands(_database).Read(new ReviewReadRequest("project", _proposal.Value));
