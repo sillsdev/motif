@@ -83,6 +83,60 @@ namespace SIL.TextEditing.Tests
             Assert.Equal("link target", document.Paragraphs[0].Runs[1].ObjData);
         }
         [Fact]
+        public void Underline_leaves_a_strikethrough_run_alone_and_underlines_the_rest()
+        {
+            var document = new Document();
+            var paragraph = new Paragraph();
+            var struck = new Run { Text = "ab" };
+            struck.Props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineStrikethrough, TextPropertyNumbers.VariationEnum);
+            paragraph.Runs.Add(struck);
+            paragraph.Runs.Add(new Run { Text = "cd" });
+            document.Paragraphs.Add(paragraph);
+            var editor = new DocumentEditor(document);
+            editor.SetCaret(new TextPosition(0, 4), true);
+            editor.Apply(SelectionFormatting.Toggle(editor, null, TextPropertyNumbers.Underline)!);
+            Assert.Equal(TextPropertyNumbers.UnderlineStrikethrough, document.Paragraphs[0].Runs[0].Props.IntProps[TextPropertyNumbers.Underline].Value);
+            Assert.Equal(TextPropertyNumbers.UnderlineSingle, document.Paragraphs[0].Runs[1].Props.IntProps[TextPropertyNumbers.Underline].Value);
+        }
+
+        [Fact]
+        public void Underline_on_a_strikethrough_only_selection_produces_no_edit()
+        {
+            var document = new Document();
+            var paragraph = new Paragraph();
+            var struck = new Run { Text = "ab" };
+            struck.Props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineStrikethrough, TextPropertyNumbers.VariationEnum);
+            paragraph.Runs.Add(struck);
+            document.Paragraphs.Add(paragraph);
+            var editor = new DocumentEditor(document);
+            editor.SetCaret(new TextPosition(0, 2), true);
+            Assert.False(SelectionFormatting.IsOn(editor, null, TextPropertyNumbers.Underline));
+            Assert.Null(SelectionFormatting.Toggle(editor, null, TextPropertyNumbers.Underline));
+        }
+
+        [Theory]
+        [InlineData(700, false)]
+        [InlineData(600, false)]
+        [InlineData(400, true)]
+        public void A_direct_numeric_bold_weight_resolves_through_the_renderer_threshold(int weight, bool turnsOn)
+        {
+            var document = new Document();
+            var paragraph = new Paragraph();
+            var run = new Run { Text = "word" };
+            run.Props.SetInt(TextPropertyNumbers.Bold, weight);
+            paragraph.Runs.Add(run);
+            document.Paragraphs.Add(paragraph);
+            var editor = new DocumentEditor(document);
+            editor.SetCaret(new TextPosition(0, 4), true);
+            Assert.Equal(!turnsOn, SelectionFormatting.IsOn(editor, null, TextPropertyNumbers.Bold));
+            editor.Apply(SelectionFormatting.Toggle(editor, null, TextPropertyNumbers.Bold)!);
+            var props = Assert.Single(document.Paragraphs[0].Runs).Props.IntProps;
+            // Turning bold off removes the direct weight (plain is what the run inherits); turning it on writes the enum.
+            if (turnsOn) Assert.Equal(TextPropertyNumbers.ToggleOn, props[TextPropertyNumbers.Bold].Value);
+            else Assert.False(props.ContainsKey(TextPropertyNumbers.Bold));
+        }
+
+        [Fact]
         public void Empty_selection_and_object_only_selection_produce_no_edit()
         {
             var document = new Document();
