@@ -535,6 +535,7 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
         PanGlossReference = panGloss.HelpUrl;
         GroupCode = warning.Code ?? warning.CodeLabel;
         GroupName = panGloss.Title;
+        Sentences = display.Select(FindingSentence.Segments).ToArray();
         FindingIdentity = WarningFindingIdentity.ForGrouping(warning);
         YourWords = warning.YourWords;
         var namedFindings = warnings.Where(item => item.NamesItem).ToArray();
@@ -725,10 +726,25 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
 
     private static string CountWord(int count, string singular, string plural) => count == 1 ? singular : plural;
 
-    /// <summary>The recorded kind and its actual number of findings.</summary>
+    /// <summary>The readable name of the recorded kind with its actual number of findings.</summary>
     public string DiagnosticGroupText => string.Format(System.Globalization.CultureInfo.CurrentCulture,
-        MotifAppStrings.DiagnosticsWarningCountFormat, GroupCode is { Length: > 0 } ? GroupCode : PanGlossTitle,
+        MotifAppStrings.DiagnosticsWarningCountFormat, GroupDisplayName,
         PluralText.Format(MotifAppStrings.WarningsFindingsPattern, RepeatCount));
+
+    /// <summary>
+    /// The kind's name from the window's text, or its rule code when the app has no name for it, or the finding's
+    /// own title when it has no code at all.
+    /// </summary>
+    public string GroupDisplayName => MotifAppStrings.DiagnosticKindName(Warning.Code) ??
+        (GroupCode is { Length: > 0 } ? GroupCode : PanGlossTitle);
+
+    /// <summary>The rule code for the heading's tooltip, or null when the finding has none.</summary>
+    public string? GroupCodeTip => Warning.Code is { Length: > 0 } code
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DiagnosticsRuleCodeTipFormat, code)
+        : null;
+
+    /// <summary>Each finding of the kind as one sentence with the objects it names as links.</summary>
+    public IReadOnlyList<IReadOnlyList<FindingSegment>> Sentences { get; }
 
     public string GroupName { get; }
     public string GroupCode { get; }

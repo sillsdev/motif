@@ -23,7 +23,7 @@ public sealed class DiagnosticsFix1Tests
     private static GrammarWarningPart Phoneme(string name) => new($"{name} (in {Set})", GrammarWarningPartRole.Object,
         $"table#0:{name}", "PhPhoneme") { Title = name, Subtitle = $"in {Set}", Status = GrammarSubjectStatus.Object };
 
-    private static GrammarWarning DuplicateFeatureBundle() => new(GrammarDiagnosticLevel.Error, "Duplicate feature bundle",
+    internal static GrammarWarning DuplicateFeatureBundle() => new(GrammarDiagnosticLevel.Error, "Duplicate feature bundle",
         [new GrammarWarningPart(Set, GrammarWarningPartRole.Object, "be7fe79c", "PhPhonemeSet") { Title = Set, Status = GrammarSubjectStatus.Object },
             Phoneme("("), Phoneme(")"), Phoneme("/")],
         [new GrammarWarningPart($"{Set} (, ), / share the same feature values.", GrammarWarningPartRole.Text)],
@@ -35,7 +35,7 @@ public sealed class DiagnosticsFix1Tests
         Description = $"{Set} (, ), / share the same feature values.",
     };
 
-    private static GrammarWarning StemWithoutCategory(string headword) => new(GrammarDiagnosticLevel.Error,
+    internal static GrammarWarning StemWithoutCategory(string headword) => new(GrammarDiagnosticLevel.Error,
         "Stem no grammatical category",
         [new GrammarWarningPart(headword, GrammarWarningPartRole.Object, $"id-{headword}", "LexEntry")
         {
@@ -51,10 +51,10 @@ public sealed class DiagnosticsFix1Tests
         Description = $"Lexical entry '{headword}' has no grammatical category.",
     };
 
-    private static IEnumerable<string?> Texts(Control root) => root.GetVisualDescendants().OfType<TextBlock>()
+    internal static IEnumerable<string?> Texts(Control root) => root.GetVisualDescendants().OfType<TextBlock>()
         .Where(text => text.IsEffectivelyVisible).Select(text => text.Text);
 
-    private static async Task<(WorkspaceContext Context, DiagnosticsPageModel Model, FakeCommandClient Fake)> OpenAsync(
+    internal static async Task<(WorkspaceContext Context, DiagnosticsPageModel Model, FakeCommandClient Fake)> OpenAsync(
         Action<FakeCommandClient>? arrange = null)
     {
         var fake = new FakeCommandClient();
@@ -64,33 +64,6 @@ public sealed class DiagnosticsFix1Tests
         var model = new DiagnosticsPageModel(context);
         await context.OpenProjectAsync("project.fwdata");
         return (context, model, fake);
-    }
-
-    [Fact]
-    public void PhonemeNamesShowAndLinkedStemsAreSeparated()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            GrammarWarning[] findings = [DuplicateFeatureBundle(), StemWithoutCategory("hái"), StemWithoutCategory("pitnit"),
-                StemWithoutCategory("sagang")];
-            var (context, model, _) = await OpenAsync(fake => fake.StoredGrammarCheckIs(new GrammarCheckResponse(findings, HasBaseline: true)));
-            var page = new DiagnosticsPage(model);
-            var window = new MotifTestWindow { Width = 1000, Height = 900, Content = page };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-                var shown = Texts(page).ToArray();
-                Assert.Contains("'(' (in Phonemes)", shown);
-                Assert.Contains("')' (in Phonemes)", shown);
-                Assert.Contains("'/' (in Phonemes)", shown);
-                Assert.Contains("Phonemes '(', ')', '/' share the same feature values.", shown);
-                Assert.DoesNotContain(shown, text => text is not null && text.Contains("Phonemes (, ), /", StringComparison.Ordinal));
-                // Four objects in the phoneme row and three entries in the stem row: three commas plus two.
-                Assert.Equal(5, shown.Count(text => text == ","));
-            }
-            finally { window.Close(); await context.StopProjectWorkAsync(); }
-        }, TimeSpan.FromSeconds(60));
     }
 
     [Fact]
@@ -115,12 +88,17 @@ public sealed class DiagnosticsFix1Tests
                 Assert.Contains("136 errors", summary);
                 Assert.Contains("15 warnings", summary);
                 // The health strip's number comes from the same stored check.
+                var counts = SIL.Motif.Commands.Catalog.WarningsCommand.FromCheck(check);
                 var overview = SampleOverview.Populated() with
                 {
-                    Warnings = new OverviewWarningsSummary(SIL.Motif.Commands.Catalog.WarningsCommand.FromCheck(check).TotalCount, null, null, null),
+                    Warnings = new OverviewWarningsSummary(counts.TotalCount, null, null, null)
+                    {
+                        ErrorCount = counts.ErrorCount, WarningCount = counts.WarningCount, InformationCount = counts.InformationCount,
+                    },
                 };
                 var strip = new HealthStripViewModel(context) { Overview = overview };
-                Assert.Contains("151", strip.WarningText);
+                Assert.Contains("136 errors", strip.WarningText);
+                Assert.Contains("15 warnings", strip.WarningText);
             }
             finally { window.Close(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromSeconds(60));

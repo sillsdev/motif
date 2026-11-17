@@ -847,6 +847,8 @@ internal static class TooltipOwners
         new("FieldWorks link in a finding", "Views/GrammarWarningPartsBlock.cs",
             "$\"Open this item in {tool}\"", TooltipScene.Warnings,
             control => control is HyperlinkButton && control.Classes.Contains("warningObjectLink")),
+        new("diagnostics group rule code", "Views/Pages/DiagnosticsPage.axaml", "{Binding GroupCodeTip}", TooltipScene.Warnings,
+            control => control is CopyableTextBlock && control.Classes.Contains("diagnosticGroupName")),
         new("drag all files", "Views/HandoffPanel.axaml", "Drag into a chat. From the keyboard, press Enter to copy the folder path.",
             TooltipScene.Handoff, control => control is Button { Name: "AllFilesButton" }),
         new("question to copy", "Views/HandoffPanel.axaml", "Copy this question", TooltipScene.Handoff,

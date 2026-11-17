@@ -3,6 +3,14 @@
   <Style Selector="views|WarningsTab">
     <Setter Property="ColumnsBreakpoint" Value="{StaticResource Primitive.Size.800}" />
   </Style>
+  <Style Selector=":is(SelectableTextBlock).diagnosticGroupName">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="SelectableTextBlock HyperlinkButton.warningObjectLink">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
   <Style Selector="ListBox.diagnosticRows ListBoxItem">
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />

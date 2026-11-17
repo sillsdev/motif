@@ -84,7 +84,7 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         return block;
     }
 
-    private static HyperlinkButton LinkFor(GrammarWarningPart part, Uri link)
+    internal static HyperlinkButton LinkFor(GrammarWarningPart part, Uri link)
     {
         // A TextBlock, not a string, so the "_" an environment is written with is not read as an access key.
         var button = new HyperlinkButton

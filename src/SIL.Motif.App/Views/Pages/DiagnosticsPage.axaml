@@ -25,13 +25,9 @@
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-                  <views:CopyableTextBlock Classes="muted" Text="{Binding DiagnosticGroupText}" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Text="{Binding PanGlossTitle}" TextWrapping="Wrap" />
-                  <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
-                  <views:CopyableTextBlock Text="{Binding Message}" TextWrapping="Wrap"
-                             IsVisible="{Binding Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                  <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap"
-                             IsVisible="{Binding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <views:CopyableTextBlock Classes="diagnosticGroupName" Text="{Binding DiagnosticGroupText}" TextWrapping="Wrap"
+                                           ToolTip.Tip="{Binding GroupCodeTip}" />
+                  <views:FindingSentenceList Spacing="{DynamicResource Intent.Space.Related}" Sentences="{Binding Sentences}" />
                 </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>

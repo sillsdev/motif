@@ -43,7 +43,6 @@ public static class MotifAppStrings
     public static string BoardKeepAnalysis => Text("MotifApp.BoardKeepAnalysis");
     public static string BoardNextGap => Text("MotifApp.BoardNextGap");
     public static string BoardKeepAllLikeThis => Text("MotifApp.BoardKeepAllLikeThis");
-    public static string HealthWarningsPattern => Text("MotifApp.HealthWarningsPattern");
     public static string HealthMedianWorkFormat => Text("MotifApp.HealthMedianWorkFormat");
     public static string HealthTurnOnDiagnostics => Text("MotifApp.HealthTurnOnDiagnostics");
     public static string Health => Text("MotifApp.Health");
@@ -4205,5 +4204,119 @@ public static class MotifAppStrings
     // fix1-layout
     public static string RefusalStoreLockMissing => Text("MotifApp.RefusalStoreLockMissing");
     public static string ProgressNextStoreProblemFormat => Text("MotifApp.ProgressNextStoreProblemFormat");
+    // round2-diag
+    public static string DiagnosticKindConversionSourceProvenanceUnknown => Text("MotifApp.DiagnosticKindConversionSourceProvenanceUnknown");
+    public static string DiagnosticKindConversionUnsegmentableForm => Text("MotifApp.DiagnosticKindConversionUnsegmentableForm");
+    public static string DiagnosticKindFstCircumfixNoRoute => Text("MotifApp.DiagnosticKindFstCircumfixNoRoute");
+    public static string DiagnosticKindFstPatternRootShape => Text("MotifApp.DiagnosticKindFstPatternRootShape");
+    public static string DiagnosticKindFstProcessNotEmittable => Text("MotifApp.DiagnosticKindFstProcessNotEmittable");
+    public static string DiagnosticKindFstReduplicationNoRoute => Text("MotifApp.DiagnosticKindFstReduplicationNoRoute");
+    public static string DiagnosticKindFstShapeNotInSurfaceTable => Text("MotifApp.DiagnosticKindFstShapeNotInSurfaceTable");
+    public static string DiagnosticKindFwdataDanglingReference => Text("MotifApp.DiagnosticKindFwdataDanglingReference");
+    public static string DiagnosticKindFwdataEmptyRepresentation => Text("MotifApp.DiagnosticKindFwdataEmptyRepresentation");
+    public static string DiagnosticKindFwdataInvalidParserParameter => Text("MotifApp.DiagnosticKindFwdataInvalidParserParameter");
+    public static string DiagnosticKindFwdataMissingLangProject => Text("MotifApp.DiagnosticKindFwdataMissingLangProject");
+    public static string DiagnosticKindFwdataMissingRequiredField => Text("MotifApp.DiagnosticKindFwdataMissingRequiredField");
+    public static string DiagnosticKindFwdataNoUsableAllomorphs => Text("MotifApp.DiagnosticKindFwdataNoUsableAllomorphs");
+    public static string DiagnosticKindFwdataOnlyFirstUsed => Text("MotifApp.DiagnosticKindFwdataOnlyFirstUsed");
+    public static string DiagnosticKindFwdataReferenceNotInScope => Text("MotifApp.DiagnosticKindFwdataReferenceNotInScope");
+    public static string DiagnosticKindFwdataStaleAdhocProhibition => Text("MotifApp.DiagnosticKindFwdataStaleAdhocProhibition");
+    public static string DiagnosticKindFwdataUnexpectedClass => Text("MotifApp.DiagnosticKindFwdataUnexpectedClass");
+    public static string DiagnosticKindFwdataUnknownMorphTypeGuid => Text("MotifApp.DiagnosticKindFwdataUnknownMorphTypeGuid");
+    public static string DiagnosticKindFwdataUnrecognizedEnumValue => Text("MotifApp.DiagnosticKindFwdataUnrecognizedEnumValue");
+    public static string DiagnosticKindFwdataWritingSystemStoreUnreadable => Text("MotifApp.DiagnosticKindFwdataWritingSystemStoreUnreadable");
+    public static string DiagnosticKindGrammarAdhocProhibitionUnresolved => Text("MotifApp.DiagnosticKindGrammarAdhocProhibitionUnresolved");
+    public static string DiagnosticKindGrammarAllomorphEnvironmentBuildFailed => Text("MotifApp.DiagnosticKindGrammarAllomorphEnvironmentBuildFailed");
+    public static string DiagnosticKindGrammarAllomorphFeatureBuildFailed => Text("MotifApp.DiagnosticKindGrammarAllomorphFeatureBuildFailed");
+    public static string DiagnosticKindGrammarAllomorphInflectionClassUnresolved => Text("MotifApp.DiagnosticKindGrammarAllomorphInflectionClassUnresolved");
+    public static string DiagnosticKindGrammarAllomorphMorphTypeUnsupportedAsRuleForm => Text("MotifApp.DiagnosticKindGrammarAllomorphMorphTypeUnsupportedAsRuleForm");
+    public static string DiagnosticKindGrammarAllomorphMorphTypeUnsupported => Text("MotifApp.DiagnosticKindGrammarAllomorphMorphTypeUnsupported");
+    public static string DiagnosticKindGrammarAllomorphNotARuleForm => Text("MotifApp.DiagnosticKindGrammarAllomorphNotARuleForm");
+    public static string DiagnosticKindGrammarAllomorphProcessBuildFailed => Text("MotifApp.DiagnosticKindGrammarAllomorphProcessBuildFailed");
+    public static string DiagnosticKindGrammarAllomorphReduplicationInvalid => Text("MotifApp.DiagnosticKindGrammarAllomorphReduplicationInvalid");
+    public static string DiagnosticKindGrammarAllomorphUnsegmentable => Text("MotifApp.DiagnosticKindGrammarAllomorphUnsegmentable");
+    public static string DiagnosticKindGrammarBoundaryMorphMarkerUnresolved => Text("MotifApp.DiagnosticKindGrammarBoundaryMorphMarkerUnresolved");
+    public static string DiagnosticKindGrammarBoundaryNfdCollision => Text("MotifApp.DiagnosticKindGrammarBoundaryNfdCollision");
+    public static string DiagnosticKindGrammarBoundaryNoRepresentation => Text("MotifApp.DiagnosticKindGrammarBoundaryNoRepresentation");
+    public static string DiagnosticKindGrammarCircumfixEnvironmentCombinationSkipped => Text("MotifApp.DiagnosticKindGrammarCircumfixEnvironmentCombinationSkipped");
+    public static string DiagnosticKindGrammarCircumfixMissingHalf => Text("MotifApp.DiagnosticKindGrammarCircumfixMissingHalf");
+    public static string DiagnosticKindGrammarCompileFailed => Text("MotifApp.DiagnosticKindGrammarCompileFailed");
+    public static string DiagnosticKindGrammarCompoundRuleBuildFailed => Text("MotifApp.DiagnosticKindGrammarCompoundRuleBuildFailed");
+    public static string DiagnosticKindGrammarCompoundRuleSideExceptionFeatureUnresolved => Text("MotifApp.DiagnosticKindGrammarCompoundRuleSideExceptionFeatureUnresolved");
+    public static string DiagnosticKindGrammarCompoundRuleSidePosUnresolved => Text("MotifApp.DiagnosticKindGrammarCompoundRuleSidePosUnresolved");
+    public static string DiagnosticKindGrammarCooccurrenceTargetUnreachable => Text("MotifApp.DiagnosticKindGrammarCooccurrenceTargetUnreachable");
+    public static string DiagnosticKindGrammarEnvironmentInvalid => Text("MotifApp.DiagnosticKindGrammarEnvironmentInvalid");
+    public static string DiagnosticKindGrammarEnvironmentMissingNaturalClass => Text("MotifApp.DiagnosticKindGrammarEnvironmentMissingNaturalClass");
+    public static string DiagnosticKindGrammarEnvironmentUnresolved => Text("MotifApp.DiagnosticKindGrammarEnvironmentUnresolved");
+    public static string DiagnosticKindGrammarFeatureNegatedValueUnsupported => Text("MotifApp.DiagnosticKindGrammarFeatureNegatedValueUnsupported");
+    public static string DiagnosticKindGrammarFeaturePhonComplexUnsupported => Text("MotifApp.DiagnosticKindGrammarFeaturePhonComplexUnsupported");
+    public static string DiagnosticKindGrammarLimitFeatureValues => Text("MotifApp.DiagnosticKindGrammarLimitFeatureValues");
+    public static string DiagnosticKindGrammarLimitMprFeatures => Text("MotifApp.DiagnosticKindGrammarLimitMprFeatures");
+    public static string DiagnosticKindGrammarLimitPartsOfSpeech => Text("MotifApp.DiagnosticKindGrammarLimitPartsOfSpeech");
+    public static string DiagnosticKindGrammarMruleUnreachableCompacted => Text("MotifApp.DiagnosticKindGrammarMruleUnreachableCompacted");
+    public static string DiagnosticKindGrammarMsaBuildFailed => Text("MotifApp.DiagnosticKindGrammarMsaBuildFailed");
+    public static string DiagnosticKindGrammarMsaExceptionFeatureUnresolved => Text("MotifApp.DiagnosticKindGrammarMsaExceptionFeatureUnresolved");
+    public static string DiagnosticKindGrammarMsaInflectionClassUnresolved => Text("MotifApp.DiagnosticKindGrammarMsaInflectionClassUnresolved");
+    public static string DiagnosticKindGrammarMsaLexEntryInflTypeUnresolved => Text("MotifApp.DiagnosticKindGrammarMsaLexEntryInflTypeUnresolved");
+    public static string DiagnosticKindGrammarMsaNoAllomorphs => Text("MotifApp.DiagnosticKindGrammarMsaNoAllomorphs");
+    public static string DiagnosticKindGrammarMsaNoRuleFormAllomorphs => Text("MotifApp.DiagnosticKindGrammarMsaNoRuleFormAllomorphs");
+    public static string DiagnosticKindGrammarMsaStemNameUnresolved => Text("MotifApp.DiagnosticKindGrammarMsaStemNameUnresolved");
+    public static string DiagnosticKindGrammarNatclassComplexFeatureUnsupported => Text("MotifApp.DiagnosticKindGrammarNatclassComplexFeatureUnsupported");
+    public static string DiagnosticKindGrammarNatclassFeatureConstraintUnresolved => Text("MotifApp.DiagnosticKindGrammarNatclassFeatureConstraintUnresolved");
+    public static string DiagnosticKindGrammarNatclassSegmentsMemberUnresolved => Text("MotifApp.DiagnosticKindGrammarNatclassSegmentsMemberUnresolved");
+    public static string DiagnosticKindGrammarNatclassUnreferencedCompacted => Text("MotifApp.DiagnosticKindGrammarNatclassUnreferencedCompacted");
+    public static string DiagnosticKindGrammarNullAffixMprUnresolved => Text("MotifApp.DiagnosticKindGrammarNullAffixMprUnresolved");
+    public static string DiagnosticKindGrammarNullAffixSegmentFailed => Text("MotifApp.DiagnosticKindGrammarNullAffixSegmentFailed");
+    public static string DiagnosticKindGrammarNullAffixSynFsFailed => Text("MotifApp.DiagnosticKindGrammarNullAffixSynFsFailed");
+    public static string DiagnosticKindGrammarPhonemeComplexFeatureUnsupported => Text("MotifApp.DiagnosticKindGrammarPhonemeComplexFeatureUnsupported");
+    public static string DiagnosticKindGrammarPhonemeFeatureUnresolved => Text("MotifApp.DiagnosticKindGrammarPhonemeFeatureUnresolved");
+    public static string DiagnosticKindGrammarPhonemeNfdCollision => Text("MotifApp.DiagnosticKindGrammarPhonemeNfdCollision");
+    public static string DiagnosticKindGrammarPhonemeNoRepresentation => Text("MotifApp.DiagnosticKindGrammarPhonemeNoRepresentation");
+    public static string DiagnosticKindGrammarRuleBuildFailed => Text("MotifApp.DiagnosticKindGrammarRuleBuildFailed");
+    public static string DiagnosticKindGrammarRuleFeatureConstraintPhonFeatureUnresolved => Text("MotifApp.DiagnosticKindGrammarRuleFeatureConstraintPhonFeatureUnresolved");
+    public static string DiagnosticKindGrammarRuleFeatureConstraintUnresolved => Text("MotifApp.DiagnosticKindGrammarRuleFeatureConstraintUnresolved");
+    public static string DiagnosticKindGrammarRuleRuleFeatureUnresolved => Text("MotifApp.DiagnosticKindGrammarRuleRuleFeatureUnresolved");
+    public static string DiagnosticKindGrammarStemNameBuildFailed => Text("MotifApp.DiagnosticKindGrammarStemNameBuildFailed");
+    public static string DiagnosticKindGrammarStemNameEmptyRegions => Text("MotifApp.DiagnosticKindGrammarStemNameEmptyRegions");
+    public static string DiagnosticKindGrammarStoredAnalysisBudgetReached => Text("MotifApp.DiagnosticKindGrammarStoredAnalysisBudgetReached");
+    public static string DiagnosticKindGrammarStoredAnalysisIncomplete => Text("MotifApp.DiagnosticKindGrammarStoredAnalysisIncomplete");
+    public static string DiagnosticKindGrammarStoredAnalysisNoLongerParses => Text("MotifApp.DiagnosticKindGrammarStoredAnalysisNoLongerParses");
+    public static string DiagnosticKindGrammarStrataUnknownRule => Text("MotifApp.DiagnosticKindGrammarStrataUnknownRule");
+    public static string DiagnosticKindGrammarTemplateBuildFailed => Text("MotifApp.DiagnosticKindGrammarTemplateBuildFailed");
+    public static string DiagnosticKindGrammarTemplateNoSlots => Text("MotifApp.DiagnosticKindGrammarTemplateNoSlots");
+    public static string DiagnosticKindGrammarTemplateSlotNoRules => Text("MotifApp.DiagnosticKindGrammarTemplateSlotNoRules");
+    public static string DiagnosticKindGrammarTemplateSlotUnresolved => Text("MotifApp.DiagnosticKindGrammarTemplateSlotUnresolved");
+    public static string DiagnosticKindGrammarVariantComponentUnresolved => Text("MotifApp.DiagnosticKindGrammarVariantComponentUnresolved");
+    public static string DiagnosticKindHcDuplicateFeatureBundle => Text("MotifApp.DiagnosticKindHcDuplicateFeatureBundle");
+    public static string DiagnosticKindHcInflectionalAffixMissingTemplateSlot => Text("MotifApp.DiagnosticKindHcInflectionalAffixMissingTemplateSlot");
+    public static string DiagnosticKindHcPartialReasonUnspecified => Text("MotifApp.DiagnosticKindHcPartialReasonUnspecified");
+    public static string DiagnosticKindHcStemNoGrammaticalCategory => Text("MotifApp.DiagnosticKindHcStemNoGrammaticalCategory");
+    public static string DiagnosticKindHcUnclassifiedAffix => Text("MotifApp.DiagnosticKindHcUnclassifiedAffix");
+    public static string DiagnosticKindHcUndeclaredSegment => Text("MotifApp.DiagnosticKindHcUndeclaredSegment");
+    public static string DiagnosticKindInvalidSourceActiveParser => Text("MotifApp.DiagnosticKindInvalidSourceActiveParser");
+    public static string DiagnosticKindInvalidSourceDuplicateGuid => Text("MotifApp.DiagnosticKindInvalidSourceDuplicateGuid");
+    public static string DiagnosticKindInvalidSourceMissingGuid => Text("MotifApp.DiagnosticKindInvalidSourceMissingGuid");
+    public static string DiagnosticKindMigrationInferredSegmentWithFeatureRule => Text("MotifApp.DiagnosticKindMigrationInferredSegmentWithFeatureRule");
+    public static string DiagnosticKindProvisionalBoundary => Text("MotifApp.DiagnosticKindProvisionalBoundary");
+    public static string DiagnosticKindProvisionalLetter => Text("MotifApp.DiagnosticKindProvisionalLetter");
+    public static string DiagnosticKindProvisionalPhonemeFeatures => Text("MotifApp.DiagnosticKindProvisionalPhonemeFeatures");
+    public static string DiagnosticKindSnapshotDanglingReference => Text("MotifApp.DiagnosticKindSnapshotDanglingReference");
+    public static string DiagnosticKindSnapshotFeatureStructureUnresolved => Text("MotifApp.DiagnosticKindSnapshotFeatureStructureUnresolved");
+    public static string DiagnosticKindSnapshotReferenceOutOfScope => Text("MotifApp.DiagnosticKindSnapshotReferenceOutOfScope");
+    public static string DiagnosticKindSnapshotRuleFeatureUnresolved => Text("MotifApp.DiagnosticKindSnapshotRuleFeatureUnresolved");
+    public static string DiagnosticKindSubstrateClassificationAmbiguous => Text("MotifApp.DiagnosticKindSubstrateClassificationAmbiguous");
+    public static string DiagnosticKindSubstratePositionUnmapped => Text("MotifApp.DiagnosticKindSubstratePositionUnmapped");
+    public static string HealthBreakdownFormat => Text("MotifApp.HealthBreakdownFormat");
+    public static string HealthBarFormat => Text("MotifApp.HealthBarFormat");
+    public static string DiagnosticsRuleCodeTipFormat => Text("MotifApp.DiagnosticsRuleCodeTipFormat");
+
+    /// <summary>The readable heading for a Diagnostics rule code, or null when the app has no name for it.</summary>
+    public static string? DiagnosticKindName(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return null;
+        var key = "MotifApp.DiagnosticKind" + string.Concat(code.Split('.', '-')
+            .Where(part => part.Length > 0).Select(part => char.ToUpperInvariant(part[0]) + part[1..]));
+        return Resources.GetString(key);
+    }
     #endregion
 }

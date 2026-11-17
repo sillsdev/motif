@@ -14,9 +14,9 @@ public sealed class ProposalSidesTests
         var fake = new FakeCommandClient();
         var current = SampleOverview.Populated() with
         {
-            Warnings = SampleOverview.Populated().Warnings! with { Count = 27 },
+            Warnings = SampleOverview.Populated().Warnings! with { Count = 31, WarningCount = 27 },
         };
-        var candidate = current with { Warnings = current.Warnings! with { Count = 18 } };
+        var candidate = current with { Warnings = current.Warnings! with { Count = 22, WarningCount = 18 } };
         fake.OnOverview((request, _) => Task.FromResult(CommandOutcome<OverviewResponse>.Success(
             request.ProposalId is null ? current : candidate)));
         var currentWarning = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Current", [], [], "Current warning");
@@ -35,7 +35,8 @@ public sealed class ProposalSidesTests
         await context.EvidencePublication;
 
         Assert.Same(current, progress.Health.Overview);
-        Assert.Contains("27", progress.Health.WarningText);
+        Assert.Contains("27 warnings", progress.Health.WarningText);
+        Assert.Contains("27 warnings", progress.Health.BarText);
         Assert.Equal([currentWarning], diagnostics.Warnings.Findings);
         Assert.DoesNotContain(fake.OverviewRequests, request => request.ProposalId is not null);
         Assert.DoesNotContain(fake.StoredGrammarCheckRequests, request => request.ProposalId is not null);

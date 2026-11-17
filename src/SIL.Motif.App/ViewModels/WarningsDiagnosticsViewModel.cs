@@ -36,8 +36,8 @@ public sealed partial class WarningsDiagnosticsViewModel : ObservableObject
     public IReadOnlyList<GrammarWarningRowViewModel> Rows { get; private set; } = [];
 
     /// <summary>
-    /// The number of findings the rows below add up to, by level. It is the same count the health strip gives,
-    /// since both read the one stored check; the strip's word for it is "grammar warnings".
+    /// The number of findings the rows below add up to, by level. The status bar gives the same counts in the
+    /// same words, since both read the one stored check.
     /// </summary>
     public string SummaryText { get; private set; } = string.Empty;
 
@@ -46,10 +46,9 @@ public sealed partial class WarningsDiagnosticsViewModel : ObservableObject
         SummaryText = value.Count == 0 ? string.Empty : string.Format(System.Globalization.CultureInfo.CurrentCulture,
             MotifAppStrings.DiagnosticsFindingsSummaryFormat,
             PluralText.Format(MotifAppStrings.WarningsFindingsPattern, value.Count),
-            string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsBreakdownFormat,
-                PluralText.Format(MotifAppStrings.WarningsErrorsPattern, value.Count(f => f.Severity == GrammarDiagnosticLevel.Error)),
-                PluralText.Format(MotifAppStrings.WarningsWarningsPattern, value.Count(f => f.Severity == GrammarDiagnosticLevel.Warning)),
-                PluralText.Format(MotifAppStrings.WarningsInformationPattern, value.Count(f => f.Severity == GrammarDiagnosticLevel.Information))));
+            DiagnosticFindingText.Breakdown(value.Count(f => f.Severity == GrammarDiagnosticLevel.Error),
+                value.Count(f => f.Severity == GrammarDiagnosticLevel.Warning),
+                value.Count(f => f.Severity == GrammarDiagnosticLevel.Information)) + ".");
         OnPropertyChanged(nameof(SummaryText));
         Rows = value.Select((finding, index) => (finding, index))
             .GroupBy(item => string.IsNullOrWhiteSpace(item.finding.Code)

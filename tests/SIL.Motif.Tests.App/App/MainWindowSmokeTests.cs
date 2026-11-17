@@ -833,9 +833,10 @@ public sealed class MainWindowSmokeTests
                 var link = Assert.Single(list.GetVisualDescendants().OfType<HyperlinkButton>());
                 Assert.Equal(new Uri("silfw://motif.test/project/entry-1"), link.NavigateUri);
                 var message = Assert.Single(list.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    text => text.Text == "PanGloss reports a dropped item.");
+                    text => text.Inlines?.OfType<Avalonia.Controls.Documents.Run>()
+                        .Any(run => run.Text == "PanGloss reports a dropped item.") == true);
                 message.SelectAll();
-                Assert.Equal(message.Text, message.SelectedText);
+                Assert.Contains("PanGloss reports a dropped item.", message.SelectedText, StringComparison.Ordinal);
                 Assert.Empty(fake.AssessRequests);
                 Assert.Empty(fake.CheckGrammarRequests);
             }

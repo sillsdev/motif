@@ -23,7 +23,7 @@ public sealed partial class HealthStripViewModel : ObservableObject
 
     /// <summary>The last available stored Overview, or null while it is unavailable.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WarningText), nameof(HasWarnings), nameof(MedianWorkText), nameof(HasMedianWork), nameof(AccessibleName), nameof(HasSelectionSummary), nameof(SelectionSummary))]
+    [NotifyPropertyChangedFor(nameof(WarningText), nameof(BarText), nameof(HasWarnings), nameof(MedianWorkText), nameof(HasMedianWork), nameof(AccessibleName), nameof(HasSelectionSummary), nameof(SelectionSummary))]
     private OverviewResponse? _overview;
 
     partial void OnOverviewChanged(OverviewResponse? value)
@@ -63,9 +63,25 @@ public sealed partial class HealthStripViewModel : ObservableObject
     public string AccessibleName => string.Join(", ", new[] { MotifAppStrings.Health, WarningText, AssistantStateText }
         .Where(value => !string.IsNullOrWhiteSpace(value)));
 
-    /// <summary>The warning count, absent when no count is recorded.</summary>
-    public string WarningText => !_context.Evidence.IsStale && Overview is { IsStale: false, Warnings.Count: { } count }
-        ? PluralText.Format(MotifAppStrings.HealthWarningsPattern, count) : string.Empty;
+    /// <summary>
+    /// The findings by level in the Diagnostics summary's words, absent when no count is recorded. The Overview's
+    /// total counts every level, so showing it as "warnings" overstated the page's errors and warnings.
+    /// </summary>
+    public string WarningText => !_context.Evidence.IsStale && Overview is { IsStale: false, Warnings: { Count: { } count } warnings }
+        ? warnings is { ErrorCount: { } errors, WarningCount: { } warned, InformationCount: { } information }
+            ? DiagnosticFindingText.Breakdown(errors, warned, information)
+            : PluralText.Format(MotifAppStrings.WarningsFindingsPattern, count)
+        : string.Empty;
+
+    /// <summary>
+    /// The status bar's short form of <see cref="WarningText"/>: errors and warnings, which are the ones that ask
+    /// something of a person. The information count is in the popup and on the Diagnostics page.
+    /// </summary>
+    public string BarText => !_context.Evidence.IsStale && Overview is { IsStale: false, Warnings: { Count: { } count } warnings }
+        ? warnings is { ErrorCount: { } errors, WarningCount: { } warned }
+            ? DiagnosticFindingText.Attention(errors, warned)
+            : PluralText.Format(MotifAppStrings.WarningsFindingsPattern, count)
+        : string.Empty;
 
     /// <summary>Whether a warning count is available.</summary>
     public bool HasWarnings => !_context.Evidence.IsStale && Overview is { IsStale: false, Warnings.Count: not null };
@@ -104,6 +120,7 @@ public sealed partial class HealthStripViewModel : ObservableObject
             nameof(ProjectEvidence.TimingOverrideAssessmentIds)) Overview = null;
         if (e.PropertyName != nameof(ProjectEvidence.IsStale)) return;
         OnPropertyChanged(nameof(WarningText));
+        OnPropertyChanged(nameof(BarText));
         OnPropertyChanged(nameof(HasWarnings));
         OnPropertyChanged(nameof(MedianWorkText));
         OnPropertyChanged(nameof(HasMedianWork));
