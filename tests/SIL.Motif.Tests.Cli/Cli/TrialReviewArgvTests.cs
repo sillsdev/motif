@@ -168,7 +168,7 @@ public sealed class TrialReviewArgvTests
     {
         // The 0191 shape: words typed on the command line carry no entry identity and went from analysed to none.
         var words = new[] { "alpha", "beta", "gamma" };
-        var gate = Verdict(words, words.Select(Analysed).ToArray(), words.Select(NoAnalysis).ToArray());
+        var gate = Gate(words, words.Select(Analysed).ToArray(), words.Select(NoAnalysis).ToArray());
 
         Assert.Equal(TrialGateState.Loss, gate.State);
         Assert.Equal(3, gate.LostWords);

@@ -1056,7 +1056,7 @@ try
                     var trialReview = TrialReviewReads.ReadJob(trialProject, CliProductVersion(), positionals[0], trialJobId,
                         expectedLosses);
                     result = RenderCommand(trialReview);
-                    // The summary still prints; the exit code lets a script gate on the Trial's gate.
+                    // The summary still prints; the exit code lets a script gate on the Trial.
                     if (result.ExitCode == 0 && trialReview.Value is AvailableTrialResult { Gate: { } gate } &&
                         gate.State != TrialGateState.Green)
                     {
@@ -2063,7 +2063,7 @@ try
             if (flags.ContainsKey("test-result") && queryOutcome.Succeeded)
             {
                 var control = queryOutcome.Value!.Result.Scores!.First(score => score.Scorer == "control");
-                var testResult = new HypothesisTestResult(control.Gate!, (int)control.Counts["predicted"], (int)control.Counts["rule_hits"],
+                var testResult = new HypothesisTestResult(control.Verdict!, (int)control.Counts["predicted"], (int)control.Counts["rule_hits"],
                     control.Controls!.ToDictionary(pair => pair.Key, pair => (int)pair.Value), (int)control.Counts["margin"]);
                 result = new CommandResult(0, JsonSerializer.Serialize(testResult, HypothesisFileOptions) + Environment.NewLine);
             }
@@ -2355,8 +2355,8 @@ try
                     foreach (var name in new[] { "agent-hours", "alternative-hours" })
                         if (flags.ContainsKey(name) && Hours(name) is null) return Usage(UsageLineFor("hypothesis grade"), asJson);
                     result = RenderCommand(HypothesisCommands.Grade(new GradeHypothesisRequest(hypothesisProject,
-                        CliProductVersion(), hypothesisId!, flags.GetValueOrDefault("sealed-gate"),
-                        flags.GetValueOrDefault("gate-source"), Count("word-questions"), Count("objects-before"),
+                        CliProductVersion(), hypothesisId!, flags.GetValueOrDefault("sealed-verdict"),
+                        flags.GetValueOrDefault("verdict-source"), Count("word-questions"), Count("objects-before"),
                         Count("types-before"), Count("objects-after"), Count("types-after"), Hours("agent-hours"),
                         Hours("alternative-hours"))));
                     break;
