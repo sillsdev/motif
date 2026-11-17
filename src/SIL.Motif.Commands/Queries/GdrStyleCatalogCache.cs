@@ -6,6 +6,7 @@ namespace SIL.Motif.Commands.Queries;
 internal sealed class GdrStyleCatalogCache
 {
     private readonly object _gate = new();
+    // Alternating projects trade cache hits for the bounded memory of one Baseline.
     private (string Path, BaselineToken Token, GdrStyleCatalog Catalog)? _current;
 
     internal GdrStyleCatalog For(string path, BaselineToken token)
