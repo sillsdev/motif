@@ -247,6 +247,8 @@ a person's Apply, the window and the MCP keep the Readiness checks of
 [ADR 0017](0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md) D4, MCP never Applies, and
 advisory reports stay advisory. Blocking measures remain opt-in as in ADR 0022 D6.
 
+The same switch (`MOTIF_AUTONOMOUS=1` or `--autonomous`) that opens the Autonomous audience also makes `apply` an Autonomous-mode Apply, which requires a green Gate and `--message`.
+
 ## Consequences
 
 Frozen identities prevent candidate edits or live Opinions from improving their own historical comparison.

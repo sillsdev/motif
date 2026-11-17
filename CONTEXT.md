@@ -859,7 +859,7 @@ _Avoid_: auto mode, unsupervised, API mode, "the API" for the CLI
 **Autonomous audience**:
 The commands that exist for an Autonomous-mode run, named as one audience in the command catalog and listed in help:
 the draft lifecycle of the run's own Drafts, project creation, store upgrade and relocation, and scratch work. A
-person declares it explicitly with `MOTIF_AUTONOMOUS=1` or `--autonomous`, apart from the developer-commands switch, which keeps only true developer diagnostics. Its commands are never MCP tools.
+person declares it explicitly with `MOTIF_AUTONOMOUS=1` or `--autonomous`, apart from the developer-commands switch, which keeps only true developer diagnostics. Its commands are never MCP tools. The same switch also makes `apply` an Autonomous-mode Apply, which requires a green Gate and `--message`.
 _Avoid_: developer commands, developer surface, agent commands
 
 **Gate**:
