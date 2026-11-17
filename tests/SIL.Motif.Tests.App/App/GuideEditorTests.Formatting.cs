@@ -325,6 +325,63 @@ public sealed partial class GuideEditorTests
         });
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LinksToOneTargetRestoreTheirOwnLookAfterCloningAndMarkdown(bool internalLink)
+    {
+        var response = WithTwoLinksToOneTarget(First);
+        var objData = internalLink ? GdrReader.LinkData(ProjectName, Linked.Id) : LinkData;
+        var target = internalLink ? new GdrLinkTarget(GdrLinkState.Resolved, "Grammar Guide section", "title-9", "")
+            : response.Discussion[0].Runs[0].Target;
+        var first = response.Discussion[0] with
+        {
+            Runs = response.Discussion[0].Runs.Select(run => run.ObjData is null ? run
+                : run with { ObjData = objData, Target = target }).ToArray(),
+        };
+        var own = new GdrTextProperties(new Dictionary<int, GdrIntProperty>
+        {
+            [TextPropertyNumbers.Underline] = new(0, TextPropertyNumbers.UnderlineDouble),
+            [TextPropertyNumbers.ForeColor] = new(0, 0x112233),
+        }, new Dictionary<int, string>());
+        response = response with
+        {
+            Discussion = [first with { Runs = [first.Runs[0] with { Properties = own }, .. first.Runs.Skip(1)] }],
+        };
+        var discussion = GdrDiscussion.From(response);
+        var paragraph = discussion.Document.Paragraphs[0].Clone();
+        paragraph.Runs.Add(new Run { Text = " ", Ws = "en" });
+        paragraph.Runs.Add(discussion.LinkRun("new", "en", objData));
+
+        void Check(Paragraph shown)
+        {
+            var projected = discussion.ProjectRuns(shown).Where(run => run.ObjData == objData).ToArray();
+            Assert.Equal(3, projected.Length);
+            Assert.Equal((0, TextPropertyNumbers.UnderlineDouble), projected[0].Props!.Ints[TextPropertyNumbers.Underline]);
+            Assert.Equal((0, 0x112233), projected[0].Props!.Ints[TextPropertyNumbers.ForeColor]);
+            Assert.All(projected.Skip(1), run =>
+            {
+                Assert.False(run.Props!.Ints.ContainsKey(TextPropertyNumbers.Underline));
+                Assert.False(run.Props.Ints.ContainsKey(TextPropertyNumbers.ForeColor));
+            });
+            Assert.All(projected, run =>
+            {
+                Assert.All(run.Props!.Ints.Keys, key => Assert.True(key >= 0));
+                Assert.All(run.Props.Strings.Keys, key => Assert.True(key >= 0));
+            });
+        }
+
+        Check(paragraph);
+        var project = discussion.AsProject(paragraph);
+        Assert.All(project.Runs, run => Assert.All(run.Props.IntProps.Keys, key => Assert.True(key >= 0)));
+        Check(discussion.AsShown(project));
+        var form = new DiscussionSourceForm(discussion, ProjectName);
+        var markdown = form.Write([paragraph], singleParagraph: false)!;
+        var read = form.Read(markdown, singleParagraph: false);
+        Assert.False(read.HasErrors);
+        Check(read.Paragraphs[0]);
+    }
+
     [Fact]
     public void AnUnderlineThePersonGivesALinkIsKept()
     {
