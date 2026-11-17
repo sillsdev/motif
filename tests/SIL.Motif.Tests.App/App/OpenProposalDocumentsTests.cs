@@ -75,6 +75,26 @@ public sealed class OpenProposalDocumentsTests
         await documents.StopAsync();
     }
     [Fact]
+    public async Task AnOpenProposalsTabReadsTheSameAsItsListCard()
+    {
+        var fake = new FakeCommandClient();
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(
+            SIL.Motif.Contract.Commands.CommandOutcome<ProposalDetailProjection>.Success(
+                new(request.ProposalId, "proposed", "Set gloss.", null, "digest", [])));
+        var context = WorkspaceContextTests.NewContext(fake);
+        await context.OpenProjectAsync("project.fwdata");
+        var documents = new OpenProposalDocuments(context);
+        var document = documents.Open("one");
+        document.Card = new ProposalCardViewModel(new("one", "Clarify the gloss of palit sense 'buy'", "proposed",
+            ProposalGroup.WaitingForYou, false, [], TrialStanding.NotTried, null, []));
+        await document.RefreshAsync();
+
+        Assert.Equal("Clarify the gloss of palit sense 'buy'", document.Card.Label);
+        Assert.Equal(document.Card.Label, document.Label);
+        await documents.StopAsync();
+    }
+
+    [Fact]
     public async Task InvalidationRejectsALateReadWithoutBlockingAnotherDocument()
     {
         var fake = new FakeCommandClient();

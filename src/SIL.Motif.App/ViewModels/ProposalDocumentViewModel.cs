@@ -67,8 +67,9 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     public IAsyncRelayCommand MeasurePendingCommand { get; }
     public PendingChangesMeasurement PendingMeasurement => _context.PendingMeasurement;
     public bool DiagnosticsVisible => _context.Diagnostics;
-    public string Label => ProposalTitle.For(Detail?.Label is { } named && !ProposalTitle.IsUnnamed(named, ProposalId)
-        ? named : Card?.Card.Label, ProposalId, IsPending || Detail?.DraftName is not null || Card?.Card.IsDraft == true,
+    // The list card's title wins, so a tab reads the same as the card it was opened from.
+    public string Label => ProposalTitle.For(Card?.Card.Label is { } cardName && !ProposalTitle.IsUnnamed(cardName, ProposalId)
+        ? cardName : Detail?.Label, ProposalId, IsPending || Detail?.DraftName is not null || Card?.Card.IsDraft == true,
         OperationDescriptions.FirstOrDefault());
     public string StatusText => Card is { } card && IsDecided(card.Card.Status) ? card.StatusWord :
         Detail is not { } detail ? Card?.StatusWord ?? string.Empty :
