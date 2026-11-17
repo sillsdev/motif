@@ -94,6 +94,7 @@ internal static class AssessmentWordRows
             Passes = word.Passes,
             ParserWork = word.ParserWork,
             Origin = word.Origin,
+            LowercaseOf = word.LowercaseOf,
         };
         return row with { FixFirst = FixFirst(row) };
     }

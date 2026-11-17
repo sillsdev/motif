@@ -170,6 +170,42 @@ public sealed class StoredAssessmentRowsTests : IDisposable
     }
 
     [Fact]
+    public void AReopenedAssessmentKeepsWhichRowsTheLowercasePassAdded()
+    {
+        using var cache = _pristine.NewScratch();
+        SeededProject.SeedText(cache, _pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        var fwDataPath = cache.ProjectId.Path;
+        var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(fwDataPath, "Default", [], ["Motifa", "motifb"]));
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ParseTime
+            ? new AssessmentRaw.Batch(new BatchAnalysis(
+            [
+                new(0, "Motifa", 5, WordOutcome.NoAnalysis, "-"),
+                new(1, "motifb", 4, WordOutcome.NoAnalysis, "-"),
+                new(2, "motifa", 4, WordOutcome.NoAnalysis, "-") { LowercaseOf = "Motifa" },
+            ], 1000, fwDataPath, []) { PerWordParserWorkLimit = 200000 })
+            : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+
+        var run = AssessCommand.Run(new AssessRequest(fwDataPath), NewManagedRoot(), assessor, NewInvoker(), null,
+            CancellationToken.None);
+        Assert.True(run.Succeeded, run.Refusal?.Message);
+        Assert.Equal((2, 1), (run.Value!.InputWords, run.Value.LowercaseWords));
+        var read = CurrentEvidenceQuery.ReadCurrentEvidence(fwDataPath);
+        Assert.True(read.Succeeded, read.Refusal?.Message);
+
+        var stored = read.Value!.Assessment!;
+        Assert.Equal((2, 1), (stored.InputWords, stored.LowercaseWords));
+        Assert.Equal("Motifa", stored.Words.Single(word => word.Word == "motifa").LowercaseOf);
+        var page = AssessSummary.Page(stored, 0, 25, detailed: false);
+        Assert.Equal(2, page["inputWords"]!.GetValue<int>());
+        Assert.Equal(1, page["lowercaseWords"]!.GetValue<int>());
+    }
+
+    [Fact]
     public void AReopenedTextWordKeepsItsWordAnalysesLink()
     {
         using var cache = _pristine.NewScratch();

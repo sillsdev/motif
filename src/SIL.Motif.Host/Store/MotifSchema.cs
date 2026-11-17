@@ -581,7 +581,7 @@ public static class MotifSchema
             C("MorphologyJson", "BLOB"), C("CorrectnessJson", "BLOB"), C("ProjectStanding", "TEXT"),
             C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "BLOB"), C("AnalysisComparisonJson", "BLOB"), C("MissedApprovedCount", "INTEGER"),
             C("MissedApprovedJson", "BLOB"), C("IsIncomplete", "INTEGER", true, defaultValue: "0"),
-            C("Attempts", "INTEGER"), C("Passes", "INTEGER"), C("ParserWork", "INTEGER")],
+            C("Attempts", "INTEGER"), C("Passes", "INTEGER"), C("ParserWork", "INTEGER"), C("LowercaseOf", "TEXT")],
         "AssessmentObjectTimings" => [C("AssessmentId", "TEXT", true, 1), C("Detail", "BLOB", true),
             C("Evidence", "BLOB")],
         "BaselineSummaries" => [C("ProjectKey", "TEXT", false, 1), C("SummaryJson", "TEXT", true)],
@@ -1082,7 +1082,8 @@ public static class MotifSchema
             IsIncomplete INTEGER NOT NULL DEFAULT 0 CHECK (IsIncomplete IN (0, 1)),
             Attempts INTEGER NULL,
             Passes INTEGER NULL,
-            ParserWork INTEGER NULL
+            ParserWork INTEGER NULL,
+            LowercaseOf TEXT NULL
         );
         CREATE INDEX IX_AssessedWords_Assessment ON AssessedWords(AssessmentId);
         CREATE INDEX IX_AssessedWords_Word ON AssessedWords(AssessmentId, Word);

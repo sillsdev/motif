@@ -581,7 +581,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         "AssessedWordId", "AssessmentId", "OrdinalIndex", "Word", "Outcome", "ElapsedMs", "ElapsedNs", "RawSignature",
         "MorphologyJson", "CorrectnessJson", "ProjectStanding", "OccurrenceCount", "ReadingGradesJson",
         "MissedApprovedCount", "MissedApprovedJson", "IsIncomplete", "Attempts", "Passes", "AnalysisComparisonJson",
-        "ParserWork",
+        "ParserWork", "LowercaseOf",
     ];
 
     private static readonly string[] AnalysisColumns =
@@ -613,7 +613,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 word.IsIncomplete ? 1 : 0, word.Attempts, word.Passes,
                 word.AnalysisComparison is null ? null
                     : Compress(JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions)),
-                word.ParserWork,
+                word.ParserWork, word.LowercaseOf,
             ]);
             for (var analysisIndex = 0; analysisIndex < word.Analyses.Count; analysisIndex++)
             {
@@ -1338,7 +1338,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                    (aw.CorrectnessJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.CorrectnessJson)) OR
                    (aw.ReadingGradesJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.ReadingGradesJson)) OR
                    (aw.AnalysisComparisonJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.AnalysisComparisonJson)) OR
-                   (aw.MissedApprovedJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.MissedApprovedJson))
+                   (aw.MissedApprovedJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.MissedApprovedJson)),
+                   aw.LowercaseOf
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = COALESCE((SELECT OwnerAssessmentId FROM AssessmentWordSetBindings
@@ -1369,6 +1370,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         int? currentAttempts = null;
         int? currentPasses = null;
         long? currentParserWork = null;
+        string? currentLowercaseOf = null;
         List<ParsedAnalysis> currentAnalyses = [];
 
         RepositoryReadCounters.QueryExecuted();
@@ -1387,7 +1389,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                         ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                         MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
-                        Attempts = currentAttempts, Passes = currentPasses, ParserWork = currentParserWork });
+                        Attempts = currentAttempts, Passes = currentPasses, ParserWork = currentParserWork, LowercaseOf = currentLowercaseOf });
                 }
                 if (wordForms is null && reader.GetInt32(12) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
@@ -1413,6 +1415,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 currentComparison = reader.IsDBNull(21) ? null
                     : JsonSerializer.Deserialize<WordAnalysisComparison>(Decompress(reader, 21), ParseMorphEvidence.JsonOptions);
                 currentParserWork = reader.IsDBNull(22) ? null : reader.GetInt64(22);
+                currentLowercaseOf = reader.IsDBNull(24) ? null : reader.GetString(24);
                 currentAnalyses = [];
             }
 
@@ -1435,7 +1438,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                 ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                 MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
-                        Attempts = currentAttempts, Passes = currentPasses, ParserWork = currentParserWork });
+                        Attempts = currentAttempts, Passes = currentPasses, ParserWork = currentParserWork, LowercaseOf = currentLowercaseOf });
         }
         return words;
     }

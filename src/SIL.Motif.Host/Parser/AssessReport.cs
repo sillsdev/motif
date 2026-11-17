@@ -48,6 +48,9 @@ public sealed record AssessedWord(
     public IReadOnlyList<SIL.Motif.Contract.Responses.ParserReading>? MissedApproved { get; init; }
 
     public bool IsIncomplete { get; init; }
+
+    /// <summary>The listed word whose lowercase second pass produced this row; null for a word the caller gave.</summary>
+    public string? LowercaseOf { get; init; }
 }
 
 /// <summary>
