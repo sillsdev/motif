@@ -31,6 +31,7 @@ internal enum SettingsGroup
     ProposalChecks,
     WritingSystems,
     HelpAndReports,
+    AssistantAccess,
     About,
 }
 
@@ -220,6 +221,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             new(SettingsGroup.ProposalChecks, MotifAppStrings.DefaultProposalChecks),
             new(SettingsGroup.WritingSystems, MotifAppStrings.WritingSystems),
             new(SettingsGroup.HelpAndReports, MotifAppStrings.HelpAndProblemReports),
+            new(SettingsGroup.AssistantAccess, MotifAppStrings.AssistantAccessHeading),
             new(SettingsGroup.About, MotifAppStrings.AboutMotif),
         ]);
         _selectedGroup = MapSettingsGroup(saved.LastSettingsGroup);
@@ -319,6 +321,20 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public bool HasStoredAnalysesRefusal => !string.IsNullOrEmpty(StoredAnalysesRefusal);
     public bool IsWritingSystemsSelected => SelectedGroup == SettingsGroup.WritingSystems;
     public bool IsHelpAndReportsSelected => SelectedGroup == SettingsGroup.HelpAndReports;
+    public bool IsAssistantAccessSelected => SelectedGroup == SettingsGroup.AssistantAccess;
+
+    /// <summary>Whether assistants such as Claude Desktop may use Motif's tools through the MCP; the same preference the CLI advanced-ai-mode command writes.</summary>
+    public bool AssistantsMayUseTools
+    {
+        get => _workspace.Context.AdvancedAiModePreferences?.IsEnabled ?? true;
+        set
+        {
+            if (AssistantsMayUseTools == value) return;
+            _workspace.Context.AdvancedAiModePreferences?.SetEnabled(value);
+            OnPropertyChanged();
+        }
+    }
+
     public bool IsAboutSelected => SelectedGroup == SettingsGroup.About;
     public string GroupParsingLabel => HasProject ? string.Format(MotifAppStrings.ParsingForProjectFormat, ProjectName) : MotifAppStrings.Parsing;
     public string WritingSystemsHeading => HasProject ? string.Format(MotifAppStrings.WritingSystemsInProjectFormat, ProjectName) : MotifAppStrings.WritingSystems;
@@ -717,6 +733,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(IsProposalChecksSelected));
         OnPropertyChanged(nameof(IsWritingSystemsSelected));
         OnPropertyChanged(nameof(IsHelpAndReportsSelected));
+        OnPropertyChanged(nameof(IsAssistantAccessSelected));
         OnPropertyChanged(nameof(IsAboutSelected));
         OnPropertyChanged(nameof(ShowSettingsFooter));
         OnPropertyChanged(nameof(SelectedNavigationEntry));
@@ -1165,6 +1182,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         SIL.Motif.App.Services.SettingsGroup.WritingSystems => SettingsGroup.WritingSystems,
         SIL.Motif.App.Services.SettingsGroup.Texts => SettingsGroup.Display,
         SIL.Motif.App.Services.SettingsGroup.Help => SettingsGroup.HelpAndReports,
+        SIL.Motif.App.Services.SettingsGroup.AssistantAccess => SettingsGroup.AssistantAccess,
         SIL.Motif.App.Services.SettingsGroup.About => SettingsGroup.About,
         _ => SettingsGroup.Display,
     };
@@ -1176,6 +1194,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         SettingsGroup.ProposalChecks => SIL.Motif.App.Services.SettingsGroup.ProposalChecks,
         SettingsGroup.WritingSystems => SIL.Motif.App.Services.SettingsGroup.WritingSystems,
         SettingsGroup.HelpAndReports => SIL.Motif.App.Services.SettingsGroup.Help,
+        SettingsGroup.AssistantAccess => SIL.Motif.App.Services.SettingsGroup.AssistantAccess,
         SettingsGroup.About => SIL.Motif.App.Services.SettingsGroup.About,
         _ => SIL.Motif.App.Services.SettingsGroup.Display,
     };

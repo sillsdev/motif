@@ -135,6 +135,7 @@ public sealed partial class SettingsPage : UserControl, IWorkspacePaneProvider
                 SettingsGroup.ProposalChecks => "SettingsProposalChecksSection",
                 SettingsGroup.WritingSystems => "SettingsWritingSystemsSection",
                 SettingsGroup.HelpAndReports => "SettingsHelpAndReportsSection",
+                SettingsGroup.AssistantAccess => "SettingsAssistantAccessSection",
                 SettingsGroup.About => "SettingsAboutSection",
                 _ => "SettingsDisplaySection",
             };

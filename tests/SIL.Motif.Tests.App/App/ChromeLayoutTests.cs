@@ -25,6 +25,48 @@ public sealed class ChromeLayoutTests
             "PART_PopoverFullScreenButton"];
 
     [Fact]
+    public void AdvancedAiControlsCanBeBroughtIntoViewAtMinimumWindowSize()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+                parse: false, advancedAiModeEnabled: true);
+            try
+            {
+                window.Width = 820;
+                window.Height = 600;
+                workspace.CurrentPage = WorkspacePage.Settings;
+                PageScreenshots.Settle(window);
+
+                var page = window.PageView<SettingsPage>();
+                var targets = page.GetVisualDescendants().OfType<Control>()
+                    .Where(control => control is Button or CheckBox)
+                    .Where(control => control.IsEffectivelyVisible)
+                    .ToArray();
+                Assert.Contains(targets, control => control is CheckBox { Content: "Let Assistants Use Motif's Tools" });
+                Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Assistant Access");
+
+                foreach (var target in targets)
+                {
+                    target.BringIntoView();
+                    PageScreenshots.Settle(window);
+                    var scroll = target.GetVisualAncestors().OfType<ScrollViewer>()
+                        .FirstOrDefault(viewer => viewer.IsEffectivelyVisible);
+                    if (scroll is not null)
+                        AssertInside(target, scroll, scroll.Viewport, ControlName(target));
+                    else
+                        AssertInside(target, window, window.ClientSize, ControlName(target));
+                }
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
     public void TheDrawnCaptionTemplateInUseNamesTheButtonsTheTopBarStyleHides()
     {
         var themeAssembly = typeof(Semi.Avalonia.SemiTheme).Assembly.Location;

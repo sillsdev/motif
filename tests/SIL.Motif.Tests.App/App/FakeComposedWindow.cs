@@ -21,7 +21,8 @@ internal static class FakeComposedWindow
         string? settingsFilePath = null, IUriLauncher? uriLauncher = null,
         SIL.Motif.Host.Preferences.IDefaultProposalChecksStore? defaultProposalChecks = null,
         ApplicationFacts? applicationFacts = null, IUserPreferencesStore? preferencesStore = null,
-        TechDemoNoticeViewModel? techDemoNotice = null)
+        TechDemoNoticeViewModel? techDemoNotice = null,
+        SIL.Motif.Commands.Preferences.IAdvancedAiModePreferenceStore? advancedAiModePreferences = null)
     {
         fake ??= new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -37,7 +38,7 @@ internal static class FakeComposedWindow
             new AssessViewModel(fake, selection),
             new NoFolderPicker(), new NoDragSource(), fake,
             clipboard: new AvaloniaClipboard(window), defaultProposalChecks: defaultProposalChecks,
-            techDemoNotice: techDemoNotice);
+            techDemoNotice: techDemoNotice, advancedAiModePreferences: advancedAiModePreferences);
         window.Compose(workspace);
         if (preferencesStore is null && settingsFilePath is null) workspace.Context.Diagnostics = true;
         return (workspace, window);

@@ -34,7 +34,7 @@ The choice is remembered for this user on this computer and applies to the next 
 
 ## File Handoff
 
-Settings has no Assistant Connections and no API key; Claude is reached through the MCP in Claude Desktop (see [Connect an assistant](guide:ai-assistants)).
+Settings has no Assistant Connections and no API key. **Assistant Access** has one switch, Let Assistants Use Motif's Tools, which lets assistants such as Claude Desktop use Motif's tools through the MCP (see [Connect an assistant](guide:ai-assistants)).
 
 Turn on **Show Hand Off by Copying Files** to use the file Handoff controls in Settings. When you request a Handoff for selected words, Motif opens those controls with the words selected. Choose the write action yourself and review the data-sensitivity notice before sharing the files.
 

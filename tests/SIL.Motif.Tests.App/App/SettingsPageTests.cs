@@ -221,7 +221,9 @@ public sealed class SettingsPageTests
                 var writingSystems = settings.PageGroupOptions.Single(option => option.Group == Group.WritingSystems);
                 Assert.Equal(settings.PageGroupOptions.IndexOf(writingSystems) + 1,
                     settings.PageGroupOptions.IndexOf(settings.PageGroupOptions.Single(option => option.Group == Group.HelpAndReports)));
-                Assert.DoesNotContain(settings.PageGroupOptions, option => option.Group.ToString().Contains("Assistant"));
+                Assert.DoesNotContain(settings.PageGroupOptions, option => option.Group.ToString().Contains("Connections"));
+                var access = settings.PageGroupOptions.Single(option => option.Group == Group.AssistantAccess);
+                Assert.Equal("Assistant Access", access.Title);
             }
             finally
             {
@@ -254,7 +256,7 @@ public sealed class SettingsPageTests
                 PageScreenshots.Settle(window);
                 var scroll = page.FindControl<ScrollViewer>("SettingsListScroll")!;
                 Assert.NotNull(scroll);
-                Assert.Equal(7, settings.PageGroupOptions.Count);
+                Assert.Equal(8, settings.PageGroupOptions.Count);
                 Assert.NotEmpty(settings.ShortcutEntries);
                 Assert.Single(page.GetVisualDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("settingsHeader"))
@@ -1042,7 +1044,7 @@ public sealed class SettingsPageTests
                     Assert.Equal(Group.HelpAndReports, Assert.IsType<SettingsGroupOption>(
                         page.Navigation.FindControl<ListBox>("SettingsGroups")!.SelectedItem).Group);
                 }
-                Assert.Equal(7, settings.PageGroupOptions.Count);
+                Assert.Equal(8, settings.PageGroupOptions.Count);
             }
             finally
             {
@@ -1180,4 +1182,30 @@ public sealed class SettingsPageTests
         capture.Save(Path.Combine(folder, name + ".png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
     }
 
+
+    [Fact]
+    public void TheAssistantAccessSwitchReadsAndWritesTheAdvancedAiModePreference()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var store = new SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore(
+                Path.Combine(Path.GetTempPath(), "motif-assistant-access-tests", Guid.NewGuid().ToString("N"), "advanced-ai-mode.json"));
+            var (workspace, frame) = FakeComposedWindow.Create(advancedAiModePreferences: store);
+            try
+            {
+                frame.Show();
+                var settings = SettingsTestAccess.Model(frame);
+                Assert.True(settings.AssistantsMayUseTools);
+                settings.AssistantsMayUseTools = false;
+                Assert.False(store.IsEnabled);
+                store.SetEnabled(true);
+                Assert.True(settings.AssistantsMayUseTools);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
 }

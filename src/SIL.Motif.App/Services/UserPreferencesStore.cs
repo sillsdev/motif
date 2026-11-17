@@ -27,6 +27,7 @@ public enum SettingsGroup
     Help,
     About,
     Texts,
+    AssistantAccess,
 }
 
 /// <summary>The trace detail choice stored for this Motif installation.</summary>

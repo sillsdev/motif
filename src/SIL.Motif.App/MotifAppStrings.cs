@@ -7,6 +7,10 @@ namespace SIL.Motif.App;
 /// </summary>
 public static class MotifAppStrings
 {
+    // round3-assistant-access
+    public static string AssistantAccessHeading => Text("MotifApp.AssistantAccessHeading");
+    public static string AssistantAccessExplanation => Text("MotifApp.AssistantAccessExplanation");
+    public static string AssistantAccessSwitch => Text("MotifApp.AssistantAccessSwitch");
     public static string MeasureCheckingWords => Text("MotifApp.MeasureCheckingWords");
     public static string MeasurePreparingWords => Text("MotifApp.MeasurePreparingWords");
     public static string MeasureWordsCheckedFormat => Text("MotifApp.MeasureWordsCheckedFormat");

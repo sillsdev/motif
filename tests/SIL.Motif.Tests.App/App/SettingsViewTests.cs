@@ -1452,7 +1452,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
         (SettingsGroup.Display, "display"), (SettingsGroup.KeyboardShortcuts, "keyboard"),
         (SettingsGroup.Parsing, "parsing"), (SettingsGroup.ProposalChecks, "proposal-checks"),
         (SettingsGroup.WritingSystems, "writing-systems"),
-        (SettingsGroup.HelpAndReports, "help"), (SettingsGroup.About, "about"),
+        (SettingsGroup.HelpAndReports, "help"), (SettingsGroup.AssistantAccess, "assistant-access"),
+        (SettingsGroup.About, "about"),
     ];
     internal static readonly Guid SampleTextId = Guid.Parse("11111111-0000-0000-0000-000000000001");
 

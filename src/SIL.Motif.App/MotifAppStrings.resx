@@ -7736,4 +7736,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <!-- round2-guide -->
   <data name="MotifApp.GuideListOldName" xml:space="preserve"><value>This project's list is still named Grammar Design Records, so the Grammar Guide is read-only until you rename the list to Grammar Guide in FieldWorks (Lists).</value><comment>Notice at the top of the Grammar Guide page when the project's possibility list still has its old name.</comment></data>
   <data name="MotifApp.GuideListAmbiguous" xml:space="preserve"><value>This project has more than one list named Grammar Guide or Grammar Design Records, so Motif cannot tell which one to read. Rename or remove all but one in FieldWorks.</value><comment>Shown in place of the Grammar Guide when the project has two lists that could be the Guide.</comment></data>
+  <!-- round3-assistant-access -->
+  <data name="MotifApp.AssistantAccessHeading" xml:space="preserve"><value>Assistant Access</value><comment>Settings group heading for the switch that lets assistants use Motif's tools through the MCP.</comment></data>
+  <data name="MotifApp.AssistantAccessExplanation" xml:space="preserve"><value>This lets assistants such as Claude Desktop use Motif's tools through the MCP.</value><comment>Sentence under the Assistant Access heading in Settings.</comment></data>
+  <data name="MotifApp.AssistantAccessSwitch" xml:space="preserve"><value>Let Assistants Use Motif's Tools</value><comment>Checkbox in Settings that turns Advanced AI mode on or off.</comment></data>
 </root>

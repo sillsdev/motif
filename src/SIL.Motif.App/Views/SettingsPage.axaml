@@ -459,6 +459,11 @@
               </StackPanel>
               </Border>
             </StackPanel>
+<StackPanel x:Name="SettingsAssistantAccessSection" Classes="settingsPage">
+  <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.AssistantAccessHeading}" />
+  <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.AssistantAccessExplanation}" />
+  <CheckBox x:Name="AssistantAccessSwitch" Content="{x:Static app:MotifAppStrings.AssistantAccessSwitch}" IsChecked="{Binding AssistantsMayUseTools, Mode=TwoWay}" />
+</StackPanel>
 <StackPanel x:Name="SettingsAboutSection" Classes="settingsPage">
               <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.AboutMotif}" />
               <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*"
