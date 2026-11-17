@@ -103,7 +103,7 @@ jobs:
         run: bin/AotCheck/Release/net10.0/win-x64/publish/AotCheck.exe
 
       - name: Publish fwmd with NativeAOT
-        run: dotnet publish tools/fwmd/fwmd.csproj -c Release -r win-x64
+        run: dotnet publish tools/fwmd/fwmd.csproj -c Release -r win-x64 -p:FwmdAot=true
 
       - name: Check the published fwmd help
         run: bin/fwmd/Release/net10.0/win-x64/publish/fwmd.exe --help

@@ -4,8 +4,12 @@
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsAotCompatible>true</IsAotCompatible>
-    <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <!-- Native AOT is a publish-time choice (-p:FwmdAot=true): setting PublishAot always would restore the ILCompiler
+       package, with its audit advisory, for every build of the solution and of the test project that references this tool. -->
+  <PropertyGroup Condition="'$(FwmdAot)' == 'true'">
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/SIL.TextEditing.Markdown/SIL.TextEditing.Markdown.csproj" />
