@@ -154,6 +154,18 @@ A host's notation checker usually gives its own codes. The fixtures' stub checke
 (`03-schema.json`, "a notation the host's checker refuses: its finding is placed in the file, through the quoting"). That id belongs to
 the fixture, not to the library.
 
+## fwmd JSON output
+
+`fwmd check --json` emits an array of objects, each with `path`, `findings` and `checks`. Standard input has path `-`.
+Each finding has `id`, `severity` (`error`, `warning`, `suggestion`), `line`, `col`, `endLine`, `endCol` and `message`.
+Lines and UTF-16 columns are 1-based; the end is exclusive. JSON does not include the library's replacement or choice data.
+
+`checks` repeats for every file. Its Boolean `styles`, `objectReferences` and `projectPaths` say which project-dependent checks ran;
+object references and project paths are currently always false. On records, Boolean `recordFields` says whether a supplied record
+schema enabled field and rich-value checks. Without a schema, only the frame is checked; on other documents `recordFields` is absent.
+`checks.writingSystems` is the string `front matter and config defaults`, describing the source of writing-system context.
+These capability statements are metadata, not additional finding ids. See the [CLI usage and config](../../README.md#standalone-fwmd).
+
 ## LCModel adapter
 
 `SIL.TextEditing.LCModel` reports each property it leaves out of an `ITsString` or StyleRules because liblcm cannot load it back (ADR

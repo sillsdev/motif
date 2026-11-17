@@ -443,8 +443,8 @@ schema always gives the same bytes. `records/test.schema.json` is the fixtures' 
         },
 ```
 
-VS Code's YAML extension does not validate Markdown front matter by itself. Validating record files against the JSON Schema from the
-command line is planned: the fwmd CLI (#161).
+VS Code's YAML extension does not validate Markdown front matter by itself. `fwmd check --schema <file.json>` checks record
+files using serialized `RecordSchema` data, rather than the draft-07 JSON Schema ([CLI usage](../../README.md#standalone-fwmd)).
 
 ## What the tests hold the format to
 
