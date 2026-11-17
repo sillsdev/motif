@@ -95,6 +95,17 @@ public static int Main(string[] args)
         static (project, reportWarning) => ProcessRunnerLauncher.FromEnvironment().Start(project, reportWarning));
 }
 
+/// <summary>The exit code of a waited Trial that lost a measured word nobody listed as an expected loss.</summary>
+internal const int TrialLossExitCode = 6;
+
+/// <summary>The exit code a waited Trial's gate maps to: 0 green, <see cref="TrialLossExitCode"/> loss, the refusal code unmeasured.</summary>
+internal static int TrialGateExitCode(TrialGate gate) => gate.State switch
+{
+    TrialGateState.Green => 0,
+    TrialGateState.Loss => TrialLossExitCode,
+    _ => FailureEnvelope.ExitCodeFor(FailureReason.Refused),
+};
+
 internal static int Run(
     string[] args,
     TextWriter output,
@@ -975,7 +986,7 @@ try
             {
                 return Usage(
                     "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
-                    "[--words <file>|--all-words] [--wait] [--json]", asJson);
+                    "[--words <file>|--all-words] [--wait] [--expect-loss <file>] [--json]", asJson);
             }
             IReadOnlyList<string>? trialWords = null;
             IReadOnlyList<string>? reviewSets = null;
@@ -996,11 +1007,24 @@ try
                 }
                 trialWords = trialWordList.Value!;
             }
+            IReadOnlyList<string>? expectedLosses = null;
+            if (flags.TryGetValue("expect-loss", out var expectLossPath))
+            {
+                if (!flags.ContainsKey("wait"))
+                    return Usage("--expect-loss needs --wait: the gate is read when the Trial completes.", asJson);
+                var expectedList = WordListFile.Resolve(null, expectLossPath);
+                if (!expectedList.Succeeded)
+                {
+                    result = RenderCommand(expectedList);
+                    break;
+                }
+                expectedLosses = expectedList.Value!;
+            }
             var trialWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                 "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
                 "[--words <file>|--all-words] " +
-                "[--wait] [--wait-timeout-ms <ms>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
+                "[--wait] [--wait-timeout-ms <ms>] [--expect-loss <file>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
             // The workflow assesses the Baseline and takes the update lease, as the MCP tool and the window do.
             result = RunWithConsoleCancellation(cancellationToken =>
@@ -1029,14 +1053,15 @@ try
                 // A finished Trial returns its summary report, as motif_trial does, not just the job's progress.
                 if (trialWaited.Value is { Status: SIL.Motif.Contract.Jobs.JobStatus.Completed })
                 {
-                    var trialReview = TrialReviewReads.ReadJob(trialProject, CliProductVersion(), positionals[0], trialJobId);
+                    var trialReview = TrialReviewReads.ReadJob(trialProject, CliProductVersion(), positionals[0], trialJobId,
+                        expectedLosses);
                     result = RenderCommand(trialReview);
-                    // The summary still prints; the exit code lets a script gate on a Trial that proved nothing.
-                    if (result.ExitCode == 0 && trialReview.Value is { } trialSummary &&
-                        TrialReviewReads.UnusableReason(trialSummary) is { } unusable)
+                    // The summary still prints; the exit code lets a script gate on the Trial's gate.
+                    if (result.ExitCode == 0 && trialReview.Value is AvailableTrialResult { Gate: { } gate } &&
+                        gate.State != TrialGateState.Green)
                     {
-                        error.WriteLine("error: " + unusable);
-                        result = result with { ExitCode = FailureEnvelope.ExitCodeFor(FailureReason.Refused) };
+                        error.WriteLine("error: " + gate.Reason);
+                        result = result with { ExitCode = TrialGateExitCode(gate) };
                     }
                 }
                 else
@@ -2038,7 +2063,7 @@ try
             if (flags.ContainsKey("test-result") && queryOutcome.Succeeded)
             {
                 var control = queryOutcome.Value!.Result.Scores!.First(score => score.Scorer == "control");
-                var testResult = new HypothesisTestResult(control.Verdict!, (int)control.Counts["predicted"], (int)control.Counts["rule_hits"],
+                var testResult = new HypothesisTestResult(control.Gate!, (int)control.Counts["predicted"], (int)control.Counts["rule_hits"],
                     control.Controls!.ToDictionary(pair => pair.Key, pair => (int)pair.Value), (int)control.Counts["margin"]);
                 result = new CommandResult(0, JsonSerializer.Serialize(testResult, HypothesisFileOptions) + Environment.NewLine);
             }
@@ -2330,8 +2355,8 @@ try
                     foreach (var name in new[] { "agent-hours", "alternative-hours" })
                         if (flags.ContainsKey(name) && Hours(name) is null) return Usage(UsageLineFor("hypothesis grade"), asJson);
                     result = RenderCommand(HypothesisCommands.Grade(new GradeHypothesisRequest(hypothesisProject,
-                        CliProductVersion(), hypothesisId!, flags.GetValueOrDefault("sealed-verdict"),
-                        flags.GetValueOrDefault("verdict-source"), Count("word-questions"), Count("objects-before"),
+                        CliProductVersion(), hypothesisId!, flags.GetValueOrDefault("sealed-gate"),
+                        flags.GetValueOrDefault("gate-source"), Count("word-questions"), Count("objects-before"),
                         Count("types-before"), Count("objects-after"), Count("types-after"), Hours("agent-hours"),
                         Hours("alternative-hours"))));
                     break;

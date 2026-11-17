@@ -55,7 +55,7 @@ internal static class TrialReviewTools
     private static ToolOutcome? ValidateInputs(ToolArgs args, bool refresh)
     {
         if (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") ||
-            args.Has("review_sets") || args.Has("wait_seconds"))
+            args.Has("review_sets") || args.Has("expect_loss") || args.Has("wait_seconds"))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Stored report reads cannot supply Trial inputs.");
         var job = args.Optional("job");
         var report = args.Optional("report");
@@ -91,9 +91,10 @@ internal static class TrialReviewTools
             Limit: args.OptionalInt("limit")));
     }
 
-    internal static ToolOutcome ReadJob(ServerContext context, string proposal, string job)
+    internal static ToolOutcome ReadJob(ServerContext context, string proposal, string job,
+        IReadOnlyCollection<string>? expectedLosses = null)
     {
-        var outcome = TrialReviewReads.ReadJob(context.ProjectPath, context.ProductVersion, proposal, job);
+        var outcome = TrialReviewReads.ReadJob(context.ProjectPath, context.ProductVersion, proposal, job, expectedLosses);
         return outcome.Succeeded ? ToolOutcome.Ok(JsonSerializer.SerializeToNode<TrialReviewResult>(outcome.Value!, ReviewJson.Options)!, jobId: job)
             : ToolOutcome.Refused(outcome.Refusal!);
     }

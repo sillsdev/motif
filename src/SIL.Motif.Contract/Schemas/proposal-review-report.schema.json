@@ -3466,6 +3466,22 @@
       ],
       "additionalProperties": false
     },
+    "TrialGateState": {
+      "type": "string",
+      "enum": ["green", "loss", "unmeasured"]
+    },
+    "TrialGate": {
+      "type": "object",
+      "properties": {
+        "state": { "$ref": "#/$defs/TrialGateState" },
+        "reason": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "lostWords": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "expectedLosses": { "type": "array", "items": { "type": "string" } },
+        "unexpectedLosses": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["state", "reason", "lostWords", "expectedLosses", "unexpectedLosses"],
+      "additionalProperties": false
+    },
     "AvailableTrialResult": {
       "type": "object",
       "properties": {
@@ -3474,6 +3490,9 @@
         },
         "report": {
           "$ref": "#/$defs/ReportView"
+        },
+        "gate": {
+          "$ref": "#/$defs/TrialGate"
         }
       },
       "required": [

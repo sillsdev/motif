@@ -1809,6 +1809,13 @@
           },
           "description": "Named review sets to include."
         },
+        "expect_loss": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Words the change intends to lose, such as retirements. They are reported in the verdict and do not make it a loss; any other lost word does."
+        },
         "job": {
           "type": "string",
           "description": "Exact Trial job to resume or read."

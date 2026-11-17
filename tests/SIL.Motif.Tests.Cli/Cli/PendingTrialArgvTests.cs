@@ -72,8 +72,8 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
                 .ToString(System.Globalization.CultureInfo.InvariantCulture), "--json");
 
         Assert.True(result.ExitCode == 0, PendingTrialFailure(path, result));
-        using var response = JsonDocument.Parse(result.Output);
-        var job = new JobRepository(database).Get(response.RootElement.GetProperty("jobId").GetString()!)!;
+        // A waited Trial prints its review summary, which does not name the job.
+        var job = new JobRepository(database).Get(JobProgress.LatestJobId(path, JobCommands.TrialKind)!)!;
         var before = TrialJobInput.Parse(job.InputJson).BaselineAssessmentIds!;
         Assert.NotEmpty(before);
         Assert.Contains(before, reusableIds.Contains);

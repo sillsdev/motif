@@ -1250,6 +1250,10 @@ public sealed record AvailableTrialResult(
     [JsonRequired]
     public string State { get; init; } = "report";
 
+    /// <summary>What a script gates on; present when a waiting caller computed it from the finished Trial.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TrialGate? Gate { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 

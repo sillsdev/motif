@@ -280,7 +280,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] --wait " +
-                "[--wait-timeout-ms <ms>] [--json]",
+                "[--wait-timeout-ms <ms>] [--expect-loss <file>] [--json]",
             }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --pending",
