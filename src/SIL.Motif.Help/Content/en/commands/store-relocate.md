@@ -1,4 +1,4 @@
-# Point a copied store at its new project path
+# Relocate a copied store
 
 `store relocate` points a project's Motif store at the project's new path. Use it after a project and its `.motif.db` file were copied or moved together, when other commands refuse the store as belonging to a different project.
 

@@ -64,6 +64,7 @@ public sealed class RefusalDefaultReasonTests
         ["phonology-examples.example-not-found"] = "reason not determinable statically: the code is chosen by a conditional; both arms use NotFound",
         ["project.tag-invalid"] = "reason not determinable statically: code and reason are selected from ProjectTagProblem",
         ["project.tag-taken"] = "reason not determinable statically: code and reason are selected from ProjectTagProblem",
+        ["store.relocate-identity-unproven"] = "reason not determinable statically: raised as StoreRelocationRefusedException, whose catch reports Refused for each code",
         ["project.refused"] = "reason not determinable statically: the reason is computed from the exception by ReasonFor",
         ["clitic-attachment.invalid-category"] = "reason not determinable statically: CliticAttachmentRefusal carries Refused for each code",
         ["clitic-attachment.not-clitic"] = "reason not determinable statically: CliticAttachmentRefusal carries Refused for each code",

@@ -312,6 +312,15 @@ public static class RefusalCodes
     /// </summary>
     public const string StoreOtherProject = "store.other-project";
 
+    /// <summary><c>store relocate</c> was run without the confirmation phrase.</summary>
+    public const string StoreRelocateConfirmationRequired = "store.relocate-confirmation-required";
+
+    /// <summary><c>store relocate</c> found no project GUID to show the old and new paths hold one project.</summary>
+    public const string StoreRelocateIdentityUnproven = "store.relocate-identity-unproven";
+
+    /// <summary><c>store relocate</c> found no Motif store beside the project.</summary>
+    public const string StoreRelocateNoStore = "store.relocate-no-store";
+
     public const string StoreUnsupported = "store.unsupported";
 
     public const string TextsWordsCancelled = "texts.words-cancelled";

@@ -48,15 +48,6 @@ public static partial class StoreRelocateCommand
     /// <summary>The phrase a caller passes to confirm the relocation.</summary>
     public const string ConfirmationPhrase = "Point this Motif store at this project's new path?";
 
-    /// <summary>The refusal code reported when the confirmation phrase is missing or wrong.</summary>
-    public const string ConfirmationRequiredCode = "store.relocate-confirmation-required";
-
-    /// <summary>The refusal code reported when no Motif store sits beside the project.</summary>
-    public const string NoStoreCode = "store.relocate-no-store";
-
-    /// <summary>The refusal code reported when no project GUID can show the paths hold one project.</summary>
-    public const string IdentityUnprovenCode = "store.relocate-identity-unproven";
-
     /// <summary>Points the store beside <see cref="StoreRelocateRequest.ProjectPath"/> at that project.</summary>
     public static CommandOutcome<StoreRelocateResponse> Run(StoreRelocateRequest request) =>
         Run(request, null);
@@ -65,7 +56,7 @@ public static partial class StoreRelocateCommand
     {
         ArgumentNullException.ThrowIfNull(request);
         if (!string.Equals(request.Confirmation, ConfirmationPhrase, StringComparison.Ordinal))
-            return Refused(ConfirmationRequiredCode, FailureReason.InvalidArgument,
+            return Refused(RefusalCodes.StoreRelocateConfirmationRequired, FailureReason.InvalidArgument,
                 $"Confirm this action with: {ConfirmationPhrase}", request.ProjectPath);
         if (string.IsNullOrWhiteSpace(request.ProjectPath))
             return Refused(RefusalCodes.ProjectInvalid, FailureReason.InvalidArgument, "A project path is required.",
@@ -77,7 +68,7 @@ public static partial class StoreRelocateCommand
 
         var storePath = ProjectDatabaseCatalog.DatabasePathFor(project);
         if (!File.Exists(storePath))
-            return Refused(NoStoreCode, FailureReason.NotFound,
+            return Refused(RefusalCodes.StoreRelocateNoStore, FailureReason.NotFound,
                 $"There is no Motif store, '{Path.GetFileName(storePath)}', beside this project to relocate.",
                 project.FullFwDataPath, storePath);
 
@@ -149,7 +140,7 @@ public static partial class StoreRelocateCommand
         if (known.Count == 0)
         {
             if (matchByName) return "name";
-            throw new StoreRelocationRefusedException(IdentityUnprovenCode,
+            throw new StoreRelocationRefusedException(RefusalCodes.StoreRelocateIdentityUnproven,
                 $"Motif cannot show that '{project.FullFwDataPath}' is the project this store belongs to: the store holds no " +
                 $"Baseline and the project file at '{registered.FullFwDataPath}' is gone or unreadable, so there is no language " +
                 $"project GUID to compare with {newGuid}. If you know it is the same project, run the command again with " +

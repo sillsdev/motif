@@ -113,7 +113,7 @@ public sealed class StoreRelocateCommandTests : IDisposable
         var result = StoreRelocateCommand.Run(Confirmed(Copy));
 
         Assert.False(result.Succeeded);
-        Assert.Equal(StoreRelocateCommand.IdentityUnprovenCode, result.Refusal!.Code);
+        Assert.Equal(RefusalCodes.StoreRelocateIdentityUnproven, result.Refusal!.Code);
         Assert.Contains("--match-by-name", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Contains(ProjectGuid, result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal(before, File.ReadAllBytes(StoreOf(Copy)));
@@ -202,7 +202,7 @@ public sealed class StoreRelocateCommandTests : IDisposable
         var result = StoreRelocateCommand.Run(Confirmed(Copy));
 
         Assert.False(result.Succeeded);
-        Assert.Equal(StoreRelocateCommand.NoStoreCode, result.Refusal!.Code);
+        Assert.Equal(RefusalCodes.StoreRelocateNoStore, result.Refusal!.Code);
     }
 
     [Fact]
@@ -250,7 +250,7 @@ public sealed class StoreRelocateCommandTests : IDisposable
         var result = StoreRelocateCommand.Run(new StoreRelocateRequest(Copy, confirmation));
 
         Assert.False(result.Succeeded);
-        Assert.Equal(StoreRelocateCommand.ConfirmationRequiredCode, result.Refusal!.Code);
+        Assert.Equal(RefusalCodes.StoreRelocateConfirmationRequired, result.Refusal!.Code);
         Assert.Contains(StoreRelocateCommand.ConfirmationPhrase, result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal(before, File.ReadAllBytes(StoreOf(Copy)));
     }
