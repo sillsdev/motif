@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <Compile Include="..\SIL.Motif.Tests.Scripture\Fixtures\TinyProject.cs" Link="Fixtures\TinyProject.cs" />
+    <Compile Include="..\SIL.Motif.Tests.Scripture\Fixtures\FieldWorksTokeniser.cs" Link="Fixtures\FieldWorksTokeniser.cs" />
     <Compile Include="..\SIL.Motif.Tests.Scripture\Fixtures\SeededSourceList.cs" Link="Fixtures\SeededSourceList.cs" />
     <SupportedPlatform Include="windows" />
     <ProjectReference Include="..\..\src\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />

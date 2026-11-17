@@ -5,6 +5,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Baselines;
+using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Sources;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Scripture;
@@ -87,6 +88,7 @@ public static class SourceIndexRefresh
         try { sources = SourceList.Read(reader.Cache); }
         catch (SourceListAmbiguousException) { sources = []; }
         var ws = reader.Cache.WritingSystemFactory.GetStrFromWs(reader.Cache.DefaultVernWs);
+        var tokeniser = new WritingSystemWordTokeniser(reader.Cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem);
         var local = ScriptureLocalStore.ForInstallation().Read(key);
         var retry = false;
         foreach (var source in sources.Where(source =>
@@ -102,7 +104,7 @@ public static class SourceIndexRefresh
                     folder is null || !Directory.Exists(folder))
                     retry |= !PublishUnavailable(database, source, folder, ws, projectIdentity, source.Error, before);
                 else
-                    retry |= !Build(database, source, folder, ws, projectIdentity, cancellationToken);
+                    retry |= !Build(database, source, folder, ws, projectIdentity, tokeniser, cancellationToken);
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or
                                                UnauthorizedAccessException or ArgumentException or System.Xml.XmlException)
@@ -183,7 +185,7 @@ public static class SourceIndexRefresh
     }
 
     internal static bool Build(MotifDatabase database, SourceListEntry source, string folder, string writingSystem,
-        ProgressSourceIdentity projectIdentity, CancellationToken cancellationToken = default)
+        ProgressSourceIdentity projectIdentity, IWordTokeniser tokeniser, CancellationToken cancellationToken = default)
     {
         folder = Path.GetFullPath(folder);
         var repository = new SourceIndexRepository(database);
@@ -222,7 +224,7 @@ public static class SourceIndexRefresh
             {
                 PassageTokenized.Value?.Invoke(chapter.Locator);
                 var ordinal = 0;
-                foreach (var word in ParatextPassages.Tokenize(chapter))
+                foreach (var word in ParatextPassages.Tokenize(chapter, tokeniser))
                 {
                     var normalized = word.Surface.Normalize(NormalizationForm.FormC).ToLowerInvariant();
                     var wordKey = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(writingSystem + "\0" + normalized)));

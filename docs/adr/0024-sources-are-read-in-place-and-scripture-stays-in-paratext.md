@@ -23,7 +23,7 @@ No ELAN, Toolbox or PDF ingestion is added: conversion happens outside Motif.
 
 Scripture stays in Paratext in the Motif/Paratext 10 flow, never copied into `.fwdata` as StText or as a
 Motif corpus. FieldWorks' legacy USFM import remains available. Use SIL.Machine's ParatextTextCorpus,
-ScriptureRangeParser, tokenizer and project Settings.xml versification; do not duplicate USFM, scripture
+ScriptureRangeParser and project Settings.xml versification; do not duplicate USFM, scripture
 range or versification parsing. This dependency outranks the Native AOT goal; a working read-path AOT
 spike does not prove whole-product AOT safety. Ordinary corpus segmentation follows D9, not an independent
 Latin-only tokenizer. FW Lite plugin scope is [ADR 0025](0025-motif-bible-is-an-expanded-interlinearizer-on-fw-lite.md).
@@ -75,10 +75,14 @@ agent edits must retain their permitted attribution and Proposal path.
 ### D5. Anchors and hashes expose source changes
 
 A scripture anchor names book chapter:verse in the Source versification and the one-based word index in
-the verse. A word is a tokenizer token containing a letter or digit; punctuation tokens do not count.
+the verse. A word is a run the project's vernacular writing system calls word-forming (Motif's
+`WritingSystemWordTokeniser`, FieldWorks' rule), so the index holds the words the corpus denominator counts. Digits,
+apostrophes and hyphens count only where the writing system declares them word-forming. The index records the
+tokeniser as `fieldworks-word-forming-<rule version>`; an index built with another value, such as the earlier SIL.Machine
+`machine-3.9.7-latin-1`, is rebuilt automatically in the background and refuses reads as stale until then.
 Verse bridges anchor under their first verse. Existing corpus anchors use c:, the first eight hex digits
 of the SHA-256 of the file relative path, then line and word index. The index rule is permanent and golden
-tested; tokenizer changes must preserve it or require migration. D1 defines Document identity; source-change
+tested; tokeniser changes must preserve it or require migration. D1 defines Document identity; source-change
 handling must retain approvals with their **changed since** mark across a renamed path or changed JSONL id.
 Agree one anchor format with the interlinearizer team.
 

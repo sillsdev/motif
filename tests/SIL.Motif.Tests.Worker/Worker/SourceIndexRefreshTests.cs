@@ -78,6 +78,28 @@ public sealed class SourceIndexRefreshTests : IDisposable
         Assert.Equal(unchangedRows, repository.ReadPage(_entry.Id, "MAT 2", 0, 200));
     }
 
+    [Fact]
+    public void AnIndexBuiltWithTheOldMachineTokeniserIsQueuedForRebuildAndRetokenizesEveryChapter()
+    {
+        Assert.True(Build());
+        var repository = new SourceIndexRepository(_database);
+        var built = repository.ReadState(_entry.Id)!;
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE SourceIndexState SET TokenizerVersion='machine-3.9.7-latin-1' WHERE SourceId=$id;";
+            command.Parameters.AddWithValue("$id", built.SourceId);
+            command.ExecuteNonQuery();
+        }
+        Assert.True(SourceIndexRefresh.Reconcile(_database));
+        var tokenized = new List<string>();
+        SourceIndexRefresh.PassageTokenized.Value = tokenized.Add;
+        Assert.True(Build());
+        Assert.Contains("MAT 1", tokenized);
+        Assert.Contains("MAT 2", tokenized);
+        Assert.Equal(ParatextPassages.TokenizerVersion, repository.ReadState(_entry.Id)!.TokenizerVersion);
+    }
+
     [Theory]
     [InlineData("project")]
     [InlineData("writing-system")]
@@ -226,8 +248,10 @@ public sealed class SourceIndexRefreshTests : IDisposable
         Assert.Equal(new[] { limit }, observed);
     }
 
+    private static readonly string[] Digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
     private bool Build() => SourceIndexRefresh.Build(_database, _entry, _source.Folder, "qaa",
-        ProgressSourceIdentity.Capture(_database.Project.FullFwDataPath)!);
+        ProgressSourceIdentity.Capture(_database.Project.FullFwDataPath)!, FieldWorksTokeniser.Create(Digits));
 
     public void Dispose()
     {

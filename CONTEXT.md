@@ -919,8 +919,8 @@ _Avoid_: token, Wordform (for the instance), analysis, word place, Source place
 **Disposition**:
 A word type's final state in a Corpus: approved, parsed, or decided to need no analysis, such as punctuation, a
 numeral or a misspelling. A Corpus is done when every word type in it has a Disposition. Decisions about non-words
-live in the Motif store, keyed by Corpus. The word types are counted with the FieldWorks-rule tokeniser; the Source index
-is moving to the same one. A person's choice on a Parsimony recommendation is a **Ruling**, not a Disposition.
+live in the Motif store, keyed by Corpus. The word types are counted with the FieldWorks-rule tokeniser, and the Source index
+uses the same one. A person's choice on a Parsimony recommendation is a **Ruling**, not a Disposition.
 _Avoid_: word state, word ledger, status, Ruling
 
 **Word-forming character**:

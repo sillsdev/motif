@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using SIL.Machine.Corpora;
-using SIL.Machine.Tokenization;
+using SIL.Motif.Host.Corpus;
 using SIL.Scripture;
 
 namespace SIL.Motif.Scripture;
@@ -19,7 +19,8 @@ public sealed record ParatextWord(string Anchor, string Verse, string Surface);
 /// <summary>Reads Paratext chapters through Machine and applies the permanent anchor policy.</summary>
 public static class ParatextPassages
 {
-    public const string TokenizerVersion = "machine-3.9.7-latin-1";
+    /// <summary>The tokeniser's <c>Name</c> and <c>Version</c>, so a change to either rebuilds every stored index.</summary>
+    public const string TokenizerVersion = "fieldworks-word-forming-1";
     public const string AnchorVersion = "scripture-1";
 
     /// <summary>Reads canonical verse rows in Machine order; chapter hashes ignore whitespace and notes.</summary>
@@ -63,16 +64,15 @@ public static class ParatextPassages
         return passages;
     }
 
-    /// <summary>Counts only Machine tokens containing a letter or digit, anchoring bridges to their first verse.</summary>
-    public static IReadOnlyList<ParatextWord> Tokenize(ParatextPassage passage)
+    /// <summary>Segments with the given tokeniser, so the index holds the words the corpus denominator counts; bridges anchor to their first verse.</summary>
+    public static IReadOnlyList<ParatextWord> Tokenize(ParatextPassage passage, IWordTokeniser tokeniser)
     {
+        ArgumentNullException.ThrowIfNull(tokeniser);
         var words = new List<ParatextWord>();
         var ordinals = new Dictionary<string, int>(StringComparer.Ordinal);
-        var tokenizer = new LatinWordTokenizer();
         foreach (var verse in passage.Verses)
-        foreach (var surface in tokenizer.Tokenize(verse.Text))
+        foreach (var surface in tokeniser.Tokenise(verse.Text))
         {
-            if (!surface.EnumerateRunes().Any(Rune.IsLetterOrDigit)) continue;
             var ordinal = ordinals.GetValueOrDefault(verse.AnchorReference) + 1;
             ordinals[verse.AnchorReference] = ordinal;
             words.Add(new(verse.AnchorReference + "#" + ordinal, verse.AnchorReference, surface));
