@@ -31,7 +31,8 @@ namespace SIL.TextEditing.Project
         /// or excludes them with <c>exclude name="..."</c>. Decisions on a base class apply to its subclasses.
         /// A field can specify <c>notation="..."</c>, or <c>blocks="tables,lists,headings"</c> on a paragraph field;
         /// an empty blocks attribute allows no blocks. Each <c>kind</c> gives <c>name</c>, <c>root</c>,
-        /// <c>pathSegments</c> and optional <c>body</c>. Every metadata field of each declared class must be accounted for.
+        /// <c>pathSegments</c> and optional <c>body</c>. Every metadata field of each declared class must be accounted for,
+        /// and each class must be reachable from a kind root through owned-object fields or be a base of a reachable class.
         /// The metadata's analysis/vernacular hint determines the default writing system; an absent hint uses analysis.
         /// Timestamps, binary and general dates have no record-schema representation and must be excluded.</summary>
         /// <exception cref="ArgumentException">An overlay declaration is invalid or leaves a metadata field unmentioned.</exception>
@@ -47,9 +48,15 @@ namespace SIL.TextEditing.Project
             if (root.Elements().Any(e => e.Name != "class" && e.Name != "kind") || !root.Elements("kind").Any())
                 throw new ArgumentException("An overlay contains class declarations and at least one kind.");
             var classes = root.Elements("class").ToDictionary(e => Required(e, "name"), StringComparer.Ordinal);
+            foreach (string name in classes.Keys)
+                if (!managed.ClassExists(name)) throw new ArgumentException("Unknown metadata class " + name + ".");
             var ids = classes.Keys.ToDictionary(n => n, n => metadata.GetClassId(n), StringComparer.Ordinal);
-            foreach (var pair in ids)
-                if (!managed.ClassExists(pair.Key)) throw new ArgumentException("Unknown metadata class " + pair.Key + ".");
+            foreach (var kind in root.Elements("kind"))
+            {
+                string rootName = Required(kind, "root");
+                if (rootName == "CmObject" || !classes.ContainsKey(rootName))
+                    throw new ArgumentException("Unknown kind root " + rootName + ".");
+            }
             var builder = new RecordSchemaBuilder(Required(root, "id"));
             foreach (var pair in classes)
             {
@@ -73,6 +80,7 @@ namespace SIL.TextEditing.Project
                     {
                         if (entry.Name != "field" && entry.Name != "exclude") throw new ArgumentException("Unknown overlay element " + entry.Name + ".");
                         string fieldName = Required(entry, "name");
+                        if (!managed.FieldExists(ancestor, fieldName, false)) throw new ArgumentException("Unknown declared field " + className + "." + fieldName + ".");
                         int field = metadata.GetFieldId2(ancestor, fieldName, false);
                         if (field == 0 || metadata.GetOwnClsId(field) != ancestor) throw new ArgumentException("Unknown declared field " + className + "." + fieldName + ".");
                         if (!decisions.Add(field)) throw new ArgumentException("Duplicate field decision " + className + "." + fieldName + ".");
@@ -84,7 +92,36 @@ namespace SIL.TextEditing.Project
             }
             foreach (var kind in root.Elements("kind"))
                 builder.Kind(Required(kind, "name"), Required(kind, "root"), (int?)kind.Attribute("pathSegments") ?? throw new ArgumentException("A kind needs pathSegments."), (string?)kind.Attribute("body"));
-            return builder.Build();
+            var schema = builder.Build();
+            CheckReachability(schema, classes, metadata);
+            return schema;
+        }
+
+        static void CheckReachability(RecordSchema schema, Dictionary<string, XElement> classes, IFwMetaDataCache metadata)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var reachableClasses = new HashSet<string>(StringComparer.Ordinal);
+            var pending = new Stack<RecordObjectType>(schema.Kinds.Select(k => k.Root));
+            while (pending.Count > 0)
+            {
+                var type = pending.Pop();
+                if (!seen.Add(type.Name)) continue;
+                int id = metadata.GetClassId(type.Name);
+                while (true)
+                {
+                    string name = metadata.GetClassName(id);
+                    reachableClasses.Add(name);
+                    if (name == "CmObject") break;
+                    id = metadata.GetBaseClsId(id);
+                }
+                foreach (var field in type.Fields)
+                {
+                    var value = field.IsList ? field.Item! : field;
+                    foreach (var target in value.ObjectTypes) pending.Push(target);
+                }
+            }
+            foreach (string name in classes.Keys)
+                if (!reachableClasses.Contains(name)) throw new ArgumentException("Unreachable overlay class " + name + ".");
         }
 
         static string Required(XElement e, string name) => (string?)e.Attribute(name) is string value && value.Length > 0

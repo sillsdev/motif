@@ -1,4 +1,7 @@
 using System;
+using System.Linq;
+using System.Xml.Linq;
+using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Infrastructure;
 using SIL.TextEditing.Markdown.Records;
@@ -56,7 +59,7 @@ namespace SIL.TextEditing.Project.Tests
         public void UnmentionedFieldIsRejected()
         {
             using var fixture = new ProjectFixture();
-            string overlay = ProjectRecordSchema.LexiconEntryOverlay.Replace("    <field name=\"CitationForm\" key=\"citation-form\" />\n", "");
+            string overlay = ChangeOverlay(root => Field(root, "LexEntry", "CitationForm").Remove());
             var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
             Assert.Contains("LexEntry.CitationForm", error.Message);
         }
@@ -66,9 +69,133 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
-            metadata.AddCustomField("LexEntry", "AddedField", CellarPropertyType.Unicode, 0);
+            metadata.AddCustomField("MoForm", "AddedField", CellarPropertyType.Unicode, 0);
             var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay));
-            Assert.Contains("LexEntry.AddedField", error.Message);
+            Assert.Contains("MoForm.AddedField on MoAffixAllomorph", error.Message);
+        }
+
+        [Fact]
+        public void UnknownClassIsRejectedBeforeResolvingItsId()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => root.Add(new XElement("class", new XAttribute("name", "AbsentClass"))));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Unknown metadata class AbsentClass", error.Message);
+        }
+
+        [Fact]
+        public void UnknownDeclaredFieldIsRejected()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => Class(root, "LexEntry").Add(new XElement("exclude", new XAttribute("name", "AbsentField"))));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Unknown declared field LexEntry.AbsentField", error.Message);
+        }
+
+        [Fact]
+        public void InheritedFieldCannotBeDeclaredOnTheSubclass()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => Class(root, "MoStemAllomorph").Add(new XElement("exclude", new XAttribute("name", "Form"))));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Unknown declared field MoStemAllomorph.Form", error.Message);
+        }
+
+        [Fact]
+        public void DuplicateFieldDecisionIsRejected()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => Class(root, "LexEntry").Add(new XElement("exclude", new XAttribute("name", "CitationForm"))));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Duplicate field decision LexEntry.CitationForm", error.Message);
+        }
+
+        [Fact]
+        public void UnknownBlockKindIsRejected()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => Field(root, "PhPhonContext", "Description").SetAttributeValue("blocks", "tables,unknown"));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Unknown block kind unknown", error.Message);
+        }
+
+        [Fact]
+        public void NotationOnNonStringIsRejected()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => Field(root, "LexEntry", "HomographNumber").SetAttributeValue("notation", "environment"));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Notation requires a string field: homograph-number", error.Message);
+        }
+
+        [Fact]
+        public void InvalidNotationNameIsRejected()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => Field(root, "LexEntry", "LiftResidue").SetAttributeValue("notation", "Bad Notation"));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("notation name is lowercase", error.Message);
+        }
+
+        [Fact]
+        public void BlocksOnNonParagraphFieldAreRejected()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => Field(root, "LexEntry", "CitationForm").SetAttributeValue("blocks", "lists"));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Blocks require a paragraph field: citation-form", error.Message);
+        }
+
+        [Fact]
+        public void UnknownKindRootIsRejected()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => root.Element("kind")!.SetAttributeValue("root", "AbsentRoot"));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Unknown kind root AbsentRoot", error.Message);
+        }
+
+        [Fact]
+        public void UnreachableOverlayClassesAreRejected()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => root.Element("kind")!.SetAttributeValue("root", "CmTranslation"));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Unreachable overlay class", error.Message);
+        }
+
+        [Fact]
+        public void MissingConcreteOwnedAlternativeIsRejected()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => Class(root, "MoStemAllomorph").Remove());
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("Missing concrete overlay class for allomorphs", error.Message);
+        }
+
+        [Fact]
+        public void SeveralKindRootsShareTheReachabilityCheck()
+        {
+            using var fixture = new ProjectFixture();
+            string overlay = ChangeOverlay(root => root.Add(new XElement("kind", new XAttribute("name", "example/translation"),
+                new XAttribute("root", "CmTranslation"), new XAttribute("pathSegments", "1"))));
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, overlay);
+            Assert.NotNull(schema.Kind("lexicon/entry"));
+            Assert.NotNull(schema.Kind("example/translation"));
+        }
+
+        [Fact]
+        public void AllOwnedObjectAlternativesAreConcreteMetadataClasses()
+        {
+            using var fixture = new ProjectFixture();
+            var metadata = (IFwMetaDataCache)fixture.Cache.MetaDataCacheAccessor;
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay);
+            var alternatives = schema.ObjectTypes.SelectMany(t => t.Fields)
+                .Select(f => f.IsList ? f.Item! : f)
+                .Where(f => f.Kind == RecordFieldKind.Object).SelectMany(f => f.ObjectTypeNames).Distinct().ToArray();
+            Assert.Contains("MoStemAllomorph", alternatives);
+            Assert.Contains("LexSense", alternatives);
+            Assert.All(alternatives, name => Assert.False(metadata.GetAbstract(metadata.GetClassId(name)), name));
         }
 
         [Fact]
@@ -116,5 +243,17 @@ namespace SIL.TextEditing.Project.Tests
             Assert.Equal("environment", schema.Kind("lexicon/entry")!.Root.Field("lift-residue")!.Notation);
             Assert.Equal(BlockFeatures.Lists, schema.ObjectType("PhPhonContext")!.Field("description")!.BlockFeatures);
         }
+        static string ChangeOverlay(Action<XElement> change)
+        {
+            var document = XDocument.Parse(ProjectRecordSchema.LexiconEntryOverlay);
+            change(document.Root!);
+            return document.ToString();
+        }
+
+        static XElement Class(XElement root, string name)
+            => root.Elements("class").Single(e => (string?)e.Attribute("name") == name);
+
+        static XElement Field(XElement root, string className, string name)
+            => Class(root, className).Elements("field").Single(e => (string?)e.Attribute("name") == name);
     }
 }
