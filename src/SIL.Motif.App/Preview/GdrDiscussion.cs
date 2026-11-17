@@ -114,7 +114,7 @@ public sealed class GdrDiscussion
     /// </summary>
     public IReadOnlyList<TextRun> ProjectRuns(Paragraph paragraph) => paragraph.Runs.Where(run => !IsMarker(run)).Select(run =>
     {
-        var props = LinkLook.Restore(run.Props);
+        var props = ProjectProperties(run.Props);
         var style = props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
         return new TextRun(run.Text, run.Ws, style, Props(props), run.ObjData);
     }).ToArray();
@@ -126,6 +126,9 @@ public sealed class GdrDiscussion
         if (paragraph.Rtl || props.IntProps.ContainsKey(RightToLeft)) props.IntProps[RightToLeft] = new IntPropValue(0, paragraph.Rtl ? 1 : 0);
         return Props(props);
     }
+
+    /// <summary>A run's stored properties, with its display underline and colour restored and display metadata removed.</summary>
+    internal static PropertyBag ProjectProperties(PropertyBag props) => LinkLook.Restore(props);
 
     private static TextProps Props(PropertyBag bag) => new(
         bag.IntProps.ToDictionary(pair => pair.Key, pair => (pair.Value.Variation, pair.Value.Value)),
@@ -198,7 +201,7 @@ public sealed class GdrDiscussion
         var copy = paragraph.Clone();
         for (var i = copy.Runs.Count - 1; i >= 0; i--)
             if (IsMarker(copy.Runs[i])) copy.Runs.RemoveAt(i);
-        foreach (var run in copy.Runs) run.Props = LinkLook.Restore(run.Props);
+        foreach (var run in copy.Runs) run.Props = ProjectProperties(run.Props);
         return copy;
     }
 

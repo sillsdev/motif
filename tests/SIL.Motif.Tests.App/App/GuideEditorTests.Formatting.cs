@@ -383,6 +383,35 @@ public sealed partial class GuideEditorTests
     }
 
     [Fact]
+    public void LinkDisplayMetadataDoesNotRestageAnUnchangedPendingEdit()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, WithLinks);
+            using var closer = window.CloseOnExit();
+            window.KeyTextInput("x");
+            Leave(window);
+            Assert.Single(store.Staged);
+            var link = window.Field!.Editor.Document.Paragraphs[0].Runs.Single(run => run.Text == "GDR-9");
+
+            link.Props.SetInt(-1, 2, 0);
+            window.Session!.EndSession();
+            Assert.Single(store.Staged);
+
+            link.Props.SetInt(-3, 0x112233, 0);
+            window.Session.EndSession();
+            Assert.Equal(2, store.Staged.Count);
+            var stored = StagedFirst(store).Runs.Single(run => run.ObjData == link.ObjData);
+            Assert.Equal((0, 0x112233), stored.Props!.Ints[TextPropertyNumbers.ForeColor]);
+
+            link.Props.SetInt(TextPropertyNumbers.ForeColor, 0x445566, 0);
+            window.Session.EndSession();
+            Assert.Equal(3, store.Staged.Count);
+        });
+    }
+
+    [Fact]
     public void AnUnderlineThePersonGivesALinkIsKept()
     {
         _avalonia.Invoke(() =>
