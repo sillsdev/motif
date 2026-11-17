@@ -21,8 +21,8 @@
     <views:CopyableTextBlock Classes="section-title" Text="{Binding Heading}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Classes="displayTitle" Text="{Binding Label}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding StatusText}" TextWrapping="Wrap" />
-    <views:CopyableTextBlock Classes="muted" Text="{Binding BuiltByText}" TextWrapping="Wrap" />
-    <views:CopyableTextBlock Classes="muted" Text="{Binding ModelText}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding BuiltByText}" IsVisible="{Binding HasBuilder}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding ModelText}" IsVisible="{Binding HasModel}" TextWrapping="Wrap" />
     <StackPanel IsVisible="{Binding ShowsEffects}" Spacing="{DynamicResource Intent.Space.Related}">
       <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.BoardWillFillIn}" />
       <views:CopyableTextBlock Text="{Binding FillInCount}" />

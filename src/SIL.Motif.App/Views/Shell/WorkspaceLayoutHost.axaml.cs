@@ -190,18 +190,6 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         set => Part<ContentControl>("WorkingPageHost").Content = value;
     }
 
-    /// <summary>The shell-owned assistant panel, independent of the current page's panes.</summary>
-    public Control? ClaudePanel
-    {
-        get => Part<ContentControl>("ClaudePanelHost").Content as Control;
-        set
-        {
-            var host = Part<ContentControl>("ClaudePanelHost");
-            host.Content = value;
-            host.IsVisible = value is not null;
-        }
-    }
-
     /// <summary>Replaces the current page's optional panes and detaches the preceding page's controls.</summary>
     public void SetPagePanels(IWorkspacePaneProvider? provider)
     {

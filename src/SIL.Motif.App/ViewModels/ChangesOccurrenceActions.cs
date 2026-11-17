@@ -3,10 +3,9 @@ using SIL.Motif.Contract.Requests;
 
 namespace SIL.Motif.App.ViewModels;
 
-/// <summary>Stages a word's keep, Not a Word and Ask Claude through the pending Changes and the Request seam.</summary>
+/// <summary>Stages a word's keep and Not a Word through the pending Changes.</summary>
 internal sealed class ChangesOccurrenceActions(
-    ChangesViewModel changes, Func<WordOccurrenceTarget> target,
-    Func<string, CancellationToken, Task<string>> ask) : IWordOccurrenceActions
+    ChangesViewModel changes, Func<WordOccurrenceTarget> target) : IWordOccurrenceActions
 {
     public async Task<IReadOnlyList<OccurrenceAnchor>> StageKeepAsync(WordReadingOption reading,
         IReadOnlyList<OccurrenceChoiceViewModel> places, CancellationToken cancellationToken)
@@ -36,8 +35,6 @@ internal sealed class ChangesOccurrenceActions(
         return changes.AddFromTextAsync(ChangeKinds.IncorrectSpelling,
             new WordActionTarget(form, word.WordformId, null, word.AssessmentId));
     }
-
-    public Task<string> AskAsync(string form, CancellationToken cancellationToken) => ask(form, cancellationToken);
 }
 
 /// <summary>The word identity a keep acts on, frozen when the panel opens.</summary>

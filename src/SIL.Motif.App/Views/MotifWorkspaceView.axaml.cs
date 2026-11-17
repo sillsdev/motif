@@ -157,9 +157,6 @@ public sealed partial class MotifWorkspaceView : UserControl
         }
         UpdatePagePanels();
         this.FindControl<ContentControl>("HealthStripHost")!.Content = new HealthStrip(workspace.Context.Health);
-
-        AddHandler(AskAssistantButton.AskedEvent, async (_, e) =>
-            ShowKeyboardStatus(await AskAssistantAction.RunAsync(workspace.Context, e.Target)));
     }
 
     /// <summary>Gives the layout host the window's width, or reports false while the host is not in <paramref name="window"/>.</summary>

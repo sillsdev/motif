@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
-using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Contract.Responses;
@@ -34,8 +33,7 @@ public sealed class WorkspaceContextWidthTests
             typeof(IDiagnosticFilePicker), typeof(IDiagnosticWindowDialogs), typeof(IUriLauncher), typeof(IPictureIntake),
             typeof(IAsyncRelayCommand), typeof(IAsyncRelayCommand<string>), typeof(IRelayCommand),
             typeof(System.Collections.ObjectModel.ObservableCollection<KnownProjectSummary>),
-            typeof(IAdvancedAiModePreferenceStore), typeof(IAssistantConnectionService), typeof(ITryWordSessions),
-            typeof(ICredentialStore), typeof(ITunnelClient),
+            typeof(IAdvancedAiModePreferenceStore), typeof(ITryWordSessions),
             typeof(SIL.Motif.Host.Preferences.IDefaultProposalChecksStore), typeof(ProjectViewMemory),
             // The stage and its page entries are navigation metadata, not page-owned models.
             typeof(IReadOnlyList<PageEntry>),

@@ -46,9 +46,8 @@ public sealed class DiagnosticsPageTests
                 list.SelectedIndex = 0;
                 PageScreenshots.Settle(window);
                 Assert.Same(row, Assert.Single(model.Warnings.Grammar.Warnings.SelectedDetails));
-                Assert.Contains(page.GetVisualDescendants().OfType<AskAssistantButton>(), button => button.TargetId == row.AskTargetId);
-                Assert.Contains(page.GetVisualDescendants().OfType<Button>(),
-                    button => button.Content as string == MotifAppStrings.BoardAskClaude);
+                Assert.DoesNotContain(page.GetVisualDescendants().OfType<Button>(),
+                    button => (button.Content as string ?? string.Empty).Contains("Claude", StringComparison.Ordinal));
                 Assert.DoesNotContain(page.GetVisualDescendants().OfType<Button>(), button => button.Content as string == "Hide This Warning");
                 var body = Assert.Single(page.GetVisualDescendants().OfType<Grid>(), grid => grid.Name == "WarningBody");
                 Assert.Equal(width >= 1280 ? 2 : 1, body.ColumnDefinitions.Count);

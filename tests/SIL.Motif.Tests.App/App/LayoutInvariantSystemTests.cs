@@ -32,7 +32,6 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                 var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
                     capturedWords: new TextWordsResponse([], [], true),
                     advancedAiModeEnabled: true,
-                    assistantConnections: null,
                     configure: (client, _) =>
                     {
                         client.StoredGrammarCheckIs(new GrammarCheckResponse([], true));
@@ -76,7 +75,6 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                     var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: populated,
                         capturedWords: populated ? null : new TextWordsResponse([], [], true),
                         advancedAiModeEnabled: true,
-                        assistantConnections: populated ? new AssistantConnectionsPageTests.FakeAssistantConnections() : null,
                         configure: (client, _) =>
                         {
                             fake = client;

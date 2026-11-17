@@ -204,7 +204,7 @@ public sealed class ContextWordGroupingTests : IAsyncLifetime
 
     private static WordOccurrencesViewModel PanelOf(TextWordsViewModel words, FakeCommandClient fake, ChangesViewModel changes,
         TextWordRowViewModel row) => ContextWordPanel.Build(row, words.ShapeOf(row.Summary!.Key)!, fake.ReaderOwner.Reader!,
-        fake.ReaderOwner.Summary!.Texts, changes, (_, _) => Task.FromResult("asked"), null, _ => false)!;
+        fake.ReaderOwner.Summary!.Texts, changes, null, _ => false)!;
 
     [Fact]
     public void ASharedRowKeepsEachHomographsOwnReadingLabelledAndItsOwnFacts()

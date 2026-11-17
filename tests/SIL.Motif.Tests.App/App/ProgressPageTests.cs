@@ -33,7 +33,6 @@ public sealed class ProgressPageTests
             fake.ProposalStandingsCompleteWith(new ProposalStandings([
                 new ProposalCard("proposal/1", "First", "proposed", ProposalGroup.WaitingForYou, false, [],
                     TrialStanding.Current, null, [])], 0));
-            fake.ProgressRequestCountHandler = (_, _) => Task.FromResult(CommandOutcome<ProgressRequestCount>.Success(new ProgressRequestCount(2_000_000)));
             var context = WorkspaceContextTests.NewContext(fake);
             var model = new ProgressPageModel(context);
             await context.OpenProjectAsync("project.fwdata");
@@ -51,7 +50,7 @@ public sealed class ProgressPageTests
                 PageScreenshots.Settle(window);
                 var buttons = page.GetVisualDescendants().OfType<Button>()
                     .Where(button => button.Classes.Contains("progressNextRow")).ToArray();
-                Assert.Equal(2, buttons.Length);
+                Assert.Single(buttons);
                 var identities = buttons.Select(AutomationProperties.GetAutomationId).ToArray();
                 foreach (var identity in identities)
                 {

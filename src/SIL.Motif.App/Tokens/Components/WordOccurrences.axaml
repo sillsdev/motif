@@ -1,6 +1,6 @@
 <!--
   The shared word panel: every place a word occurs, with a check box for each, the reading to keep and the
-  Approve, Ask Claude and Not a Word actions. Passage, Words and the Why This Analysis fold all use it.
+  Approve and Not a Word actions. Passage, Words and the Why This Analysis fold all use it.
   Colours, sizes and gaps come from Intent or Component keys only.
 -->
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">

@@ -72,7 +72,6 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
                 renderForCapture: false, recordSetup: run.Setup,
                 capturedWords: data.Words, capturedAssessment: data.Assessment,
-                assistantConnections: new AssistantConnectionsPageTests.FakeAssistantConnections(),
                 configure: (fake, _) => data.Configure(fake));
             try
             {

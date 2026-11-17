@@ -8,7 +8,7 @@ Motif provides a command-line tool and a desktop application for working with Fi
 
 ## Desktop window
 
-The window registers Progress, Texts, Words, Grammar Guide, Proposals, optional Diagnostics and Settings. The shell owns the rail, header, health strip and assistant slot; pages supply their own optional panes. Diagnostics defaults off, and disabling it cancels its reads and removes its page from the visual tree. The health strip reads stored overview facts and offers the shared Diagnostics setting; it does not start a parser. Its median is shown in the focusable details flyout only when recorded.
+The window registers Progress, Texts, Words, Grammar Guide, Proposals, optional Diagnostics and Settings. The shell owns the rail, header and health strip; pages supply their own optional panes. Diagnostics defaults off, and disabling it cancels its reads and removes its page from the visual tree. The health strip reads stored overview facts and offers the shared Diagnostics setting; it does not start a parser. Its median is shown in the focusable details flyout only when recorded.
 
 Texts and Words share the current Selection reader and word rows. Grammar Guide uses typed GDR list and show queries. Proposal standings and discussions use the existing Proposal commands; Apply and word-trace behavior are project-scoped components for the Proposal and word surfaces. Project changes cancel and join their work before state is replaced. Missing or stale measurements remain absent.
 

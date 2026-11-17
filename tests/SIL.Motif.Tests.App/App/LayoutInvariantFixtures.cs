@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
-using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using Avalonia.Controls;
@@ -101,9 +100,6 @@ internal static class LayoutInvariantFixtures
         workspace.TechDemoNotice?.GotItCommand.Execute(null);
         workspace.Context.Diagnostics = true;
         Assert.True(workspace.PageModel<ProposalsPageModel>().IsListed);
-        var assistants = workspace.PageModel<SettingsPageModel>().Connections;
-        assistants.IsEnabled = true;
-        Assert.True(assistants.HasAssistants);
         return Task.CompletedTask;
     }
 

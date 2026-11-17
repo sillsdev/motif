@@ -1,13 +1,5 @@
 [
   {
-    "view": "Settings/AssistantConnectionsPanel",
-    "name": "AssistantConnectionsItems",
-    "source": "Assistants",
-    "mode": "finite",
-    "control": "ItemsControl",
-    "reason": "Assistant discovery checks three supported clients."
-  },
-  {
     "view": "DiagnosticPanel",
     "name": "DiagnosticPanelNoParseReasonsItems",
     "source": "NoParseReasons",
@@ -370,13 +362,6 @@
     "control": "ListBox"
   },
   {
-    "view": "Pages/ProposalsPage",
-    "name": "ProposalsRequestsItems",
-    "source": "Rows",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
     "view": "RationaleEditor",
     "name": "RationaleFindings",
     "source": "Findings",
@@ -495,7 +480,6 @@
     "mode": "rows",
     "control": "ListBox"
   },
-
   {
     "view": "Texts/SourcesPanel",
     "name": "SourcesPanelTextsItems",
@@ -509,13 +493,6 @@
     "source": "Sources.Sources",
     "mode": "rows",
     "control": "ListBox"
-  },
-  {
-    "view": "Assistant/ClaudePanel",
-    "name": "ClaudeRequestsItems",
-    "source": "Requests.Rows",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
   },
   {
     "view": "Diagnostics/ProposalDiagnosticsRow",
@@ -625,8 +602,7 @@
     "mode": "finite",
     "control": "ComboBox",
     "reason": "W3: the stored and parser readings of one word."
-  }
-  ,
+  },
   {
     "view": "Diagnostics/WhyThisAnalysisPanel",
     "name": "WhyAnalyses",

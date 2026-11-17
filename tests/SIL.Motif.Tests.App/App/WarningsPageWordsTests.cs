@@ -263,8 +263,6 @@ public sealed class WarningsPageWordsTests
                 var wordRow = Assert.Single(panel.GetVisualDescendants().OfType<PresentationWordRow>(),
                     candidate => candidate.Data?.Facts.Word == "walikata");
                 Assert.Equal(SIL.Motif.App.Controls.WordPresentation.WordListOwner.Warnings, wordRow.Data!.Owner);
-                Assert.Contains(panel.GetVisualDescendants().OfType<AskAssistantButton>(),
-                    button => button.TargetId == row.AskTargetId);
                 window.MouseMove(new Avalonia.Point(-100, -100));
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();

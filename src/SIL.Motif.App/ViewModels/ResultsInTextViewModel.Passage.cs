@@ -157,9 +157,6 @@ public sealed partial class ResultsInTextViewModel
     private TextWordKey? _panelKey;
     private WordOccurrenceTarget? _panelTarget;
 
-    /// <summary>Asks Claude about a word; set by the page that owns the Request seam.</summary>
-    public Func<string, CancellationToken, Task<string>>? AskAboutWord { get; set; }
-
     /// <summary>The shared panel for the open word, or null when no word with real places is open.</summary>
     [ObservableProperty]
     private WordOccurrencesViewModel? _occurrencePanel;
@@ -205,8 +202,7 @@ public sealed partial class ResultsInTextViewModel
             IsStagedAnchor);
         _panelKey = key;
         _panelTarget = target;
-        var actions = new ChangesOccurrenceActions(_changes, () => target, (form, cancellation) =>
-            AskAboutWord is { } ask ? ask(form, cancellation) : Task.FromResult(MotifAppStrings.ClaudeUnsupportedTarget));
+        var actions = new ChangesOccurrenceActions(_changes, () => target);
         return new WordOccurrencesViewModel(token.Form, options, source, actions) { FormWritingSystem = token.FormWritingSystem };
     }
 

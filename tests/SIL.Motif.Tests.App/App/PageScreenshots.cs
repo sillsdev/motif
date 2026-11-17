@@ -766,7 +766,6 @@ public sealed class PageScreenshots
         bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false,
         string? settingsFilePath = null, TextWordsResponse? capturedWords = null,
         AssessCommandResponse? capturedAssessment = null, bool advancedAiModeEnabled = false, IUserPreferencesStore? preferencesStore = null,
-        SIL.Motif.Commands.Assistants.IAssistantConnectionService? assistantConnections = null,
         bool renderForCapture = true, Action<string, double>? recordSetup = null, bool composeWindow = true,
         bool activateTextsPage = true, Action<MainWindow>? configureWindow = null, bool seedReaderToken = true,
         bool windowFirst = false)
@@ -776,7 +775,7 @@ public sealed class PageScreenshots
         if (composeWindow && !windowFirst)
         {
             var populated = await OpenSampleCore(parse, configure, leaveSetupOpen, capturedWords, capturedAssessment,
-                advancedAiModeEnabled, assistantConnections, recordSetup, composeWindow: false, activateTextsPage,
+                advancedAiModeEnabled, recordSetup, composeWindow: false, activateTextsPage,
                 seedReaderToken, attachShell: null, settle: null);
             IUserPreferencesStore store = preferencesStore ?? (settingsFilePath is null
                 ? new MemoryUserPreferencesStore()
@@ -791,7 +790,7 @@ public sealed class PageScreenshots
             return (populated.Workspace, late);
         }
         sample = await OpenSampleCore(parse, configure, leaveSetupOpen, capturedWords, capturedAssessment,
-            advancedAiModeEnabled, assistantConnections, recordSetup, composeWindow, activateTextsPage, seedReaderToken,
+            advancedAiModeEnabled, recordSetup, composeWindow, activateTextsPage, seedReaderToken,
             attachShell: workspace =>
             {
                 IUserPreferencesStore preferences = preferencesStore ?? (settingsFilePath is null
@@ -821,7 +820,6 @@ public sealed class PageScreenshots
     internal static async Task<SampleWorkspace> OpenSampleCore(
         bool parse, Action<FakeCommandClient, AssessCommandResponse>? configure, bool leaveSetupOpen,
         TextWordsResponse? capturedWords, AssessCommandResponse? capturedAssessment, bool advancedAiModeEnabled,
-        SIL.Motif.Commands.Assistants.IAssistantConnectionService? assistantConnections,
         Action<string, double>? recordSetup, bool composeWindow, bool activateTextsPage, bool seedReaderToken,
         Action<WorkspaceShellViewModel>? attachShell, Action? settle)
     {
@@ -908,8 +906,7 @@ public sealed class PageScreenshots
             new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
-            fake, clock, techDemoNotice: FirstRunNotice(), advancedAiModeEnabled: advancedAiModeEnabled,
-            assistantConnections: assistantConnections);
+            fake, clock, techDemoNotice: FirstRunNotice(), advancedAiModeEnabled: advancedAiModeEnabled);
         var sample = new SampleWorkspace(workspace, fake, readerFixture, storeWork);
         attachShell?.Invoke(workspace);
 

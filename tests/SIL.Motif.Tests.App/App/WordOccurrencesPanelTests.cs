@@ -51,7 +51,6 @@ public sealed class WordOccurrencesPanelTests
 
         public Task<bool> StageNotAWordAsync(string form, CancellationToken token) => Task.FromResult(true);
 
-        public Task<string> AskAsync(string form, CancellationToken token) => Task.FromResult("asked");
     }
 
     private static (WordOccurrencesViewModel Model, Actions Actions) NewModel(int count)
@@ -94,7 +93,6 @@ public sealed class WordOccurrencesPanelTests
 
         public Task<bool> StageNotAWordAsync(string form, CancellationToken token) => Task.FromResult(true);
 
-        public Task<string> AskAsync(string form, CancellationToken token) => Task.FromResult("asked");
     }
 
     private sealed class RefusingSource(int count) : IWordOccurrenceSource
@@ -156,7 +154,6 @@ public sealed class WordOccurrencesPanelTests
         public Task<bool> StageNotAWordAsync(string form, CancellationToken token) =>
             throw new IOException("The host failed.");
 
-        public Task<string> AskAsync(string form, CancellationToken token) => throw new IOException("The host failed.");
     }
 
     private sealed class FailingSource(int count) : IWordOccurrenceSource
@@ -170,7 +167,7 @@ public sealed class WordOccurrencesPanelTests
     }
 
     [Fact]
-    public void AHostFailureInNotAWordOrAskClaudeIsASentenceAndNeverEscapesTheCommand()
+    public void AHostFailureInNotAWordIsASentenceAndNeverEscapesTheCommand()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -181,11 +178,6 @@ public sealed class WordOccurrencesPanelTests
             // ExecuteAsync would surface any exception the command let out; none may.
             await ((AsyncRelayCommand)model.NotAWordCommand).ExecuteAsync(null);
             Assert.Equal(MotifAppStrings.OccurrencesNotStaged, model.StatusSentence);
-            Assert.False(model.IsBusy);
-
-            model.StatusSentence = null;
-            await ((AsyncRelayCommand)model.AskClaudeCommand).ExecuteAsync(null);
-            Assert.Equal(MotifAppStrings.OccurrencesAskNotSent, model.StatusSentence);
             Assert.False(model.IsBusy);
         }, TimeSpan.FromSeconds(45));
     }

@@ -146,8 +146,14 @@ public sealed class ProposalComparisonSide(ProposalDocumentViewModel document, s
     /// <summary>Who built the Proposal.</summary>
     public string BuiltByText => Document.Card?.BuiltByText ?? string.Empty;
 
+    /// <summary>Whether a builder was recorded; an unrecorded one shows no line.</summary>
+    public bool HasBuilder => Document.Card?.HasBuilder ?? false;
+
     /// <summary>The model that built it.</summary>
     public string ModelText => Document.Card?.ModelText ?? string.Empty;
+
+    /// <summary>Whether a model was recorded; an unrecorded one shows no line.</summary>
+    public bool HasModel => Document.Card?.HasModel ?? false;
 
     /// <summary>The count of changes to the grammar, when the Proposal's detail has been read.</summary>
     public string OperationsText => Document.Detail is { } detail
@@ -182,7 +188,7 @@ public sealed class ProposalComparisonSide(ProposalDocumentViewModel document, s
     {
         ShowsEffects = showsEffects;
         OnPropertyChanged(nameof(ShowsEffects));
-        foreach (var name in new[] { nameof(Label), nameof(Name), nameof(StatusText), nameof(BuiltByText), nameof(ModelText),
+        foreach (var name in new[] { nameof(Label), nameof(Name), nameof(StatusText), nameof(BuiltByText), nameof(ModelText), nameof(HasBuilder), nameof(HasModel),
                      nameof(OperationsText), nameof(OperationDescriptions), nameof(CommentsText), nameof(WillFillIn),
                      nameof(WillChange), nameof(FillInCount), nameof(ChangeCount) })
             OnPropertyChanged(name);

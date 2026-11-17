@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
-using SIL.Motif.App.Views.Settings;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
@@ -11,7 +10,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class SettingsDisplayHoldsOnlyDisplayTests
 {
     [Fact]
-    public void DisplayHoldsNoAssistantSetupAndTheNextSectionIsKeyboardShortcuts()
+    public void TheSectionAfterDisplayIsKeyboardShortcutsAndSettingsHasNoAssistantSection()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -22,15 +21,11 @@ public sealed class SettingsDisplayHoldsOnlyDisplayTests
                 var page = SettingsTestAccess.Open(window);
                 PageScreenshots.Settle(window);
                 var display = page.FindControl<StackPanel>("SettingsDisplaySection")!;
-                var assistants = page.FindControl<StackPanel>("SettingsAssistantConnectionsSection")!;
-                Assert.Empty(display.GetVisualDescendants().OfType<AssistantConnectionsPanel>());
+                Assert.Null(page.FindControl<StackPanel>("SettingsAssistantConnectionsSection"));
                 Assert.DoesNotContain(display.GetVisualDescendants().OfType<TextBox>(), _ => true);
                 var list = Assert.IsAssignableFrom<Panel>(display.Parent);
                 var order = list.Children.Select(child => child.Name).Where(name => name?.EndsWith("Section", StringComparison.Ordinal) == true).ToList();
                 Assert.Equal("SettingsKeyboardShortcutsSection", order[order.IndexOf("SettingsDisplaySection") + 1]);
-                Assert.True(order.IndexOf("SettingsWritingSystemsSection") < order.IndexOf("SettingsAssistantConnectionsSection"));
-                var title = assistants.GetVisualDescendants().OfType<TextBlock>().First();
-                Assert.Equal(MotifAppStrings.AssistantConnectionsHeading, title.Text);
             }
             finally { window.Close(); await workspace.DisposeAsync(); }
         }, TimeSpan.FromMinutes(2));

@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using SIL.Motif.App.ViewModels;
 
@@ -26,8 +27,6 @@ public enum SettingsGroup
     Help,
     About,
     Texts,
-    // W7_shared
-    AssistantConnections,
 }
 
 /// <summary>The trace detail choice stored for this Motif installation.</summary>
@@ -212,11 +211,36 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         _current = read.Preferences;
         _state = read.State;
         _problem = read.Problem;
-        if (_state == PreferenceState.Ready && IsFormatFourFile())
+        if (_state == PreferenceState.Ready && (IsFormatFourFile() || HasRetiredAssistantGroup()))
         {
             Update(current => current);
             Flush();
         }
+    }
+
+    private const string RetiredAssistantGroup = "AssistantConnections";
+
+    // The retired Assistant Connections group opens on Display.
+    private static string RetireAssistantGroup(string json)
+    {
+        if (JsonNode.Parse(json) is JsonObject root &&
+            root[nameof(UserPreferences.LastSettingsGroup)] is JsonValue group &&
+            group.TryGetValue<string>(out var name) && name == RetiredAssistantGroup)
+        {
+            root[nameof(UserPreferences.LastSettingsGroup)] = nameof(SettingsGroup.Display);
+            return root.ToJsonString();
+        }
+        return json;
+    }
+
+    private bool HasRetiredAssistantGroup()
+    {
+        try
+        {
+            var json = File.ReadAllText(_path);
+            return RetireAssistantGroup(json) != json;
+        }
+        catch (Exception exception) when (exception is JsonException || IsStorageException(exception)) { return false; }
     }
 
     private bool IsFormatFourFile()
@@ -521,6 +545,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
             if (!File.Exists(_path)) return (UserPreferences.Defaults, PreferenceState.Missing, null);
             var json = File.ReadAllText(_path);
             if (!HasExactShape(json, out var version)) return RefusedRead();
+            json = RetireAssistantGroup(json);
             var preferences = version == 4
                 ? JsonSerializer.Deserialize<UserPreferences>(json, LegacyJsonOptions)
                 : JsonSerializer.Deserialize<UserPreferences>(json, JsonOptions);

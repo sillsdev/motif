@@ -33,10 +33,10 @@ internal sealed class SampleWorkspace : IAsyncDisposable
     public static Task<SampleWorkspace> Open(
         bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false,
         TextWordsResponse? capturedWords = null, AssessCommandResponse? capturedAssessment = null,
-        bool advancedAiModeEnabled = false, SIL.Motif.Commands.Assistants.IAssistantConnectionService? assistantConnections = null,
+        bool advancedAiModeEnabled = false,
         bool activateTextsPage = true, bool seedReaderToken = true) =>
         PageScreenshots.OpenSampleCore(parse, configure, leaveSetupOpen, capturedWords, capturedAssessment,
-            advancedAiModeEnabled, assistantConnections, recordSetup: null, composeWindow: false, activateTextsPage,
+            advancedAiModeEnabled, recordSetup: null, composeWindow: false, activateTextsPage,
             seedReaderToken, attachShell: null, settle: null);
 
     public async ValueTask DisposeAsync()

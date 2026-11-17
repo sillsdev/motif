@@ -4,7 +4,6 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
-using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Preferences;
@@ -64,10 +63,10 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
         TechDemoNoticeViewModel? techDemoNotice = null,
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
-        IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null, bool advancedAiModeEnabled = false,
+        IUriLauncher? uriLauncher = null, bool advancedAiModeEnabled = false,
         IDefaultProposalChecksStore? defaultProposalChecks = null,
         ITryWordSessions? tryWordSessions = null, IPictureIntake? pictureIntake = null,
-        ICredentialStore? credentials = null, ITunnelClient? tunnelClient = null, IReadOnlyList<PageEntry>? pageEntries = null)
+        IReadOnlyList<PageEntry>? pageEntries = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -93,8 +92,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             CanOpenRecentProjectFolder);
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
             dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs,
-            advancedAiModePreferences, assistantConnections, uriLauncher, defaultProposalChecks, tryWordSessions,
-            pictureIntake, credentials, tunnelClient)
+            advancedAiModePreferences, uriLauncher, defaultProposalChecks, tryWordSessions,
+            pictureIntake)
         {
             AdvancedAiModeEnabled = advancedAiModeEnabled,
             PageEntries = pageEntries ?? PageRegistry.Entries,
@@ -990,7 +989,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         await Context.StopProjectWorkAsync().ConfigureAwait(true);
         if (_knownProjectsRefreshTask is { } refresh) await refresh.ConfigureAwait(true);
         await Task.WhenAll(_projectIdentityReads).ConfigureAwait(true);
-        Pages.Select(page => page.Model).OfType<SettingsPageModel>().FirstOrDefault()?.Dispose();
         Context.DisposeHandoffSession();
     }
 }

@@ -43,7 +43,6 @@ public sealed class PassageOccurrenceTests
         public int? FailAfter { get; set; }
         public Action? AfterFirstWrite { get; set; }
         public List<OccurrenceAnchor> Staged { get; } = [];
-        public int AskCount { get; set; }
         public int NotAWordCount { get; set; }
 
         public Task<IReadOnlyList<OccurrenceAnchor>> StageKeepAsync(WordReadingOption reading,
@@ -62,7 +61,6 @@ public sealed class PassageOccurrenceTests
 
         public Task<bool> StageNotAWordAsync(string form, CancellationToken token) { NotAWordCount++; return Task.FromResult(true); }
 
-        public Task<string> AskAsync(string form, CancellationToken token) { AskCount++; return Task.FromResult("asked"); }
     }
 
     private static WordOccurrencesViewModel Model(int count, Actions actions, params WordReadingOption[] readings) =>
@@ -158,14 +156,13 @@ public sealed class PassageOccurrenceTests
     }
 
     [Fact]
-    public async Task AskCreatesOneRequestAndNotAWordNamesTheSpellingScope()
+    public async Task NotAWordNamesTheSpellingScopeAndThePanelHasNoAskCommand()
     {
         var actions = new Actions();
         var model = Model(2, actions, One);
-        await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)model.AskClaudeCommand).ExecuteAsync(null);
+        Assert.DoesNotContain(typeof(WordOccurrencesViewModel).GetProperties(), property => property.Name.Contains("Claude", StringComparison.Ordinal));
         await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)model.NotAWordCommand).ExecuteAsync(null);
 
-        Assert.Equal(1, actions.AskCount);
         Assert.Equal(1, actions.NotAWordCount);
         Assert.Contains("wa", model.NotAWordScope);
         Assert.Contains("whole project", model.NotAWordScope);

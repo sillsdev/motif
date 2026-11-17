@@ -56,7 +56,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     foreach (var text in workspace.Selection.Texts)
                         text.IsChecked = allBoxesAlreadyChecked || text.Id == SampleTextId;
                     var popup = OpenSettings(window);
-                    SettingsTestAccess.Select(popup, SettingsGroup.AssistantConnections);
+                    SettingsTestAccess.Select(popup, SettingsGroup.Parsing);
                     PageScreenshots.Settle(window);
                     var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
                     Assert.Null(popup.FindControl<Button>("UseAllTextsButton"));
@@ -122,7 +122,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 {
                     workspace.Selection.SelectAllTexts();
                     var popup = OpenSettings(window);
-                    SettingsTestAccess.Select(popup, SettingsGroup.AssistantConnections);
+                    SettingsTestAccess.Select(popup, SettingsGroup.Parsing);
                     PageScreenshots.Settle(window);
                     var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
                     Assert.Equal("1 of 1 Text selected", settings.TextSelectionSummary);
@@ -1451,7 +1451,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
     [
         (SettingsGroup.Display, "display"), (SettingsGroup.KeyboardShortcuts, "keyboard"),
         (SettingsGroup.Parsing, "parsing"), (SettingsGroup.ProposalChecks, "proposal-checks"),
-        (SettingsGroup.WritingSystems, "writing-systems"), (SettingsGroup.AssistantConnections, "texts"),
+        (SettingsGroup.WritingSystems, "writing-systems"),
         (SettingsGroup.HelpAndReports, "help"), (SettingsGroup.About, "about"),
     ];
     internal static readonly Guid SampleTextId = Guid.Parse("11111111-0000-0000-0000-000000000001");

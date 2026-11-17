@@ -110,28 +110,6 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void ClaudePanelBelongsToTheShellAcrossPageChanges()
-    {
-        avalonia.Invoke(() =>
-        {
-            var first = new PanePage();
-            var second = new PanePage();
-            var panel = new Border();
-            var host = WorkspaceLayoutHost.ForPage(first);
-            host.ClaudePanel = panel;
-
-            host.Page = second;
-            host.SetPagePanels(second);
-
-            Assert.Same(panel, host.ClaudePanel);
-            Assert.Same(panel, host.FindControl<ContentControl>("ClaudePanelHost")!.Content);
-            host.ClaudePanel = null;
-            Assert.Null(host.FindControl<ContentControl>("ClaudePanelHost")!.Content);
-            Assert.Null(panel.Parent);
-        });
-    }
-
-    [Fact]
     public void NavigationReleasesPreviousPanesAndReusesThemWhenReturning()
     {
         avalonia.Invoke(() =>

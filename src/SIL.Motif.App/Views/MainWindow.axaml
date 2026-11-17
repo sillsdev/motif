@@ -88,8 +88,6 @@
 
         <!-- The chip shortens its words before it pushes Refresh out of the row; Refresh stays beside it. -->
         <DockPanel x:Name="ProjectChipRow" Grid.Column="3" HorizontalAlignment="Left" VerticalAlignment="Center">
-          <!-- W7 -->
-          <views:ClaudePanelButton DockPanel.Dock="Right" chrome:WindowDecorationProperties.ElementRole="User" />
           <Button x:Name="RefreshIconButton" DockPanel.Dock="Right" Classes="Tertiary refreshIcon"
                   Theme="{DynamicResource BorderlessButton}"
                   Content="{x:Static app:MotifAppStrings.RefreshIconGlyph}" Command="{Binding RefreshCommand}"

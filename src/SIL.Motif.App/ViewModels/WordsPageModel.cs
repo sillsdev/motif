@@ -80,7 +80,6 @@ public sealed partial class WordsPageModel : PageModel
             if (generation != _panelGeneration || !ReferenceEquals(Words.OpenRow, row)) return;
             var changes = Context.Changes;
             var panel = ContextWordPanel.Build(row, shape, reader, selection.Texts, changes,
-                (form, _) => AskAssistantAction.RunAsync(Context, new AskAssistantTarget("word", form, form, null)),
                 row.Listed.CardToken, anchor => changes.Items.Any(change =>
                     change.Kind == ChangeKinds.Approve && change.Occurrence == anchor));
             if (panel is null) return;

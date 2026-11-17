@@ -43,24 +43,8 @@ public sealed partial class HealthStripViewModel : ObservableObject
         OnOverviewChanged(null);
     }
 
-    /// <summary>Whether the assistant is connected, or null when connection status is unavailable.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasAssistantState), nameof(AssistantStateText), nameof(AccessibleName))]
-    private bool? _assistantConnected;
-
-    /// <summary>Whether the connection status is known.</summary>
-    public bool HasAssistantState => AssistantConnected is not null;
-
-    /// <summary>The known connection status.</summary>
-    public string AssistantStateText => AssistantConnected switch
-    {
-        true => MotifAppStrings.HealthAssistantConnected,
-        false => MotifAppStrings.HealthAssistantDisconnected,
-        null => string.Empty,
-    };
-
     /// <summary>The health face's accessible name, including its available facts.</summary>
-    public string AccessibleName => string.Join(", ", new[] { MotifAppStrings.Health, WarningText, AssistantStateText }
+    public string AccessibleName => string.Join(", ", new[] { MotifAppStrings.Health, WarningText }
         .Where(value => !string.IsNullOrWhiteSpace(value)));
 
     /// <summary>

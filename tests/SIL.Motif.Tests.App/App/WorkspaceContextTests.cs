@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Reflection;
 using Avalonia.Input;
 using SIL.Motif.App.Services;
-using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.App.ViewModels;
@@ -1229,8 +1228,7 @@ public sealed class WorkspaceContextTests
     internal static WorkspaceContext NewContext(
         ICommandClient commands,
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
-        IAssistantConnectionService? assistantConnections = null,
-        IUriLauncher? uriLauncher = null, ICredentialStore? credentials = null, ITunnelClient? tunnelClient = null)
+        IUriLauncher? uriLauncher = null)
     {
         if (commands is FakeCommandClient fake)
             fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
@@ -1244,8 +1242,7 @@ public sealed class WorkspaceContextTests
             new NoDragSource(),
             new BaselineViewModel(commands),
             advancedAiModePreferences: advancedAiModePreferences,
-            assistantConnections: assistantConnections,
-            uriLauncher: uriLauncher, credentials: credentials, tunnelClient: tunnelClient);
+            uriLauncher: uriLauncher);
     }
 
     internal static (FakeCommandClient Fake, WorkspaceContext Context) NewContextWithFake()

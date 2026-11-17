@@ -4,7 +4,7 @@
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:shell="clr-namespace:SIL.Motif.App.Views.Shell"
              x:Class="SIL.Motif.App.Views.Shell.WorkspaceLayoutHost">
-  <Grid x:Name="PaneGrid" ColumnDefinitions="Auto,0,*,Auto,Auto">
+  <Grid x:Name="PaneGrid" ColumnDefinitions="Auto,0,*,Auto">
     <ContentControl x:Name="RailHost" />
     <Border x:Name="SidePanelBorder" Grid.Column="1" Classes="workspaceSidePanel" IsVisible="False">
       <Grid RowDefinitions="Auto,*">
@@ -66,7 +66,5 @@
         <TextBlock Classes="workspacePaneLabel" Text="{x:Static app:MotifAppStrings.InspectorHeading}" />
       </LayoutTransformControl>
     </Button>
-    <ContentControl x:Name="ClaudePanelHost" Grid.Column="4" IsVisible="False"
-                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.ClaudePanel}" />
   </Grid>
 </UserControl>

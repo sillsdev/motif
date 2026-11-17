@@ -47,27 +47,6 @@
         <views:CopyableTextBlock Text="{Binding UnreadableNamesText}" TextWrapping="Wrap" />
       </StackPanel>
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
-      <StackPanel DataContext="{Binding Requests}" IsVisible="{Binding HasRequests}"
-                  Spacing="{DynamicResource Intent.Space.Related}">
-        <views:CopyableTextBlock Classes="section-title" Text="{Binding Title}" />
-        <views:ProgressiveItemsControl x:Name="ProposalsRequestsItems" FullItemsSource="{Binding Rows}">
-          <views:ProgressiveItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:OpenRequestRowViewModel">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                <views:CopyableTextBlock Text="{Binding TargetText}" TextWrapping="Wrap" />
-                <views:CopyableTextBlock Classes="muted" Text="{Binding NoteText}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
-                <Button Content="{x:Static app:MotifAppStrings.WithdrawRequest}"
-                        Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).WithdrawRequestCommand}"
-                        CommandParameter="{Binding}" HorizontalAlignment="Left"
-                        AutomationProperties.AutomationId="{Binding WithdrawAutomationId}" />
-              </StackPanel>
-            </DataTemplate>
-          </views:ProgressiveItemsControl.ItemTemplate>
-        </views:ProgressiveItemsControl>
-        <Button Content="{x:Static app:MotifAppStrings.ShowMoreRequests}" IsVisible="{Binding HasMore}"
-                Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ShowMoreRequestsCommand}"
-                HorizontalAlignment="Left" />
-      </StackPanel>
       <views:ProgressiveItemsControl x:Name="OpenProposalTabs" FullItemsSource="{Binding Documents.Items}"
                                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDocuments}">
         <views:ProgressiveItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></views:ProgressiveItemsControl.ItemsPanel>
@@ -109,8 +88,6 @@
                   Command="{Binding AskToDeclineCommand}" CommandParameter="{Binding SelectedProposal}" />
           <Button Content="{x:Static app:MotifAppStrings.DecideLater}" IsVisible="{Binding SelectedProposal.CanDecideLater}"
                   Command="{Binding DecideLaterCommand}" CommandParameter="{Binding SelectedProposal}" />
-          <Button Content="{x:Static app:MotifAppStrings.AskAgain}" IsVisible="{Binding SelectedProposal.CanAskAgain}"
-                  Command="{Binding AskAgainCommand}" CommandParameter="{Binding SelectedProposal}" />
           <Button Content="{x:Static app:MotifAppStrings.Delete}" IsVisible="{Binding SelectedProposal.CanDelete}"
                   AutomationProperties.AutomationId="{Binding SelectedDeleteAutomationId}"
                   Command="{Binding AskToDeleteCommand}" CommandParameter="{Binding SelectedProposal}" />

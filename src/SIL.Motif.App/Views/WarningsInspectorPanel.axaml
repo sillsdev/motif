@@ -155,8 +155,6 @@
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
                   <Button Content="{x:Static app:MotifAppStrings.BoardShowWords}" Click="OnShowWords"
                           IsVisible="{Binding HasAnyWordRows}" />
-                  <views:AskAssistantButton AttachedToVisualTree="OnRequestAttached" TargetKind="warning" TargetId="{Binding AskTargetId}"
-                                            TargetLabel="{Binding Message}" />
                 </StackPanel>
                 <Border Classes="warningWorkflow" IsVisible="{Binding HasYourWords}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">

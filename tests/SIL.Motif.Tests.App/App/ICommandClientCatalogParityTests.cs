@@ -68,10 +68,6 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.RemoveProposalPictureAsync)] = "proposal picture remove",
             [nameof(ICommandClient.ReadProposalDifferenceAsync)] = "difference show",
             [nameof(ICommandClient.ProduceProposalDifferenceAsync)] = "difference produce",
-            [nameof(ICommandClient.CreateRequestAsync)] = "request create",
-            [nameof(ICommandClient.ListRequestsAsync)] = "list requests",
-            [nameof(ICommandClient.WithdrawRequestAsync)] = "request withdraw",
-            [nameof(ICommandClient.AskAgainAsync)] = "request ask-again",
             [nameof(ICommandClient.ListSourcesAsync)] = "source list",
             [nameof(ICommandClient.ShowSourceAsync)] = "source show",
             [nameof(ICommandClient.WhereSourceAsync)] = "source where",
@@ -105,8 +101,6 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.ReadLatestParsimonyReportSetAsync),
         nameof(ICommandClient.ReadParsimonyReportAsync),
         nameof(ICommandClient.ReadProposalParsimonyStatusAsync),
-        // W9-progress
-        nameof(ICommandClient.ReadProgressOpenRequestCountAsync),
     };
 
     private static readonly IReadOnlyDictionary<string, string> ReadsViaCataloguedCommand =

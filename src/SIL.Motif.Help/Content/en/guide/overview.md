@@ -2,7 +2,7 @@
 
 **Progress** shows supported next actions for the open project. A Proposal appears as a next action when its stored standing says it is waiting for a decision. If there is no supported action, the page does not invent one.
 
-Open Requests can also appear as next actions; they record what a person asked and do not imply a connected Claude session.
+Next actions list only Proposals waiting for your decision.
 
 The health strip shows available stored project facts. Its details can include a recorded median parser-work value; the face does not show parser-step counts. Warnings and timing details are available in **Diagnostics** when it is enabled. Opening Progress or the health details reads stored information and does not start a parse.
 

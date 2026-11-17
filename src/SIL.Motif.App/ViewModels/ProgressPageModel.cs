@@ -54,12 +54,6 @@ public sealed partial class ProgressPageModel : PageModel
     public string WaitingProposalsText => WaitingProposals is { } count
         ? PluralText.Format(MotifAppStrings.ProgressWaitingProposalsPattern, count) : string.Empty;
 
-    /// <summary>The total open Requests, independent of the bounded listing page.</summary>
-    [ObservableProperty]
-    private int? _openRequests;
-
-    partial void OnOpenRequestsChanged(int? value) => RebuildRows();
-
     /// <summary>Only stored facts with a live destination become rows.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNextRows), nameof(HasNextSection))]
@@ -198,8 +192,6 @@ public sealed partial class ProgressPageModel : PageModel
 
     protected override Task OnGrammarCheckedAsync(CancellationToken cancellationToken) => RefreshHealthAsync(cancellationToken);
 
-    protected override Task OnRequestsChangedAsync(CancellationToken cancellationToken) => RefreshCurrentAsync(cancellationToken);
-
     private Task RefreshHealthAsync(CancellationToken cancellationToken)
     {
         Health.Overview = null;
@@ -227,7 +219,6 @@ public sealed partial class ProgressPageModel : PageModel
         active?.Cancel();
         var previous = NextRows;
         WaitingProposals = null;
-        OpenRequests = null;
         NextRows = [];
         HasUnavailableNext = false;
         OverviewUnavailable = false;
@@ -259,8 +250,7 @@ public sealed partial class ProgressPageModel : PageModel
         try
         {
             await Task.WhenAll(ReadOverviewAsync(project, generation, linked.Token),
-                ReadStandingsAsync(project, generation, linked.Token),
-                ReadRequestsAsync(project, generation, linked.Token)).ConfigureAwait(true);
+                ReadStandingsAsync(project, generation, linked.Token)).ConfigureAwait(true);
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
         finally
@@ -309,14 +299,6 @@ public sealed partial class ProgressPageModel : PageModel
         else NoteUnavailable(result.Refusal);
     }
 
-    private async Task ReadRequestsAsync(string project, int generation, CancellationToken cancellationToken)
-    {
-        var result = await Context.Commands.ReadProgressOpenRequestCountAsync(project, cancellationToken).ConfigureAwait(true);
-        if (!IsCurrent(project, generation) || cancellationToken.IsCancellationRequested || Context.Evidence.IsStale) return;
-        if (result.Succeeded) OpenRequests = result.Value!.OpenCount;
-        else NoteUnavailable(result.Refusal);
-    }
-
     private void RebuildRows()
     {
         var project = Context.ProjectPath;
@@ -328,10 +310,6 @@ public sealed partial class ProgressPageModel : PageModel
         List<ProgressNextRow> rows = [];
         if (HasWaitingProposals)
             rows.Add(new(MotifAppStrings.BoardProposals, WaitingProposalsText, AutomationIds.ProgressNextProposals, OpenProposals()));
-        if (OpenRequests is > 0)
-            rows.Add(new(MotifAppStrings.ProgressRequestsLabel,
-                PluralText.Format(MotifAppStrings.ProgressOpenRequestsPattern, OpenRequests.Value),
-                AutomationIds.ProgressNextRequests, OpenProposals()));
         NextRows = rows;
     }
 

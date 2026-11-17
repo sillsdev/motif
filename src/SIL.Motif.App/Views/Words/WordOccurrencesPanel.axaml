@@ -87,11 +87,8 @@
       AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesApprove}">
       <TextBlock Text="{Binding ApproveLabel}" TextWrapping="Wrap" />
     </Button>
-    <Button Classes="occurrenceAction" Content="{x:Static app:MotifAppStrings.OccurrencesAskClaude}" Command="{Binding AskClaudeCommand}"
-      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesAsk}" />
    </WrapPanel>
    <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesApproveNote}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
-   <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesAskNote}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
    <TextBlock Text="{Binding StatusSentence}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesStatus}" />
    <ContentControl x:Name="DiagnosticSlot"

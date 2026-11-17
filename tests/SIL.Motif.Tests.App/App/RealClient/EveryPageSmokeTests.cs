@@ -88,6 +88,11 @@ public sealed class EveryPageSmokeTests(PristineProjectFixture pristine, Xunit.A
                         output.WriteLine($"{scene}: {texts.Count} texts; body {RenderedPageText.Body(pageTexts, entry.Title, project.FwDataPath).Count}");
                         foreach (var name in RenderedPageText.TypeNameFaults(texts))
                             faults.Add($"{scene}: draws a type name '{name}'");
+                        foreach (var shown in texts.Select(block => block.Text ?? string.Empty).Where(line =>
+                                     line.Contains("Ask Claude", StringComparison.OrdinalIgnoreCase) ||
+                                     line.Contains("Ask Assistant", StringComparison.OrdinalIgnoreCase) ||
+                                     line.Contains("Assistant Connections", StringComparison.OrdinalIgnoreCase)))
+                            faults.Add($"{scene}: offers Claude in the window: '{shown}'");
                         foreach (var stillReading in RenderedPageText.StillReadingFaults(texts))
                             faults.Add($"{scene}: still shows '{stillReading}' after settling");
                         if (RenderedPageText.Body(pageTexts, entry.Title, project.FwDataPath).Count == 0)

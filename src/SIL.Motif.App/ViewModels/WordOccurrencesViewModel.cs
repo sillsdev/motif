@@ -23,7 +23,7 @@ public interface IWordOccurrenceSource
     Task<IReadOnlyList<OccurrenceChoiceViewModel>> ReadPageAsync(int offset, int count, CancellationToken cancellationToken);
 }
 
-/// <summary>The writes a keep, Not a Word or Ask Claude can make; each reports only what was really written.</summary>
+/// <summary>The writes a keep or Not a Word can make; each reports only what was really written.</summary>
 public interface IWordOccurrenceActions
 {
     /// <summary>
@@ -35,13 +35,10 @@ public interface IWordOccurrenceActions
 
     /// <summary>Stages Not a Word for the whole wordform; it is not tied to a place.</summary>
     Task<bool> StageNotAWordAsync(string form, CancellationToken cancellationToken);
-
-    /// <summary>Records one Request about the word; it runs no Trial and no Apply.</summary>
-    Task<string> AskAsync(string form, CancellationToken cancellationToken);
 }
 
 /// <summary>
-/// The places one word occurs, which of them are checked, the reading to keep, and the Approve, Ask Claude
+/// The places one word occurs, which of them are checked, the reading to keep, and the Approve
 /// and Not a Word commands. Checked places survive paging; only written places are marked staged.
 /// </summary>
 public sealed partial class WordOccurrencesViewModel : ObservableObject
@@ -76,7 +73,6 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
         CheckGapsCommand = new RelayCommand(CheckShownGaps);
         ApproveCommand = new AsyncRelayCommand(ApproveAsync, () => CanApprove);
         NotAWordCommand = new AsyncRelayCommand(NotAWordAsync, () => !IsBusy);
-        AskClaudeCommand = new AsyncRelayCommand(AskAsync, () => !IsBusy);
     }
 
     public string Form { get; }
@@ -159,7 +155,6 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
     public ICommand CheckGapsCommand { get; }
     public ICommand ApproveCommand { get; }
     public ICommand NotAWordCommand { get; }
-    public ICommand AskClaudeCommand { get; }
 
     partial void OnChosenReadingChanged(WordReadingOption? value)
     {
@@ -239,7 +234,6 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
         OnPropertyChanged(nameof(NeedsReadingChoice));
         (ApproveCommand as AsyncRelayCommand)?.NotifyCanExecuteChanged();
         (NotAWordCommand as AsyncRelayCommand)?.NotifyCanExecuteChanged();
-        (AskClaudeCommand as AsyncRelayCommand)?.NotifyCanExecuteChanged();
         (PreviousPageCommand as AsyncRelayCommand)?.NotifyCanExecuteChanged();
         (NextPageCommand as AsyncRelayCommand)?.NotifyCanExecuteChanged();
     }
@@ -317,17 +311,6 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             StatusSentence = MotifAppStrings.OccurrencesNotStaged;
-        }
-        finally { IsBusy = false; }
-    }
-
-    private async Task AskAsync()
-    {
-        IsBusy = true;
-        try { StatusSentence = await _actions.AskAsync(Form, CancellationToken.None).ConfigureAwait(true); }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
-        {
-            StatusSentence = MotifAppStrings.OccurrencesAskNotSent;
         }
         finally { IsBusy = false; }
     }

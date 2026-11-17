@@ -41,7 +41,6 @@ public sealed class WordPanelRound2Tests
 
         public Task<bool> StageNotAWordAsync(string form, CancellationToken token) => Task.FromResult(true);
 
-        public Task<string> AskAsync(string form, CancellationToken token) => Task.FromResult("asked");
     }
 
     private static void Show(int places, int readings, Action<Window, WordOccurrencesPanel, WordOccurrencesViewModel> check) =>

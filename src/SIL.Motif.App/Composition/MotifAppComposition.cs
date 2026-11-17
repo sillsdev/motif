@@ -2,7 +2,6 @@ using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands;
-using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Host.Preferences;
@@ -35,10 +34,8 @@ namespace SIL.Motif.App.Composition;
 /// </param>
 /// <param name="UserPreferencesStore">Caller-owned App preferences; when supplied, session close never disposes them.</param>
 /// <param name="AdvancedAiModePreferences">Where the user's Advanced AI mode choice is read and saved.</param>
-/// <param name="AssistantConnections">The replaceable assistant discovery and connection service.</param>
 /// <param name="DefaultProposalChecks">Where the user's Default proposal checks are read and saved.</param>
-/// <param name="Credentials">The replaceable ChatGPT credential store.</param>
-/// <param name="TunnelClient">The tunnel owned by this desktop session.</param>
+/// <param name="LegacyCleanup">Removes the retired assistant key from the credential store on the first start after upgrade.</param>
 public sealed record MotifAppOptions(
     string ManagedRoot,
     string? ParserPath,
@@ -53,10 +50,9 @@ public sealed record MotifAppOptions(
     bool RememberBounds = false,
     IUserPreferencesStore? UserPreferencesStore = null,
     IAdvancedAiModePreferenceStore? AdvancedAiModePreferences = null,
-    IAssistantConnectionService? AssistantConnections = null,
     IDefaultProposalChecksStore? DefaultProposalChecks = null,
     ITryWordSessions? TryWordSessions = null,
-    ICredentialStore? Credentials = null, ITunnelClient? TunnelClient = null)
+    LegacyAssistantCleanup? LegacyCleanup = null)
 {
     /// <summary>Creates session-owned preferences when no caller-owned store is supplied.</summary>
     internal Func<FileUserPreferencesStore>? OwnedUserPreferencesFactory { get; init; }
@@ -75,10 +71,9 @@ public sealed record MotifAppOptions(
         return new MotifAppOptions(commands.ManagedRoot, commands.ParserPath, commands.RunnerLauncher,
             TimeProvider.System, RememberBounds: true,
             AdvancedAiModePreferences: FileAdvancedAiModePreferenceStore.ForInstallation(),
-            AssistantConnections: AssistantConnectionService.ForInstallation(),
             DefaultProposalChecks: FileDefaultProposalChecksStore.ForInstallation(),
             TryWordSessions: new TryWordSessionsAdapter(),
-            Credentials: new NativeCredentialStore(), TunnelClient: new TunnelClient())
+            LegacyCleanup: LegacyAssistantCleanup.ForInstallation())
         {
             OwnedUserPreferencesFactory = static () => new FileUserPreferencesStore(
                 FileUserPreferencesStore.DefaultPath, FileUserPreferencesStore.InstallationSaveDelay),
@@ -103,6 +98,7 @@ public static class MotifAppComposition
         ArgumentNullException.ThrowIfNull(options.RunnerLauncher);
         ArgumentNullException.ThrowIfNull(options.TimeProvider);
 
+        options.LegacyCleanup?.RunOnce();
         var surfacePolicy = options.SurfacePolicy;
         var ownedPreferences = options.UserPreferencesStore is null ? options.OwnedUserPreferencesFactory?.Invoke() : null;
         var preferences = options.UserPreferencesStore ?? ownedPreferences;
@@ -133,12 +129,10 @@ public static class MotifAppComposition
             techDemoNotice,
             advancedAiModeEnabled: surfacePolicy.AdvancedAiModeEnabled,
             advancedAiModePreferences: options.AdvancedAiModePreferences,
-            assistantConnections: options.AssistantConnections,
             defaultProposalChecks: options.DefaultProposalChecks,
             uriLauncher: new AvaloniaLauncher(window),
             tryWordSessions: options.TryWordSessions,
-            pictureIntake: new AvaloniaPictureIntake(window), credentials: options.Credentials,
-            tunnelClient: options.TunnelClient);
+            pictureIntake: new AvaloniaPictureIntake(window));
         window.Compose(workspace);
         var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());
         return new MotifAppCompositionResult(window, workspace, crashes, surfacePolicy)

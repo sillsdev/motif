@@ -89,7 +89,7 @@ public sealed class PassageWordPaneTests
     }
 
     [Fact]
-    public void AskClaudeInThePanelMakesOneRequestThroughTheRealActionAndNeverATrialOrAnApply()
+    public void TheWordPanelOffersNoAskClaudeAndOpeningItMakesNoRequestTrialOrApply()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -97,11 +97,10 @@ public sealed class PassageWordPaneTests
             var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
             try
             {
-                await ((IAsyncRelayCommand)panel.AskClaudeCommand).ExecuteAsync(null);
-
-                var request = Assert.Single(fake.CreateRequestRequests);
-                Assert.Equal(("word", "mwalimu", "mwalimu"), (request.TargetKind, request.TargetId, request.TargetLabel));
-                Assert.Equal(MotifAppStrings.RequestAskedStatus, panel.StatusSentence);
+                Assert.DoesNotContain(panel.GetType().GetProperties(), property =>
+                    property.Name.Contains("Claude", StringComparison.Ordinal));
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button =>
+                    (button.Content as string ?? string.Empty).Contains("Claude", StringComparison.Ordinal));
                 Assert.Empty(fake.EnqueueTrialRequests);
                 Assert.Empty(fake.ReadTrialRequests);
                 Assert.Empty(fake.ApplyProposalRequests);

@@ -16,7 +16,6 @@ public static class AutomationIds
     public const string GrammarGuide = "motif-grammar-guide";
     public const string ProposalDocuments = "motif-proposal-documents";
     public const string ProposalCompare = "motif-proposal-compare";
-    public const string ClaudePanel = "motif-claude-panel";
     public const string DiagnosticsWarnings = "motif-diagnostics-warnings";
     public const string DiagnosticsSpeedByRule = "motif-diagnostics-speed-by-rule";
     public const string WordTrace = "motif-word-trace";
@@ -27,7 +26,6 @@ public static class AutomationIds
     public const string PassageNextGap = "motif-passage-next-gap";
     public const string PassageKeepAllLikeThis = "motif-passage-keep-all-like-this";
     public const string WordDetail = "motif-word-detail";
-    public const string WordAskClaude = "motif-word-ask-claude";
     public const string WordNotAWord = "motif-word-not-a-word";
     public const string ProposalsList = "motif-proposals-list";
     public const string ProposalComments = "motif-proposal-comments";
@@ -37,7 +35,6 @@ public static class AutomationIds
     public const string ProposalCompareSecond = "motif-proposal-compare-second";
     public const string GrammarGuideSections = "motif-grammar-guide-sections";
     public const string GrammarGuideDiscussion = "motif-grammar-guide-discussion";
-    public const string ClaudeRequests = "motif-claude-requests";
     public const string DiagnosticsTabs = "motif-diagnostics-tabs";
     public const string DiagnosticsWarningDetails = "motif-diagnostics-warning-details";
     public const string DiagnosticsRuleRows = "motif-diagnostics-rule-rows";
@@ -151,9 +148,6 @@ public static class AutomationIds
     public const string SidebarPageLabel = "motif-sidebar-page-label";
     public const string SidebarSelectionSummary = "motif-sidebar-selection-summary";
 
-    /// <summary>The text the AI assistants page shows when it finds no supported assistant.</summary>
-    public const string AssistantsEmptyText = "motif-assistants-empty-text";
-
     /// <summary>A word row's Open in Text, Keep and Undo buttons.</summary>
     public const string WordOpenInText = "motif-word-open-in-text";
     public const string WordUndoChange = "motif-word-undo-change";
@@ -209,27 +203,6 @@ public static class AutomationIds
     /// <returns>An ASCII identifier that stays with the Proposal whichever group it is in.</returns>
     public static string ForProposalReopen(string proposalId) =>
         "motif-proposals-reopen-" + ProposalIdPart(proposalId);
-
-    /// <summary>Creates the identifier of Ask Again on one declined Proposal's card.</summary>
-    /// <param name="proposalId">The Proposal's canonical id.</param>
-    /// <returns>An ASCII identifier that stays with the Proposal.</returns>
-    public static string ForProposalAskAgain(string proposalId) =>
-        "motif-proposals-ask-again-" + ProposalIdPart(proposalId);
-
-    /// <summary>Creates the identifier of Withdraw Request on one open Request.</summary>
-    /// <param name="requestId">The Request's canonical id.</param>
-    /// <returns>An ASCII identifier that stays with the Request.</returns>
-    public static string ForRequestWithdraw(string requestId) =>
-        "motif-requests-withdraw-" + ProposalIdPart(requestId);
-
-    /// <summary>The Ask an Assistant to Fix This button and its note box.</summary>
-    public const string AskAssistantButton = "motif-ask-assistant";
-
-    /// <summary>The note box in the Ask an Assistant to Fix This flyout.</summary>
-    public const string AskAssistantNote = "motif-ask-assistant-note";
-
-    /// <summary>The Ask button in the Ask an Assistant to Fix This flyout.</summary>
-    public const string AskAssistantSend = "motif-ask-assistant-send";
 
     // Script ids are lower-case ASCII, so a Proposal's id becomes a fixed-length hash of itself.
     private static string ProposalIdPart(string proposalId)
@@ -319,16 +292,11 @@ public static class AutomationIds
     public const string SourcesFolder = "motif-sources-folder";
     public const string SourcesStageContext = "motif-sources-stage-context";
     #endregion
-    // W7_shared
-    public const string ClaudeToggle = "motif-claude-toggle";
-    public const string ClaudeClose = "motif-claude-close";
-    public const string ClaudeSetup = "motif-claude-setup";
     // w8 proposal diagnostic rows.
     public static string ForProposalDiagnostics(string proposalId) =>
         "motif-proposal-diagnostics-" + Uri.EscapeDataString(proposalId);
     // W9-automation
     public const string ProgressNextProposals = "motif-progress-next-proposals";
-    public const string ProgressNextRequests = "motif-progress-next-requests";
     public const string ProgressNextRetry = "motif-progress-next-retry";
     #region W3
     public const string WordOccurrencesPanel = "motif-word-occurrences-panel";
@@ -342,7 +310,6 @@ public static class AutomationIds
     // fix1-word
     public const string WordOccurrencesReadingSummary = "motif-word-occurrences-reading-summary";
     public const string WordOccurrencesApprove = "motif-word-occurrences-approve";
-    public const string WordOccurrencesAsk = "motif-word-occurrences-ask";
     public const string WordOccurrencesNotAWord = "motif-word-occurrences-not-a-word";
     public const string WordOccurrencesStatus = "motif-word-occurrences-status";
     public const string WordOccurrencesDiagnostics = "motif-word-occurrences-diagnostics";

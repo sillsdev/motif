@@ -2,7 +2,7 @@
 
 **Progress** shows supported next actions for the current project. A Proposal appears here when its stored standing says it is waiting for a decision. When no supported action is available, the page leaves it out.
 
-**Next** is a plain list. Choose a waiting-Proposal row to open **Proposals** and review the stored Trials. An open-Request row also opens **Proposals**, where the unanswered Requests are listed. An open Request records something a person asked; it does not mean Claude has asked a question or is connected. Use Tab to reach a row and Enter or Space to open it.
+**Next** is a plain list. Choose a waiting-Proposal row to open **Proposals** and review the stored Trials. Use Tab to reach a row and Enter or Space to open it.
 
 While the list is being read again, old rows disappear. If some actions cannot be read, the page says so and offers **Try Again**. Missing information is not a count of zero.
 

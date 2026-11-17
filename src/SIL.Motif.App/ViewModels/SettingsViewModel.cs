@@ -32,7 +32,6 @@ internal enum SettingsGroup
     WritingSystems,
     HelpAndReports,
     About,
-    AssistantConnections,
 }
 
 internal enum WindowThemeChoice
@@ -148,10 +147,6 @@ internal sealed class WritingSystemSettingsRow : ObservableObject
 
 internal sealed partial class SettingsViewModel : ObservableObject
 {
-    /// <summary>The assistant connection controls, when a desktop workspace supplies them.</summary>
-    [ObservableProperty]
-    private AssistantConnectionsViewModel? _assistantConnections;
-
     private readonly IUserPreferencesStore _preferences;
     private readonly IDefaultProposalChecksStore _defaultChecks;
     private StoredAnalysisComparison _storedAnalyses;
@@ -224,7 +219,6 @@ internal sealed partial class SettingsViewModel : ObservableObject
             new(SettingsGroup.Parsing, MotifAppStrings.Parsing),
             new(SettingsGroup.ProposalChecks, MotifAppStrings.DefaultProposalChecks),
             new(SettingsGroup.WritingSystems, MotifAppStrings.WritingSystems),
-            new(SettingsGroup.AssistantConnections, MotifAppStrings.AssistantConnectionsHeading),
             new(SettingsGroup.HelpAndReports, MotifAppStrings.HelpAndProblemReports),
             new(SettingsGroup.About, MotifAppStrings.AboutMotif),
         ]);
@@ -1170,7 +1164,6 @@ internal sealed partial class SettingsViewModel : ObservableObject
         SIL.Motif.App.Services.SettingsGroup.ProposalChecks => SettingsGroup.ProposalChecks,
         SIL.Motif.App.Services.SettingsGroup.WritingSystems => SettingsGroup.WritingSystems,
         SIL.Motif.App.Services.SettingsGroup.Texts => SettingsGroup.Display,
-        SIL.Motif.App.Services.SettingsGroup.AssistantConnections => SettingsGroup.AssistantConnections,
         SIL.Motif.App.Services.SettingsGroup.Help => SettingsGroup.HelpAndReports,
         SIL.Motif.App.Services.SettingsGroup.About => SettingsGroup.About,
         _ => SettingsGroup.Display,
@@ -1178,7 +1171,6 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private static SIL.Motif.App.Services.SettingsGroup MapUserSettingsGroup(SettingsGroup group) => group switch
     {
-        SettingsGroup.AssistantConnections => SIL.Motif.App.Services.SettingsGroup.AssistantConnections,
         SettingsGroup.KeyboardShortcuts => SIL.Motif.App.Services.SettingsGroup.Shortcuts,
         SettingsGroup.Parsing => SIL.Motif.App.Services.SettingsGroup.Parsing,
         SettingsGroup.ProposalChecks => SIL.Motif.App.Services.SettingsGroup.ProposalChecks,

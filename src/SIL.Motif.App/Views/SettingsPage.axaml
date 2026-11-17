@@ -419,9 +419,6 @@
     <views:CopyableTextBlock Classes="settingsFooterText" Text="{x:Static app:MotifAppStrings.WritingSystemRefreshHint}" TextWrapping="Wrap" />
   </StackPanel>
 </Border>
-<StackPanel x:Name="SettingsAssistantConnectionsSection" Classes="settingsPage">
- <settings:AssistantConnectionsPanel DataContext="{Binding AssistantConnections}" />
-</StackPanel>
 <StackPanel Classes="settingsPage" IsVisible="{Binding ShowHandoffByCopyingFiles}">
   <ContentControl x:Name="SettingsHandoffHost" />
 </StackPanel>

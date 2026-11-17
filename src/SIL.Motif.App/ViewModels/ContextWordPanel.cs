@@ -16,7 +16,7 @@ internal static class ContextWordPanel
     /// <summary>Makes the panel for the shape's open row, or null when the shape has no places in a Text to offer.</summary>
     public static WordOccurrencesViewModel? Build(TextWordRowViewModel row, ContextWordShape shape,
         SelectionReader reader, IReadOnlyList<SelectionTextSummary> texts, ChangesViewModel changes,
-        Func<string, CancellationToken, Task<string>> ask, ResultsTokenViewModel? token,
+        ResultsTokenViewModel? token,
         Func<OccurrenceAnchor, bool> isStaged)
     {
         if (!shape.Row.HasTextPlaces || shape.Row.OccurrenceCount == 0) return null;
@@ -52,7 +52,7 @@ internal static class ContextWordPanel
         var source = new ContextWordOccurrenceSource(reader, shape.Members,
             texts.ToDictionary(text => text.TextId), shape.WritingSystem, isStaged);
         var actions = new ContextWordActions(changes, source, id => new WordOccurrenceTarget(row.Form, id, assessment, parser),
-            ask, owners, shared);
+            owners, shared);
         var panel = new WordOccurrencesViewModel(row.Form, options, source, actions) { FormWritingSystem = shape.WritingSystem };
         if (shared && row.HomographsUnread) panel.StatusSentence = MotifAppStrings.OccurrencesHomographsUnreadStatus;
         // The panel words its own status when an approve ends, so a note about skipped places follows it.
@@ -137,7 +137,7 @@ internal sealed class ContextWordOccurrenceSource(SelectionReader reader, IReadO
 /// places of the wordform that holds it, never at another's.
 /// </summary>
 internal sealed class ContextWordActions(ChangesViewModel changes, ContextWordOccurrenceSource source,
-    Func<Guid?, WordOccurrenceTarget> targetOf, Func<string, CancellationToken, Task<string>> ask,
+    Func<Guid?, WordOccurrenceTarget> targetOf,
     IReadOnlyDictionary<string, Guid?> readingOwners, bool sharedShape) : IWordOccurrenceActions
 {
     private string? _note;
@@ -166,7 +166,7 @@ internal sealed class ContextWordActions(ChangesViewModel changes, ContextWordOc
                 skipped += batch.Length;
                 continue;
             }
-            var inner = new ChangesOccurrenceActions(changes, () => targetOf(group.Key), ask);
+            var inner = new ChangesOccurrenceActions(changes, () => targetOf(group.Key));
             var done = await inner.StageKeepAsync(reading, batch, cancellationToken).ConfigureAwait(true);
             written.AddRange(done);
             // The first group that is not fully written ends the keep, so no later place is touched.
@@ -183,7 +183,7 @@ internal sealed class ContextWordActions(ChangesViewModel changes, ContextWordOc
         var staged = 0;
         foreach (var wordform in source.Wordforms)
         {
-            var inner = new ChangesOccurrenceActions(changes, () => targetOf(wordform), ask);
+            var inner = new ChangesOccurrenceActions(changes, () => targetOf(wordform));
             if (!await inner.StageNotAWordAsync(form, cancellationToken).ConfigureAwait(true))
             {
                 if (staged > 0)
@@ -195,6 +195,4 @@ internal sealed class ContextWordActions(ChangesViewModel changes, ContextWordOc
         }
         return true;
     }
-
-    public Task<string> AskAsync(string form, CancellationToken cancellationToken) => ask(form, cancellationToken);
 }

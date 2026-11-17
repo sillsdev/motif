@@ -15,7 +15,6 @@
       <StackPanel Classes="statusCompact">
         <TextBlock Text="{Binding CompactText}" IsVisible="{Binding HasWarnings}" />
       </StackPanel>
-      <TextBlock Text="{Binding AssistantStateText}" IsVisible="{Binding HasAssistantState}" />
     </StackPanel>
     <Button.Flyout>
       <Flyout Placement="TopEdgeAlignedLeft">

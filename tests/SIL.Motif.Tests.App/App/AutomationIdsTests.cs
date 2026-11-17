@@ -142,9 +142,9 @@ public sealed class AutomationIdsTests
             nameof(AutomationIds.ProposalCompare), nameof(AutomationIds.WordTrace), nameof(AutomationIds.SourcesAdd),
             nameof(AutomationIds.SourcesList), nameof(AutomationIds.PassageReader), nameof(AutomationIds.PassageKeepAnalysis),
             nameof(AutomationIds.PassageNextGap), nameof(AutomationIds.PassageKeepAllLikeThis), nameof(AutomationIds.WordDetail),
-            nameof(AutomationIds.WordAskClaude), nameof(AutomationIds.WordNotAWord), nameof(AutomationIds.ProposalComments),
+            nameof(AutomationIds.WordNotAWord), nameof(AutomationIds.ProposalComments),
             nameof(AutomationIds.ProposalApply), nameof(AutomationIds.ProposalDecline), nameof(AutomationIds.ProposalCompareFirst),
-            nameof(AutomationIds.ProposalCompareSecond), nameof(AutomationIds.ClaudeRequests),
+            nameof(AutomationIds.ProposalCompareSecond),
             nameof(AutomationIds.DiagnosticsWarningDetails), nameof(AutomationIds.ProgressChapters),
             // w8 diagnostic identifiers.
             nameof(AutomationIds.ProposalParsimonyParserWork), nameof(AutomationIds.ProposalParsimonyWallTime),

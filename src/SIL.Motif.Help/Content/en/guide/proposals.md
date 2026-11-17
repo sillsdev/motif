@@ -1,6 +1,6 @@
 # Proposals
 
-**Proposals** lists every set of changes people and assistants have proposed. Choose a name in **Open Proposals**. Each selected Proposal stays open as a document, with its own Rationale, Comments and evidence. Choose an open document's name to return to it. Switching documents keeps your typing; **Close Proposal** asks you to save or cancel an unsaved edit first.
+**Proposals** lists every set of changes people and assistants have proposed. A Proposal shows **Built by**, **Model** and **Question** only when an MCP session recorded them. Choose a name in **Open Proposals**. Each selected Proposal stays open as a document, with its own Rationale, Comments and evidence. Choose an open document's name to return to it. Switching documents keeps your typing; **Close Proposal** asks you to save or cancel an unsaved edit first.
 
 Selection and comparison are separate. Check two Proposals to choose the pair for Compare. Checking a third cannot silently replace either choice: uncheck one first. Closed history remains available through **Show Closed**. See [Compare Proposals](guide:compare-proposals).
 

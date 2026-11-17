@@ -219,10 +219,9 @@ public sealed class SettingsPageTests
                 Assert.Equal(Group.Display, settings.SelectedGroup);
                 Assert.NotEmpty(settings.ShortcutEntries);
                 var writingSystems = settings.PageGroupOptions.Single(option => option.Group == Group.WritingSystems);
-                var texts = settings.PageGroupOptions.Single(option => option.Group == Group.AssistantConnections);
                 Assert.Equal(settings.PageGroupOptions.IndexOf(writingSystems) + 1,
-                    settings.PageGroupOptions.IndexOf(texts));
-                Assert.Contains(settings.PageGroupOptions, option => option.Group == Group.AssistantConnections);
+                    settings.PageGroupOptions.IndexOf(settings.PageGroupOptions.Single(option => option.Group == Group.HelpAndReports)));
+                Assert.DoesNotContain(settings.PageGroupOptions, option => option.Group.ToString().Contains("Assistant"));
             }
             finally
             {
@@ -255,7 +254,7 @@ public sealed class SettingsPageTests
                 PageScreenshots.Settle(window);
                 var scroll = page.FindControl<ScrollViewer>("SettingsListScroll")!;
                 Assert.NotNull(scroll);
-                Assert.Equal(8, settings.PageGroupOptions.Count);
+                Assert.Equal(7, settings.PageGroupOptions.Count);
                 Assert.NotEmpty(settings.ShortcutEntries);
                 Assert.Single(page.GetVisualDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("settingsHeader"))
@@ -270,23 +269,23 @@ public sealed class SettingsPageTests
                 Assert.True(aboutLocation.Y + Math.Min(about.Bounds.Height, scroll.Viewport.Height) <= scroll.Viewport.Height + 1,
                     "Choosing About must bring its contents into view.");
                 foreach (var name in new[] { "Display", "KeyboardShortcuts", "Parsing", "ProposalChecks",
-                             "WritingSystems", "AssistantConnections", "HelpAndReports", "About" })
+                             "WritingSystems", "HelpAndReports", "About" })
                     Assert.True(page.FindControl<StackPanel>($"Settings{name}Section")!.IsVisible);
-                settings.OpenGroup(Group.AssistantConnections);
+                settings.OpenGroup(Group.HelpAndReports);
                 PageScreenshots.Settle(window);
-                var section = page.FindControl<StackPanel>("SettingsAssistantConnectionsSection")!;
+                var section = page.FindControl<StackPanel>("SettingsHelpAndReportsSection")!;
                 var location = section.TranslatePoint(default, scroll)!.Value;
                 Assert.InRange(location.Y, -1, scroll.Bounds.Height);
                 Assert.True(location.Y + Math.Min(section.Bounds.Height, scroll.Viewport.Height) <= scroll.Viewport.Height + 1,
-                    "Choosing Texts must bring its controls into view.");
-                Assert.Equal(SIL.Motif.App.Services.SettingsGroup.AssistantConnections, preferences.Current.LastSettingsGroup);
+                    "Choosing Help And Reports must bring its controls into view.");
+                Assert.Equal(SIL.Motif.App.Services.SettingsGroup.Help, preferences.Current.LastSettingsGroup);
                 HeadlessClick.Click(window, page.FindControl<Button>("SettingsClose")!, "Leave Settings");
                 page = SettingsTestAccess.Open(frame);
-                Assert.Equal(Group.AssistantConnections, settings.SelectedGroup);
+                Assert.Equal(Group.HelpAndReports, settings.SelectedGroup);
                 var (reopenedWorkspace, reopenedFrame) = FakeComposedWindow.Create(preferencesStore: preferences);
                 try
                 {
-                    Assert.Equal(Group.AssistantConnections, SettingsTestAccess.Model(reopenedFrame).SelectedGroup);
+                    Assert.Equal(Group.HelpAndReports, SettingsTestAccess.Model(reopenedFrame).SelectedGroup);
                 }
                 finally
                 {
@@ -853,7 +852,7 @@ public sealed class SettingsPageTests
                     Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 1);
                 }
                 foreach (var name in new[] { "Reset zoom to 100%", "Match the operating system theme", "Parser step limit per word",
-                             "Time limit per word in seconds", SIL.Motif.App.MotifAppStrings.ChatGptKey, "Open Help", "Report a problem", "Copy versions" })
+                             "Time limit per word in seconds", "Open Help", "Report a problem", "Copy versions" })
                 {
                     var target = page.GetVisualDescendants().OfType<Control>().Single(control =>
                         AutomationProperties.GetName(control) == name);
@@ -956,7 +955,7 @@ public sealed class SettingsPageTests
             try
             {
                 window.Show();
-                settings.OpenGroup(Group.AssistantConnections);
+                settings.OpenGroup(Group.HelpAndReports);
                 PageScreenshots.Settle(window);
                 Assert.Null(page.FindControl<Button>("UseAllTextsButton"));
                 await settings.UseAllTextsCommand.ExecuteAsync(null);
@@ -1035,15 +1034,15 @@ public sealed class SettingsPageTests
                 window.Show();
                 for (var reopen = 0; reopen < 2; reopen++)
                 {
-                    settings.OpenGroup(Group.AssistantConnections);
+                    settings.OpenGroup(Group.HelpAndReports);
                     page = SettingsTestAccess.Open(frame);
                     page.FocusSelectedGroup();
                     PageScreenshots.Settle(window);
-                    Assert.Equal(Group.AssistantConnections, settings.SelectedGroup);
-                    Assert.Equal(Group.AssistantConnections, Assert.IsType<SettingsGroupOption>(
+                    Assert.Equal(Group.HelpAndReports, settings.SelectedGroup);
+                    Assert.Equal(Group.HelpAndReports, Assert.IsType<SettingsGroupOption>(
                         page.Navigation.FindControl<ListBox>("SettingsGroups")!.SelectedItem).Group);
                 }
-                Assert.Equal(8, settings.PageGroupOptions.Count);
+                Assert.Equal(7, settings.PageGroupOptions.Count);
             }
             finally
             {

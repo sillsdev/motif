@@ -24,7 +24,7 @@ of approved, guess and none; there is no Matrix.
 ### D3. The bottom health strip is always visible
 
 It shows a green/yellow/red speed light measured in parser steps, never milliseconds; **N grammar warnings**;
-parser updated time; FieldWorks open/closed; and Claude connected. The warning count remains visible with
+parser updated time; and FieldWorks open/closed. The warning count remains visible with
 Diagnostics off; diagnostic detail does not. The parser-step count appears **only in the speed light's hover**.
 This hover is the single exception to the glossary rule against calling parser work “steps”; thresholds and
 aggregation remain Open below.

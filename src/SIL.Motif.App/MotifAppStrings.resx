@@ -6991,93 +6991,9 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>×</value>
     <comment>Separator glyph between a matrix cell's row label and its column label in the Compare panel; it is not a button and removes nothing.</comment>
   </data>
-  <data name="MotifApp.AdvancedAiModeTitle" xml:space="preserve">
-    <value>Advanced AI Mode</value>
-    <comment>Heading of the card holding the Advanced AI mode setting.</comment>
-  </data>
-  <data name="MotifApp.AdvancedAiModeExplanation" xml:space="preserve">
-    <value>When this is on, connected assistants can read Known projects and draft Proposals through Motif. Known projects are FieldWorks projects Motif has used on this computer. Assistants cannot Apply a Proposal. Restart open assistant sessions after changing this setting.</value>
-    <comment>Explanatory sentence under the Advanced AI mode heading.</comment>
-  </data>
-  <data name="MotifApp.TurnOnAdvancedAiMode" xml:space="preserve">
-    <value>Let Assistants Use Motif's Tools</value>
-    <comment>Checkbox that turns Advanced AI mode on or off.</comment>
-  </data>
-  <data name="MotifApp.ChooseAssistantsTitle" xml:space="preserve">
-    <value>Choose Assistants</value>
-    <comment>Heading of the card listing the supported assistants Motif found.</comment>
-  </data>
-  <data name="MotifApp.ChooseAssistantsExplanation" xml:space="preserve">
-    <value>Motif found these supported assistants. Check each one you want to connect.</value>
-    <comment>Explanatory sentence under the Choose Assistants heading.</comment>
-  </data>
-  <data name="MotifApp.ConnectSelectedAssistants" xml:space="preserve">
-    <value>Connect Selected Assistants</value>
-    <comment>Button that connects the checked assistants to Motif.</comment>
-  </data>
-  <data name="MotifApp.OpenPluginFolder" xml:space="preserve">
-    <value>Open Plugin Folder</value>
-    <comment>Button that opens the folder holding the Motif plugin ZIP.</comment>
-  </data>
-  <data name="MotifApp.OpenClaudePlugins" xml:space="preserve">
-    <value>Open Claude Plugins</value>
-    <comment>Button that opens Claude Desktop's plugin page.</comment>
-  </data>
   <data name="MotifApp.LoadingProject" xml:space="preserve">
     <value>Loading project...</value>
     <comment>Message in the sidebar's Selection summary while the chosen project is still opening.</comment>
-  </data>
-  <data name="MotifApp.AskAnAssistantToFixThis" xml:space="preserve">
-    <value>Ask an Assistant to Fix This</value>
-    <comment>Button on a word card, a Warning row and the Matrix; it records a Request for an AI assistant.</comment>
-  </data>
-  <data name="MotifApp.AskAnAssistantNoteLabel" xml:space="preserve">
-    <value>Note for the Assistant (Optional)</value>
-    <comment>Label above the optional note a person writes when asking an assistant to fix something.</comment>
-  </data>
-  <data name="MotifApp.AskAnAssistantAsk" xml:space="preserve">
-    <value>Ask</value>
-    <comment>Button that sends the Request; the note box sits above it.</comment>
-  </data>
-  <data name="MotifApp.RequestsGroupTitle" xml:space="preserve">
-    <value>Asked, waiting for a Proposal</value>
-    <comment>Heading of the Proposals page group that lists Requests no Proposal has answered yet.</comment>
-  </data>
-  <data name="MotifApp.WithdrawRequest" xml:space="preserve">
-    <value>Withdraw Request</value>
-    <comment>Button that takes back a Request an assistant has not answered yet.</comment>
-  </data>
-  <data name="MotifApp.AskAgain" xml:space="preserve">
-    <value>Ask Again</value>
-    <comment>Button on a declined Proposal that makes a new Request for the same thing.</comment>
-  </data>
-  <data name="MotifApp.RequestAskedToday" xml:space="preserve">
-    <value>Asked today</value>
-    <comment>Age of a Request made today.</comment>
-  </data>
-  <data name="MotifApp.RequestAskedDaysPattern" xml:space="preserve">
-    <value>{0, plural, one {Asked # day ago} other {Asked # days ago}}</value>
-    <comment>Plural pattern: how many days ago a Request was made; # is the count.</comment>
-  </data>
-  <data name="MotifApp.ShowMoreRequests" xml:space="preserve">
-    <value>Show More Requests</value>
-    <comment>Button loading the next page of open Requests.</comment>
-  </data>
-  <data name="MotifApp.RequestAskedStatus" xml:space="preserve">
-    <value>Asked. An assistant will see this Request and can answer it with a Proposal.</value>
-    <comment>Message shown after a Request is recorded.</comment>
-  </data>
-  <data name="MotifApp.RequestKindWord" xml:space="preserve">
-    <value>Word</value>
-    <comment>Names a Request about a word.</comment>
-  </data>
-  <data name="MotifApp.RequestKindWarning" xml:space="preserve">
-    <value>Warning</value>
-    <comment>Names a Request about a Warning.</comment>
-  </data>
-  <data name="MotifApp.RequestKindMatrixCell" xml:space="preserve">
-    <value>Matrix cell</value>
-    <comment>Names a Request about a Matrix cell.</comment>
   </data>
   <data name="MotifApp.RefusalRequestInvalid" xml:space="preserve">
     <value>The Request could not be recorded. Check the note's length and try again.</value>
@@ -7164,19 +7080,6 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Selected Event</value>
     <comment>Heading for details of the selected recorded event.</comment>
   </data>
-  <data name="MotifApp.ChatGptTitle" xml:space="preserve"><value>Set Up ChatGPT</value></data>
-  <data name="MotifApp.ChatGptKey" xml:space="preserve"><value>OpenAI API Key</value></data>
-  <data name="MotifApp.ChatGptTunnelId" xml:space="preserve"><value>Tunnel ID</value></data>
-  <data name="MotifApp.ChatGptConnect" xml:space="preserve"><value>Connect</value></data>
-  <data name="MotifApp.ChatGptDisconnect" xml:space="preserve"><value>Disconnect</value></data>
-  <data name="MotifApp.ChatGptNotConnected" xml:space="preserve"><value>Not Connected</value></data>
-  <data name="MotifApp.ChatGptConnecting" xml:space="preserve"><value>Connecting</value></data>
-  <data name="MotifApp.ChatGptConnected" xml:space="preserve"><value>Connected</value></data>
-  <data name="MotifApp.ChatGptError" xml:space="preserve"><value>Can't connect. Check the key, tunnel ID and internet connection, then try again.</value></data>
-  <data name="MotifApp.ChatGptMissing" xml:space="preserve"><value>Enter an OpenAI API key and tunnel ID.</value></data>
-  <data name="MotifApp.ChatGptKeyNotSaved" xml:space="preserve"><value>Motif can't save the key on this computer, so you'll enter it again next time.</value></data>
-  <data name="MotifApp.ChatGptInstructions" xml:space="preserve"><value>1. In ChatGPT, open Plugins and choose the plus button.&#10;2. Choose Add Custom MCP Server.&#10;3. Under Connection, choose Tunnel and paste the tunnel ID.</value></data>
-  <data name="MotifApp.ChatGptKeyHelp" xml:space="preserve"><value>Use an OpenAI runtime API key with Tunnels Read and Use access.</value></data>
   <data name="MotifApp.ShortcutCompareVersions" xml:space="preserve">
     <value>Compare Two Versions</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
@@ -7261,11 +7164,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.HealthTurnOnDiagnostics" xml:space="preserve"><value>Turn On Diagnostics</value></data>
   <data name="MotifApp.Health" xml:space="preserve"><value>Health</value></data>
   <data name="MotifApp.Progress" xml:space="preserve"><value>Progress</value></data>
-  <data name="MotifApp.HealthAssistantConnected" xml:space="preserve"><value>Claude connected</value></data>
-  <data name="MotifApp.HealthAssistantDisconnected" xml:space="preserve"><value>Claude disconnected</value></data>
-  <data name="MotifApp.AssistantsEnabled" xml:space="preserve"><value>Advanced AI mode is on. Choose the assistants that may use Motif's tools.</value></data>
-  <data name="MotifApp.AssistantsDisabled" xml:space="preserve"><value>Advanced AI mode is off for new Motif sessions. Restart connected assistants to update open sessions.</value></data>
-  <data name="MotifApp.AssistantsNotFound" xml:space="preserve"><value>No supported assistant was found. Install Claude Desktop, Claude Code, or Codex, then reopen Settings.</value></data>
   <data name="MotifApp.ProgressNext" xml:space="preserve"><value>Next</value></data>
   <data name="MotifApp.ProgressWaitingProposalsPattern" xml:space="preserve"><value>{0, plural, one {# Proposal waiting for your decision} other {# Proposals waiting for your decision}}</value></data>
   <data name="MotifApp.ProgressSelectionFormat" xml:space="preserve"><value>Default Selection: {0}, {1}</value></data>
@@ -7300,7 +7198,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.BoardSpeedByRule" xml:space="preserve"><value>Speed by Rule</value></data>
   <data name="MotifApp.BoardWhyThisAnalysis" xml:space="preserve"><value>Why This Analysis?</value></data>
   <data name="MotifApp.BoardOpenInFieldWorks" xml:space="preserve"><value>Open in FieldWorks</value></data>
-  <data name="MotifApp.BoardAskClaude" xml:space="preserve"><value>Ask Claude</value></data>
   <data name="MotifApp.BoardNotAWord" xml:space="preserve"><value>Not a Word</value></data>
   <data name="MotifApp.BoardApply" xml:space="preserve"><value>Apply</value></data>
   <data name="MotifApp.BoardDecline" xml:space="preserve"><value>Decline</value></data>
@@ -7308,7 +7205,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.BoardKeepAnalysis" xml:space="preserve"><value>Keep Analysis</value></data>
   <data name="MotifApp.BoardNextGap" xml:space="preserve"><value>Next Gap</value></data>
   <data name="MotifApp.BoardKeepAllLikeThis" xml:space="preserve"><value>Keep All Like This</value></data>
-  <data name="MotifApp.BoardClaude" xml:space="preserve"><value>Claude</value></data>
   <data name="MotifApp.BoardProgress" xml:space="preserve"><value>Progress</value></data>
   <data name="MotifApp.BoardTexts" xml:space="preserve"><value>Texts</value></data>
   <data name="MotifApp.BoardWords" xml:space="preserve"><value>Words</value></data>
@@ -7323,10 +7219,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.BoardOther" xml:space="preserve"><value>Other</value></data>
   <data name="MotifApp.BoardRule" xml:space="preserve"><value>Rule</value></data>
   <data name="MotifApp.BoardStepsPerWord" xml:space="preserve"><value>Steps per Word</value></data>
-  <data name="MotifApp.BoardAskClaudeAboutThis" xml:space="preserve"><value>Ask Claude About This</value></data>
   <data name="MotifApp.BoardShowWords" xml:space="preserve"><value>Show Words</value></data>
   <data name="MotifApp.BoardHideThisWarning" xml:space="preserve"><value>Hide This Warning</value></data>
-  <data name="MotifApp.BoardAskClaudeToRevise" xml:space="preserve"><value>Ask Claude to Revise</value></data>
   <data name="MotifApp.BoardDraft" xml:space="preserve"><value>Draft</value></data>
   <data name="MotifApp.BoardReady" xml:space="preserve"><value>Ready</value></data>
   <data name="MotifApp.BoardProposal" xml:space="preserve"><value>Proposal</value></data>
@@ -7343,7 +7237,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.BoardChangesToTheGrammar" xml:space="preserve"><value>Changes to the Grammar</value></data>
   <data name="MotifApp.BoardApplyTheFirst" xml:space="preserve"><value>Apply the First…</value></data>
   <data name="MotifApp.BoardApplyTheSecond" xml:space="preserve"><value>Apply the Second…</value></data>
-  <data name="MotifApp.BoardAskClaudeWhichFitsTheGuide" xml:space="preserve"><value>Ask Claude Which Fits the Guide</value></data>
   <data name="MotifApp.BoardApproveHere" xml:space="preserve"><value>Approve Here</value></data>
   <data name="MotifApp.BoardApprovePlaces" xml:space="preserve"><value>Approve Places</value></data>
   <data name="MotifApp.BoardAnalysis" xml:space="preserve"><value>Analysis</value></data>
@@ -7446,17 +7339,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.SourcesPendingExplanation" xml:space="preserve"><value>Source changes belong to the pending Proposal. Return to the current project before staging them.</value></data>
   <data name="MotifApp.SourcesUsePending" xml:space="preserve"><value>Return to Current Project</value></data>
   <!-- W7 -->
-  <data name="MotifApp.ClaudePanelExplanation" xml:space="preserve"><value>Requests wait for a Proposal. Use Claude separately; Motif has no chat session here.</value></data>
-  <data name="MotifApp.ClaudeRequestsEmpty" xml:space="preserve"><value>No open Requests.</value></data>
-  <data name="MotifApp.ClaudeOpenProject" xml:space="preserve"><value>Open a project to read its Requests.</value></data>
-  <data name="MotifApp.ClaudeSetup" xml:space="preserve"><value>Set Up Claude in Settings</value></data>
-  <data name="MotifApp.ClaudeClose" xml:space="preserve"><value>Close Claude Panel</value></data>
-  <data name="MotifApp.ClaudeRefresh" xml:space="preserve"><value>Refresh Requests</value></data>
-  <data name="MotifApp.ClaudeLoadMore" xml:space="preserve"><value>Show More Requests</value></data>
-  <data name="MotifApp.AssistantConnectionsHeading" xml:space="preserve"><value>Assistant Connections</value></data>
-  <data name="MotifApp.ClaudeUnsupportedTarget" xml:space="preserve"><value>Requests are unavailable for this kind of item.</value></data>
-  <data name="MotifApp.ClaudeRequestsLoading" xml:space="preserve"><value>Reading Requests…</value></data>
-  <data name="MotifApp.ClaudeRequestKindUnknown" xml:space="preserve"><value>Item</value></data>
   <!-- w8 diagnostics resources. -->
   <data name="MotifApp.DiagnosticsIntro" xml:space="preserve"><value>Diagnostics are advice only. Read and edit rules in FieldWorks.</value></data>
   <data name="MotifApp.DiagnosticsUnavailable" xml:space="preserve"><value>Recorded diagnostics are unavailable.</value></data>
@@ -7479,8 +7361,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.DiagnosticsParsimonyMeasuringStepFormat" xml:space="preserve"><value>Parsimony is measuring this Proposal: stage {0} of {1}.</value></data>
   <data name="MotifApp.DiagnosticsParsimonyMeasuringStageFormat" xml:space="preserve"><value>Parsimony is measuring this Proposal: {0}, stage {1} of {2}.</value></data>
   <!-- W9 -->
-  <data name="MotifApp.ProgressRequestsLabel" xml:space="preserve"><value>Requests</value></data>
-  <data name="MotifApp.ProgressOpenRequestsPattern" xml:space="preserve"><value>{0, plural, one {# open Request awaiting an answer} other {# open Requests awaiting an answer}}</value></data>
   <data name="MotifApp.ProgressReadingNext" xml:space="preserve"><value>Reading next actions…</value></data>
   <data name="MotifApp.ProgressNextUnavailable" xml:space="preserve"><value>Some next actions are unavailable. Refresh the project or try again.</value></data>
   <!-- W5 -->
@@ -7579,9 +7459,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.OccurrencesAnalysis" xml:space="preserve"><value>Analysis</value></data>
   <data name="MotifApp.OccurrencesApprovePattern" xml:space="preserve"><value>{0, plural, one {Approve # Place} other {Approve # Places}}</value></data>
   <data name="MotifApp.OccurrencesApproveOne" xml:space="preserve"><value>Approve 1 Place</value></data>
-  <data name="MotifApp.OccurrencesAskClaude" xml:space="preserve"><value>Ask Claude</value></data>
   <data name="MotifApp.OccurrencesNotAWord" xml:space="preserve"><value>Not a Word</value></data>
-  <data name="MotifApp.OccurrencesAskNote" xml:space="preserve"><value>Ask Claude makes a Request about this word. Claude drafts a Proposal; it never applies.</value></data>
   <data name="MotifApp.OccurrencesRangeFormat" xml:space="preserve"><value>Places {0} to {1} of {2}</value></data>
   <data name="MotifApp.OccurrencesPreviousPage" xml:space="preserve"><value>Previous Places</value></data>
   <data name="MotifApp.OccurrencesNextPage" xml:space="preserve"><value>Next Places</value></data>
@@ -7627,7 +7505,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.WhyThisAnalysisRulesNote" xml:space="preserve"><value>Shown only with Diagnostics on. Rules are read and edited in FieldWorks.</value></data>
   <data name="MotifApp.WhyThisAnalysisFoldName" xml:space="preserve"><value>Why This Analysis? Fold</value></data>
   <!-- W11b -->
-  <data name="MotifApp.OccurrencesAskNotSent" xml:space="preserve"><value>The request could not be made. Nothing was changed.</value><comment>Word panel: shown when asking Claude about a word fails before a Request is made.</comment></data>
   <data name="MotifApp.OccurrencesPageNotRead" xml:space="preserve"><value>These places could not be read. Nothing was changed.</value><comment>Word panel: shown when paging to another page of places fails.</comment></data>
   <data name="MotifApp.WordCardWhereItAppears" xml:space="preserve"><value>Where It Appears</value><comment>Word card heading above the places a word occurs, shown only where no shared places panel lists them.</comment></data>
   <!-- W11a Grammar Guide -->

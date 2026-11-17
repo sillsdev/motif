@@ -64,8 +64,8 @@ public sealed class StoreCauseRefusalTests
     {
         var fake = new FakeCommandClient();
         var refusal = missingLock ? MissingLock() : OtherProject();
-        fake.ProgressRequestCountHandler = (_, _) =>
-            Task.FromResult(CommandOutcome<ProgressRequestCount>.Refused(refusal));
+        fake.OnProposalStandings((_, _) =>
+            Task.FromResult(CommandOutcome<ProposalStandings>.Refused(refusal)));
         var context = WorkspaceContextTests.NewContext(fake);
         var page = new ProgressPageModel(context);
         try
@@ -84,8 +84,8 @@ public sealed class StoreCauseRefusalTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var fake = new FakeCommandClient();
-            fake.ProgressRequestCountHandler = (_, _) =>
-                Task.FromResult(CommandOutcome<ProgressRequestCount>.Refused(MissingLock()));
+            fake.OnProposalStandings((_, _) =>
+                Task.FromResult(CommandOutcome<ProposalStandings>.Refused(MissingLock())));
             var context = WorkspaceContextTests.NewContext(fake);
             var model = new ProgressPageModel(context);
             var page = new ProgressPage(model);
@@ -115,8 +115,6 @@ public sealed class StoreCauseRefusalTests
             var fake = new FakeCommandClient();
             fake.OnOverview((_, _) => Task.FromResult(CommandOutcome<OverviewResponse>.Refused(
                 storeCause ? MissingLock() : new Refusal("overview.not-configured", FailureReason.Refused, "No Overview."))));
-            fake.ProgressRequestCountHandler = (_, _) => Task.FromResult(CommandOutcome<ProgressRequestCount>.Refused(
-                new Refusal("requests.unreadable", FailureReason.Refused, "Requests could not be read.")));
             var context = WorkspaceContextTests.NewContext(fake);
             var model = new ProgressPageModel(context);
             var page = new ProgressPage(model);

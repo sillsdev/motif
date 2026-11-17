@@ -60,7 +60,6 @@ internal static class InteractiveMarkupContracts
             [(AvaloniaNamespace, "DataGrid")] = InteractiveControlFamily.Grid,
             [(AvaloniaNamespace, "TreeView")] = InteractiveControlFamily.Tree,
             // W7_shared
-            [(ViewsNamespace, "ClaudePanelButton")] = InteractiveControlFamily.Action,
             [(ViewsNamespace, "FilterChip")] = InteractiveControlFamily.Filter,
             [(ViewsNamespace, "CopyableTextBlock")] = InteractiveControlFamily.SelectableText,
             [(ViewsNamespace, "MarkGlyph")] = InteractiveControlFamily.Mark,

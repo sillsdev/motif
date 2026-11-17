@@ -16,7 +16,7 @@ public sealed class OverviewGuideTests
 
         Assert.Contains("waiting for a decision", progress);
         Assert.Contains("does not start a parse", progress);
-        Assert.Contains("unanswered Requests", progress);
+        Assert.DoesNotContain("Requests", progress);
         Assert.Contains("Chapter approval totals", progress);
         Assert.Contains("parse completion", progress);
         var coverage = Assert.IsType<string>(catalog.GetHelpPage(HelpEntryKind.Guide, "text-coverage"));

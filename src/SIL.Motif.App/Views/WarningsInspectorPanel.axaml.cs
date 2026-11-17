@@ -33,12 +33,6 @@ public sealed partial class WarningsInspectorPanel : UserControl
     /// <summary>The host for spelling candidate words in the selected finding.</summary>
     public IWordPresentationHost SpellingCandidatePresentationHost { get; }
 
-    private void OnRequestAttached(object? sender, Avalonia.VisualTreeAttachmentEventArgs args)
-    {
-        if (sender is AskAssistantButton request && request.FindControl<Button>("AskButton") is { } button)
-            button.Content = MotifAppStrings.BoardAskClaude;
-    }
-
     private void OnShowWords(object? sender, Avalonia.Interactivity.RoutedEventArgs args)
     {
         var list = this.GetVisualDescendants().OfType<ItemsControl>().FirstOrDefault(items =>

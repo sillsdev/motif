@@ -58,7 +58,6 @@ public sealed class ProgressiveDisplayTests
     private static readonly string[] ViewNames =
     [
         "DiagnosticPanel", "HandoffPanel",
-        "Assistant/ClaudePanel", "Settings/AssistantConnectionsPanel",
         "MotifWorkspaceView",
         "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage", "Guide/GuideExamples", "Guide/GuideGrammarNames",
         "Proposals/ProposalComparePanel", "Proposals/ProposalCompareSide", "Proposals/ProposalDocument", "Proposals/ProposalEvidenceColumns",
@@ -1007,11 +1006,6 @@ public sealed class ProgressiveDisplayTests
         }
         return name switch
         {
-            "Assistant/ClaudePanel" => new SIL.Motif.App.Views.Assistant.ClaudePanel(workspace.PageModel<SettingsPageModel>().Claude),
-            "Settings/AssistantConnectionsPanel" => new SIL.Motif.App.Views.Settings.AssistantConnectionsPanel
-            {
-                DataContext = workspace.PageModel<SettingsPageModel>().Connections,
-            },
             // w8 proposal diagnostic row.
             "Diagnostics/ProposalDiagnosticsRow" => new ProposalDiagnosticsRow
             {

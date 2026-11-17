@@ -4,23 +4,15 @@ namespace SIL.Motif.App.ViewModels;
 /// Page registration for Settings. Its view requires the window's existing Settings model as its data
 /// context so display choices and project preferences share one owner.
 /// </summary>
-public sealed class SettingsPageModel : PageModel, IDisposable
+public sealed class SettingsPageModel : PageModel
 {
     private SettingsViewModel? _settings;
     private int _handoffRequestVersion;
 
     public SettingsPageModel(WorkspaceContext context) : base(context)
     {
-        Connections = new AssistantConnectionsViewModel(context);
-        Claude = new ClaudePanelViewModel(context);
         Handoff = context.HandoffSession;
     }
-
-    /// <summary>The assistant connection controls hosted in Settings.</summary>
-    public AssistantConnectionsViewModel Connections { get; }
-
-    /// <summary>The shell-owned Claude panel's project state.</summary>
-    public ClaudePanelViewModel Claude { get; }
 
     /// <summary>The file Handoff action hosted in Settings.</summary>
     public HandoffSessionViewModel Handoff { get; }
@@ -36,7 +28,6 @@ public sealed class SettingsPageModel : PageModel, IDisposable
         {
             if (value is not null)
             {
-                value.AssistantConnections = Connections;
                 if (_handoffRequestVersion > 0) value.ShowHandoffByCopyingFiles = true;
             }
             SetProperty(ref _settings, value);
@@ -45,18 +36,13 @@ public sealed class SettingsPageModel : PageModel, IDisposable
 
     protected override void OnProjectCleared()
     {
-        Claude.ProjectCleared();
         Handoff.OnProjectCleared();
     }
 
-    protected override Task OnStopWorkAsync() => Task.WhenAll(Handoff.OnStopWorkAsync(), Claude.StopWorkAsync());
-
-    protected override Task OnRequestsChangedAsync(CancellationToken cancellationToken) =>
-        Claude.RequestsChangedAsync(cancellationToken);
+    protected override Task OnStopWorkAsync() => Handoff.OnStopWorkAsync();
 
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
-        Task.WhenAll(Handoff.OnProjectOpenedAsync(projectPath, cancellationToken),
-            Claude.ProjectOpenedAsync(projectPath, cancellationToken));
+        Handoff.OnProjectOpenedAsync(projectPath, cancellationToken);
 
     protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken) =>
         Handoff.OnEvidencePublishedAsync(lens, cancellationToken);
@@ -72,5 +58,4 @@ public sealed class SettingsPageModel : PageModel, IDisposable
         Handoff.OnRequested(request);
     }
 
-    public void Dispose() => Connections.Dispose();
 }

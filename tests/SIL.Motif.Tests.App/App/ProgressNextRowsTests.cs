@@ -27,7 +27,7 @@ public sealed class ProgressNextRowsTests
         var entered = new TaskCompletionSource();
         var pending = new TaskCompletionSource<CommandOutcome<ProposalStandings>>();
         fake.OnProposalStandings((_, _) => { entered.TrySetResult(); return pending.Task; });
-        var refresh = context.PublishRequestsChangedAsync();
+        var refresh = context.PublishGrammarCheckedAsync();
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
@@ -52,11 +52,11 @@ public sealed class ProgressNextRowsTests
         var pending = new TaskCompletionSource<CommandOutcome<ProposalStandings>>();
         CancellationToken oldToken = default;
         fake.OnProposalStandings((_, token) => { oldToken = token; return pending.Task; });
-        var first = context.PublishRequestsChangedAsync();
+        var first = context.PublishGrammarCheckedAsync();
         fake.ProposalStandingsCompleteWith(new ProposalStandings([], 0));
         try
         {
-            await context.PublishRequestsChangedAsync();
+            await context.PublishGrammarCheckedAsync();
             Assert.True(oldToken.IsCancellationRequested);
         }
         finally
@@ -68,31 +68,24 @@ public sealed class ProgressNextRowsTests
     }
 
     [Fact]
-    public async Task NextListsWaitingProposalsAndOpenRequestsWithoutInventingAQuestion()
+    public async Task NextListsOnlyWaitingProposalsAndNeverARequestRow()
     {
         var fake = new FakeCommandClient();
         fake.ProposalStandingsCompleteWith(new ProposalStandings([WaitingCard(),
             WaitingCard() with { ProposalId = "proposal/other", Group = ProposalGroup.NeedsAnotherTry }], 0));
-        fake.ProgressRequestCountHandler = (_, _) => Task.FromResult(CommandOutcome<ProgressRequestCount>.Success(new ProgressRequestCount(2_345)));
         var context = WorkspaceContextTests.NewContext(fake);
         var page = new ProgressPageModel(context);
         try
         {
             await context.OpenProjectAsync("project.fwdata");
             Assert.Equal(1, page.WaitingProposals);
-            Assert.Equal(2_345, page.OpenRequests);
-            Assert.Equal(2, page.NextRows.Count);
-            Assert.Equal("Proposals", page.NextRows[0].Category);
-            Assert.Contains("waiting for your decision", page.NextRows[0].Text);
-            Assert.Equal("Requests", page.NextRows[1].Category);
-            Assert.Contains("awaiting an answer", page.NextRows[1].Text);
-            Assert.DoesNotContain("Claude", page.NextRows[1].Text);
-            for (var index = 0; index < 2; index++)
-            {
-                context.OpenPage(WorkspacePage.Progress);
-                page.NextRows[index].OpenCommand.Execute(null);
-                Assert.Equal(WorkspacePage.Proposals, context.CurrentPage);
-            }
+            var row = Assert.Single(page.NextRows);
+            Assert.Equal("Proposals", row.Category);
+            Assert.Contains("waiting for your decision", row.Text);
+            Assert.DoesNotContain("Claude", row.Text);
+            context.OpenPage(WorkspacePage.Progress);
+            row.OpenCommand.Execute(null);
+            Assert.Equal(WorkspacePage.Proposals, context.CurrentPage);
             Assert.Empty(fake.AssessRequests);
         }
         finally { await context.StopProjectWorkAsync(); }
@@ -106,8 +99,6 @@ public sealed class ProgressNextRowsTests
         {
             Unreadable = [new UnreadableProposal("proposal/other", "Other", "Unreadable")],
         });
-        fake.ProgressRequestCountHandler = (_, _) => Task.FromResult(CommandOutcome<ProgressRequestCount>.Refused(
-            new Refusal("requests.unavailable", FailureReason.Refused, "Unavailable")));
         var context = WorkspaceContextTests.NewContext(fake);
         var page = new ProgressPageModel(context);
         try
@@ -115,13 +106,10 @@ public sealed class ProgressNextRowsTests
             await context.OpenProjectAsync("project.fwdata");
             Assert.True(page.HasUnavailableNext);
             Assert.Null(page.WaitingProposals);
-            Assert.Null(page.OpenRequests);
             Assert.Empty(page.NextRows);
             fake.ProposalStandingsCompleteWith(new ProposalStandings([WaitingCard()], 0));
-            fake.ProgressRequestCountHandler = (_, _) => Task.FromResult(CommandOutcome<ProgressRequestCount>.Success(new ProgressRequestCount(0)));
             await page.TryAgainCommand.ExecuteAsync(null);
             Assert.False(page.HasUnavailableNext);
-            Assert.Equal(0, page.OpenRequests);
             Assert.Single(page.NextRows);
             Assert.Empty(fake.AssessRequests);
         }
@@ -137,7 +125,6 @@ public sealed class ProgressNextRowsTests
         {
             await context.OpenProjectAsync("project.fwdata");
             Assert.Equal(0, page.WaitingProposals);
-            Assert.Equal(0, page.OpenRequests);
             Assert.False(page.HasNextSection);
             Assert.False(page.HasUnavailableNext);
         }
@@ -145,7 +132,7 @@ public sealed class ProgressNextRowsTests
     }
 
     [Fact]
-    public async Task AContextChangeDiscardsLateTotalsAndDisablesRetainedRows()
+    public async Task AContextChangeDisablesRetainedRowsAndClearsTheTotals()
     {
         var fake = new FakeCommandClient();
         fake.ProposalStandingsCompleteWith(new ProposalStandings([WaitingCard()], 0));
@@ -154,31 +141,17 @@ public sealed class ProgressNextRowsTests
         await context.OpenProjectAsync("project.fwdata");
         await context.EvidencePublication;
         var oldRow = Assert.Single(page.NextRows);
-        var pending = new TaskCompletionSource<CommandOutcome<ProgressRequestCount>>();
-        CancellationToken oldToken = default;
-        fake.ProgressRequestCountHandler = (_, token) => { oldToken = token; return pending.Task; };
-        var oldRead = context.PublishRequestsChangedAsync();
-        fake.ProgressRequestCountHandler = (_, _) => Task.FromResult(CommandOutcome<ProgressRequestCount>.Success(new ProgressRequestCount(0)));
         fake.ProposalStandingsCompleteWith(new ProposalStandings([], 0));
         try
         {
             context.Selection.PastedWords = "different-context";
             await context.EvidencePublication;
-            Assert.True(oldToken.IsCancellationRequested);
             Assert.False(oldRow.OpenCommand.CanExecute(null));
             oldRow.OpenCommand.Execute(null);
             Assert.Equal(WorkspacePage.Progress, context.CurrentPage);
-            pending.SetResult(CommandOutcome<ProgressRequestCount>.Success(new ProgressRequestCount(999)));
-            await oldRead;
-            Assert.Equal(0, page.OpenRequests);
             Assert.Empty(page.NextRows);
         }
-        finally
-        {
-            pending.TrySetResult(CommandOutcome<ProgressRequestCount>.Success(new ProgressRequestCount(999)));
-            await oldRead;
-            await context.StopProjectWorkAsync();
-        }
+        finally { await context.StopProjectWorkAsync(); }
     }
 
     [Fact]
@@ -260,12 +233,11 @@ public sealed class ProgressNextRowsTests
         await context.OpenProjectAsync("first.fwdata");
         await context.EvidencePublication;
         var oldRow = Assert.Single(page.NextRows);
-        var pending = new TaskCompletionSource<CommandOutcome<ProgressRequestCount>>();
+        var pending = new TaskCompletionSource<CommandOutcome<ProposalStandings>>();
         CancellationToken oldToken = default;
-        fake.ProgressRequestCountHandler = (_, token) => { oldToken = token; return pending.Task; };
-        var oldRead = context.PublishRequestsChangedAsync();
-        fake.ProgressRequestCountHandler = (_, _) => Task.FromResult(
-            CommandOutcome<ProgressRequestCount>.Success(new ProgressRequestCount(2)));
+        fake.OnProposalStandings((_, token) => { oldToken = token; return pending.Task; });
+        var oldRead = context.PublishGrammarCheckedAsync();
+        fake.ProposalStandingsCompleteWith(new ProposalStandings([WaitingCard()], 0));
         var switching = context.OpenProjectAsync("second.fwdata");
         try
         {
@@ -273,18 +245,18 @@ public sealed class ProgressNextRowsTests
             Assert.Empty(page.NextRows);
             Assert.False(switching.IsCompleted);
             Assert.False(oldRow.OpenCommand.CanExecute(null));
-            pending.SetResult(CommandOutcome<ProgressRequestCount>.Success(new ProgressRequestCount(999)));
+            pending.SetResult(CommandOutcome<ProposalStandings>.Success(new ProposalStandings([], 0)));
             await oldRead;
             await switching;
             Assert.Equal("second.fwdata", context.ProjectPath);
-            Assert.Equal(2, page.OpenRequests);
-            Assert.Equal(2, page.NextRows.Count);
+            Assert.Equal(1, page.WaitingProposals);
+            Assert.Single(page.NextRows);
             oldRow.OpenCommand.Execute(null);
             Assert.Equal(WorkspacePage.Progress, context.CurrentPage);
         }
         finally
         {
-            pending.TrySetResult(CommandOutcome<ProgressRequestCount>.Success(new ProgressRequestCount(999)));
+            pending.TrySetResult(CommandOutcome<ProposalStandings>.Success(new ProposalStandings([], 0)));
             await oldRead;
             await switching;
             await context.StopProjectWorkAsync();

@@ -35,7 +35,6 @@ public static class MotifAppStrings
     public static string BoardSpeedByRule => Text("MotifApp.BoardSpeedByRule");
     public static string BoardWhyThisAnalysis => Text("MotifApp.BoardWhyThisAnalysis");
     public static string BoardOpenInFieldWorks => Text("MotifApp.BoardOpenInFieldWorks");
-    public static string BoardAskClaude => Text("MotifApp.BoardAskClaude");
     public static string BoardNotAWord => Text("MotifApp.BoardNotAWord");
     public static string BoardApply => Text("MotifApp.BoardApply");
     public static string BoardDecline => Text("MotifApp.BoardDecline");
@@ -47,11 +46,6 @@ public static class MotifAppStrings
     public static string HealthTurnOnDiagnostics => Text("MotifApp.HealthTurnOnDiagnostics");
     public static string Health => Text("MotifApp.Health");
     public static string Progress => Text("MotifApp.Progress");
-    public static string HealthAssistantConnected => Text("MotifApp.HealthAssistantConnected");
-    public static string HealthAssistantDisconnected => Text("MotifApp.HealthAssistantDisconnected");
-    public static string AssistantsEnabled => Text("MotifApp.AssistantsEnabled");
-    public static string AssistantsDisabled => Text("MotifApp.AssistantsDisabled");
-    public static string AssistantsNotFound => Text("MotifApp.AssistantsNotFound");
     public static string ProgressNext => Text("MotifApp.ProgressNext");
     public static string ProgressWaitingProposalsPattern => Text("MotifApp.ProgressWaitingProposalsPattern");
     public static string ProgressSelectionFormat => Text("MotifApp.ProgressSelectionFormat");
@@ -71,7 +65,6 @@ public static class MotifAppStrings
     public static string ApplyIncompleteMeasurement => Text("MotifApp.ApplyIncompleteMeasurement");
     public static string ApplyReadinessUnavailable => Text("MotifApp.ApplyReadinessUnavailable");
     public static string PageAccessibleNameFormat => Text("MotifApp.PageAccessibleNameFormat");
-    public static string BoardClaude => Text("MotifApp.BoardClaude");
     public static string BoardProgress => Text("MotifApp.BoardProgress");
     public static string BoardTexts => Text("MotifApp.BoardTexts");
     public static string BoardWords => Text("MotifApp.BoardWords");
@@ -86,10 +79,8 @@ public static class MotifAppStrings
     public static string BoardOther => Text("MotifApp.BoardOther");
     public static string BoardRule => Text("MotifApp.BoardRule");
     public static string BoardStepsPerWord => Text("MotifApp.BoardStepsPerWord");
-    public static string BoardAskClaudeAboutThis => Text("MotifApp.BoardAskClaudeAboutThis");
     public static string BoardShowWords => Text("MotifApp.BoardShowWords");
     public static string BoardHideThisWarning => Text("MotifApp.BoardHideThisWarning");
-    public static string BoardAskClaudeToRevise => Text("MotifApp.BoardAskClaudeToRevise");
     public static string BoardDraft => Text("MotifApp.BoardDraft");
     public static string BoardReady => Text("MotifApp.BoardReady");
     public static string BoardProposal => Text("MotifApp.BoardProposal");
@@ -106,7 +97,6 @@ public static class MotifAppStrings
     public static string BoardChangesToTheGrammar => Text("MotifApp.BoardChangesToTheGrammar");
     public static string BoardApplyTheFirst => Text("MotifApp.BoardApplyTheFirst");
     public static string BoardApplyTheSecond => Text("MotifApp.BoardApplyTheSecond");
-    public static string BoardAskClaudeWhichFitsTheGuide => Text("MotifApp.BoardAskClaudeWhichFitsTheGuide");
     public static string BoardApproveHere => Text("MotifApp.BoardApproveHere");
     public static string BoardApprovePlaces => Text("MotifApp.BoardApprovePlaces");
     public static string BoardAnalysis => Text("MotifApp.BoardAnalysis");
@@ -1525,6 +1515,7 @@ public static class MotifAppStrings
     public static string Judgment => Text("MotifApp.Judgment");
 
     public static string Defer => Text("MotifApp.Defer");
+
 
     public static string Ask => Text("MotifApp.Ask");
 
@@ -3786,50 +3777,28 @@ public static class MotifAppStrings
     public static string ChosenCellSeparatorMark => Text("MotifApp.ChosenCellSeparatorMark");
 
 
-    public static string AdvancedAiModeTitle => Text("MotifApp.AdvancedAiModeTitle");
 
-    public static string AdvancedAiModeExplanation => Text("MotifApp.AdvancedAiModeExplanation");
 
-    public static string TurnOnAdvancedAiMode => Text("MotifApp.TurnOnAdvancedAiMode");
 
-    public static string ChooseAssistantsTitle => Text("MotifApp.ChooseAssistantsTitle");
 
-    public static string ChooseAssistantsExplanation => Text("MotifApp.ChooseAssistantsExplanation");
 
-    public static string ConnectSelectedAssistants => Text("MotifApp.ConnectSelectedAssistants");
 
-    public static string OpenPluginFolder => Text("MotifApp.OpenPluginFolder");
 
-    public static string OpenClaudePlugins => Text("MotifApp.OpenClaudePlugins");
 
     public static string LoadingProject => Text("MotifApp.LoadingProject");
 
-    public static string AskAnAssistantToFixThis => Text("MotifApp.AskAnAssistantToFixThis");
 
-    public static string AskAnAssistantNoteLabel => Text("MotifApp.AskAnAssistantNoteLabel");
 
-    public static string AskAnAssistantAsk => Text("MotifApp.AskAnAssistantAsk");
 
-    public static string RequestsGroupTitle => Text("MotifApp.RequestsGroupTitle");
 
-    public static string WithdrawRequest => Text("MotifApp.WithdrawRequest");
 
-    public static string AskAgain => Text("MotifApp.AskAgain");
 
-    public static string RequestAskedToday => Text("MotifApp.RequestAskedToday");
 
-    public static string RequestAskedDaysPattern => Text("MotifApp.RequestAskedDaysPattern");
 
-    public static string RequestAskedStatus => Text("MotifApp.RequestAskedStatus");
 
-    /// <summary>Loads more open Requests.</summary>
-    public static string ShowMoreRequests => Text("MotifApp.ShowMoreRequests");
 
-    public static string RequestKindWord => Text("MotifApp.RequestKindWord");
 
-    public static string RequestKindWarning => Text("MotifApp.RequestKindWarning");
 
-    public static string RequestKindMatrixCell => Text("MotifApp.RequestKindMatrixCell");
 
     public static string RefusalRequestInvalid => Text("MotifApp.RefusalRequestInvalid");
 
@@ -3844,19 +3813,6 @@ public static class MotifAppStrings
     public static string TraceSearchEvents => Text("MotifApp.TraceSearchEvents");
 
     public static string TraceSelectedEvent => Text("MotifApp.TraceSelectedEvent");
-    public static string ChatGptTitle => Text("MotifApp.ChatGptTitle");
-    public static string ChatGptKey => Text("MotifApp.ChatGptKey");
-    public static string ChatGptTunnelId => Text("MotifApp.ChatGptTunnelId");
-    public static string ChatGptConnect => Text("MotifApp.ChatGptConnect");
-    public static string ChatGptDisconnect => Text("MotifApp.ChatGptDisconnect");
-    public static string ChatGptNotConnected => Text("MotifApp.ChatGptNotConnected");
-    public static string ChatGptConnecting => Text("MotifApp.ChatGptConnecting");
-    public static string ChatGptConnected => Text("MotifApp.ChatGptConnected");
-    public static string ChatGptError => Text("MotifApp.ChatGptError");
-    public static string ChatGptMissing => Text("MotifApp.ChatGptMissing");
-    public static string ChatGptKeyNotSaved => Text("MotifApp.ChatGptKeyNotSaved");
-    public static string ChatGptInstructions => Text("MotifApp.ChatGptInstructions");
-    public static string ChatGptKeyHelp => Text("MotifApp.ChatGptKeyHelp");
     public static string CompareParagraphMovedMineFormat => Text("MotifApp.CompareParagraphMovedMineFormat");
     public static string CompareParagraphMovedOtherFormat => Text("MotifApp.CompareParagraphMovedOtherFormat");
     public static string CompareParagraphMovedBothFormat => Text("MotifApp.CompareParagraphMovedBothFormat");
@@ -3905,18 +3861,6 @@ public static class MotifAppStrings
     public static string SourcesPendingExplanation => Text("MotifApp.SourcesPendingExplanation");
     public static string SourcesUsePending => Text("MotifApp.SourcesUsePending");
     #endregion
-    // W7_shared
-    public static string ClaudePanelExplanation => Text("MotifApp.ClaudePanelExplanation");
-    public static string ClaudeRequestsEmpty => Text("MotifApp.ClaudeRequestsEmpty");
-    public static string ClaudeOpenProject => Text("MotifApp.ClaudeOpenProject");
-    public static string ClaudeSetup => Text("MotifApp.ClaudeSetup");
-    public static string ClaudeClose => Text("MotifApp.ClaudeClose");
-    public static string ClaudeRefresh => Text("MotifApp.ClaudeRefresh");
-    public static string ClaudeLoadMore => Text("MotifApp.ClaudeLoadMore");
-    public static string AssistantConnectionsHeading => Text("MotifApp.AssistantConnectionsHeading");
-    public static string ClaudeUnsupportedTarget => Text("MotifApp.ClaudeUnsupportedTarget");
-    public static string ClaudeRequestsLoading => Text("MotifApp.ClaudeRequestsLoading");
-    public static string ClaudeRequestKindUnknown => Text("MotifApp.ClaudeRequestKindUnknown");
     // w8 diagnostics resources.
     public static string DiagnosticsIntro => Text("MotifApp.DiagnosticsIntro");
     public static string DiagnosticsUnavailable => Text("MotifApp.DiagnosticsUnavailable");
@@ -3939,8 +3883,6 @@ public static class MotifAppStrings
     public static string DiagnosticsParsimonyMeasuringStepFormat => Text("MotifApp.DiagnosticsParsimonyMeasuringStepFormat");
     public static string DiagnosticsParsimonyMeasuringStageFormat => Text("MotifApp.DiagnosticsParsimonyMeasuringStageFormat");
     // W9-resources
-    public static string ProgressRequestsLabel => Text("MotifApp.ProgressRequestsLabel");
-    public static string ProgressOpenRequestsPattern => Text("MotifApp.ProgressOpenRequestsPattern");
     public static string ProgressReadingNext => Text("MotifApp.ProgressReadingNext");
     public static string ProgressNextUnavailable => Text("MotifApp.ProgressNextUnavailable");
 
@@ -4043,9 +3985,7 @@ public static class MotifAppStrings
     public static string OccurrencesAnalysis => Text("MotifApp.OccurrencesAnalysis");
     public static string OccurrencesApprovePattern => Text("MotifApp.OccurrencesApprovePattern");
     public static string OccurrencesApproveOne => Text("MotifApp.OccurrencesApproveOne");
-    public static string OccurrencesAskClaude => Text("MotifApp.OccurrencesAskClaude");
     public static string OccurrencesNotAWord => Text("MotifApp.OccurrencesNotAWord");
-    public static string OccurrencesAskNote => Text("MotifApp.OccurrencesAskNote");
     public static string OccurrencesRangeFormat => Text("MotifApp.OccurrencesRangeFormat");
     public static string OccurrencesPreviousPage => Text("MotifApp.OccurrencesPreviousPage");
     public static string OccurrencesNextPage => Text("MotifApp.OccurrencesNextPage");
@@ -4093,7 +4033,6 @@ public static class MotifAppStrings
     public static string WhyThisAnalysisFoldName => Text("MotifApp.WhyThisAnalysisFoldName");
     #endregion
     #region W11b
-    public static string OccurrencesAskNotSent => Text("MotifApp.OccurrencesAskNotSent");
     public static string OccurrencesPageNotRead => Text("MotifApp.OccurrencesPageNotRead");
     public static string WordCardWhereItAppears => Text("MotifApp.WordCardWhereItAppears");
     #endregion
