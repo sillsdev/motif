@@ -1,6 +1,6 @@
 # Tag entries with their source
 
-Records where lexical entries came from, in the Bibliography of each entry, as the Attribution tag `<source>@<revision> <licence>`, such as `lang-sme@9ba7be7 GPL-3.0`. It is the per-entry half of how a project keeps the licence of imported data; [how you handle attribution](cmd:lexicon-import) says when to use it and what goes in the project half.
+Records where lexical entries came from, in the Bibliography of each entry, as the Attribution tag `<source>@<revision> <licence>`, such as `lang-sme@9ba7be7 GPL-3.0`. It is the per-entry half of how a project keeps the licence of imported data. The Lexical entries and glosses Subject explains when to use both parts and what goes in the project half.
 
 ```sh
 motif compose-set-entry-attribution --project language.fwdata --draft my-draft \

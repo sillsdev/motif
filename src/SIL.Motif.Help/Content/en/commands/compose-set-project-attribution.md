@@ -1,6 +1,6 @@
 # State the project's source
 
-States once, in the project's Description, which source, revision and licence imported data came from. The notice reads `Attribution: <source>@<revision> <licence>`, such as `Attribution: lang-sme@9ba7be7 GPL-3.0`. It is the project half of how a project keeps the licence of imported data; [how you handle attribution](cmd:lexicon-import) says when to use it, and [compose-set-entry-attribution](cmd:compose-set-entry-attribution) tags the entries.
+States once, in the project's Description, which source, revision and licence imported data came from. The notice reads `Attribution: <source>@<revision> <licence>`, such as `Attribution: lang-sme@9ba7be7 GPL-3.0`. It is the project half of how a project keeps the licence of imported data. The Lexical entries and glosses Subject explains when to use both parts, and [Tag entries with their source](cmd:compose-set-entry-attribution) stages the per-entry tag.
 
 ```sh
 motif compose-set-project-attribution --project language.fwdata --draft my-draft \

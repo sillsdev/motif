@@ -201,6 +201,23 @@ public sealed class HelpCatalogTests
     }
 
     [Fact]
+    public void HelpLinksResolveAgainstTheHelpExport()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var exportedEntries = catalog.Entries.Where(entry => entry.Kind != HelpEntryKind.Command ||
+            CommandCatalog.All.Any(command => command.Name == entry.Code &&
+                command.Surface is CommandSurface.Released or CommandSurface.AdvancedAi)).ToArray();
+        var subjectPages = catalog.Subjects.Where(subject => subject.HelpPage is not null)
+            .Select(subject => new HelpEntry(HelpEntryKind.Guide, "subject/" + subject.Id, subject.Id,
+                subject.Title, subject.Description, "Subject Markdown", subject.HelpPage, ""));
+
+        Assert.NotNull(catalog.Find(HelpEntryKind.Command, "lexicon-import"));
+        Assert.DoesNotContain(exportedEntries,
+            entry => entry.Kind == HelpEntryKind.Command && entry.Code == "lexicon-import");
+        Assert.Empty(HelpCatalog.ValidateLinks(exportedEntries.Concat(subjectPages)));
+    }
+
+    [Fact]
     public void AdvancedAiParsimonyCommandsHaveCompleteHelpEntries()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));

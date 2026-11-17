@@ -30,7 +30,29 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 16. `compose-rewrite-lexeme-form` rewrites existing lexeme forms in a guarded batch. Use `foldStressMarks=false` and explicit new forms when underlying distinctions condition the grammar.
 17. `compose-edit-allomorph-form` edits one ordinary alternate in place, guarded by its expected owner and current text, while keeping its conditions and references.
 18. `compose-edit-citation-form` retains a selected source headword separately from parser forms, guarded by its current text.
-19. `compose-set-entry-attribution` records the source and licence of imported entries in their Bibliography, and `compose-set-project-attribution` states it once in the project Description; [how you handle attribution](cmd:lexicon-import).
+19. `compose-set-entry-attribution` records the source and licence of imported entries in their Bibliography, and `compose-set-project-attribution` states it once in the project Description; the Attribution section below explains the shared rule.
+
+## Attribution
+
+Data brought in from another source usually carries a licence, such as GPL-3.0 or CC BY-SA, that must stay with the data. Motif keeps that **Attribution** in the project itself, in two places that FieldWorks already has, and adds no field:
+
+1. **Per entry:** a short tag `<source>@<revision> <licence>`, such as `lang-sme@9ba7be7 GPL-3.0`, in the entry's Bibliography, written in an analysis writing system. FieldWorks exports the Bibliography as a bibliography note, so the tag survives a `.fwdata` save and a LIFT round trip.
+2. **Per project:** one notice in the project's Description, `Attribution: <source>@<revision> <licence>`, once for each source and revision.
+
+Both are Proposal changes, so each goes through a Draft, a Dry Run and a person's Apply like any other change:
+
+- [Tag entries with their source](cmd:compose-set-entry-attribution) tags many entries at once from a list of entry ids or GUIDs and the tag.
+- [State the project's source](cmd:compose-set-project-attribution) records the project notice.
+
+To attribute data already in the project, for example entries applied earlier without a tag:
+
+1. Write the ids of those entries, one per line, to a file.
+2. Stage `compose-set-entry-attribution --entries-file <file> --tag "<source>@<revision> <licence>"` in a Draft, then `compose-set-project-attribution` with the same tag in that Draft.
+3. Run a Dry Run, review the Difference, and let a person Apply.
+
+Both commands are idempotent and keep other text. Running them again stages nothing for an entry or project that already carries the tag, and existing Bibliography and Description text stays. The same source and revision under a different licence is refused rather than stated twice, because a person decides which licence applies.
+
+Give the tag the licence as the source states it, with the source name and revision from the source's own repository, so anyone reading the project can find the exact data. Write a full citation only in the project notice if needed; the per-entry tag stays short.
 
 ## Splitting one lexeme into homographs
 
