@@ -1,0 +1,373 @@
+<overlay version="1" id="https://software.sil.org/textediting/schemas/lexicon-entry-v1.json">
+  <kind name="lexicon/entry" root="LexEntry" pathSegments="2" />
+  <class name="CmMedia">
+    <field name="Label" key="label" />
+    <field name="MediaFile" key="media-file" />
+  </class>
+  <class name="CmObject">
+    <exclude name="ClassID" />
+    <exclude name="Guid" />
+    <exclude name="Owner" />
+    <exclude name="OwningFlid" />
+    <exclude name="OwnOrd" />
+    <exclude name="Self" />
+    <exclude name="ShortNameTSS" />
+  </class>
+  <class name="CmPicture">
+    <field name="Caption" key="caption" />
+    <exclude name="CreatorTSS" />
+    <field name="Description" key="description" />
+    <field name="DoNotPublishIn" key="do-not-publish-in" />
+    <field name="LayoutPos" key="layout-pos" />
+    <exclude name="LicenseTSS" />
+    <field name="LocationMax" key="location-max" />
+    <field name="LocationMin" key="location-min" />
+    <field name="LocationRangeType" key="location-range-type" />
+    <exclude name="OwningSense" />
+    <exclude name="PathNameTSS" />
+    <field name="PictureFile" key="picture-file" />
+    <exclude name="PublishIn" />
+    <field name="ScaleFactor" key="scale-factor" />
+    <exclude name="SenseNumberTSS" />
+  </class>
+  <class name="CmTranslation">
+    <exclude name="OwningExample" />
+    <field name="Status" key="status" />
+    <field name="Translation" key="translation" />
+    <field name="Type" key="type" />
+  </class>
+  <class name="FsAbstractStructure">
+  </class>
+  <class name="FsClosedValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsComplexValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsDisjunctiveValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsFeatStruc">
+    <exclude name="ChooserNameTS" />
+    <field name="FeatureDisjunctions" key="feature-disjunctions" />
+    <field name="FeatureSpecs" key="feature-specs" />
+    <exclude name="IsEmpty" />
+    <exclude name="LongNameSortedTSS" />
+    <exclude name="LongNameTSS" />
+    <field name="Type" key="type" />
+  </class>
+  <class name="FsFeatStrucDisj">
+    <field name="Contents" key="contents" />
+  </class>
+  <class name="FsFeatureSpecification">
+    <field name="Feature" key="feature" />
+    <field name="RefNumber" key="ref-number" />
+    <field name="ValueState" key="value-state" />
+  </class>
+  <class name="FsNegatedValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsOpenValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsSharedValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="LexEntry">
+    <exclude name="AllAllomorphs" />
+    <exclude name="AllSenses" />
+    <exclude name="AllSubentries" />
+    <field name="AlternateForms" key="allomorphs" />
+    <field name="Bibliography" key="bibliography" />
+    <field name="CitationForm" key="citation-form" />
+    <field name="Comment" key="comment" />
+    <exclude name="ComplexFormEntries" />
+    <exclude name="ComplexFormEntryRefs" />
+    <exclude name="ComplexFormsNotSubentries" />
+    <exclude name="DateCreated" />
+    <exclude name="DateModified" />
+    <field name="DialectLabels" key="dialect-labels" />
+    <field name="DoNotPublishIn" key="do-not-publish-in" />
+    <field name="DoNotShowMainEntryIn" key="do-not-show-main-entry-in" />
+    <field name="DoNotUseForParsing" key="do-not-use-for-parsing" />
+    <exclude name="EntryAnalysesCount" />
+    <field name="EntryRefs" key="entry-refs" />
+    <field name="Etymology" key="etymology" />
+    <field name="HeadWord" key="head-word" />
+    <exclude name="HeadWordRef" />
+    <field name="HomographNumber" key="homograph-number" />
+    <field name="ImportResidue" key="import-residue" />
+    <field name="LexemeForm" key="lexeme-form" />
+    <exclude name="LexEntryReferences" />
+    <field name="LiftResidue" key="lift-residue" />
+    <field name="LiteralMeaning" key="literal-meaning" />
+    <field name="MainEntriesOrSenses" key="main-entries-or-senses" />
+    <exclude name="MinimalLexReferences" />
+    <exclude name="MLHeadWord" />
+    <field name="MorphoSyntaxAnalyses" key="morpho-syntax-analyses" />
+    <exclude name="NumberOfSensesForEntry" />
+    <exclude name="PicturesOfSenses" />
+    <exclude name="PrimaryComponentLexemes" />
+    <field name="Pronunciations" key="pronunciations" />
+    <exclude name="PublishAsMinorEntry" />
+    <exclude name="PublishIn" />
+    <field name="Restrictions" key="restrictions" />
+    <exclude name="ReversalName" />
+    <field name="Senses" key="senses" />
+    <exclude name="ShowMainEntryIn" />
+    <exclude name="Subentries" />
+    <field name="SummaryDefinition" key="summary-definition" />
+    <exclude name="VariantEntryRefs" />
+    <exclude name="VariantFormEntries" />
+    <exclude name="VariantFormEntryBackRefs" />
+    <exclude name="VisibleComplexFormBackRefs" />
+    <exclude name="VisibleComplexFormEntries" />
+    <exclude name="VisibleEntryRefs" />
+    <exclude name="VisibleVariantEntryRefs" />
+  </class>
+  <class name="LexEntryRef">
+    <field name="ComplexEntryTypes" key="complex-entry-types" />
+    <field name="ComponentLexemes" key="component-lexemes" />
+    <exclude name="ExampleSentences" />
+    <exclude name="HeadWord" />
+    <field name="HideMinorEntry" key="hide-minor-entry" />
+    <field name="LiftResidue" key="lift-residue" />
+    <exclude name="MorphoSyntaxAnalyses" />
+    <exclude name="NonTrivialEntryRoots" />
+    <exclude name="OwningEntry" />
+    <exclude name="PrimaryEntryRoots" />
+    <field name="PrimaryLexemes" key="primary-lexemes" />
+    <field name="RefType" key="ref-type" />
+    <field name="ShowComplexFormsIn" key="show-complex-forms-in" />
+    <field name="Summary" key="summary" />
+    <exclude name="VariantEntryDialectLabels" />
+    <exclude name="VariantEntryInflTypes" />
+    <field name="VariantEntryTypes" key="variant-entry-types" />
+  </class>
+  <class name="LexEtymology">
+    <field name="Bibliography" key="bibliography" />
+    <field name="Comment" key="comment" />
+    <field name="Form" key="form" />
+    <field name="Gloss" key="gloss" />
+    <field name="Language" key="language" />
+    <field name="LanguageNotes" key="language-notes" />
+    <field name="LiftResidue" key="lift-residue" />
+    <field name="Note" key="note" />
+    <exclude name="OwningEntry" />
+    <field name="PrecComment" key="prec-comment" />
+  </class>
+  <class name="LexExampleSentence">
+    <field name="DoNotPublishIn" key="do-not-publish-in" />
+    <field name="Example" key="example" />
+    <field name="LiftResidue" key="lift-residue" />
+    <exclude name="OwningSense" />
+    <exclude name="PublishIn" />
+    <field name="Reference" key="reference" />
+    <field name="Translations" key="translations" />
+  </class>
+  <class name="LexExtendedNote">
+    <field name="Discussion" key="discussion" />
+    <field name="Examples" key="examples" />
+    <field name="ExtendedNoteType" key="extended-note-type" />
+    <exclude name="OwningSense" />
+  </class>
+  <class name="LexPronunciation">
+    <field name="CVPattern" key="cv-pattern" />
+    <field name="DoNotPublishIn" key="do-not-publish-in" />
+    <field name="Form" key="form" />
+    <field name="LiftResidue" key="lift-residue" />
+    <field name="Location" key="location" />
+    <field name="MediaFiles" key="media-files" />
+    <exclude name="OwningEntry" />
+    <exclude name="PublishIn" />
+    <field name="Tone" key="tone" />
+  </class>
+  <class name="LexSense">
+    <field name="AnthroCodes" key="anthro-codes" />
+    <field name="AnthroNote" key="anthro-note" />
+    <field name="Appendixes" key="appendixes" />
+    <field name="Bibliography" key="bibliography" />
+    <exclude name="ComplexFormEntries" />
+    <exclude name="ComplexFormsNotSubentries" />
+    <field name="Definition" key="definition" />
+    <field name="DialectLabels" key="dialect-labels" />
+    <exclude name="DialectLabelsSenseOrEntry" />
+    <field name="DiscourseNote" key="discourse-note" />
+    <field name="DomainTypes" key="domain-types" />
+    <field name="DoNotPublishIn" key="do-not-publish-in" />
+    <field name="EncyclopedicInfo" key="encyclopedic-info" />
+    <exclude name="EntryRefsWithThisMainSense" />
+    <field name="Examples" key="examples" />
+    <field name="Exemplar" key="exemplar" />
+    <field name="ExtendedNote" key="extended-note" />
+    <exclude name="FullReferenceName" />
+    <field name="GeneralNote" key="general-note" />
+    <field name="Gloss" key="gloss" />
+    <field name="GrammarNote" key="grammar-note" />
+    <field name="ImportResidue" key="import-residue" />
+    <exclude name="LexSenseOutline" />
+    <exclude name="LexSenseReferences" />
+    <field name="LiftResidue" key="lift-residue" />
+    <exclude name="MainEntryRefs" />
+    <exclude name="MinimalLexReferences" />
+    <exclude name="MLOwnerOutlineName" />
+    <field name="MorphoSyntaxAnalysis" key="morpho-syntax-analysis" />
+    <exclude name="OwningEntry" />
+    <field name="PhonologyNote" key="phonology-note" />
+    <field name="Pictures" key="pictures" />
+    <exclude name="PublishIn" />
+    <exclude name="ReferringReversalIndexEntries" />
+    <field name="Restrictions" key="restrictions" />
+    <exclude name="ReversalEntriesBulkText" />
+    <exclude name="ReversalName" />
+    <field name="ScientificName" key="scientific-name" />
+    <field name="SemanticDomains" key="semantic-domains" />
+    <field name="SemanticsNote" key="semantics-note" />
+    <exclude name="SenseAnalysesCount" />
+    <field name="Senses" key="senses" />
+    <field name="SenseType" key="sense-type" />
+    <field name="SocioLinguisticsNote" key="socio-linguistics-note" />
+    <field name="Source" key="source" />
+    <field name="Status" key="status" />
+    <exclude name="Subentries" />
+    <field name="ThesaurusItems" key="thesaurus-items" />
+    <field name="UsageNote" key="usage-note" />
+    <field name="UsageTypes" key="usage-types" />
+    <exclude name="VariantFormEntries" />
+    <exclude name="VariantFormEntryBackRefs" />
+    <exclude name="VisibleComplexFormBackRefs" />
+    <exclude name="VisibleComplexFormEntries" />
+  </class>
+  <class name="MoAffixAllomorph">
+    <field name="MsEnvFeatures" key="ms-env-features" />
+    <field name="MsEnvPartOfSpeech" key="ms-env-part-of-speech" />
+    <field name="PhoneEnv" key="phone-env" />
+    <field name="Position" key="position" />
+  </class>
+  <class name="MoAffixForm">
+    <field name="InflectionClasses" key="inflection-classes" />
+  </class>
+  <class name="MoAffixProcess">
+    <exclude name="FeatureConstraints" />
+    <field name="Input" key="input" />
+    <field name="Output" key="output" />
+  </class>
+  <class name="MoCopyFromInput">
+    <field name="Content" key="content" />
+  </class>
+  <class name="MoDerivAffMsa">
+    <field name="AffixCategory" key="affix-category" />
+    <field name="FromInflectionClass" key="from-inflection-class" />
+    <field name="FromMsFeatures" key="from-ms-features" />
+    <field name="FromPartOfSpeech" key="from-part-of-speech" />
+    <field name="FromProdRestrict" key="from-prod-restrict" />
+    <field name="FromStemName" key="from-stem-name" />
+    <exclude name="IsEmpty" />
+    <field name="Stratum" key="stratum" />
+    <field name="ToInflectionClass" key="to-inflection-class" />
+    <field name="ToMsFeatures" key="to-ms-features" />
+    <field name="ToPartOfSpeech" key="to-part-of-speech" />
+    <field name="ToProdRestrict" key="to-prod-restrict" />
+  </class>
+  <class name="MoDerivStepMsa">
+    <field name="InflectionClass" key="inflection-class" />
+    <field name="InflFeats" key="infl-feats" />
+    <exclude name="IsEmpty" />
+    <field name="MsFeatures" key="ms-features" />
+    <field name="PartOfSpeech" key="part-of-speech" />
+    <field name="ProdRestrict" key="prod-restrict" />
+  </class>
+  <class name="MoForm">
+    <field name="Form" key="form" />
+    <field name="IsAbstract" key="is-abstract" />
+    <field name="LiftResidue" key="lift-residue" />
+    <exclude name="LongNameTSS" />
+    <field name="MorphType" key="morph-type" />
+    <exclude name="OwningEntry" />
+  </class>
+  <class name="MoInflAffMsa">
+    <field name="AffixCategory" key="affix-category" />
+    <field name="FromProdRestrict" key="from-prod-restrict" />
+    <exclude name="Gloss" />
+    <field name="InflFeats" key="infl-feats" />
+    <exclude name="IsEmpty" />
+    <field name="PartOfSpeech" key="part-of-speech" />
+    <exclude name="ShortNameTSS" />
+    <field name="Slots" key="slots" />
+  </class>
+  <class name="MoInsertNC">
+    <field name="Content" key="content" />
+  </class>
+  <class name="MoInsertPhones">
+    <field name="Content" key="content" />
+  </class>
+  <class name="MoModifyFromInput">
+    <field name="Content" key="content" />
+    <field name="Modification" key="modification" />
+  </class>
+  <class name="MoMorphSynAnalysis">
+    <field name="Components" key="components" />
+    <exclude name="ExceptionFeaturesTSS" />
+    <exclude name="FeaturesTSS" />
+    <field name="GlossBundle" key="gloss-bundle" />
+    <field name="GlossString" key="gloss-string" />
+    <exclude name="IsEmpty" />
+    <field name="LiftResidue" key="lift-residue" />
+    <exclude name="LongNameAdHocTs" />
+    <exclude name="LongNameTs" />
+    <exclude name="MLInflectionClass" />
+    <exclude name="MLPartOfSpeech" />
+    <exclude name="MorphTypes" />
+    <exclude name="OwningEntry" />
+    <exclude name="Slots" />
+  </class>
+  <class name="MoRuleMapping">
+  </class>
+  <class name="MoStemAllomorph">
+    <field name="PhoneEnv" key="phone-env" />
+    <field name="StemName" key="stem-name" />
+  </class>
+  <class name="MoStemMsa">
+    <field name="FromPartsOfSpeech" key="from-parts-of-speech" />
+    <field name="InflectionClass" key="inflection-class" />
+    <exclude name="IsEmpty" />
+    <field name="MsFeatures" key="ms-features" />
+    <field name="PartOfSpeech" key="part-of-speech" />
+    <field name="ProdRestrict" key="prod-restrict" />
+    <field name="Slots" key="slots" />
+    <field name="Stratum" key="stratum" />
+  </class>
+  <class name="MoUnclassifiedAffixMsa">
+    <exclude name="IsEmpty" />
+    <field name="PartOfSpeech" key="part-of-speech" />
+  </class>
+  <class name="PhContextOrVar">
+  </class>
+  <class name="PhIterationContext">
+    <field name="Maximum" key="maximum" />
+    <field name="Member" key="member" />
+    <field name="Minimum" key="minimum" />
+  </class>
+  <class name="PhPhonContext">
+    <field name="Description" key="description" />
+    <field name="Name" key="name" />
+  </class>
+  <class name="PhSequenceContext">
+    <field name="Members" key="members" />
+  </class>
+  <class name="PhSimpleContext">
+  </class>
+  <class name="PhSimpleContextBdry">
+    <field name="FeatureStructure" key="feature-structure" />
+  </class>
+  <class name="PhSimpleContextNC">
+    <field name="FeatureStructure" key="feature-structure" />
+    <field name="MinusConstr" key="minus-constr" />
+    <field name="PlusConstr" key="plus-constr" />
+  </class>
+  <class name="PhSimpleContextSeg">
+    <field name="FeatureStructure" key="feature-structure" />
+  </class>
+  <class name="PhVariable">
+  </class>
+</overlay>
