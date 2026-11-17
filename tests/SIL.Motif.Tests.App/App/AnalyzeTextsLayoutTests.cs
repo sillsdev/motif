@@ -732,11 +732,12 @@ public sealed class AnalyzeTextsLayoutTests
                 var wordLine = Assert.Single(sungura.GetVisualDescendants().OfType<WordLinePanel>());
                 if (extraHeight > 0)
                 {
-                    wordLine.Children.Add(new Border { Height = drawn.LineMetrics.Word + extraHeight, Width = 8 });
+                    wordLine.Children.Add(new TextBlock { Text = "●", FontSize = drawn.LineMetrics.Word + extraHeight });
                     PageScreenshots.Settle(window);
                 }
                 var fieldWorksTop = ReaderRowBounds(sungura, "fieldworks", panel).Top - BoundsIn(wordLine, panel).Top;
                 Assert.Equal(fieldWorksTop, token.LineMetrics.Word, 0.01);
+                AssertNativeMetric(token, "WordLine", token.LineMetrics.Word);
             }
             finally
             {
@@ -1387,7 +1388,9 @@ public sealed class AnalyzeTextsLayoutTests
             var drawnHeight = runs.Length == 0 ? 0 :
                 runs.Max(run => run.Bounds.Bottom) - runs.Min(run => run.Bounds.Top);
             var visibleNativeHeight = row is null ? 0 : MaxNativeTextHeight(row);
-            Assert.True(metric >= Math.Max(drawnHeight, visibleNativeHeight),
+            // A centered mark can extend below the FieldWorks start, which is the word metric.
+            var requiredHeight = rowName == "WordLine" ? drawnHeight : Math.Max(drawnHeight, visibleNativeHeight);
+            Assert.True(metric >= requiredHeight,
                 $"{strip.Data?.Form} {rowName}: metric={metric}, drawn={drawnHeight}, native={visibleNativeHeight}. " +
                 WordLineDiagnostics(strip, drawn));
             if (row is null && runs.Length == 0) Assert.Equal(0, metric);
