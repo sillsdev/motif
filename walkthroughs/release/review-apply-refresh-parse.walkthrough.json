@@ -25,6 +25,23 @@
       "automationId": "motif-refresh-project"
     },
     {
+      "id": "open-project-card",
+      "kind": "click",
+      "automationId": "motif-project-chip"
+    },
+    {
+      "id": "wait-for-explicit-parse",
+      "kind": "waitFor",
+      "automationId": "motif-parse-all-words",
+      "condition": "enabled",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "parse-all-words",
+      "kind": "click",
+      "automationId": "motif-parse-all-words"
+    },
+    {
       "id": "show-published-results",
       "kind": "click",
       "automationId": "motif-page-progress"

@@ -954,7 +954,7 @@ internal static class WalkthroughReplay
             case "review-apply-refresh-parse":
                 window.WaitUntil(() => window.Workspace.Context.EvidencePublication.IsCompleted,
                     WalkthroughSteps.Remaining(deadline), "the stored evidence did not finish publishing");
-                Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+                Assert.Equal(ProjectFreshness.Refreshed, window.Workspace.Freshness);
                 Assert.False(window.Workspace.Context.NeedsAssessment);
                 break;
             case "parsimony-findings":
@@ -1265,28 +1265,22 @@ internal static class WalkthroughFixtureSeeder
             project.FwDataPath, project.ManagedRoot, "walkthrough-apply-word");
         var client = RealCommandClient.Create(project.ManagedRoot, parserPath, timeProvider: clock);
         await SeedSelectionAndSkipSetupAsync(project, client);
-        var parseStartedPath = Path.Combine(project.ManagedRoot, "after-refresh-parse-started");
-        FakeParser.BehaveInPhasesBesideExecutable(parserPath, "batch",
-            AssessmentWords("before-refresh"), AssessmentWords("before-refresh"),
-            new
-            {
-                startedPath = parseStartedPath,
-                delayMilliseconds = 400,
-                words = new[]
-                {
-                    new
-                    {
-                        word = SeededProject.AnalysedWordForm,
-                        outcome = "complete",
-                        signature = "after-refresh",
-                    },
-                },
-            });
+        FakeParser.BehaveBesideExecutable(parserPath, AssessmentWords("before-refresh"));
         await AssessAsync(project, client);
-        return new WalkthroughFixturePreparation(new Dictionary<string, string>(StringComparer.Ordinal)
+        FakeParser.BehaveBesideExecutable(parserPath, new
         {
-            [AutomationIds.ParseAllWords] = parseStartedPath,
+            delayMilliseconds = 400,
+            words = new[]
+            {
+                new
+                {
+                    word = SeededProject.AnalysedWordForm,
+                    outcome = "complete",
+                    signature = "after-refresh",
+                },
+            },
         });
+        return WalkthroughFixturePreparation.Empty;
     }
 
     private static async Task<WalkthroughFixturePreparation> SeedOverviewParsedReadyAsync(
