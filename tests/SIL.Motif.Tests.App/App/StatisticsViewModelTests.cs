@@ -271,7 +271,7 @@ public sealed class StatisticsViewModelTests
         var item = Assert.Single(statistics.Rows);
         Assert.Equal("lex_entry: first seeded gloss", item.Object);
         Assert.Equal("lex_entry", item.Kind);
-        // An object row's work is the grammar object's own count in a different unit, not parser work.
+        // An object row's work is the grammar object's own count in a different unit, not parser steps.
         Assert.Null(item.ParserWork);
         Assert.Equal(99, item.Details["work"].GetInt32());
         Assert.Null(item.Passes);
@@ -281,9 +281,9 @@ public sealed class StatisticsViewModelTests
     }
 
     [Theory]
-    [InlineData(true, false, "work or memory limit")]
+    [InlineData(true, false, "step or memory limit")]
     [InlineData(false, true, "time safety net")]
-    [InlineData(true, true, "work or memory limit and time safety net")]
+    [InlineData(true, true, "step or memory limit and time safety net")]
     public async Task PartialFindingsRemainIncompleteAndLaterWordsCanComplete(bool capped, bool timedOut, string reason)
     {
         var (fake, statistics) = NewViewModel();
@@ -297,9 +297,9 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
         Assert.Equal(reason switch
         {
-            "work or memory limit" => "The parser reached a work or memory limit before finishing.",
+            "step or memory limit" => "The parser reached a step or memory limit before finishing.",
             "time safety net" => "Stopped at the time safety net · Increase Seconds per word.",
-            _ => "The parser reached a work or memory limit, and the time safety net also stopped a search.",
+            _ => "The parser reached a step or memory limit, and the time safety net also stopped a search.",
         }, statistics.IncompleteDetail);
     }
 
@@ -339,8 +339,8 @@ public sealed class StatisticsViewModelTests
         await statistics.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal("Stopped 1", statistics.IncompleteHeadline);
-        Assert.Equal("The parser reached a work or memory limit before finishing.", statistics.IncompleteDetail);
-        Assert.Equal("Work or memory limit", statistics.Rows[0].CompletionShort);
+        Assert.Equal("The parser reached a step or memory limit before finishing.", statistics.IncompleteDetail);
+        Assert.Equal("Step or memory limit", statistics.Rows[0].CompletionShort);
         Assert.DoesNotContain("Raise", statistics.IncompleteDetail, StringComparison.Ordinal);
     }
 

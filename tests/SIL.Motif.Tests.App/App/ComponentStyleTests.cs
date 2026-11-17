@@ -981,6 +981,8 @@ public sealed partial class ComponentStyleTests
                 TextBlock.ForegroundProperty, $"Intent.Severity.{key}");
         yield return new("Mark", "a glyph's sign", host => Inside(host, Box("severityGlyph", "error")),
             TextBlock.FontSizeProperty, "Component.Mark.GlyphType");
+        yield return new("Buttons", "the write button's weight", host => Add(host, Press("primary", "writes-fieldworks")),
+            Button.FontWeightProperty, "Intent.Weight.Strong");
         yield return new("ActionChip", "the primary action floor", host => Add(host, Press("actionChip", "primary")),
             Button.MinHeightProperty, "Component.ActionChip.Height");
         yield return new("ActionChip", "the Set menu action", host => Add(host, Press("actionChip", "set")),

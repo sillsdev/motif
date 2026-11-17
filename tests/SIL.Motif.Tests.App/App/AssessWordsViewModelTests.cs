@@ -213,10 +213,10 @@ public sealed class AssessWordsViewModelTests
     }
 
     [Theory]
-    [InlineData(0L, "0 parser work")]
-    [InlineData(1L, "1 parser work")]
-    [InlineData(1234L, "1,234 parser work")]
-    [InlineData(20_000_000_000L, "20,000,000,000 parser work")]
+    [InlineData(0L, "0 parser steps")]
+    [InlineData(1L, "1 parser step")]
+    [InlineData(1234L, "1,234 parser steps")]
+    [InlineData(20_000_000_000L, "20,000,000,000 parser steps")]
     public void AWordsWorkIsCountedInParserWorkAndNeverInMilliseconds(long steps, string expected)
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -239,7 +239,7 @@ public sealed class AssessWordsViewModelTests
 
         var row = Assert.Single(table.Rows);
         Assert.Null(row.ParserWork);
-        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        Assert.Equal("parser steps not recorded", row.ParserWorkText);
         AssertNoMilliseconds(row.ParserWorkText);
     }
 
@@ -263,7 +263,7 @@ public sealed class AssessWordsViewModelTests
         table.Load([Word("x y", outcome) with { ElapsedMs = null, ParserWork = null }]);
 
         var row = Assert.Single(table.Rows);
-        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        Assert.Equal("parser steps not recorded", row.ParserWorkText);
         AssertNoMilliseconds(row.ParserWorkText);
     }
 

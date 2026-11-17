@@ -20,7 +20,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins that every share on the Timing page is of the chosen words' whole parser work, that the work no rule
+/// Pins that every share on the Timing page is of the chosen words' whole parser steps, that the work no rule
 /// recorded is shown as unattributed, that work is counted in steps and never shown as milliseconds, and that no
 /// count is shown without saying what it counts.
 /// </summary>
@@ -90,7 +90,7 @@ public sealed class TimingSharesTests
         Assert.Equal(expected, TimingShare.FormatDuration(milliseconds));
     }
 
-    // The words' parser work are ten for each recorded millisecond, so a fixture reads the same in either unit.
+    // The words' parser steps are ten for each recorded millisecond, so a fixture reads the same in either unit.
     private static long? WorkOf(int? milliseconds) => milliseconds * 10L;
 
     private static readonly TimingWorkAggregate[] KindWork =
@@ -119,9 +119,9 @@ public sealed class TimingSharesTests
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
 
-        Assert.Equal("36% · 2,880 parser work", new TimingShareViewModel("Subject agreement", 0.36, 2880).ShareLabel);
-        Assert.Equal("15% · 1 parser work", new TimingShareViewModel("Vowel harmony", 0.15, 1).ShareLabel);
-        Assert.Equal("<1% · 3 parser work", new TimingShareViewModel("Rare rule", 0.0003, 3).ShareLabel);
+        Assert.Equal("36% · 2,880 parser steps", new TimingShareViewModel("Subject agreement", 0.36, 2880).ShareLabel);
+        Assert.Equal("15% · 1 parser step", new TimingShareViewModel("Vowel harmony", 0.15, 1).ShareLabel);
+        Assert.Equal("<1% · 3 parser steps", new TimingShareViewModel("Rare rule", 0.0003, 3).ShareLabel);
     }
 
     // The milliseconds rows deliberately disagree with the steps, so a share read from time fails these.
@@ -157,11 +157,11 @@ public sealed class TimingSharesTests
         var card = Card(WordTiming(1, new WordWorkSummary(1, 1000, 1000, 1000),
             [RuleSteps("Subject agreement", 600), RuleSteps("Vowel harmony", 300, "phon_rule"), Unattributed]));
 
-        Assert.Equal([("Subject agreement", "60% · 600 parser work"), ("Vowel harmony", "30% · 300 parser work")],
+        Assert.Equal([("Subject agreement", "60% · 600 parser steps"), ("Vowel harmony", "30% · 300 parser steps")],
             card.TimingShares.Select(share => (share.Name, share.ShareLabel)));
         Assert.Equal(0.1, card.NotAttributedShare!.Value, 6);
         Assert.Equal("Not attributed · 10%", card.NotAttributedShareLabel);
-        Assert.Equal("Every share is of the 1,000 parser work this word needed to parse.", card.TimingShareBasisLabel);
+        Assert.Equal("Every share is of the 1,000 parser steps this word needed to parse.", card.TimingShareBasisLabel);
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public sealed class TimingSharesTests
         Assert.True(card.HasTimingEvidence);
         Assert.False(card.HasTimingShares);
         Assert.Null(card.NotAttributedShare);
-        Assert.Equal("Parser work not recorded for this word", card.NotAttributedShareLabel);
+        Assert.Equal("Parser steps not recorded for this word", card.NotAttributedShareLabel);
         Assert.Equal(string.Empty, card.TimingShareBasisLabel);
     }
 
@@ -184,7 +184,7 @@ public sealed class TimingSharesTests
         var card = Card(WordTiming(1, new WordWorkSummary(1, 500, 500, 500), []));
 
         Assert.False(card.HasTimingShares);
-        Assert.Equal("Parser work by rule not recorded for this word", card.NotAttributedShareLabel);
+        Assert.Equal("Parser steps by rule not recorded for this word", card.NotAttributedShareLabel);
     }
 
     [Fact]
@@ -200,9 +200,9 @@ public sealed class TimingSharesTests
         var card = Card(WordTiming(3, new WordWorkSummary(2, 2000, 1000, 1000),
             [RuleSteps("Subject agreement", 1500), Unattributed with { ParserWork = 500 }]));
 
-        Assert.Equal("75% · 1,500 parser work", Assert.Single(card.TimingShares).ShareLabel);
+        Assert.Equal("75% · 1,500 parser steps", Assert.Single(card.TimingShares).ShareLabel);
         Assert.Equal("Not attributed · 25%", card.NotAttributedShareLabel);
-        Assert.Equal("Every share is of the 2,000 parser work 2 of these 3 words needed to parse; 1 has no parser work recorded.",
+        Assert.Equal("Every share is of the 2,000 parser steps 2 of these 3 words needed to parse; 1 has no parser steps recorded.",
             card.TimingShareBasisLabel);
     }
 

@@ -599,7 +599,6 @@ public sealed class DesignTokenTests
         ("Intent.Surface.Hover", "SemiColorFill0"),
         ("Intent.Surface.Neutral", "SemiColorFill1"),
         ("Intent.Text", "SemiColorText0"),
-        ("Intent.TextMuted", "SemiColorText2"),
         ("Intent.TextFaint", "SemiColorText3"),
         ("Intent.Border", "SemiColorBorder"),
         ("Intent.Primary", "SemiColorPrimary"),

@@ -75,7 +75,7 @@
    <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesNoReadingsNote}" IsVisible="{Binding HasNoReadings}" TextWrapping="Wrap"
      Foreground="{DynamicResource Intent.TextMuted}" />
    <WrapPanel Classes="occurrenceActions">
-    <Button Classes="occurrenceAction" Command="{Binding ApproveCommand}" ContentTemplate="{x:Null}"
+    <Button Classes="occurrenceAction primary" Command="{Binding ApproveCommand}" ContentTemplate="{x:Null}"
       AutomationProperties.Name="{Binding ApproveLabel}"
       AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesApprove}">
       <TextBlock Text="{Binding ApproveLabel}" TextWrapping="Wrap" />

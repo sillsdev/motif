@@ -13,10 +13,10 @@ using Group = SIL.Motif.App.ViewModels.SettingsGroup;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Random but replayable sequences over the Settings parser work and time limits. After every act the next parse must send
+/// Random but replayable sequences over the Settings parser steps and time limits. After every act the next parse must send
 /// the last saved value whenever a field shows a refused value or after Escape, a commit or leaving with one held;
 /// otherwise it sends the saved value or the good value showing in its field. No message may describe a value the
-/// field no longer holds. A project switch lands on a project saved with explicit, estimated or no parser work limits and must
+/// field no longer holds. A project switch lands on a project saved with explicit, estimated or no parser step limits and must
 /// leave nothing of the last project in the fields or the Selection, and the bound properties must agree with the
 /// fields after every act. A failure names the seed and the acts so it can be replayed.
 /// </summary>
@@ -472,7 +472,7 @@ public sealed class SettingsLimitsSequenceTests
     private static void AssertDisabledFieldsShowNoRefusedNumber(SettingsViewModel settings, string when)
     {
         Assert.True(settings.ParserWorkLimitValue is > 0 && decimal.Truncate(settings.ParserWorkLimitValue.Value) == settings.ParserWorkLimitValue,
-            $"the disabled parser work limit field shows {settings.ParserWorkLimitValue} {when}");
+            $"the disabled parser step limit field shows {settings.ParserWorkLimitValue} {when}");
         Assert.True(settings.TimeLimitSeconds is null or > 0, $"the disabled time field shows {settings.TimeLimitSeconds} {when}");
     }
 
@@ -664,7 +664,7 @@ public sealed class SettingsLimitsSequenceTests
             Check(log[^1], exact);
         }
 
-        // In estimate mode the time field shows the figure Setup estimates for the parser work limit it holds.
+        // In estimate mode the time field shows the figure Setup estimates for the parser step limit it holds.
         private decimal? EstimateTime() => workspace.Context.Setup!.EstimatedPerWordLimitMs is > 0 and var ms ? ms / 1000m : null;
 
         private void Adopt()
@@ -723,7 +723,7 @@ public sealed class SettingsLimitsSequenceTests
             var saved = fake.SetSelectionLimitsRequests[^1].Limits;
             if (wasTicked)
             {
-                Assert.True(saved.PerWordParserWorkLimit.IsUnbounded, "a ticked commit saves no parser work limit");
+                Assert.True(saved.PerWordParserWorkLimit.IsUnbounded, "a ticked commit saves no parser step limit");
                 Assert.Equal(SelectionTimeLimitMode.Estimated, saved.TimeMode);
                 _savedNoStep = true;
                 _savedEstimate = true;
@@ -781,7 +781,7 @@ public sealed class SettingsLimitsSequenceTests
             }
             else
             {
-                Assert.False(_savedNoStep && mustBeSaved, Why("the saved no parser work limit is not what the Selection holds"));
+                Assert.False(_savedNoStep && mustBeSaved, Why("the saved no parser step limit is not what the Selection holds"));
                 var shown = !mustBeSaved && !_ticked && GoodStep(_step) ? _step : _savedStep;
                 Assert.True(selection.PerWordParserWorkLimit == _savedStep || selection.PerWordParserWorkLimit == shown,
                     Why($"the Selection holds step {selection.PerWordParserWorkLimit}; the saved is {_savedStep} and the field shows {_step}"));

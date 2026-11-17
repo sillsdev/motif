@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins what a Proposal's Parsimony section presents from the settled contract: the Findings with their stored
-/// descriptions, the short read, parser work only as a percent change, wall time only in seconds or minutes, and an
+/// descriptions, the short read, parser steps only as a percent change, wall time only in seconds or minutes, and an
 /// evidence view that was not kept as a plain answer.
 /// </summary>
 public sealed class ProposalParsimonyPresentationTests
@@ -361,11 +361,11 @@ public sealed class ProposalParsimonyPresentationTests
     }
 
     [Theory]
-    [InlineData(12.4, "About 13% more parser work than the Baseline")]
-    [InlineData(5.2, "About 6% more parser work than the Baseline")]
-    [InlineData(-30.2, "About 31% less parser work than the Baseline")]
-    [InlineData(0.2, "About 1% more parser work than the Baseline")]
-    [InlineData(0, "About the same parser work as the Baseline")]
+    [InlineData(12.4, "About 13% more parser steps than the Baseline")]
+    [InlineData(5.2, "About 6% more parser steps than the Baseline")]
+    [InlineData(-30.2, "About 31% less parser steps than the Baseline")]
+    [InlineData(0.2, "About 1% more parser steps than the Baseline")]
+    [InlineData(0, "About the same parser steps as the Baseline")]
     public void ParserWorkIsAPercentChangeAgainstTheBaselineAndNoLevel(double percent, string expected)
     {
         var model = Model(new FakeCommandClient());
@@ -383,7 +383,7 @@ public sealed class ProposalParsimonyPresentationTests
 
         model.SetParserWork(new TrialWork(40, null, null, null, [], 0, 0));
 
-        Assert.Equal("Parser work cannot be compared for this Trial", model.ParserWork);
+        Assert.Equal("Parser steps cannot be compared for this Trial", model.ParserWork);
     }
 
     [Fact]
@@ -393,7 +393,7 @@ public sealed class ProposalParsimonyPresentationTests
 
         model.SetParserWork(new TrialWork(40, 1_000, 1_250, null, [], 0, 0));
 
-        Assert.Equal("About 25% more parser work than the Baseline", model.ParserWork);
+        Assert.Equal("About 25% more parser steps than the Baseline", model.ParserWork);
     }
 
     [Fact]

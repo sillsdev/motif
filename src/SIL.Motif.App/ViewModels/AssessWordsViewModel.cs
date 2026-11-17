@@ -421,7 +421,7 @@ public sealed class AssessWordRowViewModel
     {
         TimingCompletion.TimeSafetyNet => "No analyses: the parser stopped at the time safety net before it could finish.",
         TimingCompletion.MemoryLimit => "No analyses: the parser reached its memory limit for the word.",
-        TimingCompletion.WorkLimit => "No analyses: the parser stopped at the work limit before it could finish.",
+        TimingCompletion.WorkLimit => "No analyses: the parser stopped at the step limit before it could finish.",
         ParserRefusals.Title => Comparison.Detail,
         _ => "No analyses: the parser found no way to build this word.",
     };

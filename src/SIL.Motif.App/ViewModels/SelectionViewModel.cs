@@ -20,8 +20,8 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class SelectionViewModel : ObservableObject, IProjectStateParticipant
 {
     private const string NothingSelectedYet = "Nothing selected yet.";
-    private const string NegativeThresholdMessage = "The parser work threshold must be a whole nonnegative number.";
-    private const string InvalidParserWorkLimitMessage = "The per-word parser work limit must be a positive whole number.";
+    private const string NegativeThresholdMessage = "The parser step threshold must be a whole nonnegative number.";
+    private const string InvalidParserWorkLimitMessage = "The per-word parser step limit must be a positive whole number.";
 
     private readonly ICommandClient _commandClient;
     private readonly List<TextChoiceViewModel> _allTexts = [];
@@ -329,11 +329,11 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         if (ChosenTextIds.Count > 0) parts.Add(Pluralize(ChosenTextIds.Count, "text"));
         if (PastedWordEntries.Count > 0) parts.Add(Pluralize(PastedWordEntries.Count, "pasted word"));
         if (RetryFailed) parts.Add("retry failed");
-        if (includeThreshold) parts.Add($"retry words over {RetryWorkOver} parser work");
+        if (includeThreshold) parts.Add($"retry words over {RetryWorkOver} parser steps");
         if (PerWordParserWorkLimitUnbounded)
-            parts.Add("no parser work limit");
+            parts.Add("no parser step limit");
         else if (ParserWorkLimitValidationMessage is null && PerWordParserWorkLimit is { } steps)
-            parts.Add($"parser work limit {steps:N0}");
+            parts.Add($"parser step limit {steps:N0}");
         return string.Join(", ", parts);
     }
 

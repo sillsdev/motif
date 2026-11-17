@@ -533,8 +533,8 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Theory]
-    [InlineData(1, "Motif stops a word after 1 parser work.")]
-    [InlineData(20_000_000, "Motif stops a word after 20,000,000 parser work.")]
+    [InlineData(1, "Motif stops a word after 1 parser step.")]
+    [InlineData(20_000_000, "Motif stops a word after 20,000,000 parser steps.")]
     public void SetupLimitTextStatesParserWorkWithoutTime(int limit, string expected)
     {
         var (_, _, _, _, workspace) = NewWorkspace();
@@ -553,7 +553,7 @@ public sealed class WorkspaceShellViewModelTests
         var setup = workspace.Context.Setup!;
         setup.IsParserWorkLimitUnbounded = true;
 
-        Assert.Equal("No parser work limit.", setup.ParserWorkLimitEstimateText);
+        Assert.Equal("No parser step limit.", setup.ParserWorkLimitEstimateText);
         Assert.DoesNotContain("time", setup.ParserWorkLimitEstimateText, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -574,7 +574,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(ParserWorkLimit.Unbounded, request.PerWordParserWorkLimit);
         Assert.Null(request.PerWordLimitMs);
         Assert.Null(Assert.Single(fake.SetDefaultSelectionRequests).PerWordLimitMs);
-        Assert.Contains("No parser work limit", workspace.Context.Setup!.ParserWorkLimitEstimateText, StringComparison.Ordinal);
+        Assert.Contains("No parser step limit", workspace.Context.Setup!.ParserWorkLimitEstimateText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -974,7 +974,7 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.Equal([TextId], workspace.Selection.ChosenTextIds);
         Assert.Equal("kept", workspace.Selection.PastedWords);
-        Assert.Equal($"1 text, 1 pasted word, parser work limit {ParserWorkLimit.DefaultWork:N0}", workspace.Selection.SummaryText);
+        Assert.Equal($"1 text, 1 pasted word, parser step limit {ParserWorkLimit.DefaultWork:N0}", workspace.Selection.SummaryText);
     }
 
     [Fact]
@@ -1053,7 +1053,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal("Parsing 312 of 1,040 words", workspace.ParseAllWordsProgressText);
         Assert.Same(workspace.Assess.ParseProgress, workspace.ActiveParseProgress);
         Assert.Equal("312 of 1,040 words done · Parsing word-312", workspace.ActiveParseProgress.ProgressText);
-        Assert.Equal("Slowest so far: word-200 · 90,000 parser work", workspace.ActiveParseProgress.SlowestText);
+        Assert.Equal("Slowest so far: word-200 · 90,000 parser steps", workspace.ActiveParseProgress.SlowestText);
         Assert.Equal("1 word stopped at the time safety net after 0.7 s (word-201)", workspace.ActiveParseProgress.StoppedText);
         Assert.True(workspace.PageModel<TextsPageModel>().ShowParsePrompt);
         workspace.Assess.CancelCommand.Execute(null);

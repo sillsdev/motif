@@ -392,7 +392,7 @@ public sealed class AnalyzeTextsLayoutTests
             StoredTiming(request.ExplicitWords?.SingleOrDefault() ?? timedWord))));
     }
 
-    // Parser work by rule, with the time rows left deliberately unlike them: the card reads only the steps.
+    // Parser steps by rule, with the time rows left deliberately unlike them: the card reads only the steps.
     private static TimingResponse StoredTiming(string word)
     {
         var hawajafika = word == "hawajafika";

@@ -28,7 +28,7 @@
     Intent.Scrim                  the dark layer that dims a window beneath a modal
     Intent.Text                   body text (Semi's Text0)
     Intent.TextSecondary          navigation labels and badge counts, quieter than body text
-    Intent.TextMuted              supporting text: details, captions, counts (Semi's Text2)
+    Intent.TextMuted              supporting text: details, captions, helper sentences; 4.5:1 on every window surface
     Intent.TextMutedOnSelected    supporting text on a selected surface
     Intent.TextFaint              an unset or unknown state's mark (Semi's Text3)
     Intent.Border                 card edges, dividers and hairlines (Semi's Border)
@@ -37,6 +37,8 @@
     Intent.Selected.Fill          behind the selected entry of a list
     Intent.Emphasis.Fill          a solid count or marker that must catch the eye
     Intent.Emphasis.Text          text on Intent.Emphasis.Fill
+    Intent.Emphasis.FillHover     Intent.Emphasis.Fill under the pointer (primary buttons)
+    Intent.Emphasis.FillPressed   Intent.Emphasis.Fill while pressed
     Intent.Neutral.Fill           a quiet count badge
     Intent.Primary                a new reading, and an active filter (Semi's Primary)
     Intent.Primary.Fill           behind Intent.Primary (Semi's PrimaryLight)
@@ -267,7 +269,7 @@
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop3_10.Slate950A10" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey700}" />
-      <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
+      <SolidColorBrush x:Key="Intent.TextMuted" Color="{StaticResource Primitive.Color.Grey650}" />
       <SolidColorBrush x:Key="Intent.TextMutedOnSelected" Color="{StaticResource Primitive.Color.Grey600}" />
       <StaticResource x:Key="Intent.TextFaint" ResourceKey="SemiColorText3" />
       <StaticResource x:Key="Intent.Border" ResourceKey="SemiColorBorder" />
@@ -279,6 +281,8 @@
       <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue75}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Fill" Color="{StaticResource Primitive.Color.Blue500}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Text" Color="{StaticResource Primitive.Color.Grey0}" />
+      <SolidColorBrush x:Key="Intent.Emphasis.FillHover" Color="{StaticResource Primitive.Color.Blue600}" />
+      <SolidColorBrush x:Key="Intent.Emphasis.FillPressed" Color="{StaticResource Primitive.Color.Blue700}" />
       <SolidColorBrush x:Key="Intent.Neutral.Fill" Color="{StaticResource Primitive.Color.Grey100}" />
       <StaticResource x:Key="Intent.Primary" ResourceKey="SemiColorPrimary" />
       <StaticResource x:Key="Intent.Primary.Fill" ResourceKey="SemiColorPrimaryLight" />
@@ -356,7 +360,7 @@
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop4_14.BlackA45" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey300}" />
-      <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
+      <SolidColorBrush x:Key="Intent.TextMuted" Color="{StaticResource Primitive.Color.Grey400}" />
       <SolidColorBrush x:Key="Intent.TextMutedOnSelected" Color="{StaticResource Primitive.Color.Slate350}" />
       <StaticResource x:Key="Intent.TextFaint" ResourceKey="SemiColorText3" />
       <StaticResource x:Key="Intent.Border" ResourceKey="SemiColorBorder" />
@@ -368,6 +372,8 @@
       <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue900}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Fill" Color="{StaticResource Primitive.Color.Blue600}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Text" Color="{StaticResource Primitive.Color.Grey0}" />
+      <SolidColorBrush x:Key="Intent.Emphasis.FillHover" Color="{StaticResource Primitive.Color.Blue700}" />
+      <SolidColorBrush x:Key="Intent.Emphasis.FillPressed" Color="{StaticResource Primitive.Color.Blue775}" />
       <SolidColorBrush x:Key="Intent.Neutral.Fill" Color="{StaticResource Primitive.Color.Grey800}" />
       <StaticResource x:Key="Intent.Primary" ResourceKey="SemiColorPrimary" />
       <StaticResource x:Key="Intent.Primary.Fill" ResourceKey="SemiColorPrimaryLight" />

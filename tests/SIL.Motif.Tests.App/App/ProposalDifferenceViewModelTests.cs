@@ -77,7 +77,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Equal(["Now One Approved Match"], model.ImprovedChips.Select(chip => chip.Label));
         Assert.Equal(["One Approved Match → No Approved Match", "No Parse → One Approved Match"],
             model.MovedChips.Select(chip => chip.Label));
-        Assert.Equal(["Stopped at the Work Limit"], model.LimitationChips.Select(chip => chip.Label));
+        Assert.Equal(["Stopped at the Step Limit"], model.LimitationChips.Select(chip => chip.Label));
         Assert.Equal(ProposalDifferenceViewModel.PageSize, model.Words.Count);
         Assert.Equal("Showing 25 of 30.", model.WordsStatusText);
         Assert.True(model.CanShowMoreWords);
@@ -158,7 +158,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Null(fixture.Requests[^1].BeforeState);
         Assert.False(model.HasFilter);
 
-        Chip(model.LimitationChips, "Stopped at the Work Limit").ChooseCommand.Execute(null);
+        Chip(model.LimitationChips, "Stopped at the Step Limit").ChooseCommand.Execute(null);
         await Task.Yield();
         Assert.Equal("capped", fixture.Requests[^1].Limitation);
         Assert.Equal(2, model.MatchingWords);

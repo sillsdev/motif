@@ -340,7 +340,7 @@ public sealed class WordPresentationTests
 
                 var time = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     text => text.Classes.Contains("wordPresentationTime"));
-                Assert.Equal("1,234 parser work", time.Text);
+                Assert.Equal("1,234 parser steps", time.Text);
                 Assert.Equal(TextWrapping.Wrap, time.TextWrapping);
                 Assert.Equal(TextTrimming.None, time.TextTrimming);
             }

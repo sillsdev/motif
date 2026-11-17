@@ -497,7 +497,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("60% → 64.5%", card.Numbers[0].Value);
         Assert.True(card.Numbers[0].Moved);
         Assert.Equal("10 of 12 → 9 of 12", card.Numbers[1].Value);
-        Assert.Equal(["Coverage", "Approved kept", "Parser Work", "Warnings"], card.Numbers.Select(n => n.Label));
+        Assert.Equal(["Coverage", "Approved kept", "Parser Steps", "Warnings"], card.Numbers.Select(n => n.Label));
         Assert.Equal("1 lost", card.LostChip);
         Assert.Null(card.FitChip);
         Assert.Equal("also changes words in Other", card.AlsoChip);
@@ -518,9 +518,9 @@ public sealed class ProposalsPageModelTests
         var compared = page.Groups[0].Cards[0];
         var unavailable = page.Groups[0].Cards[1];
 
-        Assert.Equal("About 20% more parser work than the Baseline", compared.Work!.Value);
+        Assert.Equal("About 20% more parser steps than the Baseline", compared.Work!.Value);
         Assert.True(compared.Work.Moved);
-        Assert.Equal("About 20% more parser work than the Baseline", compared.TableWorkText);
+        Assert.Equal("About 20% more parser steps than the Baseline", compared.TableWorkText);
         Assert.DoesNotContain("1,000", compared.TableWorkText);
         Assert.DoesNotContain(compared.Numbers, number => number.Label == "Time on this computer");
         Assert.Equal(string.Empty, unavailable.Work!.Value);

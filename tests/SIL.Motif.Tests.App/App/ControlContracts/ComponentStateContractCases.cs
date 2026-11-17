@@ -112,6 +112,35 @@ internal static class ComponentStateContractCases
                 () => Alone(Press("actionChip", "primary")), stimulus, StatePart.Face,
                 ContentPresenter.BorderBrushProperty, "Intent.Opinion.Approved.Accent");
 
+        const string buttonDisabled = "Button:disabled:not(.filterChip)" + face;
+        yield return new(buttonDisabled, "disabled", () => Alone(Press()), StateStimulus.Disabled,
+            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
+        yield return new(buttonDisabled, "disabled", () => Alone(Press()), StateStimulus.Disabled,
+            StatePart.Face, ContentPresenter.ForegroundProperty, "Intent.TextFaint");
+        const string primary = "Button.primary:not(.actionChip)";
+        foreach (var (how, stimulus, fill) in new[]
+        {
+            ("pointerover", StateStimulus.Pointer, "Intent.Emphasis.FillHover"),
+            ("pressed", StateStimulus.Press, "Intent.Emphasis.FillPressed"),
+        })
+        {
+            foreach (var (property, key) in new[]
+            {
+                (ContentPresenter.BackgroundProperty, fill), (ContentPresenter.BorderBrushProperty, fill),
+                (ContentPresenter.ForegroundProperty, "Intent.Emphasis.Text"),
+            })
+                yield return new($"{primary}:{how}" + face, how, () => Alone(Press("primary")), stimulus, StatePart.Face, property, key);
+        }
+        foreach (var (property, key) in new[]
+        {
+            (ContentPresenter.BackgroundProperty, "Intent.Clear"), (ContentPresenter.BorderBrushProperty, "Intent.Border"),
+            (ContentPresenter.ForegroundProperty, "Intent.TextFaint"),
+        })
+            yield return new($"{primary}:disabled" + face, "disabled", () => Alone(Press("primary")), StateStimulus.Disabled,
+                StatePart.Face, property, key);
+        yield return new($"Button.primary.writes-fieldworks:not(:disabled)" + face, "enabled", () => Alone(Press("primary", "writes-fieldworks")),
+            StateStimulus.None, StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Focus");
+
         const string chipDisabled = "Button.filterChip:disabled /template/ ContentPresenter#PART_ContentPresenter";
         yield return new(chipDisabled, "disabled", () => Alone(Press("filterChip")), StateStimulus.Disabled,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
@@ -809,7 +838,7 @@ internal static class TooltipOwners
         {
             Pending = "the retired Statistics table is not hosted by the new pages",
         },
-        new("statistics parser work", "Views/StatisticsPanel.axaml", "{Binding WorkText}", TooltipScene.Statistics,
+        new("statistics parser steps", "Views/StatisticsPanel.axaml", "{Binding WorkText}", TooltipScene.Statistics,
             control => control is CopyableTextBlock { DataContext: StatsRowViewModel row } text &&
                 text.Classes.Contains("statisticsValue") && text.Text == row.WorkText)
         {

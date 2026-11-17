@@ -332,7 +332,7 @@ public sealed class SelectionViewModelTests
         Assert.True(viewModel.CanAssess);
         Assert.Null(viewModel.ThresholdValidationMessage);
         Assert.Equal(500, viewModel.BuildRequest().RetryWorkOver);
-        Assert.Equal("retry words over 500 parser work", viewModel.SummaryText);
+        Assert.Equal("retry words over 500 parser steps", viewModel.SummaryText);
     }
 
     [Fact]

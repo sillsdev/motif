@@ -144,7 +144,7 @@ public sealed class HelpPopupViewModelTests
             viewModel.ShowForPage(WorkspacePage.Diagnostics);
 
             Assert.Contains("stored grammar check", viewModel.Markdown);
-            Assert.Contains("recorded parser work", viewModel.Markdown);
+            Assert.Contains("recorded parser steps", viewModel.Markdown);
             Assert.Contains("does not start a parse or a grammar check", viewModel.Markdown);
             Assert.Contains("Turning Diagnostics off", viewModel.Markdown);
         });

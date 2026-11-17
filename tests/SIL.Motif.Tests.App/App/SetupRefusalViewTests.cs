@@ -129,7 +129,7 @@ public sealed class SetupRefusalViewTests
                     .Select(block => block.Text ?? string.Empty).ToArray();
                 var numbers = dialog.GetLogicalDescendants().OfType<NumericUpDown>().ToArray();
                 Assert.Contains(setup.ParserWorkLimitEstimateText, texts);
-                Assert.Contains(texts, text => text.Contains($"{ParserWorkLimit.DefaultWork:N0} parser work is the default", StringComparison.Ordinal));
+                Assert.Contains(texts, text => text.Contains($"The default is {ParserWorkLimit.DefaultWork:N0} parser steps", StringComparison.Ordinal));
                 Assert.DoesNotContain(numbers, number =>
                     Avalonia.Automation.AutomationProperties.GetName(number) == "Time limit per word, in seconds");
                 Assert.Single(numbers);

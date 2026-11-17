@@ -29,7 +29,7 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
             Assert.True(walkthrough.Workspace.Context.Setup?.CanRunDefaultSelection);
             Assert.True(walkthrough.Workspace.PageModel<SIL.Motif.App.ViewModels.SettingsPageModel>()
                 .Handoff.Handoff.RunCommand.CanExecute(null));
-            Assert.Equal($"1 text, parser work limit {ParserWorkLimit.DefaultWork:N0}", walkthrough.Workspace.Selection.SummaryText);
+            Assert.Equal($"1 text, parser step limit {ParserWorkLimit.DefaultWork:N0}", walkthrough.Workspace.Selection.SummaryText);
 
             Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
             var databasePath = Path.Combine(

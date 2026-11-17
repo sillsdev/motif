@@ -62,7 +62,7 @@ public sealed class MotifAppStringsTests
         Assert.Equal("See What Changed", MotifAppStrings.SeeWhatChanged);
         Assert.Equal("Parse the words you chose.", MotifAppStrings.ParseAllWordsTip);
         Assert.Equal("What Should Motif Measure Every Time?", MotifAppStrings.SetupSelectionTitle);
-        Assert.Equal("How Much Work Should Each Word Get?", MotifAppStrings.SetupLimitsTitle);
+        Assert.Equal("How Many Parser Steps Should Each Word Get?", MotifAppStrings.SetupLimitsTitle);
         Assert.Equal("Ready for the First Run?", MotifAppStrings.SetupFirstRunTitle);
         Assert.Equal("Delete Motif's Store?", MotifAppStrings.DeleteMotifsStore);
         Assert.Equal("Sentence When the Change Was Made", MotifAppStrings.WordCardChangeSentence);

@@ -41,9 +41,9 @@ public sealed class ParseProgressViewModelTests
         var memoryCapped = new StoppedParseWordViewModel(new SIL.Motif.Contract.Jobs.StoppedParseWord("neno", "MEMCAP", 12));
         var timedOut = new StoppedParseWordViewModel(new SIL.Motif.Contract.Jobs.StoppedParseWord("mtoto", "TIMEOUT", 700));
 
-        Assert.Equal("kitabu · Stopped at the work limit · 12,000 parser work", capped.Text);
-        Assert.Equal("neno · The parser reached its memory limit for the word · parser work not recorded", memoryCapped.Text);
-        Assert.Equal("mtoto · Stopped at the time safety net · parser work not recorded", timedOut.Text);
+        Assert.Equal("kitabu · Stopped at the step limit · 12,000 parser steps", capped.Text);
+        Assert.Equal("neno · The parser reached its memory limit for the word · parser steps not recorded", memoryCapped.Text);
+        Assert.Equal("mtoto · Stopped at the time safety net · parser steps not recorded", timedOut.Text);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public sealed class ParseProgressViewModelTests
         {
             SlowestWord = new SIL.Motif.Contract.Jobs.ParseWordTiming("brief", 2.5259) { ParserWork = 4321 },
         });
-        Assert.Equal("Slowest so far: brief · 4,321 parser work", progress.SlowestText);
+        Assert.Equal("Slowest so far: brief · 4,321 parser steps", progress.SlowestText);
         Assert.Equal(0.98, progress.Fraction);
         Assert.Equal("All words have been parsed; finishing the Assessment...", progress.ProgressText);
         Assert.Equal("All words have been parsed; finishing the Assessment...", progress.StatusText);

@@ -139,16 +139,16 @@ public sealed class WordRowViewModelTests
             row.PanGlossMorphemes.Select(morph => (morph.Morph.Form, morph.IsDifferent)));
         Assert.True(row.HasPanGlossMorphemes);
         Assert.Equal("×3", row.PlacesText);
-        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        Assert.Equal("parser steps not recorded", row.ParserWorkText);
         Assert.False(row.HasWarningsNamed);
         Assert.Equal("alikula · Approved · PanGloss: Different · Built something else", row.Summary);
     }
 
     [Theory]
-    [InlineData(0L, "0 parser work")]
-    [InlineData(1L, "1 parser work")]
-    [InlineData(1234L, "1,234 parser work")]
-    [InlineData(20_000_000_000L, "20,000,000,000 parser work")]
+    [InlineData(0L, "0 parser steps")]
+    [InlineData(1L, "1 parser step")]
+    [InlineData(1234L, "1,234 parser steps")]
+    [InlineData(20_000_000_000L, "20,000,000,000 parser steps")]
     public void TheRowCountsItsWorkInParserWorkAndNeverInMilliseconds(long steps, string expected)
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -164,7 +164,7 @@ public sealed class WordRowViewModelTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var row = new WordRowViewModel(Alikula() with { ParserWork = null, ElapsedMs = 1234 });
 
-        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        Assert.Equal("parser steps not recorded", row.ParserWorkText);
         Assert.DoesNotMatch(@"\bms\b|<\s*1\b", row.ParserWorkText);
     }
 
@@ -174,7 +174,7 @@ public sealed class WordRowViewModelTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var row = new WordRowViewModel(Alikula() with { ParserWork = null, ElapsedMs = null });
 
-        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        Assert.Equal("parser steps not recorded", row.ParserWorkText);
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public sealed class WordRowViewModelTests
             Outcome = WordRowOutcome.Stopped, MeaningCode = "unknown", ParserWork = null, ElapsedMs = null,
         });
 
-        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        Assert.Equal("parser steps not recorded", row.ParserWorkText);
         Assert.DoesNotMatch(@"\bms\b", row.ParserWorkText);
     }
 

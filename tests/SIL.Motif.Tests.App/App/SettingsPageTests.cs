@@ -852,7 +852,7 @@ public sealed class SettingsPageTests
                     var scroll = page.FindControl<ScrollViewer>("SettingsListScroll")!;
                     Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 1);
                 }
-                foreach (var name in new[] { "Reset zoom to 100%", "Match the operating system theme", "Parser work limit per word",
+                foreach (var name in new[] { "Reset zoom to 100%", "Match the operating system theme", "Parser step limit per word",
                              "Time limit per word in seconds", SIL.Motif.App.MotifAppStrings.ChatGptKey, "Open Help", "Report a problem", "Copy versions" })
                 {
                     var target = page.GetVisualDescendants().OfType<Control>().Single(control =>

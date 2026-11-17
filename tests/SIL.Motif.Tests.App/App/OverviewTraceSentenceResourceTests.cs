@@ -20,15 +20,15 @@ public sealed class OverviewTraceSentenceResourceTests
         { "OverviewSpeedWordsPattern", "{0, plural, one {# word} other {# words}}" },
         { "OverviewSpeedMainFormat", "{0} · {1} in total" },
         { "OverviewSpeedElapsedFormat", "Took {0} on this computer" },
-        { "OverviewSpeedNoTimes", "No parser work recorded" },
+        { "OverviewSpeedNoTimes", "No parser steps recorded" },
         { "OverviewSpeedMedianFormat", "median {0} a word" },
         { "OverviewSpeedMedianWithPercentileFormat", "median {0} a word · 95th percentile {1}" },
-        { "OverviewSpeedStoppedPattern", "{0, plural, one {# stopped at the work limit} other {# stopped at the work limit}}" },
+        { "OverviewSpeedStoppedPattern", "{0, plural, one {# stopped at the step limit} other {# stopped at the step limit}}" },
         { "OverviewSlowestSummaryFormat", "Slowest: {0}" },
         { "OverviewSlowestWordFormat", "{0} · {1}" },
         { "OverviewSlowestStoppedWordFormat", "{0} Stopped · {1}" },
         { "OverviewSeeWordsPattern", "{0, plural, one {See the # word} other {See the # words}}" },
-        { "OverviewStoppedWordsRowPattern", "{0, plural, one {# word stopped at the work limit.} other {# words stopped at the work limit.}}" },
+        { "OverviewStoppedWordsRowPattern", "{0, plural, one {# word stopped at the step limit.} other {# words stopped at the step limit.}}" },
         { "OverviewStoppedWordsDetailFormat", "{0} of {1} in total" },
         { "TraceParsed", "Parsed" },
         { "TraceSearchIncomplete", "Search incomplete" },
@@ -42,9 +42,9 @@ public sealed class OverviewTraceSentenceResourceTests
         { "TraceOverallNotRecorded", "overall time not recorded" },
         { "TraceInParserFormat", "{0} in the parser, {1}" },
         { "ParserWorkFormat", "Parser: {0}" },
-        { "TraceParserWorkNotRecorded", "Parser work not recorded" },
-        { "ParserWorkPattern", "{0, plural, one {# parser work} other {# parser work}}" },
-        { "ParserWorkNotRecorded", "parser work not recorded" },
+        { "TraceParserWorkNotRecorded", "Parser steps not recorded" },
+        { "ParserWorkPattern", "{0, plural, one {# parser step} other {# parser steps}}" },
+        { "ParserWorkNotRecorded", "parser steps not recorded" },
         { "DurationSecondsFormat", "{0:0.0} s" },
         { "DurationMillisecondsFormat", "{0:0} ms" },
         { "DurationSubMillisecondsFormat", "{0:0.0#} ms" },
@@ -295,7 +295,7 @@ public sealed class OverviewTraceSentenceResourceTests
     [InlineData("TraceRecordedTimesPattern", 2, "Recorded twice")]
     [InlineData("TraceRecordedTimesPattern", 3, "Recorded 3 times")]
     [InlineData("OverviewSeeWordsPattern", 1, "See the 1 word")]
-    [InlineData("OverviewStoppedWordsRowPattern", 3, "3 words stopped at the work limit.")]
+    [InlineData("OverviewStoppedWordsRowPattern", 3, "3 words stopped at the step limit.")]
     [InlineData("OverviewSpeedWordsPattern", 1, "1 word")]
     [InlineData("OverviewSpeedWordsPattern", 1318, "1,318 words")]
     [InlineData("OverviewSeeLostWordsPattern", 1, "See the word")]
@@ -314,8 +314,8 @@ public sealed class OverviewTraceSentenceResourceTests
     [InlineData("OverviewWarningWarningsPattern", 2, "2 warnings")]
     [InlineData("OverviewWarningInformationPattern", 1, "1 information finding")]
     [InlineData("OverviewWarningInformationPattern", 5, "5 information findings")]
-    [InlineData("ParserWorkPattern", 1, "1 parser work")]
-    [InlineData("ParserWorkPattern", 1234, "1,234 parser work")]
+    [InlineData("ParserWorkPattern", 1, "1 parser step")]
+    [InlineData("ParserWorkPattern", 1234, "1,234 parser steps")]
     [InlineData("ExpertMoreRuleStepsPattern", 1, "1 more rule event · open in Expert")]
     [InlineData("ExpertMoreRuleStepsPattern", 2, "2 more rule events · open in Expert")]
     [InlineData("ExpertMoreRuleStepsPattern", 1234, "1,234 more rule events · open in Expert")]
@@ -345,8 +345,8 @@ public sealed class OverviewTraceSentenceResourceTests
         var code = string.Join('\n', File.ReadAllLines(path).Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
         string[] fragments =
         [
-            "total word time", "stopped at the work limit", "Slowest: ", "Object timers exceed", "\"median ",
-            "No parse times recorded", "No parser work recorded", "on this computer", "analysis attempt", "tried and dropped", "choose a group to see",
+            "total word time", "stopped at the step limit", "Slowest: ", "Object timers exceed", "\"median ",
+            "No parse times recorded", "No parser steps recorded", "on this computer", "analysis attempt", "tried and dropped", "choose a group to see",
             "Show the other", "Search incomplete", "Search complete", "hidden by filters", "Recorded twice",
             "Parser time", "} overall", "overall time not recorded", "got furthest", "source records",
             "\"Parsed", "\"guessed\"", "\"1 attempt\"", "? \"failed\" : \"succeeded\"", "all recorded events",
@@ -358,7 +358,7 @@ public sealed class OverviewTraceSentenceResourceTests
     public void TheAssessRowBuildsNoMillisecondsOrEnglishWorkTextOfItsOwn()
     {
         var code = CodeOf("AssessWordsViewModel.cs");
-        string[] fragments = ["parser work", " ms\"", "<1 ms"];
+        string[] fragments = ["parser steps", " ms\"", "<1 ms"];
         Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
     }
 
@@ -366,7 +366,7 @@ public sealed class OverviewTraceSentenceResourceTests
     public void TheTraceLineBuildsNoEnglishWorkTextOfItsOwn()
     {
         var code = CodeOf("TraceWordViewModel.cs");
-        string[] fragments = ["parser work", "Parser work"];
+        string[] fragments = ["parser steps", "Parser steps"];
         Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
     }
 

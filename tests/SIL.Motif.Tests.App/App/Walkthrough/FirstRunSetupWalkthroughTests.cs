@@ -76,7 +76,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.Equal(selectedTextIds, setup.Selection.ChosenTextIds.Order());
 
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser work limit for each word", "3100");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit for each word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             walkthrough.SetFakeParserBehavior(new
             {
@@ -166,7 +166,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, true);
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, false);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser work limit for each word", "3100");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit for each word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             var grammar = walkthrough.Workspace.Context.GrammarCheck;
             var grammarCheck = grammar.CheckCommand.ExecuteAsync(null);
@@ -233,7 +233,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 WalkthroughSteps.Remaining(deadline), "Finish did not close setup and complete its first run");
 
             var selectedId = Assert.Single(walkthrough.Workspace.Selection.ChosenTextIds);
-            Assert.Equal($"1 text, parser work limit {3100:N0}", walkthrough.Workspace.Selection.SummaryText);
+            Assert.Equal($"1 text, parser step limit {3100:N0}", walkthrough.Workspace.Selection.SummaryText);
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
             Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>
@@ -252,15 +252,15 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             SetupWalkthroughActions.OpenConfigure(walkthrough);
             walkthrough.WaitUntil(
                 () => setup.ParserWorkLimitValue == 3100,
-                WalkthroughSteps.Remaining(deadline), "Configure did not load the saved parser work limit");
+                WalkthroughSteps.Remaining(deadline), "Configure did not load the saved parser step limit");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             Assert.True(walkthrough.Workspace.Context.Setup!.Selection.Texts
                 .Single(text => text.Title == SeededProject.TextTitle).IsChecked);
             Assert.False(walkthrough.Workspace.Context.Setup.Selection.Texts
                 .Single(text => text.Title == TwoTextWalkthroughProject.SecondTextTitle).IsChecked);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            Assert.Equal($"Motif stops a word after {3100:N0} parser work.", setup.ParserWorkLimitEstimateText);
-            Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Parser work limit for each word").Value);
+            Assert.Equal($"Motif stops a word after {3100:N0} parser steps.", setup.ParserWorkLimitEstimateText);
+            Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Parser step limit for each word").Value);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextUseSelection);
             walkthrough.Click(SIL.Motif.App.MotifAppStrings.UseThisSelection);
             walkthrough.WaitUntil(

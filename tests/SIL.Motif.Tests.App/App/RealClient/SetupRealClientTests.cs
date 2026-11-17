@@ -136,15 +136,15 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
                 Assert.Single(walkthrough.Workspace.Context.Setup.Selection.Texts).Title);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             Assert.Equal(310000m, walkthrough.Find<Avalonia.Controls.NumericUpDown>(
-                "Parser work limit for each word").Value);
-            Assert.Equal($"Motif stops a word after {310000:N0} parser work.",
+                "Parser step limit for each word").Value);
+            Assert.Equal($"Motif stops a word after {310000:N0} parser steps.",
                 walkthrough.Workspace.Context.Setup!.ParserWorkLimitEstimateText);
 
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Back");
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, false);
             walkthrough.Type("Words to add", "motifb");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser work limit for each word", "660000");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit for each word", "660000");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextUseSelection);
             walkthrough.Click(SIL.Motif.App.MotifAppStrings.UseThisSelection);
             walkthrough.WaitUntil(

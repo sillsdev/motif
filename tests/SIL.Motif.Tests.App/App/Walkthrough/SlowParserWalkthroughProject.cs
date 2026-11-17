@@ -64,7 +64,7 @@ internal sealed class SlowParserWalkthroughProject : IDisposable
                 [{
                   "id": "{{BugId}}",
                   "title": "Repeated optional plural slots",
-                  "disclaimer": "Synthetic parser workload for a cancellation walkthrough.",
+                  "disclaimer": "Synthetic parser stepsload for a cancellation walkthrough.",
                   "symptom": {
                     "kind": "slow",
                     "words": ["{{StemForm(0)}}ler"],

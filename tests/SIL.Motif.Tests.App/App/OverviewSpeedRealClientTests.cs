@@ -20,7 +20,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins stored parser work and elapsed time through the real command client and the health details.
+/// Pins stored parser steps and elapsed time through the real command client and the health details.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
 [Trait("MotifTestLevel", "Integration")]
