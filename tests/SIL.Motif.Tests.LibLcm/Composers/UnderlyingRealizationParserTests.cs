@@ -73,15 +73,9 @@ public sealed class UnderlyingRealizationParserTests(PristineProjectFixture pris
             Get<IPhPhoneme>(cache, inventory.Phones["ʔ"]).CodesOS[0].Representation.set_String(cache.DefaultVernWs, "");
         });
         new FwDataProjectLoader().Save(cache);
-        foreach (var word in new[] { "pata", "pat-a" })
-        {
-            var refused = Assert.IsType<PanGlossTraceOutcome.Declined>(await tracer.TraceAsync(cache.ProjectId.Path,
-                word, CancellationToken.None, Wait.Scaled(TimeSpan.FromMinutes(2))));
-            Assert.NotNull(refused.ParserRefusal);
-            Assert.NotEqual(0, refused.ParserRefusal.ExitCode);
-            Assert.False(string.IsNullOrWhiteSpace(refused.ParserRefusal.StandardError));
-            output.WriteLine($"empty grapheme, {word}: {refused.ParserRefusal.StandardError}");
-        }
+        Assert.Equal(new[] { plain.Form.ToGuid(), longer.Form.ToGuid(), accent.Form.ToGuid() }.Order(),
+            (await Readings("pata")).Order());
+        Assert.Empty(await Readings("pat-a"));
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             Get<IPhPhoneme>(cache, inventory.Phones["ʔ"]).CodesOS[0].Representation.set_String(cache.DefaultVernWs, "ʔ"));
         new FwDataProjectLoader().Save(cache);
