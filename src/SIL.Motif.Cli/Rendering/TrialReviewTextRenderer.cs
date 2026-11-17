@@ -7,6 +7,8 @@ namespace SIL.Motif.Cli.Rendering;
 /// <summary>Renders the shared Trial review without changing its evidence.</summary>
 public static class TrialReviewTextRenderer
 {
+    private const int TextListLimit = 10;
+
     /// <summary>Renders a saved report, pending Trial, or absence of a Trial.</summary>
     public static string Render(TrialReviewResult result) => result switch
     {
@@ -15,6 +17,13 @@ public static class TrialReviewTextRenderer
         AvailableTrialResult available => RenderReport(available.Report),
         _ => throw new ArgumentException("Unknown Trial review result.", nameof(result))
     };
+
+    internal static string RenderRuleAttempts(RuleAttemptSummary attempts)
+    {
+        var text = new StringBuilder();
+        AppendRuleAttempts(text, attempts);
+        return text.ToString();
+    }
 
     private static string RenderReport(ReportView report)
     {
@@ -99,9 +108,14 @@ public static class TrialReviewTextRenderer
 
     private static void AppendRuleAttempts(StringBuilder text, RuleAttemptSummary attempts)
     {
-        foreach (var group in attempts.Groups)
+        if (attempts.Groups.Count == 0)
+            text.AppendLine($"No same-shape group met the {attempts.Threshold}-variant threshold " +
+                $"({attempts.ShapesEvaluated:N0} added objects checked).");
+        foreach (var group in attempts.Groups.Take(TextListLimit))
             text.AppendLine($"Rule attempt: {group.Count} added variants share shape {group.ShapeKey}; " +
                 (group.AttemptRecorded ? "attempt recorded" : "no rule attempt recorded (advisory)"));
+        if (attempts.Groups.Count > TextListLimit)
+            text.AppendLine($"  and {attempts.Groups.Count - TextListLimit:N0} more; use --json for all");
         if (attempts.Hold) text.AppendLine("HOLD: rule attempt required (opted in; report only; Apply does not read it)");
     }
 

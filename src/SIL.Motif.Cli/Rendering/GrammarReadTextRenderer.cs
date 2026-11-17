@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text;
 using SIL.Motif.Contract.Responses;
 
@@ -5,12 +6,18 @@ namespace SIL.Motif.Cli.Rendering;
 
 internal static class GrammarReadTextRenderer
 {
+    private const int TextListLimit = 10;
+
     public static string Render(GrammarReadResponse response)
     {
         var text = new StringBuilder();
         text.AppendLine($"Grammar objects: {response.Kind} ({response.Returned} of {response.Total}; offset {response.Offset}, limit {response.Limit})");
-        text.AppendLine($"Baseline: {(response.IsStale ? "saved since capture" : "current")}");
-        foreach (var item in response.Items) RenderItem(text, item);
+        text.AppendLine(response.Baseline is { } baseline
+            ? $"Baseline: {baseline.ProjectIdentity}; {(response.IsStale ? "saved since capture" : "current")}; " +
+                $"snapshot {baseline.SemanticSnapshotDigest}; bundle {baseline.BundleDigest}; captured {baseline.CapturedUtc}."
+            : $"Baseline identity unavailable; {(response.IsStale ? "saved since capture" : "current")}.");
+        foreach (var item in response.Items.Take(TextListLimit)) RenderItem(text, item);
+        AppendOverflow(text, response.Items.Count);
         if (response.Items.Count == 0) text.AppendLine("No matching objects.");
         return text.ToString();
     }
@@ -21,35 +28,41 @@ internal static class GrammarReadTextRenderer
         {
             case GrammarPhonemeRead phoneme:
                 text.AppendLine($"{Display(phoneme.Name)}  {phoneme.Id}");
-                foreach (var representation in phoneme.Representations)
+                foreach (var representation in phoneme.Representations.Take(TextListLimit))
                     text.AppendLine($"  Representation: {Display(representation.Text)} ({Display(representation.WritingSystem)})");
+                AppendOverflow(text, phoneme.Representations.Count);
                 break;
             case GrammarNaturalClassRead naturalClass:
-                text.AppendLine($"{Display(naturalClass.Name)}  {naturalClass.Id}  {naturalClass.ClassKind}");
-                foreach (var member in naturalClass.Members)
+                text.AppendLine($"{DisplayWithAbbreviation(naturalClass.Name, naturalClass.Abbreviation)}  " +
+                    $"{naturalClass.Id}  {naturalClass.ClassKind}");
+                foreach (var member in naturalClass.Members.Take(TextListLimit))
                     text.AppendLine($"  Member: {Display(member.Name)}  {member.Id}");
-                foreach (var feature in naturalClass.Features)
+                AppendOverflow(text, naturalClass.Members.Count);
+                foreach (var feature in naturalClass.Features.Take(TextListLimit))
                     text.AppendLine($"  Feature: {Display(feature.Feature.Name)}  {feature.Feature.Id}" +
                         (feature.Value is null ? string.Empty : $" = {Display(feature.Value.Name)}  {feature.Value.Id}"));
+                AppendOverflow(text, naturalClass.Features.Count);
                 break;
             case GrammarEnvironmentRead environment:
                 text.AppendLine($"{Display(environment.Name)}  {environment.Id}");
                 text.AppendLine($"  Notation: {Display(environment.Notation)}");
                 break;
             case GrammarPartOfSpeechRead category:
-                text.AppendLine($"{Display(category.Name)}  {category.Id}");
+                text.AppendLine($"{DisplayWithAbbreviation(category.Name, category.Abbreviation)}  {category.Id}");
                 if (category.Parent is not null)
                     text.AppendLine($"  Parent: {Display(category.Parent.Name)}  {category.Parent.Id}");
                 break;
             case GrammarInflectionFeatureRead feature:
-                text.AppendLine($"{Display(feature.Name)}  {feature.Id}  {feature.FeatureKind}");
-                foreach (var value in feature.Values)
+                text.AppendLine($"{DisplayWithAbbreviation(feature.Name, feature.Abbreviation)}  " +
+                    $"{feature.Id}  {feature.FeatureKind}");
+                foreach (var value in feature.Values.Take(TextListLimit))
                     text.AppendLine($"  Value: {Display(value.Name)}  {value.Id}");
+                AppendOverflow(text, feature.Values.Count);
                 break;
             case GrammarLexicalEntryRead entry:
                 text.AppendLine($"{Display(entry.Headword)}  {entry.Id}");
                 if (entry.LexemeForm is { } lexeme) RenderForm(text, "Lexeme form", lexeme);
-                foreach (var sense in entry.Senses)
+                foreach (var sense in entry.Senses.Take(TextListLimit))
                 {
                     text.AppendLine($"  Sense: {DisplayWithWritingSystem(sense.Gloss, sense.GlossWritingSystem)}  {sense.Id}");
                     if (sense.Definition is not null)
@@ -63,18 +76,30 @@ internal static class GrammarReadTextRenderer
                             text.AppendLine($"      Result part of speech: {Display(resultCategory.Name)}  {resultCategory.Id}");
                     }
                 }
-                foreach (var form in entry.AlternateForms) RenderForm(text, "Alternate form", form);
+                AppendOverflow(text, entry.Senses.Count);
+                foreach (var form in entry.AlternateForms.Take(TextListLimit)) RenderForm(text, "Alternate form", form);
+                AppendOverflow(text, entry.AlternateForms.Count);
                 break;
         }
     }
 
     private static void RenderForm(StringBuilder text, string label, GrammarFormRead form)
     {
-        text.AppendLine($"  {label}: {Display(form.Form)}  {form.Id}");
+        text.AppendLine($"  {label}: {Display(form.Form)} ({Display(form.WritingSystem)}) " +
+            $"[{form.FormKind}]  {form.Id}");
         if (form.MorphType is not null)
             text.AppendLine($"    Morph type: {form.MorphType}  {form.MorphTypeId}");
-        foreach (var environment in form.Environments)
+        foreach (var environment in form.Environments.Take(TextListLimit))
             text.AppendLine($"    Environment: {Display(environment.Notation)}  {environment.Id}");
+        AppendOverflow(text, form.Environments.Count);
+    }
+
+    private static string DisplayWithAbbreviation(string? name, string? abbreviation) =>
+        abbreviation is null ? Display(name) : $"{Display(name)} [{abbreviation}]";
+
+    private static void AppendOverflow(StringBuilder text, int count)
+    {
+        if (count > TextListLimit) text.AppendLine($"  and {count - TextListLimit:N0} more; use --json for all");
     }
 
     private static string Display(string? value) => string.IsNullOrEmpty(value) ? "(unnamed)" : value;

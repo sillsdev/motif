@@ -6,6 +6,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Phonology;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -14,9 +15,11 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Corpus;
 using ProjectionText = SIL.Motif.Projection.Rendering.CommandTextRenderer;
 
 namespace SIL.Motif.Cli.Rendering;
@@ -29,6 +32,8 @@ namespace SIL.Motif.Cli.Rendering;
 /// </summary>
 public static class CommandTextRenderer
 {
+    private const int TextListLimit = 10;
+
     /// <param name="successAsJson">
     /// Whether a successful result renders as JSON. A job just enqueued never grew a JSON success shape
     /// and must keep printing its bare id even when the caller passed <c>--json</c>; a refusal always
@@ -72,6 +77,10 @@ public static class CommandTextRenderer
             CorpusAddedResponse r => RenderCorpusAdded(r),
             CorpusDocumentAddedResponse r => RenderCorpusDocumentAdded(r),
             CorpusBundleAddedResponse r => RenderCorpusBundleAdded(r),
+            CorpusViewerDocument r => RenderCorpusViewerDocument(r),
+            CorpusRangeResponse r => RenderCorpusRange(r),
+            RebuildCorpusIndexResponse r => $"Indexed {r.CorpusCount:N0} Corpora.{Environment.NewLine}",
+            ArtifactInventoryResponse r => RenderArtifactInventory(r),
             PhonologyExamplesSavedResponse r => RenderPhonologyExamplesSaved(r),
             PhonologyExamplesListResponse r => RenderPhonologyExamplesList(r),
             PhonologyExamplesPageResponse r => RenderPhonologyExamplesPage(r),
@@ -81,6 +90,11 @@ public static class CommandTextRenderer
             ReportResponse r => RenderReport(r),
             ParsimonyReportResponse r => RenderParsimonyReport(r),
             ParsimonyReportSetResponse r => RenderParsimonyReportSet(r),
+            ParsimonyCandidateEvidenceResponse r => RenderParsimonyCandidateEvidence(r),
+            ParsimonyMeasureCatalogResponse r => RenderParsimonyMeasureCatalog(r),
+            ParsimonyNamedViewResponse r => RenderParsimonyNamedView(r),
+            NotebookRecordTypesResponse r => RenderNotebookRecordTypes(r),
+            RuleAttemptSummary r => TrialReviewTextRenderer.RenderRuleAttempts(r),
             ProposalParsimonyStatus r => ParsimonyStatusText.Render(r),
             ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
@@ -119,6 +133,17 @@ public static class CommandTextRenderer
             InspectResponse r => RenderInspect(r),
             HandoffCommandResponse r => RenderHandoff(r),
             WordTraceResponse r => RenderTrace(r),
+            FormsQueryResponse r => RenderFormsQuery(r),
+            GrammarReadResponse r => GrammarReadTextRenderer.Render(r),
+            ProjectStoreResetResponse r => r.Deleted
+                ? $"Deleted the Motif store at {r.StorePath}.{Environment.NewLine}"
+                : $"No Motif store was deleted at {r.StorePath}.{Environment.NewLine}",
+            ProjectStoreUpgradeResponse r => RenderProjectStoreUpgrade(r),
+            ProposalDeletedResponse r => RenderProposalDeleted(r),
+            ProposalReviewResponse r => RenderProposalReview(r),
+            ReviewMarkResponse r => $"Proposal {r.ProposalId}: entry {r.EntryKey} is " +
+                (r.LookedAt ? "marked looked at." : "no longer marked looked at.") + Environment.NewLine,
+            WordReadStateResponse r => RenderWordReadState(r),
             WritingSystemsResponse r => RenderWritingSystems(r),
             GdrListResponse r => RenderGdrList(r),
             GdrShowResponse r => RenderGdrShow(r),
@@ -131,6 +156,7 @@ public static class CommandTextRenderer
             SourceLocalResponse r => SourceTextRenderer.RenderLocal(r),
             SourceStageResponse r => SourceTextRenderer.RenderStaged(r),
             SourceApprovalStageResponse r => SourceTextRenderer.RenderApprovalStaged(r),
+            DecisionEvidenceExportResponse r => RenderDecisionEvidenceExportPage(r),
             WordContextResponse r => RenderWordContext(r),
             ProposalStandings r => RenderProposalStandings(r),
             ProposalStatusChangedResponse r => ProposalCommandRenderer.RenderStatusChanged(r),
@@ -148,6 +174,520 @@ public static class CommandTextRenderer
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
+    }
+
+    private static string RenderArtifactInventory(ArtifactInventoryResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Artifact inventory at {response.RootPath}: {response.Artifacts.Count:N0} artifact(s) in {response.Stores.Count:N0} store(s).");
+        text.AppendLine($"Inventory: {(response.InventoryComplete ? "complete" : "incomplete")}; " +
+            $"reference domain: {(response.ReferenceDomainComplete ? "complete" : "incomplete")}; " +
+            $"declared complete: {response.ReferenceDomainDeclaredComplete}.");
+        if (response.LogicalBytes is { } bytes) text.AppendLine($"Logical size: {bytes:N0} bytes.");
+        foreach (var store in response.Stores.Take(TextListLimit))
+            text.AppendLine($"  Store {store.DatabasePath}: {store.Status} ({store.ReasonCode}); " +
+                $"schema {store.SchemaVersion?.ToString(CultureInfo.CurrentCulture) ?? "unknown"}; " +
+                $"snapshot {store.SnapshotSha256 ?? "unavailable"}.");
+        AppendTextListOverflow(text, response.Stores.Count, TextListLimit);
+        foreach (var artifact in response.Artifacts.Take(TextListLimit))
+        {
+            text.AppendLine($"  {artifact.Family}: {artifact.Path}; logical " +
+                $"{artifact.LogicalBytes?.ToString("N0", CultureInfo.CurrentCulture) ?? "unknown"} bytes, allocated " +
+                $"{artifact.AllocatedBytes?.ToString("N0", CultureInfo.CurrentCulture) ?? "unknown"} bytes; " +
+                $"{artifact.Disposition} ({artifact.ReasonCode}); references " +
+                $"{(artifact.ReferenceDomainComplete ? "complete" : "incomplete")}.");
+            RenderLimitedValues(text, "    owners", artifact.OwnerInvocationIds, id => id);
+            RenderLimitedValues(text, "    retained by", artifact.RetainingRecordIds, id => id);
+        }
+        AppendTextListOverflow(text, response.Artifacts.Count, TextListLimit);
+        foreach (var diagnostic in response.Diagnostics.Take(TextListLimit))
+            text.AppendLine($"  {diagnostic.Code}" + (diagnostic.Path is null ? "." : $": {diagnostic.Path}"));
+        AppendTextListOverflow(text, response.Diagnostics.Count, TextListLimit);
+        return text.ToString();
+    }
+
+    private static string RenderCorpusViewerDocument(CorpusViewerDocument response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Document {response.DocumentId} in Corpus {response.CorpusId}: " +
+            $"{response.Text.Length:N0} characters, {response.Boundaries.Count:N0} word boundaries; sha256 {response.Sha256}.");
+        text.AppendLine(response.BoundaryDescription);
+        text.AppendLine("Boundaries:");
+        foreach (var boundary in response.Boundaries.Take(TextListLimit)) RenderCorpusSpan(text, "  Boundary", boundary);
+        AppendTextListOverflow(text, response.Boundaries.Count, TextListLimit);
+        text.AppendLine("Wordforms:");
+        foreach (var wordform in response.Wordforms.Take(TextListLimit))
+        {
+            text.AppendLine($"  {wordform.Wordform}: {wordform.Frequency:N0}");
+            foreach (var occurrence in wordform.Occurrences.Take(TextListLimit))
+                RenderCorpusSpan(text, "    Occurrence", occurrence);
+            AppendTextListOverflow(text, wordform.Occurrences.Count, TextListLimit);
+        }
+        AppendTextListOverflow(text, response.Wordforms.Count, TextListLimit);
+        text.AppendLine(response.Text);
+        return text.ToString();
+    }
+
+    private static void RenderCorpusSpan(StringBuilder text, string label, CorpusWordSpan span) =>
+        text.AppendLine($"{label}: {span.Surface}; UTF-16 [{span.Utf16Start:N0}, {span.Utf16Start + span.Utf16Length:N0}); " +
+            $"UTF-8 bytes [{span.Utf8Start:N0}, {span.Utf8Start + span.Utf8Length:N0}).");
+
+    private static string RenderCorpusRange(CorpusRangeResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Document range at byte {response.Offset:N0}: {response.Bytes.Length:N0} bytes " +
+            $"(sha256 {response.Sha256}).");
+        text.Append(Encoding.UTF8.GetString(response.Bytes));
+        if (response.Bytes.Length == 0 || response.Bytes[^1] != (byte)'\n') text.AppendLine();
+        return text.ToString();
+    }
+
+    private static string RenderDecisionEvidenceExportPage(DecisionEvidenceExportResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Decision evidence page: {response.Rows.Count:N0} record(s)." +
+            (response.Next is null ? " This is the last page." : " More records are available."));
+        foreach (var row in response.Rows)
+            text.AppendLine($"  Proposal {row.ProposalId}, {row.Kind} on {row.Subject} ({row.Tier}).");
+        return text.ToString();
+    }
+
+    private static string RenderFormsQuery(FormsQueryResponse response)
+    {
+        var result = response.Result;
+        var text = new StringBuilder();
+        text.AppendLine($"Query results from Trial {response.TrialId}" +
+            (response.IsStale ? " (stale evidence)." : "."));
+        if (response.UnresolvedVariants > 0)
+            text.AppendLine($"Unresolved variants: {response.UnresolvedVariants:N0}.");
+        foreach (var note in response.NotMeasured.Take(TextListLimit)) text.AppendLine("Not measured: " + note);
+        AppendTextListOverflow(text, response.NotMeasured.Count, TextListLimit);
+        foreach (var row in result.Rows.Take(TextListLimit))
+            text.AppendLine($"  {row.Form} ({row.Kind}) from {row.Base}" +
+                (row.Tokens is { } tokens ? $"; {tokens:N0} tokens" : string.Empty));
+        AppendTextListOverflow(text, result.Rows.Count, TextListLimit);
+        foreach (var group in result.Groups.Take(TextListLimit))
+            text.AppendLine($"  {string.Join(" / ", group.Key)}: {group.Count:N0}" +
+                (group.Tokens is { } tokens ? $" ({tokens:N0} tokens)" : string.Empty));
+        AppendTextListOverflow(text, result.Groups.Count, TextListLimit);
+        foreach (var item in (result.Items ?? []).Take(TextListLimit))
+        {
+            text.AppendLine("  " + item.Id + ": " + string.Join("; ", item.Values.Take(TextListLimit).Select(pair =>
+                pair.Key + "=" + string.Join(", ", pair.Value.Take(TextListLimit)) +
+                (pair.Value.Length > TextListLimit
+                    ? $"; and {pair.Value.Length - TextListLimit:N0} more values; use --json for all"
+                    : string.Empty))));
+            AppendTextListOverflow(text, item.Values.Count, TextListLimit);
+        }
+        AppendTextListOverflow(text, result.Items?.Count ?? 0, TextListLimit);
+        foreach (var id in result.Ids.Take(TextListLimit)) text.AppendLine("  Id: " + id);
+        AppendTextListOverflow(text, result.Ids.Count, TextListLimit);
+        foreach (var score in (result.Scores ?? []).Take(TextListLimit)) RenderQueryScore(text, score, "Score");
+        AppendTextListOverflow(text, result.Scores?.Count ?? 0, TextListLimit);
+        if (result.Evidence is { } evidence) RenderQueryEvidence(text, evidence);
+        foreach (var note in (result.Notes ?? []).Take(TextListLimit)) text.AppendLine("Note: " + note);
+        AppendTextListOverflow(text, result.Notes?.Count ?? 0, TextListLimit);
+        if (result.Rows.Count == 0 && result.Groups.Count == 0 && (result.Items is null || result.Items.Count == 0) &&
+            result.Ids.Count == 0 && (result.Scores is null || result.Scores.Count == 0) &&
+            result.Evidence is null && (result.Notes is null || result.Notes.Count == 0))
+            text.AppendLine("No matching forms.");
+        return text.ToString();
+    }
+
+    private static void RenderQueryEvidence(StringBuilder text, QueryEvidence evidence)
+    {
+        text.AppendLine($"Evidence: {evidence.Source}, {evidence.Members:N0} of {evidence.Universe:N0} member(s); " +
+            $"{evidence.Shared.Count:N0} shared context(s), {evidence.Examples.Count:N0} example(s), " +
+            $"{evidence.Questions.Count:N0} question(s), {evidence.TooFew:N0} context(s) too small to judge.");
+        foreach (var context in evidence.Shared.Take(TextListLimit))
+            text.AppendLine($"  Context {context.Label}: {context.Deviants:N0}/{context.Scope:N0} deviant(s); " +
+                $"status {context.Status}; expressible {context.Expressible}; held-out {context.HeldOut}.");
+        AppendTextListOverflow(text, evidence.Shared.Count, TextListLimit);
+        foreach (var score in evidence.Scores.Take(TextListLimit)) RenderQueryScore(text, score, "Evidence score");
+        AppendTextListOverflow(text, evidence.Scores.Count, TextListLimit);
+        foreach (var example in evidence.Examples.Take(TextListLimit))
+            text.AppendLine($"  Example {example.Id}: {example.Text}" +
+                (example.Tokens is { } tokens ? $" ({tokens:N0} tokens)" : string.Empty));
+        AppendTextListOverflow(text, evidence.Examples.Count, TextListLimit);
+        foreach (var question in evidence.Questions.Take(TextListLimit))
+            text.AppendLine($"  Question {question.Id}: {question.Text}");
+        AppendTextListOverflow(text, evidence.Questions.Count, TextListLimit);
+        if (evidence.SameShape is { } sameShape)
+            text.AppendLine($"  Same shape {sameShape.Key}: {sameShape.Count:N0} members; " +
+                $"rule attempt {(sameShape.RuleAttemptRequired ? "required" : "not required")} for {sameShape.Change}.");
+        foreach (var note in evidence.NotMeasured.Take(TextListLimit)) text.AppendLine("  Not measured: " + note);
+        AppendTextListOverflow(text, evidence.NotMeasured.Count, TextListLimit);
+    }
+
+    private static void RenderQueryScore(StringBuilder text, QueryScore score, string label)
+    {
+        text.AppendLine($"{label} {score.Scorer} ({score.Version}, {score.Unit}): {score.Verdict ?? "no verdict"}.");
+        RenderQueryValues(text, "  Counts", score.Counts);
+        RenderQueryValues(text, "  Numbers", score.Numbers);
+        if (score.Controls is { Count: > 0 }) RenderQueryValues(text, "  Controls", score.Controls);
+        foreach (var context in (score.Contexts ?? []).Take(TextListLimit))
+            text.AppendLine($"  Context {context.Label}: {context.Deviants:N0}/{context.Scope:N0}; " +
+                $"status {context.Status}; expressible {context.Expressible}; held-out {context.HeldOut}.");
+        AppendTextListOverflow(text, score.Contexts?.Count ?? 0, TextListLimit);
+        foreach (var note in score.Notes.Take(TextListLimit)) text.AppendLine("  Note: " + note);
+        AppendTextListOverflow(text, score.Notes.Count, TextListLimit);
+    }
+
+    private static void RenderQueryValues<T>(StringBuilder text, string label, IReadOnlyDictionary<string, T> values)
+    {
+        if (values.Count == 0)
+        {
+            text.AppendLine(label + ": none.");
+            return;
+        }
+        foreach (var pair in values.Take(TextListLimit))
+            text.AppendLine($"{label} {pair.Key}: {pair.Value}.");
+        AppendTextListOverflow(text, values.Count, TextListLimit);
+    }
+
+    private static void RenderQueryValues(StringBuilder text, string label, IReadOnlyDictionary<string, double?> values)
+    {
+        if (values.Count == 0)
+        {
+            text.AppendLine(label + ": none.");
+            return;
+        }
+        foreach (var pair in values.Take(TextListLimit))
+            text.AppendLine($"{label} {pair.Key}: {pair.Value?.ToString("G", CultureInfo.CurrentCulture) ?? "not available"}.");
+        AppendTextListOverflow(text, values.Count, TextListLimit);
+    }
+
+    private static void AppendTextListOverflow(StringBuilder text, int total, int shown)
+    {
+        if (total > shown) text.AppendLine($"  and {total - shown:N0} more; use --json for all");
+    }
+
+    private static string ParsimonyThresholdOperatorText(ParsimonyThresholdOperator threshold) => threshold switch
+    {
+        ParsimonyThresholdOperator.GreaterThan => ">",
+        ParsimonyThresholdOperator.GreaterThanOrEqual => ">=",
+        ParsimonyThresholdOperator.Equal => "=",
+        ParsimonyThresholdOperator.RankedOnly => "ranked-only",
+        _ => threshold.ToString(),
+    };
+
+    private static string RenderNotebookRecordTypes(NotebookRecordTypesResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Notebook record types ({response.RecordTypes.Count:N0}):");
+        foreach (var type in response.RecordTypes.Take(TextListLimit))
+            text.AppendLine($"  {type.Name} ({type.Id})");
+        AppendTextListOverflow(text, response.RecordTypes.Count, TextListLimit);
+        return text.ToString();
+    }
+
+    private static string RenderParsimonyCandidateEvidence(ParsimonyCandidateEvidenceResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Parsimony comparison for Proposal {response.Candidate.ProposalId}, measure {response.MeasureId}: " +
+            $"{response.FindingChanges.Count:N0} finding change(s).");
+        text.AppendLine($"Approved analyses preserved: {response.ApprovedAnalysisPreservation.PreservedCount:N0}/" +
+            $"{response.ApprovedAnalysisPreservation.BaselineCount:N0} ({response.ApprovedAnalysisPreservation.Status}).");
+        foreach (var tuple in response.ApprovedAnalysisPreservation.UnmatchedBaselineTuples.Take(TextListLimit))
+            text.AppendLine($"  Unmatched Approved analysis: wordform {tuple.WordformGuid}; " +
+                $"analysis {tuple.AnalysisGuid}; content sha256 {tuple.ContentSha256}.");
+        AppendTextListOverflow(text, response.ApprovedAnalysisPreservation.UnmatchedBaselineTuples.Count, TextListLimit);
+        foreach (var change in response.FindingChanges.Take(TextListLimit))
+        {
+            text.AppendLine($"  Finding {change.Change}: {change.FindingId}");
+            RenderCandidateFinding(text, "    Before", change.Before);
+            RenderCandidateFinding(text, "    After", change.After);
+        }
+        AppendTextListOverflow(text, response.FindingChanges.Count, TextListLimit);
+        foreach (var measure in (response.MoreMeasures ?? []).Take(TextListLimit))
+        {
+            text.AppendLine($"  Additional measure: {measure.MeasureId} ({measure.FindingChanges.Count:N0} changes).");
+            foreach (var change in measure.FindingChanges.Take(TextListLimit))
+            {
+                text.AppendLine($"    Finding {change.Change}: {change.FindingId}");
+                RenderCandidateFinding(text, "      Before", change.Before);
+                RenderCandidateFinding(text, "      After", change.After);
+            }
+            AppendTextListOverflow(text, measure.FindingChanges.Count, TextListLimit);
+        }
+        AppendTextListOverflow(text, response.MoreMeasures?.Count ?? 0, TextListLimit);
+        foreach (var timing in (response.StageTimings ?? []).Take(TextListLimit))
+            text.AppendLine($"  Stage {timing.Stage} {timing.Side}: {timing.Milliseconds:N0} ms.");
+        AppendTextListOverflow(text, response.StageTimings?.Count ?? 0, TextListLimit);
+        return text.ToString();
+    }
+
+    private static void RenderCandidateFinding(StringBuilder text, string label, ParsimonyFinding? finding)
+    {
+        if (finding is null)
+        {
+            text.AppendLine(label + ": no finding.");
+            return;
+        }
+        text.AppendLine($"{label}: {finding.Description ?? finding.MeasureId} ({finding.MeasureId}; {finding.Axis}; {finding.Tier}); " +
+            $"{finding.Number.Numerator:N0}/{finding.Number.Denominator:N0} {finding.Number.Unit}; " +
+            $"threshold {ParsimonyThresholdOperatorText(finding.Threshold.Operator)} " +
+            $"{finding.Threshold.Value?.ToString("G", CultureInfo.CurrentCulture) ?? "ranked only"} " +
+            $"({finding.Threshold.Version}).");
+        text.AppendLine($"      Attached to {finding.AttachesTo.Kind} {finding.AttachesTo.Identity}" +
+            (finding.GroupKey is null ? "." : $"; group {finding.GroupKey}."));
+        text.AppendLine($"      Evidence digest: {finding.EvidenceDigest}; verification: {finding.Verification}; recipe: {finding.RecipeLink}.");
+        RenderLimitedValues(text, "      item names", finding.ItemNames, name => name);
+        RenderLimitedValues(text, "      limitations", finding.Limitations, limitation => limitation);
+        foreach (var reference in finding.EvidenceRefs.Take(TextListLimit))
+            text.AppendLine($"      Evidence view {reference.View} from bundle {reference.BundleId}: " +
+                JsonSerializer.Serialize(reference.Arguments) + ".");
+        AppendTextListOverflow(text, finding.EvidenceRefs.Count, TextListLimit);
+    }
+
+    private static string RenderParsimonyMeasureCatalog(ParsimonyMeasureCatalogResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Parsimony measure set {response.MeasureSetVersion}: {response.Measures.Count:N0} measure(s), " +
+            $"{response.Views.Count:N0} view(s).");
+        foreach (var measure in response.Measures.Take(TextListLimit))
+        {
+            text.AppendLine($"  {measure.Id}: {measure.Axis}; {measure.Tier} tier; counts {measure.Unit}; " +
+                $"recipe {measure.RecipeLink}." +
+                (measure.Partial is null ? string.Empty : " " + measure.Partial));
+            text.AppendLine($"    Attaches to: {measure.AttachesTo}" +
+                (measure.AuthoredObjectKind is null ? string.Empty : $" / {measure.AuthoredObjectKind}") +
+                (measure.GroupKind is null ? string.Empty : $" / {measure.GroupKind}") + ".");
+            text.AppendLine("    Threshold: " + (measure.Threshold is null ? "none." :
+                $"{ParsimonyThresholdOperatorText(measure.Threshold.Operator)} " +
+                $"{measure.Threshold.Value?.ToString("G", CultureInfo.CurrentCulture) ?? "ranked only"} " +
+                $"({measure.Threshold.Version})."));
+            RenderLimitedValues(text, "    required capabilities", measure.RequiredCapabilities, capability => capability);
+            RenderLimitedValues(text, "    citations", measure.CitationKeys, citation => citation);
+            RenderLimitedValues(text, "    evidence views", measure.EvidenceViews, view => view);
+        }
+        AppendTextListOverflow(text, response.Measures.Count, TextListLimit);
+        foreach (var view in response.Views.Take(TextListLimit))
+        {
+            text.AppendLine($"  View {view.Code} v{view.Version}: {view.Description}; filter {view.FilterShape}.");
+            RenderLimitedValues(text, "    required capabilities", view.RequiredCapabilities, capability => capability);
+        }
+        AppendTextListOverflow(text, response.Views.Count, TextListLimit);
+        return text.ToString();
+    }
+
+    private static string RenderParsimonyNamedView(ParsimonyNamedViewResponse response)
+    {
+        var text = new StringBuilder();
+        var definition = ParsimonyViewCatalog.Find(response.View);
+        text.AppendLine($"Parsimony view {response.View} v{response.Version}: {response.Status}; bundle {response.BundleId}; " +
+            $"showing {response.Returned:N0} of {response.Total?.ToString("N0", CultureInfo.CurrentCulture) ?? "unknown"} row(s)." +
+            (response.Truncated ? " More rows are available." : string.Empty));
+        text.AppendLine($"  Schema filter: {definition?.FilterShape ?? "unknown"}.");
+        RenderLimitedValues(text, "  capabilities", response.Capabilities, capability => capability);
+        text.AppendLine("  Items digest: " + (response.ItemsDigest ?? "unavailable") + ".");
+        if (response.ActiveCount is not null || response.SuppressedCount is not null ||
+            response.ResurfacedCount is not null || response.UnresolvedJudgmentCount is not null)
+            text.AppendLine($"  Disposition counts: {response.ActiveCount?.ToString("N0", CultureInfo.CurrentCulture) ?? "unknown"} active, " +
+                $"{response.SuppressedCount?.ToString("N0", CultureInfo.CurrentCulture) ?? "unknown"} suppressed, " +
+                $"{response.ResurfacedCount?.ToString("N0", CultureInfo.CurrentCulture) ?? "unknown"} resurfaced, " +
+                $"{response.UnresolvedJudgmentCount?.ToString("N0", CultureInfo.CurrentCulture) ?? "unknown"} unresolved.");
+        if (response.JudgmentProjectionDigest is not null)
+            text.AppendLine("  Judgment projection digest: " + response.JudgmentProjectionDigest);
+        if (response.Detail is not null) text.AppendLine(response.Detail);
+        foreach (var row in response.Rows.Take(TextListLimit))
+            text.AppendLine("  " + JsonSerializer.Serialize(row, row.GetType()));
+        AppendTextListOverflow(text, response.Rows.Count, TextListLimit);
+        if (response.NextCursor is not null) text.AppendLine("Next cursor: " + response.NextCursor);
+        return text.ToString();
+    }
+
+    private static string RenderProjectStoreUpgrade(ProjectStoreUpgradeResponse response)
+    {
+        var report = response.Report;
+        var text = new StringBuilder();
+        text.AppendLine($"Upgraded Motif store from schema {report.SourceSchema} to {report.TargetSchema}.");
+        if (report.BackupPath is not null) text.AppendLine("Backup: " + report.BackupPath);
+        foreach (var (table, count) in report.Carried.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            text.AppendLine($"  Kept {table}: {count:N0} row(s).");
+        if (report.Dropped.Count > 0)
+            text.AppendLine("Discarded computed tables: " + string.Join(", ", report.Dropped));
+        foreach (var revision in report.UnreadableRevisions.Take(TextListLimit))
+            text.AppendLine($"Unreadable revision in Proposal {revision.ProposalId}: {revision.Error}");
+        AppendTextListOverflow(text, report.UnreadableRevisions.Count, TextListLimit);
+        return text.ToString();
+    }
+
+    private static string RenderProposalDeleted(ProposalDeletedResponse response) =>
+        $"Deleted Proposal {response.ProposalId} and {response.TrialsDeleted:N0} Trial(s).{Environment.NewLine}";
+
+    private static string RenderProposalReview(ProposalReviewResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Proposal {response.ProposalId}" +
+            (response.Label is null ? string.Empty : $" — {response.Label}") +
+            $": {response.Entries.Count:N0} change(s), " +
+            $"{response.LookedAtCount:N0} marked looked at.");
+        foreach (var entry in response.Entries.Take(TextListLimit))
+        {
+            text.AppendLine($"  {entry.Ordinal + 1}. {entry.Title} ({entry.EntryKey})");
+            RenderLimitedValues(text, "    operations", entry.OperationIds, id => id);
+            if (entry.DependsOnEntries.Count > 0) RenderLimitedValues(text, "    depends on", entry.DependsOnEntries, id => id);
+            if (entry.Citations.Count > 0) RenderLimitedValues(text, "    cites", entry.Citations,
+                citation => citation.Locator is null ? citation.Source : $"{citation.Source}, {citation.Locator}");
+            text.AppendLine($"    lookedAt: {entry.LookedAt.ToString().ToLowerInvariant()}");
+            switch (entry)
+            {
+                case WordChangeEntry word:
+                    RenderWordChangeEntry(text, word);
+                    break;
+                case GrammarChangeEntry grammar:
+                    RenderGrammarChangeEntry(text, grammar);
+                    break;
+            }
+        }
+        AppendTextListOverflow(text, response.Entries.Count, TextListLimit);
+        if (response.Trial is not null) text.AppendLine($"Latest Trial: {response.Trial.Status}.");
+        if (response.Readiness is { } readiness)
+        {
+            text.AppendLine($"Apply readiness: {(readiness.IsReady ? "ready" : "not ready")}." +
+                (readiness.CorrectnessAssessmentExempt
+                    ? " Correctness Assessment is exempt: " + readiness.CorrectnessAssessmentExemptionReason
+                    : readiness.CorrectnessAssessmentRequired ? " Correctness Assessment is required." : string.Empty));
+            foreach (var reason in readiness.Reasons.Take(TextListLimit)) text.AppendLine("  " + reason);
+            AppendTextListOverflow(text, readiness.Reasons.Count, TextListLimit);
+        }
+        foreach (var fit in response.Fits.Take(TextListLimit))
+        {
+            text.AppendLine($"Change {fit.ChangeId}: {fit.Status}.");
+            foreach (var reason in fit.Reasons.Take(TextListLimit)) text.AppendLine("  " + reason);
+            AppendTextListOverflow(text, fit.Reasons.Count, TextListLimit);
+        }
+        AppendTextListOverflow(text, response.Fits.Count, TextListLimit);
+        return text.ToString();
+    }
+
+    private static void RenderWordChangeEntry(StringBuilder text, WordChangeEntry entry)
+    {
+        var change = entry.Change;
+        text.AppendLine($"    Change: {change.Kind} for {change.Word} ({change.WordformId}).");
+        if (change.DisplayReading is not null) text.AppendLine("    Display reading: " + change.DisplayReading);
+        if (change.AssessmentId is not null) text.AppendLine("    Assessment: " + change.AssessmentId);
+        if (change.StoredAnalysisId is not null) text.AppendLine("    Stored analysis: " + change.StoredAnalysisId);
+        if (change.ReadingIndex is { } index) text.AppendLine($"    Reading index: {index:N0}");
+        if (change.OriginPage is not null) text.AppendLine("    Origin page: " + change.OriginPage);
+        foreach (var analysis in change.Analyses.Take(TextListLimit))
+        {
+            text.AppendLine($"    Existing analysis ({analysis.Opinion}; touched {analysis.Touched.ToString().ToLowerInvariant()}; " +
+                $"stored {analysis.Stored.ToString().ToLowerInvariant()}):");
+            RenderParserReading(text, "      ", analysis.Reading);
+        }
+        AppendTextListOverflow(text, change.Analyses.Count, TextListLimit);
+        RenderPairedReading(text, "    Reading", entry.Reading);
+        if (entry.Fit is { } fit) RenderReviewFit(text, fit);
+    }
+
+    private static void RenderPairedReading(StringBuilder text, string label, Paired<ParserReading?> reading)
+    {
+        if (reading.HasBefore && reading.Before is { } before)
+        {
+            text.AppendLine(label + " before:");
+            RenderParserReading(text, "  ", before);
+        }
+        if (reading.HasAfter && reading.After is { } after)
+        {
+            text.AppendLine(label + " with Proposal:");
+            RenderParserReading(text, "  ", after);
+        }
+        if (reading.AfterRefusal is { } refusal) text.AppendLine(label + " with Proposal unavailable: " + refusal.Message);
+        if (!reading.HasBefore && !reading.HasAfter && reading.AfterRefusal is null)
+            text.AppendLine(label + ": unavailable.");
+    }
+
+    private static void RenderParserReading(StringBuilder text, string indent, ParserReading reading)
+    {
+        if (reading.StoredAnalysisId is not null) text.AppendLine(indent + "Stored analysis: " + reading.StoredAnalysisId);
+        if (reading.StoredAnalysisOpinion is not null) text.AppendLine(indent + "Stored opinion: " + reading.StoredAnalysisOpinion);
+        foreach (var morph in reading.Morphs.Take(TextListLimit))
+        {
+            text.Append(indent).Append("Morph: ").Append(morph.Form);
+            if (morph.FormWritingSystem is not null) text.Append(" (").Append(morph.FormWritingSystem).Append(')');
+            text.Append(" — ").Append(morph.Gloss).Append(" [").Append(morph.Category).Append(']');
+            if (morph.InflectionType is not null) text.Append("; inflection ").Append(morph.InflectionType);
+            if (morph.Guessed) text.Append("; guessed");
+            if (morph.Entry is not null) text.Append("; entry ").Append(morph.Entry);
+            text.AppendLine();
+        }
+        AppendTextListOverflow(text, reading.Morphs.Count, TextListLimit);
+    }
+
+    private static void RenderReviewFit(StringBuilder text, ChangeFit fit)
+    {
+        text.AppendLine($"    Fit: {fit.Status}.");
+        foreach (var reason in fit.Reasons.Take(TextListLimit)) text.AppendLine("      " + reason);
+        AppendTextListOverflow(text, fit.Reasons.Count, TextListLimit);
+        if (fit.Uncertainty is { } uncertainty)
+            text.AppendLine("    Fit uncertainty: " + uncertainty.Reason);
+    }
+
+    private static void RenderGrammarChangeEntry(StringBuilder text, GrammarChangeEntry entry)
+    {
+        text.AppendLine("    Composer: " + entry.Composer);
+        text.AppendLine("    Summary: " + entry.Summary);
+        foreach (var effect in entry.Effects.Take(TextListLimit)) RenderEffectView(text, "    Effect", effect);
+        AppendTextListOverflow(text, entry.Effects.Count, TextListLimit);
+        foreach (var reading in entry.AffectedReadings.Take(TextListLimit)) RenderAffectedReading(text, reading);
+        AppendTextListOverflow(text, entry.AffectedReadings.Count, TextListLimit);
+        foreach (var part in entry.Parts.Take(TextListLimit)) RenderReviewPart(text, part);
+        AppendTextListOverflow(text, entry.Parts.Count, TextListLimit);
+    }
+
+    private static void RenderEffectView(StringBuilder text, string label, EffectView effect)
+    {
+        text.AppendLine($"{label} {effect.Field} on {effect.CanonicalId}:");
+        foreach (var change in effect.Changes.Take(TextListLimit))
+            text.AppendLine($"      {change.Ws}: {change.Before ?? "(absent)"} → {change.After ?? "(absent)"}");
+        AppendTextListOverflow(text, effect.Changes.Count, TextListLimit);
+        RenderLimitedValues(text, "      operations", effect.OperationIds, id => id);
+    }
+
+    private static void RenderAffectedReading(StringBuilder text, RetirementAffectedReading reading)
+    {
+        text.AppendLine($"    Affected reading {reading.CaseId} for {reading.Word} ({reading.WordformId ?? "no wordform id"}): " +
+            $"{reading.SurfaceBefore} → {reading.SurfaceAfter ?? "(none)"}; {reading.Opinion}; {reading.VerificationStatus}.");
+        text.AppendLine($"      Rule attribution: {reading.RuleAttributionStatus}" +
+            (reading.RuleId is null ? "." : $" ({reading.RuleId})."));
+        if (reading.AttributionDetail is not null) text.AppendLine("      Attribution detail: " + reading.AttributionDetail);
+    }
+
+    private static void RenderReviewPart(StringBuilder text, RetirementReviewPart part)
+    {
+        text.AppendLine($"    Part {part.Title} ({part.Id}):");
+        RenderLimitedValues(text, "      operations", part.OperationIds, id => id);
+        foreach (var effect in part.Effects.Take(TextListLimit)) RenderEffectView(text, "      Effect", effect);
+        AppendTextListOverflow(text, part.Effects.Count, TextListLimit);
+        foreach (var detail in part.Details.Take(TextListLimit))
+            text.AppendLine($"      Detail {detail.Kind} {detail.Label}: {detail.BeforeText ?? "(none)"} → {detail.AfterText ?? "(none)"}");
+        AppendTextListOverflow(text, part.Details.Count, TextListLimit);
+    }
+
+    private static void RenderLimitedValues<T>(StringBuilder text, string label, IReadOnlyList<T> values,
+        Func<T, string> format)
+    {
+        text.AppendLine(label + ": " + (values.Count == 0 ? "none" : string.Join(", ", values.Take(TextListLimit).Select(format))));
+        AppendTextListOverflow(text, values.Count, TextListLimit);
+    }
+
+    private static string RenderWordReadState(WordReadStateResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Read occurrences: {response.ReadOccurrences.Count:N0}; " +
+            $"skipped without a current parse: {response.SkippedOccurrences.Count:N0}; " +
+            $"Baseline: {(response.HasBaseline ? "available" : "none")}.");
+        foreach (var occurrence in response.ReadOccurrences.Take(TextListLimit))
+            text.AppendLine($"  Text {occurrence.TextId}, paragraph {occurrence.ParagraphId}, " +
+                $"segment {occurrence.SegmentId}, position {occurrence.Index}.");
+        AppendTextListOverflow(text, response.ReadOccurrences.Count, TextListLimit);
+        foreach (var occurrence in response.SkippedOccurrences.Take(TextListLimit))
+            text.AppendLine($"  Skipped Text {occurrence.TextId}, paragraph {occurrence.ParagraphId}, " +
+                $"segment {occurrence.SegmentId}, position {occurrence.Index}.");
+        AppendTextListOverflow(text, response.SkippedOccurrences.Count, TextListLimit);
+        return text.ToString();
     }
 
     private static string RenderTrial(TrialRecord trial)
