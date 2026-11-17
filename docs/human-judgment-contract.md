@@ -20,7 +20,7 @@ A predecessor names `revisionId` and expected `contentDigest`. A new judgment ha
 
 Actor, if supplied, is closed `human|agent|unknown` plus optional id/name. Absence is unknown provenance. Time is nullable explicitly supplied UTC, never inferred from Notebook timestamps or Apply. Source optionally names Report/Proposal portable IDs. Unknown keys anywhere, duplicate JSON keys, unknown versions, unknown kinds, numeric/unknown enum values and null required structures are refused. Arbitrary non-semantic metadata belongs only in the bounded `extensions` object. It cannot define identity, a decision, evidence or authority.
 
-## Dispositions and exact subjects
+## Rulings and exact subjects
 
 A choice about one statement must not accidentally apply to another statement or a larger family. The evidence binding identifies what the person actually considered.
 
@@ -36,7 +36,7 @@ Subject is one closed alternative (`object`, `project`, `edge`, `computed-group`
 
 `HumanJudgmentCodec.SubjectKey` returns the exact canonical subject digest. Portable ID prefixes are ignored for this identity key. Group ordering is normalized; directed endpoint and ordered morphology positions are retained. Synthesized parser objects without these authored identities are unavailable attachments in this version; do not invent GUIDs for exported owner/role/path keys.
 
-The finding's item-relevant evidence digest includes applicable facts, positive/negative witnesses, universe/scope, detector/threshold/projection versions, relevant parser capability and consumed human-input revisions. It excludes its own disposition, timestamps, labels, unrelated Texts, whole-file digests and page limits. Otherwise a keep would invalidate itself or drift merely on publication. Judgment logical-content digest is separate and includes its parsed reason.
+The finding's item-relevant evidence digest includes applicable facts, positive/negative witnesses, universe/scope, detector/threshold/projection versions, relevant parser capability and consumed human-input revisions. It excludes its own ruling, timestamps, labels, unrelated Texts, whole-file digests and page limits. Otherwise a keep would invalidate itself or drift merely on publication. Judgment logical-content digest is separate and includes its parsed reason.
 
 ## Reviewed negatives and retraction
 
@@ -48,7 +48,7 @@ Rejecting a reading does not reject the whole word. A negative example need not 
 
 Dialect/register restrictions belong in explicit context/provenance. SpellingStatus, absence from Texts and incomplete parser searches never imply this judgment. Native Disapproved rejects only its existing reading. A later native Approved same-morphology reading creates contradictory human input against an independently frozen negative; do not silently prefer either. Changed reading identities require explicit reconfirmation or a future frozen translation. Surface negatives do not vanish when a constraint changes. Cases/partitions are explicit frozen inputs, not list-position inferences.
 
-`body.kind=retraction` has no disposition or negative fields. It withdraws named prior heads under the same logical judgment and cannot delete historical records. An explicit conflict resolution may be a disposition, negative or retraction, with all expected head digests. The later lineage projection resolves its identity from those heads.
+`body.kind=retraction` has no ruling or negative fields. It withdraws named prior heads under the same logical judgment and cannot delete historical records. An explicit conflict resolution may be a ruling, negative or retraction, with all expected head digests. The later lineage projection resolves its identity from those heads.
 
 ## Physical readable value
 
@@ -82,7 +82,7 @@ Keeping a finding removes it from Active while leaving its decision and reason a
 
 A unique valid applied keep/defer head matching `(project, measure, exact subject key, evidenceDigest)` enters Suppressed. Defer follows the same rule and is separately filterable, with no implicit expiry. Fix/ask stays Active. Pending choices stay Active; the candidate scratch Report can show prospective membership. Retraction or fix/ask revision returns a matching finding after Apply/Refresh while retaining history. Relevant evidence change resurfaces with prior reason and old/new digest references. Subject removed, no current finding and evidence unavailable remain explicit historical states. Invalid/conflicting heads cannot hide candidates. Raw detector n/N and frozen candidates are preserved separately from active/suppressed/resurfaced/unresolved membership counts.
 
-All judgment writes stage semantic Intents in a Draft; values are applied only through existing Dry Run, Preflight, Readiness and Apply. Schema signature and expected predecessor digests participate in Preflight. Rebase cannot change reason/subject/decision. A disposition revision or retraction names every current head and its expected digest; a stale head is refused, and resolving a conflict requires naming all heads. Revisions preserve the exact subject and evidence binding. No direct SQLite writer, no background project save, no annotation-only Readiness bypass and no new agent permission class is authorized. Runner remains storage-agnostic; LiveHost owns lock/lifecycle/save. Agents may stage agent-attributed disposition revisions and retractions, but only a person Applies them; confirming or retracting reviewed negatives remains HumanOnly. Agents cannot initialize schema.
+All judgment writes stage semantic Intents in a Draft; values are applied only through existing Dry Run, Preflight, Readiness and Apply. Schema signature and expected predecessor digests participate in Preflight. Rebase cannot change reason/subject/decision. A ruling revision or retraction names every current head and its expected digest; a stale head is refused, and resolving a conflict requires naming all heads. Revisions preserve the exact subject and evidence binding. No direct SQLite writer, no background project save, no annotation-only Readiness bypass and no new agent permission class is authorized. Runner remains storage-agnostic; LiveHost owns lock/lifecycle/save. Agents may stage agent-attributed ruling revisions and retractions, but only a person Applies them; confirming or retracting reviewed negatives remains HumanOnly. Agents cannot initialize schema.
 
 Derived `evidence.sqlite` projects revisions, typed subjects/members, lineage, effective heads, cases and errors from the exact Baseline or candidate scratch, together with native Opinions. Include source Notebook/revision GUID, logical ID, content digest, format and full capture binding, plus independent human-input projection version/digest. Reports freeze those exact inputs. Reads of old Reports retain old judgment context; explicit Refresh publishes later saved input. Saved-project inspection uses private scratch readers when FieldWorks holds the original.
 

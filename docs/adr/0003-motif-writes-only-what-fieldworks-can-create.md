@@ -150,13 +150,13 @@ ordinary requirement. Dry Run and Preflight still apply; `--force` keeps its mea
 
 Judgements are staged as semantic Intents in Drafts and written through Dry Run, Preflight and Apply.
 A revision or retraction names every current head and expected digest; stale heads refuse. Explicit
-resolution names all conflicting heads. A disposition revision preserves subject and evidence while choice
+resolution names all conflicting heads. A ruling revision preserves subject and evidence while choice
 or reason may change. Retraction appends rather than deletes. Cycles, missing heads, incompatible subjects
 under one logical ID, wrong copied record/project identities and malformed values are unavailable or
 conflicting input.
 
 Reasons are optional; Ask requires a question. Actor and time are optional supplied facts, never inferred
-from login, Notebook timestamp or Apply time. Agents may stage agent-attributed dispositions and revisions
+from login, Notebook timestamp or Apply time. Agents may stage agent-attributed rulings and revisions
 or retractions; only a person Applies. Confirming or retracting reviewed negatives is HumanOnly and requires
 explicit human attribution and confirmation. Agents cannot impersonate a person, Apply or create schema;
 no new annotation permission class is introduced.
@@ -171,7 +171,7 @@ or project history; external edits have no promised append-only history.
 Only a unique applied keep/defer with exactly matching subject and item-relevant evidence enters the
 always-listable Suppressed set. Fix/ask remains Active; pending choices never suppress. Relevant evidence
 changes resurface a recommendation with its prior optional reason. Unrelated Texts, labels, timestamps,
-paging and the disposition itself do not enter the finding evidence digest. Deleted subjects or absent
+paging and the ruling itself do not enter the finding evidence digest. Deleted subjects or absent
 findings leave inspectable history; unavailable Reports are not empty evidence. Invalid or conflicting
 heads never hide candidates. All front ends derive the same membership; frozen Reports keep their detector
 candidates and raw counts.

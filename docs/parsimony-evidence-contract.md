@@ -6,7 +6,7 @@ A Parsimony Report can describe a saved grammar and the language data attached t
 
 PanGloss owns `grammar-facts.sqlite`, a versioned account of authored grammar objects and what its loader used; Parsimony reads schema version 8 and refuses any other. Motif owns `evidence.sqlite`, a versioned projection of the FieldWorks project’s Texts, wordforms, opinions, and analyses. Both files are derived analysis artifacts; neither is a durable source of human judgment.
 
-Human-confirmed negative cases and Parsimony dispositions belong in durable FieldWorks Notebook records, not `Project.motif.db`. The `parsimony-expectations/v1` contract reads reviewed negatives with their revision identity; a derived artifact may snapshot the exact evidence a Report used without becoming its source of truth.
+Human-confirmed negative cases and Parsimony rulings belong in durable FieldWorks Notebook records, not `Project.motif.db`. The `parsimony-expectations/v1` contract reads reviewed negatives with their revision identity; a derived artifact may snapshot the exact evidence a Report used without becoming its source of truth.
 
 A Report input is one of two closed families:
 
@@ -77,7 +77,7 @@ The typed `ParsimonyReportInputs` contract binds the bundle ID, full Baseline to
 
 File byte digests are recorded in the bundle descriptor, not in the file they hash. Build into a staging file, commit the artifact transaction, set completeness last, verify the result, close it, and publish it atomically. A reader opens published artifacts read-only. No transaction spans the two files.
 
-Queries are fixed and named. A shared read session may use connection-local temporary views over attached artifacts; it does not expose persistent cross-file views, caller-authored SQL, or expressions in a profile. Dispositions do not change an artifact's evidence digest.
+Queries are fixed and named. A shared read session may use connection-local temporary views over attached artifacts; it does not expose persistent cross-file views, caller-authored SQL, or expressions in a profile. Rulings do not change an artifact's evidence digest.
 
 ## Finding evidence identity
 

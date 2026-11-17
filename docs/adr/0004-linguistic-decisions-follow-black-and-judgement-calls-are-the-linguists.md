@@ -48,7 +48,7 @@ a preference-based refusal.
 ### D4. Grammar Health, Parsimony and Guide checks advise
 
 Findings may warn, rank, ask or suggest a repair. Ordinary Grammar Health, Parsimony and Guide findings
-never block a Draft, composer, Proposal or Apply; severity is not validity and a disposition records
+never block a Draft, composer, Proposal or Apply; severity is not validity and a ruling records
 “I meant it”. Recipes name the options and evidence and end by asking the linguist. Only the closed,
 explicitly opted-in autonomous Parsimony policy in ADR 0022 decision 6 can hold work on its named findings;
 Consultant-mode windows stay advisory and Guide checks never gate. Other Report kinds may participate in

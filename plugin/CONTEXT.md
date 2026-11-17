@@ -55,7 +55,7 @@ _Avoid_: agent guide, MCP skill, tool manual
 
 **Parsimony review** (`parsimony-review`):
 How an agent reads a Parsimony finding's evidence and recipe and chooses fix, keep, ask or defer, staging
-the update or the disposition in a Draft for a person to Apply. Never promises a fix the recipe does not
+the update or the ruling in a Draft for a person to Apply. Never promises a fix the recipe does not
 name.
 _Avoid_: simplification skill, cleanup skill
 

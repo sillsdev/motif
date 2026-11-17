@@ -33,13 +33,13 @@ safety witnesses even if a detector uses a narrower Selection.
 
 ### D2. Human judgements remain durable FieldWorks data
 
-Reviewed negatives and dispositions live as revisioned Notebook records under ADR 0003, never canonical
-negative/disposition rows in `Project.motif.db` or analysis files. Initialization is deliberate and proven
+Reviewed negatives and rulings live as revisioned Notebook records under ADR 0003, never canonical
+negative/ruling rows in `Project.motif.db` or analysis files. Initialization is deliberate and proven
 before product writes. Frozen projections are evidence, not the judgement store. Synthetic probes are not
 human judgements; an agent cannot pose as a person, change Opinions, Apply through MCP or grant Readiness.
-This ADR authorizes no MCP disposition writer; agent annotation would need a separate narrow opt-in.
+This ADR authorizes no MCP ruling writer; agent annotation would need a separate narrow opt-in.
 
-Disposition values are fix, keep, ask and defer, attached to exact finding and relevant evidence digest.
+Ruling values are fix, keep, ask and defer, attached to exact finding and relevant evidence digest.
 Fix records intent without creating/applying a Proposal. Keep may record a reason and suppresses only that
 item under that evidence; the Suppressed set remains queryable. Ask neither sends nor answers a question.
 Defer keeps it for later. A relevant evidence change reactivates it; unrelated Text changes and publication
@@ -108,7 +108,7 @@ parser-case, active/suppressed/history views remain available. Finding Search re
 
 Reuse needs matching material key/evidence digest, Reports whose input digests match the bundle, and a
 Report for every requested measure. It opens no facts session and runs no parser. Candidate-before reuse
-strips disposition projections as a fresh candidate does. Reverify the evidence file and Report/bundle
+strips ruling projections as a fresh candidate does. Reverify the evidence file and Report/bundle
 bindings; the discarded facts digest is a recorded fact. A new measure or unkept facts-view requires a new
 bundle, not interpretation of missing rows. `ReadMsaDescription` orders by ordinal, writing system, sense GUID.
 
@@ -121,7 +121,7 @@ ADR 0023 governs retained size and release; the ordinary whole-Proposal target i
 ### D6. Ordinary advice does not gate; the autonomous exception is closed and opt-in
 
 Grammar warnings, linguistic preferences and ordinary Parsimony findings advise. Findings, thresholds and
-dispositions do not grant Readiness or Apply Authorization. Other Report kinds can have the configured
+rulings do not grant Readiness or Apply Authorization. Other Report kinds can have the configured
 regression policy of ADR 0020. Consultant-mode windows stay advisory.
 
 Only `R-word-disapproved-produced`, `R-word-negative-accepted` and `P-variant-same-shape` are block-capable,
