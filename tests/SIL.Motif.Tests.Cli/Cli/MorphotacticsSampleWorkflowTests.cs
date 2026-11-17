@@ -113,7 +113,11 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             var trial = await RunAsync(runner, preferencePath, "trial", "--project", projectPath, proposalId,
                 "--words", wordsPath, "--wait", "--wait-timeout-ms", "55000", "--json");
             Assert.True(trial.ExitCode == 0, trial.Error + Environment.NewLine + trial.Output);
-            var trialStatus = ProjectionJson.Deserialize<JobStatusResponse>(trial.Output)!;
+            // A waited Trial prints its review summary, so the job's own status is read back.
+            var shown = await RunAsync(runner, preferencePath, "jobs", "show", JobProgress.LatestJobId(projectPath, JobCommands.TrialKind)!,
+                "--project", projectPath, "--json");
+            Assert.True(shown.ExitCode == 0, shown.Error + Environment.NewLine + shown.Output);
+            var trialStatus = ProjectionJson.Deserialize<JobStatusResponse>(shown.Output)!;
             Assert.Equal(JobStatus.Completed, trialStatus.Status);
 
             using (var database = ProjectMotifDatabase.Open(projectPath))
@@ -250,7 +254,11 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             var trial = await RunAsync(runner, preferencePath, "trial", "--project", projectPath,
                 proposalId, "--words", wordsPath, "--wait", "--wait-timeout-ms", "180000", "--json");
             Assert.True(trial.ExitCode == 0, trial.Error + Environment.NewLine + trial.Output);
-            var trialStatus = ProjectionJson.Deserialize<JobStatusResponse>(trial.Output)!;
+            // A waited Trial prints its review summary, so the job's own status is read back.
+            var shown = await RunAsync(runner, preferencePath, "jobs", "show", JobProgress.LatestJobId(projectPath, JobCommands.TrialKind)!,
+                "--project", projectPath, "--json");
+            Assert.True(shown.ExitCode == 0, shown.Error + Environment.NewLine + shown.Output);
+            var trialStatus = ProjectionJson.Deserialize<JobStatusResponse>(shown.Output)!;
             Assert.Equal(JobStatus.Completed, trialStatus.Status);
             using (var database = ProjectMotifDatabase.Open(projectPath))
             {
@@ -400,7 +408,11 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             var trial = await RunAsync(runner, preferencePath, "trial", "--project", projectPath,
                 proposalId, "--words", wordsPath, "--wait", "--wait-timeout-ms", "180000", "--json");
             Assert.True(trial.ExitCode == 0, trial.Error + Environment.NewLine + trial.Output);
-            var trialStatus = ProjectionJson.Deserialize<JobStatusResponse>(trial.Output)!;
+            // A waited Trial prints its review summary, so the job's own status is read back.
+            var shown = await RunAsync(runner, preferencePath, "jobs", "show", JobProgress.LatestJobId(projectPath, JobCommands.TrialKind)!,
+                "--project", projectPath, "--json");
+            Assert.True(shown.ExitCode == 0, shown.Error + Environment.NewLine + shown.Output);
+            var trialStatus = ProjectionJson.Deserialize<JobStatusResponse>(shown.Output)!;
             Assert.Equal(JobStatus.Completed, trialStatus.Status);
             using (var database = ProjectMotifDatabase.Open(projectPath))
             {
