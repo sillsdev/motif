@@ -343,20 +343,24 @@ try {
         throw 'The installed forced Apply did not persist the authored phoneme.'
     }
 
+    $projectXml = [xml] (Get-Content -LiteralPath $first.ProjectPath -Raw)
+    $stemMsas = @($projectXml.languageproject.rt | Where-Object { $_.class -eq 'MoStemMsa' })
+    if ($stemMsas.Count -eq 0) { throw 'The synthetic release project has no stem MSA for its phonology example.' }
+    $stemMsa = $stemMsas[0]
     $examplesFile = Join-Path $releaseRoot 'phonology-examples.json'
     @{ name = 'Release pathway examples'; examples = @(@{
         id = 'probe'; underlying = 'a-ku'; expected = @('e-ki')
-        context = @{ kind = 'fwdataEntry'; entryGuid = '00000000-0000-4000-8000-000000000001'
-            msaGuid = '00000000-0000-4000-8000-000000000002'; msaClass = 'MoStemMsa' }
+        context = @{ kind = 'fwdataEntry'; entryGuid = [string] $stemMsa.ownerguid
+            msaGuid = [string] $stemMsa.guid; msaClass = 'MoStemMsa' }
     }) } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $examplesFile -Encoding utf8
     $savedExamples = Invoke-CliJson @('phonology-examples', 'save', '--project', $first.ProjectPath,
         '--file', $examplesFile)
-    $examplesRevision = [string] $savedExamples.exampleSet.revisionId
+    $examplesRevision = [string] $savedExamples.exampleSet.revision.revisionId
     $listedExamples = Invoke-CliJson @('phonology-examples', 'list', '--project', $first.ProjectPath)
     $shownExamples = Invoke-CliJson @('phonology-examples', 'show', '--project', $first.ProjectPath,
         $examplesRevision)
     if (-not $examplesRevision -or @($listedExamples.items).Count -ne 1 -or
-        $listedExamples.items[0].revisionId -ne $examplesRevision -or
+        $listedExamples.items[0].revision.revisionId -ne $examplesRevision -or
         @($shownExamples.items).Count -ne 1 -or $shownExamples.items[0].id -ne 'probe') {
         throw 'The installed phonology-examples save, list and show did not round-trip the saved example.'
     }
