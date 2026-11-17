@@ -14,7 +14,8 @@ public interface IWarmPanGlossTracer : IPanGlossTracer
 }
 
 /// <summary>
-/// Asks the resident parser first and runs the cold tracer for any word it cannot answer. The reply is the same
+/// Asks the resident parser first and runs the cold tracer when an ordinary session failure leaves no answer.
+/// Fatal probe outcomes remain failures. The reply is the same
 /// document and exit code the cold <c>parse</c> produces, so both are read by <see cref="PanGlossTracer"/>'s own
 /// interpretation. <paramref name="parserWorkLimit"/> is the cap the cold tracer passes as <c>--work-cap</c>; the resident
 /// parser starts with the same cap and is a different session from one started with another.
@@ -35,6 +36,8 @@ public sealed class WarmFirstTracer(WarmPanGlossPool pool, IPanGlossTracer cold,
         {
             case WarmParseResult.Cancelled:
                 return new PanGlossTraceOutcome.Cancelled(word);
+            case WarmParseResult.Fallback { ProbeFailure: { } failure }:
+                return PanGlossTracer.FromOutcome(word, failure);
             case WarmParseResult.Completed completed:
                 var interpreted = PanGlossTracer.Interpret(word, completed.ExitCode, completed.Json, completed.Elapsed);
                 if (completed.Status == "MEMCAP" && interpreted is PanGlossTraceOutcome.Incomplete incomplete)

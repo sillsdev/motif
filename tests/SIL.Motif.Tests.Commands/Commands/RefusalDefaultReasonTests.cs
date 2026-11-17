@@ -46,6 +46,8 @@ public sealed class RefusalDefaultReasonTests
     // Codes whose reason the scan cannot resolve from a refusal construction.
     private static readonly Dictionary<string, string> NotDeterminable = new(StringComparer.Ordinal)
     {
+        ["assess.parser-killed"] = "reason not determinable statically: selected from a typed parser outcome in ParserExecutionRefusal",
+        ["assess.parser-memory-limit"] = "retained code for persisted parser-memory-limit interruptions",
         ["assess.unavailable"] = "reason not determinable statically: passed through the Trial admission helper and recorded by the Worker",
         ["agent.built-in"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["agent.human"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",

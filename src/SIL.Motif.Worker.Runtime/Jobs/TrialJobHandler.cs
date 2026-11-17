@@ -82,10 +82,10 @@ public sealed record TrialJobInput(
 /// folder needs no second copy.
 /// </para>
 /// <para>
-/// A failure is <see cref="JobStatus.Failed"/> only while nothing has been committed yet. Once the Dry Run
-/// is published, every later failure — building the candidate for Assessment, or the Assessor itself —
-/// lands on <see cref="JobStatus.CompletedWithAssessmentFailure"/>, because the Dry Run already succeeded
-/// and is retained.
+/// A published Dry Run remains available when Assessment fails. Parser termination and memory exhaustion
+/// produce a failed Job with a failure category, pinned by `AKilledParserFailsTheTrialEvenWhenItWroteACompleteBatch`
+/// and `ReviewKeepsAnEarlierPartitionWhenTheNextBatchRunsOutOfMemory`. Other Assessment failures after
+/// publication use <see cref="JobStatus.CompletedWithAssessmentFailure"/>.
 /// </para>
 /// </remarks>
 internal sealed class TrialJobHandler
@@ -310,6 +310,11 @@ internal sealed class TrialJobHandler
             if (!preserveScratch) TryDeleteDirectory(scratchRoot);
             var detail = JobFailureDetail.Serialize(exception);
             // A successful terminal status may not carry a failure category, so only Failed gets one here.
+            if (JobFailureDetail.Category(exception) is { } category)
+            {
+                review?.Interrupt(JobFailureDetail.Code(exception)!);
+                return new JobOutcome(JobStatus.Failed, category, detail);
+            }
             return claim.Job.DryRunPublished
                 ? new JobOutcome(JobStatus.CompletedWithAssessmentFailure, JobFailureCategory.None, detail)
                 : new JobOutcome(JobStatus.Failed, JobFailureCategory.Unknown, detail);
@@ -500,9 +505,10 @@ internal sealed class TrialJobHandler
         catch (OperationCanceledException) { throw; }
         catch (Exception exception)
         {
-            review?.Interrupt(exception is AssessorUnavailableException { MemoryKill: not null }
-                ? RefusalCodes.AssessParserMemoryLimit : RefusalCodes.AssessUnavailable);
+            review?.Interrupt(JobFailureDetail.Code(exception) ?? RefusalCodes.AssessUnavailable);
             var detail = JobFailureDetail.Serialize(exception);
+            if (JobFailureDetail.Category(exception) is { } category)
+                return new JobOutcome(JobStatus.Failed, category, detail);
             return new JobOutcome(JobStatus.CompletedWithAssessmentFailure, JobFailureCategory.None, detail);
         }
         finally

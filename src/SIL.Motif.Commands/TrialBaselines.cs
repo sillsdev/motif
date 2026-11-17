@@ -164,7 +164,9 @@ public static class TrialBaselines
             }
             if (!before.Succeeded)
             {
-                if (before.Refusal!.Reason == FailureReason.StoppedByBudget)
+                if (before.Refusal!.Code is RefusalCodes.AssessParserKilled or RefusalCodes.AssessOutOfMemory)
+                    return JobCommands.EnqueueStoppedTrial(RetainBefore(before.Refusal.Code) with { Words = words }, expectedParserPath, before.Refusal);
+                if (before.Refusal.Reason == FailureReason.StoppedByBudget)
                     return JobCommands.EnqueueStoppedTrial(RetainBefore(before.Refusal.Code) with { Words = words }, expectedParserPath, before.Refusal);
                 if (request.ReviewSnapshot is not null &&
                     (before.Refusal.Reason == FailureReason.Cancelled || before.Refusal.Code == RefusalCodes.AssessParserMemoryLimit))

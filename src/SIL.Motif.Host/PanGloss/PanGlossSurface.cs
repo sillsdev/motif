@@ -1,14 +1,15 @@
 using System.Collections.Immutable;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.Text.Json;
 using SIL.Motif.Host.Parsimony;
 
 namespace SIL.Motif.Host.PanGloss;
 
 internal sealed record PanGlossSurfaceCheck(
-    bool IsValid, string Message, PanGlossCapabilities? Capabilities = null);
+    bool IsValid, string Message, PanGlossCapabilities? Capabilities = null)
+{
+    internal PanGlossOutcome? Failure { get; init; }
+}
 
 internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
@@ -82,78 +83,27 @@ internal static class PanGlossSurface
         string executable, PanGlossContainmentJob containment, CancellationToken cancellationToken,
         TimeSpan? descriptionCap = null)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         var cap = descriptionCap ?? TimeSpan.FromSeconds(DefaultDescriptionCapSeconds);
-        var startInfo = new ProcessStartInfo(executable)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        PanGlossProcessEnvironment.Configure(startInfo);
-        startInfo.ArgumentList.Add("--describe");
-
-        PanGlossChildProcess? process;
+        var outcome = await PanGlossProbe.RunAsync(executable, "--describe", containment, cap, cancellationToken)
+            .ConfigureAwait(false);
+        if (PanGlossProbe.FatalFailure(outcome) is { } failure)
+            return Invalid(executable, failure.Message) with { Failure = failure };
+        if (outcome is not PanGlossOutcome.Completed completed)
+            return Invalid(executable, outcome.Message);
+        var standardOutput = completed.Output;
         try
         {
-            process = containment.Start(startInfo);
+            using var description = JsonDocument.Parse(standardOutput);
+            var capabilities = Validate(description.RootElement, out var detail);
+            return capabilities is not null
+                ? new PanGlossSurfaceCheck(true, string.Empty, capabilities)
+                : Invalid(executable, detail!);
         }
         catch (Exception exception) when (
-            exception is Win32Exception or InvalidOperationException or ArgumentException or UnauthorizedAccessException)
+            exception is JsonException or InvalidOperationException or ArgumentException or KeyNotFoundException or
+            FormatException or OverflowException or NotSupportedException)
         {
-            return Invalid(executable, $"could not start --describe: {exception.Message}");
-        }
-        if (process is null) return Invalid(executable, "could not start --describe.");
-
-        using (process)
-        {
-            var output = process.ReadStandardOutputAsync();
-            var error = process.ReadStandardErrorAsync();
-            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            deadline.CancelAfter(cap);
-            try
-            {
-                await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
-                await process.WaitForContainmentAsync(deadline.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                containment.Terminate(process);
-                using var stopped = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                try
-                {
-                    await process.WaitForExitAsync(stopped.Token).ConfigureAwait(false);
-                    await process.WaitForContainmentAsync(stopped.Token).ConfigureAwait(false);
-                    await Task.WhenAll(output, error).WaitAsync(stopped.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) { }
-                if (cancellationToken.IsCancellationRequested)
-                    throw new OperationCanceledException(cancellationToken);
-                var seconds = cap.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
-                var unit = cap == TimeSpan.FromSeconds(1) ? "second" : "seconds";
-                return Invalid(executable, $"--describe did not finish within {seconds} {unit}.");
-            }
-
-            var standardOutput = await output.ConfigureAwait(false);
-            var standardError = await error.ConfigureAwait(false);
-            if (process.ExitCode != 0)
-                return Invalid(executable, $"--describe exited {process.ExitCode}: {standardError.Trim()}");
-
-            try
-            {
-                using var description = JsonDocument.Parse(standardOutput);
-                var capabilities = Validate(description.RootElement, out var detail);
-                return capabilities is not null
-                    ? new PanGlossSurfaceCheck(true, string.Empty, capabilities)
-                    : Invalid(executable, detail!);
-            }
-            catch (Exception exception) when (
-                exception is JsonException or InvalidOperationException or ArgumentException or KeyNotFoundException or
-                FormatException or OverflowException or NotSupportedException)
-            {
-                return Invalid(executable, "--describe returned invalid JSON: " + exception.Message);
-            }
+            return Invalid(executable, "--describe returned invalid JSON: " + exception.Message);
         }
     }
 

@@ -47,13 +47,16 @@ public abstract record PanGlossTraceOutcome
         public override string Message => Reason;
     }
 
-    /// <summary>The parser exited nonzero: it declined this grammar and word outright.</summary>
+    /// <summary>The parser or its probe failed before a complete trace could be produced.</summary>
     public sealed record Declined(string Word, string Detail) : PanGlossTraceOutcome
     {
         public override string Message => Detail;
 
         /// <summary>The parser's complete failure streams and exit status, when execution reached it.</summary>
         public PanGlossOutcome.Refused? ParserRefusal { get; init; }
+
+        /// <summary>The containment memory stop, when it ended the parser or its surface probe.</summary>
+        public PanGlossMemoryKill? MemoryKill { get; init; }
     }
 
     /// <summary>No parser ran: the executable is absent or would not start.</summary>

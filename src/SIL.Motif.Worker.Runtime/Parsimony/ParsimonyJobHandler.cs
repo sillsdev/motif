@@ -270,7 +270,8 @@ public sealed class ParsimonyJobHandler
 
     private static JobFailureCategory CategoryOf(PanGlossOutcome outcome) => outcome switch
     {
-        PanGlossOutcome.Refused => JobFailureCategory.ParserRefusal,
+        PanGlossOutcome.Refused refused => refused.FailureCategory,
+        PanGlossOutcome.MemoryLimit => JobFailureCategory.OutOfMemory,
         PanGlossOutcome.Cancelled => JobFailureCategory.Cancellation,
         _ => JobFailureCategory.Infrastructure,
     };

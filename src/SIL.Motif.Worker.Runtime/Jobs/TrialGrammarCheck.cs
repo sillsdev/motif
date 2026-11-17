@@ -1,3 +1,5 @@
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
@@ -30,9 +32,17 @@ internal static class TrialGrammarCheck
         var output = outcome switch
         {
             PanGlossOutcome.Completed completed => completed.Output,
-            PanGlossOutcome.Refused refused when !string.IsNullOrWhiteSpace(refused.StandardOutput) =>
+            PanGlossOutcome.Refused { FailureCategory: JobFailureCategory.ParserRefusal } refused
+                when !string.IsNullOrWhiteSpace(refused.StandardOutput) =>
                 refused.StandardOutput,
-            _ => throw new InvalidOperationException(outcome.Message),
+            _ => throw (outcome is PanGlossOutcome.MemoryLimit or PanGlossOutcome.Refused
+                { FailureCategory: JobFailureCategory.ParserKilled or JobFailureCategory.OutOfMemory }
+                ? new AssessorUnavailableException("pangloss", outcome.Message)
+                {
+                    ParserRefusal = outcome as PanGlossOutcome.Refused,
+                    MemoryKill = (outcome as PanGlossOutcome.MemoryLimit)?.Kill,
+                }
+                : new InvalidOperationException(outcome.Message)),
         };
         return GrammarHealthReportReader.ReadResponse(output);
     }

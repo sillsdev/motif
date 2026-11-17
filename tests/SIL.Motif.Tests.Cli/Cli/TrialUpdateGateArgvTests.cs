@@ -22,8 +22,8 @@ public sealed class TrialUpdateGateArgvTests
     [Fact]
     public async Task ATrialRefusedDuringAnUpdateExitsThreeAndKeepsItsCode()
     {
-        // The test process and the CLI it starts share the update gate's test namespace through the environment.
-        using var update = MotifUpdateGate.TryAcquireForUpdate();
+        var gateNamespace = Guid.NewGuid().ToString("N");
+        using var update = MotifUpdateGate.TryAcquireForUpdate("SIL.Motif.UpdateActivity.Test." + gateNamespace);
         Assert.NotNull(update);
 
         var preferencePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".advanced-ai-mode.json");
@@ -36,6 +36,7 @@ public sealed class TrialUpdateGateArgvTests
         };
         foreach (var argument in new[] { "trial", "--project", "missing.fwdata", "proposal/one", "--json" })
             start.ArgumentList.Add(argument);
+        start.Environment[MotifUpdateGate.TestNamespaceVariable] = gateNamespace;
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         start.Environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath;
         using var process = Process.Start(start)!;

@@ -163,7 +163,7 @@ public static class TrialReviewReads
 
     /// <summary>
     /// Why a Trial job that ended without a finished measurement must not look green, or <see langword="null"/>
-    /// for a completed job. A parser killed by a signal ends the job as completed-with-assessment-failure.
+    /// for a completed job.
     /// </summary>
     public static string? UnfinishedReason(JobStatusResponse job)
     {

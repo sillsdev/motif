@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Jobs;
 using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -60,6 +61,13 @@ internal static class StoppedWordRetryRunner
                 .ConfigureAwait(false);
             lease = (outcome as PanGlossOutcome.Completed)?.ArtifactLease;
             if (outcome is PanGlossOutcome.Cancelled) throw new OperationCanceledException(cancellationToken);
+            if (outcome is PanGlossOutcome.MemoryLimit or PanGlossOutcome.Refused
+                { FailureCategory: JobFailureCategory.ParserKilled or JobFailureCategory.OutOfMemory })
+                throw new AssessorUnavailableException(PanGlossAssessor.AssessorName, outcome.Message)
+                {
+                    ParserRefusal = outcome as PanGlossOutcome.Refused,
+                    MemoryKill = (outcome as PanGlossOutcome.MemoryLimit)?.Kill,
+                };
             if (outcome is not PanGlossOutcome.Completed { BatchEvidence: { } retry, MorphologyOutput: { } retryAnalyses } done)
                 return Failed("the retry run did not complete: " + outcome.Message);
             if (retry.SourceBytesSha256 != evidence.SourceBytesSha256 ||

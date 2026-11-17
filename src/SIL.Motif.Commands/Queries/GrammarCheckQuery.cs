@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host;
 using System;
@@ -99,7 +100,8 @@ public static class GrammarCheckQuery
             var output = outcome switch
             {
                 PanGlossOutcome.Completed completed => completed.Output,
-                PanGlossOutcome.Refused refused when !string.IsNullOrWhiteSpace(refused.StandardOutput) =>
+                PanGlossOutcome.Refused { FailureCategory: JobFailureCategory.ParserRefusal } refused
+                    when !string.IsNullOrWhiteSpace(refused.StandardOutput) =>
                     refused.StandardOutput,
                 _ => null,
             };

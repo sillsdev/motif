@@ -109,6 +109,79 @@ public sealed class CompileDiagnosticTests
         Assert.Contains(stdout, refusal.ParserDiagnostic.RawText);
     }
 
+    [Theory]
+    [InlineData("/tmp/out of memory/project.fwdata", "environment does not resolve")]
+    [InlineData("/tmp/Out of memory./project.fwdata", "environment does not resolve")]
+    [InlineData("/tmp/project.fwdata", "Out of memory.")]
+    [InlineData("/tmp/System.OutOfMemoryException/project.fwdata", "environment does not resolve")]
+    [InlineData("/tmp/project.fwdata", "environment named out of memory does not resolve")]
+    [InlineData("/tmp/project.fwdata", "memory allocation of 4096 bytes failed")]
+    public void CompileDiagnosticPathsAndMessagesDoNotProveMemoryExhaustion(string path, string text)
+    {
+        var stderr = JsonSerializer.Serialize(new
+        {
+            schema_version = 1, status = "compile_error", path, message = "Cannot compile",
+            issues = new[] { new { code = "grammar.environment.unresolved", text, fatal = true } },
+        });
+        var failure = new PanGlossOutcome.Refused(1, stderr, "", "parser exited 1");
+
+        var refusal = ParserExecutionRefusal.From("assess.parser-unavailable", path, failure);
+
+        Assert.Equal("assess.parser-unavailable", refusal.Code);
+        Assert.Equal(SIL.Motif.Contract.Jobs.JobFailureCategory.ParserRefusal, failure.FailureCategory);
+        Assert.Equal(text, Assert.Single(refusal.ParserDiagnostic!.Issues).Text);
+    }
+
+    [Theory]
+    [InlineData("warning: could not open /tmp/out of memory/project.fwdata")]
+    [InlineData("cannot read /tmp/memory allocation of 4096 bytes failed/project.fwdata")]
+    [InlineData("read /tmp/System.OutOfMemoryException/project.fwdata failed")]
+    [InlineData("warning: Out of memory.")]
+    [InlineData("cannot read /tmp/Out of memory./project.fwdata")]
+    [InlineData("Out of memory. while opening project")]
+    public void DiagnosticProseDoesNotProveMemoryExhaustion(string stderr)
+    {
+        var failure = new PanGlossOutcome.Refused(1, stderr, "", "parser exited 1");
+
+        var refusal = ParserExecutionRefusal.From("assess.parser-unavailable", "project.fwdata", failure);
+
+        Assert.Equal("assess.parser-unavailable", refusal.Code);
+    }
+
+    [Theory]
+    [InlineData("memory allocation of 4096 bytes failed")]
+    [InlineData("importing project\nmemory allocation of 1048576 bytes failed\n")]
+    [InlineData("Unhandled exception. System.OutOfMemoryException: Exception of type 'System.OutOfMemoryException' was thrown.")]
+    [InlineData("System.OutOfMemoryException: Insufficient memory.")]
+    public void KnownAllocatorAndExceptionRecordsProveMemoryExhaustion(string stderr)
+    {
+        var failure = new PanGlossOutcome.Refused(1, stderr, "", "parser exited 1");
+
+        var refusal = ParserExecutionRefusal.From("assess.parser-unavailable", "project.fwdata", failure);
+
+        Assert.Equal("assess.out-of-memory", refusal.Code);
+        Assert.Null(refusal.ParserDiagnostic);
+    }
+
+    [Theory]
+    [InlineData("Out of memory.\n", false)]
+    [InlineData("Out of memory.\r\n", false)]
+    [InlineData("loading project\nOut of memory.\n", false)]
+    [InlineData("Out of memory.\n", true)]
+    [InlineData("Out of memory.\r\n", true)]
+    [InlineData("loading project\r\nOut of memory.\r\n", true)]
+    public void CoreClrMemoryFailureRecordsTakePrecedenceOverTermination(string stderr, bool signalled)
+    {
+        var failure = new PanGlossOutcome.Refused(signalled ? 134 : 1, stderr, "", "parser stopped")
+        { TerminationSignal = signalled ? 6 : null };
+
+        var refusal = ParserExecutionRefusal.From("assess.parser-unavailable", "project.fwdata", failure);
+
+        Assert.Equal(SIL.Motif.Contract.Jobs.JobFailureCategory.OutOfMemory, failure.FailureCategory);
+        Assert.Equal("assess.out-of-memory", refusal.Code);
+        Assert.Null(refusal.ParserDiagnostic);
+    }
+
     [Fact]
     public void StructuredIssuesKeepDifferentAttachmentsOnTheSameObject()
     {

@@ -179,6 +179,27 @@ public sealed class PanGlossAssessorTests : IDisposable
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AKilledRetryFailsTheAssessmentInsteadOfPublishingTheFirstPass(bool memory)
+    {
+        var parser = FakeParser.Copy(Path.Combine(_root, "killed-retry-parser"));
+        FakeParser.BehaveInPhasesBesideExecutable(parser, "batch",
+            new { words = new[] { new { word = "slow", outcome = "timed-out" } } },
+            memory ? (object)new { mode = "fail", exitCode = 1, standardError = "memory allocation of 4096 bytes failed" }
+                : new { mode = "killed" });
+        using var invoker = RealFakeInvoker(parser);
+        var assessor = new PanGlossAssessor(_paths, invoker);
+
+        var failure = await Assert.ThrowsAsync<AssessorUnavailableException>(() => assessor.ProduceAsync(
+            new AssessmentScope.Words(["slow"], [AssessmentKind.ParseTime], TimeSpan.FromMilliseconds(700), 123),
+            _candidate, CancellationToken.None));
+
+        Assert.Equal(memory ? JobFailureCategory.OutOfMemory : JobFailureCategory.ParserKilled,
+            failure.ParserRefusal!.FailureCategory);
+    }
+
     [Fact]
     public async Task WordsStoppedOnlyByTheMachineBeingBusyAreRetriedAloneAndTheRetryIsRecorded()
     {

@@ -218,6 +218,7 @@ public static class WordTraceQuery
             PanGlossTraceOutcome.Cancelled => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
                 "wordtrace.cancelled", FailureReason.Cancelled, "The trace was cancelled.")),
             PanGlossTraceOutcome.Declined declined => CommandOutcome<WordTraceResponse>.Refused(
+                declined.MemoryKill is { } memoryKill ? ParserMemoryRefusal.From(request.ProjectPath, memoryKill) :
                 declined.ParserRefusal is { } failure
                     ? ParserExecutionRefusal.From(RefusalCodes.WordTraceParserRefused, request.ProjectPath, failure)
                     : new Refusal("wordtrace.parser-refused", FailureReason.Refused, declined.Detail,

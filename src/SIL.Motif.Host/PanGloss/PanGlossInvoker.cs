@@ -13,11 +13,6 @@ namespace SIL.Motif.Host.PanGloss;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Six launchers used to own copies of this sequence, and the containment they were each meant to call was
-/// wired at none of them. Here a caller cannot obtain a process at all, only an outcome, so admission and
-/// containment cannot be skipped and a failure cannot escape as an exception.
-/// </para>
-/// <para>
 /// The default cap is the parser's own ratified execution limit rather than a number Motif chose. A batch
 /// without a per-word time limit has no wall-clock deadline and remains cancellable. The per-word limit is a
 /// <see cref="PanGlossRequest.Batch"/> argument and bounds a word, not the process, so a batch with one is allowed
@@ -86,6 +81,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                             batchCommand.Flags.ContainsKey("--work-columns")
                                 ? batch with { WorkColumns = true } : request;
                         var admission = PanGlossSurface.CheckRequest(_executable, effectiveRequest, surface);
+                        if (admission.Failure is { } probeFailure)
+                            return probeFailure with { Containment = containment.Report };
                         if (!admission.IsValid)
                             return new PanGlossOutcome.Unavailable(admission.Message)
                                 { Containment = containment.Report };
@@ -138,7 +135,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         {
             if (_surfaceChecks.TryGetValue(path, out var cached)) return cached;
             var check = await PanGlossSurface.CheckAsync(path, containment, cancellationToken).ConfigureAwait(false);
-            _surfaceChecks[path] = check;
+            if (check.Failure is null) _surfaceChecks[path] = check;
             return check;
         }
         finally
@@ -302,14 +299,17 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     if (request is PanGlossRequest.Batch interrupted) PublishPartial(interrupted, scratch);
                     return new PanGlossOutcome.MemoryLimit(memoryKill);
                 }
-                if (process.ExitCode != 0 && !request.AcceptsNonzeroExit(standardOutput))
+                if (process.ExitCode != 0 &&
+                    (PanGlossOutcome.Refused.Classify(process.ExitCode, standardError, process.TerminationSignal) is
+                        JobFailureCategory.ParserKilled or JobFailureCategory.OutOfMemory ||
+                     !request.AcceptsNonzeroExit(standardOutput)))
                 {
                     if (request is PanGlossRequest.Batch interrupted) PublishPartial(interrupted, scratch);
                     return new PanGlossOutcome.Refused(process.ExitCode, StandardError: standardError,
                         StandardOutput: standardOutput,
                         Detail: PanGlossCompileError.TryRead(standardError)?.Describe(request.Subcommand, process.ExitCode) ??
                             $"pangloss {request.Subcommand} exited {process.ExitCode}:" + Environment.NewLine +
-                            standardError.Trim());
+                            standardError.Trim()) { TerminationSignal = process.TerminationSignal };
                 }
                 if (request is PanGlossRequest.PhonologyExamples { Inputs: { } inputs } && !inputs.Unchanged(executable))
                     return new PanGlossOutcome.Incomplete("The staged phonology inputs or executable changed during invocation.", standardError);
@@ -320,7 +320,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 if (process.ExitCode != 0 && outcome is not PanGlossOutcome.Completed)
                     return new PanGlossOutcome.Refused(process.ExitCode, standardError, standardOutput,
                         $"pangloss {request.Subcommand} exited {process.ExitCode}; {outcome.Message}" +
-                        (string.IsNullOrWhiteSpace(standardError) ? string.Empty : Environment.NewLine + standardError.Trim()));
+                        (string.IsNullOrWhiteSpace(standardError) ? string.Empty : Environment.NewLine + standardError.Trim()))
+                    { TerminationSignal = process.TerminationSignal };
                 if (request is PanGlossRequest.GrammarHealth { SnapshotPath: not null } healthRequest &&
                     sourceDigest != BatchInvocationEvidence.DigestFile(healthRequest.GrammarPath))
                     return new PanGlossOutcome.Incomplete("The project changed while grammar-health was running.", standardError);
@@ -366,6 +367,13 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 if (batchFileDigests?.TsvSha256 != tsvDigest ||
                     batchFileDigests.AnalysesSha256 != analysesDigest)
                     return new PanGlossOutcome.Incomplete("The batch artifacts changed while being retained.", standardError);
+                var version = await ParserExecutableIdentity.ReadVersionAsync(executable, containment, cancellationToken)
+                    .ConfigureAwait(false);
+                if (version.Failure is { } probeFailure)
+                {
+                    PublishPartial(capturedBatch, scratch);
+                    return probeFailure;
+                }
                 var evidence = new BatchInvocationEvidence(
                     Path.GetFileName(scratch), capturedBatch.ProjectFilePath, sourceDigest!, executableDigest!,
                     wordsPath, wordsDigest!,
@@ -381,7 +389,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     AnalysesSha256 = analysesDigest,
                     ImportedSnapshotPath = capturedBatch.ImportedSnapshot?.Path,
                     ImportedSnapshotSha256 = capturedBatch.ImportedSnapshot?.SnapshotSha256,
-                    ExecutableVersion = ParserExecutableIdentity.ReadVersion(executable),
+                    ExecutableVersion = version.Version,
                     ExecutablePath = Path.GetFullPath(executable),
                 };
                 published = true;

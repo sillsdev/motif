@@ -1,4 +1,8 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Host.Assess;
 
 namespace SIL.Motif.Worker.Jobs;
 
@@ -14,9 +18,26 @@ internal static class JobFailureDetail
         ArgumentNullException.ThrowIfNull(exception);
         return JsonSerializer.Serialize(new
         {
+            code = Code(exception),
             detail = exception.Message,
             exceptionType = exception.GetType().FullName,
             exception = exception.ToString(),
-        });
+        }, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
     }
+
+    internal static JobFailureCategory? Category(Exception exception) => exception switch
+    {
+        OutOfMemoryException => JobFailureCategory.OutOfMemory,
+        AssessorUnavailableException { MemoryKill: not null } => JobFailureCategory.OutOfMemory,
+        AssessorUnavailableException { ParserRefusal.FailureCategory: JobFailureCategory.ParserKilled } => JobFailureCategory.ParserKilled,
+        AssessorUnavailableException { ParserRefusal.FailureCategory: JobFailureCategory.OutOfMemory } => JobFailureCategory.OutOfMemory,
+        _ => null,
+    };
+
+    internal static string? Code(Exception exception) => Category(exception) switch
+    {
+        JobFailureCategory.ParserKilled => RefusalCodes.AssessParserKilled,
+        JobFailureCategory.OutOfMemory => RefusalCodes.AssessOutOfMemory,
+        _ => null,
+    };
 }

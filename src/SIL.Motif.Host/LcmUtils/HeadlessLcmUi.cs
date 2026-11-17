@@ -25,7 +25,7 @@ public class HeadlessLcmUi(ISynchronizeInvoke synchronizeInvoke) : ILcmUI
 
     public void DisplayCircularRefBreakerReport(string msg, string caption)
     {
-        Console.WriteLine(msg);
+        Console.Error.WriteLine(msg);
     }
 
     /// <summary>Refuses a conflicted save, because neither answer is safe without a person.</summary>
@@ -65,23 +65,23 @@ public class HeadlessLcmUi(ISynchronizeInvoke synchronizeInvoke) : ILcmUI
     public void DisplayMessage(MessageType type, string message, string caption, string helpTopic)
     {
         if (type == MessageType.Error) _reportedErrors.Enqueue(new IOException(caption + ": " + message));
-        Console.WriteLine("{0}: {1}", type, message);
+        Console.Error.WriteLine("{0}: {1}", type, message);
     }
 
     public void ReportException(Exception error, bool isLethal)
     {
         _reportedErrors.Enqueue(error);
-        Console.WriteLine("Got exception: {0}: {1}\n{2}", error.GetType(), error.Message, error);
+        Console.Error.WriteLine("Got exception: {0}: {1}\n{2}", error.GetType(), error.Message, error);
     }
 
     public void ReportDuplicateGuids(string errorText)
     {
-        Console.WriteLine("Duplicate GUIDs: " + errorText);
+        Console.Error.WriteLine("Duplicate GUIDs: " + errorText);
     }
 
     public bool Retry(string msg, string caption)
     {
-        Console.WriteLine(msg);
+        Console.Error.WriteLine(msg);
         return true;
     }
 
@@ -92,7 +92,7 @@ public class HeadlessLcmUi(ISynchronizeInvoke synchronizeInvoke) : ILcmUI
 
     public void Exit()
     {
-        Console.WriteLine("Exiting");
+        Console.Error.WriteLine("Exiting");
     }
 
     public ISynchronizeInvoke SynchronizeInvoke => synchronizeInvoke;

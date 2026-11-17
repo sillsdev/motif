@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -23,6 +24,8 @@ public enum WarmSessionPhase
 /// <summary>A resident parser's state, with the reason when it is <see cref="WarmSessionPhase.Failed"/>.</summary>
 public sealed record WarmSessionState(WarmSessionPhase Phase, string? FailureCode = null, string? FailureMessage = null)
 {
+    internal PanGlossOutcome? ProbeFailure { get; init; }
+
     public static readonly WarmSessionState Idle = new(WarmSessionPhase.Idle);
     public static readonly WarmSessionState Loading = new(WarmSessionPhase.Loading);
     public static readonly WarmSessionState Ready = new(WarmSessionPhase.Ready);
@@ -56,8 +59,11 @@ public abstract record WarmParseResult
     /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
     public sealed record Cancelled : WarmParseResult;
 
-    /// <summary>The resident parser could not answer; the caller runs the cold path for this word.</summary>
-    public sealed record Fallback(string Code, string Message) : WarmParseResult;
+    /// <summary>The resident parser could not answer; a fatal probe outcome prevents a cold retry.</summary>
+    public sealed record Fallback(string Code, string Message) : WarmParseResult
+    {
+        internal PanGlossOutcome? ProbeFailure { get; init; }
+    }
 }
 
 /// <summary>Limits of the resident parsers, with the owner-decided defaults.</summary>
@@ -81,7 +87,8 @@ public sealed record WarmPanGlossOptions
 /// Resident <c>pangloss serve</c> processes, one per project, so a word costs a parse instead of a load (ADR 0019,
 /// long-lived parser session). Each request takes machine-queue admission; the process lives in its own containment
 /// job with the memory ceiling for its whole life. Requests to one session run one at a time, in order.
-/// A cancel kills the process; any failure falls back to the cold path for that word. A session is keyed by project and
+/// A cancel kills the process; ordinary session failures fall back to the cold path for that word. Fatal probe
+/// outcomes remain failures. A session is keyed by project and
 /// by the parser work limit it was started with, because <c>serve</c> applies its caps to every request.
 /// </summary>
 public sealed class WarmPanGlossPool : IDisposable
@@ -158,7 +165,7 @@ public sealed class WarmPanGlossPool : IDisposable
             var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (state.Phase != WarmSessionPhase.Ready)
                 return new WarmParseResult.Fallback(state.FailureCode ?? "session-unavailable",
-                    state.FailureMessage ?? "The resident parser is not available.");
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
             return await session.ParseAsync(word, traceDetails, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -341,7 +348,8 @@ public sealed class WarmPanGlossPool : IDisposable
         {
             lock (_lock)
                 return _state.Phase == WarmSessionPhase.Failed && DateTime.UtcNow - _failedUtc < cooldown
-                    ? new WarmParseResult.Fallback(_state.FailureCode!, _state.FailureMessage!) : null;
+                    ? new WarmParseResult.Fallback(_state.FailureCode!, _state.FailureMessage!)
+                        { ProbeFailure = _state.ProbeFailure } : null;
         }
 
         public bool IsIdleFor(TimeSpan idle)
@@ -394,8 +402,18 @@ public sealed class WarmPanGlossPool : IDisposable
                 if (_retired) { job.Dispose(); return false; }
                 _job = job;
             }
-            var surface = pool._surfaces.TryGetValue(executable, out var known) ? known
-                : pool._surfaces[executable] = await PanGlossSurface.CheckAsync(executable, job, token).ConfigureAwait(false);
+            if (!pool._surfaces.TryGetValue(executable, out var surface))
+            {
+                surface = await PanGlossSurface.CheckAsync(executable, job, token).ConfigureAwait(false);
+                if (surface.Failure is null) pool._surfaces[executable] = surface;
+            }
+            if (surface.Failure is { } probeFailure)
+            {
+                var category = probeFailure is PanGlossOutcome.Refused refused
+                    ? refused.FailureCategory : JobFailureCategory.OutOfMemory;
+                Fail(JobFailureCategoryJson.ToWire(category), probeFailure.Message, probeFailure);
+                return false;
+            }
             if (!surface.IsValid)
             {
                 Fail("serve-unsupported", surface.Message);
@@ -612,9 +630,9 @@ public sealed class WarmPanGlossPool : IDisposable
             pool.Raise(ProjectKey, state);
         }
 
-        private void Fail(string code, string message)
+        private void Fail(string code, string message, PanGlossOutcome? probeFailure = null)
         {
-            var state = new WarmSessionState(WarmSessionPhase.Failed, code, message);
+            var state = new WarmSessionState(WarmSessionPhase.Failed, code, message) { ProbeFailure = probeFailure };
             Kill(state, raise: true);
             _loaded.TrySetResult(state);
         }

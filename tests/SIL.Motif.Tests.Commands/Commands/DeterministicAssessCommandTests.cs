@@ -2128,7 +2128,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void AParserStoppedForMemoryIsRefusedAsParserMemoryLimitWithTheLimitPeakAndSetting()
+    public void AParserStoppedForMemoryIsRefusedAsOutOfMemoryWithTheLimitPeakAndSetting()
     {
         using var seeded = NewSeededScratch();
         var kill = new SIL.Motif.Host.PanGloss.PanGlossMemoryKill(12UL << 30, 13UL << 30);
@@ -2140,7 +2140,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             onProgress: null, CancellationToken.None);
 
         var refusal = outcome.Refusal!;
-        Assert.Equal("assess.parser-memory-limit", refusal.Code);
+        Assert.Equal("assess.out-of-memory", refusal.Code);
         Assert.Equal(FailureReason.Refused, refusal.Reason);
         Assert.Contains("12 GiB", refusal.Message, StringComparison.Ordinal);
         Assert.Contains("13 GiB", refusal.Message, StringComparison.Ordinal);

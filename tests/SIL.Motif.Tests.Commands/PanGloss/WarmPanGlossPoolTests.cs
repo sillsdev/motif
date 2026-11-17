@@ -429,6 +429,31 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         Assert.Equal("partial", outcome.Word);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AFatalDescriptionProbeDoesNotBecomeASuccessfulColdFallback(bool memory)
+    {
+        var parser = FakeParser.CopyWithSentinel(Path.Combine(_root, "probe-parser"),
+            "_fake-pangloss-record-invocations");
+        var failure = memory
+            ? (object)new { mode = "fail", exitCode = 1, standardError = "Out of memory.\n" }
+            : new { mode = "killed" };
+        FakeParser.BehaveInPhasesBesideExecutable(parser, "describe", failure, new { mode = "success" });
+        var (grammar, _, _) = Project("probe");
+        using var pool = Pool(executable: parser);
+        using var invoker = new PanGlossInvoker(parser,
+            new MachinePanGlossQueue(["Local\\MotifWarmProbe-" + Guid.NewGuid().ToString("N")]));
+        var tracer = new WarmFirstTracer(pool, new PanGlossTracer(invoker));
+
+        var outcome = await tracer.TraceAsync(grammar, "t1", grammar, "motifa", CancellationToken.None);
+
+        var declined = Assert.IsType<PanGlossTraceOutcome.Declined>(outcome);
+        Assert.Equal(memory ? SIL.Motif.Contract.Jobs.JobFailureCategory.OutOfMemory
+            : SIL.Motif.Contract.Jobs.JobFailureCategory.ParserKilled, declined.ParserRefusal!.FailureCategory);
+        Assert.Equal(["describe"], FakeParser.Invocations(parser));
+    }
+
     [Fact]
     public async Task TheWarmFirstTracerAnswersLikeTheColdOneAndFallsBackToItWhenTheSessionFailed()
     {

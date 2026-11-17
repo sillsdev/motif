@@ -41,8 +41,11 @@ public sealed class PanGlossChildProcess : IDisposable
     /// <summary>The operating-system process identifier, which remains stable across an exec.</summary>
     public int Id => _process.Id;
 
-    /// <summary>The process exit code, after it has exited.</summary>
+    /// <summary>The diagnostic exit number, including 128 plus the signal for a Unix signal stop.</summary>
     public int ExitCode => _process.ExitCode;
+
+    /// <summary>The Unix terminating signal; null for a normal exit or when the launcher cannot distinguish it.</summary>
+    public int? TerminationSignal => _process.TerminationSignal;
 
     /// <summary>Waits for the process to exit, without changing its containment group.</summary>
     public Task WaitForExitAsync(CancellationToken cancellationToken = default) =>
@@ -78,6 +81,8 @@ internal interface IPanGlossChildProcess : IDisposable
 {
     int Id { get; }
     int ExitCode { get; }
+    /// <summary>The signal from native wait status, or null when absent or unavailable.</summary>
+    int? TerminationSignal => null;
     Stream? InteractiveInput => null;
     Stream? InteractiveOutput => null;
     Task WaitForExitAsync(CancellationToken cancellationToken);

@@ -148,7 +148,8 @@ public sealed class JobRepository
     /// <summary>Records a Trial interrupted before its worker could be queued.</summary>
     public JobRecord RecordInterrupted(string jobId, string projectKey, string kind, string inputJson,
         string resultJson, string createdUtc, JobStatus status, CanonicalId? proposalId = null,
-        string? draftName = null, string? expectedDraftJson = null, string? expectedIntentDigest = null)
+        string? draftName = null, string? expectedDraftJson = null, string? expectedIntentDigest = null,
+        JobFailureCategory? failureCategory = null)
     {
         if (status is not (JobStatus.StoppedByBudget or JobStatus.Cancelled or JobStatus.Failed))
             throw new ArgumentOutOfRangeException(nameof(status));
@@ -157,8 +158,9 @@ public sealed class JobRepository
         var timestamp = JobTimestamp.FormatUtc(ValidateUtc(createdUtc, nameof(createdUtc)));
         var record = new JobRecord(jobId, projectKey, kind, status, 1, inputJson,
             resultJson, timestamp, timestamp, LineageId: jobId, ArchivedUtc: timestamp,
-            FailureCategory: status == JobStatus.Failed ? JobFailureCategory.ParserRefusal :
+            FailureCategory: status == JobStatus.Failed ? failureCategory ?? JobFailureCategory.ParserRefusal :
                 status == JobStatus.Cancelled ? JobFailureCategory.Cancellation : JobFailureCategory.None);
+        ValidateFailureCategory(record);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         if (proposalId is { } id && !ProposalStillThere(connection, transaction, id, draftName,

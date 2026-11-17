@@ -1158,18 +1158,19 @@ public sealed class SourceApprovalTests(PristineProjectFixture pristine)
     private static CommandOutcome<ApplyPendingResult> Apply(string path)
     {
         var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(Root(path)));
+        CommandOutcome<ApplyPendingResult> applied;
         try
         {
-            var applied = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
+            applied = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
                 dryRunTimeout: TimeSpan.FromMinutes(2), runnerLauncher: runner);
-            if (applied.Succeeded && applied.Value!.Applied)
-                Capture(path);
-            return applied;
         }
         finally
         {
             runner.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
+        if (applied.Succeeded && applied.Value!.Applied)
+            Capture(path);
+        return applied;
     }
 
     private static string Root(string projectPath)

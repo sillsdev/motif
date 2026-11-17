@@ -57,8 +57,9 @@ public static class RefusalCodes
     public const string AssessInvalidLimit = "assess.invalid-limit";
     public const string AssessInvocationInconsistent = "assess.invocation-inconsistent";
     public const string AssessMeasurementsIncomplete = "assess.measurements-incomplete";
-    /// <summary>Motif itself, not the parser, ran out of memory while assessing.</summary>
+    /// <summary>Motif or the parser exhausted memory while assessing, including a parser memory-ceiling stop.</summary>
     public const string AssessOutOfMemory = "assess.out-of-memory";
+    public const string AssessParserKilled = "assess.parser-killed";
     public const string AssessParserMemoryLimit = "assess.parser-memory-limit";
     public const string AssessParserUnavailable = "assess.parser-unavailable";
     /// <summary>The Assessment could not provide usable evidence.</summary>

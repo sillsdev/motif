@@ -11,3 +11,7 @@ Waits for a Trial job and reads its state. When the job completes, `motif trial 
 A word that was stopped but had no analysis before the change does not change the gate. The result names stopped words under `stoppedWords`, expected losses under `expectedLosses` and unlisted losses under `unexpectedLosses`.
 
 The gate reads the Trial's retained evidence, so `--review-set none` does not hide a loss. `--expect-loss <file>` names words, one per line (blank lines are ignored, and a word matches whatever its Unicode normalisation), that the change intends to lose, such as retirements; it needs `--wait`. Listed words do not make the gate a loss; any other lost word still fails. The summary prints whatever the gate. Read the saved report later with [Read a Trial report](cmd:proposal%20trial).
+
+If PanGloss is killed by a signal or terminated by the operating system, the Job is `failed` with `failureCategory` `parser-killed` and `failureCode` `assess.parser-killed`. The waited command exits 2, even when the parser wrote partial or complete-looking output. If there is memory evidence, the category is `out-of-memory` and the code is `assess.out-of-memory` instead. A completed Dry Run and retained partial review evidence remain available; the failed run does not publish a completed Trial.
+
+With `--json`, a terminal Job that could not finish the Trial is printed as one JSON object on stdout, with its status and failure category. Warnings and diagnostics go to stderr. An enqueue refusal is a FailureEnvelope on stderr.

@@ -60,6 +60,20 @@ public sealed class WordTraceQueryTests : IDisposable
     }
 
     [Fact]
+    public void AContainmentMemoryStopRefusesTheTraceWithTheMemoryCode()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        var invoker = new FakeInvoker { Respond = _ => new PanGlossOutcome.MemoryLimit(new PanGlossMemoryKill(100, 200)) };
+
+        var outcome = WordTraceQuery.Query(new WordTraceRequest(path, "sagd"), new PanGlossTracer(invoker),
+            CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("assess.out-of-memory", outcome.Refusal!.Code);
+    }
+
+    [Fact]
     public void NoBaselineIsATypedRefusal_AndNeverReachesTheParser()
     {
         var fwDataPath = _pristine.CopyProjectFile();

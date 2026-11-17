@@ -204,9 +204,8 @@ public static class StatsCommand
             "stats.timed-out", FailureReason.Refused, timedOut.Message,
             Fact(("projectPath", projectPath),
                 ("capMinutes", timedOut.Cap.TotalMinutes.ToString("0.#", CultureInfo.InvariantCulture)))),
-        PanGlossOutcome.Refused refused => new Refusal(
-            "stats.parser-refused", FailureReason.Refused, refused.Message,
-            Fact(("projectPath", projectPath), ("exitCode", refused.ExitCode.ToString(CultureInfo.InvariantCulture)))),
+        PanGlossOutcome.Refused refused => ParserExecutionRefusal.From(
+            "stats.parser-refused", projectPath, refused),
         _ => new Refusal(
             "stats.parser-unavailable", FailureReason.Refused, outcome.Message,
             Fact(("projectPath", projectPath))),

@@ -942,6 +942,99 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal(["describe"], FakeParser.Invocations(executable));
     }
 
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-1073741510)]
+    [InlineData(-1073741558)]
+    public async Task AKilledParserHasATerminationDiagnostic(int exitCode)
+    {
+        if (OperatingSystem.IsWindows() && exitCode > 0) return;
+        var project = Project("killed-health");
+        using var containment = new MemoryKilledJob(null, exitCode);
+        var outcome = await PanGlossInvoker.LaunchAsync(FakeParser.ExecutablePath,
+            new PanGlossRequest.GrammarHealth(project, "test"), containment,
+            TimeSpan.FromSeconds(10), CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Refused>(outcome);
+        Assert.StartsWith("PanGloss was killed", outcome.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(128)]
+    [InlineData(129)]
+    [InlineData(131)]
+    [InlineData(143)]
+    [InlineData(192)]
+    [InlineData(193)]
+    [InlineData(255)]
+    public async Task ANormalNonzeroExitIsNotSignalTermination(int exitCode)
+    {
+        var project = Project("normal-exit");
+        FakeParser.Behave(_root, new { mode = "fail", exitCode });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.GrammarHealth(project, "test"),
+            "test:normal-exit", CancellationToken.None);
+
+        var failure = Assert.IsType<PanGlossOutcome.Refused>(outcome);
+        Assert.Equal(exitCode, failure.ExitCode);
+        Assert.Equal(SIL.Motif.Contract.Jobs.JobFailureCategory.ParserRefusal, failure.FailureCategory);
+    }
+
+    [Fact]
+    public async Task AValidGrammarHealthReportDoesNotTurnATerminationExitIntoSuccess()
+    {
+        var project = Project("killed-report");
+        FakeParser.Behave(_root, new { killOnExit = true });
+        using var invoker = Invoker();
+        var outcome = await invoker.RunAsync(new PanGlossRequest.GrammarHealth(project, "test"),
+            "test:killed-report", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Refused>(outcome);
+    }
+
+    [Fact]
+    public async Task ARealTerminationWithACoreClrMemoryRecordIsOutOfMemory()
+    {
+        FakeParser.Behave(_root, new { mode = "fail", exitCode = 1, killOnExit = true, standardError = "Out of memory." });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(Project("coreclr-oom"), ["motifa"], null),
+            "test:coreclr-oom", CancellationToken.None);
+
+        var failure = Assert.IsType<PanGlossOutcome.Refused>(outcome);
+        Assert.Equal(JobFailureCategory.OutOfMemory, failure.FailureCategory);
+        if (!OperatingSystem.IsWindows()) Assert.Equal(9, failure.TerminationSignal);
+        var refusal = SIL.Motif.Commands.Queries.ParserExecutionRefusal.From("assess.parser-unavailable", "probe", failure);
+        Assert.Equal("assess.out-of-memory", refusal.Code);
+    }
+
+    [Fact]
+    public async Task ABatchTerminatedBySigtermIsReportedAsKilled()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var project = Project("signal-batch");
+        var pidPath = Path.Combine(_root, "signal-pid");
+        var heartbeat = Path.Combine(_root, "signal-heartbeat");
+        FakeParser.Behave(_root, new { processIdPath = pidPath, heartbeatPath = heartbeat });
+        using var invoker = Invoker();
+        var run = invoker.RunAsync(new PanGlossRequest.Batch(project, ["motifa"], null),
+            "test:signal", CancellationToken.None);
+        await Wait.UntilAsync(() => File.Exists(heartbeat), timeout: TimeSpan.FromSeconds(30));
+        var pid = int.Parse(File.ReadAllText(pidPath), CultureInfo.InvariantCulture);
+        Assert.Equal(0, UnixNative.Kill(pid, 15));
+
+        var outcome = await run.WaitAsync(TimeSpan.FromSeconds(30));
+
+        var failure = Assert.IsType<PanGlossOutcome.Refused>(outcome);
+        Assert.Equal(143, failure.ExitCode);
+        Assert.Contains("signal 15", failure.Message, StringComparison.OrdinalIgnoreCase);
+        var refusal = SIL.Motif.Commands.Queries.ParserExecutionRefusal.From("assess.parser-unavailable", project, failure);
+        Assert.Equal("15", refusal.Facts["signal"]);
+    }
+
     [Fact]
     public async Task Stats_ANonZeroExitIsRefusedWithItsStandardError()
     {
@@ -1348,20 +1441,36 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Contains("MOTIF_PARSER_MEMORY_LIMIT", limit.Message, StringComparison.Ordinal);
     }
 
-    private sealed class MemoryKilledJob(PanGlossMemoryKill kill) : PanGlossContainmentJob(
-        new PanGlossContainmentReport(null, kill.LimitBytes, true, "none", "fake", "fake", []))
+    [Theory]
+    [InlineData("describe")]
+    [InlineData("version")]
+    public async Task AProbePreservesAContainmentMemoryStop(string probe)
+    {
+        var kill = new PanGlossMemoryKill(12UL * 1024 * 1024 * 1024, 13UL * 1024 * 1024 * 1024);
+        using var containment = new MemoryKilledJob(kill);
+
+        var failure = probe == "describe"
+            ? (await PanGlossSurface.CheckAsync(FakeParser.ExecutablePath, containment, CancellationToken.None)).Failure
+            : (await ParserExecutableIdentity.ReadVersionAsync(FakeParser.ExecutablePath, containment,
+                CancellationToken.None, fresh: true)).Failure;
+
+        Assert.Equal(kill, Assert.IsType<PanGlossOutcome.MemoryLimit>(failure).Kill);
+    }
+
+    private sealed class MemoryKilledJob(PanGlossMemoryKill? kill, int exitCode = 137) : PanGlossContainmentJob(
+        new PanGlossContainmentReport(null, kill?.LimitBytes, true, "none", "fake", "fake", []))
     {
         public override PanGlossChildProcess Start(System.Diagnostics.ProcessStartInfo startInfo) =>
-            new(new KilledChild(kill));
+            new(new KilledChild(kill, exitCode));
 
         public override void Terminate(PanGlossChildProcess process) { }
         public override void Dispose() { }
     }
 
-    private sealed class KilledChild(PanGlossMemoryKill kill) : IPanGlossChildProcess
+    private sealed class KilledChild(PanGlossMemoryKill? kill, int exitCode) : IPanGlossChildProcess
     {
         public int Id => 1;
-        public int ExitCode => 137;
+        public int ExitCode => exitCode;
         public PanGlossMemoryKill? MemoryKill => kill;
         public Task WaitForExitAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<string> ReadStandardOutputAsync() => Task.FromResult(string.Empty);
@@ -1565,6 +1674,70 @@ public sealed class PanGlossInvokerTests : IDisposable
             { StatsManifestPath = manifest };
 
         Assert.Throws<ArgumentException>(() => request.Validate());
+    }
+
+    [Theory]
+    [InlineData("describe", false)]
+    [InlineData("version", false)]
+    [InlineData("describe", true)]
+    [InlineData("version", true)]
+    public async Task ATerminatedProbeRefusesAnOtherwiseSuccessfulBatch(string probe, bool memory)
+    {
+        var parser = FakeParser.CopyWithSentinel(Path.Combine(_root, "fatal-probe"),
+            "_fake-pangloss-record-invocations");
+        var failure = memory
+            ? (object)new { mode = "fail", exitCode = 1, standardError = "Out of memory.\r\n" }
+            : new { mode = "killed" };
+        FakeParser.BehaveInPhasesBesideExecutable(parser, probe, failure);
+        var artifacts = Path.Combine(_root, "probe-artifacts");
+        using var invoker = new PanGlossInvoker(parser, NewQueue());
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(Project("probe"), ["motifa"],
+            null, ArtifactDirectory: artifacts), "test:probe", CancellationToken.None);
+
+        var refused = Assert.IsType<PanGlossOutcome.Refused>(outcome);
+        Assert.Equal(memory ? JobFailureCategory.OutOfMemory : JobFailureCategory.ParserKilled, refused.FailureCategory);
+        var refusal = SIL.Motif.Commands.Queries.ParserExecutionRefusal.From("assess.parser-unavailable", "probe", refused);
+        Assert.Equal(memory ? "assess.out-of-memory" : "assess.parser-killed", refusal.Code);
+        if (probe == "version") Assert.Contains("batch", FakeParser.Invocations(parser));
+        Assert.False(Directory.Exists(artifacts));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AFreshVersionProbePreservesFatalFailureForBaselineReuse(bool memory)
+    {
+        var parser = FakeParser.Copy(Path.Combine(_root, "fresh-version"));
+        var failure = memory
+            ? (object)new { mode = "fail", exitCode = 1, standardError = "Out of memory.\n" }
+            : new { mode = "killed" };
+        FakeParser.BehaveInPhasesBesideExecutable(parser, "version", failure);
+
+        var exception = Assert.Throws<AssessorUnavailableException>(() => ParserExecutableIdentity.ReadFreshVersion(parser));
+
+        Assert.Equal(memory ? JobFailureCategory.OutOfMemory : JobFailureCategory.ParserKilled,
+            exception.ParserRefusal!.FailureCategory);
+        var refusal = SIL.Motif.Commands.Queries.ParserExecutionRefusal.From(
+            "assess.parser-unavailable", "probe", exception.ParserRefusal);
+        Assert.Equal(memory ? "assess.out-of-memory" : "assess.parser-killed", refusal.Code);
+    }
+
+    [Theory]
+    [InlineData("describe")]
+    [InlineData("version")]
+    public async Task ANormalProbeExitOf143KeepsItsOrdinaryUnsupportedHandling(string probe)
+    {
+        var parser = FakeParser.Copy(Path.Combine(_root, "normal-probe"));
+        FakeParser.BehaveInPhasesBesideExecutable(parser, probe,
+            new { mode = "fail", exitCode = 143, standardError = "unsupported probe" });
+        using var invoker = new PanGlossInvoker(parser, NewQueue());
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(Project("normal-probe"), ["motifa"],
+            null, ArtifactDirectory: Path.Combine(_root, "normal-artifacts")), "test:normal-probe", CancellationToken.None);
+
+        if (probe == "describe") Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        else Assert.Equal("unavailable", Assert.IsType<PanGlossOutcome.Completed>(outcome).BatchEvidence!.ExecutableVersion);
     }
 
     [Fact]

@@ -33,7 +33,8 @@ internal static class DroppedGrammarCheck
                 .ConfigureAwait(false);
             if (timedOut is not null) return (null, DroppedGrammar.NotChecked(timedOut));
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not OperationCanceledException &&
+            JobFailureDetail.Category(exception) is null)
         {
             return (null, DroppedGrammar.NotChecked(DroppedGrammarClassifier.BoundMessage(exception.Message)));
         }
@@ -44,7 +45,8 @@ internal static class DroppedGrammarCheck
             return (candidate, await CompareAsync(candidate, grammarHealth, database, baselineToken, baselineFwDataPath,
                 projectName, proposal, onWait, bound, cancellationToken).ConfigureAwait(false));
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not OperationCanceledException &&
+            JobFailureDetail.Category(exception) is null)
         {
             // A stored Baseline check that cannot be read leaves the comparison unmade, which is never clean.
             return (candidate, DroppedGrammar.NotChecked("The Baseline's grammar check could not be read: " +
@@ -68,7 +70,8 @@ internal static class DroppedGrammarCheck
                     token => grammarHealth(baselineFwDataPath, projectName, onWait, token), cancellationToken)
                     .ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is not OperationCanceledException)
+            catch (Exception exception) when (exception is not OperationCanceledException &&
+                JobFailureDetail.Category(exception) is null)
             {
                 why = exception.Message;
             }

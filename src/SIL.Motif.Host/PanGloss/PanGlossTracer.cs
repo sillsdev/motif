@@ -30,20 +30,25 @@ public sealed class PanGlossTracer : IPanGlossTracer
         var outcome = await _invoker.RunAsync(
             new PanGlossRequest.Trace(grammarPath, word) { ParserWorkLimit = _parserWorkLimit }, "trace:" + word, cancellationToken, cap).ConfigureAwait(false);
 
-        return outcome switch
+        return FromOutcome(word, outcome);
+    }
+
+    internal static PanGlossTraceOutcome FromOutcome(string word, PanGlossOutcome outcome) =>
+        outcome switch
         {
             PanGlossOutcome.Completed completed => Interpret(word, completed),
             PanGlossOutcome.Cancelled => new PanGlossTraceOutcome.Cancelled(word),
             PanGlossOutcome.TimedOut timedOut => new PanGlossTraceOutcome.Incomplete(word, null, null, timedOut.Message),
             PanGlossOutcome.Refused refused => new PanGlossTraceOutcome.Declined(word, refused.Message)
                 { ParserRefusal = refused },
+            PanGlossOutcome.MemoryLimit memory => new PanGlossTraceOutcome.Declined(word, memory.Message)
+                { MemoryKill = memory.Kill },
             PanGlossOutcome.Unavailable unavailable => new PanGlossTraceOutcome.Unavailable(word, unavailable.Message)
             {
                 ExecutableMissing = unavailable.ExecutableMissing,
             },
             _ => new PanGlossTraceOutcome.Incomplete(word, null, null, outcome.Message),
         };
-    }
 
     /// <summary>
     /// Reads what a resident parser returned as if it were a cold process's exit code and standard output: a nonzero exit

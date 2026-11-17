@@ -1091,12 +1091,13 @@ try
                 else
                 {
                     result = RenderCommand(trialWaited);
-                    // A parser killed by a signal ends the job as completed-with-assessment-failure; never exit 0 on it.
+                    // The terminal job remains readable on stdout even when its failure sets a nonzero exit.
                     if (result.ExitCode == 0 && trialWaited.Value is { } trialEnded &&
                         TrialReviewReads.UnfinishedReason(trialEnded) is { } unfinished)
                     {
                         error.WriteLine("error: " + unfinished);
-                        result = result with { ExitCode = FailureEnvelope.ExitCodeFor(FailureReason.Refused) };
+                        output.Write(result.Output);
+                        return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
                     }
                 }
             }

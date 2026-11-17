@@ -27,6 +27,39 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         Directory.CreateDirectory(_workerRoot);
     }
 
+    [Theory]
+    [InlineData("fail", "", "assess.parser-killed")]
+    [InlineData("success", "", "assess.parser-killed")]
+    [InlineData("fail", "memory allocation of 4096 bytes failed", "assess.out-of-memory")]
+    public async Task AssessReportsAKilledParserAsARefusalAndStoresNothing(
+        string mode, string standardError, string expectedCode)
+    {
+        var project = _pristine.CopyProjectFile();
+        await CaptureBaseline(project);
+        var memory = expectedCode == "assess.out-of-memory";
+        var exitCode = memory ? 1 : OperatingSystem.IsWindows() ? -1 : 137;
+        var parser = CopyFakeParser(new
+        {
+            mode = !memory && mode == "fail" ? "killed" : mode,
+            killOnExit = !memory && mode == "success", exitCode = memory ? 1 : 0, standardError,
+        });
+        var words = Path.Combine(_root, "killed-words.txt");
+        File.WriteAllText(words, "motifa\n");
+
+        var start = CliProcess.CreateStartInfo(_workerRoot, parser, false,
+            "assess", project, "--words", words, "--json");
+        start.Environment[SIL.Motif.Host.Installation.MotifUpdateGate.TestNamespaceVariable] = Guid.NewGuid().ToString("N");
+        var result = await CliProcess.RunAsync(start);
+
+        Assert.True(result.ExitCode == 2, result.Error + result.Output);
+        Assert.True(string.IsNullOrWhiteSpace(result.Output), result.Output);
+        var failure = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
+        Assert.Equal(expectedCode, failure.Code);
+        Assert.Equal(FailureReason.Refused, failure.Reason);
+        Assert.Equal(exitCode.ToString(CultureInfo.InvariantCulture), failure.Detail!["exitCode"]);
+        Assert.Equal(0L, ReadAssessmentCount(project));
+    }
+
     [Fact]
     public async Task AssessAsJsonStoresARunThatTimingAndOverviewRead()
     {

@@ -282,6 +282,101 @@ public sealed class TrialJobHandlerTests : IDisposable
         finally { TrialJobHandler.BudgetDurationForTests.Value = null; }
     }
 
+    [Theory]
+    [InlineData("fail")]
+    [InlineData("success")]
+    public void AKilledParserFailsTheTrialEvenWhenItWroteACompleteBatch(string mode)
+    {
+        var parserPath = FakeParser.Copy(Path.Combine(_root, "killed-parser"));
+        FakeParser.BehaveBesideExecutable(parserPath, new { mode = mode == "fail" ? "killed" : mode, killOnExit = mode == "success" });
+        using var invoker = new PanGlossInvoker(parserPath,
+            new MachinePanGlossQueue(["Local\\MotifTrialKilled-" + Guid.NewGuid().ToString("N")]));
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new PanGlossAssessor(
+            new StatsCacheStore(WorkspaceOwnership.Bootstrap(Path.Combine(_root, "worker"))), invoker);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "killed trial");
+        SaveCommittedProposal(proposalId, proposalJson);
+
+        var finished = RunAndFinish(BuildHandler(lanes, assessor), CreateTrialJob(proposalJson, ["motifa"]));
+
+        _output.WriteLine($"Parser termination: {finished.Status}, {finished.FailureCategory}, {finished.ResultJson}");
+        Assert.Equal(JobStatus.Failed, finished.Status);
+        Assert.Equal("parser-killed", JobFailureCategoryJson.ToWire(finished.FailureCategory));
+        Assert.True(finished.DryRunPublished);
+    }
+
+    [Theory]
+    [InlineData("describe", false)]
+    [InlineData("version", false)]
+    [InlineData("describe", true)]
+    [InlineData("version", true)]
+    public void ATerminatedParserProbeFailsTheTrialAndRetainsItsDryRun(string probe, bool memory)
+    {
+        var parser = FakeParser.CopyWithSentinel(Path.Combine(_root, "probe-parser"),
+            "_fake-pangloss-record-invocations");
+        var failure = memory
+            ? (object)new { mode = "fail", exitCode = 1, standardError = "Out of memory.\n" }
+            : new { mode = "killed" };
+        FakeParser.BehaveInPhasesBesideExecutable(parser, probe, failure);
+        using var invoker = new PanGlossInvoker(parser);
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new PanGlossAssessor(new TrialParserPaths(_root), invoker);
+        var handler = BuildHandler(lanes, assessor, grammarHealth: (path, name, wait, token) =>
+            TrialGrammarCheck.RunAsync(invoker, "terminated parser probe", StoredAnalysisComparison.Off,
+                path, name, token, wait));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "probe termination");
+        SaveCommittedProposal(proposalId, proposalJson);
+
+        var finished = RunAndFinish(handler, CreateTrialJob(proposalJson, ["motifa"]));
+
+        Assert.Equal(JobStatus.Failed, finished.Status);
+        Assert.Equal(memory ? JobFailureCategory.OutOfMemory : JobFailureCategory.ParserKilled, finished.FailureCategory);
+        using var detail = JsonDocument.Parse(finished.ResultJson!);
+        Assert.Equal(memory ? "assess.out-of-memory" : "assess.parser-killed",
+            detail.RootElement.GetProperty("code").GetString());
+        Assert.True(finished.DryRunPublished);
+        Assert.NotNull(finished.DryRunJson);
+        Assert.Empty(_assessments.ListByProposal(proposalId));
+        if (probe == "version") Assert.Contains("batch", FakeParser.Invocations(parser));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ATerminatedGrammarCheckFailsTheTrialAndRetainsItsDryRun(bool baseline, bool memory)
+    {
+        var parser = FakeParser.Copy(Path.Combine(_root, "grammar-killed-parser"));
+        var failure = memory
+            ? (object)new { mode = "fail", exitCode = 1, standardError = "memory allocation of 4096 bytes failed" }
+            : new { mode = "killed" };
+        FakeParser.BehaveInPhasesBesideExecutable(parser, "grammar-health",
+            baseline ? new { mode = "success" } : failure, failure);
+        using var invoker = new PanGlossInvoker(parser);
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new PanGlossAssessor(new TrialParserPaths(_root), invoker);
+        var handler = BuildHandler(lanes, assessor, grammarHealth: (path, name, wait, token) =>
+            TrialGrammarCheck.RunAsync(invoker, "terminated grammar check", StoredAnalysisComparison.Off,
+                path, name, token, wait));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "grammar termination");
+        SaveCommittedProposal(proposalId, proposalJson);
+
+        var finished = RunAndFinish(handler, CreateTrialJob(proposalJson, ["motifa"]));
+
+        Assert.Equal(JobStatus.Failed, finished.Status);
+        Assert.Equal(memory ? JobFailureCategory.OutOfMemory : JobFailureCategory.ParserKilled, finished.FailureCategory);
+        using var detail = JsonDocument.Parse(finished.ResultJson!);
+        Assert.Equal(memory ? "assess.out-of-memory" : "assess.parser-killed",
+            detail.RootElement.GetProperty("code").GetString());
+        Assert.True(finished.DryRunPublished);
+        Assert.NotNull(finished.DryRunJson);
+        Assert.Empty(_assessments.ListByProposal(proposalId));
+    }
+
     [Fact]
     public void ATrialOfACapitalisedWordRecordsItsLowercaseWordformAsARowOfItsOwn()
     {
@@ -905,11 +1000,12 @@ public sealed class TrialJobHandlerTests : IDisposable
 
         var finished = RunAndFinish(BuildHandler(lanes, assessor), job);
 
-        Assert.Equal(JobStatus.CompletedWithAssessmentFailure, finished.Status);
+        Assert.Equal(JobStatus.Failed, finished.Status);
+        Assert.Equal(JobFailureCategory.OutOfMemory, finished.FailureCategory);
         var ledger = TrialReviewEvidence.ReadJob(_database, job.JobId)!;
         Assert.Equal("case-a", Assert.Single(ledger.After).CaseKey);
         var interruption = Assert.Single(ledger.Interruptions);
-        Assert.Equal("assess.parser-memory-limit", interruption.Code);
+        Assert.Equal("assess.out-of-memory", interruption.Code);
         Assert.Equal("case-b", Assert.Single(interruption.PendingCaseKeys));
     }
 

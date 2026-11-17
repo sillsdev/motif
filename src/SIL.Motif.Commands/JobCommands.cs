@@ -290,7 +290,13 @@ public static class JobCommands
                         wordsNotDone = int.TryParse(stop.Facts?.GetValueOrDefault("wordsNotDone"), out var notDone) ? notDone : (int?)null }),
                     NowStamp(), status, record.ProposalId, record.DraftName,
                     record.DraftName is null ? null : record.ProposalJson,
-                    record.DraftName is null ? record.IntentDigest : null);
+                    record.DraftName is null ? record.IntentDigest : null,
+                    failureCategory: stop.Code switch
+                    {
+                        RefusalCodes.AssessParserKilled => JobFailureCategory.ParserKilled,
+                        RefusalCodes.AssessOutOfMemory => JobFailureCategory.OutOfMemory,
+                        _ => null,
+                    });
                 if (input.ReviewInputs is not null)
                 {
                     try
@@ -558,7 +564,8 @@ public static class JobCommands
                 TrialProgress = trialProgress,
                 StageProgress = stageProgress,
                 FailureCode = FailureCodeOf(job),
-                FailureDetail = FailureCodeOf(job) is null ? null : FailureField(job.ResultJson, "message"),
+                FailureDetail = FailureCodeOf(job) is null ? null :
+                    FailureField(job.ResultJson, "message") ?? FailureField(job.ResultJson, "detail"),
                 WordsDone = int.TryParse(FailureField(job.ResultJson, "wordsDone"), out var done) ? done : null,
                 WordsNotDone = int.TryParse(FailureField(job.ResultJson, "wordsNotDone"), out var notDone) ? notDone : null,
                 ClaimLost = lost,

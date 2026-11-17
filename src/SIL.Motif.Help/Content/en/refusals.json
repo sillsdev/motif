@@ -81,8 +81,12 @@
     "source": "Hand-written for the Assess collect option."
   },
   "assess.out-of-memory": {
-    "why": "Motif ran out of memory reading the parser's per-object timing. Nothing is damaged and nothing was saved. Collect without ObjectTiming, or assess fewer words. Tell the linguist; do not retry unchanged.",
+    "why": "Motif or PanGloss ran out of memory, or PanGloss exceeded its memory ceiling. Nothing in the project is damaged. Assess fewer words or use fewer parser threads; when Motif runs out of memory, collect without ObjectTiming. Tell the linguist; do not retry unchanged.",
     "source": "Hand-written for the Assess memory bound."
+  },
+  "assess.parser-killed": {
+    "why": "PanGloss was killed or terminated before the run completed. Partial output is not a completed Assessment. Tell the linguist; inspect system memory pressure and try fewer words or fewer parser threads before retrying.",
+    "source": "Hand-written for parser termination."
   },
   "assess.parser-memory-limit": {
     "why": "The parser used more memory than Motif allows, so the run was stopped. Tell the linguist; do not retry unchanged.",

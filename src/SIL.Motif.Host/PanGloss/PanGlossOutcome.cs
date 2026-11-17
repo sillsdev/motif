@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using SIL.Motif.Host.Parsimony;
+using SIL.Motif.Contract.Jobs;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -47,7 +49,38 @@ public abstract record PanGlossOutcome
     public sealed record Refused(int ExitCode, string StandardError, string StandardOutput, string Detail)
         : PanGlossOutcome
     {
-        public override string Message => Detail;
+        /// <summary>Termination and memory failures take precedence over otherwise usable parser output.</summary>
+        public JobFailureCategory FailureCategory => Classify(ExitCode, StandardError, TerminationSignal);
+
+        /// <summary>The terminating Unix signal retained by containment, independently of the diagnostic exit number.</summary>
+        public int? TerminationSignal { get; init; }
+
+        public override string Message => FailureCategory switch
+        {
+            JobFailureCategory.ParserKilled => TerminationSignal is { } signal
+                ? $"PanGloss was killed by signal {signal} (diagnostic exit {ExitCode}). " + Detail
+                : $"PanGloss was killed or terminated (exit {ExitCode}). " + Detail,
+            JobFailureCategory.OutOfMemory => $"PanGloss ran out of memory (exit {ExitCode}). " + Detail,
+            _ => Detail,
+        };
+
+        internal static JobFailureCategory Classify(int exitCode, string standardError, int? terminationSignal = null)
+        {
+            if (exitCode == 0 && terminationSignal is null) return JobFailureCategory.None;
+            var status = unchecked((uint)exitCode);
+            if (status is 0xC0000017 or 0xC000009A or 0xC000012D or 0x8007000E ||
+                HasMemoryFailureRecord(standardError))
+                return JobFailureCategory.OutOfMemory;
+            return terminationSignal is not null ||
+                exitCode == -1 || status is >= 0xC0000000 and <= 0xCFFFFFFF ||
+                status is 0x40010004 or 0x40010008
+                ? JobFailureCategory.ParserKilled : JobFailureCategory.ParserRefusal;
+        }
+
+        private static bool HasMemoryFailureRecord(string standardError) => standardError.Split('\n').Any(line =>
+            Regex.IsMatch(line.Trim(),
+                @"\A(?:Out of memory\.|memory allocation of [0-9]+ bytes failed|(?:Unhandled exception\. |---> )?System\.OutOfMemoryException(?:: .*)?)\z",
+                RegexOptions.CultureInvariant | RegexOptions.NonBacktracking));
     }
 
     /// <summary>The parser exited zero but did not write what the request promised — never read as success.</summary>

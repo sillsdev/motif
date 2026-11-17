@@ -23,6 +23,8 @@ namespace SIL.Motif.FakePanGloss;
 /// </remarks>
 internal static class Program
 {
+    private static bool _killAfterCommand;
+
     internal const string BehaviourFileName = "_fake-pangloss.json";
 
     /// <summary>
@@ -102,6 +104,9 @@ internal static class Program
         }
         if (args is ["--version"])
         {
+            var behaviour = Behaviour.Read(AppContext.BaseDirectory, "version", probe: true);
+            if (behaviour.StandardError is { } error) Console.Error.Write(error);
+            if (behaviour.Mode == "fail") return behaviour.ExitCode;
             var versionFile = Path.Combine(AppContext.BaseDirectory, VersionFileName);
             Console.WriteLine(File.Exists(versionFile) ? File.ReadAllText(versionFile).Trim() : "pangloss " + PinnedVersion());
             return 0;
@@ -121,7 +126,9 @@ internal static class Program
         }
         var name = args[0] == "--describe" ? "describe" : args[0];
         var command = Dispatch.FirstOrDefault(command => command.Name == name);
-        return command is null ? Unrecognised(args[0]) : command.Run(args);
+        var exitCode = command is null ? Unrecognised(args[0]) : command.Run(args);
+        if (_killAfterCommand) System.Diagnostics.Process.GetCurrentProcess().Kill();
+        return exitCode;
     }
 
     /// <summary>The version the embedded pin names, which the default <c>--version</c> reports.</summary>
@@ -190,6 +197,9 @@ internal static class Program
     {
         if (File.Exists(Path.Combine(AppContext.BaseDirectory, RecordInvocationsSentinel)))
             File.AppendAllText(Path.Combine(AppContext.BaseDirectory, InvocationsFileName), "describe\n");
+        var behaviour = Behaviour.Read(AppContext.BaseDirectory, "describe", probe: true);
+        if (behaviour.StandardError is { } error) Console.Error.Write(error);
+        if (behaviour.Mode == "fail") return behaviour.ExitCode;
         if (File.Exists(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-wrong-description")))
         {
             Console.WriteLine(JsonSerializer.Serialize(new { schema_version = 999, binary = "not-pangloss" }));
@@ -998,6 +1008,7 @@ internal static class Program
     {
         public string Mode { get; init; } = "succeed";
         public int ExitCode { get; init; }
+        public bool KillOnExit { get; init; }
         public int DelayMilliseconds { get; init; }
         // Facts only: a pause before the first heartbeat, standing in for a loaded host's slow process start.
         public int StartupDelayMilliseconds { get; init; }
@@ -1035,7 +1046,7 @@ internal static class Program
         public string? ServeStatus { get; init; }
         public int ServeAllocateBytes { get; init; }
 
-        internal static Behaviour Read(string? directory, string? subcommand = null)
+        internal static Behaviour Read(string? directory, string? subcommand = null, bool probe = false)
         {
             if (directory is null) return new Behaviour();
             var besideGrammar = Path.Combine(directory, BehaviourFileName);
@@ -1046,8 +1057,9 @@ internal static class Program
             using var document = JsonDocument.Parse(File.ReadAllText(path));
             var root = document.RootElement;
             var values = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
-            foreach (var property in root.EnumerateObject())
-                if (property.Name is not ("subcommands" or "phases")) values[property.Name] = property.Value;
+            if (!probe)
+                foreach (var property in root.EnumerateObject())
+                    if (property.Name is not ("subcommands" or "phases")) values[property.Name] = property.Value;
             if (subcommand is not null && root.TryGetProperty("subcommands", out var bySubcommand) &&
                 bySubcommand.ValueKind == JsonValueKind.Object &&
                 bySubcommand.EnumerateObject().FirstOrDefault(property =>
@@ -1071,8 +1083,15 @@ internal static class Program
                     throw new InvalidDataException($"Fake parser phase for '{subcommand}' must be an object.");
                 foreach (var property in phase.EnumerateObject()) values[property.Name] = property.Value;
             }
-            return JsonSerializer.Deserialize<Behaviour>(JsonSerializer.Serialize(values),
+            var behaviour = JsonSerializer.Deserialize<Behaviour>(JsonSerializer.Serialize(values),
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Behaviour();
+            _killAfterCommand |= behaviour.KillOnExit;
+            if (behaviour.Mode == "killed")
+            {
+                System.Diagnostics.Process.GetCurrentProcess().Kill();
+                throw new InvalidOperationException("The fake parser could not kill itself.");
+            }
+            return behaviour;
         }
     }
 }

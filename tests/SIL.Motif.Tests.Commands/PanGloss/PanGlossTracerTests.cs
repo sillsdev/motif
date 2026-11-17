@@ -32,6 +32,17 @@ public sealed class PanGlossTracerTests
     private static readonly string GoldenStandardOutput = TraceEnvelope.Of("32+PAST|sag+?d", GoldenTree);
 
     [Fact]
+    public async Task AContainmentMemoryStopRetainsItsTypedFailureThroughTracing()
+    {
+        var kill = new PanGlossMemoryKill(100, 200);
+        var stub = new StubInvoker { Respond = _ => new PanGlossOutcome.MemoryLimit(kill) };
+
+        var outcome = await new PanGlossTracer(stub).TraceAsync("golden.xml", "sagd", CancellationToken.None);
+
+        Assert.Equal(kill, Assert.IsType<PanGlossTraceOutcome.Declined>(outcome).MemoryKill);
+    }
+
+    [Fact]
     public async Task CompletedTrace_ParsesTheVerbatimTreeAndDerivesTheSummary()
     {
         var stub = new StubInvoker { Respond = _ => new PanGlossOutcome.Completed(GoldenStandardOutput, string.Empty, TimeSpan.FromMilliseconds(4)) };

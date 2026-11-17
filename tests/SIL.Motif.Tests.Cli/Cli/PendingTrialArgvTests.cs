@@ -27,6 +27,137 @@ namespace SIL.Motif.Tests.Cli;
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AWaitedTrialWithAKilledParserReportsFailedAndKeepsJsonOnStdout(bool beforeOnly)
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("signal-word", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "signal-worker");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var initial = PendingChanges.Load(new PendingChangesRequest(path, MotifProductVersion.CurrentText));
+        var pending = PendingChanges.Put(new PutPendingChangeRequest(path, MotifProductVersion.CurrentText,
+            initial.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "signal-word", OriginPage: "Texts")));
+        Assert.True(pending.Succeeded, pending.Refusal?.Message);
+        var parser = FakeParser.Copy(Path.Combine(root, "parser"));
+        var killed = new { mode = "killed" };
+        if (beforeOnly)
+            FakeParser.BehaveInPhasesBesideExecutable(parser, "batch", killed, new { mode = "success" });
+        else
+            FakeParser.BehaveBesideExecutable(parser, killed);
+        var words = Path.Combine(root, "signal-words.txt");
+        File.WriteAllText(words, "signal-word\n");
+
+        var result = await RunWithParserAsync(root, parser, "trial", "--project", path, pending.Value!.DraftId!,
+            "--words", words, "--wait", "--json");
+
+        Assert.True(result.ExitCode == 2, result.Error + result.Output);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.Equal("failed", json.RootElement.GetProperty("status").GetString());
+        Assert.Equal("parser-killed", json.RootElement.GetProperty("failureCategory").GetString());
+        Assert.Equal("assess.parser-killed", json.RootElement.GetProperty("failureCode").GetString());
+        Assert.Contains("error:", result.Error);
+    }
+
+    [Theory]
+    [InlineData("describe", false)]
+    [InlineData("version", false)]
+    [InlineData("describe", true)]
+    [InlineData("version", true)]
+    public async Task AWaitedTrialFailsWhenOnlyAnInitialParserProbeIsTerminated(string probe, bool memory)
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("probe-word", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "probe-worker");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var initial = PendingChanges.Load(new PendingChangesRequest(path, MotifProductVersion.CurrentText));
+        var pending = PendingChanges.Put(new PutPendingChangeRequest(path, MotifProductVersion.CurrentText,
+            initial.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "probe-word", OriginPage: "Texts")));
+        Assert.True(pending.Succeeded, pending.Refusal?.Message);
+        var parser = FakeParser.Copy(Path.Combine(root, "parser"));
+        var failure = memory
+            ? (object)new { mode = "fail", exitCode = 1, standardError = "Out of memory.\n" }
+            : new { mode = "killed" };
+        FakeParser.BehaveInPhasesBesideExecutable(parser, probe, probe == "version"
+            ? [new { mode = "success" }, failure, new { mode = "success" }]
+            : [failure, new { mode = "success" }]);
+        var words = Path.Combine(root, "probe-words.txt");
+        File.WriteAllText(words, "probe-word\n");
+
+        var result = await RunWithParserAsync(root, parser, "trial", "--project", path, pending.Value!.DraftId!,
+            "--words", words, "--wait", "--json");
+
+        Assert.True(result.ExitCode == 2, result.Error + result.Output);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.True(json.RootElement.TryGetProperty("status", out var status), result.Error + result.Output);
+        Assert.Equal("failed", status.GetString());
+        Assert.Equal(memory ? "out-of-memory" : "parser-killed",
+            json.RootElement.GetProperty("failureCategory").GetString());
+        Assert.Equal(memory ? "assess.out-of-memory" : "assess.parser-killed",
+            json.RootElement.GetProperty("failureCode").GetString());
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task AWaitedTrialFailsWhenOnlyItsGrammarCheckIsTerminated(bool baseline, bool memory)
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("grammar-word", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "grammar-worker");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var initial = PendingChanges.Load(new PendingChangesRequest(path, MotifProductVersion.CurrentText));
+        var pending = PendingChanges.Put(new PutPendingChangeRequest(path, MotifProductVersion.CurrentText,
+            initial.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "grammar-word", OriginPage: "Texts")));
+        Assert.True(pending.Succeeded, pending.Refusal?.Message);
+        var parser = FakeParser.Copy(Path.Combine(root, "parser"));
+        var failure = memory
+            ? (object)new { mode = "fail", exitCode = 1, standardError = "memory allocation of 4096 bytes failed" }
+            : new { mode = "killed" };
+        FakeParser.BehaveInPhasesBesideExecutable(parser, "grammar-health",
+            baseline ? new { mode = "success" } : failure, failure);
+        var words = Path.Combine(root, "grammar-words.txt");
+        File.WriteAllText(words, "grammar-word\n");
+
+        var result = await RunWithParserAsync(root, parser, "trial", "--project", path, pending.Value!.DraftId!,
+            "--words", words, "--wait", "--json");
+
+        Assert.True(result.ExitCode == 2, result.Error + result.Output);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.Equal("failed", json.RootElement.GetProperty("status").GetString());
+        Assert.Equal(memory ? "out-of-memory" : "parser-killed",
+            json.RootElement.GetProperty("failureCategory").GetString());
+        Assert.Equal(memory ? "assess.out-of-memory" : "assess.parser-killed",
+            json.RootElement.GetProperty("failureCode").GetString());
+        var jobId = json.RootElement.GetProperty("jobId").GetString()!;
+        var stored = ProjectStoreCommand.Run(path, MotifProductVersion.CurrentText,
+            (database, _) => SIL.Motif.Contract.Commands.CommandOutcome<SIL.Motif.Contract.Jobs.JobRecord>
+                .Success(new JobRepository(database).Get(jobId)));
+        Assert.True(stored.Value!.DryRunPublished);
+        Assert.NotNull(stored.Value.DryRunJson);
+    }
+
     [Fact]
     public async Task TrialOverBudgetKeepsItsBeforeAndPrunesOldUnrootedEvidence()
     {
@@ -125,7 +256,10 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
         Assert.DoesNotContain("always waits", Envelope(result.Error).Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task<CliRun> RunAsync(string? root, params string[] arguments)
+    private static Task<CliRun> RunAsync(string? root, params string[] arguments) =>
+        RunWithParserAsync(root, FakeParser.ExecutablePath, arguments);
+
+    private static async Task<CliRun> RunWithParserAsync(string? root, string parser, params string[] arguments)
     {
         var start = new ProcessStartInfo(BuildOutput.Cli) { UseShellExecute = false };
         foreach (var argument in arguments) start.ArgumentList.Add(argument);
@@ -136,7 +270,7 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
             start.Environment[MotifUpdateGate.TestNamespaceVariable] = Guid.NewGuid().ToString("N");
             start.Environment[RunnerOptions.RootVariable] = root;
             start.Environment["MOTIF_WORKER_EXE"] = BuildOutput.Worker;
-            start.Environment["MOTIF_PANGLOSS_EXE"] = FakeParser.ExecutablePath;
+            start.Environment["MOTIF_PANGLOSS_EXE"] = parser;
             start.Environment[RunnerOptions.NamespaceVariable] = Guid.NewGuid().ToString("N");
             start.Environment[RunnerOptions.IdleVariable] = "1";
             start.Environment.Remove(ProcessRunnerLauncher.SuppressVariable);

@@ -30,7 +30,9 @@ public enum JobFailureCategory
     ParserRefusal,
     Cancellation,
     Semantic,
-    Unknown
+    Unknown,
+    ParserKilled,
+    OutOfMemory
 }
 
 /// <summary>Canonical JSON/database spellings for the closed failure category set.</summary>
@@ -41,6 +43,8 @@ public static class JobFailureCategoryJson
         JobFailureCategory.None => "none",
         JobFailureCategory.Infrastructure => "infrastructure",
         JobFailureCategory.ParserRefusal => "parser-refusal",
+        JobFailureCategory.ParserKilled => "parser-killed",
+        JobFailureCategory.OutOfMemory => "out-of-memory",
         JobFailureCategory.Cancellation => "cancellation",
         JobFailureCategory.Semantic => "semantic",
         JobFailureCategory.Unknown => "unknown",
@@ -52,6 +56,8 @@ public static class JobFailureCategoryJson
         "none" => JobFailureCategory.None,
         "infrastructure" => JobFailureCategory.Infrastructure,
         "parser-refusal" => JobFailureCategory.ParserRefusal,
+        "parser-killed" => JobFailureCategory.ParserKilled,
+        "out-of-memory" => JobFailureCategory.OutOfMemory,
         "cancellation" => JobFailureCategory.Cancellation,
         "semantic" => JobFailureCategory.Semantic,
         "unknown" => JobFailureCategory.Unknown,
