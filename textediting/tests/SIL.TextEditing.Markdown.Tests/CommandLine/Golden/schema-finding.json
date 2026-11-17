@@ -1,0 +1,23 @@
+[
+  {
+    "path": "-",
+    "findings": [
+      {
+        "id": "fwmd.record.unknown-field",
+        "severity": "error",
+        "line": 6,
+        "col": 3,
+        "endLine": 6,
+        "endCol": 8,
+        "message": "\u0027sense\u0027 is not a field of entry."
+      }
+    ],
+    "checks": {
+      "styles": false,
+      "objectReferences": false,
+      "projectPaths": false,
+      "writingSystems": "front matter and config defaults",
+      "recordFields": true
+    }
+  }
+]

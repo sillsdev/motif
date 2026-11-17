@@ -12,14 +12,16 @@ internal sealed class CliApplication(IRecordSchemaLoader? schemaLoader = null, D
 {
     public const string Usage = """
         fwmd check [paths|-] [--json] [--warnings-as-errors] [--schema <file.json>] [--config <fwmd.json>]
-        fwmd format [paths|-] [--write | --check]
+        fwmd format [paths|-] [--write | --check] [--schema <file.json>] [--config <fwmd.json>]
         fwmd --help
 
         Directories recurse over *.md. No paths means standard input; '-' must be the only input.
         check: 0 clean, 1 errors (or warnings with --warnings-as-errors), 2 usage or input error.
         format: canonical text to stdout; --write rewrites files; --check returns 1 if different.
-        Files with errors are never formatted. Record formatting requires a record schema.
-        --schema is not yet available. Config lists writingSystems and styles; front matter wins.
+        Files with errors are never formatted. Several inputs need --write or --check; stdout takes one.
+        Record files need --schema <file.json> (a serialised record schema); format skips them without it
+        ("needs --schema" on stderr) and exits 1. A schema that cannot be loaded is a usage error.
+        Config lists writingSystems and styles; front matter wins.
         Without config, style checks are off. Object references and project paths are not checked.
         Without a record schema, record fields and rich values are not checked; only the frame is checked.
         """;
@@ -35,10 +37,12 @@ internal sealed class CliApplication(IRecordSchemaLoader? schemaLoader = null, D
             }
             var arguments = Arguments.Parse(args);
             var config = arguments.Config == null ? new ToolConfig() : ToolConfig.Load(arguments.Config);
-            var schema = arguments.Schema == null ? null : (schemaLoader ?? new UnavailableSchemaLoader()).Load(arguments.Schema);
+            var schema = arguments.Schema == null ? null : (schemaLoader ?? new FileRecordSchemaLoader()).Load(arguments.Schema);
             var documents = service ?? new DocumentService(config, schema);
             var paths = Expand(arguments.Paths);
             if (arguments.Write && paths.Contains("-")) throw new UsageException("--write requires files, not standard input.");
+            if (arguments.Command == "format" && !arguments.Write && !arguments.Check && paths.Count > 1)
+                throw new UsageException("format writes one input to standard output; use --write or --check for several.");
             var results = new List<Result>();
             foreach (var path in paths)
             {
@@ -60,13 +64,16 @@ internal sealed class CliApplication(IRecordSchemaLoader? schemaLoader = null, D
                 return results.Any(r => r.Analysis.HasErrors || arguments.WarningsAsErrors
                     && r.Analysis.Findings.Any(d => d.Severity == MarkdownSeverity.Warning)) ? 1 : 0;
             }
-            if (results.Any(r => r.Analysis.HasErrors))
+            // Decided before any output: a record file without a schema cannot be formatted, so say so and skip it.
+            var skipped = results.Where(r => !r.Analysis.CanFormat).ToList();
+            foreach (var result in skipped) error.WriteLine(result.Path + ": needs --schema (record files cannot be formatted without one); skipped");
+            if (results.Any(r => r.Analysis.CanFormat && r.Analysis.HasErrors))
             {
-                foreach (var result in results) WriteFindings(error, result);
+                foreach (var result in results.Where(r => r.Analysis.CanFormat)) WriteFindings(error, result);
                 error.WriteLine("Refusing to format files with errors.");
                 return 1;
             }
-            var formatted = results.Select(r => (Result: r, Text: r.Analysis.Format())).ToList();
+            var formatted = results.Except(skipped).Select(r => (Result: r, Text: r.Analysis.Format())).ToList();
             bool changed = false;
             foreach (var item in formatted)
             {
@@ -82,7 +89,7 @@ internal sealed class CliApplication(IRecordSchemaLoader? schemaLoader = null, D
                 }
                 else output.Write(item.Text);
             }
-            return arguments.Check && changed ? 1 : 0;
+            return skipped.Count > 0 || arguments.Check && changed ? 1 : 0;
         }
         catch (Exception exception) when (exception is UsageException or IOException or UnauthorizedAccessException
             or JsonException or ArgumentException or NotSupportedException)
@@ -198,8 +205,8 @@ internal sealed class CliApplication(IRecordSchemaLoader? schemaLoader = null, D
                 {
                     case "--json" when result.Command == "check": result.Json = true; break;
                     case "--warnings-as-errors" when result.Command == "check": result.WarningsAsErrors = true; break;
-                    case "--schema" when result.Command == "check": result.Schema = Value(); break;
-                    case "--config" when result.Command == "check": result.Config = Value(); break;
+                    case "--schema": result.Schema = Value(); break;
+                    case "--config": result.Config = Value(); break;
                     case "--write" when result.Command == "format": result.Write = true; break;
                     case "--check" when result.Command == "format": result.Check = true; break;
                     default: throw new UsageException("Unknown option for " + result.Command + ": " + arg);

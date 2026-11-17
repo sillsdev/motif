@@ -107,6 +107,7 @@ public sealed class CliTests
     [InlineData("check --config")]
     [InlineData("check --schema")]
     [InlineData("check --schema missing.json")]
+    [InlineData("format --schema missing.json")]
     [InlineData("check --config --json")]
     [InlineData("check --json --json")]
     [InlineData("check - missing.md")]
@@ -179,9 +180,121 @@ public sealed class CliTests
         Assert.Equal(1, Run("", new[] { "format", bad }).Code);
         string record = files.Add("r.md", "---\nfwmd: 1\nrecord: \"entry\"\n---\n");
         var result = Run("", new[] { "format", record, "--write" });
-        Assert.Equal(2, result.Code);
-        Assert.Contains("schema", result.Error);
+        Assert.Equal(1, result.Code);
+        Assert.Contains("needs --schema", result.Error);
         Assert.Contains("record:", File.ReadAllText(record));
+    }
+
+    [Fact]
+    public void FormatSkipsRecordFilesWithoutASchemaAndProcessesTheRest()
+    {
+        using var files = new Files();
+        string a = files.Add("a.md", "one\r\n");
+        string record = files.Add("b.md", "---\nfwmd: 1\nrecord: \"entry\"\n---\n");
+        string c = files.Add("c.md", "two\r\n");
+        var write = Run("", new[] { "format", files.Root, "--write" });
+        Assert.Equal(1, write.Code);
+        Assert.Equal(record + ": needs --schema (record files cannot be formatted without one); skipped" + Environment.NewLine, write.Error);
+        Assert.Equal("one\n", File.ReadAllText(a));
+        Assert.Equal("two\n", File.ReadAllText(c));
+        var check = Run("", new[] { "format", files.Root, "--check" });
+        Assert.Equal(1, check.Code);
+        Assert.Equal("", check.Output);
+        Assert.Contains("needs --schema", check.Error);
+        var stdin = Run("---\nfwmd: 1\nrecord: \"entry\"\n---\n", new[] { "format" });
+        Assert.Equal(1, stdin.Code);
+        Assert.Equal("", stdin.Output);
+        Assert.Contains("-: needs --schema", stdin.Error);
+    }
+
+    [Fact]
+    public void StdoutFormatTakesOneInput()
+    {
+        using var files = new Files();
+        files.Add("a.md", "one\n");
+        files.Add("b.md", "two\n");
+        var many = Run("", new[] { "format", files.Root });
+        Assert.Equal(2, many.Code);
+        Assert.Equal("", many.Output);
+        Assert.Contains("--write or --check", many.Error);
+        Assert.Equal(0, Run("", new[] { "format", Path.Combine(files.Root, "a.md") }).Code);
+        Assert.Equal(0, Run("", new[] { "format", files.Root, "--check" }).Code);
+    }
+
+    static RecordCase SchemaCase(string name) => RecordFixtures.All().First(c => c.File == "03-schema.json" && c.Name.StartsWith(name, StringComparison.Ordinal));
+
+    /// <summary>The conformance schemas.json entry named "test", written out as the file --schema takes.</summary>
+    static string WriteSchemaFile(Files files)
+    {
+        using var all = JsonDocument.Parse(File.ReadAllText(Path.Combine(RecordFixtures.Directory, "schemas.json")));
+        return files.Add("test-schema.json", all.RootElement.GetProperty("test").GetRawText());
+    }
+
+    [Fact]
+    public void SchemaFileGivesRecordFilesTheFullReader()
+    {
+        using var files = new Files();
+        string schema = WriteSchemaFile(files);
+        var good = SchemaCase("ok: fwmd.record.unknown-field");
+        var bad = SchemaCase("an unknown field, with the nearest name");
+        var goodResult = Run(good.Text!, new[] { "check", "--schema", schema, "--json" });
+        var expectedGood = RecordFileReader.Read(good.Text!, good.Schema, RecordFixtures.Options(good));
+        Assert.Equal(0, goodResult.Code);
+        AssertFindings(goodResult, expectedGood.Diagnostics);
+        using (var json = JsonDocument.Parse(goodResult.Output))
+            Assert.True(json.RootElement[0].GetProperty("checks").GetProperty("recordFields").GetBoolean());
+        var badResult = Run(bad.Text!, new[] { "check", "--schema", schema, "--json" });
+        Assert.Equal(1, badResult.Code);
+        Assert.Contains("fwmd.record.unknown-field", badResult.Output);
+        AssertFindings(badResult, RecordFileReader.Read(bad.Text!, bad.Schema, RecordFixtures.Options(bad)).Diagnostics);
+        Assert.Contains("fwmd.record.unknown-field", Run(bad.Text!, new[] { "check", "--schema", schema }).Output);
+        Assert.Equal(1, Run(bad.Text!, new[] { "check", "--schema", schema }).Code);
+        // Without the schema only the frame is checked, so the unknown field is not found.
+        Assert.DoesNotContain("fwmd.record.unknown-field", Run(bad.Text!, new[] { "check", "--json" }).Output);
+    }
+
+    [Theory]
+    [InlineData("good", "ok: fwmd.record.unknown-field")]
+    [InlineData("finding", "an unknown field, with the nearest name")]
+    public void SchemaJsonGoldens(string name, string caseName)
+    {
+        using var files = new Files();
+        string schema = WriteSchemaFile(files);
+        var actual = Run(SchemaCase(caseName).Text!, new[] { "check", "--schema", schema, "--json" });
+        var path = Path.Combine(AppContext.BaseDirectory, "CommandLine", "Golden", "schema-" + name + ".json");
+        Assert.Equal(File.ReadAllText(path).Replace("\r\n", "\n").TrimEnd(), actual.Output.Replace("\r\n", "\n").TrimEnd());
+    }
+
+    [Fact]
+    public void SchemaFileFormatsRecordFilesCanonically()
+    {
+        using var files = new Files();
+        string schema = WriteSchemaFile(files);
+        var good = SchemaCase("ok: fwmd.record.unknown-field");
+        string record = files.Add("r.md", good.Text!);
+        var formatted = Run("", new[] { "format", record, "--schema", schema });
+        Assert.Equal(0, formatted.Code);
+        Assert.Equal(RecordFileWriter.Write(RecordFileReader.Read(good.Text!, good.Schema, RecordFixtures.Options(good)).Document!, good.Schema), formatted.Output);
+        Assert.Equal(0, Run("", new[] { "format", record, "--schema", schema, "--check" }).Code);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("not json {")]
+    [InlineData("{\"version\":99,\"id\":\"x\",\"types\":[]}")]
+    [InlineData("[]")]
+    public void ASchemaThatCannotBeLoadedIsAUsageError(string content)
+    {
+        using var files = new Files();
+        string path = content == "missing" ? Path.Combine(files.Root, "none.json") : files.Add("s.json", content);
+        Directory.CreateDirectory(files.Root);
+        foreach (var command in new[] { "check", "format" })
+        {
+            var result = Run("text\n", new[] { command, "--schema", path });
+            Assert.Equal(2, result.Code);
+            Assert.Equal("", result.Output);
+            Assert.Contains("Cannot load record schema", result.Error);
+        }
     }
 
     [Fact]
