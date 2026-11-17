@@ -181,8 +181,12 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         Assert.True(dryRun.ExitCode == 0, dryRun.Error + dryRun.Output);
         var trial = await Cli("trial", "--project", path, laterId, "--words", wordsPath, "--wait", "--json");
         Assert.True(trial.ExitCode == 0, trial.Error + trial.Output);
-        Assert.Equal(SIL.Motif.Contract.Jobs.JobStatus.Completed,
-            ProjectionJson.Deserialize<SIL.Motif.Contract.Jobs.JobStatusResponse>(trial.Output)!.Status);
+        // A waited Trial prints its review summary with the gate, not the job's status.
+        using (var summary = System.Text.Json.JsonDocument.Parse(trial.Output))
+        {
+            Assert.Equal("report", summary.RootElement.GetProperty("state").GetString());
+            Assert.Equal("green", summary.RootElement.GetProperty("gate").GetProperty("state").GetString());
+        }
         // Two jobs from the first Trial, then the Dry Run and Trial queued after Motif's own Apply.
         Assert.Equal(4, CompletedMeasureJobs(path).Length);
         Assert.All(CompletedMeasureJobs(path), status => Assert.StartsWith("completed", status));
