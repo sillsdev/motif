@@ -22,10 +22,7 @@ internal static class TrialReviewTools
         if (!parsed.Succeeded) return ToolOutcome.Refused(parsed.Refusal!);
         var request = parsed.Value!;
         if (request.Trace) return ReadTrace(context, request);
-        var absent = AbsentRead(request);
-        var outcome = ProjectStoreCommand.ReadExisting(context.ProjectPath, absent, (database, project) =>
-            new TrialReviewCommands(database).Read(request with { ProjectKey = ProjectWorkspaceKey.Compute(project) }));
-        return Render(outcome);
+        return Render(TrialReviewReads.ReadStored(context.ProjectPath, request));
     }
 
     internal static ToolOutcome Refresh(ServerContext context, string proposal, ToolArgs args)
@@ -43,7 +40,7 @@ internal static class TrialReviewTools
     private static ToolOutcome ReadTrace(ServerContext context, ReviewReadRequest request)
     {
         // The trace is retained in the store, so a store that is not current has nothing to trace.
-        if (ProjectStoreCommand.RefuseUnlessStoreIsCurrent(context.ProjectPath, _ => AbsentRead(request)) is { } refused)
+        if (ProjectStoreCommand.RefuseUnlessStoreIsCurrent(context.ProjectPath, _ => TrialReviewReads.Absent(request)) is { } refused)
             return Render(refused);
         var outcome = ProjectStoreCommand.Run<TrialReviewResult>(context.ProjectPath, context.ProductVersion,
             (database, project) => new TrialReviewCommands(database).Read(
@@ -94,31 +91,9 @@ internal static class TrialReviewTools
             Limit: args.OptionalInt("limit")));
     }
 
-    private static CommandOutcome<TrialReviewResult> AbsentRead(ReviewReadRequest request)
-    {
-        if (request.Validate() is { } invalid)
-            return CommandOutcome<TrialReviewResult>.Refused(new Refusal(
-                SIL.Motif.Contract.Commands.RefusalCodes.DifferenceInvalidPage, FailureReason.InvalidArgument, invalid));
-        if (request.ReportId is not null)
-            return CommandOutcome<TrialReviewResult>.Refused(new Refusal(
-                SIL.Motif.Contract.Commands.RefusalCodes.DifferenceNoTrial, FailureReason.NotFound,
-                request.ReportId.StartsWith("legacy/", StringComparison.Ordinal)
-                    ? "The legacy Trial was not found for this Proposal." : "The report was not found for this Proposal."));
-        return CommandOutcome<TrialReviewResult>.Success(new NoTrialResult(request.ProposalId,
-            [new ReadTarget(TargetKind.Tool, "Start a Trial", null, "motif_trial",
-                new ReadArguments(Proposal: request.ProposalId, Action: "run"))]));
-    }
-
     internal static ToolOutcome ReadJob(ServerContext context, string proposal, string job)
     {
-        var outcome = ProjectStoreCommand.Run<TrialReviewResult>(context.ProjectPath, context.ProductVersion, (database, project) =>
-        {
-            var commands = new TrialReviewCommands(database);
-            var key = ProjectWorkspaceKey.Compute(project);
-            var read = commands.Read(new ReviewReadRequest(key, proposal, JobId: job));
-            return read.Refusal?.Code == SIL.Motif.Contract.Commands.RefusalCodes.DifferenceNoBefore
-                ? commands.ProduceAsync(new ReviewProduceRequest(key, proposal, job, null)).GetAwaiter().GetResult() : read;
-        });
+        var outcome = TrialReviewReads.ReadJob(context.ProjectPath, context.ProductVersion, proposal, job);
         return outcome.Succeeded ? ToolOutcome.Ok(JsonSerializer.SerializeToNode<TrialReviewResult>(outcome.Value!, ReviewJson.Options)!, jobId: job)
             : ToolOutcome.Refused(outcome.Refusal!);
     }

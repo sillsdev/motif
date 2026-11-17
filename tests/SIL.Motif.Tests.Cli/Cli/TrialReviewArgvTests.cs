@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Review;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
@@ -43,6 +45,97 @@ public sealed class TrialReviewArgvTests
             Assert.Equal("motif_trial", json.RootElement.GetProperty("next")[0].GetProperty("tool").GetString());
         }
         finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task TheSavedReportReadsWithoutDeveloperCommands()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-cli-review-user-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var project = Path.Combine(root, "project.fwdata");
+            File.WriteAllText(project, "");
+            var start = new ProcessStartInfo(BuildOutput.Cli)
+            { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+            foreach (var argument in new[] { "proposal", "trial", "--project", project, "proposal/one", "--json" })
+                start.ArgumentList.Add(argument);
+            start.Environment.Remove("MOTIF_DEVELOPER_COMMANDS");
+            using var process = Process.Start(start)!;
+            var output = process.StandardOutput.ReadToEndAsync();
+            var error = process.StandardError.ReadToEndAsync();
+            await Task.WhenAll(output, error, process.WaitForExitAsync()).WaitAsync(TimeSpan.FromSeconds(60));
+            Assert.True(process.ExitCode == 0, await error);
+            using var json = JsonDocument.Parse(await output);
+            Assert.Equal("no-trial", json.RootElement.GetProperty("state").GetString());
+            Assert.False(File.Exists(Path.Combine(root, "project.motif.db")) || Directory.GetFiles(root, "*.db").Length > 0,
+                "A read must not create the store.");
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void AFinishedTrialJobReturnsItsSummaryReport()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-cli-review-job-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var project = Path.Combine(root, "project.fwdata");
+            File.WriteAllText(project, "");
+            var proposal = CanonicalId.Mint("proposal/").Value;
+            const string job = "job/cli-wait";
+            var seeded = ProjectStoreCommand.Run<string>(project, MotifProductVersion.CurrentText, (database, locator) =>
+            {
+                var key = ProjectWorkspaceKey.Compute(locator);
+                using (var connection = database.OpenConnection())
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "INSERT INTO Proposals (ProposalId,CurrentIntentDigest,Status) VALUES ($id,'intent','proposed');";
+                    command.Parameters.AddWithValue("$id", proposal);
+                    command.ExecuteNonQuery();
+                }
+                var inputs = new FrozenReviewInputs(key, proposal, "scope", "manifest", null, [], [],
+                    [new ReviewPlannedCase("case", "word-key", "word", "ws", null, [], [])]);
+                var digest = "sha256:" + new string('a', 64);
+                var baseline = new BaselineToken(key, digest, "v1", "2026-01-01T00:00:00Z", digest);
+                var reference = ReviewInputArtifacts.Store(database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
+                var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = proposal, operations = Array.Empty<object>() });
+                var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference);
+                new JobRepository(database).RecordInterrupted(job, key, "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
+                    "{}", "2026-01-01T00:00:00Z", JobStatus.Failed);
+                TrialReviewEvidence.Save(database, new TrialReviewLedger(job, reference, [], [], []));
+                return CommandOutcome<string>.Success("seeded");
+            });
+            Assert.True(seeded.Succeeded, seeded.Refusal?.Message);
+
+            var read = TrialReviewReads.ReadJob(project, MotifProductVersion.CurrentText, proposal, job);
+
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            var available = Assert.IsType<AvailableTrialResult>(read.Value);
+            Assert.NotEmpty(available.Report.ReportId);
+            Assert.NotNull(available.Report.Summary.Incomplete);
+            Assert.NotNull(available.Report.Summary.Flags);
+            Assert.NotNull(TrialReviewReads.UnusableReason(read.Value!));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(JobStatus.CompletedWithAssessmentFailure, true)]
+    [InlineData(JobStatus.CompletedDryRunOnly, true)]
+    [InlineData(JobStatus.Failed, true)]
+    [InlineData(JobStatus.Interrupted, true)]
+    [InlineData(JobStatus.Completed, false)]
+    public void OnlyACompletedTrialJobLooksGreen(JobStatus status, bool unfinished)
+    {
+        var job = new JobStatusResponse("job/one", "project", true, "trial", status, 1, null, false,
+            JobFailureCategory.None, 1);
+
+        var reason = TrialReviewReads.UnfinishedReason(job);
+
+        Assert.Equal(unfinished, reason is not null);
+        if (unfinished) Assert.Contains("did not finish measuring", reason, StringComparison.Ordinal);
     }
 
     [Fact]

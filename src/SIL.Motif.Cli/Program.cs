@@ -221,6 +221,10 @@ try
         ? compose()
         : ProposalCommands.ComposeIntent(new(project, CliProductVersion(), draft, verb, intent, commandCitation));
 
+    // A flag that was renamed names its replacement instead of failing as an unknown option.
+    if (verb != "phonology-examples" && flags.ContainsKey("step-cap"))
+        return Usage("--step-cap was renamed --parser-work-limit <work|unbounded>.", asJson);
+
     switch (verb)
     {
         case var typedVerb when ProposalCommands.ComposerDescriptors.Any(composer => composer.Verb == typedVerb):
@@ -1019,9 +1023,33 @@ try
             {
                 var trialJobId = result.Output.Trim();
                 var trialWakeWarnings = RunnerWarnings.Once(error.WriteLine);
-                result = RenderCommand(JobCommands.WaitForJob(
+                var trialWaited = JobCommands.WaitForJob(
                     new WaitForJobRequest(trialProject, trialJobId, CliProductVersion(), trialWaitTimeout),
-                    () => startRunner(trialProject, trialWakeWarnings), error.WriteLine));
+                    () => startRunner(trialProject, trialWakeWarnings), error.WriteLine);
+                // A finished Trial returns its summary report, as motif_trial does, not just the job's progress.
+                if (trialWaited.Value is { Status: SIL.Motif.Contract.Jobs.JobStatus.Completed })
+                {
+                    var trialReview = TrialReviewReads.ReadJob(trialProject, CliProductVersion(), positionals[0], trialJobId);
+                    result = RenderCommand(trialReview);
+                    // The summary still prints; the exit code lets a script gate on a Trial that proved nothing.
+                    if (result.ExitCode == 0 && trialReview.Value is { } trialSummary &&
+                        TrialReviewReads.UnusableReason(trialSummary) is { } unusable)
+                    {
+                        error.WriteLine("error: " + unusable);
+                        result = result with { ExitCode = FailureEnvelope.ExitCodeFor(FailureReason.Refused) };
+                    }
+                }
+                else
+                {
+                    result = RenderCommand(trialWaited);
+                    // A parser killed by a signal ends the job as completed-with-assessment-failure; never exit 0 on it.
+                    if (result.ExitCode == 0 && trialWaited.Value is { } trialEnded &&
+                        TrialReviewReads.UnfinishedReason(trialEnded) is { } unfinished)
+                    {
+                        error.WriteLine("error: " + unfinished);
+                        result = result with { ExitCode = FailureEnvelope.ExitCodeFor(FailureReason.Refused) };
+                    }
+                }
             }
             break;
 
@@ -1800,7 +1828,9 @@ try
                 reviewRequest.Flag is not null || reviewRequest.Filter is not null || reviewRequest.Word is not null || reviewRequest.Case is not null ||
                 reviewRequest.Trace || reviewRequest.Side is not null || reviewRequest.Cursor is not null || reviewRequest.Limit is not null ||
                 reviewRequest.Detail is not null)) return Usage("Refresh cannot be combined with detail selectors.", asJson);
-            var reviewRead = ProjectStoreCommand.Run<TrialReviewResult>(trialReadProject, CliProductVersion(), (database, project) =>
+            var reviewRead = !refresh && !reviewRequest.Trace
+                ? TrialReviewReads.ReadStored(trialReadProject, reviewRequest with { ProjectKey = "project" })
+                : ProjectStoreCommand.Run<TrialReviewResult>(trialReadProject, CliProductVersion(), (database, project) =>
             {
                 var commands = new TrialReviewCommands(database);
                 var key = ProjectWorkspaceKey.Compute(project);

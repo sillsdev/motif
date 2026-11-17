@@ -1,0 +1,11 @@
+# Read a Trial report
+
+`proposal trial` reads the saved report of a Proposal's Trial: observed red flags, incomplete cases, counts and stopped words. It reads stored evidence, does not rerun the parser, and needs no developer setting.
+
+```powershell
+motif proposal trial --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" <proposalId> --json
+```
+
+Use `--job` or `--report` to pick a particular Trial or saved report, and `--detail failures` or `--detail full` for more of its cases. [Trial a Proposal](cmd:trial) describes every selector.
+
+A Proposal with no Trial returns a "no Trial" result that names the command to start one.

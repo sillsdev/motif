@@ -2,7 +2,7 @@
 
 A Trial measures a Proposal on a throwaway copy. It records a Dry Run and parser evidence so that you can review changes before deciding what to do.
 
-Run `motif trial --project <fwdata> <proposalId> --wait`, then read the saved report with `motif proposal trial --project <fwdata> <proposalId>`. Select named review sets with `--review-set <id,...>`, or use `--review-set none` to omit them. Word files contain one word per line and are limited to 8 MiB of valid UTF-8 text.
+Run `motif trial --project <fwdata> <proposalId> --wait`, which prints the report summary when the Trial completes (with `--json`, the same summary `motif_trial` returns). It exits non-zero when the Trial measured no words or left required cases unmeasured; the summary still prints. Read the saved report again later with `motif proposal trial --project <fwdata> <proposalId>`; it needs no developer setting. Select named review sets with `--review-set <id,...>`, or use `--review-set none` to omit them. Word files contain one word per line and are limited to 8 MiB of valid UTF-8 text.
 
 The summary names observed red flags and separately reports incomplete evidence. No red flags means only “not bad”, never “good”. Use `--detail failures` for bounded samples and `--detail full` for pages of all captured cases. Select a section with `--section`, and use its continuation cursor to read another page. With `--case`, choose the `readings`, `expectations`, `memberships` or `sources` section to page that case’s details; `--side` selects before or after readings. `--word-results` is an alias for the first full word page.
 
