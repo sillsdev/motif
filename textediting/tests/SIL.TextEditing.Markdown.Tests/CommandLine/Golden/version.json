@@ -1,0 +1,22 @@
+[
+  {
+    "path": "-",
+    "findings": [
+      {
+        "id": "fwmd.version.unsupported",
+        "severity": "error",
+        "line": 2,
+        "col": 1,
+        "endLine": 2,
+        "endCol": 9,
+        "message": "fwmd: 99 is not a version this reader knows (it reads version 1). Update the tool."
+      }
+    ],
+    "checks": {
+      "styles": false,
+      "objectReferences": false,
+      "projectPaths": false,
+      "writingSystems": "front matter and config defaults"
+    }
+  }
+]

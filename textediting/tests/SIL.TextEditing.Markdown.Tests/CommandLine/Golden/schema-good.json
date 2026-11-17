@@ -1,0 +1,13 @@
+[
+  {
+    "path": "-",
+    "findings": [],
+    "checks": {
+      "styles": false,
+      "objectReferences": false,
+      "projectPaths": false,
+      "writingSystems": "front matter and config defaults",
+      "recordFields": true
+    }
+  }
+]
