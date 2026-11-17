@@ -11,6 +11,7 @@ code is split into projects by dependency, so each host takes only what it needs
 | `SIL.TextEditing` | The run model, the editor, the spelling scanner and the language-service contracts. UI-free. | Nothing |
 | `SIL.TextEditing.Avalonia` | `RichTextField` and everything that touches Avalonia. | Avalonia, libpalaso |
 | `SIL.TextEditing.Markdown` | FieldWorks Markdown, the YAML record frame, and schema-driven diff and shape checks. The schema is data. | Markdig; no liblcm; AOT-clean |
+| `SIL.TextEditing.WritingSystems` | A project-inventory writing-system mapper and checker for FieldWorks Markdown, backed by a caller-supplied repository or tag list. | Markdown contracts and libpalaso; no Avalonia or liblcm; trimmable and AOT-compatible on net10.0 |
 | `SIL.TextEditing.LCModel` | The `ITsString` adapter (ADR 0016). | `SIL.LCModel.Core` |
 | `SIL.TextEditing.Project` | Project-backed styles and writing systems. Project paths, runtime record schemas, field notations, record I/O and liblcm-backed language services remain planned. | `SIL.LCModel`, the LCModel adapter and Markdown contracts |
 

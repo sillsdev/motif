@@ -103,3 +103,20 @@ The rest is **defaults**: how this version does it where the owner has not decid
 - VS Code's YAML extension does not validate Markdown front matter by itself (R-10: our own extension later).
 
 Owner decisions R-2, R-5, R-6 and R-7, 2026-11-05; R-8, R-9 and R-10, 2026-11-05 (after the review of PR 147); the rest defaults, 2026-11-05.
+
+## Amendment: schema data and partial identity
+
+Owner decisions, 2026-11-16 (#47): a fragment naming a field may also carry the containing object's `guid` in `record-data`, when its
+schema has `HasGuid`. This also applies when the selected rich value is the Markdown body: the GUID stays in `record-data`. It preserves
+identity without changing the positional `root:` grammar. Other fields outside the selected fragment remain refused. Resolving identity
+against `base:` belongs to R2; outline-number paths wait for R1b, and GUID suffixes are not introduced.
+
+Schema-data version 2 distinguishes ordered `seq` from unordered `col`; legacy `sequence` reads as ordered. Frame read/write retains
+supplied list order. A `computed` field flag marks host-produced data without prohibiting frame read/write; detecting an edit and its
+error finding belongs to R2. `ToJson` / `FromJson` save and load the schema data, separately from `ToJsonSchema`'s draft-07 publication.
+The required integer schema-data version is independent of the schema id and Markdown version; unsupported versions are refused.
+
+An object field or list item may allow a flat list of concrete types, without inheritance. Reserved `class` selects its type and fields,
+required for polymorphic objects, optional but matching for monomorphic objects and roots. The writer puts it after GUID, before fields.
+A class-selected partial uses the existing root syntax. Imported version-1 schemas with an ordinary `class` field keep those semantics
+and cannot use that type as a polymorphic alternative; they serialize as version 1 and cannot combine with version-2 features.

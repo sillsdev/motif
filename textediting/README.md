@@ -115,6 +115,64 @@ properties, spelling, the environment box, long documents. The Pandoc tests need
 
 ![The selection bar with More open, over French text](docs/images/selection-bar.png)
 
+## Standalone fwmd
+
+`fwmd` checks and formats FieldWorks Markdown without opening a project. From this folder, publish a native executable with:
+
+```sh
+dotnet publish tools/fwmd/fwmd.csproj -c Release -r <rid> -p:FwmdAot=true
+```
+
+Choose a runtime such as `win-x64` or `linux-x64`. The native executable needs no .NET installation. A plain build or publish is not
+AOT; `FwmdAot=true` opts in at publish time.
+
+```text
+fwmd check [paths|-] [--json] [--warnings-as-errors] [--schema <file.json>] [--config <fwmd.json>]
+fwmd format [paths|-] [--write | --check] [--schema <file.json>] [--config <fwmd.json>]
+fwmd --help
+```
+
+Directories recurse over `*.md` in ordinal full-path order; explicit files may have any extension. Duplicate files are read once
+(case-insensitive on Windows). No input argument means stdin; `-` must be the only input. Use `--` before a filename starting with a dash.
+
+`check` returns 0 with no errors, 1 with errors, and 2 for usage or input errors (including invalid config). Warnings are nonfatal unless
+`--warnings-as-errors` is supplied; suggestions remain nonfatal. `--json` reports each file's findings and which checks ran; its
+[output format](docs/formats/findings.md#fwmd-json-output) repeats the `checks` object per file.
+
+`format` prints canonical Markdown for one input. Several expanded inputs require `--write` or `--check`. `--write` rewrites files;
+`--check` returns 1 if any input differs from canonical text. These flags are mutually exclusive; stdin supports stdout and check but
+cannot be rewritten. All inputs are analysed and prepared before writing; an input error or a checker error in a formattable file prevents writes.
+Record files without a schema are named on stderr with “needs --schema”, skipped, and cause exit 1. The other files are processed
+unless one of them has errors.
+
+`--schema <file.json>` on either command loads serialized [record-schema data](docs/formats/record-files.md#saving-and-loading-a-record-schema)
+from `RecordSchema.ToJson()`, using the versions supported by `FromJson()`. With it, record files receive the full reader's checks.
+Without it, only the frame is checked: record fields and rich values are unchecked, and JSON has `checks.recordFields: false`.
+A schema that cannot be loaded is a usage error (exit 2).
+
+Optional `--config fwmd.json` on either command uses this shape:
+
+```json
+{
+  "analysis": "en",
+  "vernacular": "fr",
+  "writingSystems": {
+    "en": {"language": "en", "direction": "ltr", "font": "Charis SIL"},
+    "fr": {"language": "fr", "direction": "ltr", "font": "Charis SIL"}
+  },
+  "styles": {
+    "paragraph": ["Normal", "Heading 1"],
+    "character": ["Emphasis", "Hyperlink"]
+  }
+}
+```
+
+All properties are optional. Writing-system details default to the library's values; direction is `ltr` or `rtl`. Unknown properties
+and wrong JSON types are usage errors. Front matter overrides config defaults and writing-system details, extending its inventory;
+the resulting analysis and vernacular defaults are accepted. Without a config style catalog, style checks are off. Object references
+and project paths are never resolved. Config v1 uses front matter and an explicit `--config`; an export-written manifest is planned
+with R1b ([ADR 0036](docs/adr/0036-editor-integration-context-and-cli.md)).
+
 ## Projects
 
 | Project | What it is |
@@ -122,8 +180,10 @@ properties, spelling, the environment box, long documents. The Pandoc tests need
 | `src/SIL.TextEditing` | The UI-free run model, editing, clipboard forms and paste rules. No Avalonia, no liblcm. |
 | `src/SIL.TextEditing.Avalonia` | `RichTextField`, the control. |
 | `src/SIL.TextEditing.Markdown` | FieldWorks Markdown and record files. Trimmable and AOT-compatible. |
+| `src/SIL.TextEditing.WritingSystems` | Project-inventory writing-system mapper and checker, using a caller-supplied repository or tag list. |
 | `src/SIL.TextEditing.LCModel` | The `ITsString` adapter and the TsString XML clipboard form. |
 | `src/SIL.TextEditing.Project` | Read-only styles and writing systems from a caller-owned `LcmCache`. |
+| `tools/fwmd` | Standalone Markdown and record-file checker and formatter ([usage](#standalone-fwmd)). |
 | `samples/SIL.TextEditing.Playground` | The shared playground UI both hosts and the integration tests use. |
 | `samples/Playground.Desktop` | The playground in a plain Avalonia window, net48 and net10.0. |
 | `samples/Host48` | The playground inside a WinForms form, net48: FieldWorks' shape. |
@@ -152,9 +212,9 @@ Planned, not built:
 - **Real tables** in the field ([motif#46](https://github.com/sillsdev/motif/issues/46), [tables plan](docs/formats/tables.md#planned-real-tables-in-the-field)).
 - **Project record I/O** and the record schema built from liblcm metadata, in `SIL.TextEditing.Project`
   ([ADR 0031](docs/adr/0031-shared-editing-and-interchange-layer.md), [ADR 0033](docs/adr/0033-block-features.md)).
-- **The `fwmd` command-line checker** ([motif#51](https://github.com/sillsdev/motif/issues/51)).
-- **Editor integration**: an inline WYSIWYG and Markdown source mode, and a VS Code extension with a language server. The playground's
-  Markdown pane is a host-side sketch of the source mode. The plan and a proposed ADR are awaiting owner decisions ([motif#57](https://github.com/sillsdev/motif/issues/57)).
+- **VS Code integration**: an extension with a language server remains planned. The field's source mode is settled by [ADR 0035](docs/adr/0035-source-mode.md);
+  [ADR 0036](docs/adr/0036-editor-integration-context-and-cli.md) records the CLI and context decisions. The remaining editor-integration
+  choices are parked ([motif#57](https://github.com/sillsdev/motif/issues/57)).
 - **Retiring the liblcm refusals** once FieldWorks pins a liblcm with its fixes [#410](https://github.com/sillsdev/liblcm/issues/410), [#413](https://github.com/sillsdev/liblcm/issues/413) and [#414](https://github.com/sillsdev/liblcm/issues/414) ([motif#50](https://github.com/sillsdev/motif/issues/50)).
 
 ## Contributing

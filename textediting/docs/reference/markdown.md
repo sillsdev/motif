@@ -77,8 +77,14 @@ FieldWorks Markdown is a strict profile of Pandoc Markdown. Each point links to 
 - findings `fwmd.yaml.*` and `fwmd.record.*`;
 - FieldWorks Markdown in every rich value and, for a kind that has one, the body.
 
-`RecordSchema.ToJsonSchema()` publishes the schema for editors. The fixtures are in `tests/conformance/records`. The format is in
+`RecordSchema.ToJson()` / `FromJson()` save and load versioned schema data; `ToJsonSchema()` separately publishes the schema for editors. The fixtures are in `tests/conformance/records`. The format is in
 [Record files](../formats/record-files.md).
+
+`RecordReadOptions.Notations` accepts an `INotationChecker`. `LanguageServiceNotationChecker` adapts a copied, ordinal mapping of
+notation names to `ITextLanguageService` instances. Each actual `AnalyzeAsync` call must return an already completed task; no probe
+runs at construction. A pending task throws `InvalidOperationException` without waiting. Unknown notations yield no findings;
+completed service failures and cancellation propagate. Diagnostic instances, ranges and fixes pass through unchanged, before the
+record reader places them in the file.
 
 ## Dependencies, trimming and AOT
 
