@@ -78,11 +78,58 @@ public sealed class ReviewCaseClassifierTests
     }
 
     [Fact]
-    public void MissingCaseIdentityCannotCreateAnEvent()
+    public void MissingCaseKeyCannotCreateAnEventAndStaysNotMeasured()
     {
-        var result = ReviewCaseClassifier.Compare(Facts([Form1], [], [Assertion(Form1, true)]) with { IdentityAvailable = false });
+        var facts = Facts([Form1], [], [Assertion(Form1, true)]) with { CaseKey = "", IdentityAvailable = false };
+        var result = ReviewCaseClassifier.Compare(facts);
         Assert.Empty(result.Flags);
         Assert.Contains("case-identity-unavailable", result.Limitations);
+        Assert.Equal(Completion.NotMeasured, result.Before.Completion);
+    }
+
+    [Fact]
+    public void TypedWordWithoutProjectIdentityShowsItsRealBeforeAndAfter()
+    {
+        var typed = Facts([], [Form1], []) with { WritingSystemId = null, IdentityAvailable = false };
+        var gain = ReviewCaseClassifier.Compare(typed);
+        Assert.Equal(Completion.Complete, gain.Before.Completion);
+        Assert.Equal(Completion.Complete, gain.After.Completion);
+        Assert.False(gain.Before.Parsed);
+        Assert.True(gain.After.Parsed);
+        Assert.Contains("assertion-identity-unavailable", gain.Limitations);
+        Assert.DoesNotContain("case-identity-unavailable", gain.Limitations);
+
+        var loss = ReviewCaseClassifier.Compare(Facts([Form1], [], [Assertion(Form1, true)]) with
+            { WritingSystemId = null, IdentityAvailable = false });
+        Assert.True(loss.NewNoParse);
+        Assert.False(loss.NewApprovedLoss);
+        Assert.Empty(loss.Assertions);
+
+        var stopped = ReviewCaseClassifier.Compare(Facts([Form1], [], []) with
+            { WritingSystemId = null, IdentityAvailable = false, After = Evidence([], true) });
+        Assert.Equal(Completion.Stopped, stopped.After.Completion);
+        Assert.Contains("work-limit", stopped.After.StopReasons);
+    }
+
+    [Fact]
+    public void ParsedTotalsCountTypedWordsAndMatchTheRows()
+    {
+        var accumulator = new ReviewSummaryAccumulator();
+        var rows = new[]
+        {
+            Facts([Form1], [Form1], []),
+            Facts([], [Form1], []) with { CaseKey = "c2", WritingSystemId = null, IdentityAvailable = false },
+            Facts([], [], []) with { CaseKey = "c3", WritingSystemId = null, IdentityAvailable = false },
+        }.Select(ReviewCaseClassifier.Compare).ToArray();
+        foreach (var row in rows) accumulator.Add(row);
+        var snapshot = accumulator.Snapshot();
+        Assert.Equal(rows.Count(r => r.Before.Parsed == true), (int)snapshot.WordBefore.Numerator!);
+        Assert.Equal(rows.Count(r => r.After.Parsed == true), (int)snapshot.WordAfter.Numerator!);
+        Assert.Equal(1, snapshot.WordBefore.Numerator);
+        Assert.Equal(2, snapshot.WordAfter.Numerator);
+        Assert.Equal(3, snapshot.WordAfter.Denominator);
+        Assert.Equal(0, snapshot.BeforeIncomplete.NotMeasured);
+        Assert.Equal(1, snapshot.GeneratedGained + snapshot.AttestedGained);
     }
 
     [Fact]

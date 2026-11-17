@@ -13,12 +13,16 @@ public static class ReviewCaseClassifier
     public static ReviewCaseDelta Compare(ReviewCaseFacts facts)
     {
         ArgumentNullException.ThrowIfNull(facts);
-        if (!facts.IdentityAvailable)
+        var keyed = !string.IsNullOrWhiteSpace(facts.CaseKey) && !string.IsNullOrWhiteSpace(facts.WordKey);
+        if (!keyed)
             return new ReviewCaseDelta(facts.CaseKey, facts.WordKey, facts.Word, facts.WritingSystemId,
                 false, false, false, [], [], facts.Memberships, ["case-identity-unavailable"]);
+        // A word without a project identity is still parsed and measured; only assertion matching needs the identity.
+        if (!facts.IdentityAvailable) facts = facts with { Assertions = [] };
         var before = Observe(facts.Before, facts.Word);
         var after = Observe(facts.After, facts.Word);
         var limitations = new List<string>();
+        if (!facts.IdentityAvailable) limitations.Add("assertion-identity-unavailable");
         if (!before.Complete) limitations.Add("before-incomplete");
         if (!after.Complete) limitations.Add("after-incomplete");
         if (facts.Assertions.Any(item => item.WholeWordNegative && item.Context is not null && !item.Eligible))
