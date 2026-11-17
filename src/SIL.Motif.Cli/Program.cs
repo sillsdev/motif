@@ -176,6 +176,16 @@ try
     if (command is not null && !commandPolicy.IsAvailable(command))
         return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"), error, command);
 
+    if ((verb == "apply" || flags.ContainsKey("apply")) &&
+        ApplyAttributionCheck.Refusal(ApplyAttributionFromFlags(flags, environment), flags.ContainsKey("force"))
+            is { } attributionRefusal)
+    {
+        var refusal = ProposalCommandRenderer.Render(
+            CommandOutcome<ApplyPendingResult>.Refused(attributionRefusal), flags.ContainsKey("json"));
+        error.Write(refusal.Output);
+        return refusal.ExitCode;
+    }
+
     // Every invocation naming a project upserts it into the machine store (ADR 0023 decision 4).
     if (flags.TryGetValue("project", out var projectForRegistry) &&
         commandName is not ("project initialize" or "project tag" or "project tag --set"))

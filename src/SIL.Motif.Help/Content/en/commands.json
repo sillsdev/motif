@@ -517,12 +517,12 @@
   },
   "apply": {
     "title": "Apply with Readiness override",
-    "description": "Applies one Proposal using its already bound Dry Run. The optional --force option skips Readiness checks only; changes that no longer fit remain refused. MCP never applies; the CLI applies in person or in Autonomous mode, which refuses --force.",
+    "description": "Applies one Proposal using its already bound Dry Run. The optional --message must be one line of at most 128 characters. The optional --force option skips Readiness checks only; MCP never applies and Autonomous mode refuses --force.",
     "source": "Hand-written from command behavior."
   },
   "apply --all-pending": {
     "title": "Apply pending changes",
-    "description": "Applies the current pending changes to the FieldWorks project as one unit of work. A current Dry Run can waive Correctness for a judgment-only Proposal; mixed changes still need normal Readiness evidence.",
+    "description": "Applies the current pending changes to the FieldWorks project as one unit of work. The optional --message must be one line of at most 128 characters. A current Dry Run can waive Correctness for a judgment-only Proposal; mixed changes still need normal Readiness evidence.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "writing-systems": {
@@ -1972,7 +1972,7 @@
   },
   "apply --proposal": {
     "title": "Apply one Proposal",
-    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. MCP never applies; the CLI applies in person or in Autonomous mode. It has no Readiness override of its own.",
+    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. The optional --message must be one line of at most 128 characters. MCP never applies, and this command has no Readiness override of its own.",
     "source": "Hand-written from command behavior."
   },
   "label": {

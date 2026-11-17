@@ -42,6 +42,8 @@ public static class PendingChangesWorkflow
         TimeSpan? dryRunTimeout = null, IJobRunnerLauncher? runnerLauncher = null)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (ApplyAttributionCheck.Refusal(request.Attribution) is { } attributionRefusal)
+            return CommandOutcome<ApplyPendingResult>.Refused(attributionRefusal);
         if (ProjectReconciliationMarker.Exists(request.ProjectPath))
         {
             return CommandOutcome<ApplyPendingResult>.Refused(new Refusal("apply.reconciliation-needed",

@@ -1698,6 +1698,9 @@ public static partial class ProposalCommands
     /// </remarks>
     public static CommandOutcome<ApplyProjection> Apply(ApplyRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        if (ApplyAttributionCheck.Refusal(request.Attribution, request.Force) is { } refusal)
+            return CommandOutcome<ApplyProjection>.Refused(refusal);
         if (!File.Exists(request.FwDataPath)) return ApplyWithinLease(request);
         using var lease = ProjectApplyLease.TryAcquire(request.FwDataPath);
         return lease is null
