@@ -28,11 +28,13 @@ public sealed partial class LegacyCredentialStore
         }
     }
 
-    private void DeleteLinux() => WithLinuxAttributes(attributes =>
+    // No error means the key is gone or was never stored; a missing library throws and counts as failure.
+    private bool DeleteLinux() => WithLinuxAttributes(attributes =>
     {
         PasswordClear(IntPtr.Zero, attributes, IntPtr.Zero, out var error);
-        if (error != IntPtr.Zero) ErrorFree(error);
-        return 0;
+        if (error == IntPtr.Zero) return true;
+        ErrorFree(error);
+        return false;
     });
 
     [LibraryImport(GlibLibrary, EntryPoint = "g_hash_table_new")]

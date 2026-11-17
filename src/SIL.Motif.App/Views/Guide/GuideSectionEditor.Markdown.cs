@@ -36,7 +36,7 @@ public sealed partial class GuideSectionEditor
     /// <summary>Opens the shown record as Markdown, after returning any single field to rich text.</summary>
     public async Task<bool> OpenMarkdownAsync()
     {
-        if (_markdownOpening || _shownId is not { } id || _store is not IGdrMarkdownEditStore store || _markdownDocument is not null) return false;
+        if (!_isEditing || _markdownOpening || _shownId is not { } id || _store is not IGdrMarkdownEditStore store || _markdownDocument is not null) return false;
         _markdownOpening = true;
         try
         {

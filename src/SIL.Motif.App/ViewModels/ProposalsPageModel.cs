@@ -864,8 +864,8 @@ public sealed partial class ProposalsPageModel : PageModel
     }
 
     // A Proposal a person deferred lists once, under Deferred, whatever its Trial says.
-    private static bool IsDeferred(ProposalCard card) => card.Status == "deferred" && !card.IsPendingDraft &&
-        !card.IsDraft && card.Group != ProposalGroup.SetAside;
+    internal static bool IsDeferred(ProposalCard card) => card.Status == "deferred" && !card.IsPendingDraft &&
+        card.Group != ProposalGroup.SetAside;
 
     private static bool IsInFilter(ProposalCard card, ProposalListFilter filter) => filter switch
     {

@@ -192,6 +192,39 @@ public sealed class GrammarGuidePageTests
                     text => text.Text == MotifAppStrings.GuideListOldName && text.IsEffectivelyVisible);
                 Assert.Contains("FieldWorks (Lists)", MotifAppStrings.GuideListOldName, StringComparison.Ordinal);
                 Assert.Contains("Grammar Design Records", MotifAppStrings.GuideListOldName, StringComparison.Ordinal);
+
+                // No path reaches the Markdown view, so none reaches its Save bar.
+                Assert.False(page.Editor.ToggleSourceMode());
+                Assert.False(page.Editor.Field!.IsSourceMode);
+                Assert.False(await page.Editor.OpenMarkdownAsync());
+                Assert.False(page.Editor.IsMarkdownOpen);
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void AListThatBecomesOldNamedWhileEditIsOnLeavesEditMode()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (model, page, window, context) = await OpenAsync(Fake(Hierarchy));
+            try
+            {
+                model.SelectedSection = model.Parts[0].Children[0];
+                PageScreenshots.Settle(window);
+                var toggle = page.FindControl<ToggleButton>("EditToggle")!;
+                toggle.IsChecked = true;
+                PageScreenshots.Settle(window);
+                Assert.True(page.Editor.IsEditing);
+
+                model.UsesOldListName = true;
+                PageScreenshots.Settle(window);
+
+                Assert.False(page.Editor.IsEditing);
+                Assert.True(page.Editor.Field!.IsReadOnly);
+                Assert.False(toggle.IsChecked);
+                Assert.False(page.Editor.ToggleSourceMode());
             }
             finally { window.Close(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromSeconds(30));
@@ -231,6 +264,7 @@ public sealed class GrammarGuidePageTests
                 Assert.Contains("Grammar Guide", model.Notice, StringComparison.Ordinal);
                 Assert.Contains("Grammar Design Records", model.Notice, StringComparison.Ordinal);
                 Assert.Empty(model.Parts);
+                Assert.Equal("", model.EmptyText);
             }
             finally { window.Close(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromSeconds(30));

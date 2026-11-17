@@ -295,7 +295,7 @@ public sealed partial class ProgressPageModel : PageModel
             .ConfigureAwait(true);
         if (!IsCurrent(project, generation) || cancellationToken.IsCancellationRequested || Context.Evidence.IsStale) return;
         if (result.Succeeded && result.Value is { Unreadable.Count: 0 } value)
-            WaitingProposals = value.Proposals.Count(card => card.Group == ProposalGroup.WaitingForYou);
+            WaitingProposals = value.Proposals.Count(card => card.Group == ProposalGroup.WaitingForYou && !ProposalsPageModel.IsDeferred(card));
         else NoteUnavailable(result.Refusal);
     }
 

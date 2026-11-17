@@ -102,6 +102,13 @@ public sealed partial class GuideSectionEditor : UserControl
     [TextEditingKeyHandler]
     private async void OnUndoMarkdownKeyDown(object? sender, KeyEventArgs e)
     {
+        // A section shown for reading only has no Markdown view, so Ctrl+Shift+M does nothing there.
+        if (!_isEditing && e.Key == Key.M && e.KeyModifiers.HasFlag(KeyModifiers.Control) &&
+            e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            e.Handled = true;
+            return;
+        }
         if (_markdownDocument is null && _markdownUndo is not null && Session?.UndoSteps == 0 &&
             e.Key == Key.Z && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
@@ -216,7 +223,7 @@ public sealed partial class GuideSectionEditor : UserControl
     /// button and Ctrl+Shift+M in the field do; returns whether it switched. Going back is refused while the Markdown has
     /// an error.
     /// </summary>
-    public bool ToggleSourceMode() => Session?.ToggleSourceMode() == true;
+    public bool ToggleSourceMode() => _isEditing && Session?.ToggleSourceMode() == true;
 
     /// <summary>What Compare and Apply say when a field cannot go back to rich text first.</summary>
     public const string MarkdownFixFirstMessage = PreviewSourceMode.FixFirstMessage;

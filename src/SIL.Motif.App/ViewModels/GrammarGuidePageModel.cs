@@ -278,7 +278,8 @@ public sealed partial class GrammarGuidePageModel : PageModel
                         : result.Refusal is { } refusal
                         ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.GuideReadFailedFormat, refusal.Message)
                         : "";
-                    EmptyText = MotifAppStrings.GuideNoRecords;
+                    // The ambiguity sentence says why there is no Guide; "no sections yet" would contradict it.
+                    EmptyText = result.Refusal is { Code: RefusalCodes.GdrAmbiguous } ? "" : MotifAppStrings.GuideNoRecords;
                     return;
                 }
                 Notice = "";

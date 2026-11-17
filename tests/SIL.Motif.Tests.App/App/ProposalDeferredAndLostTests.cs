@@ -52,6 +52,36 @@ public sealed class ProposalDeferredAndLostTests
     }
 
     [Fact]
+    public void ADeferredProposalWithADraftNameListsUnderDeferred()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.ProposalStandingsCompleteWith(new ProposalStandings(
+            [
+                Card("proposal/ready", "Ready one", "proposed", ProposalGroup.WaitingForYou),
+                Card("proposal/named", "Named draft", "deferred", ProposalGroup.WaitingForYou) with { IsDraft = true },
+            ], 0));
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Proposals;
+                PageScreenshots.Settle(window);
+                var model = workspace.PageModel<ProposalsPageModel>();
+
+                Assert.Equal(["Waiting for You", "Deferred"], model.ListGroups.Select(group => group.Title));
+                Assert.Equal(1, model.GroupFilters.Single(filter => filter.Filter == ProposalListFilter.Deferred).Count);
+                Assert.Equal(1, model.GroupFilters.Single(filter => filter.Filter == ProposalListFilter.WaitingForYou).Count);
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
     public void DecidingLaterMovesAProposalIntoTheDeferredFilter()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

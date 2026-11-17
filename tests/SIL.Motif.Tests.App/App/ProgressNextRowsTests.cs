@@ -13,6 +13,21 @@ public sealed class ProgressNextRowsTests
     public ProgressNextRowsTests() => AvaloniaHeadlessPlatform.Initialize();
 
     [Fact]
+    public async Task DeferredProposalsAreNotCountedAsWaiting()
+    {
+        var fake = new FakeCommandClient();
+        ProposalCard Card(string id, string status) => new(id, id, status, ProposalGroup.WaitingForYou, false, [],
+            TrialStanding.Current, null, []);
+        fake.ProposalStandingsCompleteWith(new ProposalStandings(
+            [Card("proposal/1", "proposed"), Card("proposal/2", "deferred"), Card("proposal/3", "deferred")], 0));
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProgressPageModel(context);
+        await context.OpenProjectAsync("project.fwdata");
+        await context.EvidencePublication;
+        Assert.Equal(1, page.WaitingProposals);
+    }
+
+    [Fact]
     public async Task RefreshHidesThePreviousWaitingCountBeforeTheNewReadFinishes()
     {
         var fake = new FakeCommandClient();

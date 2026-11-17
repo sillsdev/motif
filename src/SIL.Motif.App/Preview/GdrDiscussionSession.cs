@@ -83,7 +83,7 @@ public sealed class GdrDiscussionSession
     /// Switches the field to FieldWorks Markdown (SIL.TextEditing ADR 0035), or back to rich text; returns whether it
     /// switched. Back is refused while the Markdown has an error, and the field stays in Markdown with it marked.
     /// </summary>
-    public bool ToggleSourceMode() => _field.IsSourceMode ? _field.LeaveSourceMode() : _field.EnterSourceMode();
+    public bool ToggleSourceMode() => _field.IsReadOnly && !_field.IsSourceMode ? false : _field.IsSourceMode ? _field.LeaveSourceMode() : _field.EnterSourceMode();
 
     /// <summary>The edit the sessions so far add up to, or null when the Discussion is as it began.</summary>
     public GdrDiscussionEdit? Pending { get; private set; }

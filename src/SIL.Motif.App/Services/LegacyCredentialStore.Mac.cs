@@ -35,7 +35,10 @@ public sealed partial class LegacyCredentialStore
         }
     }
 
-    private void DeleteMac() => WithMacQuery(query => SecItemDelete(query));
+    private const int MacSuccess = 0;
+    private const int MacItemNotFound = -25300;
+
+    private bool DeleteMac() => WithMacQuery(query => SecItemDelete(query) is MacSuccess or MacItemNotFound);
 
     [LibraryImport(Security, EntryPoint = "SecItemDelete")]
     private static partial int SecItemDelete(IntPtr query);

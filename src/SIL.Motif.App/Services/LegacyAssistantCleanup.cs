@@ -19,7 +19,11 @@ public sealed class LegacyAssistantCleanup(ILegacyCredentialStore credentials, s
         try
         {
             if (File.Exists(markerPath)) return;
-            credentials.Delete();
+            if (!credentials.Delete())
+            {
+                System.Diagnostics.Trace.TraceWarning("Motif could not reach the credential store to remove the retired assistant key; it will try again at the next start.");
+                return;
+            }
             var directory = Path.GetDirectoryName(Path.GetFullPath(markerPath));
             if (directory is not null) Directory.CreateDirectory(directory);
             File.WriteAllText(markerPath, "The retired OpenAI key was removed from this computer's credential store.");

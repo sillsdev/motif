@@ -18,10 +18,14 @@ public sealed class NoClaudeInTheWindowTests : IDisposable
         public int Deletes { get; private set; }
         public bool Fail { get; set; }
 
-        public void Delete()
+        public bool Refuse { get; set; }
+
+        public bool Delete()
         {
             if (Fail) throw new IOException("The credential store is locked.");
+            if (Refuse) return false;
             Deletes++;
+            return true;
         }
     }
 
@@ -49,6 +53,21 @@ public sealed class NoClaudeInTheWindowTests : IDisposable
         Assert.False(File.Exists(marker));
 
         credentials.Fail = false;
+        new LegacyAssistantCleanup(credentials, marker).RunOnce();
+        Assert.Equal(1, credentials.Deletes);
+        Assert.True(File.Exists(marker));
+    }
+
+    [Fact]
+    public void ADeleteThatReportsFailureLeavesNoMarkerSoTheNextStartRetries()
+    {
+        var marker = Path.Combine(_folder, "assistant-key-removed");
+        var credentials = new FakeLegacyCredentials { Refuse = true };
+
+        new LegacyAssistantCleanup(credentials, marker).RunOnce();
+        Assert.False(File.Exists(marker));
+
+        credentials.Refuse = false;
         new LegacyAssistantCleanup(credentials, marker).RunOnce();
         Assert.Equal(1, credentials.Deletes);
         Assert.True(File.Exists(marker));
