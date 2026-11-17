@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using SIL.LCModel;
+using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Contract.Parsing;
 
 namespace SIL.Motif.Runner.Composers;
@@ -53,16 +54,15 @@ public sealed record AttributionTag(string Source, string Revision, string Licen
         return true;
     }
 
-    /// <summary>The text with <paramref name="item"/> added, or null when it is already there.</summary>
-    /// <param name="current">What the field holds now, in the writing system the tag is written in.</param>
-    /// <param name="item">The tag or notice to add.</param>
-    /// <param name="separator">What joins it to the text already there.</param>
+    /// <summary>Whether <paramref name="current"/> already carries this tag, as an item of the field's own format.</summary>
+    /// <param name="current">What one writing-system alternative of the field holds now.</param>
     /// <param name="prefix">The text before the tag in each item of this field, empty for an entry.</param>
     /// <remarks>
-    /// Other text is kept untouched. An item for the same source and revision under another licence is refused rather
-    /// than added beside it, because the field would then state two licences for one revision.
+    /// Only a whole segment of the tag's own shape counts, so ordinary prose never matches. An item for the same source and
+    /// revision under another licence is refused rather than added beside it, because the field would then state two
+    /// licences for one revision.
     /// </remarks>
-    public string? AddTo(string current, string separator, string prefix)
+    public bool IsIn(string current, string prefix)
     {
         foreach (var part in current.Split([';', '\n', LineSeparator]))
         {
@@ -70,14 +70,19 @@ public sealed record AttributionTag(string Source, string Revision, string Licen
             if (!piece.StartsWith(prefix, StringComparison.Ordinal) || !TryParse(piece[prefix.Length..], out var found) ||
                 found.Key != Key)
                 continue;
-            if (found.Licence == Licence) return null;
+            if (found.Licence == Licence) return true;
             throw new InvalidOperationException(
                 $"The field already says '{found.Text}' for {Key}; this tag says '{Text}'. " +
                 "Which licence applies is for a person to decide, so Motif will not state both.");
         }
-        var item = prefix + Text;
-        return current.Length == 0 ? item : current.TrimEnd() + separator + item;
+        return false;
     }
+
+    /// <summary>Whether any analysis writing system alternative of the field already carries this tag.</summary>
+    public bool IsInAnyAnalysisAlternative(LcmCache cache, ITsMultiString field, string prefix) =>
+        cache.ServiceLocator.WritingSystems.AnalysisWritingSystems
+            .Select(system => field.get_String(cache.WritingSystemFactory.GetWsFromStr(system.Id))?.Text ?? string.Empty)
+            .Any(text => IsIn(text, prefix));
 
     /// <summary>The writing system tag the Attribution is written in: the one asked for, else the default analysis one.</summary>
     public static string AnalysisWritingSystem(LcmCache cache, string? requested, string construct)

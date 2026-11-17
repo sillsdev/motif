@@ -27,7 +27,7 @@ public static class SetProjectAttributionIntentParser
 }
 
 /// <summary>
-/// Stages one <c>project/langProject/setDescription</c> that adds the project's Attribution notice after the Description
+/// Stages one <c>project/langProject/appendDescription</c> that adds the project's Attribution notice after the Description
 /// text already there, or none when the notice is already in it.
 /// </summary>
 public static class SetProjectAttributionComposer
@@ -44,13 +44,12 @@ public static class SetProjectAttributionComposer
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
         var ws = AttributionTag.AnalysisWritingSystem(cache, intent.AnalysisWritingSystem, ConstructName);
-        var current = cache.LangProject.Description.get_String(cache.WritingSystemFactory.GetWsFromStr(ws))?.Text ?? string.Empty;
-        string? text;
-        try { text = intent.Tag.AddTo(current, Separator, AttributionTag.NoticePrefix); }
+        bool present;
+        try { present = intent.Tag.IsInAnyAnalysisAlternative(cache, cache.LangProject.Description, AttributionTag.NoticePrefix); }
         catch (InvalidOperationException failure) { throw new ContractParseException($"'{ConstructName}': {failure.Message}"); }
-        if (text is null) return [];
-        return [new OperationEnvelope((mintId ?? (() => CanonicalId.Mint()))(), LangProjectDescriptionOperationKinds.Set,
-            target: CanonicalId.FromGuid(cache.LangProject.Guid), after: JsonSerializer.SerializeToElement(new { ws, text }),
-            rationale: Rationale)];
+        if (present) return [];
+        return [new OperationEnvelope((mintId ?? (() => CanonicalId.Mint()))(), AttributionOperationKinds.AppendToDescription,
+            target: CanonicalId.FromGuid(cache.LangProject.Guid),
+            after: JsonSerializer.SerializeToElement(new { ws, text = intent.Tag.Notice, separator = Separator }), rationale: Rationale)];
     }
 }

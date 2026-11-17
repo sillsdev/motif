@@ -35,12 +35,12 @@ public sealed class SetAttributionDraftTests(PristineProjectFixture pristine)
 
         var entries = Compose("compose-set-entry-attribution", new { tag = Tag, entries = new[] { new { entry = first }, new { entry = second } } });
         Assert.True(entries.Succeeded, entries.Refusal?.Message);
-        Assert.All(entries.Value!.Operations, operation => Assert.Equal(LexEntryBibliographyOperationKinds.SetBibliography, operation.Kind));
+        Assert.All(entries.Value!.Operations, operation => Assert.Equal(AttributionOperationKinds.AppendToBibliography, operation.Kind));
         Assert.Equal(2, entries.Value.Operations.Count);
 
         var project = Compose("compose-set-project-attribution", new { tag = Tag });
         Assert.True(project.Succeeded, project.Refusal?.Message);
-        Assert.Equal(LangProjectDescriptionOperationKinds.Set, Assert.Single(project.Value!.Operations).Kind);
+        Assert.Equal(AttributionOperationKinds.AppendToDescription, Assert.Single(project.Value!.Operations).Kind);
 
         using var reopened = new FwDataProjectLoader().LoadCache(path);
         Assert.Equal(string.Empty, reopened.ServiceLocator.GetInstance<ILexEntryRepository>()
@@ -53,9 +53,9 @@ public sealed class SetAttributionDraftTests(PristineProjectFixture pristine)
     [Fact]
     public void TheChangesReadAsAttributionAndMoveNoParse()
     {
-        var entry = new OperationEnvelope(CanonicalId.Mint(), LexEntryBibliographyOperationKinds.SetBibliography,
+        var entry = new OperationEnvelope(CanonicalId.Mint(), AttributionOperationKinds.AppendToBibliography,
             target: CanonicalId.Mint(), after: JsonSerializer.SerializeToElement(new { ws = "en", text = Tag }));
-        var project = new OperationEnvelope(CanonicalId.Mint(), LangProjectDescriptionOperationKinds.Set,
+        var project = new OperationEnvelope(CanonicalId.Mint(), AttributionOperationKinds.AppendToDescription,
             target: CanonicalId.Mint(), after: JsonSerializer.SerializeToElement(new { ws = "en", text = "Attribution: " + Tag }));
 
         Assert.Equal("Record an entry's attribution", ChangeVocabulary.Of(entry).Title);

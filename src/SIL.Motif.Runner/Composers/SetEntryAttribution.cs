@@ -94,7 +94,7 @@ public static class SetEntryAttributionIntentParser
 }
 
 /// <summary>
-/// Stages one <c>lexical/lexEntry/setBibliography</c> per entry that does not yet carry the tag, writing the entry's
+/// Stages one <c>lexical/lexEntry/appendBibliography</c> per entry that does not yet carry the tag, writing the entry's
 /// existing Bibliography text first and the tag after it. An entry that already carries the tag stages nothing.
 /// </summary>
 public static class SetEntryAttributionComposer
@@ -112,7 +112,6 @@ public static class SetEntryAttributionComposer
         ArgumentNullException.ThrowIfNull(intent);
         var mint = mintId ?? (() => CanonicalId.Mint());
         var ws = AttributionTag.AnalysisWritingSystem(cache, intent.AnalysisWritingSystem, ConstructName);
-        var handle = cache.WritingSystemFactory.GetWsFromStr(ws);
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
         var operations = new List<OperationEnvelope>();
         var problems = new List<string>();
@@ -127,10 +126,10 @@ public static class SetEntryAttributionComposer
             }
             try
             {
-                var current = entry.Bibliography.get_String(handle)?.Text ?? string.Empty;
-                if (intent.Tag.AddTo(current, Separator, string.Empty) is not { } text) continue;
-                operations.Add(new OperationEnvelope(mint(), LexEntryBibliographyOperationKinds.SetBibliography,
-                    target: item.Entry, after: JsonSerializer.SerializeToElement(new { ws, text }), rationale: Rationale));
+                if (intent.Tag.IsInAnyAnalysisAlternative(cache, entry.Bibliography, string.Empty)) continue;
+                operations.Add(new OperationEnvelope(mint(), AttributionOperationKinds.AppendToBibliography,
+                    target: item.Entry, after: JsonSerializer.SerializeToElement(new { ws, text = intent.Tag.Text, separator = Separator }),
+                    rationale: Rationale));
             }
             catch (InvalidOperationException failure)
             {

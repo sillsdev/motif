@@ -99,9 +99,9 @@ public static class ChangeVocabulary
             [WfiAnalysisOperationKinds.DeleteAnalysis] = Removed,
             [WfiAnalysisOperationKinds.CreateAnalysis] = Added,
             [WfiWordformSpellingStatusOperationKinds.SetSpellingStatus] = Spelling,
-            [LexEntryBibliographyOperationKinds.SetBibliography] =
+            [AttributionOperationKinds.AppendToBibliography] =
                 Word("entry-attribution", "entry attribution", "entry attributions", "Record an entry's attribution"),
-            [LangProjectDescriptionOperationKinds.Set] =
+            [AttributionOperationKinds.AppendToDescription] =
                 Word("project-attribution", "project attribution", "project attributions", "Record the project's attribution"),
         };
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
@@ -52,7 +53,7 @@ public sealed class SetEntryAttributionComposerTests(PristineProjectFixture pris
         var operations = SetEntryAttributionComposer.Build(_cache, Intent(Tag, null, entry, Second));
 
         Assert.Equal(2, operations.Count);
-        Assert.All(operations, operation => Assert.Equal(LexEntryBibliographyOperationKinds.SetBibliography, operation.Kind));
+        Assert.All(operations, operation => Assert.Equal(AttributionOperationKinds.AppendToBibliography, operation.Kind));
         var proposal = new Proposal(new Dictionary<string, string> { ["lexical"] = "1.0" }, CanonicalId.Mint(), null, operations);
         var dry = ScratchDryRun.Of(_cache, proposal);
         Assert.Equal(string.Empty, Bibliography(entry));
@@ -143,6 +144,59 @@ public sealed class SetEntryAttributionComposerTests(PristineProjectFixture pris
         Run([chosen]);
         Assert.Equal(Tag, Bibliography(First, "fr"));
         Assert.Equal(string.Empty, Bibliography(First, "en"));
+    }
+
+    [Fact]
+    public void TheTagAlreadyInAnyAnalysisWritingSystemOfTheFieldIsANoOp()
+    {
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            _cache.ServiceLocator.WritingSystemManager.GetOrSet("fr", out var french);
+            _cache.ServiceLocator.WritingSystems.AnalysisWritingSystems.Add(french);
+        });
+        Set(First, "Smith 2019; " + Tag, "fr");
+
+        Assert.Empty(SetEntryAttributionComposer.Build(_cache, Intent(Tag, null, First)));
+        Assert.Empty(SetEntryAttributionComposer.Build(_cache, Intent(Tag, "fr", First)));
+    }
+
+    [Fact]
+    public void ProseThatOnlyLooksLikeANoticeIsKeptAndNeverRefused()
+    {
+        Set(First, "Attribution: Data courtesy of the Sami Parliament");
+
+        Run(SetEntryAttributionComposer.Build(_cache, Intent(Tag, null, First)));
+
+        Assert.EndsWith("; " + Tag, Bibliography(First), StringComparison.Ordinal);
+        Assert.StartsWith("Attribution: Data courtesy", Bibliography(First), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FormattedMultiRunTextKeepsItsRunsWhenTheTagIsAppended()
+    {
+        var english = _cache.WritingSystemFactory.GetWsFromStr("en");
+        var other = _cache.WritingSystemFactory.GetWsFromStr(SeededProject.RightToLeftTag);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var builder = TsStringUtils.MakeString("Smith ", english).GetBldr();
+            builder.ReplaceTsString(builder.Length, builder.Length, TsStringUtils.MakeString("2019", english));
+            builder.SetIntPropValues(6, 10, (int)FwTextPropType.ktptBold, (int)FwTextPropVar.ktpvEnum, (int)FwTextToggleVal.kttvForceOn);
+            builder.ReplaceTsString(builder.Length, builder.Length, TsStringUtils.MakeString(" kitab", other));
+            First.Bibliography.set_String(english, builder.GetString());
+        });
+
+        var operations = SetEntryAttributionComposer.Build(_cache, Intent(Tag, null, First));
+        var proposal = new Proposal(new Dictionary<string, string> { ["lexical"] = "1.0" }, CanonicalId.Mint(), null, operations);
+        var dry = ScratchDryRun.Of(_cache, proposal);
+        Assert.Equal("Smith 2019 kitab; " + Tag, dry.ExpectedEffects.Single().After["en"]);
+        ProposalApplier.Apply(_cache, proposal, dry.Anchor, "motif-tests");
+
+        var result = First.Bibliography.get_String(english);
+        Assert.Equal("Smith 2019 kitab; " + Tag, result.Text);
+        Assert.Equal(4, result.RunCount);
+        Assert.Equal(1, result.get_Properties(1).GetIntPropValues((int)FwTextPropType.ktptBold, out _));
+        Assert.Equal(other, result.get_Properties(2).GetIntPropValues((int)FwTextPropType.ktptWs, out _));
+        Assert.Equal(english, result.get_Properties(3).GetIntPropValues((int)FwTextPropType.ktptWs, out _));
     }
 
     [Fact]
