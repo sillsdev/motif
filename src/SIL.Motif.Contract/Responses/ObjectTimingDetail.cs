@@ -9,4 +9,8 @@ public sealed record ObjectTimingDetail(bool IsComplete, string? Description = n
     public bool HasRetriedWords { get; init; }
     /// <summary>Whether a contributing run had no object statistics cache.</summary>
     public bool StatisticsUnavailable { get; init; }
+    /// <summary>The timing rows Assess expected when it skipped per-object timing for a run, or null when none was skipped or the number was not stored.</summary>
+    public long? SkippedEstimatedRows { get; init; }
+    /// <summary>The row limit that skip was measured against; null when no run was skipped.</summary>
+    public long? SkippedRowBudget { get; init; }
 }

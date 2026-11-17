@@ -510,6 +510,27 @@ public sealed class EvidenceSetReadsTests : IDisposable
     }
 
     [Fact]
+    public void ARunThatSkippedPerObjectTimingReportsTheStoredSkippedRows()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
+        var words = new[] { new AssessedWord("cat", "analysed", []) { ElapsedMs = 10 } };
+        var evidence = new AssessmentTimingEvidence([], 0, false, 0)
+        { StatisticsUnavailable = true, SkippedEstimatedRows = 1_234_567 };
+        new AssessmentRepository(fixture.Database).Record(new NewAssessmentRecord(
+            "skipped-timing", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "scope",
+            new AssessmentSubject.Words(Selection.Create("Default", ["cat"]), "whitespace", "1"),
+            JsonSerializer.Serialize(fixture.Token, MotifJson.CreateOptions()), "outcome", "semantic", "grammar", "model", "pipeline", 0,
+            new AssessmentRecordMaterial.Words(words, null, null, []) { TimingEvidence = evidence }));
+
+        var timing = TimingCommand.Timing(new TimingRequest(fixture.Project.FullFwDataPath, AssessmentId: "skipped-timing"));
+
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.False(timing.Value!.ObjectTimingAggregatesAvailable);
+        Assert.Equal(1_234_567, timing.Value.ObjectTimingDetail!.SkippedEstimatedRows);
+        Assert.Equal(250_000, timing.Value.ObjectTimingDetail.SkippedRowBudget);
+    }
+
+    [Fact]
     public void APartialRunKeepsWorkSharesByObjectAndARunStoredBeforeSaysTheyWereNotKept()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);

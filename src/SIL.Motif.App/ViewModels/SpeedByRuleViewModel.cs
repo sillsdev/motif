@@ -125,6 +125,12 @@ public sealed partial class SpeedByRuleViewModel : ObservableObject
         UnavailableText = _context.Evidence.IsStale ? MotifAppStrings.DiagnosticsOutOfDate : MotifAppStrings.DiagnosticsNoWork;
     }
 
+    // The CLI stored that it skipped per-object timing and how many rows it expected; say so with the numbers.
+    private static string SkippedText(ObjectTimingDetail skip) => skip is { SkippedEstimatedRows: { } rows, SkippedRowBudget: { } budget }
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.DiagnosticsSkippedFormat,
+            rows.ToString("N0", CultureInfo.CurrentCulture), budget.ToString("N0", CultureInfo.CurrentCulture))
+        : MotifAppStrings.DiagnosticsSkipped;
+
     internal async Task ReadAsync(string projectPath, CancellationToken cancellationToken)
     {
         Clear();
@@ -164,7 +170,10 @@ public sealed partial class SpeedByRuleViewModel : ObservableObject
                 UnavailableText = MotifAppStrings.DiagnosticsMismatched;
             return;
         }
-        UnavailableText = !result.Succeeded ? MotifAppStrings.DiagnosticsUnreadable
+        UnavailableText = result.Value is { ObjectTimingDetail: { StatisticsUnavailable: true, SkippedEstimatedRows: not null } skip } &&
+            result.Succeeded && assessmentId == result.Value.AssessmentId && !result.Value.IsStale && !result.Value.CurrentProjectIsStale
+            ? SkippedText(skip)
+            : !result.Succeeded ? MotifAppStrings.DiagnosticsUnreadable
             : result.Value is { IsStale: true } or { CurrentProjectIsStale: true } ? MotifAppStrings.DiagnosticsOutOfDate
             : result.Value is { } recorded && (recorded.AssessmentId != assessmentId || recorded.By != "rule")
                 ? MotifAppStrings.DiagnosticsMismatched : MotifAppStrings.DiagnosticsNoWork;

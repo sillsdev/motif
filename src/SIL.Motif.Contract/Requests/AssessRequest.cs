@@ -15,6 +15,9 @@ namespace SIL.Motif.Contract.Requests;
 /// <param name="ReplaceAssessmentId">The prior complete Assessment to replace for an explicit reparse.</param>
 /// <param name="BudgetSeconds">Whole-run time limit in seconds; null uses the saved Parsing setting.</param>
 /// <param name="FullObjectTimingDetail">Retain object detail for every word in a bounded explicit Selection.</param>
+/// <param name="CollectObjectTiming">Ask for per-object timing explicitly, as listing ObjectTiming in <c>collect</c> does:
+/// the pre-flight row estimate that skips it for a large run does not apply. The row budget still caps stored word
+/// detail and the per-object totals stay exact.</param>
 public sealed record AssessRequest(
     string ProjectPath,
     SelectionRequest? Selection = null,
@@ -22,4 +25,5 @@ public sealed record AssessRequest(
     ParserWorkLimit? PerWordParserWorkLimit = null,
     string? ReplaceAssessmentId = null,
     bool FullObjectTimingDetail = false,
-    int? BudgetSeconds = null);
+    int? BudgetSeconds = null,
+    bool CollectObjectTiming = false);

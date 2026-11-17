@@ -7346,6 +7346,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.DiagnosticsWarningCountFormat" xml:space="preserve"><value>{0} · {1}</value></data>
   <data name="MotifApp.DiagnosticsMeasuredFormat" xml:space="preserve"><value>Parser Steps per measured word: {0} of {1} words have recorded Parser Steps.</value></data>
   <data name="MotifApp.DiagnosticsNoWork" xml:space="preserve"><value>Recorded Parser Steps are unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsSkippedFormat" xml:space="preserve"><value>Speed by Rule was not recorded: this Parse would have needed {0} timing rows, more than the {1} limit.</value></data>
+  <data name="MotifApp.DiagnosticsSkipped" xml:space="preserve"><value>Speed by Rule was not recorded: this Parse would have needed more timing rows than the limit allows.</value></data>
   <data name="MotifApp.DiagnosticsPartial" xml:space="preserve"><value>Some per-word rule detail is unavailable. Recorded aggregate totals are shown.</value></data>
   <data name="MotifApp.DiagnosticsWarningsFormat" xml:space="preserve"><value>Warnings: {0} → {1} ({2})</value></data>
   <data name="MotifApp.DiagnosticsTrialUnavailable" xml:space="preserve"><value>Current Trial diagnostics are unavailable.</value></data>

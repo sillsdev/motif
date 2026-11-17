@@ -3872,6 +3872,8 @@ public static class MotifAppStrings
     public static string DiagnosticsWarningCountFormat => Text("MotifApp.DiagnosticsWarningCountFormat");
     public static string DiagnosticsMeasuredFormat => Text("MotifApp.DiagnosticsMeasuredFormat");
     public static string DiagnosticsNoWork => Text("MotifApp.DiagnosticsNoWork");
+    public static string DiagnosticsSkippedFormat => Text("MotifApp.DiagnosticsSkippedFormat");
+    public static string DiagnosticsSkipped => Text("MotifApp.DiagnosticsSkipped");
     public static string DiagnosticsPartial => Text("MotifApp.DiagnosticsPartial");
     public static string DiagnosticsWarningsFormat => Text("MotifApp.DiagnosticsWarningsFormat");
     public static string DiagnosticsTrialUnavailable => Text("MotifApp.DiagnosticsTrialUnavailable");

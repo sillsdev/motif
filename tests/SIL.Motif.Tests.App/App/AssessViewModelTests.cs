@@ -127,6 +127,32 @@ public sealed class AssessViewModelTests
         Assert.Equal("assessment/one", request.RetrySourceAssessmentId);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AParseRequestsObjectTimingExplicitlyOnlyWhileDiagnosticsIsOn(bool diagnostics)
+    {
+        var (fake, _, assess) = NewViewModel();
+        assess.CollectObjectTiming = () => diagnostics;
+        fake.AssessCompletesWith(NewResponse());
+
+        await assess.RunCommand.ExecuteAsync(null);
+
+        Assert.Equal(diagnostics, Assert.Single(fake.AssessRequests).CollectObjectTiming);
+    }
+
+    [Fact]
+    public async Task TheWorkspaceWiresDiagnosticsToTheParseRequest()
+    {
+        var fake = new FakeCommandClient();
+        var context = WorkspaceContextTests.NewContext(fake);
+
+        Assert.False(context.Assess.CollectObjectTiming());
+        context.Diagnostics = true;
+        Assert.True(context.Assess.CollectObjectTiming());
+        await context.StopProjectWorkAsync();
+    }
+
     [Fact]
     public async Task RerunningCanUseALargerParserWorkLimitForTheChosenWords()
     {

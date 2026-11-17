@@ -325,7 +325,7 @@ public static class AssessCommand
                     collected = supportedKinds.Contains(AssessmentKind.Correctness)
                         ? CollectedKinds.Append(AssessmentKind.Correctness).ToArray() : CollectedKinds;
                     // Only the default asks for timing unprompted; an explicit collect or full detail request keeps it.
-                    var estimatedRows = request.FullObjectTimingDetail ? 0
+                    var estimatedRows = request.FullObjectTimingDetail || request.CollectObjectTiming ? 0
                         : ObjectTimingPreflight.EstimateRows(baselineReader.Cache, composition.Selection.Words.Count);
                     if (estimatedRows > ObjectTimingPreflight.RowBudget)
                     {

@@ -1959,6 +1959,25 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void ARequestForObjectTimingIsNotSkippedByThePreflightAndTheDetailStaysBounded()
+    {
+        using var seeded = NewSeededScratch();
+        ObjectTimingPreflight.RowBudgetForTests.Value = 1;
+        try
+        {
+            var outcome = AssessTwoWords(seeded, null, CancellationToken.None, collectObjectTiming: true);
+
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            Assert.Contains(outcome.Value!.Measurements, item => item.Kind == AssessmentKind.ObjectTiming.ToStoredKind());
+            Assert.Equal(ObjectTimingNote.Truncated, outcome.Value.ObjectTimingNote!.State);
+        }
+        finally
+        {
+            ObjectTimingPreflight.RowBudgetForTests.Value = null;
+        }
+    }
+
+    [Fact]
     public void AnExplicitCollectOfObjectTimingIsNotSkippedByThePreflight()
     {
         using var seeded = NewSeededScratch();
@@ -2246,7 +2265,8 @@ public sealed class DeterministicAssessCommandTests : IDisposable
 
     // Assesses the seeded Text's two words, each with one timed object, so Finalizing has two words to count.
     private SIL.Motif.Contract.Commands.CommandOutcome<AssessCommandResponse> AssessTwoWords(
-        SeededScratch seeded, Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
+        SeededScratch seeded, Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken,
+        bool collectObjectTiming = false)
     {
         Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
             seeded.FwDataPath, "Default", [seeded.Seeded.TextId], [])).Succeeded);
@@ -2267,7 +2287,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
         };
-        return AssessCommand.Run(new AssessRequest(seeded.FwDataPath), NewManagedRoot(), assessor,
+        return AssessCommand.Run(new AssessRequest(seeded.FwDataPath, CollectObjectTiming: collectObjectTiming), NewManagedRoot(), assessor,
             new FakeInvoker(), onProgress, cancellationToken);
     }
 

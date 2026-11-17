@@ -159,6 +159,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         ArgumentNullException.ThrowIfNull(baseline);
         Selection = selection;
         Assess = assess;
+        Assess.CollectObjectTiming = () => Diagnostics;
         assess.Words.UseViewMemory(ViewMemory);
         assess.Trace.UseViewMemory(ViewMemory);
         assess.Compare.UseViewMemory(ViewMemory);

@@ -115,6 +115,40 @@ public sealed class DiagnosticsPageModelTests
         await context.StopProjectWorkAsync();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SpeedByRuleSaysWhyWhenTheStoredAssessmentSkippedPerObjectTiming(bool storedNumbers)
+    {
+        var fake = new FakeCommandClient();
+        fake.TimingCompletesWith(new TimingResponse("assessment-parse", "all", "rule", 1, null, null, [], [], [])
+        {
+            ObjectTimingDetail = new ObjectTimingDetail(false)
+            {
+                StatisticsUnavailable = true,
+                SkippedEstimatedRows = 1_234_567,
+                SkippedRowBudget = storedNumbers ? 250_000 : null,
+            },
+            ObjectTimingAggregatesAvailable = false,
+        });
+        var context = WorkspaceContextTests.NewContext(fake);
+        await context.OpenProjectAsync("project.fwdata");
+        context.PublishEvidence(new WorkspaceEvidence(WorkspaceContextTests.Assessment(), DateTimeOffset.Now, false));
+        var speed = new SpeedByRuleViewModel(context);
+
+        await speed.ReadAsync("project.fwdata", CancellationToken.None);
+
+        Assert.Empty(speed.Rows);
+        Assert.Equal(storedNumbers
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                "Speed by Rule was not recorded: this Parse would have needed {0} timing rows, more than the {1} limit.",
+                1_234_567.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
+                250_000.ToString("N0", System.Globalization.CultureInfo.CurrentCulture))
+            : "Speed by Rule was not recorded: this Parse would have needed more timing rows than the limit allows.",
+            speed.UnavailableText);
+        await context.StopProjectWorkAsync();
+    }
+
     [Fact]
     public async Task SpeedByRuleUsesCompleteTotalsWhenPerWordDetailIsIncomplete()
     {

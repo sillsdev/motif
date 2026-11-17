@@ -24,7 +24,10 @@ public sealed class AssessmentEvidenceSet
         { DetailWordCounts = limited.Where(evidence => !evidence.StatisticsUnavailable)
                 .Select(evidence => evidence.DetailWordCount).ToArray(),
             HasRetriedWords = limited.Any(evidence => evidence.HasRetriedWords),
-            StatisticsUnavailable = limited.Any(evidence => evidence.StatisticsUnavailable) };
+            StatisticsUnavailable = limited.Any(evidence => evidence.StatisticsUnavailable),
+            SkippedEstimatedRows = limited.Select(evidence => evidence.SkippedEstimatedRows).FirstOrDefault(rows => rows is not null),
+            SkippedRowBudget = limited.Any(evidence => evidence.SkippedEstimatedRows is not null)
+                ? SIL.Motif.Host.PanGloss.PanGlossBatchStatisticsReader.DefaultObjectTimingRowBudget : null };
     }
 
     /// <summary>The complete run followed by the explicit replacements contributing answers.</summary>
