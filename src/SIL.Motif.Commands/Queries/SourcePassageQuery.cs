@@ -96,7 +96,7 @@ public static class SourcePassageQuery
     private static CommandOutcome<SourcePassageResponse> InvalidRef() => Refused(RefusalCodes.SourceRefInvalid,
         FailureReason.InvalidArgument, "Name a Passage: a chapter such as MAT 5 for a Paratext Source, or a Text id for FieldWorks Texts.");
     private static CommandOutcome<SourcePassageResponse> Stale() => Refused(RefusalCodes.SourceIndexStale,
-        FailureReason.Refused, "The Source index is stale or pending. Capture the saved project to queue a refresh.");
+        FailureReason.Refused, "The Source index is stale or pending; a running worker rebuilds it in the background. Capture the saved project to queue a refresh now.");
     private static CommandOutcome<SourcePassageResponse> InvalidCursor() => Refused(RefusalCodes.SourcePassageCursorInvalid,
         FailureReason.InvalidArgument, "The cursor is invalid or belongs to another project, Source or Passage.");
     private static CommandOutcome<SourcePassageResponse> Refused(string code, FailureReason reason, string message) =>

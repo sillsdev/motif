@@ -82,7 +82,7 @@ tokeniser as `fieldworks-word-forming-<rule version>`; an index built with anoth
 `machine-3.9.7-latin-1`, is rebuilt automatically in the background and refuses reads as stale until then.
 Verse bridges anchor under their first verse. Existing corpus anchors use c:, the first eight hex digits
 of the SHA-256 of the file relative path, then line and word index. The index rule is permanent and golden
-tested; tokeniser changes must preserve it or require migration. D1 defines Document identity; source-change
+tested; tokeniser changes must preserve it or require migration. The switch to the FieldWorks-rule tokeniser is a one-time exception, allowed because no stored word numbers existed yet. D1 defines Document identity; source-change
 handling must retain approvals with their **changed since** mark across a renamed path or changed JSONL id.
 Agree one anchor format with the interlinearizer team.
 
