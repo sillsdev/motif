@@ -867,11 +867,14 @@ public sealed partial class ProposalsPageModel : PageModel
     internal static bool IsDeferred(ProposalCard card) => card.Status == "deferred" && !card.IsPendingDraft &&
         card.Group != ProposalGroup.SetAside;
 
+    /// <summary>The one waiting rule: not a Draft, status proposed, not deferred. The rail badge, the Waiting for You chip and Progress all count it.</summary>
+    internal static bool IsWaiting(ProposalCard card) => !card.IsDraft && card.Status == "proposed" && !IsDeferred(card);
+
     private static bool IsInFilter(ProposalCard card, ProposalListFilter filter) => filter switch
     {
         ProposalListFilter.YourChangesNotAppliedYet => card.Group == ProposalGroup.NotAppliedYet,
         ProposalListFilter.Deferred => IsDeferred(card),
-        ProposalListFilter.WaitingForYou => !IsDeferred(card) && card.Group is ProposalGroup.WaitingForYou or
+        ProposalListFilter.WaitingForYou => IsWaiting(card) && card.Group is ProposalGroup.WaitingForYou or
             ProposalGroup.NeedsAnotherTry or ProposalGroup.NotTried,
         ProposalListFilter.Closed => card.Group == ProposalGroup.SetAside,
         _ => false,
@@ -1017,7 +1020,7 @@ public sealed partial class ProposalsPageModel : PageModel
         SetAsideLinkText = _includeSetAside ? MotifAppStrings.ProposalsHideClosed
             : standings.SetAsideCount == 0 ? string.Empty
             : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalsShowClosedFormat, standings.SetAsideCount);
-        var waiting = cards.Count(card => !card.Card.IsDraft && card.Card.Status == "proposed");
+        var waiting = cards.Count(card => IsWaiting(card.Card));
         BadgeCount = waiting == 0 ? null : waiting;
     }
 

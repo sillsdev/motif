@@ -1564,6 +1564,28 @@ public sealed class ProposalsPageModelTests
         Assert.False(editor.SaveCommand.CanExecute(null));
     }
 
+    [Fact]
+    public async Task RailBadgeWaitingChipAndProgressCountOneWaitingRule()
+    {
+        var ready = Card("p/ready", "Ready", ProposalGroup.WaitingForYou);
+        var draft = Card("p/draft", "Draft", ProposalGroup.NotTried) with { IsDraft = true };
+        var deferred = Card("p/deferred", "Deferred", ProposalGroup.WaitingForYou) with { Status = "deferred" };
+        var fake = new FakeCommandClient();
+        fake.OverviewCompletesWith(SampleOverview.Populated());
+        fake.ProposalStandingsCompleteWith(Standings(ready, draft, deferred));
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        var progress = new ProgressPageModel(context);
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        var chip = Assert.Single(page.GroupFilters, filter => filter.Filter == ProposalListFilter.WaitingForYou).Count;
+        Assert.Equal(1, chip);
+        Assert.Equal(1, page.BadgeCount);
+        Assert.Equal(1, progress.WaitingProposals);
+        await context.StopProjectWorkAsync();
+    }
+
     private static readonly TrialStanding Stale = TrialStanding.NeedsAnotherTry(TrialStaleReason.BaselineMoved);
 
     private static async Task<(FakeCommandClient Fake, WorkspaceContext Context, ProposalsPageModel Page)> OpenAsync(
