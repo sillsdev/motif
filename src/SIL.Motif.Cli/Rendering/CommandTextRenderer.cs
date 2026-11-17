@@ -781,6 +781,7 @@ public static class CommandTextRenderer
         var text = new StringBuilder();
         text.AppendLine(CountsLine(page["counts"]!.Deserialize<AssessmentCounts>(
             new JsonSerializerOptions(JsonSerializerDefaults.Web))!));
+        text.AppendLine(WordsGivenLine(page["inputWords"]?.GetValue<int>() ?? 0, page["lowercaseWords"]?.GetValue<int>() ?? 0));
         text.AppendLine("Assessment: " + page["assessment"] + "  (" + page["showing"] + ")");
         foreach (var word in page["words"]!.AsArray())
             text.AppendLine($"  {word!["word"]}: {word["outcome"]}" +
@@ -791,6 +792,9 @@ public static class CommandTextRenderer
             text.AppendLine($"More: motif assess <project> --summary --offset {next}");
         return new CommandResult(0, text.ToString());
     }
+
+    private static string WordsGivenLine(int given, int lowercase) =>
+        $"  {given:N0} words given, {lowercase:N0} lowercase forms added";
 
     private static string CountsLine(AssessmentCounts counts) =>
         $"  Counts: {counts.Words} word(s); {counts.Analysed} analysed " +
@@ -808,6 +812,7 @@ public static class CommandTextRenderer
             text.AppendLine("    " + entry.Source + ": " + entry.Count);
         text.AppendLine("  Assessments: " + string.Join(", ", response.AssessmentIds));
         text.AppendLine(CountsLine(response.Counts));
+        text.AppendLine(WordsGivenLine(response.InputWords, response.LowercaseWords));
         text.AppendLine();
         text.AppendLine(response.SummaryMarkdown);
         foreach (var word in response.Words)

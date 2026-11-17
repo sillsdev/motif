@@ -17,7 +17,8 @@ public static class AssessSummary
         var result = ProjectionJson.ToNode(new
         {
             response.Baseline, response.Selection, response.AssessmentIds, response.SummaryMarkdown,
-            response.InvocationId, response.SelectionDescriptor, response.Counts, response.Measurements,
+            response.InvocationId, response.SelectionDescriptor, response.Counts, response.InputWords, response.LowercaseWords,
+            response.Measurements,
             response.TimingOverrideAssessmentIds, response.CompletionSummary, response.CorrectnessStatus,
             response.GrammarWarnings,
         })!.AsObject();
@@ -79,6 +80,8 @@ public static class AssessSummary
             ["showing"] = page.Length == 0 ? $"showing 0 of {words.Count}" : $"showing {offset + 1}-{end} of {words.Count}",
             ["offset"] = offset,
             ["total"] = words.Count,
+            ["inputWords"] = words.Count(row => row.LowercaseOf is null),
+            ["lowercaseWords"] = words.Count(row => row.LowercaseOf is not null),
             ["nextOffset"] = end < words.Count ? end : null,
             ["costComparison"] = new JsonObject { ["state"] = "unavailable", ["reason"] = "No paired Assessment was selected." },
         };
@@ -90,6 +93,7 @@ public static class AssessSummary
     private static JsonNode Concise(AssessmentWordResult row)
     {
         var node = new JsonObject { ["word"] = row.Word, ["outcome"] = row.Outcome };
+        if (row.LowercaseOf is { } lowercaseOf) node["lowercaseOf"] = lowercaseOf;
         if (row.StoppedBy is { } stoppedBy) node["stoppedBy"] = stoppedBy;
         if (row.Outcome == "analysed")
         {
@@ -101,7 +105,7 @@ public static class AssessSummary
 
     private static JsonNode Detailed(AssessmentWordResult row) => ProjectionJson.ToNode(new
     {
-        row.Word, row.WordWritingSystem, row.Outcome, row.IsIncomplete, row.CompletionStatus,
+        row.Word, row.LowercaseOf, row.WordWritingSystem, row.Outcome, row.IsIncomplete, row.CompletionStatus,
         row.Comparison, row.AnalysisComparison, row.StoredAnalysesAvailable,
         Morphology = row.Morphology is { } evidence ? new
         {

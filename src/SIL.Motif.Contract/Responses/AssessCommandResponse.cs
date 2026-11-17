@@ -18,6 +18,10 @@ public sealed record AssessCommandResponse(
     /// <summary>The complete caller request and resolved Selection provenance for this result.</summary>
     public SelectionDescriptor? SelectionDescriptor { get; init; }
     public IReadOnlyList<AssessmentWordResult> Words { get; init; } = new AssessmentWordResult[0];
+    /// <summary>The words the caller gave: every row except the lowercase forms the second pass added.</summary>
+    public int InputWords => Words.Count(word => word.LowercaseOf is null);
+    /// <summary>The rows the lowercase second pass added; <see cref="Words"/> counts them as well.</summary>
+    public int LowercaseWords => Words.Count(word => word.LowercaseOf is not null);
     /// <summary>Words per outcome, and among analysed words how many are accepted or guess-only.</summary>
     public AssessmentCounts Counts => AssessmentCounts.Of(Words);
     public IReadOnlyList<ProducedAssessmentReference> Measurements { get; init; } = new ProducedAssessmentReference[0];
@@ -32,6 +36,9 @@ public sealed record AssessCommandResponse(
 public sealed record AssessmentWordResult(
     string Word, string Outcome, bool IsIncomplete, string CompletionStatus, int? ElapsedMs, string? RawSignature)
 {
+    /// <summary>The listed word whose lowercase form this row is; null for a word the caller gave.</summary>
+    public string? LowercaseOf { get; init; }
+
     /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
     public string? WordWritingSystem { get; init; }

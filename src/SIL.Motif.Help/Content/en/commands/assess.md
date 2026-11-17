@@ -32,6 +32,12 @@ JSON returns the Baseline, Selection, and Assessment results. Each word's `compa
 
 The comparison's `availability` distinguishes `Available` (analysis identities were compared), `RecordedGradesOnly` (recorded reading grades are known, but matched analysis identities are unknown), and `Unavailable` (no morphology comparison was recorded or reconstructed). Unavailable evidence is not a known empty set. An incomplete search makes no claim that an Approved or undecided analysis was not built. No grammar verdict is inferred from the measurements.
 
+## Lowercase forms
+
+Every word is parsed as written. If a word's lowercase form differs from it and is not already in your list, that lowercase form is parsed too, as an extra row marked `lowercaseOf` with the word it came from. The reported word count can therefore exceed the number of words you gave. Words are normalised to NFD and de-duplicated first, so a repeated word is one input word.
+
+Human output says “N words given, M lowercase forms added”. JSON and `--summary` report `inputWords` (the words you gave) and `lowercaseWords` (the added rows) beside `counts` and `total`, which count every row, lowercase forms included.
+
 ## Limits
 
 Assess and Trial use the Default Selection's per-word parser work limit and time policy, including for a supplied word list. A Trial's automatic before Assessment uses the exact limits frozen for the Trial. A stop at the work limit is the same on every computer. A stop at the time safety net varies with machine load, so compare `capped` and `timedOut` separately, and inspect the recorded limits before comparing independent runs. In JSON each stopped word's `stoppedBy` is `work-limit`, `time-safety-net`, or `both` when the work limit and the time safety net both fired inside that word's search; it is read from the word's outcome and the parser's evidence together, so a word that returned readings before a limit fired still names it. A word that was not stopped has no `stoppedBy`. A stopped word is not evidence that no analysis exists.

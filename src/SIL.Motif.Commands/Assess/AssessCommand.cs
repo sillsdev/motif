@@ -293,6 +293,7 @@ public static class AssessCommand
 
             AssessmentScope.Words scope;
             IReadOnlyList<string> parsedWords = composition.Selection.Words;
+            IReadOnlyDictionary<string, string> lowercaseOrigins = new Dictionary<string, string>();
             var exportedCandidate = Path.GetDirectoryName(baseline.FwDataPath)!;
             IReadOnlyList<ProducedAssessment> produced;
             try
@@ -338,6 +339,7 @@ public static class AssessCommand
                 { Casing = LowercasePass.ForCache(baselineReader.Cache, writingSystemId) };
                 // The lowercase wordforms are rows of their own, so every per-word context and total covers them.
                 parsedWords = scope.ParsedWords;
+                lowercaseOrigins = scope.Casing?.Expand(composition.Selection.Words).LowercaseOf ?? lowercaseOrigins;
                 if (reuseParserPath is not null && BeforeAssessmentReuse.Find(database, assessments, baseline.Token,
                         composition.Selection, scope, baselineReader.Cache, reuseParserPath, cancellationToken) is { } reused)
                 {
@@ -671,6 +673,7 @@ public static class AssessCommand
                             var row = word with
                             {
                                 Origin = origin,
+                                LowercaseOf = lowercaseOrigins.GetValueOrDefault(word.Word),
                                 Readings = readings,
                                 TryWordLink = storedContext.WordLinks.GetValueOrDefault(word.Word),
                                 HasNoWordform = !storedContext.PresentWords.Contains(word.Word),

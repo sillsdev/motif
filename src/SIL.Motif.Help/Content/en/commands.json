@@ -372,7 +372,7 @@
   },
   "assess": {
     "title": "Measure a Selection",
-    "description": "Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them.",
+    "description": "Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them. A word whose lowercase form differs and is not listed is also parsed as an extra row marked lowercaseOf, so the result reports inputWords and lowercaseWords separately.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "stats": {
