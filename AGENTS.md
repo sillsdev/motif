@@ -24,14 +24,15 @@ and runs the full suite instead when anything is unknown (no map, an old map, a 
 shared test code, a data file no source names). `-Changed -Explain` shows the selection without building. See
 [docs/testing-changed-files.md](docs/testing-changed-files.md).
 
-**Nine tests and two layout cells run only in the scheduled slow run, and landing does not prove them.**
-`.github/workflows/slow.yml` (daily and by manual dispatch) sets `MOTIF_SLOW_SCALE=1` and runs the six slow-scale
-App tests, the three 688,000-word memory tests and the full layout grid; `-All` skips the nine and inspects one
-layout cell of three. This is the one deliberate exception to landing whole projects: do not filter in or out to
-cover it, and a green `-All` does not mean those tests passed. A tenth test, the Commands project's 688,000-word
-`ProposalDifferenceCommandsTests.ProducingADifferenceOverALargeWordListReportsMemoryAndRows`, also skips without the
-variable and is in no run: it is hand-only until a quiet-machine run shows it fits a hosted runner. The list, what
-each proves and how to run it by hand are in [docs/testing-slow-run.md](docs/testing-slow-run.md).
+**Ten tests and two layout cells run only in the scheduled slow run, and landing does not prove them.**
+`.github/workflows/slow.yml` (daily and by manual dispatch) sets `MOTIF_SLOW_SCALE=1` and runs the six slow-scale App
+tests, the three 688,000-word memory tests, the 10,000-approval Apply test and the full layout grid; `-All` skips the
+ten and inspects one layout cell of three. This is the one deliberate exception to landing whole projects: do not
+filter in or out to cover it, and a green `-All` does not mean those tests passed. An eleventh test, the Commands
+project's 688,000-word `ProposalDifferenceCommandsTests.ProducingADifferenceOverALargeWordListReportsMemoryAndRows`,
+also skips without the variable and is in no run: it is hand-only until a quiet-machine run shows it fits a hosted
+runner. The list, what each proves and how to run it by hand are in
+[docs/testing-slow-run.md](docs/testing-slow-run.md).
 
 **Landers run `./test.ps1 -All`.** Rebase onto the current `origin/main`, then run
 `pwsh -NoProfile -File ./test.ps1 -All` with no `-SkipBuild`, so the build is fresh and the counts come from the final SHA.
