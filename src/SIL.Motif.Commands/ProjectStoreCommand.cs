@@ -188,11 +188,7 @@ public static class ProjectStoreCommand
         catch (MotifStoreVersionException exception)
         {
             return CommandOutcome<T>.Refused(new Refusal("store.other-version", FailureReason.Refused,
-                exception.Message, new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["fwDataPath"] = fwDataPath,
-                    [RefusalFactNames.StorePath] = exception.StorePath,
-                }));
+                exception.Message, VersionFacts(exception, fwDataPath)));
         }
         catch (NotSupportedException exception)
         {

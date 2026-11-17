@@ -69,7 +69,7 @@
     "source": "Hand-written from the Motif store binding rules."
   },
   "store.other-version": {
-    "why": "Motif's data for this project was made by another version of Motif, so this version cannot read it. Tell the linguist; do not retry.",
+    "why": "Motif's data for this project was made by another version of Motif, so this version cannot read it. If the refusal names an older schema (storeUpgradable), a normal open of the project in Motif upgrades it and keeps a .schema<N>.bak, or run motif store upgrade --project; never delete it. Otherwise tell the linguist; do not retry.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
   "parse.already-running": {

@@ -423,7 +423,9 @@ public sealed partial record WindowRefusal
             return string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.AssessBudgetStoppedFormat,
                 refusal.Facts.GetValueOrDefault("wordsDone") ?? "0", refusal.Facts.GetValueOrDefault("wordsNotDone") ?? "0");
         if (refusal.Code == C.StoreInconsistent) return StoreDamaged;
-        if (refusal.Code == C.StoreOtherVersion) return StoreFromOtherVersion;
+        if (refusal.Code == C.StoreOtherVersion)
+            return refusal.Facts.ContainsKey(RefusalFactNames.StoreUpgradable)
+                ? MotifAppStrings.RefusalStoreUpgradable : StoreFromOtherVersion;
         if (refusal.Facts.ContainsKey(RefusalFactNames.StoreLockMissing)) return MotifAppStrings.RefusalStoreLockMissing;
         if (refusal.Facts.ContainsKey(RefusalFactNames.ParserNotFound) && ParserUnusableCodes.Contains(refusal.Code))
             return ParserMissing;

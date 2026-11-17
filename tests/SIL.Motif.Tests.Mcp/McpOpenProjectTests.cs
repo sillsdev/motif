@@ -144,6 +144,7 @@ public sealed class McpOpenProjectTests
             Assert.True(result.IsError, ErrorText(result));
             Assert.Equal("store.other-version", result.StructuredContent!.Value.GetProperty("code").GetString());
             Assert.Equal(store, result.StructuredContent.Value.GetProperty("facts").GetProperty("storePath").GetString());
+            Assert.Equal("true", result.StructuredContent.Value.GetProperty("facts").GetProperty("storeUpgradable").GetString());
             var older = MotifSchema.CurrentSchema - 1;
             var text = ErrorText(result);
             Assert.Contains($"schema {older}", text);

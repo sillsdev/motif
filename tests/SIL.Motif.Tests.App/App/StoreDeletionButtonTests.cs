@@ -38,6 +38,8 @@ public sealed class StoreDeletionButtonTests
                 ["fwDataPath"] = Project, [RefusalFactNames.StorePath] = StorePath, [RefusalFactNames.StoreUpgradable] = "true",
             }));
         Assert.False(refusal.OffersStoreDeletion);
+        Assert.DoesNotContain("Delete", refusal.Sentence);
+        Assert.Contains("upgrade", refusal.Sentence);
     }
 
     [Theory]

@@ -4168,6 +4168,10 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>PanGloss gave an answer Motif could not read. Install the PanGloss that matches this Motif, then try again.</value>
     <comment>Sentence the window shows for a refusal about an answer from PanGloss Motif could not read. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>
   </data>
+  <data name="MotifApp.RefusalStoreUpgradable" xml:space="preserve">
+    <value>This project's Motif store is from an older version. Opening the project normally upgrades it and keeps the original as a .bak file; your FieldWorks project is not touched.</value>
+    <comment>Sentence the window shows when a read found an older Motif store that a normal open upgrades. FieldWorks is a product name; .bak is a file extension.</comment>
+  </data>
   <data name="MotifApp.RefusalStoreFromOtherVersion" xml:space="preserve">
     <value>Motif cannot open this store. Delete it and reopen the project to continue. Changes not applied yet are lost; your FieldWorks project is not touched.</value>
     <comment>Sentence the window shows for a refusal about a Motif store written by another version of Motif. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>
