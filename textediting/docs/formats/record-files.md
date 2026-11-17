@@ -8,7 +8,7 @@ record kind with a main long-text field, that field is the Markdown body below t
 |---|---|
 | File name | `*.fw.md`, like any FieldWorks Markdown file. A top-level `record:` key is what makes it a record file. |
 | API | `RecordFileReader.Read(text, schema, options)` and `RecordFileWriter.Write(document, schema)` in `SIL.TextEditing.Markdown.Records`. |
-| Schema | A `RecordSchema`, which is data. `RecordSchema.ToJsonSchema()` publishes it as a JSON Schema for editors. |
+| Schema | A `RecordSchema`, which is data. `ToJson()` / `FromJson()` save and load it; `ToJsonSchema()` publishes a separate JSON Schema for editors. |
 | Defined by | The fixtures in `tests/conformance/records` (README "Record files"), ADRs 0032 and 0033. |
 | Status | Shipped: the frame, the schema, the findings and the fixtures. Planned: export from liblcm, diffs and shape checks, and the schema built from liblcm metadata (`SIL.TextEditing.Project`, ADR 0031). |
 
@@ -253,11 +253,15 @@ Here `comment` is a field of one paragraph, so the writer writes `|-`.
 
 - The first few segments of the path name the record. How many depends on the record kind: two for `lexicon/entry`
   (`/lexicon/palit(2)`), three for `lists/item` (`/lists/GDR/GDR-47`).
-- Each further segment is a field of an owned object, followed by a 1-based index for a sequence: `/lexicon/palit(2)/senses/1`.
+- Each further segment is a field of an owned object, followed by a 1-based index for a sequence or collection: `/lexicon/palit(2)/senses/1`.
   `record-data` then holds that object's fields.
 - A fragment names a field, and after a dot one writing system: `#gloss`, `#definition.en`.
   - A fragment that names one rich value (a field in one writing system, or one alternative) makes that value the body.
   - Any other fragment makes `record-data` hold that field only.
+- A field partial may also carry its containing object's `guid` in `record-data` when that type has `HasGuid`. This includes a rich
+  value written as the body: its GUID stays in the frame. Identity is optional; fields outside the selected fragment remain refused.
+  A polymorphic partial carries `class` there to select its concrete type. The positional root syntax is unchanged; GUID suffixes and
+  outline-number paths such as `senses/1.2` are not supported. Resolving identity against `base:` belongs to the planned R2 comparison.
 - A root that does not walk the schema is `fwmd.record.bad-root`. A key outside the field the root names is `fwmd.record.outside-root`.
 
 <!-- fixture: records/01-frame.json | a partial file whose root names one alternative of a rich field: front matter only, and the value as a one-paragraph body | file -->
@@ -335,12 +339,75 @@ conformance README documents:
 | `Integer`, `Boolean`, `Guid` | `Integer`, `Boolean`, `Guid` | plain number, `true`/`false`, quoted lowercase GUID |
 | `Reference` | `Reference`, `References` | one FieldWorks Markdown link with `guid=`, double-quoted |
 | `Object` | `Object`, `Objects` | a mapping of the object type's fields |
-| `Sequence` | `Objects`, `References`, `Texts`, `Notations` | a list |
+| `Sequence`, `Collection` | `Objects`, `References`, `Texts`, `Notations`; `AsCollection(name)` makes a declared list unordered | a list |
 
 - An object type has fields in canonical order and `HasGuid` (default true).
+- `Sequence` is ordered; `Collection` is unordered. The frame reader and writer retain supplied item order for both; comparison of
+  ordering belongs to R2. `RecordField.IsList` identifies either kind.
+- `Computed(name)` marks a host-produced field (`RecordField.Computed`, false by default). The frame still reads and writes it;
+  deciding whether it was edited, and reporting an edited-computed error, belongs to R2.
+- `Object` and `Objects` can take several concrete type names. `ObjectTypeNames` and `ObjectTypes` list the alternatives; singular
+  `ObjectTypeName` and `ObjectType` are null for multiple alternatives. There is no inheritance. A reserved `class` in the record
+  selects the type and its fields: required for polymorphic objects, optional but matching for monomorphic objects and roots.
+  A missing or disallowed class is `fwmd.record.class-not-allowed`. The writer puts GUID first, class next, then ordinary fields.
+  Version-1 schemas that explicitly declare an ordinary `class` field retain those field semantics; such types cannot be polymorphic
+  alternatives. Class-only objects are retained.
 - A record kind has a name (`record:`), a root type, how many path segments name a record (`pathSegments`) and an optional body field (`RecordSchemaBuilder.Kind`).
 - A text field in one writing system has a default: `RecordWritingSystem.Analysis` or `Vernacular`.
 - A field name has no `.`, `/`, `#`, space or control character, because those delimit field paths (`senses/1/definition.en`).
+
+## Saving and loading a record schema
+
+`RecordSchema.ToJson()` writes deterministic, two-space-indented JSON with a final newline. `RecordSchema.FromJson(text)` reads one
+schema object, unlike the fixtures' outer dictionary of named schemas. This schema-data format is separate from the one-way draft-07
+output of `ToJsonSchema()`. Its required integer `version` is independent of the opaque schema `id` and of the front matter's `fwmd`.
+`RecordSchema.CurrentVersion` is 2. The reader accepts versions 1 and 2 and refuses unversioned or unsupported versions. Malformed JSON,
+duplicate keys, unknown properties, invalid declarations and unresolved type names throw `FormatException`; null input throws
+`ArgumentNullException`. JSON nesting is limited to 64. Forward and recursive type references are supported.
+
+Version 2 spells ordered lists `seq` and unordered lists `col`; `sequence` remains accepted as ordered in both versions. An object uses
+`type` for one concrete type or `types` for alternatives, never both. `seq`, `col`, `types` and `computed` require version 2.
+`computed: true` marks a computed field; false is omitted. The writer emits version 2 except for schemas with an ordinary legacy
+`class` field: those emit version 1 with `sequence`, and cannot combine that legacy field with version-2 features.
+
+This excerpt is from the version-2 `classes` fixture:
+
+<!-- fixture-excerpt: records/schemas.json -->
+```json
+          {
+            "name": "children",
+            "kind": "col",
+            "item": {
+              "kind": "object",
+              "types": [
+                "note",
+                "tag"
+              ]
+            }
+          }
+```
+
+The field kinds are `text`, `rich`, `notation`, `integer`, `boolean`, `guid`, `reference`, `object`, `seq` and `col` (plus legacy
+`sequence`). Lists have an `item` of kind object, reference, text or notation. Text, rich and notation fields may use `multi: true`;
+text fields in one writing system use `ws: analysis` or `vernacular`. Notation fields name their `notation`; rich fields preserve
+`paragraphs` and optional `blocks` (`tables`, `lists`, `headings`). Types preserve field order and GUID policy. Kinds declare `name`,
+`root`, `pathSegments` and optional `body`.
+
+Defaults are `guid: true`, `multi: false`, `paragraphs: false`, `ws: analysis`, `pathSegments: 2` and `computed: false`. Omitted `blocks`
+uses the builder default (all block kinds for rich paragraphs, none for a single paragraph); `blocks: []` explicitly allows none.
+
+<!-- fixture: records/08-classes.json | ok: fwmd.record.class-not-allowed: a declared class selects its fields | file -->
+```markdown
+---
+fwmd: 1
+record: "records/record"
+schema: "classes.schema.json"
+record-data:
+  child:
+    class: "note"
+    text: "A note."
+---
+```
 
 ## JSON Schema export
 
