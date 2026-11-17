@@ -161,7 +161,7 @@ public sealed class GrammarDataHygieneTests
         Assert.Empty(GrammarDataHygiene.Inspect("image.png", new byte[] { 137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0 }));
         Assert.Empty(GrammarDataHygiene.Inspect("opaque.weird", Enumerable.Range(0, 64).Select(i => (byte)(i * 37)).ToArray()));
         var repository = FindRepository();
-        foreach (var relative in new[] { "site/fixtures/help-export.json", "tests/conformance/proposal-digest/014-create-text/canonical.json" })
+        foreach (var relative in new[] { "tests/conformance/proposal-digest/014-create-text/canonical.json" })
             Assert.DoesNotContain(GrammarDataHygiene.Inspect(relative, File.ReadAllBytes(Path.Combine(repository, relative))), f => f.Severity == FindingSeverity.Reject);
     }
 

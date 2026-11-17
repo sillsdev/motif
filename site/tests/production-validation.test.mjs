@@ -18,7 +18,7 @@ test('production sync rejects fixture inputs even when explicitly supplied', asy
 	const repository = path.join(root, 'repository');
 	const site = path.join(repository, 'site');
 	const args = productionArguments(repository, {
-		helpExport: path.join(site, 'fixtures', 'help-export.json'),
+		helpExport: path.join(site, 'fixtures', 'inputs', 'export.json'),
 	});
 
 	assert.throws(

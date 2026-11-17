@@ -7,7 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { syncSiteContent } from '../scripts/sync-core.mjs';
+import { syncSiteContent, validateHelpLinks } from '../scripts/sync-core.mjs';
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
@@ -458,7 +458,7 @@ test('sync renders Guide metadata and content from the exported catalog', async 
 	}
 });
 
-test('sync publishes every authored Guide page from the built CLI export', async (t) => {
+test('sync resolves Help links and publishes every authored Guide page from the built CLI export', async (t) => {
 	const cli = await builtCliPath();
 	if (!cli) {
 		t.skip('Set MOTIF_SITE_CLI_EXE or build one Motif CLI apphost to run the real-source site sync check.');
@@ -482,6 +482,8 @@ test('sync publishes every authored Guide page from the built CLI export', async
 	assert.equal(helpExport.locale, 'en');
 	assert.ok(Array.isArray(helpExport.entries));
 	assert.ok(helpExport.entries.length > 0);
+	const unknownLinks = validateHelpLinks(helpExport.entries);
+	assert.equal(unknownLinks.length, 0, `Unresolved Help links:\n${unknownLinks.join('\n')}`);
 	await writeFile(helpExportPath, stdout);
 
 	const site = path.join(root, 'site');

@@ -18,7 +18,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate repository files.' }
 $paths = $paths | Sort-Object -Unique
 $headings = @{}
 foreach ($name in $paths) {
-    if ($name -match '^(textediting/|src/SIL\.Motif\.Help/|tests/SIL\.Motif\.Tests\.Cli/Golden/help-all-current\.json$|site/fixtures/help-export\.json$|\.github/workflows/textediting\.yml$)') { continue }
+    if ($name -match '^(textediting/|src/SIL\.Motif\.Help/|tests/SIL\.Motif\.Tests\.Cli/Golden/help-all-current\.json$|\.github/workflows/textediting\.yml$)') { continue }
     $path = Join-Path $Root $name
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
     $extension = [IO.Path]::GetExtension($name)

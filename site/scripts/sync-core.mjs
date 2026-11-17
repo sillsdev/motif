@@ -163,7 +163,7 @@ function walkPath(root, id, asset) {
 	return target;
 }
 
-function resolveHelpTarget(kind, code, entries, walkthroughs) {
+function resolveHelpTarget(kind, code, entries, walkthroughs, unknownLinks) {
 	if (kind === 'shot') {
 		const [id, stepId, ...rest] = code.split('/');
 		if (!id || !stepId || rest.length) return null;
@@ -177,20 +177,36 @@ function resolveHelpTarget(kind, code, entries, walkthroughs) {
 	const entryKind = kind === 'cmd' ? 'command' : kind;
 	code = decodeURIComponent(code);
 	const entry = entries.find((candidate) => candidate.kind === entryKind && candidate.code === code);
-	if (!entry) throw new Error(`Unknown ${kind} help link: ${code}`);
+	if (!entry) {
+		const message = `Unknown ${kind} help link: ${code}`;
+		if (!unknownLinks) throw new Error(message);
+		unknownLinks.push(message);
+		return '';
+	}
 	return entryUrlPath(entry);
 }
 
-function rewriteHelpLinks(markdown, entries, walkthroughs) {
+function rewriteHelpLinks(markdown, entries, walkthroughs, unknownLinks) {
 	const withScreenshots = markdown.replace(/!\[([^\]]*)\]\(shot:([^)]+)\)/g, (_, alt, code) => {
 		const target = resolveHelpTarget('shot', code, entries, walkthroughs);
 		return target ? `![${alt}](${target})` : alt;
 	});
 	return withScreenshots.replace(/(!?\[[^\]]*\]\()((?:cmd|term|ui|guide):[^)]+)(\))/g, (_, prefix, target, suffix) => {
 		const colon = target.indexOf(':');
-		const destination = resolveHelpTarget(target.slice(0, colon), target.slice(colon + 1), entries, walkthroughs);
+		const destination = resolveHelpTarget(target.slice(0, colon), target.slice(colon + 1), entries, walkthroughs, unknownLinks);
 		return `${prefix}${destination}${suffix}`;
 	});
+}
+
+export function validateHelpLinks(entries, walkthroughs = new Map()) {
+	const unknownLinks = [];
+	for (const entry of entries) {
+		if (typeof entry.helpPage !== 'string') continue;
+		const entryUnknownLinks = [];
+		rewriteHelpLinks(entry.helpPage, entries, walkthroughs, entryUnknownLinks);
+		unknownLinks.push(...entryUnknownLinks.map((message) => `${entry.kind} ${entry.code}: ${message}`));
+	}
+	return unknownLinks;
 }
 
 function normalizedLinkTarget(target, sourcePath, docsRoot, includedDocs, repository) {
