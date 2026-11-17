@@ -307,7 +307,10 @@ public sealed class CliTests
         var check = Run("", new[] { "check", files.Root, a, "--json" });
         using var json = JsonDocument.Parse(check.Output);
         Assert.Equal(0, check.Code);
-        Assert.Equal(new[] { a, b }, json.RootElement.EnumerateArray().Select(e => e.GetProperty("path").GetString()));
+        var reported = json.RootElement.EnumerateArray().Select(e => e.GetProperty("path").GetString()!).ToList();
+        // Directory files come in ordinal order of full path with the platform separator; a file named twice is checked once.
+        Assert.Equal(new[] { a, b }.OrderBy(p => p, StringComparer.Ordinal), reported);
+        Assert.Equal(reported.Count, reported.Select(Path.GetFullPath).Distinct(PathComparer).Count());
         Assert.Equal(0, Run("", new[] { "format", files.Root, "--write" }).Code);
         Assert.Equal("one\n", File.ReadAllText(a));
         Assert.Equal("two\n", File.ReadAllText(b));
@@ -399,12 +402,14 @@ public sealed class CliTests
         public RecordSchema Load(string path) => schema;
     }
 
+    static StringComparer PathComparer => OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
     sealed class Files : IDisposable
     {
         public string Root { get; } = Path.Combine(Path.GetTempPath(), "fwmd-" + Guid.NewGuid().ToString("N"));
         public string Add(string name, string text)
         {
-            string path = Path.Combine(Root, name);
+            string path = Path.Combine(Root, name.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, text);
             return path;

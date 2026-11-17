@@ -15,7 +15,7 @@ internal sealed class CliApplication(IRecordSchemaLoader? schemaLoader = null, D
         fwmd format [paths|-] [--write | --check] [--schema <file.json>] [--config <fwmd.json>]
         fwmd --help
 
-        Directories recurse over *.md. No paths means standard input; '-' must be the only input.
+        Directories recurse over *.md, in ordinal order of full path; a file named twice is read once (case-insensitive on Windows). No paths means standard input; '-' must be the only input.
         check: 0 clean, 1 errors (or warnings with --warnings-as-errors), 2 usage or input error.
         format: canonical text to stdout; --write rewrites files; --check returns 1 if different.
         Files with errors are never formatted. Several inputs need --write or --check; stdout takes one.
