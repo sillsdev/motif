@@ -774,6 +774,14 @@ engine and no replication. The Machine store holds what belongs to the installat
 project.
 _Avoid_: proposal store, change store, database, repository, queue
 
+**Store relocation**:
+Pointing a Motif store that was copied or moved with its project at the project's new path, with `store relocate`
+([ADR 0023](docs/adr/0023-one-store-beside-each-project-inside-a-byte-budget.md)).
+It happens only when the new path holds the same project (same LibLCM project GUID where the store or the old file
+gives one), after confirmation and with neither the project nor the store held, and the store records the old path,
+the new path and the time. It does not move a Home or any file; it changes which path the store is registered to.
+_Avoid_: rehome, adopt, repair
+
 **Machine store**:
 The single database for one logged-in user, holding what belongs to the installation rather than to any
 project: the Known projects, and the usage log of the Motif API's own calls. It is deliberately small.
