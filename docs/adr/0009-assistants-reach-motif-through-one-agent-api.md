@@ -13,7 +13,7 @@ context to other chat clients; a bundled tunnel lets ChatGPT reach the same loca
 ### D1. One catalog defines the CLI and MCP renderings
 
 The agent API consists of Released and AdvancedAi catalog commands whose agent class is not HumanOnly.
-Developer commands and HumanOnly effects do not become tools. CLI verbs and MCP tools render one definition
+Autonomous commands, Developer commands and HumanOnly effects do not become tools. CLI verbs and MCP tools render one definition
 and response, including the same refusal code, reason, message, detail and next step. No capability or
 interpretation belongs to one rendering alone. Every command-bearing skill and guide shows both routes.
 Descriptions derive from catalog metadata, Help Title/Description and request-field documentation, never
@@ -25,11 +25,13 @@ submit or commit. Individual older drafting/removal commands have AdvancedAi exp
 consolidates them under the tools below rather than exposing a primitive route.
 
 `discard-draft` and `discard-empty-drafts` hard-delete Drafts that were never finalized. They stay HumanOnly with no
-MCP tool, and they refuse the pending-changes Draft, which belongs to the person's window. Today they sit on the
-Developer surface, so an autonomous grammar loop that probes with throwaway Drafts needs the developer switch. They
-move to the Autonomous audience, and the Autonomous playbook gains a probe-loop note. That promotion rides with the
-Autonomous audience, which replaces the Developer surface and its environment variable with no alias, and whose
-commands, like Developer ones before, are never tools.
+MCP tool, and they refuse the pending-changes Draft, which belongs to the person's window. They sit on the Autonomous
+audience, so an autonomous grammar loop that probes with throwaway Drafts reaches them with `MOTIF_AUTONOMOUS=1` or
+`--autonomous`, and the Autonomous playbook carries a probe-loop note. The Autonomous audience is a catalog surface of
+its own beside Released, Advanced AI and Developer: it holds the commands an autonomous run drives (the Draft
+lifecycle, the hypothesis ledger), is listed in help with its switch, and, like Developer commands, is never a tool.
+`MOTIF_DEVELOPER_COMMANDS` stays for true developer diagnostics only; a refusal for a command that moved names the
+Autonomous switch.
 
 ### D2. The default profile has seven always-loaded tools
 

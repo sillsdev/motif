@@ -1,4 +1,4 @@
-# Stage a finding disposition
+# Stage a finding ruling
 
 ```sh
 motif parsimony dispose --project language.fwdata --report <reportId> --finding <findingId> \
@@ -10,7 +10,7 @@ This command reads one finding from a stored Parsimony Report and derives its ex
 
 The command appends the existing Notebook judgment operations to a Draft Proposal. Review them with Dry Run, then a person uses `apply` to write the judgment to FieldWorks. When the bound Dry Run shows only these Notebook effects, Readiness does not require a Correctness Assessment because the judgment cannot change parsing. A mixed Proposal keeps the normal Assessment requirement. A pending keep does not suppress a current finding.
 
-The same decision is never staged twice. Two dispositions are the same decision when they agree on the finding's subject, measure and evidence, the disposition, the reason and the question; the record type, and the Report and the Draft they came from, do not count.
+The same decision is never staged twice. Two rulings are the same decision when they agree on the finding's subject, measure and evidence, the ruling, the reason and the question; the record type, and the Report and the Draft they came from, do not count.
 
 - If the saved project already holds this decision as its current judgment, the command succeeds and stages nothing. It prints `This decision is already recorded; nothing was staged in draft '<name>'.`, and with `--json` the response's `outcome` is `already-recorded` and its operation list is empty.
 - If the Draft already stages this decision, the command is refused with `parsimony.decision-already-staged`: `This decision is already staged in Draft '<name>'.`

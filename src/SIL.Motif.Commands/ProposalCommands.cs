@@ -798,6 +798,18 @@ public static partial class ProposalCommands
     public static CommandOutcome<DraftDiscardedResponse> DiscardDraft(DiscardDraftRequest request) =>
         DiscardDraft(request, emptyDraftId: null);
 
+    /// <summary>
+    /// Discards a Draft the caller names, as the CLI offers it. The pending-changes Draft is the person's own and is
+    /// refused here; the window discards it through <see cref="DiscardDraft(DiscardDraftRequest)"/>.
+    /// </summary>
+    public static CommandOutcome<DraftDiscardedResponse> DiscardNamedDraft(DiscardDraftRequest request) =>
+        request.DraftName == PendingChanges.DraftName
+            ? CommandOutcome<DraftDiscardedResponse>.Refused(new Refusal(RefusalCodes.DraftDiscardPendingChanges,
+                FailureReason.Refused,
+                "The pending-changes Draft holds a person's unapplied changes. Apply or discard it in the window.",
+                Fact(("draftName", request.DraftName))))
+            : DiscardDraft(request);
+
     private static CommandOutcome<DraftDiscardedResponse> DiscardDraft(DiscardDraftRequest request, CanonicalId? emptyDraftId)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>

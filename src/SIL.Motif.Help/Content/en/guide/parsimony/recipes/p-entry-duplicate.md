@@ -6,11 +6,11 @@ This check finds lexical entries that say the same thing twice. Entries are comp
 
 Read each member's lexeme form in `allomorph-context` and compare the group's glosses and MSAs. A pair that differs only by a trailing hyphen, such as `xy` and `xy-`, is one entry typed twice when the morph type class is the same. Homographs with different glosses or categories, such as an inflectional and a derivational `-a`, are not reported. A dotted suffix on the gloss of a same-form homograph can also be a real distinction, such as a person or number label and its extension (`1` and `1.SG`), so check the member's MSA and the feature it carries before treating it as a copy.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
-No disposition mapping exists for this finding yet, so it cannot be recorded with a Notebook disposition. Note the decision in the review instead.
+No ruling mapping exists for this finding yet, so it cannot be recorded with a Notebook ruling. Note the decision in the review instead.
 
 ## Ask the linguist
 

@@ -7,7 +7,7 @@ function Get-MotifHelpGoldenPath {
     Join-Path $RepoRoot 'tests/SIL.Motif.Tests.Cli/Golden/help-all-current.json'
 }
 
-# Runs `motif help --all --json` with developer commands and Advanced AI mode off.
+# Runs `motif help --all --json` with developer commands, Autonomous and Advanced AI mode off.
 function Invoke-MotifOffModeHelp {
     param(
         [Parameter(Mandatory)][string] $RepoRoot,
@@ -25,6 +25,7 @@ function Invoke-MotifOffModeHelp {
     $start.UseShellExecute = $false
     $start.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
     [void] $start.Environment.Remove('MOTIF_DEVELOPER_COMMANDS')
+    [void] $start.Environment.Remove('MOTIF_AUTONOMOUS')
     $start.Environment['MOTIF_ADVANCED_AI_MODE_PATH'] = Join-Path $scratch 'advanced-ai-mode.json'
     # Every CLI action appends a usage-log line under the worker root (default: per user), even `help`.
     # Redirect it so the gate neither reads nor writes the user's state.

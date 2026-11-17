@@ -17,6 +17,10 @@ public sealed record CommandAvailabilityFacts(
             CommandSurface.Developer => new(command.Name, command.Surface, command.Agent, command.IsAgentTool,
                 CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable,
                 $"Set {CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable}=1 to enable them."),
+            CommandSurface.Autonomous => new(command.Name, command.Surface, command.Agent, command.IsAgentTool,
+                CommandSurfacePolicy.AutonomousEnvironmentVariable,
+                $"Set {CommandSurfacePolicy.AutonomousEnvironmentVariable}=1 or pass {CommandSurfacePolicy.AutonomousFlag}. " +
+                "See 'motif help autonomous'."),
             CommandSurface.Released => new(command.Name, command.Surface, command.Agent, command.IsAgentTool, null, string.Empty),
             _ => throw new ArgumentOutOfRangeException(nameof(command)),
         };
@@ -27,6 +31,7 @@ public sealed record CommandAvailabilityFacts(
     {
         CommandSurface.AdvancedAi => "command.advanced-ai-mode-required",
         CommandSurface.Developer => "command.developer-commands-required",
+        CommandSurface.Autonomous => "command.autonomous-required",
         _ => throw new InvalidOperationException("Released commands do not require an opt-in."),
     };
 
@@ -62,6 +67,7 @@ public static class CommandAvailabilityText
         {
             CommandSurface.AdvancedAi => $"Command '{facts.Command}' requires Advanced AI mode. " + facts.Remedy,
             CommandSurface.Developer => $"Command '{facts.Command}' requires Developer commands. " + facts.Remedy,
+            CommandSurface.Autonomous => $"'{facts.Command}' is an Autonomous-mode command. " + facts.Remedy,
             CommandSurface.Released => $"Command '{facts.Command}' is Released.",
             _ => throw new ArgumentOutOfRangeException(nameof(facts)),
         };

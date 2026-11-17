@@ -388,6 +388,8 @@ public static class RefusalCodes
     public const string BaselineMissing = "baseline.missing";
     /// <summary>The command is offered only in Advanced AI mode.</summary>
     public const string CommandAdvancedAiModeRequired = "command.advanced-ai-mode-required";
+    /// <summary>The command is offered only to a caller that declares Autonomous mode.</summary>
+    public const string CommandAutonomousRequired = "command.autonomous-required";
     /// <summary>The command is offered only when developer commands are enabled.</summary>
     public const string CommandDeveloperCommandsRequired = "command.developer-commands-required";
 
@@ -532,6 +534,8 @@ public static class RefusalCodes
     public const string DraftNotFound = "draft.not-found";
     /// <summary>A phonology Example Set keeps the Draft's results.</summary>
     public const string DraftRetainedByExampleSet = "draft.retained-by-example-set";
+    /// <summary>The pending-changes Draft belongs to the person's window and is not discarded by name from the CLI.</summary>
+    public const string DraftDiscardPendingChanges = "draft.discard-pending-changes";
     /// <summary>The Draft is being tried; wait for the try to finish before discarding it.</summary>
     public const string DraftTrialRunning = "draft.trial-running";
 

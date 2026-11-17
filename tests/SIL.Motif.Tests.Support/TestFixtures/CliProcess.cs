@@ -39,6 +39,7 @@ public static class CliProcess
         start.Environment[RunnerOptions.RootVariable] = workerRoot;
         start.Environment[PanGlossExecutable.PathVariable] = parserPath ?? FakeParser.ExecutablePath;
         start.Environment.Remove(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable);
+        start.Environment.Remove(CommandSurfacePolicy.AutonomousEnvironmentVariable);
         if (developerCommands)
             start.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
         start.Environment.Remove("FAKE_PANGLOSS_BEHAVIOUR_PATH");
@@ -105,6 +106,7 @@ public static class CliProcess
         start.Environment[RunnerOptions.NamespaceVariable] = runner.OwnerNamespace;
         start.Environment[RunnerOptions.IdleVariable] = "1";
         start.Environment.Remove(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable);
+        start.Environment.Remove(CommandSurfacePolicy.AutonomousEnvironmentVariable);
         return start;
     }
 

@@ -32,6 +32,25 @@ public sealed class ExposurePolicyTests
         }
     }
 
+    [Fact]
+    public void NoAutonomousCommandIsExposedOrListedUnderAnyProfile()
+    {
+        var autonomous = CommandCatalog.All.Where(command => command.Surface == CommandSurface.Autonomous)
+            .Select(command => command.Name).ToArray();
+        Assert.NotEmpty(autonomous);
+        var routed = AgentTools.All.SelectMany(tool => tool.Routes).Select(route => route.Command).ToHashSet();
+        foreach (var profile in new[] { ToolProfile.Builtin, ToolProfile.Load("phonology") })
+        {
+            var policy = ExposurePolicy.Create(
+                new ExposureSettings(new CommandSurfacePolicy(true, true, autonomousEnabled: true), profile), AgentTools.All);
+            foreach (var name in autonomous)
+            {
+                Assert.False(policy.Exposes(name), name);
+                Assert.DoesNotContain(name, routed);
+            }
+        }
+    }
+
     private static ExposurePolicy PolicyFor(ToolProfile profile, bool advancedAi = true) =>
         ExposurePolicy.Create(new ExposureSettings(new CommandSurfacePolicy(false, advancedAi), profile), AgentTools.All);
 

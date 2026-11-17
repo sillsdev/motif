@@ -6,11 +6,11 @@ A slot order can replace repeated prohibitions only when it preserves their inte
 
 Read the complete flat prohibitions, exact targets, loader state, applicable template placements, and contrary Approved sequences. This measure's report shows whether grouped provenance is complete, but does not show group names, members, or rationale; read those in FieldWorks before deciding.
 
-## Disposition
+## Ruling
 
 Fix only a same-side order that is entailed across every applicable placement and has no contrary Approved sequence. Keep confirmed adjacency-only, Anywhere, multi-target, person-hierarchy, cross-side, and other contextual restrictions with their reason. Ask whether intervening affixes are allowed when a rule forbids adjacency. Defer a grouped change when `adhoc_groups` is incomplete, or when target, loader, hierarchy, or order evidence is incomplete.
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 ## Ask the linguist
 

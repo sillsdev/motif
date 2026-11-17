@@ -165,13 +165,13 @@
       "parse"
     ]
   },
-  "parsimony-dispositions": {
-    "title": "Parsimony dispositions",
+  "parsimony-rulings": {
+    "title": "Parsimony rulings",
     "description": "A recorded decision to keep, fix, ask about or defer a finding that points to a possible simplification of the grammar.",
     "terms": [
       "parsimony",
       "finding",
-      "disposition",
+      "ruling",
       "intentional",
       "warning"
     ]

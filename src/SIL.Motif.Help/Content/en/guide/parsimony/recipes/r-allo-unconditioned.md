@@ -6,9 +6,9 @@ An unconditioned allomorph may be an intentional final fallback. Its selection o
 
 Read effective selection order, sibling conditions, load facts, and the contexts in which each variant is chosen.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Use `EditAllomorphCondition` to attach a confirmed condition to the exact broad variant. Use `OrderAllomorphs` when a confirmed broad variant should follow its conditioned siblings as the final fallback. Keep a confirmed fallback or free variant with a recorded reason and no grammar repair among the changes not applied yet; ask about morphological gates; defer invalid conditions to grammar health.
 

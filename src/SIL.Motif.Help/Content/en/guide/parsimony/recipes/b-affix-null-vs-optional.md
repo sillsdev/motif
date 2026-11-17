@@ -6,9 +6,9 @@ Remove a zero affix only when it adds no grammatical distinction and no Approved
 
 Read `null-optional`, the authored form and its compiler record, feature and class contributions, slot optionality, senses, and incoming references. Count a null marker only when PanGloss facts show a final ordinary morphology output for its MSA; an import record alone is not proof. An empty string or a dropped or compacted marker alone does not establish a loaded zero.
 
-## Disposition
+## Ruling
 
-If the zero contributes a feature, class restriction, or Approved reading, record a `keep` disposition with a reason. Ask about an unclear grammatical distinction or default interpretation. Defer when the compiler did not record the authored marker as represented.
+If the zero contributes a feature, class restriction, or Approved reading, record a `keep` ruling with a reason. Ask about an unclear grammatical distinction or default interpretation. Defer when the compiler did not record the authored marker as represented.
 
 Do not stage a zero-retirement change for a meaningful or referenced zero.
 

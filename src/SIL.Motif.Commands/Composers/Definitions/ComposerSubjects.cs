@@ -24,7 +24,7 @@ internal static class ComposerSubjects
         "lexical-entries-and-glosses",
         "senses-and-definitions",
         "texts-and-analyses",
-        "parsimony-dispositions",
+        "parsimony-rulings",
         "infixation",
         "reduplication",
         "scripture-sources",

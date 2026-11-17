@@ -136,8 +136,11 @@ using var usageAction = usageRecorder.BeginAction(
     CliUsageArgumentShapes(usageCommand, usageVerb, usageArguments.Item1,
         usageArguments.Item2, usageArguments.Item3));
 
+var autonomousFlag = usageArguments.Item1.TryGetValue("autonomous", out var autonomousRaw) && IsTruthyFlag(autonomousRaw);
 var commandPolicy = CommandSurfacePolicy.FromEnvironment(
-    environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable), advancedAiModeEnabled: true);
+    environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable), advancedAiModeEnabled: true,
+    autonomousValue: environment.GetValueOrDefault(CommandSurfacePolicy.AutonomousEnvironmentVariable),
+    autonomousFlag: autonomousFlag);
 
 if (args.Length > 0 && args[0] == "help")
     return HelpCommand.Run(args[1..], commandPolicy, output, error);
@@ -610,7 +613,7 @@ try
                 !flags.TryGetValue("draft", out var discardDraftName))
                 return Usage("Usage: motif discard-draft --project <fwdata> --draft <name> [--revision <r>]", asJson);
             result = RenderProposal(
-                ProposalCommands.DiscardDraft(
+                ProposalCommands.DiscardNamedDraft(
                     new DiscardDraftRequest(discardProject, CliProductVersion(), discardDraftName,
                         flags.GetValueOrDefault("revision"))),
                 successAsJson: false);
@@ -3607,10 +3610,8 @@ static void EnsureUniqueJsonProperties(JsonElement element)
 static ApplyAttribution ApplyAttributionFromFlags(
     Dictionary<string, string> flags, IReadOnlyDictionary<string, string?> environment)
 {
-    var env = environment.GetValueOrDefault(ApplyModes.EnvironmentVariable);
     var autonomous = (flags.TryGetValue("autonomous", out var raw) && IsTruthyFlag(raw)) ||
-                     string.Equals(env?.Trim(), "1", StringComparison.Ordinal) ||
-                     string.Equals(env?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+                     CommandSurfacePolicy.IsAutonomousValue(environment.GetValueOrDefault(ApplyModes.EnvironmentVariable));
     return new ApplyAttribution(autonomous ? ApplyModes.Autonomous : ApplyModes.Person,
         flags.GetValueOrDefault("message"), flags.TryGetValue("note", out var note) && IsTruthyFlag(note));
 }

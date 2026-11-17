@@ -39,7 +39,7 @@ public static class HelpCommand
         var all = arguments.Contains("--all", StringComparer.Ordinal);
         var json = arguments.Contains("--json", StringComparer.Ordinal);
         var full = arguments.Contains("--full", StringComparer.Ordinal);
-        var codeParts = arguments.Where(argument => argument is not "--all" and not "--json" and not "--full").ToArray();
+        var codeParts = arguments.Where(argument => argument is not "--all" and not "--json" and not "--full" and not CommandSurfacePolicy.AutonomousFlag).ToArray();
 
         if (all)
         {
@@ -66,6 +66,8 @@ public static class HelpCommand
             output.WriteLine();
             PrintDiscoverySection(output, "Advanced AI commands", CommandSurface.AdvancedAi, policy);
             output.WriteLine();
+            PrintDiscoverySection(output, "Autonomous commands", CommandSurface.Autonomous, policy);
+            output.WriteLine();
             PrintDiscoverySection(output, "Developer commands", CommandSurface.Developer, policy);
             output.WriteLine();
             output.WriteLine("Other entry points:");
@@ -82,6 +84,14 @@ public static class HelpCommand
             if (json)
                 return Usage(error);
             PrintMcpHelp(full, output);
+            return 0;
+        }
+
+        if (code == "autonomous")
+        {
+            if (json)
+                return Usage(error);
+            PrintAutonomousHelp(output, policy);
             return 0;
         }
 
@@ -191,18 +201,43 @@ public static class HelpCommand
             .Select(verb => verb.CommandName)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal);
-        var enabled = surface == CommandSurface.AdvancedAi
-            ? policy.AdvancedAiModeEnabled
-            : policy.DeveloperCommandsEnabled;
+        var enabled = surface switch
+        {
+            CommandSurface.AdvancedAi => policy.AdvancedAiModeEnabled,
+            CommandSurface.Autonomous => policy.AutonomousEnabled,
+            _ => policy.DeveloperCommandsEnabled,
+        };
         var instruction = surface switch
         {
             CommandSurface.AdvancedAi => "run 'motif settings advanced-ai on'; in a sandbox, set " +
                 "MOTIF_ADVANCED_AI_MODE_PATH to a writable preference file",
+            CommandSurface.Autonomous => "set MOTIF_AUTONOMOUS=1 or pass --autonomous; see 'motif help autonomous'",
             CommandSurface.Developer => "set MOTIF_DEVELOPER_COMMANDS=1",
             _ => string.Empty,
         };
         output.WriteLine($"{title} ({(enabled ? "enabled" : instruction)}):");
         output.WriteLine(string.Join("  ", commands));
+    }
+
+    private static void PrintAutonomousHelp(TextWriter output, CommandSurfacePolicy policy)
+    {
+        output.WriteLine("Autonomous commands exist for an Autonomous-mode run: an AI driving the CLI from source to a working parser.");
+        output.WriteLine("They are CLI only and never MCP tools.");
+        output.WriteLine();
+        output.WriteLine("Enable: set MOTIF_AUTONOMOUS=1, or pass --autonomous on the call. " +
+            (policy.AutonomousEnabled ? "Autonomous is enabled for this call." : "Autonomous is not enabled for this call."));
+        output.WriteLine("The same switch makes Apply an Autonomous-mode Apply, which needs --message.");
+        output.WriteLine();
+        output.WriteLine("Commands:");
+        var names = CliVerbCatalog.All
+            .Select(verb => verb.CommandName)
+            .Where(name => CommandCatalog.All.Any(command => command.Name == name && command.Surface == CommandSurface.Autonomous))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal);
+        foreach (var name in names) output.WriteLine("  " + name);
+        output.WriteLine();
+        output.WriteLine("Probe loop: new, a compose verb, read the result, then discard-draft to leave no Draft behind.");
+        output.WriteLine("Use 'motif help <command> --full' for one command.");
     }
 
     private static string EnablementText(CommandDescriptor command) => command.Surface == CommandSurface.AdvancedAi

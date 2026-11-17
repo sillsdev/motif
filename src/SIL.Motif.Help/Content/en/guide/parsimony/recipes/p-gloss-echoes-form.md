@@ -6,11 +6,11 @@ This check finds senses whose gloss is only the entry's form written in capitals
 
 Read the entry in `allomorph-context` and compare its forms with the sense's glosses in every analysis writing system. Process affixes with no form text are not read, because there is no form to echo.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
-No disposition mapping exists for this finding yet, so it cannot be recorded with a Notebook disposition. Note the decision in the review instead.
+No ruling mapping exists for this finding yet, so it cannot be recorded with a Notebook ruling. Note the decision in the review instead.
 
 ## Ask the linguist
 

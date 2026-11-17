@@ -82,7 +82,7 @@ public sealed class ParsimonyRecipeCatalog
 {
     private const string ManifestResourceName = "help/en/guide/parsimony/parsimony-recipes.json";
     private const string RecipeResourcePrefix = "help/en/guide/parsimony/recipes/";
-    private static readonly string[] RequiredSteps = ["Analyse", "Disposition", "Ask the linguist", "Update", "Verify"];
+    private static readonly string[] RequiredSteps = ["Analyse", "Ruling", "Ask the linguist", "Update", "Verify"];
     private static readonly string[] RequiredHeadings = [.. RequiredSteps, "Grounding"];
     private readonly IReadOnlyDictionary<string, ParsimonyRecipe> _byMeasureId;
 

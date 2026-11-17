@@ -6,9 +6,9 @@ This check finds environments and natural classes that the parser never applies.
 
 Read `statement-usage` for each statement's references and their parser effect. Every reference in the grammar facts counts, so a reference from an affix process, a rule context or an infix position is seen the same way as one from an allomorph environment. A statement is used for parsing when one reference is `applied`. A statement whose references are all not applied, such as `ignored`, `unresolved` or `owner_not_loaded`, is unused for parsing. A statement with no reference at all is unused. The finding names each referrer that does not apply it.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 A statement with an applied reference is used for parsing and is never reported here. An unused statement that only references the parser does not apply may have a broken reference rather than an unused statement, so check those references before deciding.
 

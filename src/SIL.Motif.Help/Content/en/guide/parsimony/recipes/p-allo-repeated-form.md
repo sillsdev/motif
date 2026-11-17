@@ -6,9 +6,9 @@ This check finds an entry whose allomorphs repeat the same morph type and forms 
 
 Read the entry, the member allomorph GUIDs, their forms and their environment lists in `allomorph-context`. The finding says, per repeated form, which copy subsumes which. An unconditioned copy applies in every context, so a conditioned copy of the same form adds nothing the parser can use. An environment list that is a subset of another's is covered by it.
 
-## Disposition
+## Ruling
 
-This finding has no closed Notebook subject, so it cannot be recorded with a disposition yet. Note the decision in the review conversation instead.
+This finding has no closed Notebook subject, so it cannot be recorded with a ruling yet. Note the decision in the review conversation instead.
 
 Classify the result as redundant conditioning, or as an intended restriction that the unconditioned copy has made moot.
 

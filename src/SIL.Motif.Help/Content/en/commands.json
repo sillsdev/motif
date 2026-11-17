@@ -131,22 +131,22 @@
   },
   "parsimony record-types": {
     "title": "List Notebook record types",
-    "description": "Lists the saved Notebook record types with their portable IDs and readable names. Use the ID when you stage a Parsimony disposition.",
+    "description": "Lists the saved Notebook record types with their portable IDs and readable names. Use the ID when you stage a Parsimony ruling.",
     "source": "Hand-written from command behavior."
   },
   "parsimony dispose": {
-    "title": "Stage a finding disposition",
+    "title": "Stage a finding ruling",
     "description": "Stages a keep, fix, ask, or defer decision from one finding in a stored Parsimony Report. It derives the exact subject and evidence from that finding and appends the existing Notebook operations to a Draft Proposal. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "parsimony revise": {
-    "title": "Revise a disposition",
-    "description": "Stages a revision to a saved Parsimony disposition using its exact current Notebook heads and digests. The revision keeps the same finding subject and evidence, and only a person can Apply it.",
+    "title": "Revise a ruling",
+    "description": "Stages a revision to a saved Parsimony ruling using its exact current Notebook heads and digests. The revision keeps the same finding subject and evidence, and only a person can Apply it.",
     "source": "Hand-written from command behavior."
   },
   "parsimony retract": {
-    "title": "Retract a disposition",
-    "description": "Stages a withdrawal of a saved Parsimony disposition using its exact current Notebook heads and digests. The history stays in FieldWorks, and the finding returns to Active after a person Applies the current retraction.",
+    "title": "Retract a ruling",
+    "description": "Stages a withdrawal of a saved Parsimony ruling using its exact current Notebook heads and digests. The history stays in FieldWorks, and the finding returns to Active after a person Applies the current retraction.",
     "source": "Hand-written from command behavior."
   },
   "parsimony negative confirm": {
@@ -160,7 +160,7 @@
     "source": "Hand-written from the reviewed-negative authoring contract."
   },
   "compose-record-parsimony-disposition": {
-    "title": "Stage a Parsimony disposition",
+    "title": "Stage a Parsimony ruling",
     "description": "Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. A pending keep does not suppress current findings, and only a person can Apply it.",
     "source": "Hand-written from command behavior.",
     "fields": {
@@ -1892,6 +1892,15 @@
       "workflow"
     ],
     "redirect": "Start one small Proposal per grammar question, then try it before anything else (guide workflow)."
+  },
+  "discard-draft": {
+    "title": "Discard a Draft",
+    "description": "Deletes a Draft that was never finalized, with its Trial jobs and the evidence they recorded, and frees its name. A Draft that was reopened is reverted and its Proposal stays at its committed revision. The pending-changes Draft is refused; a running Trial, pinned or cited evidence and a changed --revision keep the Draft. An Autonomous-mode command: set MOTIF_AUTONOMOUS=1 or pass --autonomous. CLI only; never an MCP tool.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "The name of the Draft to discard.",
+      "revision": "Optional Draft revision; the discard is refused if the Draft has changed since."
+    }
   },
   "discard-empty-drafts": {
     "title": "Discard empty drafts",

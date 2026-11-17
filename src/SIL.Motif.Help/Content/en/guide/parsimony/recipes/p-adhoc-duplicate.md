@@ -6,9 +6,9 @@ Several prohibitions may encode the same parser restriction. Keep one supported 
 
 Compare the full ordered targets, active load facts, descriptions, and witness cases. Choose the retained identity explicitly.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Fix only when the active signatures are identical and useful rationale remains. Keep, ask, or defer when group loading or target expansion is incomplete.
 

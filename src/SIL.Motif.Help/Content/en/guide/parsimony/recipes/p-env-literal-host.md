@@ -6,11 +6,11 @@ This check finds an environment side or a phonological rule context made only of
 
 Read `statement-usage` for the environment and `allomorph-context` for each allomorph that names it. A rule context has no view; the finding names the rule, its right-hand side and the segments. Boundaries are not counted as segments: a word anchor, a morpheme boundary and a segment spelled without a letter or digit, such as the hyphen of an affix, all count as boundaries. Sides with a class, a variable or a repetition are never flagged, nor are one-segment sides.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
-This finding has no closed Notebook subject mapping yet, so it cannot be recorded with a disposition. Read it as a review prompt.
+This finding has no closed Notebook subject mapping yet, so it cannot be recorded with a ruling. Read it as a review prompt.
 
 ## Ask the linguist
 

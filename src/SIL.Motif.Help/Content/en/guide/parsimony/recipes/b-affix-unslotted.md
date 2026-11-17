@@ -6,9 +6,9 @@ Attested sequences can suggest where an affix belongs, but the linguist chooses 
 
 Review category and membership facts, Approved sequences, position histograms, and any contradictory precedence witnesses.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Fix a supported missing position; keep an intentional partial rule; ask when orders conflict; defer uncertain roots or thin evidence.
 

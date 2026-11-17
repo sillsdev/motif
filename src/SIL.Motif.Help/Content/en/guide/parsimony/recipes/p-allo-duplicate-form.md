@@ -6,9 +6,9 @@ This check finds non-abstract allomorphs of one entry with the same morph type, 
 
 Read the entry, duplicate allomorph GUIDs, forms, morph type, and exact environment lists in `allomorph-context`. Confirm the matching fields; no similarity or language-wide generalization is inferred.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Classify the result as exact data duplication. Keep both records when each carries identity or history worth preserving; ask or defer when that distinction is unclear.
 

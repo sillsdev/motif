@@ -11,11 +11,19 @@ public sealed class CommandSurfacePolicy
     /// <summary>The opt-in environment variable that enables developer-only commands.</summary>
     public const string DeveloperCommandsEnvironmentVariable = "MOTIF_DEVELOPER_COMMANDS";
 
+    /// <summary>The opt-in environment variable that declares the Autonomous audience.</summary>
+    public const string AutonomousEnvironmentVariable = "MOTIF_AUTONOMOUS";
+
+    /// <summary>The global flag that declares the Autonomous audience for one call.</summary>
+    public const string AutonomousFlag = "--autonomous";
+
     /// <summary>Creates a policy with the supplied command opt-ins.</summary>
-    public CommandSurfacePolicy(bool developerCommandsEnabled, bool advancedAiModeEnabled = false)
+    public CommandSurfacePolicy(
+        bool developerCommandsEnabled, bool advancedAiModeEnabled = false, bool autonomousEnabled = false)
     {
         DeveloperCommandsEnabled = developerCommandsEnabled;
         AdvancedAiModeEnabled = advancedAiModeEnabled;
+        AutonomousEnabled = autonomousEnabled;
     }
 
     /// <summary>Whether this policy exposes developer-only commands.</summary>
@@ -23,6 +31,9 @@ public sealed class CommandSurfacePolicy
 
     /// <summary>Whether Advanced AI mode commands are available.</summary>
     public bool AdvancedAiModeEnabled { get; }
+
+    /// <summary>Whether this policy exposes the Autonomous audience.</summary>
+    public bool AutonomousEnabled { get; }
 
     /// <summary>
     /// Whether an AI agent may ever be offered something on <paramref name="surface"/> with <paramref name="agent"/>:
@@ -39,10 +50,18 @@ public sealed class CommandSurfacePolicy
             CommandSurface.Released => true,
             CommandSurface.Developer => DeveloperCommandsEnabled,
             CommandSurface.AdvancedAi => AdvancedAiModeEnabled,
+            CommandSurface.Autonomous => AutonomousEnabled,
             _ => false,
         };
 
     /// <summary>Creates a policy from the already-read opt-in environment value.</summary>
-    public static CommandSurfacePolicy FromEnvironment(string? value, bool advancedAiModeEnabled = false) =>
-        new(string.Equals(value, "1", StringComparison.Ordinal), advancedAiModeEnabled);
+    public static CommandSurfacePolicy FromEnvironment(
+        string? value, bool advancedAiModeEnabled = false, string? autonomousValue = null, bool autonomousFlag = false) =>
+        new(string.Equals(value, "1", StringComparison.Ordinal), advancedAiModeEnabled,
+            autonomousFlag || IsAutonomousValue(autonomousValue));
+
+    /// <summary>Whether an <c>MOTIF_AUTONOMOUS</c> value declares Autonomous: <c>1</c> or <c>true</c>.</summary>
+    public static bool IsAutonomousValue(string? value) =>
+        string.Equals(value?.Trim(), "1", StringComparison.Ordinal) ||
+        string.Equals(value?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
 }

@@ -6,9 +6,9 @@ Unobserved contexts are not bad forms. The first check covers one neighboring ph
 
 Read `environment-excess` for the effective contexts after compiled sibling order, OR alternatives, observed triggers, extra contexts, and missed triggers. Reading the whole view, each list shows its first 30 names; reading one object (`--object-id`, which a finding's evidence links use) lists every name. The row's `totals` give the full count of every list and of the loaded context universe. A limit line in the Report names the first dozen contexts and counts the rest. Filter by an environment identity to inspect the other measured users. `approved-morph-sequences` carries the aligned word evidence. Ambiguous alignment or a condition outside the one-neighbor capability is reported as inconclusive.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Ask by default when the only evidence is that a context has not appeared in the Texts. An extra licensed context is not evidence that the context is wrong. A finding needs an extra context and at least three Approved word types across two stems; that support floor ranks a question but does not decide it. Keep a productive extension and defer unsupported context shapes.
 

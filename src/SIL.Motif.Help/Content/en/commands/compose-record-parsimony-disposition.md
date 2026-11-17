@@ -1,6 +1,6 @@
-# Stage a Parsimony disposition
+# Stage a Parsimony ruling
 
-Use this command to stage a decision about one finding in a Draft Proposal. The intent names an existing Notebook record type, the finding's exact subject and evidence digest, and one disposition: `keep`, `fix`, `ask`, or `defer`. A reason is optional; `ask` requires a question.
+Use this command to stage a decision about one finding in a Draft Proposal. The intent names an existing Notebook record type, the finding's exact subject and evidence digest, and one ruling: `keep`, `fix`, `ask`, or `defer`. A reason is optional; `ask` requires a question.
 
 ```sh
 motif compose-record-parsimony-disposition --project language.fwdata --draft review-one --intent '{"recordTypeId":"...","measureId":"P-allo-duplicate-form","subject":{},"disposition":"keep","evidenceDigest":"...","evidenceContract":"...","subjectCaption":"...","measureCaption":"...","reason":"..."}'

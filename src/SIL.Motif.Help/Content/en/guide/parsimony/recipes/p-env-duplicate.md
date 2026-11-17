@@ -6,11 +6,11 @@ This check finds sets of two or more environments whose left sides match and who
 
 Read `statement-usage` for each environment in the set and `allomorph-context` for each allomorph that names one. An allomorph uses an environment as a phone environment or as an infix Position; both count. Environments that did not parse as valid are left out of the comparison and the finding says how many. Equal keys show the copies mean the same thing to the parser; they do not show the copies were meant to be one.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
-This finding has no closed Notebook subject mapping yet, so it cannot be recorded with a disposition. Read it as a review prompt.
+This finding has no closed Notebook subject mapping yet, so it cannot be recorded with a ruling. Read it as a review prompt.
 
 ## Ask the linguist
 

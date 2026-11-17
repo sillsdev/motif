@@ -67,7 +67,7 @@ internal sealed class RecordParsimonyDispositionDefinition : ComposerDefinition<
     public override string Composer => "RecordParsimonyDisposition";
 
     /// <inheritdoc />
-    public override IReadOnlyList<string> Subjects { get; } = ["parsimony-dispositions"];
+    public override IReadOnlyList<string> Subjects { get; } = ["parsimony-rulings"];
 
     /// <inheritdoc />
     public override IntentShape Shape { get; } = IntentShape.Of(

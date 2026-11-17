@@ -6,9 +6,9 @@ An Approved reading may conflict with the order declared by a template. Alternat
 
 Read complete slot placements, category inheritance, all alternative templates, and both attested directions. A certain contradiction requires complete assignment enumeration and no order-compatible applicable template; pair-order variability is descriptive evidence on its own.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Fix an incorrect order; keep a real alternative with an accurate representation; ask about dialect differences; defer uncertain attribution.
 

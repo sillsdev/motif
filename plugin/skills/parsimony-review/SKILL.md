@@ -28,7 +28,7 @@ evidence, its limits, and the linguist's decision connected throughout the revie
   Start a Draft with `motif_start_proposal`, stage the named operation, then run `motif_dry_run` and
   `motif_trial` when the recipe calls for them. Read the Trial summary and page through its Difference
   with `motif_difference`. Check every stated Approved reading, negative, control, and completeness
-  condition. Keep the update and its `fix` disposition bound to the finding's evidence. A person
+  condition. Keep the update and its `fix` ruling bound to the finding's evidence. A person
   decides whether to Apply.
 - **Keep:** use when the evidence supports the current grammar, such as a productive extension or an
   intentional fallback. Record the specific reason and evidence; do not edit the grammar.
@@ -43,7 +43,7 @@ An incomplete parser case is missing evidence, not a decision. First rerun the s
 Stage a decision with `motif_dispose_parsimony_finding` or the typed
 `motif_record_parsimony_disposition` tool. `ask` requires a question. Run `motif_dry_run` on the Draft
 and `motif_trial` when the recipe requires parser checks. Finalize only when the Draft is ready for a
-person to review. A pending disposition does not suppress a live finding; it takes effect after a
+person to review. A pending ruling does not suppress a live finding; it takes effect after a
 person Applies the Proposal and Motif later refreshes the project.
 
 ## Boundaries

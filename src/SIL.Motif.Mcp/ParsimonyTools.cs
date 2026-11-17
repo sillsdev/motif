@@ -172,7 +172,7 @@ internal static class ParsimonyTools
                 ("case_key", Schema.String("Exact parser case key."), false),
                 ("measure_id", Schema.String("Exact Parsimony measure id filter."), false),
                 ("subject_key", Schema.String("Exact finding or judgment subject key."), false),
-                ("disposition", Schema.String("Disposition filter.", "keep", "defer", "fix", "ask"), false),
+                ("disposition", Schema.String("Ruling filter.", "keep", "defer", "fix", "ask"), false),
                 ("state", Schema.String("Current or historical finding state.", "active", "suppressed", "resurfaced",
                     "no-current-finding", "evidence-unavailable", "conflict", "unavailable", "retracted", "superseded"), false),
                 ("search", Schema.String("Bounded search over returned captions and reasons."), false),
@@ -189,7 +189,7 @@ internal static class ParsimonyTools
             AgentClass.Draft,
             Schema.Object(
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
-                ("recordId", Schema.String("Notebook record id of a current disposition head."), true),
+                ("recordId", Schema.String("Notebook record id of a current ruling head."), true),
                 ("expectedHeads", Schema.Array("Every current head with its exact content digest.",
                     Schema.Object(("revisionId", Schema.String("Portable id of the current revision."), true),
                         ("contentDigest", Schema.String("Canonical sha256 digest read with the revision."), true))), true),
@@ -211,7 +211,7 @@ internal static class ParsimonyTools
             AgentClass.Draft,
             Schema.Object(
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
-                ("recordId", Schema.String("Notebook record id of a current disposition head."), true),
+                ("recordId", Schema.String("Notebook record id of a current ruling head."), true),
                 ("expectedHeads", Schema.Array("Every current head with its exact content digest.",
                     Schema.Object(("revisionId", Schema.String("Portable id of the current revision."), true),
                         ("contentDigest", Schema.String("Canonical sha256 digest read with the revision."), true))), true)),

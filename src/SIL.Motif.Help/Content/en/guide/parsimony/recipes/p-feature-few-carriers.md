@@ -6,9 +6,9 @@ This check finds exception features that fewer than four entries carry on stem M
 
 Read the finding: it names the carrier entries, the affix MSAs that require the feature, and the rules that require or exclude it. Open each requiring MSA with `affix-context`. A rule that uses a feature with exactly one carrier is a rule that applies to a single word. The finding also states how many of PanGloss's 64 feature slots the grammar uses (inflection classes including subclasses, exception features and entry inflection types), so a reader sees the headroom before adding another feature. The count is approximate where PanGloss dedupes differently.
 
-## Disposition
+## Ruling
 
-This finding has no closed Notebook subject, so it cannot be recorded with a disposition yet. Note the decision in the review conversation instead.
+This finding has no closed Notebook subject, so it cannot be recorded with a ruling yet. Note the decision in the review conversation instead.
 
 Classify the result as a listed word, a genuine rare restriction, or a feature still being filled in. A feature with no carrier cannot restrict anything yet.
 

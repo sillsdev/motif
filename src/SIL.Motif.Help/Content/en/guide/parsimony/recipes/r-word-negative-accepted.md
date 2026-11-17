@@ -6,9 +6,9 @@ A reviewed negative that parses is direct evidence of a possible restriction pro
 
 Read the negative judgment, its provenance, the parser's returned morphs, and the current slot order. Check positive forms and alternate readings.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Fix a confirmed order error; correct mistaken evidence separately; ask about register or reading differences; defer an unsupported cause.
 

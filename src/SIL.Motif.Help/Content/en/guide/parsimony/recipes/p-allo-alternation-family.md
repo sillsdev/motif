@@ -8,9 +8,9 @@ Read `alternation-families` for the segment alignments and feature changes, inde
 
 The `feature-weighted` lane reports feature changes only when the needed feature vectors are complete. The `segment-identity` lane records an equal-length pair that differs at exactly one phoneme identity; it reports the exact phoneme identities without feature changes or a generalized target. A whole allomorph form of `^0`, `*0`, `&0`, or `∅` is treated as empty. The limitations include abstention counts by reason, including forms that cannot be tokenized from the project's phoneme inventory.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Fix a confirmed sound rule; keep morphology, suppletion, or free variation; ask about direction and ordering; defer unsupported patterns.
 

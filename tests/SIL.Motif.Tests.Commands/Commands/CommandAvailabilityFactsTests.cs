@@ -26,6 +26,13 @@ public sealed class CommandAvailabilityFactsTests
                 Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", facts.Remedy);
                 Assert.False(facts.AgentEligible);
             }
+            if (command.Surface == CommandSurface.Autonomous)
+            {
+                Assert.Equal("MOTIF_AUTONOMOUS", facts.Setting);
+                Assert.Contains("MOTIF_AUTONOMOUS=1", facts.Remedy);
+                Assert.Contains("--autonomous", facts.Remedy);
+                Assert.False(facts.AgentEligible);
+            }
             if (command.Surface == CommandSurface.AdvancedAi)
             {
                 Assert.Equal("advanced-ai", facts.Setting);

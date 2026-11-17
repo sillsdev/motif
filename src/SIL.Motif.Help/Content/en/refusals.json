@@ -256,6 +256,14 @@
     "why": "A saved phonology Example Set cites this Draft, so it was not discarded and nothing changed. Delete the Example Set first, or keep the Draft.",
     "source": "Hand-written for Proposal Difference retention."
   },
+  "draft.discard-pending-changes": {
+    "why": "The pending-changes Draft holds a person's unapplied changes, so the CLI did not discard it and nothing changed. Apply or discard it in the window.",
+    "source": "Hand-written for the Autonomous audience."
+  },
+  "command.autonomous-required": {
+    "why": "This command is for an Autonomous-mode run. Set MOTIF_AUTONOMOUS=1 or pass --autonomous, then run it again. It is never an MCP tool.",
+    "source": "Hand-written for the Autonomous audience."
+  },
   "draft.trial-running": {
     "why": "A Trial of this Draft is still running, so it was not discarded and nothing changed. Wait for the Trial to finish, then discard the Draft.",
     "source": "Hand-written for Proposal Difference retention."

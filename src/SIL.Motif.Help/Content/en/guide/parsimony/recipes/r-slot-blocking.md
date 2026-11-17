@@ -6,9 +6,9 @@ This Text-tier finding shows an Approved form that fits no applicable template w
 
 Read each Approved sequence against every applicable template that embeds it in order. Inspect the obligatory slots left unfilled in each failed template; alternative templates can leave different slots as joint or ambiguous causes. Read every slot user and any possible feature-bearing zeroes. The slot-context evidence must include every template and category that shares the slot, including subcategories, because optionality changes all of those users.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Ask whether the pattern calls for an optional slot, a separate template, or a null affix. Keep an obligatory marker when it carries a grammatical distinction; defer when the evidence does not distinguish the choices.
 

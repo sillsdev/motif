@@ -40,7 +40,7 @@ searches. Unattested forms alone are not forbidden. A linguistic choice unresolv
 belongs to a person; ask a specific question showing the competing readings.
 
 For project authoring and authorization, defer to `motif:motif-workflow`; for a Parsimony finding’s
-recipe or disposition defer to `motif:parsimony-review`. If the required Motif tools are absent,
+recipe or ruling defer to `motif:parsimony-review`. If the required Motif tools are absent,
 explain that the person must turn on Advanced AI mode in Motif. Do not edit a project by another route.
 This consultant names no Motif tools and grants no project-edit authority.
 

@@ -14,6 +14,12 @@ public enum CommandSurface
 
     /// <summary>Shown and dispatched only when the user enables Advanced AI mode.</summary>
     AdvancedAi,
+
+    /// <summary>
+    /// CLI commands for an Autonomous-mode run, shown and dispatched only when the caller declares Autonomous
+    /// (<c>MOTIF_AUTONOMOUS=1</c> or <c>--autonomous</c>). Never an MCP tool.
+    /// </summary>
+    Autonomous,
 }
 
 /// <summary>

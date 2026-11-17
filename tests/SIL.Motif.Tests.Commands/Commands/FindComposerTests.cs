@@ -25,7 +25,7 @@ public sealed class FindComposerTests
         { "lexical-entries-and-glosses", "Enter a new root in the lexicon and gloss it", "compose-author-lexical-entry" },
         { "senses-and-definitions", "Write a definition for another sense of the word", "compose-author-lexical-entry" },
         { "texts-and-analyses", "Paste in a story so that I can check how its words are analysed", "compose-author-text" },
-        { "parsimony-dispositions", "Mark this Parsimony finding as intentional", "compose-record-parsimony-disposition" },
+        { "parsimony-rulings", "Mark this Parsimony finding as intentional", "compose-record-parsimony-disposition" },
         { "infixation", "Add an infix inside the verb root after its first consonant", "compose-author-affix-process" },
         { "reduplication", "Copy the first syllable of the stem to mark the plural", "compose-author-affix-process" },
         { "scripture-sources", "Add a Bible translation as a source for this project", "compose-add-source" },

@@ -6,11 +6,11 @@ This check finds stem MSAs that name no part of speech. A stem with no category 
 
 Read the MSA in `affix-context` to confirm that it has no category. Then read the entry's senses: if none has a gloss, the entry is a stub left from an import or a first pass; if some do, the entry was analysed but never given a part of speech. Count only stem MSAs; inflectional and derivational MSAs name their categories in other roles and are not read here.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
-No disposition mapping exists for this finding yet, so it cannot be recorded with a Notebook disposition. Note the decision in the review instead.
+No ruling mapping exists for this finding yet, so it cannot be recorded with a Notebook ruling. Note the decision in the review instead.
 
 ## Ask the linguist
 

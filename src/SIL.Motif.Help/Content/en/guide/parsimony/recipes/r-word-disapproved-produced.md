@@ -10,9 +10,9 @@ Compare the ordered Form, MSA, and inflection-type identities under ADR 0020. Th
 
 Inspect its retained parser case with `parsimony view` (parser cases) and the finding's exact case key. Incomplete searches and surfaces that cannot be joined to one writing-system wordform do not count as completed evidence.
 
-## Disposition
+## Ruling
 
-An applied keep or defer is tied to this finding's exact evidence. See [Disposition](term:disposition) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
 
 Fix an identified condition; keep when rejection concerns sense rather than morphology; ask about missing conditions; defer unknown attribution.
 
