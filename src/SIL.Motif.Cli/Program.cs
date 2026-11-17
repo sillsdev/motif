@@ -1,6 +1,7 @@
 using SIL.Motif.Projection;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.Installation;
 using SIL.Motif.Host.Parsimony;
@@ -108,7 +109,8 @@ internal static int Run(
     TextWriter output,
     TextWriter error,
     IReadOnlyDictionary<string, string?> environment,
-    Action<string, Action<string>?> startRunner)
+    Action<string, Action<string>?> startRunner,
+    Func<AssessRequest, CommandOutcome<AssessCommandResponse>>? assess = null)
 {
     using var ambient = AmbientEnvironment.Push(environment);
     // A leading --autonomous is the global flag; it moves behind the verb so the verb is still args[0].
@@ -2797,7 +2799,7 @@ try
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
             if (flags.Keys.Any(flag => flag is not ("texts" or "all-wordforms" or "words" or "retry-failed" or
                     "retry-work-over" or "retry-source-assessment" or "replaces" or "time-limit-ms" or "parser-work-limit" or
-                    "summary" or "offset" or "limit" or "full-object-timing" or "max-seconds" or "json"))) return Usage(AssessUsage(), asJson);
+                    "summary" or "offset" or "limit" or "full-object-timing" or "max-seconds" or "collect" or "json"))) return Usage(AssessUsage(), asJson);
             flags.TryGetValue("replaces", out var assessReplaces);
             if (assessReplaces is not null && !CanonicalId.TryParse(assessReplaces, out _))
                 return Usage(AssessUsage(), asJson);
@@ -2858,6 +2860,27 @@ try
                 try { assessParserWorkLimit = ParserWorkLimit.Parse(assessParserWorkLimitRaw); }
                 catch (FormatException) { return Usage(AssessUsage(), asJson); }
             }
+            string[]? assessCollect = null;
+            if (flags.TryGetValue("collect", out var assessCollectRaw))
+            {
+                var names = assessCollectRaw.Split(',', StringSplitOptions.TrimEntries);
+                if (names.Any(string.IsNullOrEmpty))
+                {
+                    result = RenderCommand(CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                        "assess.collect-empty", FailureReason.InvalidArgument,
+                        "Name at least one collector, or leave collect unset for the default.")));
+                    break;
+                }
+                var uniqueNames = new List<string>(names.Length);
+                var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var name in names)
+                {
+                    var canonicalName = Enum.TryParse<AssessmentKind>(name, ignoreCase: true, out var kind) &&
+                        Enum.IsDefined(kind) ? kind.ToString() : name;
+                    if (seenNames.Add(canonicalName)) uniqueNames.Add(canonicalName);
+                }
+                assessCollect = uniqueNames.ToArray();
+            }
             var selectionWasRequested = flags.ContainsKey("all-wordforms") || flags.ContainsKey("texts") ||
                 assessWordsFile is not null || assessRetryFailed || assessRetryWorkOver is not null;
             var assessSelection = selectionWasRequested
@@ -2870,10 +2893,13 @@ try
                     return RefuseActivityDuringUpdate();
                 result = RunWithConsoleCancellation(cancellationToken =>
                 {
-                    var assessed = AssessCommand.Assess(
-                        new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessParserWorkLimit, assessReplaces,
-                            flags.ContainsKey("full-object-timing"), assessBudgetSeconds),
-                        asJson ? null : progress => error.WriteLine(progress.Message), cancellationToken);
+                    var request = new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs,
+                        assessParserWorkLimit, assessReplaces, flags.ContainsKey("full-object-timing"),
+                        assessBudgetSeconds, assessCollect);
+                    var assessed = assess is null
+                        ? AssessCommand.Assess(request, asJson ? null : progress => error.WriteLine(progress.Message),
+                            cancellationToken)
+                        : assess(request);
                     if (!assessSummary || !assessed.Succeeded) return RenderCommand(assessed);
                     alreadyRendered = true;
                     return CommandTextRenderer.RenderAssessSummary(

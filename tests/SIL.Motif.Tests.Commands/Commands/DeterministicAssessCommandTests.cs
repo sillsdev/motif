@@ -1989,6 +1989,39 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void AnEmptyRequestCollectIsRefusedRatherThanTreatedAsTheDefault()
+    {
+        using var seeded = NewSeededScratch();
+
+        var outcome = AssessTwoWords(seeded, null, CancellationToken.None, collect: []);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("assess.collect-empty", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.InvalidArgument, outcome.Refusal.Reason);
+    }
+
+    [Theory]
+    [InlineData("ObjectTiming", "ParseTime", "ParseTime")]
+    [InlineData("ParseTime", "ParseTime,ObjectTiming", "ParseTime,ObjectTiming")]
+    public void ARequestCollectOverridesTheProjectScopesCollect(string toml, string requested, string expected)
+    {
+        using var seeded = NewSeededScratch();
+        var configured = new SIL.Motif.Host.Config.ProjectConfiguration(
+            [new SIL.Motif.Host.Config.AssessmentScopeConfiguration(
+                SIL.Motif.Host.Config.AssessmentScopeConfiguration.DefaultName, "all", "pangloss", toml.Split(','),
+                TimeSpan.FromMilliseconds(2500), perWordParserWorkLimit: 500000)],
+            gateOnRegression: false, purgeOnApply: true);
+        File.WriteAllText(Path.ChangeExtension(seeded.FwDataPath, ".motif.toml"),
+            SIL.Motif.Host.Config.ProjectConfigurationFile.Render(configured));
+
+        var outcome = AssessTwoWords(seeded, null, CancellationToken.None, collect: requested.Split(','));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var kinds = outcome.Value!.Measurements.Select(item => item.Kind).ToHashSet();
+        Assert.Equal(expected.Contains("ObjectTiming"), kinds.Contains(AssessmentKind.ObjectTiming.ToStoredKind()));
+    }
+
+    [Fact]
     public void AnExplicitCollectOfObjectTimingIsNotSkippedByThePreflight()
     {
         using var seeded = NewSeededScratch();

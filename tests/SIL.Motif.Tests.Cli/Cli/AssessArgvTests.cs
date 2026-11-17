@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
@@ -48,6 +52,37 @@ public sealed class AssessArgvTests : IDisposable
         var missing = Path.Combine(_workerRoot, "absent.fwdata");
         var result = Run($"assess \"{missing}\" --max-seconds 60 --json");
         Assert.Equal("project.not-found", Envelope(result.Error).Code);
+    }
+
+    [Fact]
+    public void TheCollectOptionIsAcceptedAndReachesProjectValidation()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+        var result = Run($"assess \"{missing}\" --collect ParseTime,Correctness,ObjectTiming --json");
+        Assert.Equal("project.not-found", Envelope(result.Error).Code);
+    }
+
+    [Theory]
+    [InlineData(" ParseTime , Correctness ", "ParseTime,Correctness")]
+    [InlineData("parsetime,cOrReCtNeSs", "ParseTime,Correctness")]
+    [InlineData("ParseTime,Correctness,parsetime,CORRECTNESS", "ParseTime,Correctness")]
+    public void CollectOptionPassesTrimmedCanonicalDistinctNamesToAssessment(string value, string expected)
+    {
+        var result = RunWithAssessment(value);
+
+        Assert.NotNull(result.Request);
+        Assert.Equal(expected.Split(','), result.Request!.Collect);
+    }
+
+    [Theory]
+    [InlineData("ParseTime,")]
+    [InlineData("")]
+    public void CollectOptionRefusesAnEmptyName(string value)
+    {
+        var result = RunWithAssessment(value);
+
+        Assert.Null(result.Request);
+        Assert.Equal("assess.collect-empty", Envelope(result.Error).Code);
     }
 
     [Fact]
@@ -216,6 +251,26 @@ public sealed class AssessArgvTests : IDisposable
 
     private static FailureEnvelope Envelope(string stderr) =>
         ProjectionJson.Deserialize<FailureEnvelope>(stderr)!;
+
+    private (AssessRequest? Request, string Error) RunWithAssessment(string collect)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        AssessRequest? captured = null;
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [RunnerOptions.RootVariable] = _workerRoot,
+        };
+        global::SIL.Motif.Cli.Program.Run(
+            ["assess", Path.Combine(_workerRoot, "absent.fwdata"), "--collect", collect, "--json"],
+            output, error, environment, static (_, _) => { }, request =>
+            {
+                captured = request;
+                return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                    "test.assess-intercepted", FailureReason.Refused, "Assessment intercepted by test."));
+            });
+        return (captured, error.ToString());
+    }
 
     private CliRun Run(string arguments, string? panGlossExecutablePath = null)
     {

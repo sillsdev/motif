@@ -251,6 +251,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.OperationInvalidDependency, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ApplyReopenFailed, FailureReason.Refused),
         Spec(RefusalCodes.AssessBaselineChanged, FailureReason.StoreInconsistent),
+        Spec(RefusalCodes.AssessCollectEmpty, FailureReason.InvalidArgument),
         Spec(RefusalCodes.AssessInvalidLimit, FailureReason.InvalidArgument),
         Spec(RefusalCodes.AssessInvocationInconsistent, FailureReason.Refused),
         Spec(RefusalCodes.AssessMeasurementsIncomplete, FailureReason.StoreInconsistent),

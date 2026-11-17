@@ -16,8 +16,10 @@ namespace SIL.Motif.Contract.Requests;
 /// <param name="BudgetSeconds">Whole-run time limit in seconds; null uses the saved Parsing setting.</param>
 /// <param name="FullObjectTimingDetail">Retain object detail for every word in a bounded explicit Selection.</param>
 /// <param name="Collect">The collector names (ParseTime, Correctness, ObjectTiming, ...) as the scope's <c>collect</c> in
-/// <c>.motif.toml</c> takes them; null keeps the default from the toml or the built-in one. A non-null list is an explicit
-/// collect: the pre-flight row estimate that skips per-object timing does not apply, and an unknown name is refused.</param>
+/// <c>.motif.toml</c> takes them. The request's list wins over the toml scope, which wins over the built-in default; null
+/// leaves the choice to the toml or the default. A non-null list is an explicit collect: the pre-flight row estimate that
+/// skips per-object timing does not apply (the row budget still bounds the detail), an unknown name is refused with
+/// <c>assess.unsupported-kind</c>, and an empty list is refused with <c>assess.collect-empty</c>.</param>
 public sealed record AssessRequest(
     string ProjectPath,
     SelectionRequest? Selection = null,

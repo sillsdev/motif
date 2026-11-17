@@ -76,6 +76,10 @@
     "why": "A parse is already running for this project, so a second cannot start. Wait a minute.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "assess.collect-empty": {
+    "why": "Name at least one collector, or leave collect unset for the default. For example ParseTime, Correctness and ObjectTiming.",
+    "source": "Hand-written for the Assess collect option."
+  },
   "assess.out-of-memory": {
     "why": "Motif ran out of memory reading the parser's per-object timing. Nothing is damaged and nothing was saved. Collect without ObjectTiming, or assess fewer words. Tell the linguist; do not retry unchanged.",
     "source": "Hand-written for the Assess memory bound."

@@ -170,6 +170,10 @@ public static class AssessCommand
             if (request.PerWordLimitMs is <= 0)
                 return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                     "assess.invalid-limit", FailureReason.InvalidArgument, "A per-word time limit must be positive."));
+            if (request.Collect is { Count: 0 })
+                return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                    "assess.collect-empty", FailureReason.InvalidArgument,
+                    "Name at least one collector, or leave collect unset for the default."));
             if (invoker.ExecutableMissing)
             {
                 var refusal = cancellationToken.IsCancellationRequested ? Cancelled(request.ProjectPath)
@@ -320,7 +324,7 @@ public static class AssessCommand
                 var supportedKinds = assessor.SupportedKinds
                     .Where(kind => kind != AssessmentKind.PhonologyExamples).ToArray();
                 IReadOnlyList<AssessmentKind> collected;
-                // A request's list is an explicit collect, exactly as the scope's own list is; null keeps the scope's.
+                // Request list, then toml scope, then the built-in default; the first two are explicit.
                 var collectNames = request.Collect ?? configured.Collect;
                 if (collectNames.Count == 0)
                 {
@@ -342,7 +346,7 @@ public static class AssessCommand
                     if (unknown is not null)
                         return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                             "assess.unsupported-kind", FailureReason.Refused,
-                            $"The project's assessment scope asks to collect '{unknown}', which is not an Assessment kind.",
+                            $"Collect names '{unknown}', which is not an Assessment kind.",
                             new Dictionary<string, string> { ["kind"] = unknown }));
                     // Assess always reports parse time, so the scope's list chooses what is collected beside it.
                     collected = collectNames

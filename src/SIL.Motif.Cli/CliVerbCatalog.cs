@@ -393,8 +393,9 @@ public static class CliVerbCatalog
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
                 "[--retry-failed] [--retry-work-over <parser-work>] [--retry-source-assessment <id>] " +
                 "[--replaces <assessment-id>] [--full-object-timing] " +
-                "[--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--json]",
+                "[--collect <name>[,<name>...]] [--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--json]",
                 "The default per-word limit is 20,000,000 parser work.",
+                "--collect names the collectors for this run and wins over the project's .motif.toml collect, which wins over the built-in default; ParseTime is always collected.",
                 "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
             }),
 

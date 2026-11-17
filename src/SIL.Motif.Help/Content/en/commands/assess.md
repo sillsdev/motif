@@ -22,6 +22,12 @@ For an explicit reparse, save the chosen words in a file and name their original
 motif assess "C:\FieldWorks\Projects\Koro\Koro.fwdata" --words words.txt --replaces <assessment-id> --json
 ```
 
+To choose the collectors for one run, pass `--collect <name>[,<name>...]`, for example `--collect ParseTime,Correctness,ObjectTiming`. The option wins over the `collect` list in the project's `.motif.toml`, which wins over the built-in default. ParseTime is always collected. An unknown name is refused with `assess.unsupported-kind`, and an empty list with `assess.collect-empty`. A named `--collect` is explicit: it skips the pre-flight estimate that drops `ObjectTiming` for a large run, and the row limit below still bounds the detail.
+
+```powershell
+motif assess "C:\FieldWorks\Projects\Koro\Koro.fwdata" --all-wordforms --collect ParseTime,Correctness,ObjectTiming --json
+```
+
 ## What it prints
 
 Human output reports the Selection and stored Assessment ids, followed by each word's comparison headline and any qualification on a second line. For example, when a completed search builds a Disapproved analysis but misses the word's undecided analysis, it prints “Rebuilt an analysis you Disapproved” and “Your undecided analysis wasn't built”.
@@ -44,9 +50,9 @@ Assess and Trial use the Default Selection's per-word parser work limit and time
 
 When object statistics are available, Motif keeps whole-run timing totals and per-object detail for the 2,000 words with the most parser work by default. If parser work are unavailable, it uses time on this computer. A named scope can set `timing-detail-words` in `<project>.motif.toml` to a number from 0 to 10,000. Results identify when word-level detail is incomplete. To keep detail for every word in an explicitly supplied Selection of at most 2,000 words, pass `--full-object-timing` with the Selection. A retry records object timings from the initial pass; it does not supply object timings for the retried result.
 
-Per-object timing is also bounded by rows: one word can touch thousands of lexicon objects, so Motif keeps at most 250,000 timing rows of word detail, admitting the costliest words whole until the next one no longer fits. The totals for every object stay exact. When the limit cuts the detail, JSON carries `objectTimingNote` with `state` `truncated`, the `rowBudget`, `totalRows`, `keptRows` and `detailWords`, and the text says so. Before the parser starts, Assess multiplies the words by the lexicon's allomorphs; when that estimate exceeds 250,000 rows and the scope does not list `ObjectTiming` in `collect`, it skips per-object timing for the run, collects everything else, and reports `objectTimingNote` with `state` `skipped` and the `estimatedRows`. Listing `ObjectTiming` in `collect` in `<project>.motif.toml` runs it anyway, still bounded by the row limit.
+Per-object timing is also bounded by rows: one word can touch thousands of lexicon objects, so Motif keeps at most 250,000 timing rows of word detail, admitting the costliest words whole until the next one no longer fits. The totals for every object stay exact. When the limit cuts the detail, JSON carries `objectTimingNote` with `state` `truncated`, the `rowBudget`, `totalRows`, `keptRows` and `detailWords`, and the text says so. Before the parser starts, Assess multiplies the words by the lexicon's allomorphs; when that estimate exceeds 250,000 rows and the scope does not list `ObjectTiming` in `collect`, it skips per-object timing for the run, collects everything else, and reports `objectTimingNote` with `state` `skipped` and the `estimatedRows`. Listing `ObjectTiming` in `collect` in `<project>.motif.toml`, or passing `--collect` with it, runs it anyway, still bounded by the row limit.
 
-If Motif itself runs out of memory, Assess is refused with `assess.out-of-memory` (exit 2) and saves nothing; the store is not damaged. Collect without `ObjectTiming` by setting `collect = ["ParseTime", "Correctness"]` in the project's `.motif.toml`, or assess fewer words.
+If Motif itself runs out of memory, Assess is refused with `assess.out-of-memory` (exit 2) and saves nothing; the store is not damaged. Collect without `ObjectTiming` by setting `collect = ["ParseTime", "Correctness"]` in the project's `.motif.toml`, or assess fewer words. `--collect ParseTime,Correctness` does the same for one run.
 
 Each Assessment has a whole-run time limit, including retries; it is a time on this computer, not a measure of parser work. The project Parsing setting defaults to 3,600 seconds; `--max-seconds <seconds>` overrides it for this run, with a minimum of 60 seconds. If the limit is reached, Motif stops the parser, reports the number of words done and not done, records a `stopped-by-budget` job, and saves no Assessment. The command exits with code 5.
 

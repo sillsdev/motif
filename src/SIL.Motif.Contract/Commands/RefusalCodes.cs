@@ -53,6 +53,7 @@ public static class RefusalCodes
     public const string ApplyReopenFailed = "apply.reopen-failed";
 
     public const string AssessBaselineChanged = "assess.baseline-changed";
+    public const string AssessCollectEmpty = "assess.collect-empty";
     public const string AssessInvalidLimit = "assess.invalid-limit";
     public const string AssessInvocationInconsistent = "assess.invocation-inconsistent";
     public const string AssessMeasurementsIncomplete = "assess.measurements-incomplete";
