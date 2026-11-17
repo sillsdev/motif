@@ -427,7 +427,7 @@
   },
   "timing": {
     "title": "Inspect parse timing",
-    "description": "Reads timing evidence for an Assessment, optionally narrowed to words or grouped by kind or rule. Use it to locate expensive parsing work after an Assessment.",
+    "description": "Reads timing evidence for an Assessment, optionally narrowed to words or grouped by kind or rule. Use it to locate expensive parsing work after an Assessment. The result says whether parser work by object is available (parserWorkByObjectAvailable) and, when it is not, why (parserWorkByObjectAbsentReason): retried-words, word-without-work, object-without-work-or-identity, no-unattributed-row, sums-do-not-match, not-whole-run, or statistics-unavailable.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "activity": {

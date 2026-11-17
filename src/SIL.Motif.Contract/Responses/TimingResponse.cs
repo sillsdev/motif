@@ -20,6 +20,9 @@ public sealed record TimingResponse(
     /// <summary>Parser work attributed to objects and to the unattributed remainder.</summary>
     public IReadOnlyList<TimingWorkAggregate> ParserWorkAggregates { get; init; } = [];
 
+    /// <summary>Why <see cref="ParserWorkAggregates"/> is empty, as a <see cref="ParserWorkAbsence"/> code; null when it is not.</summary>
+    public string? ParserWorkByObjectAbsentReason { get; init; }
+
     /// <summary>The selected words' parser work: how many carried a count, their total, and the per-word median and 95th percentile.</summary>
     public WordWorkSummary Work { get; init; } = WordWorkSummary.None;
 
@@ -52,6 +55,31 @@ public sealed record TimingResponse(
     /// of it no parser object's timer covers.
     /// </summary>
     public WordTimeAttribution Attribution { get; init; } = WordTimeAttribution.None;
+}
+
+/// <summary>The fixed codes that say why parser work by object is absent from a Timing result.</summary>
+public static class ParserWorkAbsence
+{
+    /// <summary>Some words were retried, so the stored whole-run totals mix attempts.</summary>
+    public const string RetriedWords = "retried-words";
+
+    /// <summary>A counted word recorded no parser work.</summary>
+    public const string WordWithoutWork = "word-without-work";
+
+    /// <summary>A stored object total has no work or no usable identity.</summary>
+    public const string ObjectWithoutWorkOrIdentity = "object-without-work-or-identity";
+
+    /// <summary>The unattributed remainder was not stored, or no object totals were stored.</summary>
+    public const string NoUnattributedRow = "no-unattributed-row";
+
+    /// <summary>The objects' work does not add up to the words' work.</summary>
+    public const string SumsDoNotMatch = "sums-do-not-match";
+
+    /// <summary>The words are not the whole run, so whole-run totals do not describe them.</summary>
+    public const string NotWholeRun = "not-whole-run";
+
+    /// <summary>The run recorded no parser statistics.</summary>
+    public const string StatisticsUnavailable = "statistics-unavailable";
 }
 
 /// <summary>Whether a selected timing measurement belongs to the current saved project evidence.</summary>

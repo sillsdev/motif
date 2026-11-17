@@ -578,6 +578,62 @@ public sealed class EvidenceSetReadsTests : IDisposable
         Assert.Empty(filtered.Value!.ParserWorkAggregates);
     }
 
+    [Theory]
+    [InlineData("available", null)]
+    [InlineData("retried", "retried-words")]
+    [InlineData("noword", "word-without-work")]
+    [InlineData("nowork", "object-without-work-or-identity")]
+    [InlineData("noidentity", "object-without-work-or-identity")]
+    [InlineData("nounattributed", "no-unattributed-row")]
+    [InlineData("sums", "sums-do-not-match")]
+    [InlineData("subset", "not-whole-run")]
+    [InlineData("nostats", "statistics-unavailable")]
+    public void ATruncatedRunSaysWhetherWorkByObjectIsAvailableAndWhyNot(string variant, string? reason)
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
+        fixture.SetDefaultSelection([], ["cat", "dog"]);
+        var words = new[]
+        {
+            new AssessedWord("cat", "analysed", []) { ElapsedMs = 10, ParserWork = 70 },
+            new AssessedWord("dog", "analysed", []) { ElapsedMs = variant == "noword" ? 20 : 20, ParserWork = variant == "noword" ? null : 30 },
+        };
+        var detail = new AssessmentObjectTiming("morph_rule", "rule", "authored", "analysis", "Rule", "dog", 2, null, 2_000_000)
+            { ParserWork = 30 };
+        PanGlossObjectTimingAggregate Total(string kind, string key, string quality, long? work) =>
+            new(kind, key, quality, kind == "unattributed" ? "unattributed" : "analysis", "Rule", 2, 5, 3, 5_000_000, 3_000_000)
+                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2, ParserWork = work };
+        var rows = new List<PanGlossObjectTimingAggregate>
+        {
+            Total("morph_rule", variant == "noidentity" ? "" : "rule", variant == "noidentity" ? "bogus" : "authored",
+                variant == "nowork" ? null : 80),
+        };
+        if (variant != "nounattributed") rows.Add(Total("unattributed", "unattributed", "synthetic", variant == "sums" ? 5 : 20));
+        new AssessmentRepository(fixture.Database).Record(
+            new NewAssessmentRecord("work-" + variant, null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "scope",
+                new AssessmentSubject.Words(Selection.Create("Default", ["cat", "dog"]), "whitespace", "1"),
+                JsonSerializer.Serialize(fixture.Token, MotifJson.CreateOptions()), "outcome", "semantic", "grammar", "model",
+                "pipeline", 0,
+                new AssessmentRecordMaterial.Words(words, null, null, [detail])
+                {
+                    TimingEvidence = new AssessmentTimingEvidence(rows, 1, false, 2)
+                    {
+                        AttributedNs = 5_000_000, UnattributedNs = 25_000_000, OverrunNs = 0,
+                        HasRetriedWords = variant == "retried", StatisticsUnavailable = variant == "nostats",
+                    },
+                }));
+
+        var timing = TimingCommand.Timing(new TimingRequest(fixture.Project.FullFwDataPath, AssessmentId: "work-" + variant,
+            ExplicitWords: variant == "subset" ? ["cat"] : null));
+
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.Equal(reason, timing.Value!.ParserWorkByObjectAbsentReason);
+        var json = TimingPresentation.Timing(timing.Value);
+        Assert.Equal(reason is null, json["parserWorkByObjectAvailable"]!.GetValue<bool>());
+        Assert.Equal(reason, json["parserWorkByObjectAbsentReason"]?.GetValue<string>());
+        Assert.Null(json["parserWorkAggregates"]);
+        if (reason is null) Assert.Equal(100, timing.Value.ParserWorkAggregates.Sum(row => row.ParserWork));
+    }
+
     [Fact]
     public void OverviewAndTimingAgreeOnWorkSharesOfAGrammarLocalObject()
     {

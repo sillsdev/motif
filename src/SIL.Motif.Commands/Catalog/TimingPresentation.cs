@@ -12,6 +12,8 @@ public static class TimingPresentation
         response.AssessmentId, response.WordSet, response.By, response.WordCount, response.ObjectTimingDetail,
         response.ObjectTimingAggregatesAvailable, response.IsStale, response.EvidenceRelation, response.Baseline,
         response.SourceLastWriteUtc, response.CurrentProjectIsStale, response.CostComparison,
+        ParserWorkByObjectAvailable = response.ParserWorkByObjectAbsentReason is null,
+        response.ParserWorkByObjectAbsentReason,
         Objects = response.Aggregates.Select(row => new { row.Key, row.Name, row.Kind, row.IdentityQuality, row.Scope, row.WordsTouched }),
         Words = response.Words.Select(word => new { word.Word, word.Completion, word.Origin }),
     })!.AsObject();

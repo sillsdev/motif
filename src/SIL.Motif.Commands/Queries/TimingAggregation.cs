@@ -100,19 +100,29 @@ public static class TimingAggregation
     /// objects' work adds up to it, so the parts always sum to the whole.
     /// </summary>
     public static IReadOnlyList<TimingWorkAggregate> ParserWorkByObject(
+        IReadOnlyList<AssessmentObjectTiming> rows, IReadOnlyList<AssessedWord> words) =>
+        ParserWorkByObjectWithReason(rows, words).Rows;
+
+    /// <summary>
+    /// <see cref="ParserWorkByObject"/> with the <see cref="ParserWorkAbsence"/> code for why it is empty, or null when it is not.
+    /// </summary>
+    public static (IReadOnlyList<TimingWorkAggregate> Rows, string? Reason) ParserWorkByObjectWithReason(
         IReadOnlyList<AssessmentObjectTiming> rows, IReadOnlyList<AssessedWord> words)
     {
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(words);
         var byWord = rows.ToLookup(row => row.Word, StringComparer.Ordinal);
         words = words.Where(word => word.Outcome != "skipped").ToArray();
-        if (words.Any(word => word.ParserWork is not { } total ||
-            !byWord[word.Word].Any(row => row.Kind == "unattributed") ||
-            byWord[word.Word].Any(row => row.ParserWork is null ||
-                ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, row.Scope) is null) ||
-            byWord[word.Word].Sum(row => row.ParserWork!.Value) != total)) return [];
+        if (words.Any(word => word.ParserWork is null)) return ([], ParserWorkAbsence.WordWithoutWork);
+        if (words.Any(word => byWord[word.Word].Any(row => row.ParserWork is null ||
+                ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, row.Scope) is null)))
+            return ([], ParserWorkAbsence.ObjectWithoutWorkOrIdentity);
+        if (words.Any(word => !byWord[word.Word].Any(row => row.Kind == "unattributed")))
+            return ([], ParserWorkAbsence.NoUnattributedRow);
+        if (words.Any(word => byWord[word.Word].Sum(row => row.ParserWork!.Value) != word.ParserWork))
+            return ([], ParserWorkAbsence.SumsDoNotMatch);
         var selected = words.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
-        return rows.Where(row => row.ParserWork is not null && selected.Contains(row.Word))
+        var result = rows.Where(row => row.ParserWork is not null && selected.Contains(row.Word))
             .GroupBy(row => ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, row.Scope))
             .Where(group => group.Key is not null)
             .Select(group =>
@@ -124,6 +134,7 @@ public static class TimingAggregation
             })
             .OrderBy(row => row.IsUnattributed).ThenByDescending(row => row.ParserWork)
             .ThenBy(row => row.Name, StringComparer.Ordinal).ToArray();
+        return result.Length == 0 ? ([], ParserWorkAbsence.NoUnattributedRow) : (result, null);
     }
 
     /// <summary>
@@ -133,17 +144,27 @@ public static class TimingAggregation
     /// work was kept by object reads as absent and never as zero.
     /// </summary>
     public static IReadOnlyList<TimingWorkAggregate> ParserWorkFromTotals(
+        IReadOnlyList<AssessedWord> words, AssessmentTimingEvidence evidence, string? scope = null) =>
+        ParserWorkFromTotalsWithReason(words, evidence, scope).Rows;
+
+    /// <summary>
+    /// <see cref="ParserWorkFromTotals"/> with the <see cref="ParserWorkAbsence"/> code for why it is empty, or null when it is not.
+    /// </summary>
+    public static (IReadOnlyList<TimingWorkAggregate> Rows, string? Reason) ParserWorkFromTotalsWithReason(
         IReadOnlyList<AssessedWord> words, AssessmentTimingEvidence evidence, string? scope = null)
     {
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(evidence);
         var counted = words.Where(word => word.Outcome != "skipped").ToArray();
         var rows = evidence.Aggregates;
-        if (evidence.HasRetriedWords || rows.Count == 0 || counted.Any(word => word.ParserWork is null) ||
-            rows.Any(row => row.ParserWork is null || ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope) is null) ||
-            !rows.Any(row => row.Kind == "unattributed") ||
-            rows.Sum(row => row.ParserWork!.Value) != counted.Sum(word => word.ParserWork!.Value)) return [];
-        return rows.GroupBy(row => ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope))
+        if (evidence.HasRetriedWords) return ([], ParserWorkAbsence.RetriedWords);
+        if (counted.Any(word => word.ParserWork is null)) return ([], ParserWorkAbsence.WordWithoutWork);
+        if (rows.Any(row => row.ParserWork is null || ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope) is null))
+            return ([], ParserWorkAbsence.ObjectWithoutWorkOrIdentity);
+        if (!rows.Any(row => row.Kind == "unattributed")) return ([], ParserWorkAbsence.NoUnattributedRow);
+        if (rows.Sum(row => row.ParserWork!.Value) != counted.Sum(word => word.ParserWork!.Value))
+            return ([], ParserWorkAbsence.SumsDoNotMatch);
+        return (rows.GroupBy(row => ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope))
             .Select(group =>
             {
                 var first = group.First();
@@ -153,7 +174,7 @@ public static class TimingAggregation
                     { IdentityQuality = first.IdentityQuality, Scope = local ? scope : null };
             })
             .OrderBy(row => row.IsUnattributed).ThenByDescending(row => row.ParserWork)
-            .ThenBy(row => row.Name, StringComparer.Ordinal).ToArray();
+            .ThenBy(row => row.Name, StringComparer.Ordinal).ToArray(), null);
     }
 
     /// <summary>

@@ -112,11 +112,15 @@ public static class TimingCommand
             var aggregates = TimingAggregation.Aggregate(selectedWords, objectRows, request.By, request.Rule, request.Top);
             var aggregatesAvailable = true;
             var totalsWork = (IReadOnlyList<TimingWorkAggregate>)[];
+            string? absentReason = null;
             if (!evidenceSet.TimingDetail.IsComplete)
             {
                 var wholeRun = evidenceSet.Components.Count == 1 && selectedWords.Count == evidenceSet.Words.Count;
                 if (!wholeRun || assessment.TimingEvidence is not { HasRetriedWords: false, StatisticsUnavailable: false } timingEvidence)
                 {
+                    absentReason = !wholeRun ? ParserWorkAbsence.NotWholeRun
+                        : assessment.TimingEvidence is { HasRetriedWords: true } ? ParserWorkAbsence.RetriedWords
+                        : ParserWorkAbsence.StatisticsUnavailable;
                     var wordTimes = selectedWords.Select(TimingAggregation.WordTimeMs).OfType<double>().ToArray();
                     aggregates = ([], [], new WordTimeAttribution(wordTimes.Length, wordTimes.Sum(), 0, null, null, 0, false));
                     aggregatesAvailable = false;
@@ -126,10 +130,12 @@ public static class TimingCommand
                     var totals = TimingAggregation.AggregateTotals(selectedWords, timingEvidence, request.By,
                         assessment.Invocation?.InvocationId is { } invocation ? "invocation:" + invocation : null);
                     aggregates = (totals.Aggregates, aggregates.CostliestWords, totals.Attribution);
-                    totalsWork = TimingAggregation.ParserWorkFromTotals(selectedWords, timingEvidence,
+                    (totalsWork, absentReason) = TimingAggregation.ParserWorkFromTotalsWithReason(selectedWords, timingEvidence,
                         assessment.Invocation?.InvocationId is { } workInvocation ? "invocation:" + workInvocation : null);
                 }
             }
+            var parserWork = evidenceSet.TimingDetail.IsComplete
+                ? TimingAggregation.ParserWorkByObjectWithReason(objectRows, selectedWords) : (totalsWork, absentReason);
             var summary = TimingAggregation.SummarizeWords(selectedWords, request.Top);
             BaselineToken? measuredBaseline;
             try { measuredBaseline = JsonSerializer.Deserialize<BaselineToken>(assessment.BaselineToken, MotifJson.CreateOptions()); }
@@ -175,8 +181,9 @@ public static class TimingCommand
                 SourceLastWriteUtc = measuredSave,
                 CurrentProjectIsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
                 Attribution = aggregates.Attribution,
-                ParserWorkAggregates = evidenceSet.TimingDetail.IsComplete
-                    ? TimingAggregation.ParserWorkByObject(objectRows, selectedWords) : totalsWork,
+                ParserWorkAggregates = parserWork.Item1,
+                ParserWorkByObjectAbsentReason = parserWork.Item1.Count == 0
+                    ? parserWork.Item2 ?? ParserWorkAbsence.NoUnattributedRow : null,
                 Work = TimingAggregation.SummarizeWork(selectedWords.Select(TimingAggregation.WorkOf)),
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
                     word.Outcome == WordOutcome.MemoryCapped.ToStoredOutcome() ? TimingCompletion.MemoryLimit :

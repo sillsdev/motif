@@ -31,6 +31,8 @@ internal static class TimingTextRenderer
         }
         if (response.CostComparison.ObjectsUnavailableReason is { } reason)
             text.AppendLine("  Object comparison unavailable: " + reason);
+        if (response.ParserWorkByObjectAbsentReason is { } absent)
+            text.AppendLine("  Parser work by object unavailable: " + absent);
         if (response.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine("  " + detail);
         return text.ToString();
     }
