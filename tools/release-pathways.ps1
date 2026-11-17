@@ -18,7 +18,7 @@ function Invoke-Process {
         [switch] $AllowFailure
     )
 
-    Write-Host "Running $([System.IO.Path]::GetFileName($Executable)) $($Arguments[0])."
+    [Console]::Error.WriteLine("Running $([System.IO.Path]::GetFileName($Executable)) $($Arguments[0]).")
     $start = [System.Diagnostics.ProcessStartInfo]::new([System.IO.Path]::GetFullPath($Executable))
     $start.UseShellExecute = $false
     $start.RedirectStandardOutput = $true
