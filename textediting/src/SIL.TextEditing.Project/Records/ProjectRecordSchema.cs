@@ -34,6 +34,7 @@ namespace SIL.TextEditing.Project
         /// <c>pathSegments</c> and optional <c>body</c>. Every metadata field of each declared class must be accounted for,
         /// and each class must be reachable from a kind root through owned-object fields or be a base of a reachable class.
         /// The metadata's analysis/vernacular hint determines the default writing system; an absent hint uses analysis.
+        /// Ordered analysis-vernacular and vernacular-analysis hints cannot be represented and are rejected.
         /// Timestamps, binary and general dates have no record-schema representation and must be excluded.</summary>
         /// <exception cref="ArgumentException">An overlay declaration is invalid or leaves a metadata field unmentioned.</exception>
         /// <exception cref="NotSupportedException">An included metadata type or writing-system hint cannot be represented.</exception>
@@ -172,8 +173,8 @@ namespace SIL.TextEditing.Project
         {
             switch (hint)
             {
-                case 0: case -1: case -3: case -5: return RecordWritingSystem.Analysis;
-                case -2: case -4: case -6: return RecordWritingSystem.Vernacular;
+                case 0: case -1: case -3: return RecordWritingSystem.Analysis;
+                case -2: case -4: return RecordWritingSystem.Vernacular;
                 default: throw new NotSupportedException("Unsupported writing-system hint " + hint + " for " + key + ".");
             }
         }

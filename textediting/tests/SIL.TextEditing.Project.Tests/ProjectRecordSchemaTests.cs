@@ -209,6 +209,20 @@ namespace SIL.TextEditing.Project.Tests
             Assert.Equal(RecordWritingSystem.Vernacular, field.WritingSystem);
         }
 
+        [Theory]
+        [InlineData(-5)]
+        [InlineData(-6)]
+        public void MixedWritingSystemHintsAreRejectedWithoutLosingTheirOrder(int hint)
+        {
+            using var fixture = new ProjectFixture();
+            var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
+            metadata.AddCustomField("LexEntry", "MixedField", CellarPropertyType.Unicode, 0, "", hint, Guid.Empty);
+            string overlay = ChangeOverlay(root => Class(root, "LexEntry").Add(
+                new XElement("field", new XAttribute("name", "MixedField"), new XAttribute("key", "mixed"))));
+            var error = Assert.Throws<NotSupportedException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            Assert.Contains("writing-system hint " + hint + " for mixed", error.Message);
+        }
+
         [Fact]
         public void GeneralDatesMustBeExcludedUntilTheRecordFormatRepresentsThem()
         {
