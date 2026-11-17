@@ -30,6 +30,32 @@ public sealed record AssessCommandResponse(
     public string CompletionSummary { get; init; } = string.Empty;
     public string CorrectnessStatus { get; init; } = "Correctness unavailable: authoritative analysis identities are not supplied.";
     public IReadOnlyList<string>? GrammarWarnings { get; init; }
+    /// <summary>
+    /// Set when per-object timing was skipped or its detail cut to fit the row budget, so a caller reads the fact
+    /// rather than inferring it from missing rows. Null when timing was collected in full or never asked for.
+    /// </summary>
+    public ObjectTimingNote? ObjectTimingNote { get; init; }
+}
+
+/// <summary>What the row budget did to per-object timing in one Assess run.</summary>
+/// <param name="State"><see cref="Skipped"/> or <see cref="Truncated"/>.</param>
+/// <param name="RowBudget">The most per-object timing rows the run was allowed to hold.</param>
+/// <param name="Message">The sentence a person reads, naming what to change.</param>
+public sealed record ObjectTimingNote(string State, long RowBudget, string Message)
+{
+    /// <summary>Per-object timing was left out because the estimated rows exceeded the budget.</summary>
+    public const string Skipped = "skipped";
+    /// <summary>Per-object timing was collected but its word detail was cut to fit the budget.</summary>
+    public const string Truncated = "truncated";
+
+    /// <summary>The rows words times grammar objects predicted, when the run was skipped.</summary>
+    public long? EstimatedRows { get; init; }
+    /// <summary>The rows the parser measured in all, when the detail was truncated.</summary>
+    public long? TotalRows { get; init; }
+    /// <summary>The rows kept as word detail, when the detail was truncated.</summary>
+    public long? KeptRows { get; init; }
+    /// <summary>The words whose detail was kept, when the detail was truncated.</summary>
+    public int? DetailWords { get; init; }
 }
 
 /// <summary>One word's completion is independent of whatever findings the parser returned.</summary>

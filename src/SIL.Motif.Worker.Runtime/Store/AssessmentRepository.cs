@@ -628,8 +628,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var wordsMaterial = assessment.Material as AssessmentRecordMaterial.Words;
         object?[][] timings = wordsMaterial is null ||
             (wordsMaterial.ObjectTimings.Count == 0 && wordsMaterial.TimingEvidence is null)
-            ? [] : [[assessment.AssessmentId, Compress(JsonSerializer.Serialize(wordsMaterial.ObjectTimings)),
-                wordsMaterial.TimingEvidence is null ? null : Compress(JsonSerializer.Serialize(wordsMaterial.TimingEvidence))]];
+            ? [] : [[assessment.AssessmentId, CompressJson(wordsMaterial.ObjectTimings),
+                wordsMaterial.TimingEvidence is null ? null : CompressJson(wordsMaterial.TimingEvidence)]];
         var selection = (assessment.Subject as AssessmentSubject.Words)?.Selection;
         return new PreparedAssessment(assessment,
             wordsMaterial?.Invocation is null ? null : JsonSerializer.Serialize(wordsMaterial.Invocation, InvocationJsonOptions),
@@ -1209,9 +1209,9 @@ public sealed class AssessmentRepository : IAssessmentRepository
         RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         if (!reader.Read()) return new StoredTimings([], null);
-        var rows = JsonSerializer.Deserialize<AssessmentObjectTiming[]>(Decompress(reader, 0))
+        var rows = DecompressJson<AssessmentObjectTiming[]>(reader, 0)
             ?? throw new InvalidDataException("Stored object timing detail is missing.");
-        var evidence = reader.IsDBNull(1) ? null : JsonSerializer.Deserialize<AssessmentTimingEvidence>(Decompress(reader, 1))
+        var evidence = reader.IsDBNull(1) ? null : DecompressJson<AssessmentTimingEvidence>(reader, 1)
             ?? throw new InvalidDataException("Stored object timing evidence is missing.");
         return new StoredTimings(rows, evidence);
     }
@@ -1312,6 +1312,22 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using (var compressed = new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: true))
             compressed.Write(Encoding.UTF8.GetBytes(value));
         return output.ToArray();
+    }
+
+    // Streams through the compressor so the serialized rows never exist as one string or one byte array.
+    private static byte[] CompressJson<T>(T value)
+    {
+        using var output = new MemoryStream();
+        using (var compressed = new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: true))
+            JsonSerializer.Serialize(compressed, value);
+        return output.ToArray();
+    }
+
+    private static T? DecompressJson<T>(SqliteDataReader reader, int ordinal)
+    {
+        using var input = new MemoryStream((byte[])reader.GetValue(ordinal), writable: false);
+        using var compressed = new BrotliStream(input, CompressionMode.Decompress);
+        return JsonSerializer.Deserialize<T>(compressed);
     }
 
     private static string Decompress(SqliteDataReader reader, int ordinal)

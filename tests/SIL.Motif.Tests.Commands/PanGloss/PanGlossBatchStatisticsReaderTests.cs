@@ -231,6 +231,61 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
     }
 
     [Fact]
+    public void TheDetailStopsAtTheFirstWordWhoseRowsExceedTheBudgetAndSaysSo()
+    {
+        var path = Path.Combine(_root, "row-budget.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "INSERT INTO word VALUES (2, 'slow', 900000, 3, 0, NULL); " +
+                "INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) VALUES " +
+                "(2, 1, 'analysis', 7, 400000), (2, 2, 'analysis', 1, 10);";
+            command.ExecuteNonQuery();
+        }
+
+        var cut = PanGlossBatchStatisticsReader.ReadBounded(path, ["word", "slow"], 10, detailRowBudget: 4);
+        var whole = PanGlossBatchStatisticsReader.ReadBounded(path, ["word", "slow"], 10, detailRowBudget: 6);
+
+        Assert.True(cut.DetailTruncatedByRows);
+        Assert.False(cut.DetailComplete);
+        Assert.Equal(1, cut.DetailWordCount);
+        Assert.Equal(4, cut.DetailRowBudget);
+        Assert.Equal(2, cut.ObjectTimings.Count);
+        Assert.All(cut.ObjectTimings, row => Assert.Equal("slow", row.Word));
+        Assert.Equal(whole.TotalObjectTimingRows, cut.TotalObjectTimingRows);
+        Assert.Equal(whole.Aggregates, cut.Aggregates);
+        Assert.False(whole.DetailTruncatedByRows);
+        Assert.True(whole.DetailComplete);
+        Assert.Equal(6, whole.ObjectTimings.Count);
+    }
+
+    [Fact]
+    public void ACacheWithManyObjectsPerWordKeepsNoMoreRowsThanTheBudgetAndKeepsExactTotals()
+    {
+        const int words = 200, objects = 400, budget = 25_000;
+        var path = Path.Combine(_root, "scale.sqlite");
+        WriteScaleCache(path, words, objects);
+        var expectedWords = Enumerable.Range(1, words).Select(index => "w" + index).ToArray();
+
+        var before = GC.GetTotalMemory(forceFullCollection: true);
+        var result = PanGlossBatchStatisticsReader.ReadBounded(path, expectedWords, detailWordLimit: 2000, budget);
+        var growth = GC.GetTotalMemory(forceFullCollection: true) - before;
+        GC.KeepAlive(result);
+
+        Assert.Equal(words * objects, result.TotalObjectTimingRows);
+        Assert.True(result.DetailTruncatedByRows);
+        Assert.Equal(budget / objects, result.DetailWordCount);
+        Assert.Equal(result.DetailWordCount * objects, result.ObjectTimings.Count);
+        Assert.Equal(objects, result.Aggregates.Count);
+        Assert.All(result.Aggregates, aggregate => Assert.Equal(words, aggregate.WordsTouched));
+        // 25,000 kept rows are a few MB; 80,000 timing rows, if all were kept, would be several times this.
+        Assert.True(growth < 12_000_000, $"kept {growth:N0} bytes");
+        Assert.True(result.ObjectTimings.Select(row => row.Key).Distinct(ReferenceEqualityComparer.Instance).Count() <= objects);
+    }
+
+    [Fact]
     public void KeepsTheSlowestWordsAndAggregatesEveryWord()
     {
         var path = Path.Combine(_root, "bounded.sqlite");
@@ -381,6 +436,25 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.Read(path, ["word"]));
         Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1));
         Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadWords(path, ["word"]));
+    }
+
+    private static void WriteScaleCache(string path, int words, int objects)
+    {
+        WriteCache(path);
+        using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            DELETE FROM fact; DELETE FROM object; DELETE FROM word;
+            WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < {Math.Max(words, objects)})
+            INSERT INTO word SELECT i, 'w' || i, 1000 + i, 1, 1, NULL FROM n WHERE i <= {words};
+            WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < {objects})
+            INSERT INTO object SELECT i, 'lex_entry:e' || i || '#00000000-0000-4000-8000-000000000000@Main',
+                'lex_entry', 'Entry ' || i, 'authored' FROM n;
+            INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns)
+                SELECT w.word_id, o.object_id, 'analysis', 1, 10 FROM word w CROSS JOIN object o;
+            """;
+        command.ExecuteNonQuery();
     }
 
     private static void WriteCache(string path, int version = PanGlossInterfaceVersions.StatsCacheVersion)

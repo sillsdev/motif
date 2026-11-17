@@ -1928,6 +1928,73 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void ADefaultRunWhoseEstimatedTimingRowsExceedTheBudgetSkipsObjectTimingAndSaysSo()
+    {
+        using var seeded = NewSeededScratch();
+        ObjectTimingPreflight.RowBudgetForTests.Value = 1;
+        try
+        {
+            var outcome = AssessTwoWords(seeded, null, CancellationToken.None);
+
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            var response = outcome.Value!;
+            var note = response.ObjectTimingNote!;
+            Assert.Equal(ObjectTimingNote.Skipped, note.State);
+            Assert.Equal(1, note.RowBudget);
+            Assert.True(note.EstimatedRows >= 2);
+            Assert.StartsWith("Per-object timing was skipped: about ", note.Message, StringComparison.Ordinal);
+            Assert.Contains(note.Message, response.SummaryMarkdown, StringComparison.Ordinal);
+            Assert.DoesNotContain(response.Measurements, item => item.Kind == AssessmentKind.ObjectTiming.ToStoredKind());
+            var parse = response.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
+                .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
+            Assert.Empty(parse.ObjectTimings);
+            Assert.Equal(note.EstimatedRows, parse.TimingEvidence!.SkippedEstimatedRows);
+            Assert.True(parse.TimingEvidence.StatisticsUnavailable);
+            Assert.Equal(2, parse.Words!.Count);
+        }
+        finally
+        {
+            ObjectTimingPreflight.RowBudgetForTests.Value = null;
+        }
+    }
+
+    [Fact]
+    public void AnExplicitCollectOfObjectTimingIsNotSkippedByThePreflight()
+    {
+        using var seeded = NewSeededScratch();
+        var configured = new SIL.Motif.Host.Config.ProjectConfiguration(
+            [new SIL.Motif.Host.Config.AssessmentScopeConfiguration(
+                SIL.Motif.Host.Config.AssessmentScopeConfiguration.DefaultName, "all", "pangloss", ["ObjectTiming"],
+                TimeSpan.FromMilliseconds(2500), perWordParserWorkLimit: 500000)],
+            gateOnRegression: false, purgeOnApply: true);
+        File.WriteAllText(Path.ChangeExtension(seeded.FwDataPath, ".motif.toml"),
+            SIL.Motif.Host.Config.ProjectConfigurationFile.Render(configured));
+        ObjectTimingPreflight.RowBudgetForTests.Value = 1;
+        try
+        {
+            var outcome = AssessTwoWords(seeded, null, CancellationToken.None);
+
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            Assert.Contains(outcome.Value!.Measurements, item => item.Kind == AssessmentKind.ObjectTiming.ToStoredKind());
+            // Bounded by the same budget: one of the two rows fits, and the result says the detail was cut.
+            var note = outcome.Value.ObjectTimingNote!;
+            Assert.Equal(ObjectTimingNote.Truncated, note.State);
+            Assert.Equal(2, note.TotalRows);
+            Assert.Equal(1, note.KeptRows);
+            Assert.Contains(note.Message, outcome.Value.SummaryMarkdown, StringComparison.Ordinal);
+            var parse = outcome.Value.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
+                .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
+            Assert.Single(parse.ObjectTimings);
+            Assert.True(parse.TimingEvidence!.DetailTruncatedByRows);
+            Assert.Equal(1, parse.TimingEvidence.DetailRowBudget);
+        }
+        finally
+        {
+            ObjectTimingPreflight.RowBudgetForTests.Value = null;
+        }
+    }
+
+    [Fact]
     public void ProgressForwardsTheAssessorWordAndLimitDetails()
     {
         using var seeded = NewSeededScratch();

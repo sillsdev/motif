@@ -311,6 +311,7 @@ public static class AssessCommand
             }
 
             AssessmentScope.Words scope;
+            ObjectTimingNote? timingNote = null;
             IReadOnlyList<string> parsedWords = composition.Selection.Words;
             var exportedCandidate = Path.GetDirectoryName(baseline.FwDataPath)!;
             IReadOnlyList<ProducedAssessment> produced;
@@ -323,6 +324,14 @@ public static class AssessCommand
                 {
                     collected = supportedKinds.Contains(AssessmentKind.Correctness)
                         ? CollectedKinds.Append(AssessmentKind.Correctness).ToArray() : CollectedKinds;
+                    // Only the default asks for timing unprompted; an explicit collect or full detail request keeps it.
+                    var estimatedRows = request.FullObjectTimingDetail ? 0
+                        : ObjectTimingPreflight.EstimateRows(baselineReader.Cache, composition.Selection.Words.Count);
+                    if (estimatedRows > ObjectTimingPreflight.RowBudget)
+                    {
+                        collected = collected.Where(kind => kind != AssessmentKind.ObjectTiming).ToArray();
+                        timingNote = ObjectTimingPreflight.Skipped(estimatedRows, ObjectTimingPreflight.RowBudget);
+                    }
                 }
                 else
                 {
@@ -501,8 +510,11 @@ public static class AssessCommand
                 AssessmentTimingEvidence? timingEvidence = null;
                 if (statsCachePath is null)
                 {
-                    summaryMarkdown = "(no per-object statistics were collected)" + Environment.NewLine;
-                    timingEvidence = new AssessmentTimingEvidence([], 0, false, 0) { StatisticsUnavailable = true };
+                    summaryMarkdown = (timingNote?.Message ?? "(no per-object statistics were collected)") + Environment.NewLine;
+                    timingEvidence = new AssessmentTimingEvidence([], 0, false, 0)
+                    {
+                        StatisticsUnavailable = true, SkippedEstimatedRows = timingNote?.EstimatedRows,
+                    };
                 }
                 else
                 {
@@ -520,13 +532,17 @@ public static class AssessCommand
                         return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, exception.Message));
                     }
                     using var replayLease = replay;
-                    BoundedPanGlossStatistics batchStatistics;
+                    BoundedPanGlossStatistics<AssessmentObjectTiming> batchStatistics;
                     try
                     {
                         batchStatistics = PanGlossBatchStatisticsReader.ReadBounded(
                             replay.CachePath, parsedWords,
                             request.FullObjectTimingDetail ? parsedWords.Count :
-                                ObjectTimingRowCapForTests.Value ?? configured.TimingDetailWords);
+                                ObjectTimingRowCapForTests.Value ?? configured.TimingDetailWords,
+                            ObjectTimingPreflight.RowBudget,
+                            row => new AssessmentObjectTiming(
+                                row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object, row.Word,
+                                row.Attempts, row.Passes, row.ElapsedNs) { ParserWork = row.ParserWork });
                     }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or
                         UnauthorizedAccessException or SqliteException)
@@ -536,19 +552,24 @@ public static class AssessCommand
                     }
                     wordStats = batchStatistics.Words.ToDictionary(pair => pair.Key, pair => pair.Value,
                         StringComparer.Ordinal);
-                    objectTimings = batchStatistics.ObjectTimings.Select(row => new AssessmentObjectTiming(
-                        row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object, row.Word,
-                        row.Attempts, row.Passes, row.ElapsedNs) { ParserWork = row.ParserWork }).ToArray();
+                    objectTimings = batchStatistics.ObjectTimings;
                     timingEvidence = new AssessmentTimingEvidence(batchStatistics.Aggregates,
                         batchStatistics.DetailWordCount, batchStatistics.DetailComplete, batchStatistics.TotalObjectTimingRows)
                     {
                         AttributedNs = batchStatistics.AttributedNs, UnattributedNs = batchStatistics.UnattributedNs,
-                        OverrunNs = batchStatistics.OverrunNs,
+                        OverrunNs = batchStatistics.OverrunNs, DetailRowBudget = batchStatistics.DetailRowBudget,
+                        DetailTruncatedByRows = batchStatistics.DetailTruncatedByRows,
                     };
+                    if (batchStatistics.DetailTruncatedByRows)
+                        timingNote = ObjectTimingPreflight.Truncated(batchStatistics.TotalObjectTimingRows,
+                            batchStatistics.ObjectTimings.Count, batchStatistics.DetailWordCount,
+                            batchStatistics.DetailRowBudget);
                     summaryMarkdown = $"Batch statistics: {batchStatistics.Words.Count} words; " +
                         $"{batchStatistics.TotalObjectTimingRows} object timing rows.";
                     if (!batchStatistics.DetailComplete)
                         summaryMarkdown += $" Object timing detail kept for the {batchStatistics.DetailWordCount} costliest words.";
+                    if (batchStatistics.DetailTruncatedByRows && timingNote is not null)
+                        summaryMarkdown += " " + timingNote.Message;
                 }
 
                 if (cancellationToken.IsCancellationRequested)
@@ -735,6 +756,7 @@ public static class AssessCommand
                             "An Assessment is missing its invocation evidence."))).ToArray(),
                     InvocationId = invocation.InvocationId,
                     SelectionDescriptor = composition.Descriptor,
+                    ObjectTimingNote = timingNote,
                 };
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Complete, assessmentIds.Count, assessmentIds.Count, completionSummary));

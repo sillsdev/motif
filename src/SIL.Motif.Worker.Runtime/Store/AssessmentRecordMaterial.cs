@@ -51,6 +51,14 @@ public sealed record AssessmentTimingEvidence(
     public bool HasRetriedWords { get; init; }
     /// <summary>Whether the run supplied no object statistics cache.</summary>
     public bool StatisticsUnavailable { get; init; }
+    /// <summary>The most timing rows the saved detail was allowed to hold; zero when the run recorded none.</summary>
+    public int DetailRowBudget { get; init; }
+    /// <summary>Whether some words lost their detail because their rows did not fit <see cref="DetailRowBudget"/>.</summary>
+    public bool DetailTruncatedByRows { get; init; }
+    /// <summary>
+    /// The timing rows Assess expected when it left per-object timing out of the run, or null when it was collected.
+    /// </summary>
+    public long? SkippedEstimatedRows { get; init; }
     /// <summary>Total object time for all measured words, when any timer was recorded.</summary>
     public long? AttributedNs { get; init; }
     /// <summary>Sum of each word's nonnegative residual outside object timers.</summary>

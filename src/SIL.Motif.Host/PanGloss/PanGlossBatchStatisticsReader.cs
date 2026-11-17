@@ -6,8 +6,13 @@ namespace SIL.Motif.Host.PanGloss;
 /// <summary>Reads word counters and per-object timings from one retained PanGloss batch statistics cache.</summary>
 public static class PanGlossBatchStatisticsReader
 {
-    /// <summary>The most object timing rows kept from one cache, so a very large project cannot exhaust memory.</summary>
-    public const int DefaultMaxObjectTimingRows = 1_000_000;
+    /// <summary>
+    /// The one budget of object timing rows Motif keeps or expects from one run, so a large grammar cannot exhaust
+    /// memory. A kept row costs about 0.6 KB once read back, so 250,000 rows is roughly 150 MB at most: it holds the
+    /// 2,000 detail words of a grammar where each word touches about 125 objects, several times what a healthy run
+    /// produces, while a grammar that makes every word touch thousands of objects is cut off or skipped.
+    /// </summary>
+    public const int DefaultObjectTimingRowBudget = 250_000;
 
     /// <summary>Reads the batch rows and validates exact Selection coverage in the cache.</summary>
     /// <param name="cachePath">The statistics cache written by the batch invocation.</param>
@@ -16,7 +21,7 @@ public static class PanGlossBatchStatisticsReader
     /// <exception cref="InvalidDataException">The cache does not contain exactly the requested word rows.</exception>
     public static PanGlossBatchStatistics<PanGlossObjectTiming> Read(
         string cachePath, IReadOnlyCollection<string> expectedWords) =>
-        Read(cachePath, expectedWords, timing => timing, DefaultMaxObjectTimingRows);
+        Read(cachePath, expectedWords, timing => timing, DefaultObjectTimingRowBudget);
 
     /// <summary>
     /// Reads the batch rows, converting each object timing as it is read so only one list is held, and keeping
@@ -46,18 +51,49 @@ public static class PanGlossBatchStatisticsReader
     /// <param name="cachePath">The PanGloss statistics cache.</param>
     /// <param name="expectedWords">The exact Selection measured by this invocation.</param>
     /// <param name="detailWordLimit">Maximum number of words whose object facts are retained.</param>
+    /// <param name="detailRowBudget">Maximum number of object timing rows retained across those words.</param>
     /// <returns>Exact per-object totals and the bounded word detail.</returns>
-    public static BoundedPanGlossStatistics ReadBounded(string cachePath,
-        IReadOnlyCollection<string> expectedWords, int detailWordLimit)
+    public static BoundedPanGlossStatistics<PanGlossObjectTiming> ReadBounded(string cachePath,
+        IReadOnlyCollection<string> expectedWords, int detailWordLimit,
+        int detailRowBudget = DefaultObjectTimingRowBudget) =>
+        ReadBounded(cachePath, expectedWords, detailWordLimit, detailRowBudget, timing => timing);
+
+    /// <summary>
+    /// Reads exact object totals while keeping detail for the words with the most work, converting each kept row as
+    /// it is read so only one copy of the detail is ever held.
+    /// </summary>
+    /// <param name="cachePath">The PanGloss statistics cache.</param>
+    /// <param name="expectedWords">The exact Selection measured by this invocation.</param>
+    /// <param name="detailWordLimit">Maximum number of words whose object facts are retained.</param>
+    /// <param name="detailRowBudget">
+    /// Maximum number of object timing rows retained across those words. Words are admitted costliest first and
+    /// whole, so the budget stops at the first word that no longer fits.
+    /// </param>
+    /// <param name="convert">Maps each kept row to the caller's own shape.</param>
+    /// <returns>Exact per-object totals and the bounded word detail.</returns>
+    public static BoundedPanGlossStatistics<T> ReadBounded<T>(string cachePath,
+        IReadOnlyCollection<string> expectedWords, int detailWordLimit, int detailRowBudget,
+        Func<PanGlossObjectTiming, T> convert)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(detailWordLimit);
+        ArgumentOutOfRangeException.ThrowIfNegative(detailRowBudget);
+        ArgumentNullException.ThrowIfNull(convert);
         using var connection = OpenValidated(cachePath, expectedWords, out var words);
-        var selected = words.OrderByDescending(pair => pair.Value.ParserWork.HasValue)
+        var rowsPerWord = ReadRowsPerWord(connection);
+        var selected = new HashSet<string>(StringComparer.Ordinal);
+        long plannedRows = 0;
+        var truncatedByRows = false;
+        foreach (var word in words.OrderByDescending(pair => pair.Value.ParserWork.HasValue)
             .ThenByDescending(pair => pair.Value.ParserWork)
             .ThenByDescending(pair => pair.Value.ParserWork is null ? pair.Value.ElapsedNs : 0)
-            .ThenBy(pair => pair.Key, StringComparer.Ordinal).Take(detailWordLimit)
-            .Select(pair => pair.Key).ToHashSet(StringComparer.Ordinal);
-        var detail = new List<PanGlossObjectTiming>();
+            .ThenBy(pair => pair.Key, StringComparer.Ordinal).Take(detailWordLimit).Select(pair => pair.Key))
+        {
+            plannedRows += rowsPerWord.GetValueOrDefault(word);
+            if (plannedRows > detailRowBudget) { truncatedByRows = true; break; }
+            selected.Add(word);
+        }
+        var pool = new Dictionary<string, string>(StringComparer.Ordinal);
+        var detail = new List<T>();
         var attributedByWord = new Dictionary<string, long>(StringComparer.Ordinal);
         var hasTimer = false;
         var aggregates = new Dictionary<(ObjectIdentity Identity, string Direction), PanGlossObjectTimingAggregate>();
@@ -72,9 +108,9 @@ public static class PanGlossBatchStatisticsReader
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
-            var row = ReadTiming(reader, words);
+            var row = ReadTiming(reader, words, pool);
             total = checked(total + 1);
-            if (selected.Contains(row.Word)) detail.Add(row);
+            if (selected.Contains(row.Word)) detail.Add(convert(row));
             var touched = row.Attempts is > 0 || row.ElapsedNs is > 0;
             if (touched && row.ElapsedNs is { } duration)
             {
@@ -130,6 +166,7 @@ public static class PanGlossBatchStatisticsReader
         }
         return new(words, detail, completed, selected.Count, selected.Count == words.Count, total)
         {
+            DetailRowBudget = detailRowBudget, DetailTruncatedByRows = truncatedByRows,
             AttributedNs = hasTimer ? attributed : null,
             UnattributedNs = hasTimer ? unattributed : null,
             OverrunNs = hasTimer ? overrun : null,
@@ -297,15 +334,19 @@ public static class PanGlossBatchStatisticsReader
         return (rows, rows.Count);
     }
 
+    // One instance per distinct text: a million rows repeat a few thousand keys, labels and words.
+    private static string Pooled(Dictionary<string, string>? pool, string value) =>
+        pool is null ? value : pool.TryGetValue(value, out var known) ? known : pool[value] = value;
+
     private static PanGlossObjectTiming ReadTiming(SqliteDataReader reader,
-        IReadOnlyDictionary<string, PanGlossWordStatistics> words)
+        IReadOnlyDictionary<string, PanGlossWordStatistics> words, Dictionary<string, string>? pool = null)
     {
-        var word = reader.GetString(0);
-        var key = reader.GetString(1);
-        var identityQuality = reader.GetString(2);
-        var kind = reader.GetString(3);
-        var label = reader.GetString(4);
-        var direction = reader.GetString(5);
+        var word = Pooled(pool, reader.GetString(0));
+        var key = Pooled(pool, reader.GetString(1));
+        var identityQuality = Pooled(pool, reader.GetString(2));
+        var kind = Pooled(pool, reader.GetString(3));
+        var label = Pooled(pool, reader.GetString(4));
+        var direction = Pooled(pool, reader.GetString(5));
         var unattributed = kind == "unattributed" && key == "unattributed" &&
             identityQuality == "synthetic" && direction == "unattributed";
         if (string.IsNullOrWhiteSpace(key) || !IsKnownIdentityQuality(identityQuality) ||
@@ -319,6 +360,22 @@ public static class PanGlossBatchStatisticsReader
         long? nanoseconds = SupportsTimer(kind, direction) ? ReadElapsedNs(reader, 7, "object", word) : null;
         return new PanGlossObjectTiming(kind, key, identityQuality, direction, label, word, attempts, null, nanoseconds)
         { ParserWork = reader.IsDBNull(8) ? null : ReadWork(reader, 8, word) };
+    }
+
+    // Counted before objects with equal identity merge, so it never undercounts the rows a word will yield.
+    private static Dictionary<string, long> ReadRowsPerWord(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT w.form, COUNT(*)
+            FROM (SELECT DISTINCT word_id, object_id, direction FROM fact) AS g
+            JOIN word AS w ON w.word_id = g.word_id
+            GROUP BY w.form
+            """;
+        using var reader = command.ExecuteReader();
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        while (reader.Read()) counts[reader.GetString(0)] = reader.GetInt64(1);
+        return counts;
     }
 
     private static long CountObjectTimings(SqliteConnection connection)
@@ -411,12 +468,16 @@ public sealed record PanGlossObjectTimingAggregate(string Kind, string Key, stri
 }
 
 /// <summary>Exact batch totals and the selected words' object facts.</summary>
-public sealed record BoundedPanGlossStatistics(
+public sealed record BoundedPanGlossStatistics<T>(
     IReadOnlyDictionary<string, PanGlossWordStatistics> Words,
-    IReadOnlyList<PanGlossObjectTiming> ObjectTimings,
+    IReadOnlyList<T> ObjectTimings,
     IReadOnlyList<PanGlossObjectTimingAggregate> Aggregates,
     int DetailWordCount, bool DetailComplete, long TotalObjectTimingRows)
 {
+    /// <summary>The row budget the detail was held to.</summary>
+    public int DetailRowBudget { get; init; }
+    /// <summary>Whether a word was left out of the detail because its rows no longer fit the budget.</summary>
+    public bool DetailTruncatedByRows { get; init; }
     /// <summary>Total object time for all measured words, when any timer was recorded.</summary>
     public long? AttributedNs { get; init; }
     /// <summary>Sum of each word's nonnegative residual outside object timers.</summary>

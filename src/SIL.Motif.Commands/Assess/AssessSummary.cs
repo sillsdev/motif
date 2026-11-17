@@ -20,7 +20,7 @@ public static class AssessSummary
             response.InvocationId, response.SelectionDescriptor, response.Counts, response.InputWords, response.LowercaseWords,
             response.Measurements,
             response.TimingOverrideAssessmentIds, response.CompletionSummary, response.CorrectnessStatus,
-            response.GrammarWarnings,
+            response.GrammarWarnings, response.ObjectTimingNote,
         })!.AsObject();
         result["words"] = new JsonArray(response.Words.Select(Detailed).ToArray());
         result["costComparison"] = new JsonObject { ["state"] = "unavailable", ["reason"] = "No paired Assessment was selected." };
