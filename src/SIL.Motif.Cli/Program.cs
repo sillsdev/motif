@@ -2699,6 +2699,14 @@ try
                 }
                 return Usage(UsageLineFor("store upgrade"), asJson);
             }
+            if (positionals is ["relocate"] && flags.TryGetValue("project", out var relocateProject) &&
+                flags.Keys.All(key => key is "project" or "confirm" or "json"))
+            {
+                result = RenderCommand(StoreRelocateCommand.Run(
+                    new StoreRelocateRequest(relocateProject, flags.GetValueOrDefault("confirm"))));
+                break;
+            }
+            if (positionals is ["relocate"]) return Usage(UsageLineFor("store relocate"), asJson);
             if (positionals.Count != 1 || positionals[0] is not ("delete-refused" or "prune") ||
                 !flags.TryGetValue("project", out var storeProject))
                 return Usage(UsageLineFor(positionals.Count == 1 && positionals[0] == "prune" ? "store prune" : "store delete-refused"), asJson);

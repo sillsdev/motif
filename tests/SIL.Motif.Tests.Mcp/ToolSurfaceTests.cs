@@ -189,6 +189,7 @@ public sealed class ToolSurfaceTests
             "project tag",
             "store artifacts",
             "store prune",
+            "store relocate",
             "store upgrade",
         }, optedOut);
 
@@ -223,7 +224,7 @@ public sealed class ToolSurfaceTests
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
             command.Name != "activity" && command.Name != "project tag" &&
-            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store upgrade" &&
+            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
             command.Name is not ("hypothesis neighbours" or "hypothesis report" or "list hypotheses")), command =>
             Assert.True(command.ExposeAsAgentTool));
         Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);

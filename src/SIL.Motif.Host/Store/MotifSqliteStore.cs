@@ -340,6 +340,49 @@ internal sealed class MotifSqliteStore : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Runs <paramref name="act"/> in one write transaction on an existing store while nothing else has it open: under
+    /// the creation lock and an exclusive use lease, so a Motif process holding the store makes this refuse.
+    /// </summary>
+    /// <exception cref="MotifStoreLockException">Another Motif process holds the store open.</exception>
+    /// <exception cref="FileNotFoundException">The store file is absent.</exception>
+    /// <exception cref="MotifStoreVersionException">The store was made by a newer Motif.</exception>
+    public static T WithExclusiveAccess<T>(string path, MotifSqliteStoreDescriptor descriptor,
+        TimeSpan? ownershipPatience, Func<SqliteConnection, SqliteTransaction, int, T> act)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        ArgumentNullException.ThrowIfNull(act);
+        var fullPath = Path.GetFullPath(path);
+        using var ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience);
+        if (!File.Exists(fullPath)) throw new FileNotFoundException("The Motif database does not exist.", fullPath);
+        using var useLease = AcquireExclusiveUseLease(fullPath);
+        try
+        {
+            using var connection = OpenInspectionConnection(fullPath);
+            var applicationId = PragmaInt(connection, "application_id");
+            var schema = PragmaInt(connection, "user_version");
+            if (applicationId != descriptor.ApplicationId || schema < 1)
+                throw new InvalidDataException($"The file is not a {descriptor.Name}.");
+            if (schema > descriptor.CurrentSchema)
+                throw new MotifStoreVersionException(fullPath,
+                    $"This {descriptor.Name} is at schema {schema} and this build understands " +
+                    $"{descriptor.CurrentSchema}. Something newer opened it; update Motif and try again.");
+            if (schema == descriptor.CurrentSchema) descriptor.ValidateSchema(connection, null);
+            using var transaction = connection.BeginTransaction();
+            var result = act(connection, transaction, schema);
+            transaction.Commit();
+            return result;
+        }
+        catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
+        {
+            throw new InvalidDataException($"The {descriptor.Name} is corrupt or is not a database.", exception);
+        }
+        catch (SqliteException exception)
+        {
+            throw new IOException($"The {descriptor.Name} is unavailable.", exception);
+        }
+    }
+
     public SqliteConnection OpenConnection()
     {
         lock (_stateGate)

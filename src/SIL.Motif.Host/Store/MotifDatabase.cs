@@ -11,7 +11,7 @@ namespace SIL.Motif.Host.Store;
 /// lease, connection lifecycle, and failure translation it delegates to are shared with
 /// <see cref="MachineDatabase"/>.
 /// </remarks>
-public sealed class MotifDatabase : IDisposable
+public sealed partial class MotifDatabase : IDisposable
 {
     private readonly MotifSqliteStore _store;
 

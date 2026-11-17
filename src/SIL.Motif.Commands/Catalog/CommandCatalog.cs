@@ -232,6 +232,7 @@ public static class CommandCatalog
         new CommandDescriptor("setup skip", typeof(SkipSetupRequest), typeof(ProjectSetupResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("store upgrade", typeof(ProjectStoreUpgradeRequest), typeof(ProjectStoreUpgradeResponse), CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("store delete-refused", typeof(ProjectStoreResetRequest), typeof(ProjectStoreResetResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("store relocate", typeof(StoreRelocateRequest), typeof(StoreRelocateResponse), CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("store prune", typeof(StorePruneRequest), typeof(StorePruneResponse), CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("store artifacts", typeof(ArtifactInventoryRequest), typeof(ArtifactInventoryResponse),
             CommandSurface.Developer, AgentClass.HumanOnly) { ExposeAsAgentTool = false },

@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 74;
+    public const int CurrentSchema = 75;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -34,7 +34,7 @@ public static class MotifSchema
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + ProgressDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
-                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl + QueryDdl;
+                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl + QueryDdl + StoreRelocationDdl;
             command.ExecuteNonQuery();
         }
 
@@ -70,7 +70,7 @@ public static class MotifSchema
             "ReviewReports", "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents",
             "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
             "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding",
-            "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests",
+            "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations",
             "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
             "query_snapshot", "query_forms", "query_stems", "query_uses", "query_objects"
         };
@@ -677,6 +677,9 @@ public static class MotifSchema
             C("ObjectsBefore", "INTEGER"), C("TypesBefore", "INTEGER"), C("ObjectsAfter", "INTEGER"),
             C("TypesAfter", "INTEGER"), C("AgentHours", "REAL"), C("AlternativeHours", "REAL"),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true)],
+        "StoreRelocations" =>
+        [C("RelocationId", "INTEGER", false, 1), C("OldFwDataPath", "TEXT", true), C("NewFwDataPath", "TEXT", true),
+            C("RelocatedUtc", "TEXT", true)],
         "HypothesisProposals" =>
         [C("HypothesisId", "TEXT", true, 1), C("ProposalId", "TEXT", true, 2), C("LinkedUtc", "TEXT", true)],
         "HypothesisTests" =>
@@ -851,6 +854,17 @@ public static class MotifSchema
             CreatedUtc TEXT NOT NULL,
             CurrentAssessmentId TEXT NULL,
             SetupSkippedUtc TEXT NULL
+        );
+
+        """;
+
+    /// <summary>The table <c>store relocate</c> appends to; it is also created on demand in an older-schema store.</summary>
+    internal const string StoreRelocationDdl = """
+        CREATE TABLE IF NOT EXISTS StoreRelocations (
+            RelocationId INTEGER PRIMARY KEY AUTOINCREMENT,
+            OldFwDataPath TEXT NOT NULL,
+            NewFwDataPath TEXT NOT NULL,
+            RelocatedUtc TEXT NOT NULL
         );
 
         """;

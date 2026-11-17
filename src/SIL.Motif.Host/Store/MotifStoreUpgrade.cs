@@ -16,7 +16,7 @@ public static class MotifStoreUpgrade
         "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
         "Receipts", "AppliedIndex", "NamedSelections", "DefaultSelection", "ParsimonySelection", "ReviewMarks", "ReadOccurrences",
         "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples", "ReviewReports", "Requests",
-        "Hypotheses", "HypothesisProposals", "HypothesisTests"];
+        "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations"];
     private static readonly HashSet<string> Derived = new(StringComparer.Ordinal)
     {
         "ActiveParse", "AssessedWords", "AssessmentInvocations", "AssessmentObjectTimings", "AssessmentPins",
