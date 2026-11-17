@@ -215,7 +215,8 @@ Freeze `[gain-gate]` mode and `min-attested-per-object` from `<project>.motif.to
 hold also sets the report's hold field. Added phonological rules or affix processes are exempt as rule-added.
 Incomplete cases, no objects or off never produce under-threshold. This is report-only: Apply and Readiness
 do not read the hold; an autonomous Apply reads it only through a declared gate (D16). Older reports lacking
-`gains` remain readable.
+`gains` remain readable. A lexicon import is exempt from this gate but never from the no-loss checks
+([ADR 0033](0033-lexicon-import-accepts-only-lift-and-lowers-through-composers.md) D5).
 
 ### D15. Review supplies no Apply authority
 
@@ -236,8 +237,9 @@ word sets that must show no attested word lost and be fully measured, the gain-g
   A stopped word with no Baseline analysis does not affect the gate. A loss outranks unmeasured, because a known loss
   is definite and actionable.
 
-The command exits 0 on green, 2 on unmeasured and 6 on loss. A new second reading on an attested word is a hold: it
-keeps the gate from being green.
+`trial --wait` exits 0 on green, 2 on unmeasured and 6 on loss. A new second reading on an attested word is held for
+review: the held words are listed, and the gate is not green while any is held. This is separate from the gain
+gate's hold in D14.
 
 `apply --autonomous` refuses unless the project declares a gate and the newest Trial's gate, for the current content
 and project state, is green. `--force` stays refused in autonomous mode. This amends D15 for autonomous mode only;

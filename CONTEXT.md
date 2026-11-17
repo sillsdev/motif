@@ -864,9 +864,9 @@ _Avoid_: developer commands, developer surface, agent commands
 
 **Gate**:
 The project's own verdict on a Trial, declared once in its configuration: **green** when no declared word was lost
-and every declared word was measured, **loss** when an attested word or a confirmed reading was lost, and
+and every declared word was measured, **loss** when a new word failure or a lost confirmed reading was found, and
 **unmeasured** when a word that parsed before was stopped by a budget or timeout. A new second reading on an
-attested word keeps the Gate from being green. `apply --autonomous` refuses without a green Gate. The Trial review
+attested word is held for review and keeps the Gate from being green. `apply --autonomous` refuses without a green Gate. The Trial review
 report itself still gives people no verdict ([ADR 0021](docs/adr/0021-a-trial-review-report-has-three-levels-and-no-verdict.md) D16).
 _Avoid_: verdict (for people), pass/fail, quality gate, gain gate (a different, advisory check)
 
@@ -919,8 +919,8 @@ _Avoid_: token, Wordform (for the instance), analysis, word place, Source place
 **Disposition**:
 A word type's final state in a Corpus: approved, parsed, or decided to need no analysis, such as punctuation, a
 numeral or a misspelling. A Corpus is done when every word type in it has a Disposition. Decisions about non-words
-live in the Motif store, keyed by Corpus. The word types are those Motif's writing-system tokeniser yields, the same
-one the Source index uses. A person's choice on a Parsimony recommendation is a **Ruling**, not a Disposition.
+live in the Motif store, keyed by Corpus. The word types are counted with the FieldWorks-rule tokeniser; the Source index
+is moving to the same one. A person's choice on a Parsimony recommendation is a **Ruling**, not a Disposition.
 _Avoid_: word state, word ledger, status, Ruling
 
 **Word-forming character**:
