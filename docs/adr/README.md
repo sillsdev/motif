@@ -33,6 +33,7 @@ Decisions in force are edited in place; new topics receive new numbers.
 - [ADR 0029](0029-help-walkthroughs-and-the-docs-site-come-from-one-source.md)
 - [ADR 0030](0030-all-automated-testing-is-headless.md)
 - [ADR 0031](0031-motif-ships-as-one-velopack-payload-per-runtime.md)
+- [ADR 0033](0033-lexicon-import-accepts-only-lift-and-lowers-through-composers.md)
 
 ## Historical crosswalk
 
