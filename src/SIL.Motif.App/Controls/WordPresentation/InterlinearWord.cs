@@ -200,17 +200,22 @@ internal sealed class InterlinearWord : Control
 
     internal static double WholePixels(double value, double scale) => Math.Ceiling(value * scale - 1e-6) / scale;
 
-    // Stacked marks and tall fallback faces paint past the shaped line box, so a band holds the outlines.
+    // Hinting can paint past the outlines, while positioned marks can paint past the backend's bounds.
     private static (double Rise, double Drop) InkExtent(TextLayout layout)
     {
         var top = 0d;
         var bottom = layout.Height;
         foreach (var shaped in layout.TextLines[0].TextRuns.OfType<ShapedTextRun>())
-            if (shaped.GlyphRun.BuildGeometry()?.Bounds is { Height: > 0 } ink)
+        {
+            var ink = shaped.GlyphRun.InkBounds;
+            if (shaped.GlyphRun.BuildGeometry()?.Bounds is { Height: > 0 } outline)
+                ink = ink.Union(outline);
+            if (ink.Height > 0)
             {
                 top = Math.Min(top, ink.Top);
                 bottom = Math.Max(bottom, ink.Bottom);
             }
+        }
         return (-top, bottom);
     }
 

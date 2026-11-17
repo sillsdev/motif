@@ -86,8 +86,9 @@ internal sealed class TextViewScene : IDisposable
     private LayoutLog? _log;
 
     /// <summary>One word alone in a window, as the reader draws a word strip.</summary>
-    public static TextViewScene SingleWord(TextViewSample sample, double width = 900, StripState state = StripState.Conflict) =>
-        Open(sample, 1, width, line: false, state: state);
+    public static TextViewScene SingleWord(TextViewSample sample, double width = 900, StripState state = StripState.Conflict,
+        double fontSize = 12) =>
+        Open(sample, 1, width, line: false, state: state, fontSize: fontSize);
 
     /// <summary>A reader line of <paramref name="words"/> words and its gutter, at <paramref name="width"/>.</summary>
     public static TextViewScene Line(TextViewSample sample, int words, double width) => Open(sample, words, width, line: true);
@@ -96,13 +97,13 @@ internal sealed class TextViewScene : IDisposable
         Open(sample, words, width, line: true, scroll: true);
 
     private static TextViewScene Open(TextViewSample sample, int words, double width, bool line, bool scroll = false,
-        StripState state = StripState.Conflict)
+        StripState state = StripState.Conflict, double fontSize = 12)
     {
         WalkthroughFonts.Register();
         var window = new MotifTestWindow { Width = width, Height = 400 };
         var scene = new TextViewScene(sample, window);
         scene._log = new LayoutLog();
-        scene.ConfigureStyles(window);
+        scene.ConfigureStyles(window, fontSize);
         for (var i = 0; i < words; i++) scene._tokens.Add(sample.Token(i, state));
         var body = line ? scene.BuildLine() : scene.BuildStrip(scene._tokens[0]);
         window.Content = scroll ? new ScrollViewer { Content = body } : body;
@@ -141,11 +142,11 @@ internal sealed class TextViewScene : IDisposable
         return scene;
     }
 
-    private void ConfigureStyles(Window window)
+    private void ConfigureStyles(Window window, double fontSize = 12)
     {
         _styles.SetFallbackFamilies([WalkthroughFonts.DejaVuSansFamily]);
         WritingSystemDisplay Display(string id, bool rtl) => new(id, id, id, WritingSystemKind.Vernacular, 0, false,
-            WalkthroughFonts.DejaVuSansFamily, string.Empty, rtl, new Dictionary<string, double> { ["Normal"] = 12 });
+            WalkthroughFonts.DejaVuSansFamily, string.Empty, rtl, new Dictionary<string, double> { ["Normal"] = fontSize });
         _styles.ReplaceContext([Display(Sample.FormWritingSystem, Sample.RightToLeft), Display(Sample.GlossWritingSystem, false)], "en");
         WritingSystemText.SetResolver(window, _styles);
     }

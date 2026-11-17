@@ -73,6 +73,26 @@ public sealed class DrawnWordInkTests
                 $"The word paints to {inkBottom} but the strip's content ends at {limit:0.00}; {lastRow}");
         });
 
+    [Fact]
+    public void EveryRowBandIncludesTheBackendsConservativeInkBounds() =>
+        AvaloniaHeadlessPlatform.Invoke(() =>
+        {
+            foreach (var size in new[] { 6.5, 12, 18.5 })
+            {
+                using var scene = TextViewScene.SingleWord(Sample("ltr-stacked"), fontSize: size);
+                var drawn = scene.Window.GetVisualDescendants().OfType<InterlinearWord>().Single();
+                foreach (var run in drawn.Runs)
+                    foreach (var shaped in run.Layout.TextLines[0].TextRuns.OfType<ShapedTextRun>())
+                    {
+                        var ink = shaped.GlyphRun.InkBounds;
+                        Assert.True(run.Inset + ink.Top >= -Epsilon &&
+                            run.Inset + ink.Bottom <= run.Bounds.Height + Epsilon,
+                            $"At {size} points, '{run.Text}' paints {run.Inset + ink.Top}..{run.Inset + ink.Bottom} " +
+                            $"in a row {run.Bounds.Height} high.");
+                    }
+            }
+        });
+
     private static TextViewSample Sample(string name)
     {
         var plain = TextViewSample.Named(name.Split('-')[0]);
