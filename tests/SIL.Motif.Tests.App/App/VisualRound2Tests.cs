@@ -175,12 +175,6 @@ public sealed class VisualRound2Tests(AvaloniaHeadlessFixture avalonia)
         "MotifApp.RefusalHandoffCancelled", "MotifApp.AssistantsNotFound", "MotifApp.SourcesFieldWorksExplanation",
     };
 
-    private static bool OwnedByAnotherSlice(string key) =>
-        key.StartsWith("MotifApp.Diagnostics", StringComparison.Ordinal)
-        || key.StartsWith("MotifApp.ProposalDocument", StringComparison.Ordinal)
-        || key.StartsWith("MotifApp.ProposalEvidence", StringComparison.Ordinal)
-        || key == "MotifApp.ProposalActivateForApply";
-
     [Fact]
     public void NoSentenceInTheResxIsWrittenInTitleCase()
     {
@@ -190,7 +184,7 @@ public sealed class VisualRound2Tests(AvaloniaHeadlessFixture avalonia)
         {
             var key = (string)data.Attribute("name")!;
             var value = data.Element("value")!.Value;
-            if (NotThisRound.Contains(key) || OwnedByAnotherSlice(key)) continue;
+            if (NotThisRound.Contains(key)) continue;
             if (IsTitleCaseSentence(value)) offenders.Add($"{key}: {value}");
         }
         Assert.True(offenders.Count == 0, "Sentences written in Title Case:" + Environment.NewLine + string.Join(Environment.NewLine, offenders));
@@ -235,7 +229,7 @@ public sealed class VisualRound2Tests(AvaloniaHeadlessFixture avalonia)
         {
             var key = (string)data.Attribute("name")!;
             var value = data.Element("value")!.Value;
-            if (!OwnedByAnotherSlice(key) && Regex.IsMatch(value, "parser work", RegexOptions.IgnoreCase)) offenders.Add($"{key}: {value}");
+            if (Regex.IsMatch(value, "parser work", RegexOptions.IgnoreCase)) offenders.Add($"{key}: {value}");
         }
         Assert.True(offenders.Count == 0, "Say Parser Steps, not parser work:" + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }

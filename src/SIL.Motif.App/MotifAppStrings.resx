@@ -7466,11 +7466,11 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.DiagnosticsNoWork" xml:space="preserve"><value>Recorded Parser Steps are unavailable.</value></data>
   <data name="MotifApp.DiagnosticsPartial" xml:space="preserve"><value>Some per-word rule detail is unavailable. Recorded aggregate totals are shown.</value></data>
   <data name="MotifApp.DiagnosticsWarningsFormat" xml:space="preserve"><value>Warnings: {0} → {1} ({2})</value></data>
-  <data name="MotifApp.DiagnosticsTrialUnavailable" xml:space="preserve"><value>Current Trial Diagnostics Are Unavailable.</value></data>
-  <data name="MotifApp.DiagnosticsSignedUnavailable" xml:space="preserve"><value>Signed Grammar Size Changes Are Unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsTrialUnavailable" xml:space="preserve"><value>Current Trial diagnostics are unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsSignedUnavailable" xml:space="preserve"><value>Signed grammar size changes are unavailable.</value></data>
   <data name="MotifApp.DiagnosticsOperations" xml:space="preserve"><value>Changes to the Grammar</value></data>
   <data name="MotifApp.DiagnosticsStepsFormat" xml:space="preserve"><value>Parser Steps per Word: {0} → {1} ({2} measured words)</value></data>
-  <data name="MotifApp.DiagnosticsWorkUnavailable" xml:space="preserve"><value>Comparable Parser Steps Are Unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsWorkUnavailable" xml:space="preserve"><value>Comparable Parser Steps are unavailable.</value></data>
   <data name="MotifApp.DiagnosticsOutOfDate" xml:space="preserve"><value>Recorded diagnostics are out of date.</value></data>
   <data name="MotifApp.DiagnosticsReading" xml:space="preserve"><value>Reading recorded diagnostics…</value></data>
   <data name="MotifApp.DiagnosticsUnreadable" xml:space="preserve"><value>Recorded diagnostics could not be read.</value></data>
