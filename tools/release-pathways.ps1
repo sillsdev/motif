@@ -156,8 +156,12 @@ foreach ($fixture in $fixtureMap.Keys) {
 }
 
 foreach ($fixture in $fixtureMap.Keys) {
-    if ($fixture -eq 'first-run-ready') { continue }
     $build = $sampleBuilds[$fixture]
+    if ($fixture -eq 'first-run-ready') {
+        # First-time Setup needs a Baseline even when a background sweep already created the store.
+        [void] (Invoke-CliJson @('baseline', 'capture', '--project', $build.ProjectPath))
+        continue
+    }
     Seed-Selection $build.ProjectPath $build.TextId
     if ($fixture -in @('explained-word-card', 'apply-refresh-ready', 'handoff-cancel-ready')) {
         [void] (Invoke-Cli @('assess', $build.ProjectPath, '--texts', $build.TextId))

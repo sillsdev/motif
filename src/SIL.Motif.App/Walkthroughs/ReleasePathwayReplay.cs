@@ -151,6 +151,8 @@ internal static class ReleasePathwayReplay
             IdleTimeout = TimeSpan.FromSeconds(2),
             Lease = TimeSpan.FromMinutes(2),
         };
+        var preferences = new MemoryUserPreferencesStore();
+        preferences.Update(current => current with { Diagnostics = true });
         var composition = MotifAppComposition.Create(new MotifAppOptions(
             workerRoot,
             commandSettings.ParserPath,
@@ -158,7 +160,7 @@ internal static class ReleasePathwayReplay
             TimeProvider.System,
             new FixedProjectPicker(projectPath),
             new FixedFolderPicker(handoffPath),
-            UserPreferencesStore: new MemoryUserPreferencesStore()));
+            UserPreferencesStore: preferences));
         var window = composition.Window;
         window.Width = 1440;
         window.Height = 920;
@@ -174,6 +176,10 @@ internal static class ReleasePathwayReplay
             foreach (var step in script.Steps)
             {
                 activeStep = step.Id;
+                Console.WriteLine($"Replaying '{script.Id}' step '{step.Id}' ({step.Kind}).");
+                // Opening finishes by navigating to Progress, so a later page click must wait for that navigation.
+                WaitUntil(() => !composition.Workspace.IsProjectOpening, TimeSpan.FromMinutes(2),
+                    "The project did not finish opening", () => composition.Workspace.OpenRefusal?.ToString() ?? projectPath);
                 switch (step.Kind)
                 {
                     case WalkthroughStepKind.Click:
@@ -225,10 +231,13 @@ internal static class ReleasePathwayReplay
         }
     }
 
-    private static void Click(Window window, string automationId)
+    internal static void Click(Window window, string automationId)
     {
         var control = Find(window, automationId);
         if (!control.IsEffectivelyEnabled) throw new InvalidOperationException($"'{automationId}' is disabled.");
+        control.BringIntoView();
+        Pump();
+        window.UpdateLayout();
         var inputRoot = TopLevel.GetTopLevel(control) ?? window;
         var point = control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), inputRoot)
             ?? throw new InvalidOperationException($"'{automationId}' is not positioned in its top level.");
@@ -270,7 +279,12 @@ internal static class ReleasePathwayReplay
         }
         Pump();
         if (!Satisfies(target, workspace, step))
-            throw new TimeoutException($"Step '{step.Id}' did not satisfy condition '{step.Condition}'.");
+            throw new TimeoutException($"Step '{step.Id}' did not satisfy condition '{step.Condition}': " +
+                $"project='{workspace.Context.ProjectPath}', opening={workspace.IsProjectOpening}, " +
+                $"setup={workspace.Context.Setup?.IsOpen}, refusal={workspace.OpenRefusal}, " +
+                $"handoff={workspace.Context.HandoffSession.Handoff.State}, " +
+                $"handoffRefusal={workspace.Context.HandoffSession.Handoff.ShownRefusal}, " +
+                $"visible={target.IsEffectivelyVisible}, bounds={target.Bounds}.");
     }
 
     private static bool Satisfies(Control target, WorkspaceShellViewModel workspace, WalkthroughStep step) =>
