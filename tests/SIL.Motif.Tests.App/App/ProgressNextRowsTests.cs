@@ -87,7 +87,7 @@ public sealed class ProgressNextRowsTests
     {
         var fake = new FakeCommandClient();
         fake.ProposalStandingsCompleteWith(new ProposalStandings([WaitingCard(),
-            WaitingCard() with { ProposalId = "proposal/other", Group = ProposalGroup.NeedsAnotherTry }], 0));
+            WaitingCard() with { ProposalId = "proposal/other", Group = ProposalGroup.NotTried, IsDraft = true }], 0));
         var context = WorkspaceContextTests.NewContext(fake);
         var page = new ProgressPageModel(context);
         try

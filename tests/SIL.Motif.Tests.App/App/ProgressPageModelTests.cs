@@ -86,7 +86,7 @@ public sealed class ProgressPageModelTests
         fake.OverviewCompletesWith(SampleOverview.Populated());
         var waiting = new ProposalCard("proposal/1", "First", "proposed", ProposalGroup.WaitingForYou, false, [],
             TrialStanding.Current, null, []);
-        var draft = waiting with { ProposalId = "proposal/2", Group = ProposalGroup.NotTried };
+        var draft = waiting with { ProposalId = "proposal/2", Group = ProposalGroup.NotTried, IsDraft = true };
         fake.ProposalStandingsCompleteWith(new ProposalStandings([waiting, draft], 0));
         var context = WorkspaceContextTests.NewContext(fake);
         var page = new ProgressPageModel(context);

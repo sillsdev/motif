@@ -395,7 +395,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         fake.ProposalStandingsCompleteWith(new ProposalStandings(
         [
             Card("p/open", "proposed"),
-            Card("p/closed", "withdrawn"),
+            Card("p/closed", "withdrawn") with { Group = ProposalGroup.SetAside },
         ], 0));
         await fake.AddProposalPictureAsync(new SIL.Motif.Commands.Requests.AddPictureRequest(
             ProjectPath, "v", "p/closed", ProposalPicturesTests_Png()), CancellationToken.None);
@@ -407,6 +407,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(page.Pictures.CanEdit);
         Assert.Empty(page.Pictures.Items);
 
+        await page.ShowSetAsideCommand.ExecuteAsync(null);
         page.SelectedProposal = page.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/closed");
         await page.PicturesLoading;
 
