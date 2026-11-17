@@ -166,13 +166,11 @@ public sealed class WordDisposition
     /// <summary>Whether FieldWorks holds any analysis of this word for the tiles to act on.</summary>
     public bool HasStoredRows => StoredRows.Count > 0;
 
-    /// <summary>The add button's text: "+n" for n readings, or "✓k" once reading k is chosen.</summary>
-    public string AddLabel => ChosenReading is { } chosen ? "✓" + chosen.Number : "+" + Readings.Count;
+    /// <summary>The readings count's text: how many readings PanGloss built that FieldWorks does not hold.</summary>
+    public string ReadingsLabel => Readings.Count.ToString(CultureInfo.CurrentCulture);
 
-    /// <summary>The add button's hover text.</summary>
-    public string AddTip => MotifAppStrings.AddAnalysisFromPanGloss + ": " + (ChosenReading is { } chosen
-        ? $"Adding analysis {chosen.Number} ({chosen.Morphs}) as {PhraseWordOf(ChosenKind!.Value)}"
-        : Readings.Count == 1 ? "Add the PanGloss analysis to FieldWorks" : $"Add one of {Readings.Count} PanGloss analyses");
+    /// <summary>The readings count's hover sentence; the choice itself is made in the word panel.</summary>
+    public string ReadingsTip => PluralText.Format(MotifAppStrings.WordReadingsTipPattern, Readings.Count);
 
     /// <summary>The mark button's hover text.</summary>
     public string MarkTip => IsChanged

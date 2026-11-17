@@ -33,13 +33,17 @@ public sealed class DispositionFace : Control
     /// <summary>The space between the outline and the letter.</summary>
     public static readonly StyledProperty<Thickness> PaddingProperty = Border.PaddingProperty.AddOwner<DispositionFace>();
 
+    /// <summary>Whether the drawn caret follows the letter; a face that opens a panel rather than a menu has none.</summary>
+    public static readonly StyledProperty<bool> ShowCaretProperty =
+        AvaloniaProperty.Register<DispositionFace, bool>(nameof(ShowCaret), true);
+
     private const double CaretSize = 8;
     private const double CaretGap = 2;
     private FormattedText? _text;
 
     static DispositionFace()
     {
-        AffectsMeasure<DispositionFace>(LetterProperty, BorderThicknessProperty, PaddingProperty);
+        AffectsMeasure<DispositionFace>(LetterProperty, BorderThicknessProperty, PaddingProperty, ShowCaretProperty);
         AffectsRender<DispositionFace>(LetterProperty, BackgroundProperty, BorderBrushProperty, BorderThicknessProperty,
             CornerRadiusProperty);
         LetterProperty.Changed.AddClassHandler<DispositionFace>((face, _) => face._text = null);
@@ -54,6 +58,13 @@ public sealed class DispositionFace : Control
             face._text = null;
             face.InvalidateMeasure();
         });
+    }
+
+    /// <summary>Whether the drawn caret follows the letter.</summary>
+    public bool ShowCaret
+    {
+        get => GetValue(ShowCaretProperty);
+        set => SetValue(ShowCaretProperty, value);
     }
 
     /// <summary>The letter or count shown before the caret.</summary>
@@ -83,7 +94,7 @@ public sealed class DispositionFace : Control
     protected override Size MeasureOverride(Size availableSize)
     {
         var inset = Padding + BorderThickness;
-        var width = Text.WidthIncludingTrailingWhitespace + CaretGap + CaretSize + inset.Left + inset.Right;
+        var width = Text.WidthIncludingTrailingWhitespace + (ShowCaret ? CaretGap + CaretSize : 0) + inset.Left + inset.Right;
         var height = Math.Max(Text.Height, CaretSize) + inset.Top + inset.Bottom;
         return new Size(width, height);
     }
@@ -102,6 +113,7 @@ public sealed class DispositionFace : Control
         var text = Text;
         if (ink is not null) text.SetForegroundBrush(ink);
         context.DrawText(text, new Point(content.X, content.Y + (content.Height - text.Height) / 2));
+        if (!ShowCaret) return;
         var x = content.X + text.WidthIncludingTrailingWhitespace + CaretGap;
         var y = content.Y + (content.Height - CaretSize) / 2;
         var caret = new StreamGeometry();

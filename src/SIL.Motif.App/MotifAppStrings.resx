@@ -2648,10 +2648,6 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Add to FieldWorks</value>
     <comment>Heading in the disposition buttons: analyses that will be added to FieldWorks.</comment>
   </data>
-  <data name="MotifApp.AddThemAllAsUnknown" xml:space="preserve">
-    <value>Add Them All as Unknown</value>
-    <comment>Choice in the disposition buttons: add every PanGloss analysis to FieldWorks marked Unknown (no opinion yet).</comment>
-  </data>
   <data name="MotifApp.DispositionIncorrectSpellingTip" xml:space="preserve">
     <value>Incorrect spelling: FieldWorks stops treating it as a word (S)</value>
     <comment>Tooltip on the word disposition buttons.</comment>
@@ -2671,10 +2667,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.PanGlossAnalysesToAddToFieldWorksAccessibleName" xml:space="preserve">
     <value>PanGloss analyses to add to FieldWorks</value>
     <comment>Accessible name (read aloud by screen readers) of a control on the choices for a word's analyses (word disposition buttons): "PanGloss analyses to add to FieldWorks". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.AddEveryPanGlossAnalysisAsUnknownAccessibleName" xml:space="preserve">
-    <value>Add every PanGloss analysis as Unknown</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the choices for a word's analyses (word disposition buttons): "Add every PanGloss analysis as Unknown". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.GrammarFindingsIntro" xml:space="preserve">
     <value>PanGloss findings from the grammar check and Parse all words.</value>
@@ -5079,10 +5071,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.SetAnalysisCurrentTipFormat" xml:space="preserve">
     <value>Now: {0}</value>
     <comment>Tooltip for the current Opinion, which is not another staged change. {0} is the localized Set analysis choice.</comment>
-  </data>
-  <data name="MotifApp.AddAnalysisFromPanGloss" xml:space="preserve">
-    <value>Add analysis from PanGloss</value>
-    <comment>Action that opens PanGloss readings to add to FieldWorks; PanGloss is a product name.</comment>
   </data>
   <data name="MotifApp.SetAnalysisChangedTipFormat" xml:space="preserve">
     <value>Set analysis. Changed: FieldWorks will hold it as {0}. Ctrl+Z undoes</value>
@@ -7567,7 +7555,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.OccurrencesNotAWordPartlyStagedFormat" xml:space="preserve"><value>Not a Word was staged for {0} of {1} homographs before it stopped. The rest are unchanged.</value></data>
   <data name="MotifApp.OccurrencesNotAWordStagedFormat" xml:space="preserve"><value>Not a Word staged for {0}. It changes the project when you Apply.</value></data>
   <data name="MotifApp.OccurrencesNotStaged" xml:space="preserve"><value>The change could not be staged. Nothing was changed.</value></data>
-  <data name="MotifApp.OccurrencesChoose" xml:space="preserve"><value>Choose a Reading to Keep</value></data>
+  <data name="MotifApp.OccurrencesChoose" xml:space="preserve"><value>Choose a Reading</value></data>
   <data name="MotifApp.OccurrencesSelectedPattern" xml:space="preserve"><value>{0, plural, one {# Place Checked} other {# Places Checked}}</value></data>
   <data name="MotifApp.OccurrencesCheckGaps" xml:space="preserve"><value>Check Places Without an Approved Analysis</value></data>
   <data name="MotifApp.OccurrencesNoReadingsReason" xml:space="preserve"><value>No analysis exists for this word yet, so there is nothing to keep.</value></data>
@@ -7850,4 +7838,10 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.HealthBreakdownFormat" xml:space="preserve"><value>{0}, {1}, {2}</value><comment>Status bar and Diagnostics summary: finding counts by level. {0} is the errors phrase, {1} the warnings phrase, {2} the information phrase, each already counted and pluralised.</comment></data>
   <data name="MotifApp.DiagnosticsRuleCodeTipFormat" xml:space="preserve"><value>Rule code: {0}</value><comment>Tooltip on a Diagnostics group heading. {0} is the PanGloss rule code, which stays untranslated.</comment></data>
   <data name="MotifApp.HealthBarFormat" xml:space="preserve"><value>{0}, {1}</value><comment>Status bar: grammar finding counts that need a person, errors then warnings. {0} is the errors phrase and {1} the warnings phrase, each already counted and pluralised. The Diagnostics summary line uses the same phrases.</comment></data>
+  <!-- round2-word -->
+  <data name="MotifApp.OccurrencesApproveChooseReading" xml:space="preserve"><value>Choose a Reading to Approve</value><comment>Word panel: the disabled Approve button's text while the word has several readings and none is chosen.</comment></data>
+  <data name="MotifApp.OccurrencesApproveCheckPlace" xml:space="preserve"><value>Check a Place to Approve</value><comment>Word panel: the disabled Approve button's text when a reading is chosen but no place is checked.</comment></data>
+  <data name="MotifApp.OccurrencesApproveNothing" xml:space="preserve"><value>Approve</value><comment>Word panel: the disabled Approve button's text when the word has no reading to approve.</comment></data>
+  <data name="MotifApp.WordReadingsButtonName" xml:space="preserve"><value>Readings</value><comment>Accessible name of the small count of readings beside a word in the Texts reader; choosing it opens the word panel.</comment></data>
+  <data name="MotifApp.WordReadingsTipPattern" xml:space="preserve"><value>{0, plural, one {# reading. Open the word panel to approve it.} other {# readings. Open the word panel to choose one to approve.}}</value><comment>Hover sentence on the count of readings beside a word in the Texts reader. {0} is the number of readings.</comment></data>
 </root>

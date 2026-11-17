@@ -6,11 +6,18 @@
  AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesPanel}">
  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
   <StackPanel Classes="occurrencesBody">
-   <TextBlock Classes="occurrenceState" Classes.noAnalysis="{Binding HasNoReadings}" Text="{Binding StateCaption}" />
+   <!-- round2-word: Not a Word is a secondary link in the header, away from Approve. -->
+   <Grid Classes="occurrenceHeader" ColumnDefinitions="*,Auto">
+    <TextBlock Classes="occurrenceState" Classes.noAnalysis="{Binding HasNoReadings}" Text="{Binding StateCaption}" VerticalAlignment="Center" />
+    <Button Grid.Column="1" Classes="occurrenceAction occurrenceLink" Theme="{DynamicResource BorderlessButton}"
+      Content="{x:Static app:MotifAppStrings.OccurrencesNotAWord}" Command="{Binding NotAWordCommand}"
+      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesNotAWord}" />
+   </Grid>
    <views:CopyableTextBlock Classes="occurrenceWord" Text="{Binding Form}"
      controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal"
      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesWord}" />
    <TextBlock Text="{Binding PlacesText}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
+   <TextBlock Text="{Binding NotAWordScope}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
    <Border Classes="occurrenceList">
     <StackPanel>
      <Border Classes="occurrenceListNote">
@@ -33,8 +40,8 @@
            AutomationProperties.Name="{x:Static app:MotifAppStrings.OccurrencesIncludePlace}"
            AutomationProperties.AutomationId="{Binding PlaceAutomationId}" />
          <TextBlock Grid.Column="1" Classes="occurrencePlaceLabel" Text="{Binding PlaceLabel}" VerticalAlignment="Center" />
-         <views:CopyableTextBlock Grid.Column="2" Text="{Binding Sentence}" TextWrapping="Wrap" VerticalAlignment="Center"
-           controls:WritingSystemText.Id="{Binding SentenceWritingSystem}" controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
+         <views:CopyableTextBlock Grid.Column="2" Classes="occurrenceSentence" Text="{Binding Sentence}" TextWrapping="Wrap" VerticalAlignment="Center"
+           controls:WritingSystemText.UiSize="True" controls:WritingSystemText.Id="{Binding SentenceWritingSystem}" controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
          <Border Grid.Column="3" Classes="occurrenceBadge" Classes.staged="{Binding IsStaged}" IsVisible="{Binding HasStateLabel}" VerticalAlignment="Center">
           <TextBlock Text="{Binding StateLabel}" />
          </Border>
@@ -82,12 +89,9 @@
     </Button>
     <Button Classes="occurrenceAction" Content="{x:Static app:MotifAppStrings.OccurrencesAskClaude}" Command="{Binding AskClaudeCommand}"
       AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesAsk}" />
-    <Button Classes="occurrenceAction" Content="{x:Static app:MotifAppStrings.OccurrencesNotAWord}" Command="{Binding NotAWordCommand}"
-      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesNotAWord}" />
    </WrapPanel>
    <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesApproveNote}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
    <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesAskNote}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
-   <TextBlock Text="{Binding NotAWordScope}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
    <TextBlock Text="{Binding StatusSentence}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesStatus}" />
    <ContentControl x:Name="DiagnosticSlot"

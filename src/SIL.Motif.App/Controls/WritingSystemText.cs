@@ -39,8 +39,13 @@ public sealed class WritingSystemText
     public static readonly AttachedProperty<bool> SuppressMissingFontNoticeProperty =
         AvaloniaProperty.RegisterAttached<WritingSystemText, Control, bool>("SuppressMissingFontNotice");
 
+    /// <summary>Keeps the writing system's font family and direction but draws at the surrounding interface size.</summary>
+    public static readonly AttachedProperty<bool> UiSizeProperty =
+        AvaloniaProperty.RegisterAttached<WritingSystemText, Control, bool>("UiSize");
+
     static WritingSystemText()
     {
+        UiSizeProperty.Changed.AddClassHandler<Control>((control, _) => Refresh(control));
         ResolverProperty.Changed.AddClassHandler<Control>((control, _) => Refresh(control));
         IdProperty.Changed.AddClassHandler<Control>((control, _) => Refresh(control));
         StyleNameProperty.Changed.AddClassHandler<Control>((control, _) => Refresh(control));
@@ -61,6 +66,8 @@ public sealed class WritingSystemText
     public static void SetStyleName(Control control, string? value) => control.SetValue(StyleNameProperty, value);
 
     public static void SetFlowId(Control control, string? value) => control.SetValue(FlowIdProperty, value);
+    public static void SetUiSize(Control control, bool value) => control.SetValue(UiSizeProperty, value);
+    public static bool GetUiSize(Control control) => control.GetValue(UiSizeProperty);
     public static void SetFlowEnabled(Control control, bool value) => control.SetValue(FlowEnabledProperty, value);
     public static void SetWindowText(Control control, bool value) => control.SetValue(WindowTextProperty, value);
     public static void SetSuppressMissingFontNotice(Control control, bool value) =>
@@ -207,7 +214,10 @@ public sealed class WritingSystemText
             }
 
             if (GetStyleName(_control) is { } styleName)
+            {
                 resolver.Apply(_control, TextStyleRequest.Linguistic(GetId(_control), styleName));
+                if (GetUiSize(_control)) _control.ClearValue(TextElement.FontSizeProperty);
+            }
             else
                 ClearTypography();
 

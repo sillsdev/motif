@@ -138,9 +138,10 @@ public sealed class ViewTokenTests
         }
         Assert.DoesNotContain("Fix actions", markup + cardMarkup, StringComparison.Ordinal);
         Assert.Contains("{x:Static views:WordDispositionButtons.MarkButtonName}", buttons, StringComparison.Ordinal);
-        Assert.Contains("{x:Static views:WordDispositionButtons.AddButtonName}", buttons, StringComparison.Ordinal);
+        Assert.Contains("{x:Static views:WordDispositionButtons.ReadingsButtonName}", buttons, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding OpenWordPanelCommand}\"", buttons, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Disposition.StoredRows}\"", buttons, StringComparison.Ordinal);
-        Assert.Contains("ItemsSource=\"{Binding Disposition.Readings}\"", buttons, StringComparison.Ordinal);
+        Assert.DoesNotContain("Disposition.Readings}", buttons, StringComparison.Ordinal);
         Assert.DoesNotContain("<ComboBox", cardMarkup + buttons, StringComparison.Ordinal);
         Assert.DoesNotContain("<ListBox", markup, StringComparison.Ordinal);
     }

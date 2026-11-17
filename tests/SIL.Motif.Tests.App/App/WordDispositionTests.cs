@@ -51,7 +51,7 @@ public sealed class WordDispositionTests
             AnalysisMarkingState.Create(Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child)));
 
         Assert.True(disposition.HasReadings);
-        Assert.Equal("+1", disposition.AddLabel);
+        Assert.Equal("1", disposition.ReadingsLabel);
         var reading = Assert.Single(disposition.Readings);
         Assert.Equal(1, reading.Number);
         Assert.Equal([WordDispositionKind.Approved, WordDispositionKind.Unknown], reading.Tiles.Select(tile => tile.Kind));
@@ -59,14 +59,14 @@ public sealed class WordDispositionTests
     }
 
     [Fact]
-    public void AChosenReadingShowsACheckWithItsNumberInTheOpinionItIsAddedAs()
+    public void AChosenReadingStillCountsAsOneReading()
     {
         var marking = AnalysisMarkingState.Create(Token(), Result("new", Child))
             .WithStagedTransitions([new StagedMarkingTransition("Not in FieldWorks", "Unknown", ReadingIndex: 0)]);
 
         var disposition = WordDisposition.From(marking);
 
-        Assert.Equal("✓1", disposition.AddLabel);
+        Assert.Equal("1", disposition.ReadingsLabel);
         Assert.Equal(WordDispositionKind.Unknown, disposition.ChosenKind);
         Assert.Equal("–", disposition.MarkLetter);
         Assert.False(disposition.IsChanged);

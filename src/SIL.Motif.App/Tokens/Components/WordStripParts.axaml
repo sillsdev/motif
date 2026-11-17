@@ -59,10 +59,7 @@
                       AutomationProperties.AutomationId="{Binding DisapprovedAutomationId}" />
     </DataTemplate>
     <DataTemplate x:Key="WordStripPart.AddFace" x:DataType="vm:ResultsTokenViewModel">
-      <views:DispositionFace Classes="dispositionFace rest add" Letter="{Binding Disposition.AddLabel}"
-                             Classes.picked="{Binding Disposition.ChosenReading, Converter={x:Static ObjectConverters.IsNotNull}}"
-                             Classes.approved="{Binding Disposition.IsChosenApproved}"
-                             Classes.unknown="{Binding Disposition.IsChosenUnknown}" />
+      <views:DispositionFace Classes="dispositionFace rest add" Letter="{Binding Disposition.ReadingsLabel}" ShowCaret="False" />
     </DataTemplate>
     <DataTemplate x:Key="WordStripPart.SelectionGlyph" x:DataType="vm:ResultsTokenViewModel">
       <Border Classes="selectionGlyph" Classes.checked="{Binding IsSelectedForActions}"

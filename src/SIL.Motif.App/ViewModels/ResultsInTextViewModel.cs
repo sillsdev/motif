@@ -113,6 +113,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         StageMarkingChoiceForTargetCommand = new AsyncRelayCommand<WordMarkingChoice>(StageCapturedMarkingChoiceAsync,
             choice => choice?.IsAvailable == true);
         TokenActionCommands = [AddChangeForTargetCommand, StageMarkingChoiceForTargetCommand];
+        OpenWordPanelCommand = new AsyncRelayCommand<ResultsTokenViewModel>(
+            token => token is null ? Task.CompletedTask : OpenTokenCardAsync(token), token => token?.IsWord == true);
         MarkTokenReadCommand = new AsyncRelayCommand<ResultsTokenViewModel>(
             token => token is null ? Task.CompletedTask : MarkReadAsync(token), CanMarkTokenReadState);
         MarkTokenUnreadCommand = new AsyncRelayCommand<ResultsTokenViewModel>(
@@ -171,6 +173,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     /// <summary>The one Set command whose parameter retains its original word and evidence.</summary>
     public IAsyncRelayCommand<WordMarkingChoice> StageMarkingChoiceForTargetCommand { get; }
+
+    /// <summary>Opens a word's panel at its place; the readings count beside a word uses it.</summary>
+    public IAsyncRelayCommand<ResultsTokenViewModel> OpenWordPanelCommand { get; }
 
     internal IReadOnlyList<System.Windows.Input.ICommand> TokenActionCommands { get; }
 

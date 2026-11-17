@@ -76,38 +76,29 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 .Single(control => control.Name == "WordStrip" && SIL.Motif.App.Views.ResultsInTextPanel.TokenOf(control)?.Occurrence == token.Occurrence);
             Assert.IsType<WordStripToken>(strip).FocusWord();
             PageScreenshots.Settle(walkthrough.Window);
-            var setMenu = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
-                Equals(Avalonia.Automation.AutomationProperties.GetName(button), WordDispositionButtons.AddButtonName));
-            HeadlessClick.Click(walkthrough.Window, setMenu, WordDispositionButtons.AddButtonName);
-            Assert.True(setMenu.Flyout?.IsOpen);
-            var setChoices = FlyoutContent.Of(Assert.IsType<Flyout>(setMenu.Flyout));
-            var approveChoice = setChoices.GetVisualDescendants().OfType<Button>().Single(button =>
-                Equals(Avalonia.Automation.AutomationProperties.GetName(button), "Add as Approved"));
-            Assert.Null(inText.SelectedToken);
-            Assert.Same(token.StageMarkingChoiceForTokenCommand, approveChoice.Command);
-            Assert.True(approveChoice.Command?.CanExecute(approveChoice.CommandParameter),
-                $"Selected token: {inText.SelectedToken?.Form}; parameter: {approveChoice.CommandParameter}; " +
-                $"choices: {string.Join(", ", token.Marking.SetChoices.Select(choice => choice.Label))}");
-            Assert.False(token.IsCardOpen, "Opening the PanGloss analyses to add also opened the word comparison card.");
-            HeadlessClick.Click(TopLevel.GetTopLevel(approveChoice)
-                ?? throw new InvalidOperationException("The add menu is not in a top level."), approveChoice, "Add as Approved");
-            walkthrough.WaitUntil(() => walkthrough.Workspace.Context.Changes.Items.Count == 1 && token.IsPending &&
-                    token.Marking.StagedTransitions.Any(transition =>
-                        transition.Text == "Not in FieldWorks → Approved"),
-                WalkthroughSteps.Remaining(deadline), "the Analyze texts action did not become pending");
-            Assert.False(token.IsCardOpen);
+            var chip = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
+                Equals(Avalonia.Automation.AutomationProperties.GetName(button), WordDispositionButtons.ReadingsButtonName));
+            Assert.Null(chip.Flyout);
+            HeadlessClick.Click(walkthrough.Window, chip, WordDispositionButtons.ReadingsButtonName);
+            PageScreenshots.Settle(walkthrough.Window);
+            var panel = Assert.IsType<SIL.Motif.App.ViewModels.WordOccurrencesViewModel>(inText.OccurrencePanel);
+            Assert.Equal(SeededProject.FirstForm, panel.Form);
+            Assert.Equal(expectedAnchor, inText.SelectedToken?.Occurrence);
+            walkthrough.WaitUntil(() => panel.TotalCount > 0 && panel.Page.Count > 0,
+                WalkthroughSteps.Remaining(deadline), "the word panel did not list the word's places");
+            panel.ChosenReading ??= panel.Readings[0];
+            panel.CheckShownGaps();
+            PageScreenshots.Settle(walkthrough.Window);
+            var approve = walkthrough.Window.GetVisualDescendants().OfType<Button>().Single(button =>
+                button.IsEffectivelyVisible && Avalonia.Automation.AutomationProperties.GetAutomationId(button) ==
+                    SIL.Motif.App.AutomationIds.WordOccurrencesApprove);
+            HeadlessClick.Click(walkthrough.Window, approve, panel.ApproveLabel);
+            walkthrough.WaitUntil(() => walkthrough.Workspace.Context.Changes.Items.Count == 1,
+                WalkthroughSteps.Remaining(deadline), "the word panel's Approve did not become pending");
             Assert.NotEmpty(FakeParser.Invocations(parserPath));
-            Assert.True(token.IsPending);
-            Assert.Contains(token.StagedChanges,
-                change => change.Transition == "Will add as Approved");
             Assert.Equal(SeededProject.FirstForm,
                 walkthrough.Workspace.Context.Changes.Items.Single().Word);
             Assert.Equal(expectedAnchor, ReadOccurrenceAnchor(project.FwDataPath));
-
-            setMenu.Flyout!.Hide();
-            Dispatcher.UIThread.RunJobs();
-            walkthrough.Window.UpdateLayout();
-            Assert.False(setMenu.Flyout.IsOpen);
 
             walkthrough.ShowPage(WorkspacePage.Proposals);
             var context = walkthrough.Workspace.Context;

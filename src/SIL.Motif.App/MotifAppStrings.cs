@@ -140,7 +140,6 @@ public static class MotifAppStrings
 
     public static string SetAnalysisCurrentTipFormat => Text("MotifApp.SetAnalysisCurrentTipFormat");
 
-    public static string AddAnalysisFromPanGloss => Text("MotifApp.AddAnalysisFromPanGloss");
 
     public static string ReviewCardEvidenceChanged => Text("MotifApp.ReviewCardEvidenceChanged");
 
@@ -1737,7 +1736,6 @@ public static class MotifAppStrings
 
     public static string AddToFieldWorks => Text("MotifApp.AddToFieldWorks");
 
-    public static string AddThemAllAsUnknown => Text("MotifApp.AddThemAllAsUnknown");
 
     public static string DispositionIncorrectSpellingTip => Text("MotifApp.DispositionIncorrectSpellingTip");
 
@@ -1749,7 +1747,6 @@ public static class MotifAppStrings
 
     public static string PanGlossAnalysesToAddToFieldWorksAccessibleName => Text("MotifApp.PanGlossAnalysesToAddToFieldWorksAccessibleName");
 
-    public static string AddEveryPanGlossAnalysisAsUnknownAccessibleName => Text("MotifApp.AddEveryPanGlossAnalysisAsUnknownAccessibleName");
 
     public static string GrammarFindingsIntro => Text("MotifApp.GrammarFindingsIntro");
 
@@ -4318,5 +4315,11 @@ public static class MotifAppStrings
             .Where(part => part.Length > 0).Select(part => char.ToUpperInvariant(part[0]) + part[1..]));
         return Resources.GetString(key);
     }
+    // round2-word
+    public static string OccurrencesApproveChooseReading => Text("MotifApp.OccurrencesApproveChooseReading");
+    public static string OccurrencesApproveCheckPlace => Text("MotifApp.OccurrencesApproveCheckPlace");
+    public static string OccurrencesApproveNothing => Text("MotifApp.OccurrencesApproveNothing");
+    public static string WordReadingsButtonName => Text("MotifApp.WordReadingsButtonName");
+    public static string WordReadingsTipPattern => Text("MotifApp.WordReadingsTipPattern");
     #endregion
 }

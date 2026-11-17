@@ -159,26 +159,31 @@ public sealed class SetAnalysisActionTests
         }, TimeSpan.FromMinutes(3));
     }
 
-    [Theory]
-    [InlineData("strip")]
-    [InlineData("card")]
-    public void TheCompactAddCountOpensAddAnalysisFromPanGloss(string host)
+    [Fact]
+    public void TheReadingsChipOpensTheWordPanelForThatWordAndPlaceAndStagesNothing()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await OpenAnalyzeTexts();
             try
             {
-                var surface = await SurfaceAsync(workspace, window, host, "chakula");
-                var add = PartButton(surface, "add");
-                Assert.StartsWith("+", VisibleText(add), StringComparison.Ordinal);
-                var menu = OpenByPointer(window, add);
-                Assert.Equal("Add analysis from PanGloss", AutomationProperties.GetName(add));
-                Assert.Contains("Add analysis from PanGloss", VisibleText(menu), StringComparison.Ordinal);
-                Assert.Contains(menu.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Add as Approved" && button.Command!.CanExecute(button.CommandParameter));
+                var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
+                var surface = await SurfaceAsync(workspace, window, "strip", "chakula");
+                var token = Assert.IsType<ResultsTokenViewModel>(ResultsInTextPanel.TokenOf(surface));
+                Assert.Null(reader.OccurrencePanel);
+                var chip = PartButton(surface, "readings");
+                chip.BringIntoView();
+                PageScreenshots.Settle(window);
+                HeadlessClick.Click(window, chip, AutomationProperties.GetName(chip)!);
+                PageScreenshots.Settle(window);
+
+                Assert.Equal(token.Occurrence, reader.SelectedToken?.Occurrence);
+                Assert.Equal("chakula", Assert.IsType<WordOccurrencesViewModel>(reader.OccurrencePanel).Form);
+                Assert.Null(chip.Flyout);
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button =>
+                    button.IsEffectivelyVisible && (AutomationProperties.GetName(button) ?? string.Empty)
+                        .StartsWith("Add as ", StringComparison.Ordinal));
                 Assert.Empty(Assert.IsType<FakeCommandClient>(workspace.Context.Commands).PendingPutRequests);
-                add.Flyout!.Hide();
             }
             finally { window.Close(); await workspace.DisposeAsync(); }
         }, TimeSpan.FromMinutes(3));

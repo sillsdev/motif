@@ -363,20 +363,6 @@
     "control": "ItemsControl"
   },
   {
-    "view": "WordDispositionButtons",
-    "name": "WordDispositionReadingsItems",
-    "source": "Disposition.Readings",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "WordDispositionButtons",
-    "name": "WordDispositionReadingTilesItems",
-    "source": "Tiles",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
     "view": "Pages/ProposalsPage",
     "name": "ProposalsRowsItems",
     "source": "Rows",

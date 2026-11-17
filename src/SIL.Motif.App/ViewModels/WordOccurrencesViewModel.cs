@@ -92,8 +92,14 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
     /// <summary>The count of every place in the Context, as a sentence.</summary>
     public string PlacesText => PluralText.Format(MotifAppStrings.OccurrencesPlacesPattern, TotalCount);
 
-    /// <summary>The label of the primary button, which names how many places it will keep.</summary>
-    public string ApproveLabel => PluralText.Format(MotifAppStrings.OccurrencesApprovePattern, SelectedCount);
+    /// <summary>
+    /// The label of the primary button: how many places it will approve, or, while it cannot act, what to do
+    /// first. It never reads as a zero count.
+    /// </summary>
+    public string ApproveLabel => !HasReadings ? MotifAppStrings.OccurrencesApproveNothing :
+        ChosenReading is null ? MotifAppStrings.OccurrencesApproveChooseReading :
+        SelectedCount == 0 ? MotifAppStrings.OccurrencesApproveCheckPlace :
+        PluralText.Format(MotifAppStrings.OccurrencesApprovePattern, SelectedCount);
 
     /// <summary>The count of places checked, as a sentence.</summary>
     public string SelectedText => PluralText.Format(MotifAppStrings.OccurrencesSelectedPattern, SelectedCount);
@@ -155,7 +161,11 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
     public ICommand NotAWordCommand { get; }
     public ICommand AskClaudeCommand { get; }
 
-    partial void OnChosenReadingChanged(WordReadingOption? value) => RefreshCommands();
+    partial void OnChosenReadingChanged(WordReadingOption? value)
+    {
+        OnPropertyChanged(nameof(ApproveLabel));
+        RefreshCommands();
+    }
     partial void OnIsBusyChanged(bool value) => RefreshCommands();
 
     /// <summary>Loads a page for a command; a failure becomes the status sentence.</summary>

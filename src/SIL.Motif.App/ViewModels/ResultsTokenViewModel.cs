@@ -234,7 +234,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     public string SetAutomationId => AutomationIdForPart("fix");
 
     /// <summary>The add button's identifier, for the PanGloss readings FieldWorks does not hold.</summary>
-    public string AddAutomationId => AutomationIdForPart("add");
+    public string ReadingsAutomationId => AutomationIdForPart("readings");
 
     public string StagedAutomationId => AutomationIdForPart("staged");
 
@@ -613,6 +613,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
 
     /// <summary>The Analyze texts actions available to this word card.</summary>
     public ResultsInTextViewModel? Actions { get; internal set; }
+
+    /// <summary>Opens this word's panel at this place; the panel is where a reading is chosen and approved.</summary>
+    public IAsyncRelayCommand<ResultsTokenViewModel>? OpenWordPanelCommand => Actions?.OpenWordPanelCommand;
 
     public IAsyncRelayCommand<WordChangeAction>? AddChangeForTokenCommand => Actions?.AddChangeForTargetCommand;
 

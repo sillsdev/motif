@@ -359,8 +359,8 @@ _Avoid_: place judgement, confirm, accept, reject (at an Occurrence)
 **Set (an analysis)**:
 The action that chooses what FieldWorks will hold for one analysis: **Approved**, **Unknown**,
 **Disapproved** or **Remove**. Its menu says **Set analysis**; **Opinion** names the value, not the
-action. **Add analysis from PanGloss** offers readings FieldWorks does not hold. Both stage changes
-for Review and Apply; **Undo** takes back a staged change. The count remains **N changes**.
+action. The count of readings beside a word opens the word panel, the one place a reading FieldWorks
+does not hold is chosen and approved. Both stage changes for Review and Apply; **Undo** takes back a staged change. The count remains **N changes**.
 _Avoid_: Fix, Opinion as the action name
 
 **Read**:

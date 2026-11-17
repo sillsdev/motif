@@ -721,18 +721,13 @@ internal static class TooltipOwners
         new("a word's opinion mark", "Views/WordDispositionButtons.axaml", "{Binding Disposition.MarkTip}", TooltipScene.Reader,
             control => control is Button && control.FindAncestorOfType<WordDispositionButtons>() is not null &&
                 AutomationProperties.GetName(control) == WordDispositionButtons.MarkButtonName),
-        new("a word's add count", "Views/WordDispositionButtons.axaml", "{Binding Disposition.AddTip}", TooltipScene.Reader,
+        new("a word's readings count", "Views/WordDispositionButtons.axaml", "{Binding Disposition.ReadingsTip}", TooltipScene.Reader,
             control => control is Button && control.FindAncestorOfType<WordDispositionButtons>() is not null &&
-                AutomationProperties.GetName(control) == WordDispositionButtons.AddButtonName),
+                AutomationProperties.GetName(control) == WordDispositionButtons.ReadingsButtonName),
         new("a disposition tile", "Views/WordDispositionButtons.axaml", "{Binding Tip}", TooltipScene.Reader,
             control => control is Button && control.DataContext is WordDispositionTile { Choice: null or { Kind: not AnalysisMarkingActionKind.Add } })
         {
             Pending = "the tiles show only in an opened disposition menu",
-        },
-        new("a reading's add tile", "Views/WordDispositionButtons.axaml", "{Binding Choice.Label}", TooltipScene.Reader,
-            control => control is Button && control.DataContext is WordDispositionTile { Choice.Kind: AnalysisMarkingActionKind.Add })
-        {
-            Pending = "the add tiles show only in an opened add menu",
         },
         new("incorrect spelling in the disposition menu", "Views/WordDispositionButtons.axaml",
             "Incorrect spelling: FieldWorks stops treating it as a word (S)", TooltipScene.Reader,

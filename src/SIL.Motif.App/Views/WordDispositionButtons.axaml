@@ -99,69 +99,15 @@
     </Button.Flyout>
   </Button>
 
+  <!-- round2-word: a count of readings; it opens the word panel, which is the one place a reading is chosen and approved. -->
   <Button Classes="dispositionButton" Theme="{DynamicResource BorderlessButton}" VerticalAlignment="Center"
           IsVisible="{Binding Disposition.HasReadings}"
-          AutomationProperties.Name="{x:Static views:WordDispositionButtons.AddButtonName}"
-          AutomationProperties.AutomationId="{Binding AddAutomationId}"
-          ToolTip.Tip="{Binding Disposition.AddTip}">
-    <Border Classes="dispositionFace add" Classes.picked="{Binding Disposition.ChosenReading, Converter={x:Static ObjectConverters.IsNotNull}}"
-            Classes.approved="{Binding Disposition.IsChosenApproved}" Classes.unknown="{Binding Disposition.IsChosenUnknown}">
-      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
-        <TextBlock x:Name="AddLabel" Text="{Binding Disposition.AddLabel}" />
-        <Path Classes="dispositionCaret" Data="M0 1 L5 6 L10 1 Z" Fill="{Binding #AddLabel.Foreground}" />
-      </StackPanel>
+          Command="{Binding OpenWordPanelCommand}" CommandParameter="{Binding}"
+          AutomationProperties.Name="{x:Static views:WordDispositionButtons.ReadingsButtonName}"
+          AutomationProperties.AutomationId="{Binding ReadingsAutomationId}"
+          ToolTip.Tip="{Binding Disposition.ReadingsTip}">
+    <Border Classes="dispositionFace add">
+      <TextBlock x:Name="ReadingsLabel" Text="{Binding Disposition.ReadingsLabel}" />
     </Border>
-    <Button.Flyout>
-      <Flyout Placement="BottomEdgeAlignedLeft" Content="{Binding}">
-        <Flyout.ContentTemplate>
-          <DataTemplate x:DataType="vm:ResultsTokenViewModel">
-            <StackPanel x:Name="AddMenu" Classes="menu" Spacing="{DynamicResource Intent.Space.Related}"
-                        AutomationProperties.Name="{x:Static app:MotifAppStrings.AddAnalysisFromPanGloss}">
-              <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.AddAnalysisFromPanGloss}" />
-              <ItemsControl x:Name="WordDispositionReadingsItems" ItemsSource="{Binding Disposition.Readings}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:WordDispositionRow">
-                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                      <TextBlock Classes="menuTitle" Text="{Binding Number}" VerticalAlignment="Center" />
-                      <StackPanel VerticalAlignment="Center">
-                        <TextBlock Classes="menuTitle" Text="{Binding Morphs}" />
-                        <TextBlock Classes="menuDetail" Text="{Binding Glosses}" />
-                      </StackPanel>
-                      <ItemsControl x:Name="WordDispositionReadingTilesItems" ItemsSource="{Binding Tiles}" VerticalAlignment="Center">
-                        <ItemsControl.ItemsPanel>
-                          <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" />
-                          </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:WordDispositionTile">
-                            <Button Classes="dispositionButton" Theme="{DynamicResource BorderlessButton}"
-                                    Command="{Binding #AddMenu.((vm:ResultsTokenViewModel)DataContext).StageMarkingChoiceForTokenCommand}"
-                                    CommandParameter="{Binding Action}"
-                                    ToolTip.Tip="{Binding Choice.Label}" AutomationProperties.Name="{Binding Choice.Label}">
-                              <Border Classes="dispositionFace tile"
-                                      Classes.approved="{Binding IsApproved}" Classes.unknown="{Binding IsUnknown}"
-                                      Classes.staged="{Binding IsStaged}">
-                                <TextBlock Text="{Binding Letter}" />
-                              </Border>
-                            </Button>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </StackPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                      IsVisible="{Binding Disposition.AddAllAsUnknown, Converter={x:Static ObjectConverters.IsNotNull}}"
-                      Command="{Binding StageMarkingChoiceForTokenCommand}" CommandParameter="{Binding Disposition.AddAllAsUnknownAction}"
-                      AutomationProperties.Name="{x:Static app:MotifAppStrings.AddEveryPanGlossAnalysisAsUnknownAccessibleName}">
-                <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.AddThemAllAsUnknown}" />
-              </Button>
-            </StackPanel>
-          </DataTemplate>
-        </Flyout.ContentTemplate>
-      </Flyout>
-    </Button.Flyout>
   </Button>
 </StackPanel>

@@ -54,6 +54,13 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
+  <!-- round2-word: one body size in a place row; the vernacular line keeps its font but not its own size. -->
+  <Style Selector=":is(TextBlock).occurrencePlaceLabel, :is(TextBlock).occurrenceSentence">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+  </Style>
+  <Style Selector="Button.occurrenceLink">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Chip}" />
+  </Style>
   <Style Selector="Border.occurrenceBadge">
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Chip}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
