@@ -338,7 +338,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "MissedApprovedCount|INTEGER|0|0|",
                 "MissedApprovedJson|BLOB|0|0|",
                 "IsIncomplete|INTEGER|1|0|0", "Attempts|INTEGER|0|0|", "Passes|INTEGER|0|0|",
-                "ParserWork|INTEGER|0|0|"],
+                "ParserWork|INTEGER|0|0|", "LowercaseOf|TEXT|0|0|"],
             ["AssessmentObjectTimings"] = ["AssessmentId|TEXT|1|1|", "Detail|BLOB|1|0|", "Evidence|BLOB|0|0|"],
             ["ParsedAnalyses"] = ["AssessedWordId|INTEGER|1|0|", "OrdinalIndex|INTEGER|1|0|", "CategoryGuid|TEXT|0|0|",
                 "MorphemeGuidsJson|TEXT|1|0|", "RootIndex|INTEGER|1|0|", "IdentityDigest|TEXT|1|0|"],
