@@ -22,8 +22,8 @@ namespace SIL.TextEditing.Markdown.Records
         }
 
         /// <summary>Checks the YAML frame and front-matter values without typing record fields or reading rich values.
-        /// The returned document holds metadata only; it must not be written as a complete record.</summary>
-        public static RecordReadResult ReadFrame(string text, RecordReadOptions? options = null)
+        /// The returned document holds metadata only; it must not be written as a complete record. Internal: only the fwmd tool and tests need it.</summary>
+        internal static RecordReadResult ReadFrame(string text, RecordReadOptions? options = null)
         {
             if (text == null) throw new ArgumentNullException(nameof(text));
             return new RecordReading(text, null, options ?? new RecordReadOptions()).Run();
