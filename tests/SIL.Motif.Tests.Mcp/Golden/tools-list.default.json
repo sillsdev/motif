@@ -9480,7 +9480,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Words the change intends to lose, such as retirements. They are reported in the verdict and do not make it a loss; any other lost word does."
+          "description": "Words the change intends to lose, such as retirements. They are reported in the gate and do not make it a loss; any other lost word does."
         },
         "job": {
           "type": "string",
