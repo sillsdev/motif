@@ -516,12 +516,46 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void Schema59OpensThroughANormalOpenCarryingItsProposals()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+            Execute(old, "INSERT INTO Proposals (ProposalId, Status) VALUES ('a', 'applied'), ('b', 'proposed');" +
+                "PRAGMA user_version = 59;");
+        using (var db = MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)))
+        using (var connection = db.OpenConnection())
+        {
+            Assert.Equal(2, Count(connection, "Proposals"));
+            Assert.Equal((long)MotifSchema.CurrentSchema, Scalar(connection, "PRAGMA user_version;"));
+        }
+        Assert.True(File.Exists(Source + ".schema59.bak"));
+    }
+
+    [Fact]
+    public void ReadOnlyOpenOfAnOlderStoreAdvisesUpgradeAndKeepsTheStoreUntouched()
+    {
+        CreateCurrentSchemaAsOld();
+        File.WriteAllBytes(Source + ".use.lock", []);
+        var before = File.ReadAllBytes(Source);
+        var older = MotifSchema.CurrentSchema - 1;
+
+        var exception = Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenExistingReadOnly(Source, Project));
+
+        ProjectStoreOperationFactsTests.AssertUpgradeAdvice(exception.Message, older);
+        Assert.Equal(before, File.ReadAllBytes(Source));
+        Assert.False(File.Exists(Source + $".schema{older}.bak"));
+    }
+
+    [Fact]
     public void SuppressedRequestDoesNotUpgrade()
     {
         CreateSchema49();
         using (StoreUpgradeContext.Suppress())
-            Assert.Throws<MotifStoreVersionException>(() =>
+        {
+            var exception = Assert.Throws<MotifStoreVersionException>(() =>
                 MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)));
+            ProjectStoreOperationFactsTests.AssertUpgradeAdvice(exception.Message, 49);
+        }
         Assert.False(File.Exists(Source + ".schema49.bak"));
     }
 

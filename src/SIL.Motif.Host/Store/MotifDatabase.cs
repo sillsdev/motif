@@ -179,7 +179,11 @@ public sealed class MotifDatabase : IDisposable
             if (Convert.ToInt32(command.ExecuteScalar()) != MotifSchema.ApplicationId)
                 throw new InvalidDataException("The file is not a Motif project database.");
             command.CommandText = "PRAGMA user_version;";
-            if (Convert.ToInt32(command.ExecuteScalar()) != MotifSchema.CurrentSchema)
+            var schema = Convert.ToInt32(command.ExecuteScalar());
+            if (schema > 0 && schema < MotifSchema.CurrentSchema)
+                throw new MotifStoreVersionException(Path.GetFullPath(path), StoreUpgradeMessages.Format(
+                    "OlderStore", descriptor.Name, Path.GetFileName(path), schema, MotifSchema.CurrentSchema));
+            if (schema != MotifSchema.CurrentSchema)
                 throw new NotSupportedException("The project database has another schema version.");
         }
         descriptor.ValidateSchema(connection, transaction);

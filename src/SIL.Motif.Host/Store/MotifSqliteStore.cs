@@ -271,7 +271,8 @@ internal sealed class MotifSqliteStore : IDisposable
                 throw new InvalidDataException($"The file is not a {descriptor.Name}.");
         }
         if (StoreUpgradeContext.IsSuppressed)
-            throw new MotifStoreVersionException(path, StoreUpgradeMessages.Get("Suppressed"));
+            throw new MotifStoreVersionException(path,
+                StoreUpgradeMessages.Format("OlderStore", descriptor.Name, Path.GetFileName(path), schema, descriptor.CurrentSchema));
         var backup = path + ".schema" + schema + ".bak";
         if (File.Exists(backup)) throw new IOException(StoreUpgradeMessages.Get("BackupExists"));
         foreach (var suffix in new[] { "", "-journal", "-wal", "-shm", ".upgrade.json" })
@@ -572,10 +573,10 @@ internal sealed class MotifSqliteStore : IDisposable
         if (schema == 0 && hasTables)
             throw new InvalidDataException($"The existing database has no registered {descriptor.Name} schema.");
 
-        // Without an upgrade callback, there is no safe way to open an older schema.
+        // A read-only open cannot upgrade; a store with no upgrade callback cannot be upgraded at all.
         if (schema != 0 && schema != descriptor.CurrentSchema)
             throw new MotifStoreVersionException(fullPath,
-                StoreUpgradeMessages.Format("UnsupportedSchema", descriptor.Name, Path.GetFileName(fullPath), schema, descriptor.CurrentSchema));
+                StoreUpgradeMessages.Format(descriptor.Upgrade is null ? "UnsupportedSchema" : "OlderStore", descriptor.Name, Path.GetFileName(fullPath), schema, descriptor.CurrentSchema));
         return schema;
     }
 

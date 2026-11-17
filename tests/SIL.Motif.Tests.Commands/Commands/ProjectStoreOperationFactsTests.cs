@@ -55,9 +55,60 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
         Assert.Equal(FailureReason.Refused, outcome.Refusal.Reason);
         Assert.Equal(storePath, outcome.Refusal.Facts[RefusalFactNames.StorePath]);
         Assert.Equal(projectPath, outcome.Refusal.Facts["fwDataPath"]);
+        if (schemaOffset < 0) AssertUpgradeAdvice(outcome.Refusal.Message, MotifSchema.CurrentSchema + schemaOffset);
         Assert.Equal(before.Keys.Order(), StoredFiles().Order());
         foreach (var file in before)
             Assert.Equal(file.Value, File.ReadAllBytes(file.Key));
+    }
+
+    [Fact]
+    public void ExistingReadOfAMissingUseLockNamesTheFileAndHowToRecover()
+    {
+        var projectPath = CreateProject("no-lock");
+        Assert.True(ProjectStoreCommand.Run(projectPath, "1.0", (_, _) => CommandOutcome<string>.Success("created")).Succeeded);
+        var storePath = ProjectDatabaseCatalog.DatabasePathFor(
+            new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath)));
+        File.Delete(storePath + ".use.lock");
+
+        var outcome = ProjectStoreCommand.ReadExisting(projectPath,
+            CommandOutcome<string>.Success("absent"), (_, _) => CommandOutcome<string>.Success("read"));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Contains(Path.GetFileName(storePath) + ".use.lock", outcome.Refusal!.Message);
+        Assert.Contains("Open the project in Motif", outcome.Refusal.Message);
+    }
+
+    [Fact]
+    public void ExistingReadOfAnOlderStoreOnTheConnectionPathAdvisesUpgradeToo()
+    {
+        var projectPath = CreateProject("older-connection");
+        Assert.True(ProjectStoreCommand.Run(projectPath, "1.0", (_, _) => CommandOutcome<string>.Success("created")).Succeeded);
+        var storePath = ProjectDatabaseCatalog.DatabasePathFor(
+            new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath)));
+        using (var connection = new SqliteConnection($"Data Source={storePath};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
+            command.ExecuteNonQuery();
+        }
+
+        var outcome = ProjectStoreCommand.ReadExisting(projectPath, CommandOutcome<string>.Success("absent"),
+            (_, _, _) => CommandOutcome<string>.Success("read"));
+
+        Assert.Equal("store.other-version", outcome.Refusal!.Code);
+        AssertUpgradeAdvice(outcome.Refusal.Message, MotifSchema.CurrentSchema - 1);
+    }
+
+    internal static void AssertUpgradeAdvice(string message, int olderSchema)
+    {
+        Assert.Contains($"schema {olderSchema}", message);
+        Assert.Contains($"schema {MotifSchema.CurrentSchema}", message);
+        Assert.Contains($".schema{olderSchema}.bak", message);
+        Assert.Contains("motif store upgrade", message);
+        Assert.Contains("--source", message);
+        Assert.Contains("--out", message);
+        Assert.DoesNotContain("recreate", message);
     }
 
     [Fact]

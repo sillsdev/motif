@@ -298,6 +298,11 @@ public static class ProjectStoreCommand
                 ["fwDataPath"] = fwDataPath,
                 [RefusalFactNames.StorePath] = version.StorePath,
             }),
+        FileNotFoundException { FileName: { Length: > 0 } missing } => new Refusal(
+            ioCode, FailureReason.Refused,
+            $"The project could not access required storage: '{Path.GetFileName(missing)}' is missing. " +
+            "Open the project in Motif to recreate it, or restore it from a backup.",
+            OperationFacts(fwDataPath, exception)),
         IOException { InnerException: Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 or 10 } } => new Refusal(
             ioCode, FailureReason.Busy, StorageFailureMessage, OperationFacts(fwDataPath, exception)),
         FileNotFoundException { FileName: { } lockPath } when lockPath.EndsWith(".use.lock", StringComparison.Ordinal) => new Refusal(

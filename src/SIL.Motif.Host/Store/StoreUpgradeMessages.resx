@@ -21,5 +21,6 @@
   <data name="UnknownTable" xml:space="preserve"><value>The source store contains unclassified tables: {0}.</value></data>
   <data name="IntegrityFailed" xml:space="preserve"><value>The upgraded store failed its integrity check.</value></data>
   <data name="MissingMetadata" xml:space="preserve"><value>The source store is missing its project identity.</value></data>
-  <data name="UnsupportedSchema" xml:space="preserve"><value>The {0} at '{1}' is schema {2}, but this build requires exactly schema {3}. This store cannot be upgraded by this build; delete it and let Motif recreate it.</value></data>
+  <data name="UnsupportedSchema" xml:space="preserve"><value>The {0} at '{1}' is schema {2}, but this build requires exactly schema {3}. This store cannot be upgraded by this build. Copy '{1}' somewhere safe first; only then delete it and let Motif recreate it.</value></data>
+  <data name="OlderStore" xml:space="preserve"><value>The {0} at '{1}' is schema {2}, and this build uses schema {3}. Motif upgrades it on a normal open, not in this read-only view, and keeps the original as '{1}.schema{2}.bak'. Open the project in Motif, or run `motif store upgrade --project &lt;project&gt;`, or upgrade a copy with `motif store upgrade --source &lt;old.db&gt; --out &lt;new.db&gt;`. Do not delete the store.</value></data>
 </root>

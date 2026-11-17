@@ -144,6 +144,12 @@ public sealed class McpOpenProjectTests
             Assert.True(result.IsError, ErrorText(result));
             Assert.Equal("store.other-version", result.StructuredContent!.Value.GetProperty("code").GetString());
             Assert.Equal(store, result.StructuredContent.Value.GetProperty("facts").GetProperty("storePath").GetString());
+            var older = MotifSchema.CurrentSchema - 1;
+            var text = ErrorText(result);
+            Assert.Contains($"schema {older}", text);
+            Assert.Contains($".schema{older}.bak", text);
+            Assert.Contains("motif store upgrade", text);
+            Assert.DoesNotContain("recreate", text);
             Assert.Equal(storeBytes, File.ReadAllBytes(store));
             Assert.Equal(projectBytes, File.ReadAllBytes(project));
             Assert.False(File.Exists(store + $".schema{MotifSchema.CurrentSchema - 1}.bak"));
