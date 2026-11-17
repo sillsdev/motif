@@ -95,14 +95,11 @@ public static int Main(string[] args)
         static (project, reportWarning) => ProcessRunnerLauncher.FromEnvironment().Start(project, reportWarning));
 }
 
-/// <summary>The exit code of a waited Trial that lost a measured word nobody listed as an expected loss.</summary>
-internal const int TrialLossExitCode = 6;
-
-/// <summary>The exit code a waited Trial's gate maps to: 0 green, <see cref="TrialLossExitCode"/> loss, the refusal code unmeasured.</summary>
+/// <summary>The exit code a waited Trial's gate maps to: 0 green, <see cref="FailureEnvelope.TrialLossExitCode"/> loss, the refusal code unmeasured.</summary>
 internal static int TrialGateExitCode(TrialGate gate) => gate.State switch
 {
     TrialGateState.Green => 0,
-    TrialGateState.Loss => TrialLossExitCode,
+    TrialGateState.Loss => FailureEnvelope.TrialLossExitCode,
     _ => FailureEnvelope.ExitCodeFor(FailureReason.Refused),
 };
 

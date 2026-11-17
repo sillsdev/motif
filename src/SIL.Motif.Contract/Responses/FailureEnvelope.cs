@@ -78,6 +78,9 @@ public sealed record FailureEnvelope
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ParserCompileDiagnostic? ParserDiagnostic { get; }
 
+    /// <summary>The exit code of a waited Trial whose gate is <c>loss</c>; distinct from every <see cref="ExitCodeFor"/> value.</summary>
+    public const int TrialLossExitCode = 6;
+
     /// <summary>The process exit code this reason maps to.</summary>
     /// <remarks>
     /// Kept beside the reason so the two cannot drift. The split that earns its keep is

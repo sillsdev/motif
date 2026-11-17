@@ -858,7 +858,7 @@ internal static class AgentTools
                 ("wordsFile", Schema.String("Path to a UTF-8 word list."), false),
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("review_sets", Schema.StringArray("Named review sets to include."), false),
-                ("expect_loss", Schema.StringArray("Words the change intends to lose, such as retirements. They are reported in the verdict and do not make it a loss; any other lost word does."), false),
+                ("expect_loss", Schema.StringArray("Words the change intends to lose, such as retirements. They are reported in the gate and do not make it a loss; any other lost word does."), false),
                 ("job", Schema.String("Exact Trial job to resume or read."), false),
                 ("report", Schema.String("Exact stored report to read."), false),
                 ("wait_seconds", Schema.Integer("How long to wait. Default 40.", 1, 300), false),

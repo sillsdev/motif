@@ -3477,9 +3477,10 @@
         "reason": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
         "lostWords": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
         "expectedLosses": { "type": "array", "items": { "type": "string" } },
-        "unexpectedLosses": { "type": "array", "items": { "type": "string" } }
+        "unexpectedLosses": { "type": "array", "items": { "type": "string" } },
+        "stoppedWords": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["state", "reason", "lostWords", "expectedLosses", "unexpectedLosses"],
+      "required": ["state", "reason", "lostWords", "expectedLosses", "unexpectedLosses", "stoppedWords"],
       "additionalProperties": false
     },
     "AvailableTrialResult": {

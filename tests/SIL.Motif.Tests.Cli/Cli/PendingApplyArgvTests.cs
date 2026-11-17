@@ -208,6 +208,40 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task AWaitedTrialThatLosesAWordExitsWithTheLossCodeEvenWithNoReviewSets()
+    {
+        var (path, _) = ReleasedProjectWithWord("lost-word", out var senseId);
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "loss-worker");
+        var parser = FakeParser.Copy(root);
+        var runner = IsolatedRunner.Process(root, parser);
+        var analysis = JsonDocument.Parse(
+            "{\"morphs\":[{\"form\":\"11111111-1111-1111-1111-111111111111\",\"msa\":\"33333333-3333-3333-3333-333333333333\",\"inflType\":null,\"guessedString\":null}]}").RootElement;
+        object Phase(bool analysed) => new
+        {
+            words = new object[] { analysed
+                ? new { word = "lost-word", outcome = "complete", analyses = new[] { analysis } }
+                : new { word = "lost-word", outcome = "complete", signature = "-" } },
+        };
+        FakeParser.BehaveInPhasesBesideExecutable(parser, "batch", Phase(true), Phase(false));
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var later = ProposalCommands.New(new NewDraftRequest(path, "1.0", "later", "A later gloss"));
+        Assert.True(later.Succeeded, later.Refusal?.Message);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, "1.0", "later",
+            CanonicalId.FromGuid(senseId).Value, "en", "a later gloss")).Succeeded);
+        var wordsPath = Path.Combine(root, "words.txt");
+        File.WriteAllText(wordsPath, "lost-word" + Environment.NewLine);
+
+        var start = CliProcess.Start(runner.Options, ["trial", "--project", path, later.Value!.ProposalId, "--words", wordsPath,
+            "--review-set", "none", "--wait", "--json"]);
+        CliProcess.EnableAdvancedAiMode(start, root);
+        var trial = await CliProcess.RunAsync(start);
+
+        Assert.True(trial.ExitCode == SIL.Motif.Contract.Responses.FailureEnvelope.TrialLossExitCode, trial.Error + trial.Output);
+        using var summary = JsonDocument.Parse(trial.Output);
+        Assert.Equal("loss", summary.RootElement.GetProperty("gate").GetProperty("state").GetString());
+    }
+
+    [Fact]
     public async Task MeasuringPendingChangesAfterAnOutsideSaveIsRefusedUntilANewCapture()
     {
         var (path, wordformId) = ReleasedProjectWithWord("review-word");

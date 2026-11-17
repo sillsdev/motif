@@ -83,7 +83,8 @@ public sealed class TrialReviewArgvTests
     private static ParseWordEvidence NoAnalysis(string word) => new("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false, [], []);
 
     private static (string Project, string Proposal, string Job, string Root) SeedTrial(
-        Func<string, (TrialReviewObservation[] Before, TrialReviewObservation[] After)> observe, string[] words)
+        Func<string, (TrialReviewObservation[] Before, TrialReviewObservation[] After)> observe, string[] words,
+        ReviewAssertion[]? assertions = null)
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-cli-review-job-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -102,7 +103,7 @@ public sealed class TrialReviewArgvTests
                 command.ExecuteNonQuery();
             }
             var inputs = new FrozenReviewInputs(key, proposal, "scope", "manifest", null, [], [],
-                words.Select(word => new ReviewPlannedCase("case-" + word, "key-" + word, word, "ws", null, [], [])).ToArray());
+                words.Select(word => new ReviewPlannedCase("case-" + word, "key-" + word, word, "ws", null, [], assertions ?? [])).ToArray());
             var digest = "sha256:" + new string('a', 64);
             var baseline = new BaselineToken(key, digest, "v1", "2026-01-01T00:00:00Z", digest);
             var reference = ReviewInputArtifacts.Store(database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
@@ -118,14 +119,22 @@ public sealed class TrialReviewArgvTests
         return (project, proposal, job, root);
     }
 
+    private static ParseWordEvidence AnalysedAs(string word, string form) => new("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false,
+        [new ParseAnalysis([new ParseMorph(form, Msa, null, null)])], []);
+
+    private static ParseWordEvidence TimedOut(string word) => new("fieldworks-parse-analysis/v1", 0, word, 0, false, true, false, [], []);
+
+    private static string OutcomeOf(ParseWordEvidence? evidence) =>
+        evidence is { TimedOut: true } ? "timed-out" : evidence is { Analyses.Count: > 0 } ? "analysed" : "no-analysis";
+
     private static TrialGate Gate(string[] words, ParseWordEvidence?[] before, ParseWordEvidence?[] after,
-        string[]? expected = null)
+        string[]? expected = null, ReviewAssertion[]? assertions = null)
     {
         var seed = SeedTrial(_ => (
             words.Select((word, i) => new TrialReviewObservation("case-" + word, word,
-                before[i] is { Analyses.Count: > 0 } ? "analysed" : "no-analysis", before[i])).Where(o => o.Morphology is not null).ToArray(),
+                OutcomeOf(before[i]), before[i])).Where(o => o.Morphology is not null).ToArray(),
             words.Select((word, i) => new TrialReviewObservation("case-" + word, word,
-                after[i] is { Analyses.Count: > 0 } ? "analysed" : "no-analysis", after[i])).Where(o => o.Morphology is not null).ToArray()), words);
+                OutcomeOf(after[i]), after[i])).Where(o => o.Morphology is not null).ToArray()), words, assertions);
         try
         {
             var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job, expected);
@@ -172,10 +181,96 @@ public sealed class TrialReviewArgvTests
 
         Assert.Equal(TrialGateState.Loss, gate.State);
         Assert.Equal(3, gate.LostWords);
-        Assert.Equal(SIL.Motif.Cli.Program.TrialLossExitCode, SIL.Motif.Cli.Program.TrialGateExitCode(gate));
+        Assert.Equal(FailureEnvelope.TrialLossExitCode, SIL.Motif.Cli.Program.TrialGateExitCode(gate));
         Assert.NotEqual(0, SIL.Motif.Cli.Program.TrialGateExitCode(gate));
         Assert.NotEqual(SIL.Motif.Cli.Program.TrialGateExitCode(gate), SIL.Motif.Cli.Program.TrialGateExitCode(gate with { State = TrialGateState.Unmeasured }));
         Assert.Equal(0, SIL.Motif.Cli.Program.TrialGateExitCode(gate with { State = TrialGateState.Green }));
+    }
+
+    private static ReviewAssertion Approved(string form) => new(form, form,
+        new ApprovedMorphology([new ApprovedMorph(form, Msa, null, [])]), ReferenceAuthority.Human,
+        "actor", "revision", true, false, true, []);
+
+    private const string OtherForm = "22222222-2222-2222-2222-222222222222";
+
+    [Fact]
+    public void ALostConfirmedReadingIsALossEvenWhenTheWordKeepsAnAnalysis()
+    {
+        var gate = Gate(["word"], [AnalysedAs("word", Form)], [AnalysedAs("word", OtherForm)],
+            assertions: [Approved(Form)]);
+
+        Assert.Equal(TrialGateState.Loss, gate.State);
+        Assert.Equal(["word"], gate.UnexpectedLosses);
+    }
+
+    [Fact]
+    public void AnExpectedLossExcusesALostConfirmedReading()
+    {
+        var gate = Gate(["word"], [AnalysedAs("word", Form)], [AnalysedAs("word", OtherForm)],
+            expected: ["word"], assertions: [Approved(Form)]);
+
+        Assert.Equal(TrialGateState.Green, gate.State);
+        Assert.Equal(["word"], gate.ExpectedLosses);
+    }
+
+    [Fact]
+    public void AWordStoppedAfterAnalysingInTheBaselineIsUnmeasuredAndNamed()
+    {
+        var gate = Gate(["slow", "fine"], [Analysed("slow"), Analysed("fine")], [TimedOut("slow"), Analysed("fine")]);
+
+        Assert.Equal(TrialGateState.Unmeasured, gate.State);
+        Assert.Equal(["slow"], gate.StoppedWords);
+        Assert.Equal(SIL.Motif.Contract.Responses.FailureEnvelope.ExitCodeFor(FailureReason.Refused),
+            SIL.Motif.Cli.Program.TrialGateExitCode(gate));
+    }
+
+    [Fact]
+    public void AWordStoppedWithNoBaselineAnalysisDoesNotChangeTheGate()
+    {
+        var gate = Gate(["slow"], [NoAnalysis("slow")], [TimedOut("slow")]);
+
+        Assert.Equal(TrialGateState.Green, gate.State);
+        Assert.Empty(gate.StoppedWords);
+    }
+
+    [Fact]
+    public void AnExpectedLossMatchesAcrossNormalisationForms()
+    {
+        var word = "caf\u00e9";
+        var gate = Gate([word], [Analysed(word)], [NoAnalysis(word)], expected: ["cafe\u0301"]);
+
+        Assert.Equal(TrialGateState.Green, gate.State);
+        Assert.Equal([word], gate.ExpectedLosses);
+    }
+
+    [Fact]
+    public void TheExpectLossFileIgnoresBlankLinesAndAMissingFileIsRefused()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "motif-expect-loss-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var file = Path.Combine(dir, "expected.txt");
+            File.WriteAllText(file, "one\n\n  \ntwo\n");
+            var listed = SIL.Motif.Commands.Assess.WordListFile.Resolve(null, file);
+            Assert.True(listed.Succeeded);
+            Assert.Equal(["one", "two"], listed.Value);
+            Assert.False(SIL.Motif.Commands.Assess.WordListFile.Resolve(null, Path.Combine(dir, "absent.txt")).Succeeded);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void ExpectLossWithoutWaitIsExplained()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var exitCode = SIL.Motif.Cli.Program.Run(
+            ["trial", "--project", "absent.fwdata", "proposal", "--expect-loss", "expected.txt"], output, error,
+            new Dictionary<string, string?>(StringComparer.Ordinal), static (_, _) => { });
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("--expect-loss needs --wait", error.ToString() + output.ToString());
     }
 
     [Fact]

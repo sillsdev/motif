@@ -14,7 +14,7 @@ public enum TrialGateState
 
 /// <summary>
 /// The gate of a Trial report. <see cref="TrialGateState.Loss"/> means a measured word went from analysed to
-/// no analysis and the author did not list it as an expected loss; the gate reads the retained evidence, so
+/// no analysis, or lost a confirmed reading, and the author did not list it as an expected loss; the gate reads the retained evidence, so
 /// the review sets chosen for the Trial do not change it.
 /// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -24,4 +24,5 @@ public sealed record TrialGate(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Reason,
     [property: JsonRequired] long LostWords,
     [property: JsonRequired] IReadOnlyList<string> ExpectedLosses,
-    [property: JsonRequired] IReadOnlyList<string> UnexpectedLosses);
+    [property: JsonRequired] IReadOnlyList<string> UnexpectedLosses,
+    [property: JsonRequired] IReadOnlyList<string> StoppedWords);

@@ -59,56 +59,90 @@ public static class TrialReviewReads
             if (!read.Succeeded || read.Value is not AvailableTrialResult available) return read;
             return CommandOutcome<TrialReviewResult>.Success(available with
             {
-                Gate = GateOf(available, expectedLosses ?? [], LostWords(commands, key, proposal, available)),
+                Gate = GateOf(available, expectedLosses ?? [], ReadGateWords(commands, key, proposal, available)),
             });
         });
 
+    /// <summary>The words a report's rows name, when the report can list them.</summary>
+    /// <param name="LostWords">Words that went from analysed to no analysis, or lost a confirmed reading.</param>
+    /// <param name="StoppedWords">Words stopped by a budget or timeout that had an analysis in the Baseline.</param>
+    public sealed record GateWords(IReadOnlyList<string>? LostWords, IReadOnlyList<string>? StoppedWords);
+
     /// <summary>
-    /// The gate of a report: <c>unmeasured</c> when nothing or not everything was measured, otherwise
-    /// <c>loss</c> when a lost word is not in <paramref name="expectedLosses"/>, otherwise <c>green</c>.
+    /// The gate of a report. <c>unmeasured</c> when nothing or not everything was measured; otherwise <c>loss</c>
+    /// when a measured word lost its analysis or a confirmed reading and is not in
+    /// <paramref name="expectedLosses"/>; otherwise <c>unmeasured</c> when a word that had a Baseline analysis was
+    /// stopped before it finished; otherwise <c>green</c>.
     /// </summary>
     /// <param name="result">The report to judge.</param>
     /// <param name="expectedLosses">Words the author intends to lose.</param>
-    /// <param name="lostWords">The words that went from analysed to no analysis, when the report can list them.</param>
-    public static TrialGate GateOf(AvailableTrialResult result, IReadOnlyCollection<string> expectedLosses,
-        IReadOnlyList<string>? lostWords)
+    /// <param name="words">The rows behind the flags, when the report can list them.</param>
+    public static TrialGate GateOf(AvailableTrialResult result, IReadOnlyCollection<string> expectedLosses, GateWords words)
     {
         ArgumentNullException.ThrowIfNull(result);
-        var lostCount = result.Report.Summary.Flags
-            .Where(flag => flag.Id == ReviewFlagId.NewWordFailures).Sum(flag => flag.WordCount ?? 0);
+        var summary = result.Report.Summary;
+        long Flagged(ReviewFlagId id) => summary.Flags.Where(flag => flag.Id == id).Sum(flag => flag.WordCount ?? 0);
+        var flaggedCount = Math.Max(Flagged(ReviewFlagId.NewWordFailures), Flagged(ReviewFlagId.ConfirmedReadingsLost));
+        var lost = words.LostWords?.Distinct(StringComparer.Ordinal).ToArray();
+        var lostCount = lost is { } named && named.Length >= flaggedCount ? named.Length : flaggedCount;
+        var stopped = (words.StoppedWords ?? []).Order(StringComparer.Ordinal).ToArray();
+        // Stopped words that cannot be listed are assumed to matter: an unlisted stop must not look green.
+        var stoppedUnknown = words.StoppedWords is null &&
+            ((summary.Incomplete.Before.Stopped ?? 0) + (summary.Incomplete.After.Stopped ?? 0)) > 0;
         if (UnusableReason(result) is { } unusable)
-            return new TrialGate(TrialGateState.Unmeasured, unusable, lostCount, [], []);
-        if (lostCount == 0) return new TrialGate(TrialGateState.Green, null, 0, [], []);
+            return new TrialGate(TrialGateState.Unmeasured, unusable, lostCount, [], [], stopped);
+
         var expected = expectedLosses.Select(Key).ToHashSet(StringComparer.Ordinal);
         // A loss the report cannot name stays unexpected: only a listed word is excused.
-        var listed = lostWords is { } words && words.Count >= lostCount ? words : null;
+        var listed = lost is { } all && all.Length >= flaggedCount ? all : null;
         var matched = listed?.Where(word => expected.Contains(Key(word))).Order(StringComparer.Ordinal).ToArray() ?? [];
         var unexpected = listed?.Where(word => !expected.Contains(Key(word))).Order(StringComparer.Ordinal).ToArray() ?? [];
-        var unexpectedCount = listed is null ? lostCount : unexpected.Length;
-        return unexpectedCount == 0
-            ? new TrialGate(TrialGateState.Green, null, lostCount, matched, [])
-            : new TrialGate(TrialGateState.Loss,
-                unexpectedCount + " measured word(s) lost their analysis and were not listed as expected losses.",
-                lostCount, matched, unexpected);
+        var unexpectedCount = lostCount == 0 ? 0 : listed is null ? lostCount : unexpected.Length;
+        if (unexpectedCount > 0)
+            return new TrialGate(TrialGateState.Loss,
+                unexpectedCount + " measured word(s) lost their analysis or a confirmed reading and were not listed as expected losses.",
+                lostCount, matched, unexpected, stopped);
+        if (stopped.Length > 0 || stoppedUnknown)
+            return new TrialGate(TrialGateState.Unmeasured,
+                (stopped.Length > 0 ? stopped.Length + " word(s)" : "Some words") +
+                " that had an analysis in the Baseline were stopped before they finished, so their loss is not measured.",
+                lostCount, matched, [], stopped);
+        return new TrialGate(TrialGateState.Green, null, lostCount, matched, [], []);
     }
 
     private static string Key(string word) => word.Normalize(System.Text.NormalizationForm.FormC);
 
-    private static IReadOnlyList<string>? LostWords(TrialReviewCommands commands, string key, string proposal,
+    private static GateWords ReadGateWords(TrialReviewCommands commands, string key, string proposal,
         AvailableTrialResult available)
     {
-        var words = new List<string>();
+        var lost = new List<string>();
+        var lostListed = true;
+        foreach (var flag in new[] { ReviewFlagId.NewWordFailures, ReviewFlagId.ConfirmedReadingsLost })
+        {
+            if (PageWords(commands, key, proposal, available, flag, null) is { } rows)
+                lost.AddRange(rows.Select(row => row.Word));
+            else lostListed = false;
+        }
+        var stopped = PageWords(commands, key, proposal, available, null, "incomplete")?
+            .Where(row => row.After.Completion == Completion.Stopped && row.Before.ObservedReadingCount > 0)
+            .Select(row => row.Word).ToArray();
+        return new GateWords(lostListed ? lost : null, stopped);
+    }
+
+    private static IReadOnlyList<SIL.Motif.Contract.Review.WordRow>? PageWords(TrialReviewCommands commands, string key,
+        string proposal, AvailableTrialResult available, ReviewFlagId? flag, string? filter)
+    {
+        var rows = new List<SIL.Motif.Contract.Review.WordRow>();
         string? cursor = null;
         do
         {
             var page = commands.Read(new ReviewReadRequest(key, proposal, ReportId: available.Report.ReportId,
-                Detail: DetailLevel.Full, Section: "wordforms", Flag: ReviewFlagId.NewWordFailures,
-                Cursor: cursor, Limit: 200));
+                Detail: DetailLevel.Full, Section: "wordforms", Flag: flag, Filter: filter, Cursor: cursor, Limit: 200));
             if (!page.Succeeded || page.Value is not AvailableTrialResult { Report.Page: { } items }) return null;
-            words.AddRange(items.Items.OfType<SIL.Motif.Contract.Review.WordRow>().Select(row => row.Word));
+            rows.AddRange(items.Items.OfType<SIL.Motif.Contract.Review.WordRow>());
             cursor = items.NextCursor;
         } while (cursor is not null);
-        return words;
+        return rows;
     }
 
     /// <summary>
