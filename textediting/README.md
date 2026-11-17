@@ -74,8 +74,6 @@ the playground, edit the Markdown beside the field and press Apply; `MarkdownTab
   ([ADR 0028](docs/adr/0028-fieldworks-markdown-is-a-pandoc-profile.md)).
 - **Records as files.** A whole record as one file: a YAML frame typed by a schema that is data, FieldWorks Markdown in the rich values,
   and a JSON Schema for editors ([ADR 0032](docs/adr/0032-record-files-yaml-frame.md)).
-- **FieldWorks Markdown on the clipboard.** `FieldWorksMarkdownClipboardForm` ships in `SIL.TextEditing.Markdown`, including full
-  front matter and read findings through `OnRead`. Hosts register it; the playground does so. See [clipboard forms](docs/formats/clipboard.md).
 - **The host stays in charge.** The host owns data and undo ([ADR 0003](docs/adr/0003-host-owns-data-and-undo.md)), and supplies the
   dictionaries, keyboards, clipboard forms, language services and the blocks a field allows.
 - **Ready for native AOT.** `SIL.TextEditing`, `SIL.TextEditing.Avalonia` and `SIL.TextEditing.Markdown` are trimmable and AOT-compatible on
@@ -144,7 +142,8 @@ Directories recurse over `*.md` in ordinal full-path order; explicit files may h
 `format` prints canonical Markdown for one input. Several expanded inputs require `--write` or `--check`. `--write` rewrites files;
 `--check` returns 1 if any input differs from canonical text. These flags are mutually exclusive; stdin supports stdout and check but
 cannot be rewritten. All inputs are analysed and prepared before writing; an input error or a checker error in a formattable file prevents writes.
-Record files without a schema are named on stderr with “needs --schema”, skipped, and cause exit 1 while the other files are processed.
+Record files without a schema are named on stderr with “needs --schema”, skipped, and cause exit 1. The other files are processed
+unless one of them has errors.
 
 `--schema <file.json>` on either command loads serialized [record-schema data](docs/formats/record-files.md#saving-and-loading-a-record-schema)
 from `RecordSchema.ToJson()`, using the versions supported by `FromJson()`. With it, record files receive the full reader's checks.
@@ -181,8 +180,10 @@ with R1b ([ADR 0036](docs/adr/0036-editor-integration-context-and-cli.md)).
 | `src/SIL.TextEditing` | The UI-free run model, editing, clipboard forms and paste rules. No Avalonia, no liblcm. |
 | `src/SIL.TextEditing.Avalonia` | `RichTextField`, the control. |
 | `src/SIL.TextEditing.Markdown` | FieldWorks Markdown and record files. Trimmable and AOT-compatible. |
+| `src/SIL.TextEditing.WritingSystems` | Project-inventory writing-system mapper and checker, using a caller-supplied repository or tag list. |
 | `src/SIL.TextEditing.LCModel` | The `ITsString` adapter and the TsString XML clipboard form. |
 | `src/SIL.TextEditing.Project` | Read-only styles and writing systems from a caller-owned `LcmCache`. |
+| `tools/fwmd` | Standalone Markdown and record-file checker and formatter ([usage](#standalone-fwmd)). |
 | `samples/SIL.TextEditing.Playground` | The shared playground UI both hosts and the integration tests use. |
 | `samples/Playground.Desktop` | The playground in a plain Avalonia window, net48 and net10.0. |
 | `samples/Host48` | The playground inside a WinForms form, net48: FieldWorks' shape. |

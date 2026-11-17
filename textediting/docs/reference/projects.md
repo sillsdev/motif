@@ -25,6 +25,23 @@ The UI-free core. No Avalonia, no liblcm.
 
 FieldWorks Markdown and record files. See [The Markdown library](markdown.md).
 
+### `src/SIL.TextEditing.WritingSystems` (netstandard2.0, net10.0)
+
+`RegistryWritingSystems` implements `IWritingSystemMapper`, `IKnownWritingSystems` and `IWritingSystemChecker` against a snapshot
+of a caller-supplied project inventory (ADR 0031). It has two constructors:
+
+- `RegistryWritingSystems(IWritingSystemRepository repository, string defaultAnalysis, string defaultVernacular)` reads the
+  repository's `AllWritingSystems` and snapshots each definition's `Id`.
+- `RegistryWritingSystems(IEnumerable<string> tags, string defaultAnalysis, string defaultVernacular)` snapshots a tag list.
+
+Both preserve caller order, remove ordinal duplicates and compare membership ordinally without normalizing tags. Defaults are
+explicit and do not add known tags. Null inputs and null or empty inventory entries are rejected. The caller owns the repository;
+the checker never changes, saves or disposes it. Construct a new checker after the inventory changes.
+
+Known tags produce no finding; unknown tags produce `fwmd.ws.unknown` with error severity, the inventory as `Choices`, and nearest
+names from `NearestNamesFinder`. It does not consult SLDR or validate BCP 47. The project references Markdown contracts and
+libpalaso, with no Avalonia or liblcm dependency; it is trimmable and AOT-compatible on net10.0.
+
 ### `src/SIL.TextEditing.LCModel` (netstandard2.0, net10.0)
 
 The `ITsString` adapter and the TsString XML clipboard form. See [The LCModel adapter](lcmodel.md).
@@ -67,6 +84,12 @@ AOT-compatible. It is intentionally excluded from `tests/AotCheck`.
 
 Project paths, metadata-derived record schemas, record export/import and project language services remain planned.
 
+## Tools
+
+| Project | What it does |
+|---|---|
+| `tools/fwmd` (net10.0) | Standalone Markdown and record-file checking and formatting; see [Standalone fwmd](../../README.md#standalone-fwmd) for usage, config and native publishing. |
+
 ## Samples
 
 Samples do not ship.
@@ -92,6 +115,7 @@ properties, an environment box with a language service, 200 paragraphs, many fie
 | `tests/SIL.TextEditing.Avalonia.Tests` | net48, net10.0 | Avalonia.Headless tests for the surface (Skia, real shaping). |
 | `tests/SIL.TextEditing.SecondDispatcher.Tests` | net10.0 | The tests that make a dispatcher on a second thread (Avalonia 12 allows it). |
 | `tests/SIL.TextEditing.LCModel.Tests` | net48, net10.0 | The adapter ([details](lcmodel.md#tests)). |
+| `tests/SIL.TextEditing.WritingSystems.Tests` | net48, net10.0 | Project-inventory snapshots, writing-system checks and Markdown integration. |
 | `tests/SIL.TextEditing.Project.Tests` | net48, net10.0 | Styles, writing systems and Markdown/TsString integration over real memory-only caches, built with public liblcm APIs. |
 | `tests/SIL.TextEditing.Markdown.Tests` | net48, net10.0 | Conformance, Pandoc agreement, random round trips ([details](markdown.md#tests)). |
 | `tests/SIL.TextEditing.Playground.Tests` | net48, net10.0 | Avalonia.Headless integration tests that drive the playground the way a person would. |

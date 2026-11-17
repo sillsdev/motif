@@ -13,8 +13,8 @@ executable decisions needed by the standalone CLI; the rest of the editor-integr
   format implementation and fixtures, under the same MIT and clean-room rules (ADR 0010).
 - **E-15: one `fwmd` binary.** It provides `check` and `format` now and may later add `lsp`. A separate language-server
   executable is not required by this design; this decision does not release LSP implementation.
-- **Config v1 is front matter plus an optional explicit `--config fwmd.json`.** Config supplies writing systems and styles;
-  front matter overrides its defaults and writing-system details. This is not automatic manifest discovery. The
+- **Config v1 is front matter plus an optional explicit `--config fwmd.json`.** Config supplies analysis and vernacular
+  defaults, writing systems and styles; front matter overrides its defaults and writing-system details. This is not automatic manifest discovery. The
   export-written manifest is deferred to R1b.
 
 **Still parked** (Motif #57): E-5 to E-8, E-10, E-11, E-13 and E-14. Whole-record source views, the VS Code client/server
