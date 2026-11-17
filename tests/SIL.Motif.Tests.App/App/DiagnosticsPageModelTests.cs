@@ -150,6 +150,42 @@ public sealed class DiagnosticsPageModelTests
     }
 
     [Fact]
+    public async Task SpeedByRuleExplainsKnownParserWorkAbsence()
+    {
+        var text = await ReadParserWorkUnavailableText(ParserWorkAbsence.SumsDoNotMatch);
+
+        Assert.Equal("The rule totals do not add up to the measured words' Parser Steps.", text);
+    }
+
+    [Theory]
+    [InlineData("future-reason")]
+    [InlineData(null)]
+    public async Task SpeedByRuleUsesGenericSentenceForUnknownOrMissingParserWorkAbsence(string? reason)
+    {
+        var text = await ReadParserWorkUnavailableText(reason);
+
+        Assert.Equal("Recorded Parser Steps are unavailable.", text);
+    }
+
+    private static async Task<string> ReadParserWorkUnavailableText(string? reason)
+    {
+        var fake = new FakeCommandClient();
+        fake.TimingCompletesWith(new TimingResponse("assessment-parse", "all", "rule", 1, null, null, [], [], [])
+        {
+            ParserWorkByObjectAbsentReason = reason,
+        });
+        var context = WorkspaceContextTests.NewContext(fake);
+        await context.OpenProjectAsync("project.fwdata");
+        context.PublishEvidence(new WorkspaceEvidence(WorkspaceContextTests.Assessment(), DateTimeOffset.Now, false));
+        var speed = new SpeedByRuleViewModel(context);
+
+        await speed.ReadAsync("project.fwdata", CancellationToken.None);
+        var text = speed.UnavailableText;
+        await context.StopProjectWorkAsync();
+        return text;
+    }
+
+    [Fact]
     public async Task SpeedByRuleUsesCompleteTotalsWhenPerWordDetailIsIncomplete()
     {
         var fake = new FakeCommandClient();

@@ -7346,6 +7346,13 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.DiagnosticsWarningCountFormat" xml:space="preserve"><value>{0} · {1}</value></data>
   <data name="MotifApp.DiagnosticsMeasuredFormat" xml:space="preserve"><value>Parser Steps per measured word: {0} of {1} words have recorded Parser Steps.</value></data>
   <data name="MotifApp.DiagnosticsNoWork" xml:space="preserve"><value>Recorded Parser Steps are unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsNoWorkRetriedWords" xml:space="preserve"><value>Some words were parsed more than once, so their Parser Steps cannot be totaled for one run.</value></data>
+  <data name="MotifApp.DiagnosticsNoWorkWordWithoutWork" xml:space="preserve"><value>Some measured words have no recorded Parser Steps.</value></data>
+  <data name="MotifApp.DiagnosticsNoWorkObjectWithoutWorkOrIdentity" xml:space="preserve"><value>Some rule totals lack Parser Steps or a usable rule identity.</value></data>
+  <data name="MotifApp.DiagnosticsNoWorkNoUnattributedRow" xml:space="preserve"><value>The totals do not include Parser Steps that were not assigned to a rule.</value></data>
+  <data name="MotifApp.DiagnosticsNoWorkSumsDoNotMatch" xml:space="preserve"><value>The rule totals do not add up to the measured words' Parser Steps.</value></data>
+  <data name="MotifApp.DiagnosticsNoWorkNotWholeRun" xml:space="preserve"><value>This result covers only part of the parse.</value></data>
+  <data name="MotifApp.DiagnosticsNoWorkStatisticsUnavailable" xml:space="preserve"><value>This parse did not record the statistics needed to show Parser Steps by rule.</value></data>
   <data name="MotifApp.DiagnosticsSkippedFormat" xml:space="preserve"><value>Speed by Rule was not recorded: this Parse would have needed {0} timing rows, more than the {1} limit.</value></data>
   <data name="MotifApp.DiagnosticsSkipped" xml:space="preserve"><value>Speed by Rule was not recorded: this Parse would have needed more timing rows than the limit allows.</value></data>
   <data name="MotifApp.DiagnosticsPartial" xml:space="preserve"><value>Some per-word rule detail is unavailable. Recorded aggregate totals are shown.</value></data>

@@ -131,6 +131,18 @@ public sealed partial class SpeedByRuleViewModel : ObservableObject
             rows.ToString("N0", CultureInfo.CurrentCulture), budget.ToString("N0", CultureInfo.CurrentCulture))
         : MotifAppStrings.DiagnosticsSkipped;
 
+    private static string ParserWorkUnavailableText(string? reason) => reason switch
+    {
+        ParserWorkAbsence.RetriedWords => MotifAppStrings.DiagnosticsNoWorkRetriedWords,
+        ParserWorkAbsence.WordWithoutWork => MotifAppStrings.DiagnosticsNoWorkWordWithoutWork,
+        ParserWorkAbsence.ObjectWithoutWorkOrIdentity => MotifAppStrings.DiagnosticsNoWorkObjectWithoutWorkOrIdentity,
+        ParserWorkAbsence.NoUnattributedRow => MotifAppStrings.DiagnosticsNoWorkNoUnattributedRow,
+        ParserWorkAbsence.SumsDoNotMatch => MotifAppStrings.DiagnosticsNoWorkSumsDoNotMatch,
+        ParserWorkAbsence.NotWholeRun => MotifAppStrings.DiagnosticsNoWorkNotWholeRun,
+        ParserWorkAbsence.StatisticsUnavailable => MotifAppStrings.DiagnosticsNoWorkStatisticsUnavailable,
+        _ => MotifAppStrings.DiagnosticsNoWork,
+    };
+
     internal async Task ReadAsync(string projectPath, CancellationToken cancellationToken)
     {
         Clear();
@@ -176,7 +188,9 @@ public sealed partial class SpeedByRuleViewModel : ObservableObject
             : !result.Succeeded ? MotifAppStrings.DiagnosticsUnreadable
             : result.Value is { IsStale: true } or { CurrentProjectIsStale: true } ? MotifAppStrings.DiagnosticsOutOfDate
             : result.Value is { } recorded && (recorded.AssessmentId != assessmentId || recorded.By != "rule")
-                ? MotifAppStrings.DiagnosticsMismatched : MotifAppStrings.DiagnosticsNoWork;
+                ? MotifAppStrings.DiagnosticsMismatched
+            : result.Value is { } unavailable ? ParserWorkUnavailableText(unavailable.ParserWorkByObjectAbsentReason)
+            : MotifAppStrings.DiagnosticsNoWork;
         Rows = result.Succeeded && result.Value is { IsStale: false, CurrentProjectIsStale: false,
             ObjectTimingAggregatesAvailable: true } timing && timing.AssessmentId == assessmentId && timing.By == "rule" &&
             (baseline is null || timing.Baseline is null || timing.Baseline == baseline)
