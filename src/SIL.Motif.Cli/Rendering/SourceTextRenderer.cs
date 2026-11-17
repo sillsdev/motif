@@ -49,6 +49,26 @@ internal static class SourceTextRenderer
         $"{response.Source}  folder: {Or(response.Folder, "none")}" +
         (response.Chapter is null ? "" : $"  current: {response.Chapter}") + Environment.NewLine;
 
+    internal static string RenderApprovalStaged(SourceApprovalStageResponse response)
+    {
+        var text = new StringBuilder();
+        if (response.Approved > 0)
+            text.AppendLine($"Approve {response.Approved} {(response.Approved == 1 ? "Occurrence" : "Occurrences")} " +
+                $"in {response.Chapters} {(response.Chapters == 1 ? "chapter" : "chapters")} of Source {response.Source}.");
+        if (response.Cleared > 0)
+            text.AppendLine($"Clear {response.Cleared} {(response.Cleared == 1 ? "Occurrence" : "Occurrences")} of Source {response.Source}, back to a guess.");
+        if (response.Approved == 0 && response.Cleared == 0) text.AppendLine($"Nothing to change in Source {response.Source}.");
+        if (response.AlreadyApproved > 0) text.AppendLine($"Left alone, already approved: {response.AlreadyApproved}.");
+        if (response.ApprovedOtherwise > 0) text.AppendLine($"Left alone, another analysis is approved there: {response.ApprovedOtherwise}.");
+        if (response.Stale > 0) text.AppendLine($"Left alone, the earlier approval is stale: {response.Stale}.");
+        foreach (var anchor in response.Conflicts)
+            text.AppendLine($"{anchor}: the analysis is Disapproved as a word-wide Opinion; it is left as it is.");
+        if (response.AddsApprovalsField) text.AppendLine(SIL.Motif.Scripture.SourceApprovals.AddsFieldSentence);
+        if (response.Operations.Count > 0)
+            text.AppendLine("Staged in the pending changes. Apply them with: motif apply --all-pending, or add --apply to the command.");
+        return text.ToString().Replace("\r\n", "\n").Replace("\n", Environment.NewLine);
+    }
+
     internal static string RenderStaged(SourceStageResponse response) =>
         $"Staged {response.Operations.Count} change(s) for Source {response.Source} in the pending changes." +
         (response.Folder is null ? "" : $" Folder recorded: {response.Folder}.") + Environment.NewLine +
@@ -59,7 +79,7 @@ internal static class SourceTextRenderer
     {
         var text = new StringBuilder();
         text.AppendLine($"{response.Source}  {response.Ref}  generation {response.Generation}");
-        text.AppendLine("Approved state: unavailable");
+        text.AppendLine("Approved state: " + response.ApprovedState);
         foreach (var place in response.Places) text.AppendLine($"{place.Anchor}  {place.Surface}  {place.State}");
         if (response.NextCursor is not null) text.AppendLine($"Next cursor: {response.NextCursor}");
         return text.ToString();

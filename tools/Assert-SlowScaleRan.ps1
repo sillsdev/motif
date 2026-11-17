@@ -19,6 +19,7 @@ $slowTests = @(
     'SIL.Motif.Tests.App.TextsProposalMemoryTests.AFlipOverASixHundredEightyEightThousandWordSelectionAlignsTheProposalOnceAndParsesNothing',
     'SIL.Motif.Tests.App.TextsProposalMovedChipMemoryTests.ASixHundredEightyEightThousandWordProposalCountsAndFiltersItsMovedWordsWithoutRowsAndLetsAllOfThemGo',
     'SIL.Motif.Tests.App.LayoutInvariantSystemTests.EveryPageAndApplicableStateSatisfiesTheFullLightGrid',
+    'SIL.Motif.Tests.Commands.SourceApprovalTests.TenThousandApprovalsInOneApplyTakeSeconds',
     'SIL.Motif.Tests.Worker.Worker.QuerySnapshotStoreTests.OpensReadsAndQueriesThirtyOneThousandFormsWithinOneSecond',
     'SIL.Motif.Tests.Contract.Parsimony.FormQueryTests.ThirtyOneThousandFormsGroupWithinOneSecond'
 )

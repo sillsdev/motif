@@ -205,7 +205,7 @@ try
     }
 
     // --apply stages the change, then applies every pending change like apply --all-pending.
-    CommandResult StageSource(string projectPath, Func<CommandOutcome<SourceStageResponse>> stage)
+    CommandResult StageSource<TStaged>(string projectPath, Func<CommandOutcome<TStaged>> stage) where TStaged : class
     {
         if (!flags.ContainsKey("apply")) return RenderCommand(stage());
         var attribution = ApplyAttributionFromFlags(flags, environment);
@@ -1974,11 +1974,21 @@ try
                     result = StageSource(sourceProject, () => ProposalCommands.StageSourceRestore(
                         new SourceRestoreRequest(sourceProject, positionals[1])));
                     break;
+                case "approve" when positionals.Count == 3:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceApprove(new SourceApproveRequest(
+                        sourceProject, positionals[1], positionals[2], flags.GetValueOrDefault("analysis"),
+                        flags.GetValueOrDefault("wordform"), flags.GetValueOrDefault("reading"), flags.ContainsKey("bulk"))));
+                    break;
+                case "clear" when positionals.Count == 3:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceClearApproval(
+                        new SourceClearApprovalRequest(sourceProject, positionals[1], positionals[2])));
+                    break;
                 default:
                     return Usage(string.Join(" OR ", new[]
                     {
                         "source list", "source show", "source passage", "source where", "source set-folder", "source clear-folder", "source add",
                         "source set-name", "source set-context", "source set-versification", "source remove", "source restore",
+                        "source approve", "source clear",
                     }.Select(UsageLineFor)), asJson);
             }
             break;
@@ -3548,7 +3558,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "word-results" or "refresh-report" or "trace" or "apply")
+            if (name is "word-results" or "refresh-report" or "trace" or "apply" or "bulk")
             {
                 flags[name] = "true";
                 continue;

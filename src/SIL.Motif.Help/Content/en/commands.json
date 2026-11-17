@@ -2586,5 +2586,34 @@
     "title": "Query forms",
     "description": "Filters and groups forms, stems, uses or objects from available Trial evidence, or runs the saved query of a Parsimony Measure.",
     "source": "Hand-written from the query contract."
+  },
+  "source approve": {
+    "title": "Approve an Occurrence of a Source",
+    "description": "Stages the choice of an analysis for one word of a Paratext Source, and with --bulk for the same wordform elsewhere in the Source; nothing is written until the pending changes are applied.",
+    "source": "Hand-written from the ProposalCommands.Sources behavior."
+  },
+  "source clear": {
+    "title": "Clear an Occurrence of a Source",
+    "description": "Stages clearing the approval at one word of a Source, which returns it to a guess.",
+    "source": "Hand-written from the ProposalCommands.Sources behavior."
+  },
+  "compose-set-occurrence-approval": {
+    "title": "Approve or clear an Occurrence of a Source",
+    "description": "Stages the approval of one word of a Paratext Source with an analysis, or clears it back to a guess. Approving also approves the analysis when its Opinion is Unknown, and adds the analysis first when only a parser reading exists.",
+    "source": "Hand-written from SourceApprovalComposers.",
+    "fields": {
+      "draft": "Draft name.",
+      "source": "The Source id, matched ignoring case.",
+      "anchor": "The Occurrence, such as MAT 5:3#2.",
+      "action": "Approve or Clear.",
+      "analysis": "The stored analysis to choose; give this or a reading with its wordform.",
+      "wordform": "The stored wordform a parser reading belongs to.",
+      "reading": "The parser reading, as the morphs of a parse analysis.",
+      "bulk": "True to leave an Occurrence alone when another analysis is approved there, or its approval is stale."
+    },
+    "goals": [
+      "Choose the analysis a word of a Source has",
+      "Return an approved word of a Source to a guess"
+    ]
   }
 }

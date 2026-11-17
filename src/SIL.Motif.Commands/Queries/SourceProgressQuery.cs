@@ -55,23 +55,37 @@ public static class SourceProgressQuery
                 total.CommandText = "SELECT COALESCE(SUM(EligiblePlaces),0) FROM SourcePassages WHERE SourceId=$source;";
                 total.Parameters.AddWithValue("$source", source);
                 var eligible = Convert.ToInt32(total.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
+                using var approvedTotal = connection.CreateCommand();
+                approvedTotal.Transaction = transaction;
+                approvedTotal.CommandText = "SELECT COUNT(*) FROM SourceWordPlaces WHERE SourceId=$source AND State='approved';";
+                approvedTotal.Parameters.AddWithValue("$source", source);
+                var measured = provider!.MeasuresApprovals;
+                int? approved = measured ? Convert.ToInt32(approvedTotal.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) : null;
                 var rows = new List<SourceProgressPassage>();
                 if (detail == "passages")
                 {
                     using var page = connection.CreateCommand();
                     page.Transaction = transaction;
-                    page.CommandText = "SELECT PassageId,Locator,EligiblePlaces FROM SourcePassages WHERE SourceId=$source AND PassageId>$after ORDER BY PassageId LIMIT $limit;";
+                    page.CommandText = "SELECT p.PassageId,p.Locator,p.EligiblePlaces," +
+                        "(SELECT COUNT(*) FROM SourceWordPlaces w WHERE w.SourceId=p.SourceId AND w.PassageId=p.PassageId AND w.State='approved') " +
+                        "FROM SourcePassages p WHERE p.SourceId=$source AND p.PassageId>$after ORDER BY p.PassageId LIMIT $limit;";
                     page.Parameters.AddWithValue("$source", source);
                     page.Parameters.AddWithValue("$after", continuation?.Last ?? "");
                     page.Parameters.AddWithValue("$limit", limit + 1);
                     using var reader = page.ExecuteReader();
-                    while (reader.Read()) rows.Add(new(reader.GetString(0), reader.GetString(1), reader.GetInt32(2)));
+                    while (reader.Read()) rows.Add(new(reader.GetString(0), reader.GetString(1), reader.GetInt32(2), measured ? reader.GetInt32(3) : null));
                 }
                 ReadWork.Value?.Invoke(detail == "passages" ? 2 : 1, rows.Count);
                 if (!Current()) return Refuse(RefusalCodes.SourceIndexStale, FailureReason.Refused, "The Source index changed during the read.");
                 var next = rows.Count > limit ? Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(
                     new Cursor(key, source, state.Generation, rows[limit - 1].Id))) : null;
-                return CommandOutcome<SourceProgressResponse>.Success(new(source, state.Generation, eligible, rows.Take(limit).ToArray(), next));
+                return CommandOutcome<SourceProgressResponse>.Success(new(source, state.Generation, eligible, approved, rows.Take(limit).ToArray(), next)
+                {
+                    ApprovedState = !measured ? "unavailable" : identity!.UnreadableApprovals is { Length: > 0 } ? "unreadable" : "available",
+                    UnreadableApprovals = identity!.UnreadableApprovals ?? [],
+                    OrphanedApprovals = identity.OrphanedApprovals ?? [],
+                    ConflictedApprovals = identity.ConflictedApprovals ?? [],
+                });
             });
     }
     private static CommandOutcome<SourceProgressResponse> Refuse(string code, FailureReason reason, string message) =>

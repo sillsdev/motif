@@ -511,7 +511,11 @@ public static class PendingChangesWorkflow
         Add(AnalysisChangeKinds.AddCandidate, "Added", "analysis as Unknown", "analyses as Unknown");
         Add(AnalysisChangeKinds.IncorrectSpelling, "Marked", "word as incorrectly spelled",
             "words as incorrectly spelled");
-        var sources = changes.Count(change => change.Kind.StartsWith("source-", StringComparison.Ordinal));
+        var approvals = Count("source-approve");
+        if (approvals > 0) parts.Add($"Approved {Counted(approvals, "Source Occurrence", "Source Occurrences")}");
+        var clears = Count("source-clear");
+        if (clears > 0) parts.Add($"Cleared {Counted(clears, "Source Occurrence", "Source Occurrences")}");
+        var sources = changes.Count(change => change.Kind.StartsWith("source-", StringComparison.Ordinal)) - approvals - clears;
         if (sources > 0) parts.Add($"Changed {Counted(sources, "Source setting", "Source settings")}");
         return parts.Count == 0 ? "Applied pending changes." : string.Join(", ", parts) + ".";
 

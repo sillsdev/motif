@@ -89,7 +89,7 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
         var text = await CliProcess.RunAsync(_root, null, true, "source", "passage", "--project", path,
             "--source", "WEB", "--ref", "MAT 1", "--limit", "1");
         Assert.True(text.ExitCode == 0, text.Error + text.Output);
-        Assert.Contains("Approved state: unavailable", text.Output);
+        Assert.Contains("Approved state: available", text.Output);
         var invalid = await CliProcess.RunAsync(_root, null, true, "source", "passage", "--project", path,
             "--source", "WEB", "--ref", "MAT 1", "--unknown", "yes", "--json");
         Assert.Equal(1, invalid.ExitCode);

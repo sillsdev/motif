@@ -209,11 +209,15 @@ public static class ProposalApplier
         {
             var processBefore = AffixProcessSnapshots.Read(cache);
             var operationIndex = 0;
-            foreach (var operation in operationOrder)
+            using (var batch = DeferredWrites.Begin(cache))
             {
-                var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Stage D apply");
-                effects.AddRange(OperationEffectCapture.Apply(handler, cache, operation, touchedTargets));
-                afterOperation?.Invoke(++operationIndex, operation);
+                foreach (var operation in operationOrder)
+                {
+                    var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Stage D apply");
+                    effects.AddRange(OperationEffectCapture.Apply(handler, cache, operation, touchedTargets));
+                    afterOperation?.Invoke(++operationIndex, operation);
+                }
+                batch.Complete();
             }
 
             AffixProcessSemanticValidator.ValidateProposal(cache, proposal.Operations);

@@ -1032,12 +1032,15 @@ public static class PendingChanges
 
     private static PendingChange[] BuildChanges(DraftDocument draft, Dictionary<string, JsonElement> provenance)
     {
-        var ids = provenance.Keys.Concat(draft.Operations.Select(ChangeIdOf).OfType<string>())
+        var byChange = draft.Operations.Select(operation => (Operation: operation, Id: ChangeIdOf(operation)))
+            .Where(pair => pair.Id is not null)
+            .ToLookup(pair => pair.Id!, pair => pair.Operation, StringComparer.Ordinal);
+        var ids = provenance.Keys.Concat(byChange.Select(group => group.Key))
             .Distinct(StringComparer.Ordinal).ToArray();
         return ids.Select(id =>
         {
             provenance.TryGetValue(id, out var entry);
-            var operations = draft.Operations.Where(operation => ChangeIdOf(operation) == id).ToArray();
+            var operations = byChange[id].ToArray();
             var operationIds = operations.Select(operation => operation.OperationId)
                 .Concat(OperationIdsOf(entry)).Distinct(StringComparer.Ordinal).ToArray();
             var fingerprint = operations.Select(operation => operation.Extensions)

@@ -181,6 +181,16 @@ public static class RefusalCodes
     public const string SourceVersificationUnknown = "source.versification-unknown";
     /// <summary>The Source kind is modelled but not built.</summary>
     public const string SourceKindUnsupported = "source.kind-unsupported";
+    /// <summary>The Source's text has no word at this location, so there is no Occurrence to approve or clear.</summary>
+    public const string SourceOccurrenceNotFound = "source.occurrence-not-found";
+    /// <summary>The word at this location has no letter, so it is not an Occurrence that can be approved.</summary>
+    public const string SourceOccurrenceNotEligible = "source.occurrence-not-eligible";
+    /// <summary>The analysis chosen belongs to a different wordform than the word at this location.</summary>
+    public const string SourceAnalysisMismatch = "source.analysis-mismatch";
+    /// <summary>Approving needs a stored analysis, or a parser reading with its wordform, and the request gave neither or both.</summary>
+    public const string SourceAnalysisNeeded = "source.analysis-needed";
+    /// <summary>The wordform for a parser reading is not in the project, so its analysis cannot be added.</summary>
+    public const string SourceWordformMissing = "source.wordform-missing";
     /// <summary>An AI named the reserved pending-changes Draft for a Source edit; it must use a named Proposal.</summary>
     public const string SourceAiNeedsProposal = "source.ai-needs-proposal";
     /// <summary>The Source has no derived word-place index.</summary>

@@ -125,6 +125,7 @@ public sealed class HelpCatalogTests
         ["compose-set-source-context"] = "edits the project's Motif Sources list, not a grammar rule",
         ["compose-set-source-versification"] = "edits the project's Motif Sources list, not a grammar rule",
         ["compose-set-source-status"] = "edits the project's Motif Sources list, not a grammar rule",
+        ["compose-set-occurrence-approval"] = "approves a word of a Source with an analysis, not a grammar rule",
     };
 
     [Fact]

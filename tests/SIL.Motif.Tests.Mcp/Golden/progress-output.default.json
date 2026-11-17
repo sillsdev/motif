@@ -427,7 +427,11 @@
           "minimum": 0
         },
         "approvedPlaces": {
-          "type": "null"
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
         }
       }
     },
@@ -441,7 +445,10 @@
         "passages",
         "nextCursor",
         "approvedPlaces",
-        "approvedState"
+        "approvedState",
+        "unreadableApprovals",
+        "orphanedApprovals",
+        "conflictedApprovals"
       ],
       "properties": {
         "source": {
@@ -468,10 +475,53 @@
           ]
         },
         "approvedPlaces": {
-          "type": "null"
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
         },
         "approvedState": {
-          "const": "unavailable"
+          "enum": [
+            "available",
+            "unreadable",
+            "unavailable"
+          ]
+        },
+        "unreadableApprovals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "orphanedApprovals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflictedApprovals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "anchor",
+              "analyses"
+            ],
+            "properties": {
+              "anchor": {
+                "type": "string"
+              },
+              "analyses": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
         }
       }
     }

@@ -128,6 +128,7 @@ internal static class ScriptureSourceSupport
     internal static readonly string[] CustomFields =
     [
         ScriptureSourceFields.KindField, ScriptureSourceFields.VersificationField, ScriptureSourceFields.StatusField,
+        ScriptureApprovalFields.ApprovalsField,
     ];
 
     internal static void RequireCompatible(LcmCache cache)
@@ -299,6 +300,8 @@ internal sealed class ScriptureSourceCreateHandler : IOperationHandler
         {
             list = cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>()
                 .CreateUnowned(ScriptureSourceFields.ListName, ws);
+            // Sorted, so people adding approvals sub-items at once are not a conflict in Send/Receive.
+            ScriptureApprovalFields.RequireSorted(list);
         }
         var item = cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create(entityId.ToGuid(), list);
         item.Abbreviation.set_String(ws, TsStringUtils.MakeString(sourceId, ws));

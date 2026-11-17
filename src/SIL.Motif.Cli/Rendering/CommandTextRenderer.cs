@@ -130,6 +130,7 @@ public static class CommandTextRenderer
             CurrentGetResponse r => SourceTextRenderer.RenderCurrent(r),
             SourceLocalResponse r => SourceTextRenderer.RenderLocal(r),
             SourceStageResponse r => SourceTextRenderer.RenderStaged(r),
+            SourceApprovalStageResponse r => SourceTextRenderer.RenderApprovalStaged(r),
             WordContextResponse r => RenderWordContext(r),
             ProposalStandings r => RenderProposalStandings(r),
             ProposalStatusChangedResponse r => ProposalCommandRenderer.RenderStatusChanged(r),
@@ -871,9 +872,25 @@ public static class CommandTextRenderer
 
     private static string RenderSourceProgress(SourceProgressResponse response)
     {
-        var lines = new List<string> { $"Source {response.Source}: {response.EligiblePlaces:N0} eligible places",
-            "Approved places: unavailable", "Evidence revision: " + response.EvidenceRevision };
-        lines.AddRange(response.Passages.Select(row => $"{row.Locator}: {row.EligiblePlaces:N0} eligible places; approved unavailable"));
+        var lines = new List<string>();
+        if (response.ApprovedPlaces is { } approved)
+        {
+            lines.Add($"Source {response.Source}: {approved:N0} of {response.EligiblePlaces:N0} eligible places approved");
+            lines.Add("Evidence revision: " + response.EvidenceRevision);
+            lines.AddRange(response.Passages.Select(row => $"{row.Locator}: {row.ApprovedPlaces:N0} of {row.EligiblePlaces:N0} eligible places approved"));
+        }
+        else
+        {
+            lines.AddRange([$"Source {response.Source}: {response.EligiblePlaces:N0} eligible places", "Approved places: unavailable",
+                "Evidence revision: " + response.EvidenceRevision]);
+            lines.AddRange(response.Passages.Select(row => $"{row.Locator}: {row.EligiblePlaces:N0} eligible places; approved unavailable"));
+        }
+        if (response.UnreadableApprovals.Count > 0)
+            lines.Add("Approvals that cannot be read, so not counted: " + string.Join(", ", response.UnreadableApprovals));
+        foreach (var conflict in response.ConflictedApprovals)
+            lines.Add($"{conflict.Anchor}: approved with different analyses ({string.Join(", ", conflict.Analyses)}), so not counted. Approve it again to choose one.");
+        if (response.OrphanedApprovals.Count > 0)
+            lines.Add("Approvals for Passages the Source no longer has, so not counted: " + string.Join(", ", response.OrphanedApprovals));
         if (response.NextCursor is { } cursor) lines.Add("Next cursor: " + cursor);
         return string.Join(Environment.NewLine, lines) + Environment.NewLine;
     }

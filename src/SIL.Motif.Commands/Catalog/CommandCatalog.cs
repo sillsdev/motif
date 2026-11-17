@@ -272,6 +272,8 @@ public static class CommandCatalog
         new CommandDescriptor("source set-versification", typeof(SourceSetVersificationRequest), typeof(SourceStageResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("source remove", typeof(SourceRemoveRequest), typeof(SourceStageResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("source restore", typeof(SourceRestoreRequest), typeof(SourceStageResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("source approve", typeof(SourceApproveRequest), typeof(SourceApprovalStageResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("source clear", typeof(SourceClearApprovalRequest), typeof(SourceApprovalStageResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("current set", typeof(CurrentSetRequest), typeof(SourceLocalResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("current set --clear", typeof(CurrentClearRequest), typeof(SourceLocalResponse), CommandSurface.Developer, AgentClass.HumanOnly),
 

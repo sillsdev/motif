@@ -68,7 +68,7 @@ jobs:
             # App scale tests, 688,000-word memory tests, query scale tests, and the full layout grid.
             @{ Project = 'SIL.Motif.Tests.App'; Filter = 'Category=SlowScale|FullyQualifiedName~LayoutInvariantSystemTests.EveryPageAndApplicableStateSatisfiesTheFullLightGrid' }
             @{ Project = 'SIL.Motif.Tests.Worker'; Filter = 'Category=SlowScale' }
-            @{ Project = 'SIL.Motif.Tests.Commands'; Filter = 'FullyQualifiedName~SourcePassageQueryTests.CebSizedIndexReportsWarmPageAndPendingPublicationCosts' }
+            @{ Project = 'SIL.Motif.Tests.Commands'; Filter = 'FullyQualifiedName~SourcePassageQueryTests.CebSizedIndexReportsWarmPageAndPendingPublicationCosts|FullyQualifiedName~SourceApprovalTests.TenThousandApprovalsInOneApplyTakeSeconds' }
             @{ Project = 'SIL.Motif.Tests.Contract'; Filter = 'Category=SlowScale' }
           )
           $kept = 'bin/slow-results'

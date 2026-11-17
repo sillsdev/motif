@@ -213,3 +213,22 @@ public sealed record EmptyDraftsDiscardedResponse(IReadOnlyList<string> Discarde
 public sealed record SourceStageResponse(
     string Source, string DraftName, IReadOnlyList<OperationSummary> Operations,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Folder = null);
+
+/// <summary>What staging an approval or a clear at Occurrences of a Source did, counted before anything is applied.</summary>
+/// <param name="Source">The Source id.</param>
+/// <param name="DraftName">The pending Draft the operations were staged in.</param>
+/// <param name="Approved">The Occurrences the Draft now approves.</param>
+/// <param name="Cleared">The Occurrences the Draft now clears.</param>
+/// <param name="Chapters">The chapters those Occurrences are in.</param>
+/// <param name="AlreadyApproved">The Occurrences left alone because they already have this analysis.</param>
+/// <param name="ApprovedOtherwise">The Occurrences left alone because another analysis is approved there.</param>
+/// <param name="Stale">The Occurrences left alone because their earlier approval is stale.</param>
+/// <param name="Conflicts">The Occurrences approved while their analysis is Disapproved, which is left as it is.</param>
+/// <param name="Operations">The operations staged.</param>
+public sealed record SourceApprovalStageResponse(
+    string Source, string DraftName, int Approved, int Cleared, int Chapters, int AlreadyApproved,
+    int ApprovedOtherwise, int Stale, IReadOnlyList<string> Conflicts, IReadOnlyList<OperationSummary> Operations)
+{
+    /// <summary>Whether applying these changes also adds the approvals field, because the project does not have it yet.</summary>
+    public bool AddsApprovalsField { get; init; }
+}

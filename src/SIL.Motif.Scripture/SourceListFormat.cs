@@ -6,7 +6,9 @@ namespace SIL.Motif.Scripture;
 /// </summary>
 /// <remarks>
 /// The list follows the Grammar Design Records list of ADR 0005: an unowned possibility list under
-/// <c>LangProject.CheckListsOC</c>, found by its Name text, with one item per Source and no sub-items.
+/// <c>LangProject.CheckListsOC</c>, found by its Name text, sorted, with one item per Source. The sub-items of a
+/// Source's item are its approvals, which Motif writes (<c>ScriptureApprovalFields</c>); a Source is a top-level item only,
+/// so every reader of Sources reads <c>PossibilitiesOS</c> and never the sub-items.
 /// <list type="bullet">
 /// <item><description>List Name: <see cref="ListName"/>, in any writing system. People may edit the list in FieldWorks.</description></item>
 /// <item><description>Item Abbreviation: the Source id (for example <c>WEB</c>). It must be present and unique, compared ignoring case.</description></item>

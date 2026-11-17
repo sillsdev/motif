@@ -6,7 +6,9 @@ namespace SIL.Motif.Worker.Sources;
 internal sealed record SourceFileStamp(string Name, long Length, long Ticks);
 
 internal sealed record SourceIndexIdentity(string Folder, string Context, string Versification, string SourceStatus,
-    string WritingSystem, string ProjectIdentityJson, SourceFileStamp[] Files, string? Error = null)
+    string WritingSystem, string ProjectIdentityJson, SourceFileStamp[] Files, string? Error = null,
+    string[]? UnreadableApprovals = null, string[]? OrphanedApprovals = null,
+    SIL.Motif.Contract.Responses.SourceApprovalConflict[]? ConflictedApprovals = null)
 {
     public static SourceFileStamp[] Metadata(string folder) => Directory.EnumerateFiles(folder)
         .OrderBy(Path.GetFileName, StringComparer.Ordinal).Select(path =>

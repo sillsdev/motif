@@ -16,6 +16,12 @@ A project keeps the Bible translations and other texts it draws on as Sources in
 4. `compose-set-source-versification` changes the versification.
 5. `compose-set-source-status` removes a Source or restores it.
 
+## Approving words
+
+6. `compose-set-occurrence-approval` approves one word of a Paratext Source with an analysis, or clears it back to a guess.
+
+An approval is the choice of the analysis a word has; until then the word shows a guess. Approving also approves the analysis when its Opinion is Unknown. A Disapproved Opinion is word-wide and is left as it is. An approval stays only while the verse text, the word number and the analysis are unchanged; otherwise it is stale and must be approved again by a person.
+
 ## Pitfalls
 
 - Do not remove a Source to change it. A removed Source keeps its id, and only restoring it brings it back.

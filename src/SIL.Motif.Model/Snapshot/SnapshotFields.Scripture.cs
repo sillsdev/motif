@@ -20,4 +20,7 @@ public static partial class SnapshotFields
 
     /// <summary>A <c>CmPossibility</c>'s reserved custom String field that holds a Source's status.</summary>
     public const string CmPossibilityMotifSourceStatus = "lists/cmPossibility/motifSourceStatus";
+
+    /// <summary>One Occurrence's approval in the custom String field of a Source's chapter item.</summary>
+    public const string ScriptureOccurrenceApproval = "scripture/source/occurrenceApproval";
 }

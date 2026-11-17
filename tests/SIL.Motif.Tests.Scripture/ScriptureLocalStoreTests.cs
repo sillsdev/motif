@@ -14,6 +14,93 @@ public sealed class ScriptureLocalStoreTests : IDisposable
     }
 
     [Fact]
+    public void TheInstallationIdIsMadeOnceBesideTheFileAndAnUnreadableOneIsReplaced()
+    {
+        var first = Store().InstallationId();
+        var path = Path.Combine(_root, "Motif", "installation-id");
+
+        Assert.NotEqual(Guid.Empty, first);
+        Assert.Equal(first, Store().InstallationId());
+        Assert.Equal(first, Guid.Parse(File.ReadAllLines(path)[0]));
+        Assert.NotEqual(first, new ScriptureLocalStore(Path.Combine(_root, "Other", "scripture-local.json")).InstallationId());
+        Assert.Equal([first], Enumerable.Range(0, 8).AsParallel().Select(_ => Store().InstallationId()).Distinct());
+
+        File.WriteAllText(path, "not an id");
+        var replaced = Store().InstallationId();
+        Assert.NotEqual(first, replaced);
+        Assert.Equal(replaced, Store().InstallationId());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("machine\t00000000000000000000000000000000\n")]
+    public void AnInstallationIdFileCopiedFromAnotherComputerIsSetAsideAndANewIdIsMade(string fingerprint)
+    {
+        var path = Path.Combine(_root, "Motif", "installation-id");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var copied = Guid.NewGuid();
+        File.WriteAllText(path, copied.ToString("D") + "\n" + fingerprint);
+
+        var made = Store().InstallationId();
+
+        Assert.NotEqual(copied, made);
+        Assert.Equal(made, Store().InstallationId());
+        var aside = Assert.Single(Directory.GetFiles(Path.GetDirectoryName(path)!, "installation-id.*.old"));
+        Assert.Equal(copied, Guid.Parse(File.ReadAllLines(aside)[0]));
+    }
+
+    [Fact]
+    public void AnIntactInstallationIdFileCopiedToAComputerWithTheSameNamesButAnotherMachineIdIsSetAside()
+    {
+        var path = Path.Combine(_root, "Motif", "installation-id");
+        var ours = new InstallationMachine("SAME-HOST", "same-user", "machine-ours", "test");
+        Guid original;
+        using (InstallationMachine.Use(ours)) original = Store().InstallationId();
+        var copied = File.ReadAllText(path);
+
+        using (InstallationMachine.Use(ours with { SystemId = "machine-theirs" }))
+        {
+            var theirs = Store().InstallationId();
+
+            Assert.NotEqual(original, theirs);
+            Assert.Equal(theirs, Store().InstallationId());
+        }
+        var aside = Assert.Single(Directory.GetFiles(Path.GetDirectoryName(path)!, "installation-id.*.old"));
+        Assert.Equal(copied, File.ReadAllText(aside));
+        Assert.Equal("machine-id\ttest", File.ReadAllLines(path)[2]);
+    }
+
+    [Fact]
+    public void WithoutAReadableMachineIdTheFileSaysItsFingerprintIsWeakAndSameNamedComputersShareIt()
+    {
+        var path = Path.Combine(_root, "Motif", "installation-id");
+        var weak = new InstallationMachine("SAME-HOST", "same-user", null, "none readable: host and user names only");
+        Assert.True(weak.IsWeak);
+        Assert.False((weak with { SystemId = "x" }).IsWeak);
+
+        Guid first;
+        using (InstallationMachine.Use(weak)) first = Store().InstallationId();
+        using (InstallationMachine.Use(weak with { SystemIdSource = "another computer" })) Assert.Equal(first, Store().InstallationId());
+
+        Assert.Equal("weak\tnone readable: host and user names only", File.ReadAllLines(path)[2]);
+        Assert.NotEqual(weak.Fingerprint, (weak with { SystemId = "x" }).Fingerprint);
+    }
+
+    [Fact]
+    public void ThisComputersMachineIdIsReadWhereTheSystemHasOne()
+    {
+        var machine = InstallationMachine.Read();
+
+        Assert.Equal(Environment.MachineName, machine.HostName);
+        Assert.Equal(Environment.UserName, machine.UserName);
+        Assert.False(string.IsNullOrWhiteSpace(machine.SystemIdSource));
+        // Windows always has MachineGuid and macOS IOPlatformUUID; a container may have an empty /etc/machine-id.
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ||
+            (File.Exists("/etc/machine-id") && File.ReadAllText("/etc/machine-id").Trim().Length > 0))
+            Assert.False(machine.IsWeak, machine.SystemIdSource);
+    }
+
+    [Fact]
     public void NothingRecordedReadsAsEmptyAndCreatesNoFile()
     {
         var store = Store();

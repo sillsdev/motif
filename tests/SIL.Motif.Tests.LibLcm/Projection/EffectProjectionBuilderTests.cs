@@ -2,6 +2,7 @@ using SIL.Motif.Contract.Responses;
 using System;
 using System.Collections.Generic;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Model;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Projection;
 using Xunit;
@@ -10,6 +11,26 @@ namespace SIL.Motif.Tests.Projection;
 
 public sealed class EffectProjectionBuilderTests
 {
+    [Fact]
+    public void AnOccurrencesApprovalLinksToTheOperationAtThatOccurrenceNotEveryApprovalOfTheSource()
+    {
+        var source = CanonicalId.Mint();
+        OperationEnvelope Approve(string anchor) => new(CanonicalId.Mint(), "scripture/source/approveOccurrence",
+            target: source, after: System.Text.Json.JsonSerializer.SerializeToElement(new { passage = "MAT 1", anchor }));
+        ExpectedEffect Effect(string anchor) => new(source, "scripture/source/occurrenceApproval",
+            new Dictionary<string, string>(), new Dictionary<string, string> { ["analysis"] = "a" },
+            System.Text.Json.JsonSerializer.SerializeToElement(new { anchor }));
+        var first = Approve("MAT 1:1#1");
+        var second = Approve("MAT 1:1#2");
+        var proposal = new Proposal(new Dictionary<string, string> { ["scripture"] = "1.0" }, CanonicalId.Mint(), null,
+            [first, second]);
+
+        var views = EffectProjectionBuilder.Build([Effect("MAT 1:1#1"), Effect("MAT 1:1#2")], proposal);
+
+        Assert.Equal([first.OperationId.Value], views[0].OperationIds);
+        Assert.Equal([second.OperationId.Value], views[1].OperationIds);
+    }
+
     [Fact]
     public void Build_KeepsOnlyChangedWritingSystems()
     {

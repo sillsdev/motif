@@ -82,23 +82,31 @@ public static class ProposalDryRunner
         {
             unitOfWork.RollBack = false;
 
-            foreach (var prerequisite in plan.Prerequisites)
+            using (var prerequisites = DeferredWrites.Begin(cache))
             {
-                var prerequisiteTargets = new List<CanonicalId>();
-                foreach (var operation in OperationExecutionOrder.Sort(prerequisite.Operations))
+                foreach (var prerequisite in plan.Prerequisites)
                 {
-                    var handler = OperationHandlerRegistry.Resolve(operation.Kind, "prerequisite Dry Run preparation");
-                    _ = OperationEffectCapture.Apply(handler, cache, operation, prerequisiteTargets);
+                    var prerequisiteTargets = new List<CanonicalId>();
+                    foreach (var operation in OperationExecutionOrder.Sort(prerequisite.Operations))
+                    {
+                        var handler = OperationHandlerRegistry.Resolve(operation.Kind, "prerequisite Dry Run preparation");
+                        _ = OperationEffectCapture.Apply(handler, cache, operation, prerequisiteTargets);
+                    }
                 }
+                prerequisites.Complete();
             }
 
             footprintDigest = FootprintProbe.ComputeCurrentFootprintDigest(cache, proposal);
 
             var processBefore = AffixProcessSnapshots.Read(cache);
-            foreach (var operation in operationOrder)
+            using (var batch = DeferredWrites.Begin(cache))
             {
-                var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Stage C dryRun");
-                effects.AddRange(OperationEffectCapture.Apply(handler, cache, operation, touchedTargets));
+                foreach (var operation in operationOrder)
+                {
+                    var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Stage C dryRun");
+                    effects.AddRange(OperationEffectCapture.Apply(handler, cache, operation, touchedTargets));
+                }
+                batch.Complete();
             }
 
             AffixProcessSemanticValidator.ValidateProposal(cache, proposal.Operations);

@@ -38,31 +38,102 @@ with standard three-letter book ids for scripture; its expansion can be cached. 
 Context and is not stored. Current is one chapter/Passage per person, local to that machine and never synced.
 Non-scripture Context selection remains Open; Document identity is defined in D1.
 
-### D3. Judgements are one list item per Document, with one custom field
+### D3. Judgements are one sub-item per Passage and installation, under the Source's item, with one custom field
 
-For a .fwdata Home, store Sources in a custom list with Context and versification, and one CmPossibility
-item per Document (for a Source, a chapter) as a sub-item of its Source's item. One custom field on
-CmPossibility, added through LibLCM `IFwMetaDataCacheManaged.AddCustomField` (a path ADR 0003 allows), maps a
-WfiAnalysis GUID to the Occurrence locations it is approved at, such as `MAT 5:3#2`. The WfiWordform field is
-not used. There is no "rejected" group: the only way to say an analysis is wrong is D4's word-wide Disapproved
-Opinion. Per-chapter Progress summaries are recomputable caches. No every-occurrence object list is
-introduced for a whole Bible.
+For a .fwdata Home, store Sources in a custom list with Context and versification. The Sources list is Sorted: the
+Apply that makes it makes it sorted, and the first Apply that adds an approvals sub-item sorts a list made before
+then. FLEx's Lists area then shows the Sources in alphabetical order rather than the order they were added.
 
-Document items reduce Send/Receive collisions: different chapters merge independently. Concurrent edits to
-the same item can still resolve to the later sync, retaining the other value only in conflict notes/history;
-the design does not promise per-occurrence conflict-free merging. Persistence proof is required before release. Existing merge proof covers different chapter/word
-items and new items; reverse sync order, same-writing-system Name/Description conflicts and opening the
-merged project in FLEx remain unverified. FW Lite uses the same judgement meaning/anchors through the
-plugin's log records, without scripture bytes (ADR 0025).
+Approvals are stored under each Source's own item, one CmPossibility sub-item for each (Source, Passage,
+installation) that has approvals. An installation is one user's Motif on one computer. Its identity is a GUID in
+`installation-id`, kept in Motif's per-user data folder beside `scripture-local.json` (`<user data>/SIL/Motif/`).
+It is made the first time it is needed and is never synced. The file also holds a fingerprint of the computer: a hash
+of the host name, the operating-system user and the system's machine id, which is the Windows
+`HKLM\SOFTWARE\Microsoft\Cryptography\MachineGuid`, the macOS `IOPlatformUUID` or the Linux `/etc/machine-id`.
+The operating system sets the machine id when it is installed, so two computers with the same host and user names
+still differ. A file whose fingerprint is not this computer's, as when a user profile is copied whole to another
+computer, or that has none, is set aside and a new identity is made. Sub-items written under the old identity stay
+readable and are never written again. Where no machine id can be read, the fingerprint is the host and user names
+only and the file's third line says it is weak; there, two computers with the same names and a copied profile keep
+one identity.
 
-The custom field is created by the first Apply that needs it, once per project; the Apply confirmation says so
-in one sentence ("This Apply also adds the Motif Approvals field to your project"). There is no separate setup
-step. The list stays visible in FLEx, named "Motif Approvals (managed by Motif)", with a description saying that
-edits there can be overwritten.
+The sub-item's GUID is a hash of the Source item's GUID, the Passage (such as `MAT 5`) and the installation. Its
+Abbreviation is the Passage, its Name is the Source, the Passage and the start of the installation id, and its
+Description says that Motif manages it and can overwrite edits there. FLEx's Lists area shows these sub-items under
+each Source; every Motif reader of Sources reads only the list's top-level items. Sub-items are made with
+`ICmPossibilityFactory.Create(Guid, ICmPossibility)`. One custom String field on CmPossibility holds that
+installation's approvals in that Passage as text, one line per Occurrence. The field is added through LibLCM
+`IFwMetaDataCacheManaged.AddCustomField` (a path ADR 0003 allows). Each line gives:
 
-When Send/Receive combines two people's work, their approvals combine. If the same Occurrence was approved with
-different analyses, it shows as a conflict with both analyses visible and neither counted as approved, until
-someone approves again. The window never picks one silently.
+- the location, such as `MAT 5:3#2`;
+- the WfiAnalysis GUID, or nothing for a clear;
+- what the approval was made against: the verse fingerprint, the word in Unicode NFD (the form FieldWorks keeps a
+  wordform in and a saved project gives back; the current word is compared in NFD too) and the morphology signature;
+- a stamp, which is new each time the installation writes the line;
+- a settle record: the installation and stamp of each other line it overrules.
+
+The WfiWordform field is not used. There is no "rejected" group: the only way to say an analysis is wrong is D4's
+word-wide Disapproved Opinion. Per-chapter Progress summaries are recomputable caches.
+
+An installation only ever writes its own sub-items, and two installations never share one, except on a system
+without a readable machine id as above. So Send/Receive, which merges objects by GUID, only adds or keeps
+whole sub-items and never sees one edited on both sides. The sub-items travel in the Sources list's file, which
+every shared copy has once a Source was added and synced, so two people approving do not each create a file. Apply
+reads each Passage's sub-items once and writes each changed sub-item once, so a bulk approval costs time in
+proportion to the Occurrences and Passages it touches. Approvals at different Occurrences of one Source do not
+depend on each other in the Draft, and each effect is linked to the operation at its Occurrence. A test counts the
+blobs read and written per chapter; the time for 10,000 approvals is measured in the scheduled slow run
+(`docs/testing-slow-run.md`).
+
+Renaming, removing and restoring a Source change only the Source item, so its approvals sub-items stay with it; a
+Removed Source keeps them, its progress is not published and new approvals there are refused. Deleting the Source
+item outright, as FLEx's Lists area can, deletes its sub-items with it.
+
+Reading unions every installation's sub-items for a Passage. At each Occurrence:
+
+1. A line stands unless some line at that Occurrence names its installation and stamp in a settle record. A name
+   counts even when the line holding it is itself overruled, because a stamp is never written twice.
+2. If the standing lines give one analysis, the Occurrence is approved with it, counted once however many
+   installations gave it. Every standing line is evidence: the Occurrence is Approved when any of them still holds
+   against the current text and analysis, and Stale only when none does. Which installation wrote a line never
+   decides this.
+3. If they give two or more analyses, the Occurrence is a conflict: all are shown and none is counted as approved.
+4. If only clears stand, or nothing does, the Occurrence is not approved.
+
+A sub-item whose field cannot be read, or that arrived without the field's definition, may hold the settle records
+that decide its Passage. Its Passage is reported as unreadable and nothing in it is counted as approved or as a
+conflict; other Passages are read as usual. A sub-item whose Passage cannot be told makes every Passage of its Source
+unreadable. Apply starts an installation's own unreadable sub-item again empty and writes every later approval of
+the same batch into it.
+
+Approving or clearing an Occurrence writes the installation's own line. Its settle record names every other
+installation's line standing there at that moment, plus every name in its previous line. A name is kept even when
+this copy of the project does not have the line it names, because that line may still arrive in a later
+Send/Receive; dropping the name would let it stand again although nobody approved it after the Clear. Approving
+again therefore settles a conflict for every reader alike. A later approval by another installation is a new line
+with a new stamp that no settle record names, so if it gives a different analysis the conflict is open again. A
+clear that would overrule nothing and carries no names just removes the installation's line.
+
+The custom field is created by the first Apply that needs it, once per project; the Apply confirmation says so in
+one sentence ("This Apply also adds the Motif Approvals field to your project"). There is no separate setup step.
+
+FLEx Bridge evidence (flexbridge c51e79b): every unowned CmPossibilityList is written, with all the objects it
+owns at any depth, to one file `General/UserDefinedLists/UserList-<list guid>.list`
+(`src/LibFLExBridge-ChorusPlugin/Contexts/General/UserDefinedLists/UserDefinedListsBoundedContextService.cs:22-40`).
+Objects in it are merged by GUID (`DomainServices/FieldWorksMergeServices.cs:113-120`), and the order of a list's
+Possibilities and of an item's SubPossibilities is significant only when the list is not Sorted
+(`DomainServices/PossibilityListOrderPolicy.cs:16-29`, used at `FieldWorksMergeServices.cs:230`). Run outside the
+test suite, the real Chorus and FLEx Bridge merge kept distinct items added by both sides of a sorted list with no
+conflict note, and a list file that both sides created separately lost one side's items. Hosting the sub-items in
+the Sources list's file keeps them out of a file created by two people; two people who each add the first Source
+before syncing still create the Sources list file twice, which is a separate open issue.
+
+Persistence proof before release is a test that merges two installations' copies object by object against their
+common ancestor, as Chorus does. It covers adding sub-items, settling and reopening a conflict, and a line that
+arrives after the Clear that overruled it. The real Chorus and FLEx Bridge packages cannot be loaded in the tests
+(their icu.net, L10NSharp and SIL.Core versions differ from Motif's pins), so the test is a simulation and not
+Send/Receive. Still unverified: a real Send/Receive run and opening the merged project in FLEx. FW Lite uses the
+same judgement meaning and anchors through the plugin's log records, without scripture bytes (ADR 0025).
 
 ### D4. Word-level judgements are separate from occurrence choice
 

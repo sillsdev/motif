@@ -40,8 +40,8 @@ public sealed class ProgressToolTests
         var success = new JsonObject { ["ok"] = true, ["result"] = JsonNode.Parse(ProjectionJson.Serialize(response)) };
         var validator = JsonSchema.FromText(ProgressToolSchema.Output.ToJsonString());
         Assert.True(validator.Evaluate(JsonSerializer.SerializeToElement(success)).IsValid);
-        var source = new SourceProgressResponse("WEB", "generation", 5,
-            [new SourceProgressPassage("MAT 1", "MAT 1", 5)], null);
+        var source = new SourceProgressResponse("WEB", "generation", 5, 2,
+            [new SourceProgressPassage("MAT 1", "MAT 1", 5, 2)], null);
         var sourceSuccess = new JsonObject { ["ok"] = true, ["result"] = JsonNode.Parse(ProjectionJson.Serialize(source)) };
         Assert.True(validator.Evaluate(JsonSerializer.SerializeToElement(sourceSuccess)).IsValid);
         var refusal = RefusalMapper.ToResult(new Refusal("progress.index-not-ready", FailureReason.Refused, "Refresh."));

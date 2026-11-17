@@ -29,6 +29,9 @@ internal interface ISourceProvider
 
     /// <summary>Why the Source's material cannot be read on this machine, or null when it can.</summary>
     Refusal? Unavailable(string? folder);
+
+    /// <summary>Whether the index measures which Occurrences are approved; when false, approval counts are unavailable.</summary>
+    bool MeasuresApprovals { get; }
 }
 
 /// <summary>Finds the provider for a stored Source kind.</summary>
@@ -53,6 +56,8 @@ internal sealed class ParatextSourceProvider : ISourceProvider
 {
     public string Kind => nameof(SourceKind.Paratext);
     public string TokenizerVersion => ParatextPassages.TokenizerVersion;
+
+    public bool MeasuresApprovals => true;
     public string AnchorVersion => ParatextPassages.AnchorVersion;
     public string? BuiltInSourceId => null;
 
@@ -78,6 +83,9 @@ internal sealed class FieldWorksTextsSourceProvider : ISourceProvider
 {
     public string Kind => FieldWorksTextsIndex.Kind;
     public string TokenizerVersion => FieldWorksTextsIndex.TokenizerVersion;
+
+    // A Text's own approved Occurrences are not projected yet, so none is counted as measured.
+    public bool MeasuresApprovals => false;
     public string AnchorVersion => FieldWorksTextsIndex.AnchorVersion;
     public string? BuiltInSourceId => FieldWorksTextsIndex.SourceId;
 

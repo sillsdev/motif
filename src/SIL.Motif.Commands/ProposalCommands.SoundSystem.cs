@@ -445,6 +445,7 @@ public static partial class ProposalCommands
         MotifDatabase database, ProjectLocator project, string draftName, IReadOnlyList<ComposeStep> steps,
         bool describeBatchFailure = false, IReadOnlyList<string>? remove = null)
     {
+        using var composeScope = ComposeProjectScope.Ensure(database, project);
         try
         {
             var repository = new ProposalRepository(database);
@@ -463,7 +464,8 @@ public static partial class ProposalCommands
             var declaredLabels = steps.Select((step, index) => (step.Label, index))
                 .Where(item => item.Label is not null)
                 .ToDictionary(item => item.Label!, item => item.index, StringComparer.Ordinal);
-            var identityReplaced = steps.SelectMany(step => draft.ComposerProvenance
+            var recordedIdentities = new RecordedIdentities(steps, draft.ComposerProvenance);
+            var identityReplaced = steps.Where(recordedIdentities.MayShare).SelectMany(step => draft.ComposerProvenance
                     .Where(provenance => SharesIdentity(provenance, step))
                     .SelectMany(provenance => ProvenanceOperationIds(provenance) ?? []))
                 .Concat(steps.Where(step => step.Independent).SelectMany(step =>
@@ -502,6 +504,7 @@ public static partial class ProposalCommands
                 var handler = cache.ServiceLocator.GetInstance<IActionHandler>();
                 using var unit = new NonUndoableUnitOfWorkHelper(handler);
                 unit.RollBack = false;
+                using var writes = DeferredWrites.Begin(cache);
                 foreach (var operation in OperationExecutionOrder.Sort(retained))
                 {
                     // Names become available as their creators run; replacement edits must stay out of the scratch.
@@ -664,6 +667,7 @@ public static partial class ProposalCommands
                         throw new ComposeStepException(index, exception);
                     }
                 }
+                writes.Complete();
                 return results;
             });
             draft.Operations = draft.Operations.Where(operation => !replacedSet.Contains(operation.OperationId)).ToList();
@@ -684,7 +688,7 @@ public static partial class ProposalCommands
                     draft.Operations.Add(authored);
                     EnsureContractVersion(draft, declared.Kind);
                 }
-                if (IdentityOf(step) is not null)
+                if (recordedIdentities.MayShare(step))
                     draft.ComposerProvenance.RemoveAll(provenance => SharesIdentity(provenance, step));
                 // An independent step drops only the provenance of the edits it replaced, not its target's other edits.
                 if (step is { Independent: true, Authored: { } independentInput, ReplacePrevious: { } replacesPrevious })
@@ -701,16 +705,19 @@ public static partial class ProposalCommands
                     draft.ComposerProvenance.RemoveAll(provenance => ReplacesComposerIntent(provenance,
                         step.Composer, replacementTarget.GetString()));
                 if (result.Added.Length > 0 || EditsCreatedNaturalClass(step, result.Input, createdNaturalClasses))
+                {
+                    recordedIdentities.Add(step.Composer, result.Input);
                     draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
-                    {
-                        composer = step.Composer,
-                        input = result.Input,
-                        operationIds = result.Added.Select(operation => operation.OperationId.Value).ToArray(),
-                        changeId,
-                        kind = step.PendingRow?.Kind,
-                        word = step.PendingRow?.Subject,
-                        displayReading = step.PendingRow?.Summary,
-                    }, ComposerProvenanceOptions));
+                        {
+                            composer = step.Composer,
+                            input = result.Input,
+                            operationIds = result.Added.Select(operation => operation.OperationId.Value).ToArray(),
+                            changeId,
+                            kind = step.PendingRow?.Kind,
+                            word = step.PendingRow?.Subject,
+                            displayReading = step.PendingRow?.Summary,
+                        }, ComposerProvenanceOptions));
+                }
             }
             if (cancelledCreationMembers.Count > 0)
                 for (var index = 0; index < draft.ComposerProvenance.Count; index++)
@@ -809,7 +816,7 @@ public static partial class ProposalCommands
             var creatorPositions = staged.PositionsMatching(staged.ByCreated, references);
             var creators = creatorPositions.Select(position => staged.Operations[position].OperationId).ToArray();
             var creatorSet = creators.ToHashSet();
-            var editors = staged.PositionsMatching(staged.ByTarget, references)
+            var editors = staged.EditorsMatching(operation, references)
                 .Select(position => staged.Operations[position].OperationId).Except(creatorSet).ToArray();
             var clearing = operation.Kind == AffixProcessDeleteOperationKinds.Delete
                 ? staged.Operations.Where(prior => prior.After is { } priorAfter && (ReferencesDeletedGraph(priorAfter, operation) ||
@@ -844,6 +851,9 @@ public static partial class ProposalCommands
         public Dictionary<Guid, List<int>> ByCreated { get; } = new();
         public Dictionary<Guid, List<int>> ByTarget { get; } = new();
 
+        // Approvals at different Occurrences of one Source commute, so they wait on the Source's other edits only.
+        private readonly Dictionary<Guid, List<int>> _approvalsByTarget = new();
+
         public StagedDependencyIndex(IEnumerable<OperationEnvelope> retained) => Add(retained);
 
         public void Add(IEnumerable<OperationEnvelope> added)
@@ -854,9 +864,23 @@ public static partial class ProposalCommands
                 Operations.Add(operation);
                 Positions[operation.OperationId] = position;
                 if (operation.EntityId is { } created) Index(ByCreated, created.ToGuid(), position);
-                if (operation.Target is { } modified) Index(ByTarget, modified.ToGuid(), position);
+                if (operation.Target is { } modified)
+                    Index(IsApproval(operation) ? _approvalsByTarget : ByTarget, modified.ToGuid(), position);
             }
         }
+
+        /// <summary>The positions, in staged order, of the earlier edits of a referenced object the operation waits on.</summary>
+        public IReadOnlyList<int> EditorsMatching(OperationEnvelope operation, HashSet<Guid> references)
+        {
+            if (IsApproval(operation)) return PositionsMatching(ByTarget, references);
+            var found = new List<int>(PositionsMatching(ByTarget, references));
+            found.AddRange(PositionsMatching(_approvalsByTarget, references));
+            found.Sort();
+            return found;
+        }
+
+        private static bool IsApproval(OperationEnvelope operation) =>
+            operation.Kind is ScriptureApprovalOperationKinds.Approve or ScriptureApprovalOperationKinds.Clear;
 
         /// <summary>The positions, in staged order, of the operations indexed under any of the references.</summary>
         public IReadOnlyList<int> PositionsMatching(Dictionary<Guid, List<int>> index, HashSet<Guid> references)
@@ -929,6 +953,33 @@ public static partial class ProposalCommands
     // The identity a step gives the object it edits, for a composer that replaces its earlier intents by identity.
     private static string? IdentityOf(ComposeStep step) =>
         step.Authored is { } authored && step.Definition?.Replaces?.Identity is { } identity ? identity(authored) : null;
+
+    // The identities the recorded intents give, so a step whose identity none gives skips the scan for one.
+    private sealed class RecordedIdentities
+    {
+        private readonly Dictionary<string, Func<JsonElement, string?>> _identityOf = new(StringComparer.Ordinal);
+        private readonly HashSet<(string Composer, string Identity)> _recorded = new();
+
+        public RecordedIdentities(IEnumerable<ComposeStep> steps, IEnumerable<JsonElement> provenance)
+        {
+            foreach (var step in steps)
+                if (step.Definition?.Replaces?.Identity is { } identity) _identityOf.TryAdd(step.Composer, identity);
+            foreach (var entry in provenance)
+                if (entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty("composer", out var composer) &&
+                    composer.ValueKind == JsonValueKind.String && entry.TryGetProperty("input", out var input))
+                    Add(composer.GetString()!, input);
+        }
+
+        public void Add(string composer, JsonElement input)
+        {
+            if (input.ValueKind == JsonValueKind.Object && _identityOf.TryGetValue(composer, out var identityOf) &&
+                identityOf(input) is { } identity)
+                _recorded.Add((composer, identity));
+        }
+
+        public bool MayShare(ComposeStep step) =>
+            IdentityOf(step) is { } identity && _recorded.Contains((step.Composer, identity));
+    }
 
     // Whether a recorded intent is an earlier one of the step's composer that gave the same identity.
     private static bool SharesIdentity(JsonElement provenance, ComposeStep step)

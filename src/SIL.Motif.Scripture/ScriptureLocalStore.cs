@@ -64,6 +64,66 @@ public sealed class ScriptureLocalStore
     /// <summary>The file this store reads and writes.</summary>
     public string FilePath => _path;
 
+    /// <summary>
+    /// The identity of this installation of Motif: the Guid in <c>installation-id</c> beside this store's file, so
+    /// <c>&lt;user data&gt;/SIL/Motif/installation-id</c> for a real user. It is made the first time it is asked for and
+    /// never synced or copied with a project, so each user on each computer has their own. Approvals are stored per
+    /// installation (see <c>ScriptureApprovalFields</c>), and two computers writing as one installation would each
+    /// overwrite the other's approvals in Send/Receive, so the file also holds a fingerprint of the computer and user
+    /// (<see cref="InstallationMachine.Fingerprint"/>) and, on its third line, where the machine id came from. A file
+    /// made elsewhere, as when a user profile is copied to another computer, or one with no fingerprint or no Guid, is
+    /// set aside and a new identity is made; approvals stored under the old identity stay readable and are never
+    /// written again. Where the system has no readable machine id the fingerprint is the host and user names only,
+    /// and the third line says so: two such computers with the same names keep one identity. Two processes that make
+    /// it at once agree, because the file is moved into place only when it does not exist yet.
+    /// </summary>
+    public Guid InstallationId()
+    {
+        var path = Path.Combine(Path.GetDirectoryName(_path) ?? throw new IOException("The local Scripture file has no parent directory."),
+            "installation-id");
+        var computer = InstallationMachine.Current;
+        var machine = computer.Fingerprint;
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            if (TryReadId(path, machine) is { } known) return known;
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            if (File.Exists(path) && TryReadId(path, machine) is null)
+            {
+                // Set aside, not deleted, so a person can still see which identity a copied profile carried.
+                try { File.Move(path, path + "." + Guid.NewGuid().ToString("N")[..8] + ".old", overwrite: false); }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+            }
+            var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temporary, Guid.NewGuid().ToString("D") + "\n" + MachineLine + machine + "\n" +
+                    (computer.IsWeak ? "weak" : "machine-id") + "\t" + computer.SystemIdSource + "\n");
+                try { File.Move(temporary, path, overwrite: false); }
+                catch (IOException) when (File.Exists(path)) { }
+            }
+            finally
+            {
+                if (File.Exists(temporary)) File.Delete(temporary);
+            }
+        }
+        return TryReadId(path, machine) ?? throw new IOException($"The installation identity in {path} cannot be read or made.");
+    }
+
+    private const string MachineLine = "machine\t";
+
+    private static Guid? TryReadId(string path, string machine)
+    {
+        try
+        {
+            if (!File.Exists(path)) return null;
+            var lines = File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+            return lines.Length >= 2 && Guid.TryParse(lines[0].Trim(), out var id) && id != Guid.Empty &&
+                lines[1].Trim() == MachineLine + machine
+                ? id : null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return null; }
+    }
+
     /// <summary>What is recorded for the project; <see cref="ScriptureLocalState.Empty"/> when nothing is.</summary>
     public ScriptureLocalState Read(string projectId)
     {

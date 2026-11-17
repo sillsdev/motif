@@ -86,6 +86,7 @@ internal static class ComposerDefinitions
         new SetSourceContextDefinition(),
         new SetSourceVersificationDefinition(),
         new SetSourceStatusDefinition(),
+        new SetOccurrenceApprovalDefinition(),
     ];
 }
 

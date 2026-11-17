@@ -3,6 +3,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Sources;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Scripture;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Sources;
@@ -77,7 +78,12 @@ public static class SourcePassageQuery
                 var next = page.Count <= request.Limit ? null : Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(
                     new Cursor(key, source, passage, state.Generation, rows[^1].Ordinal)));
                 return CommandOutcome<SourcePassageResponse>.Success(new(state.SourceId, state.Generation, stored.Locator,
-                    stored.ContentHash, state.TokenizerVersion, state.AnchorVersion, rows, next));
+                    stored.ContentHash, state.TokenizerVersion, state.AnchorVersion, rows, next)
+                {
+                    ApprovedState = !provider.MeasuresApprovals ? "unavailable"
+                        : identity.UnreadableApprovals?.Any(label => !ScriptureApprovalDocument.IsPassage(label) ||
+                            label == stored.Locator) == true ? "unreadable" : "available",
+                });
             });
     }
 

@@ -84,7 +84,7 @@ public static class SourceList
             : Texts(text).FirstOrDefault(value => value.Length > 0) ?? "";
     }
 
-    private static int FindField(LcmCache cache, string name)
+    internal static int FindField(LcmCache cache, string name)
     {
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
         foreach (var flid in metadata.GetFieldIds())

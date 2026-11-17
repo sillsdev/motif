@@ -23,8 +23,12 @@ public static class ParatextPassages
     public const string TokenizerVersion = "fieldworks-word-forming-1";
     public const string AnchorVersion = "scripture-1";
 
-    /// <summary>Reads canonical verse rows in Machine order; chapter hashes ignore whitespace and notes.</summary>
-    public static IReadOnlyList<ParatextPassage> Read(string folder, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Reads canonical verse rows in Machine order; chapter hashes ignore whitespace and notes. Only the books named
+    /// in <paramref name="books"/> are read when it is given.
+    /// </summary>
+    public static IReadOnlyList<ParatextPassage> Read(
+        string folder, CancellationToken cancellationToken = default, IReadOnlySet<string>? books = null)
     {
         if (!File.Exists(Path.Combine(folder, "Settings.xml")))
             throw new InvalidDataException("The Source folder has no Settings.xml.");
@@ -38,7 +42,7 @@ public static class ParatextPassages
         foreach (var text in corpus.Texts)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!Canon.IsCanonical(Canon.BookIdToNumber(text.Id))) continue;
+            if (!Canon.IsCanonical(Canon.BookIdToNumber(text.Id)) || books is not null && !books.Contains(text.Id)) continue;
             var chapters = new Dictionary<int, List<ParatextVerse>>();
             foreach (var row in text.GetRows())
             {

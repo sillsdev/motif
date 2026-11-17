@@ -327,5 +327,25 @@
   "source.ai-needs-proposal": {
     "why": "An AI may not edit Sources in the pending changes, which hold a person's own Save. Start a Proposal with motif_start_proposal, compose the Source edits in that Draft, and Finalize it for a person to review and Apply.",
     "source": "Hand-written from the request for Motif Sources."
+  },
+  "source.occurrence-not-found": {
+    "why": "The Source text has no word at that location. Read the Passage with source passage to see the locations, such as MAT 5:3#2.",
+    "source": "Hand-written from SourceApprovalComposers."
+  },
+  "source.occurrence-not-eligible": {
+    "why": "The word at that location has no letter, so it has no analysis to approve.",
+    "source": "Hand-written from SourceApprovalComposers."
+  },
+  "source.analysis-mismatch": {
+    "why": "The analysis belongs to a different wordform than the word at that location. Choose an analysis of the same wordform.",
+    "source": "Hand-written from SourceApprovalComposers."
+  },
+  "source.analysis-needed": {
+    "why": "Approving needs either a stored analysis, or a parser reading together with its wordform. Give one of them.",
+    "source": "Hand-written from SourceApprovalComposers."
+  },
+  "source.wordform-missing": {
+    "why": "The wordform for that parser reading is not in the FieldWorks project, so its analysis cannot be added. Add the wordform first.",
+    "source": "Hand-written from SourceApprovalComposers."
   }
 }

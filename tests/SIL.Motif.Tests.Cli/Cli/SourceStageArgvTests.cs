@@ -1,6 +1,7 @@
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
@@ -77,6 +78,21 @@ public sealed class SourceStageArgvTests(PristineProjectFixture pristine) : IDis
         var absentFolder = await CliProcess.RunAsync(_root, null, true, "source", "add", "--project", path, "WEB",
             "--name", "x", "--versification", "English", "--context", "MAT", "--folder", Path.Combine(_root, "absent"), "--json");
         Assert.Equal(RefusalCodes.SourceFolderMissing, ProjectionJson.Deserialize<FailureEnvelope>(absentFolder.Error)!.Code);
+    }
+
+    [Fact]
+    public async Task ApproveAndClearNeedTheirArgumentsAndAnUnknownSourceIsRefusedByItsCode()
+    {
+        var path = ProjectWithBaseline();
+
+        Assert.Equal(Invalid, (await CliProcess.RunAsync(_root, null, true, "source", "approve", "--project", path, "WEB")).ExitCode);
+        Assert.Equal(Invalid, (await CliProcess.RunAsync(_root, null, true, "source", "clear", "--project", path, "WEB")).ExitCode);
+        var unknown = await CliProcess.RunAsync(_root, null, true, "source", "approve", "--project", path, "NOPE", "MAT 1:1#2",
+            "--analysis", CanonicalId.Mint().Value, "--json");
+        Assert.Equal(RefusalCodes.SourceNotFound, ProjectionJson.Deserialize<FailureEnvelope>(unknown.Error)!.Code);
+        var cleared = await CliProcess.RunAsync(_root, null, true, "source", "clear", "--project", path, "NOPE", "MAT 1:1#2", "--json");
+        Assert.Equal(RefusalCodes.SourceNotFound, ProjectionJson.Deserialize<FailureEnvelope>(cleared.Error)!.Code);
+        Assert.Empty(PendingChanges.Load(new PendingChangesRequest(path, "1.0")).Value!.Changes);
     }
 
     [Fact]

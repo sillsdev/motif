@@ -50,7 +50,7 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
             Assert.True(first.Succeeded, first.Refusal?.Message);
             Assert.Equal(100, first.Value!.Places.Count);
             Assert.Equal("MAT 1:1#1", first.Value.Places[0].Anchor);
-            Assert.Equal("unavailable", first.Value.ApprovedState);
+            Assert.Equal("available", first.Value.ApprovedState);
             Assert.All(first.Value.Places, row => Assert.Equal("unmeasured", row.State));
             var second = SourcePassageQuery.Query(new(project.FullFwDataPath, "web", "MAT 1", 200, first.Value.NextCursor));
             Assert.True(second.Succeeded, second.Refusal?.Message);
@@ -101,12 +101,12 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
             var summary = SourceProgressQuery.Query(project.FullFwDataPath, "web");
             Assert.True(summary.Succeeded, summary.Refusal?.Message);
             Assert.Equal(506, summary.Value!.EligiblePlaces);
-            Assert.Null(summary.Value.ApprovedPlaces);
-            Assert.Equal("unavailable", summary.Value.ApprovedState);
+            Assert.Equal(0, summary.Value.ApprovedPlaces);
+            Assert.Equal("available", summary.Value.ApprovedState);
             var page = SourceProgressQuery.Query(project.FullFwDataPath, "WEB", "passages", 1);
             Assert.True(page.Succeeded, page.Refusal?.Message);
             Assert.Equal(501, Assert.Single(page.Value!.Passages).EligiblePlaces);
-            Assert.Null(page.Value.Passages[0].ApprovedPlaces);
+            Assert.Equal(0, page.Value.Passages[0].ApprovedPlaces);
             Assert.Equal(summary.Value.EvidenceRevision, page.Value.EvidenceRevision);
             Assert.NotNull(page.Value.NextCursor);
             var next = SourceProgressQuery.Query(project.FullFwDataPath, "WEB", "passages", 1, page.Value.NextCursor);
@@ -219,6 +219,7 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
             Assert.True(total.Succeeded, total.Refusal?.Message);
             Assert.Equal(440, total.Value!.EligiblePlaces);
             Assert.Equal("unavailable", total.Value.ApprovedState);
+            Assert.Null(total.Value.ApprovedPlaces);
             Assert.Equal([(1, 0)], work);
             Assert.Equal(RefusalCodes.SourceRefInvalid,
                 SourcePassageQuery.Query(new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId, "MAT 1")).Refusal?.Code);

@@ -183,7 +183,7 @@ public sealed class SourceToolTests(PristineProjectFixture pristine) : IDisposab
         var first = await tool.Run(Context(path), Args(tool, new JsonObject { ["source"] = "WEB", ["ref"] = "MAT 1", ["limit"] = 1 }), default);
         Assert.Null(first.Refusal);
         Assert.Equal("MAT 1:1#1", first.Value!["places"]![0]!["anchor"]!.GetValue<string>());
-        Assert.Equal("unavailable", first.Value["approvedState"]!.GetValue<string>());
+        Assert.Equal("available", first.Value["approvedState"]!.GetValue<string>());
         var next = await tool.Run(Context(path), Args(tool, new JsonObject { ["source"] = "WEB", ["ref"] = "MAT 1",
             ["cursor"] = first.Value["nextCursor"]!.GetValue<string>(), ["limit"] = 1 }), default);
         Assert.Equal("MAT 1:1#2", next.Value!["places"]![0]!["anchor"]!.GetValue<string>());

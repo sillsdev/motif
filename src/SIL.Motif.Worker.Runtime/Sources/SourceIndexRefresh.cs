@@ -8,6 +8,7 @@ using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Sources;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Scripture;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
@@ -88,7 +89,7 @@ public static class SourceIndexRefresh
         try { sources = SourceList.Read(reader.Cache); }
         catch (SourceListAmbiguousException) { sources = []; }
         var ws = reader.Cache.WritingSystemFactory.GetStrFromWs(reader.Cache.DefaultVernWs);
-        var tokeniser = new WritingSystemWordTokeniser(reader.Cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem);
+        var tokeniser = SourceApprovals.Tokeniser(reader.Cache);
         var local = ScriptureLocalStore.ForInstallation().Read(key);
         var retry = false;
         foreach (var source in sources.Where(source =>
@@ -104,7 +105,7 @@ public static class SourceIndexRefresh
                     folder is null || !Directory.Exists(folder))
                     retry |= !PublishUnavailable(database, source, folder, ws, projectIdentity, source.Error, before);
                 else
-                    retry |= !Build(database, source, folder, ws, projectIdentity, tokeniser, cancellationToken);
+                    retry |= !Build(database, source, folder, ws, projectIdentity, tokeniser, cancellationToken, reader.Cache);
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or
                                                UnauthorizedAccessException or ArgumentException or System.Xml.XmlException)
@@ -185,7 +186,7 @@ public static class SourceIndexRefresh
     }
 
     internal static bool Build(MotifDatabase database, SourceListEntry source, string folder, string writingSystem,
-        ProgressSourceIdentity projectIdentity, IWordTokeniser tokeniser, CancellationToken cancellationToken = default)
+        ProgressSourceIdentity projectIdentity, IWordTokeniser tokeniser, CancellationToken cancellationToken = default, LcmCache? cache = null)
     {
         folder = Path.GetFullPath(folder);
         var repository = new SourceIndexRepository(database);
@@ -236,6 +237,8 @@ public static class SourceIndexRefresh
             passages.Add(new(chapter.Locator, chapter.Locator, chapter.Hash, count,
                 places.Skip(start).Count(place => place.Surface.EnumerateRunes().Any(Rune.IsLetter))));
         }
+        (places, var unreadable, var orphaned, var conflicts) = OverlayApprovals(cache, source.Id, chapters, places);
+        identity = identity with { UnreadableApprovals = unreadable, OrphanedApprovals = orphaned, ConflictedApprovals = conflicts };
         var digest = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(
             string.Join('\n', passages.Select(p => p.PassageId + ":" + p.ContentHash)))));
         var state = new SourceIndexState(source.Id, source.Kind.ToString(), Guid.NewGuid().ToString("N"), digest,
@@ -246,5 +249,45 @@ public static class SourceIndexRefresh
             .SourcePaths.GetValueOrDefault(source.Id);
         if (!identity.Current(database.Project.FullFwDataPath, currentFolder)) return false;
         return repository.Publish(stage, previous?.Generation ?? "");
+    }
+
+    // Marks approved and stale places; unreadable and orphaned approvals are returned, never dropped.
+    private static (List<SourceWordPlace> Places, string[] Unreadable, string[] Orphaned,
+        SIL.Motif.Contract.Responses.SourceApprovalConflict[] Conflicts) OverlayApprovals(
+        LcmCache? cache, string sourceId, IReadOnlyList<ParatextPassage> chapters, List<SourceWordPlace> places)
+    {
+        var marked = new Dictionary<string, OccurrenceApproval>(StringComparer.Ordinal);
+        var conflicted = new HashSet<string>(StringComparer.Ordinal);
+        var unreadable = Array.Empty<string>();
+        var orphaned = new SortedSet<string>(StringComparer.Ordinal);
+        var conflicts = new List<SIL.Motif.Contract.Responses.SourceApprovalConflict>();
+        if (cache is not null)
+        {
+            SourceApprovalSet set;
+            try { set = SourceApprovals.ReadReporting(cache, sourceId); }
+            catch (SourceListAmbiguousException ambiguous) { set = new(new Dictionary<string, ScriptureApprovalDocument>(), new Dictionary<string, IReadOnlyList<Guid>>(), [ambiguous.Message]); }
+            unreadable = [.. set.Unreadable];
+            var byLocator = chapters.ToDictionary(chapter => chapter.Locator, StringComparer.Ordinal);
+            foreach (var (locator, document) in set.Documents)
+                if (byLocator.TryGetValue(locator, out var chapter))
+                    foreach (var approval in SourceApprovals.Evaluate(cache, document, chapter)) marked[approval.Anchor] = approval;
+                else if (document.Approvals.Count > 0) orphaned.Add(locator);
+            foreach (var (anchor, analyses) in set.Conflicts)
+            {
+                conflicts.Add(new(anchor, analyses.Select(guid => guid.ToString("D")).ToArray()));
+                if (byLocator.ContainsKey(ScriptureApprovalDocument.PassageOf(anchor))) conflicted.Add(anchor);
+                else orphaned.Add(ScriptureApprovalDocument.PassageOf(anchor));
+            }
+        }
+        return (places.Select(place => marked.TryGetValue(place.Anchor, out var approval)
+            ? place with
+            {
+                ReadingKey = approval.Analysis.ToString("D"),
+                State = approval.State == ApprovalState.Approved ? "approved" : "stale",
+            }
+            : conflicted.Contains(place.Anchor)
+                ? place with { ReadingKey = null, Signature = null, State = "conflict" }
+                : place with { ReadingKey = null, Signature = null, State = "unmeasured" }).ToList(),
+            unreadable, [.. orphaned], [.. conflicts]);
     }
 }

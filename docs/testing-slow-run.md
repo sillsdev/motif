@@ -28,6 +28,18 @@ The layout test also runs in the gate, but there it inspects only the tightest c
 run nowhere else. The three 688,000-word App tests are in the table because they were moved out of the gate;
 landing no longer proves their memory limits, and a regression in them shows within a day instead of at landing.
 
+The run also selects two named Commands tests, not the whole `Category=SlowScale` trait, so the Difference
+measurement below stays out:
+
+| Test | What it pins |
+|---|---|
+| `SourcePassageQueryTests.CebSizedIndexReportsWarmPageAndPendingPublicationCosts` | page and publication costs of a CEB-sized Source index |
+| `SourceApprovalTests.TenThousandApprovalsInOneApplyTakeSeconds` | staging 10,000 approvals takes under 60 seconds, and so does their Dry Run and Apply together |
+
+The approvals test carries `[SlowScaleFact]` because its wall-clock limits flaked on loaded machines in the gate.
+The gate keeps `SourceApprovalTests.EachChapterIsReadAndWrittenOnceAnApplyAlsoWhenItEditsChaptersThatHaveApprovals`,
+which counts chapter reads and writes and so holds without a clock.
+
 `TextsProposalMemoryTests.ASixHundredEightyEightThousandWordTrialIsHeldAsValuesAWordWithoutAnyOfItsRows` also builds
 688,000 words but takes about 5 seconds, so it stays in the gate.
 
@@ -59,10 +71,11 @@ finishes with a known peak.
 $env:MOTIF_SLOW_SCALE = '1'
 ./test.ps1 -All -Project SIL.Motif.Tests.App -Filter 'Category=SlowScale|FullyQualifiedName~LayoutInvariantSystemTests.EveryPageAndApplicableStateSatisfiesTheFullLightGrid'
 ./tools/Assert-SlowScaleRan.ps1 -ResultsDirectory bin/Debug/test-results   # every test above passed
-./test.ps1 -All -Project SIL.Motif.Tests.Commands -Filter 'Category=SlowScale'   # the Commands measurement, by hand only
+./test.ps1 -All -Project SIL.Motif.Tests.Commands -Filter 'FullyQualifiedName~SourcePassageQueryTests.CebSizedIndexReportsWarmPageAndPendingPublicationCosts|FullyQualifiedName~SourceApprovalTests.TenThousandApprovalsInOneApplyTakeSeconds'
+./test.ps1 -All -Project SIL.Motif.Tests.Commands -Filter 'FullyQualifiedName~ProposalDifferenceCommandsTests.ProducingADifferenceOverALargeWordListReportsMemoryAndRows'   # the Difference measurement, by hand only
 ```
 
-`tools/Assert-SlowScaleRan.ps1` names the ten tests and fails unless each passed, because a skipped test reports
+`tools/Assert-SlowScaleRan.ps1` names the tests the run must prove and fails unless each passed, because a skipped test reports
 success. Add a new slow test to that list as well as marking it with `[SlowScaleFact]` and
 `[Trait("Category", "SlowScale")]`.
 

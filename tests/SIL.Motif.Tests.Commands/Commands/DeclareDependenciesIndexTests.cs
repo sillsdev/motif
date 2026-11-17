@@ -78,4 +78,28 @@ public sealed class DeclareDependenciesIndexTests
 
     private static string Describe(OperationEnvelope operation) => operation.OperationId.Value + ":" +
         string.Join(",", operation.DependsOn.Select(dependency => dependency.OperationId.Value));
+
+    [Fact]
+    public void ApprovalsOfOneSourceWaitOnTheSourcesOtherEditsButNotOnEachOther()
+    {
+        var source = CanonicalId.Mint();
+        var none = JsonSerializer.SerializeToElement(new { });
+        OperationEnvelope Approve(string anchor) => new(CanonicalId.Mint(), ScriptureApprovalOperationKinds.Approve,
+            target: source, after: JsonSerializer.SerializeToElement(new { passage = "MAT 1", anchor }));
+        OperationEnvelope Rename() => new(CanonicalId.Mint(), ScriptureSourceOperationKinds.SetName, target: source,
+            after: JsonSerializer.SerializeToElement(new { name = "World English Bible" }));
+        var rename = Rename();
+        var index = new ProposalCommands.StagedDependencyIndex([rename]);
+
+        var first = Assert.Single(ProposalCommands.DeclareDependencies(none, [Approve("MAT 1:1#1")], index));
+        index.Add([first]);
+        var second = Assert.Single(ProposalCommands.DeclareDependencies(none, [Approve("MAT 1:1#2")], index));
+        index.Add([second]);
+        var renameAgain = Assert.Single(ProposalCommands.DeclareDependencies(none, [Rename()], index));
+
+        Assert.Equal([rename.OperationId], first.DependsOn.Select(dependency => dependency.OperationId));
+        Assert.Equal([rename.OperationId], second.DependsOn.Select(dependency => dependency.OperationId));
+        Assert.Equal([first.OperationId, second.OperationId],
+            renameAgain.DependsOn.Select(dependency => dependency.OperationId).OrderBy(id => id == second.OperationId));
+    }
 }

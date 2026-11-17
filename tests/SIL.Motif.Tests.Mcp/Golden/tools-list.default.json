@@ -9412,6 +9412,126 @@
                   "intent"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-set-occurrence-approval"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-occurrence-approval.",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "The Source id, matched ignoring case."
+                      },
+                      "anchor": {
+                        "type": "string",
+                        "description": "The Occurrence, such as MAT 5:3#2."
+                      },
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "Approve",
+                          "Clear"
+                        ],
+                        "description": "Approve or Clear."
+                      },
+                      "analysis": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "The stored analysis to choose; give this or a reading with its wordform."
+                      },
+                      "wordform": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "The stored wordform a parser reading belongs to."
+                      },
+                      "reading": {
+                        "type": "object",
+                        "properties": {
+                          "morphs": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "form": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "msa": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "inflType": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "guessedString": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "The parser reading, as the morphs of a parse analysis."
+                      },
+                      "bulk": {
+                        "type": "boolean",
+                        "description": "True to leave an Occurrence alone when another analysis is approved there, or its approval is stale."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "source",
+                      "anchor",
+                      "action"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
               }
             ]
           },

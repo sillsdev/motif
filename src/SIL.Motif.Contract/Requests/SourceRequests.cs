@@ -88,3 +88,24 @@ public sealed record SourceRemoveRequest(string ProjectPath, string Source);
 /// <param name="ProjectPath">The recorded project path.</param>
 /// <param name="Source">The Source id, in the project or staged.</param>
 public sealed record SourceRestoreRequest(string ProjectPath, string Source);
+
+/// <summary>
+/// Stages the approval of one Occurrence of a Paratext Source: to Approve an Occurrence is to choose the analysis it
+/// has. Give a stored analysis, or a parser reading with its wordform to add the analysis in the same Draft.
+/// </summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id; it must be a Paratext Source in the project's Source list.</param>
+/// <param name="Anchor">The Occurrence, such as <c>MAT 5:3#2</c>.</param>
+/// <param name="Analysis">The stored analysis to choose; give this or <paramref name="Reading"/> with <paramref name="Wordform"/>.</param>
+/// <param name="Wordform">The stored wordform a parser reading belongs to.</param>
+/// <param name="Reading">The parser reading as JSON, in the shape of a parse analysis.</param>
+/// <param name="Bulk">Whether to approve the same analysis at every other Occurrence of the same wordform in the Source.</param>
+public sealed record SourceApproveRequest(
+    string ProjectPath, string Source, string Anchor, string? Analysis = null, string? Wordform = null,
+    string? Reading = null, bool Bulk = false);
+
+/// <summary>Stages clearing the approval at one Occurrence of a Source, which returns it to a guess.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id; it must be in the project's Source list.</param>
+/// <param name="Anchor">The Occurrence, such as <c>MAT 5:3#2</c>.</param>
+public sealed record SourceClearApprovalRequest(string ProjectPath, string Source, string Anchor);
