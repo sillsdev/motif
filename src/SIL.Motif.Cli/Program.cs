@@ -1058,7 +1058,9 @@ try
                         gate.State != TrialGateState.Green)
                     {
                         error.WriteLine("error: " + gate.Reason);
-                        result = result with { ExitCode = TrialGateExitCode(gate) };
+                        // The summary is the result, so it stays on stdout beside the non-zero exit code.
+                        output.Write(result.Output);
+                        return TrialGateExitCode(gate);
                     }
                 }
                 else
