@@ -31,7 +31,7 @@ public sealed partial class FakeCommandClient
     {
         GrammarGuideShowRequests.Add(request);
         return GrammarGuideShowHandler?.Invoke(request, cancellationToken) ?? Refused<GdrShowResponse>(
-            new Refusal("gdr.not-configured", FailureReason.NotFound, "No Grammar Design Record configured."));
+            new Refusal("guide.not-configured", FailureReason.NotFound, "No Grammar Guide section configured."));
     }
 
     public Task<CommandOutcome<GdrPathLink>> LinkGrammarGuidePathAsync(
@@ -39,7 +39,7 @@ public sealed partial class FakeCommandClient
     {
         GrammarGuideLinkRequests.Add(request);
         return GrammarGuideLinkHandler?.Invoke(request, cancellationToken) ?? Refused<GdrPathLink>(
-            new Refusal("gdr.not-configured", FailureReason.NotFound, "No link configured."));
+            new Refusal("guide.not-configured", FailureReason.NotFound, "No link configured."));
     }
 
     public IGdrEditStore OpenGrammarGuideEditStore(string projectPath) => GrammarGuideEditStore;

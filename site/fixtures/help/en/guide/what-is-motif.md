@@ -6,6 +6,6 @@ The interface uses Source Sans 3 and Lora. Linguistic text uses the fonts select
 
 To start, [install Motif](guide:install), [open your project](guide:open-a-project), and press **Refresh**. Choose the words to parse and run the parser when you want new measurements. Opening the window reads stored results; it does not start a parse.
 
-Use **Progress** to see available next actions, **Texts** to read the selected texts, **Words** to inspect their word rows, **Grammar Guide** to read saved Grammar Design Records, and **Proposals** to inspect saved Proposals. The optional **Diagnostics** page shows stored warnings and rule timing. See [The Motif window](guide:the-window) for the page layout and [Settings](guide:settings) for display and connection choices.
+Use **Progress** to see available next actions, **Texts** to read the selected texts, **Words** to inspect their word rows, **Grammar Guide** to read the saved Guide sections, and **Proposals** to inspect saved Proposals. The optional **Diagnostics** page shows stored warnings and rule timing. See [The Motif window](guide:the-window) for the page layout and [Settings](guide:settings) for display and connection choices.
 
 You can choose to make a file Handoff for an assistant. Review the data-sensitivity notice before sharing its files: they can contain grammar, lexicon and text data.

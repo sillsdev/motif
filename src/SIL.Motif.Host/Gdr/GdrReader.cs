@@ -222,7 +222,7 @@ public static class GdrReader
         FindList(cache, out _) is { } list ? Outline(list.PossibilitiesOS, null) : [];
 
     /// <summary>True when the project's list still has <see cref="OldListName"/> and none has <see cref="ListName"/>.</summary>
-    internal static bool UsesOldListName(LcmCache cache)
+    public static bool UsesOldListName(LcmCache cache)
     {
         FindList(cache, out var old);
         return old;

@@ -209,6 +209,7 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
         var path = ProjectWithGdrs(captureBaseline: true, SeededGdrs.SeedOldListName);
 
         Assert.NotEmpty(GdrQuery.List(new GdrListRequest(path)).Value!.Records);
+        Assert.True(GdrQuery.List(new GdrListRequest(path)).Value!.UsesOldListName);
         var check = GdrQuery.Check(new GdrCheckRequest(path)).Value!;
         var finding = Assert.Single(check.Findings, candidate => candidate.Code == GdrSyncCodes.ListOldName);
         Assert.Contains("Grammar Guide", finding.Message, StringComparison.Ordinal);
@@ -221,6 +222,7 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
         var path = ProjectWithGdrs(captureBaseline: true);
 
         Assert.NotEmpty(GdrQuery.List(new GdrListRequest(path)).Value!.Records);
+        Assert.False(GdrQuery.List(new GdrListRequest(path)).Value!.UsesOldListName);
         Assert.DoesNotContain(GdrQuery.Check(new GdrCheckRequest(path)).Value!.Findings, finding => finding.Code == GdrSyncCodes.ListOldName);
     }
 

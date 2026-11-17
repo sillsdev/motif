@@ -10,3 +10,7 @@ The Grammar Design Records list is now the Grammar Guide, and its commands are r
 - Refusal and finding codes `gdr.*` are now `guide.*` (for example `gdr.not-found` is `guide.not-found`, `gdr.no-records` is `guide.no-records`).
 - Motif reads the possibility list named "Grammar Guide". A list still named "Grammar Design Records" is read too, with a `guide.list-old-name` warning from `guide check` asking you to rename it in FieldWorks. Both names present is refused as ambiguous.
 - Record ids stay `GDR-n`, and the Motif store keeps its existing hypothesis columns; nothing is migrated.
+
+## Window
+
+- The window and its Help call the list the Grammar Guide, and its entries Guide sections, instead of Grammar Design Records. A project whose list is still named "Grammar Design Records" opens the Guide read-only with a sentence saying to rename it in FieldWorks (Lists). Both names present shows a sentence saying to remove one in FieldWorks.

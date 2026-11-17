@@ -34,6 +34,7 @@ public static class GdrQuery
                 {
                     Baseline = baseline.Token,
                     IsStale = IsStale(project, baseline),
+                    UsesOldListName = GdrReader.UsesOldListName(reader.Cache),
                 });
             }
             catch (GdrRefusalException refused)

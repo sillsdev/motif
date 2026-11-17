@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
@@ -156,12 +157,79 @@ public sealed class GrammarGuidePageTests
         {
             var fake = new FakeCommandClient();
             fake.GrammarGuideListHandler = (_, _) => Task.FromResult(CommandOutcome<GdrListResponse>.Refused(
-                new Refusal("gdr.unreadable", FailureReason.Busy, "The project is locked.")));
+                new Refusal("guide.unreadable", FailureReason.Busy, "The project is locked.")));
             var (model, _, window, context) = await OpenAsync(fake);
             try
             {
                 Assert.True(model.HasNotice);
                 Assert.Contains("The project is locked.", model.Notice);
+                Assert.Empty(model.Parts);
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void AListStillNamedGrammarDesignRecordsOpensReadOnlyWithASentenceSayingToRenameIt()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = Fake(Hierarchy);
+            fake.GrammarGuideListHandler = (_, _) => Task.FromResult(CommandOutcome<GdrListResponse>.Success(
+                new(true, Hierarchy) { UsesOldListName = true }));
+            var (model, page, window, context) = await OpenAsync(fake);
+            try
+            {
+                model.SelectedSection = model.Parts[0].Children[0];
+                PageScreenshots.Settle(window);
+
+                Assert.NotEmpty(model.Parts);
+                Assert.Equal(SectionA.Id, page.Editor.ShownId);
+                Assert.False(model.CanEdit);
+                Assert.False(page.FindControl<ToggleButton>("EditToggle")!.IsEffectivelyVisible);
+                Assert.True(page.Editor.Field!.IsReadOnly);
+                Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text == MotifAppStrings.GuideListOldName && text.IsEffectivelyVisible);
+                Assert.Contains("FieldWorks (Lists)", MotifAppStrings.GuideListOldName, StringComparison.Ordinal);
+                Assert.Contains("Grammar Design Records", MotifAppStrings.GuideListOldName, StringComparison.Ordinal);
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void AListNamedGrammarGuideShowsNoRenameSentenceAndCanBeEdited()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (model, page, window, context) = await OpenAsync(Fake(Hierarchy));
+            try
+            {
+                model.SelectedSection = model.Parts[0].Children[0];
+                PageScreenshots.Settle(window);
+
+                Assert.True(model.CanEdit);
+                Assert.False(model.HasListNotice);
+                Assert.True(page.FindControl<ToggleButton>("EditToggle")!.IsEffectivelyVisible);
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void TwoListsThatCouldBeTheGuideAreRefusedWithASentenceNamingBothNames()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.GrammarGuideListHandler = (_, _) => Task.FromResult(CommandOutcome<GdrListResponse>.Refused(
+                new Refusal("guide.ambiguous", FailureReason.Refused, "2 possibility lists are named 'Grammar Guide' or 'Grammar Design Records'.")));
+            var (model, _, window, context) = await OpenAsync(fake);
+            try
+            {
+                Assert.Equal(MotifAppStrings.GuideListAmbiguous, model.Notice);
+                Assert.Contains("Grammar Guide", model.Notice, StringComparison.Ordinal);
+                Assert.Contains("Grammar Design Records", model.Notice, StringComparison.Ordinal);
                 Assert.Empty(model.Parts);
             }
             finally { window.Close(); await context.StopProjectWorkAsync(); }

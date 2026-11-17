@@ -352,6 +352,8 @@ public static class AutomationIds
     public const string GuideHeadings = "motif-guide-headings";
     public const string GuideEdit = "motif-guide-edit";
     public const string GuideNotice = "motif-guide-notice";
+    // round2-guide
+    public const string GuideListNotice = "motif-guide-list-notice";
     // fix1-progress
     public const string ProgressNothingParsed = "motif-progress-nothing-parsed";
     public const string ProgressChooseTexts = "motif-progress-choose-texts";

@@ -53,6 +53,7 @@ public sealed partial class GrammarGuidePage : UserControl
         model.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(GrammarGuidePageModel.ShownRecord) && model.ShownRecord is { } shown) _editor.Show(shown);
+            if (e.PropertyName == nameof(GrammarGuidePageModel.CanEdit) && !model.CanEdit) toggle.IsChecked = false;
         };
         model.RecordsReloaded += (_, _) =>
         {

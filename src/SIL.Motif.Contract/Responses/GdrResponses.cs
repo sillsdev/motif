@@ -102,6 +102,8 @@ public sealed record GdrListResponse(bool HasBaseline, IReadOnlyList<GdrSummary>
     public BaselineToken? Baseline { get; init; }
     /// <summary>Whether the live file has been saved since this Baseline; its records remain readable.</summary>
     public bool IsStale { get; init; }
+    /// <summary>Whether the list is still named "Grammar Design Records"; it is read, but should be renamed "Grammar Guide".</summary>
+    public bool UsesOldListName { get; init; }
 }
 
 /// <summary>One Grammar Guide section with its Discussion as paragraphs of runs, and what they need to be drawn.</summary>

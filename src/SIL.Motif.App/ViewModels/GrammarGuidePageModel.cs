@@ -96,6 +96,22 @@ public sealed partial class GrammarGuidePageModel : PageModel
     /// <summary>Whether <see cref="Notice"/> says anything.</summary>
     public bool HasNotice => Notice.Length > 0;
 
+    /// <summary>Whether the list still has its old name, so the Guide is read-only.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEdit))]
+    [NotifyPropertyChangedFor(nameof(ListNotice))]
+    [NotifyPropertyChangedFor(nameof(HasListNotice))]
+    private bool _usesOldListName;
+
+    /// <summary>Whether a section's text may be edited here; false while the list has its old name.</summary>
+    public bool CanEdit => !UsesOldListName;
+
+    /// <summary>The sentence saying the list needs renaming; empty when it does not.</summary>
+    public string ListNotice => UsesOldListName ? MotifAppStrings.GuideListOldName : "";
+
+    /// <summary>Whether <see cref="ListNotice"/> says anything.</summary>
+    public bool HasListNotice => UsesOldListName;
+
     /// <summary>What the outline says when it is empty; empty when there are records.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasEmptyText))]
@@ -151,7 +167,7 @@ public sealed partial class GrammarGuidePageModel : PageModel
     public async Task<CommandOutcome<GdrPathLink>> LinkToPathAsync(string path, BaselineToken? baseline)
     {
         if (Context.ProjectPath is not { } project)
-            return CommandOutcome<GdrPathLink>.Refused(new Refusal("gdr.no-project", FailureReason.NotFound, MotifAppStrings.GuideNoProject));
+            return CommandOutcome<GdrPathLink>.Refused(new Refusal("guide.no-project", FailureReason.NotFound, MotifAppStrings.GuideNoProject));
         return await Context.Commands.LinkGrammarGuidePathAsync(new GdrLinkToPathRequest(project, path, baseline), CancellationToken.None)
             .ConfigureAwait(true);
     }
@@ -204,6 +220,7 @@ public sealed partial class GrammarGuidePageModel : PageModel
         Records.Clear();
         ShownRecord = null;
         Notice = "";
+        UsesOldListName = false;
         EmptyText = MotifAppStrings.GuideNoProject;
         ProjectWasCleared?.Invoke(this, EventArgs.Empty);
     }
@@ -256,13 +273,16 @@ public sealed partial class GrammarGuidePageModel : PageModel
                 if (!result.Succeeded || result.Value is not { } value)
                 {
                     ShownRecord = null;
-                    Notice = result.Refusal is { } refusal
+                    UsesOldListName = false;
+                    Notice = result.Refusal is { Code: RefusalCodes.GdrAmbiguous } ? MotifAppStrings.GuideListAmbiguous
+                        : result.Refusal is { } refusal
                         ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.GuideReadFailedFormat, refusal.Message)
                         : "";
                     EmptyText = MotifAppStrings.GuideNoRecords;
                     return;
                 }
                 Notice = "";
+                UsesOldListName = value.UsesOldListName;
                 foreach (var record in value.Records) Records.Add(record);
                 foreach (var part in GrammarGuideSection.Outline(value.Records)) Parts.Add(part);
                 EmptyText = !value.HasBaseline ? MotifAppStrings.GuideNoBaseline :

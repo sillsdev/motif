@@ -1,6 +1,6 @@
 # Grammar Guide
 
-**Grammar Guide** lists the saved Grammar Design Records for the open project as parts and sections, the structured explanation of your grammar. Read it here beside your texts, and edit its writing here when you want to. The grammar itself, such as rules and categories, is read and edited only in FieldWorks.
+**Grammar Guide** lists the saved Guide sections for the open project as parts and sections, the structured explanation of your grammar. Read it here beside your texts, and edit its writing here when you want to. The grammar itself, such as rules and categories, is read and edited only in FieldWorks.
 
 ## Parts and sections
 

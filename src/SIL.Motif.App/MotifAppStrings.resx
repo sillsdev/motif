@@ -7559,7 +7559,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.GuideMarkdownUndone" xml:space="preserve"><value>Undid Edit as Markdown.</value></data>
   <data name="MotifApp.GuideMarkdownReloadOrCopy" xml:space="preserve"><value> Reload or copy your Markdown.</value></data>
   <data name="MotifApp.GuideNoProject" xml:space="preserve"><value>Open a project to read its Grammar Guide.</value></data>
-  <data name="MotifApp.GuideNoRecords" xml:space="preserve"><value>This project has no Grammar Design Records yet. Add them in FieldWorks.</value></data>
+  <data name="MotifApp.GuideNoRecords" xml:space="preserve"><value>This project has no Grammar Guide sections yet. Add them in FieldWorks.</value></data>
   <data name="MotifApp.GuideNoBaseline" xml:space="preserve"><value>The Grammar Guide appears after Motif has read the project once.</value></data>
   <data name="MotifApp.GuideReadFailedFormat" xml:space="preserve"><value>The Grammar Guide could not be read. {0}</value></data>
   <data name="MotifApp.GuideOpenFailed" xml:space="preserve"><value>FieldWorks could not be opened.</value></data>
@@ -7733,4 +7733,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalLostApprovedPlaceFormat" xml:space="preserve"><value>{0} in {1}.</value><comment>A lost word's places; {0} is the count of places, such as "3 occurrences", and {1} is the title of the compared Text.</comment></data>
   <data name="MotifApp.ProposalsFilterChipFormat" xml:space="preserve"><value>{0} ({1})</value><comment>A Proposals list filter: its name and how many Proposals it holds, such as "Deferred (2)".</comment></data>
   <data name="MotifApp.ProposalsDeferredEmpty" xml:space="preserve"><value>Nothing is deferred.</value><comment>Shown when the Deferred filter is chosen and no Proposal is deferred.</comment></data>
+  <!-- round2-guide -->
+  <data name="MotifApp.GuideListOldName" xml:space="preserve"><value>This project's list is still named Grammar Design Records, so the Grammar Guide is read-only until you rename the list to Grammar Guide in FieldWorks (Lists).</value><comment>Notice at the top of the Grammar Guide page when the project's possibility list still has its old name.</comment></data>
+  <data name="MotifApp.GuideListAmbiguous" xml:space="preserve"><value>This project has more than one list named Grammar Guide or Grammar Design Records, so Motif cannot tell which one to read. Rename or remove all but one in FieldWorks.</value><comment>Shown in place of the Grammar Guide when the project has two lists that could be the Guide.</comment></data>
 </root>

@@ -262,7 +262,8 @@
         "hasBaseline",
         "records",
         "schemaVersion",
-        "isStale"
+        "isStale",
+        "usesOldListName"
       ],
       "properties": {
         "hasBaseline": {
@@ -281,6 +282,9 @@
           "$ref": "#/$defs/BaselineToken"
         },
         "isStale": {
+          "type": "boolean"
+        },
+        "usesOldListName": {
           "type": "boolean"
         }
       }

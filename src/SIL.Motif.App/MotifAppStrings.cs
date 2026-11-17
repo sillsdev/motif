@@ -4088,6 +4088,9 @@ public static class MotifAppStrings
     public static string GuideMarkdownUndone => Text("MotifApp.GuideMarkdownUndone");
     public static string GuideMarkdownReloadOrCopy => Text("MotifApp.GuideMarkdownReloadOrCopy");
     public static string GuideNoProject => Text("MotifApp.GuideNoProject");
+    // round2-guide
+    public static string GuideListOldName => Text("MotifApp.GuideListOldName");
+    public static string GuideListAmbiguous => Text("MotifApp.GuideListAmbiguous");
     public static string GuideNoRecords => Text("MotifApp.GuideNoRecords");
     public static string GuideNoBaseline => Text("MotifApp.GuideNoBaseline");
     public static string GuideReadFailedFormat => Text("MotifApp.GuideReadFailedFormat");

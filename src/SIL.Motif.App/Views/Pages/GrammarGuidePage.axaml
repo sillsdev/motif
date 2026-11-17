@@ -10,10 +10,16 @@
   </UserControl.Styles>
   <Grid Margin="{DynamicResource Intent.Inset.Page}" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
     <views:CopyableTextBlock Classes="displayTitle" Text="{x:Static app:MotifAppStrings.GrammarGuide}" />
-    <Border Grid.Row="1" Classes="guideNotice" IsVisible="{Binding HasNotice}"
-            AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideNotice}">
-      <views:CopyableTextBlock Text="{Binding Notice}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-    </Border>
+    <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Related}">
+      <Border Classes="guideNotice" IsVisible="{Binding HasNotice}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideNotice}">
+        <views:CopyableTextBlock Text="{Binding Notice}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+      </Border>
+      <Border Classes="guideNotice" IsVisible="{Binding HasListNotice}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideListNotice}">
+        <views:CopyableTextBlock Text="{Binding ListNotice}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+      </Border>
+    </StackPanel>
     <views:CopyableTextBlock Grid.Row="2" Classes="muted" Text="{Binding EmptyText}" TextWrapping="Wrap" IsVisible="{Binding HasEmptyText}" />
     <Grid Grid.Row="2" x:Name="GuideBody" Classes="guidePage" RowDefinitions="Auto,*" ColumnDefinitions="Auto,*"
           RowSpacing="{DynamicResource Intent.Space.Group}" ColumnSpacing="{DynamicResource Intent.Space.Section}"
@@ -42,7 +48,7 @@
         <StackPanel Spacing="{DynamicResource Intent.Space.Section}">
           <Grid ColumnDefinitions="*,Auto">
             <views:CopyableTextBlock Classes="guideHeading" Text="{Binding SelectedTitle}" TextWrapping="Wrap" />
-            <ToggleButton x:Name="EditToggle" Grid.Column="1" VerticalAlignment="Top"
+            <ToggleButton x:Name="EditToggle" Grid.Column="1" VerticalAlignment="Top" IsVisible="{Binding CanEdit}"
                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideEdit}" />
           </Grid>
           <views:CopyableTextBlock Classes="guideMeta" Text="{x:Static app:MotifAppStrings.GuideStaleNotice}" TextWrapping="Wrap"
