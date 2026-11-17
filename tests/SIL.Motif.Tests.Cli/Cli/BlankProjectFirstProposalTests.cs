@@ -138,6 +138,9 @@ public sealed class BlankProjectFirstProposalTests(ITestOutputHelper output)
         var start = CliProcess.Start(runner, arguments);
         start.Environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath;
         start.Environment[SIL.Motif.Commands.Catalog.CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
+        // The same switch makes Apply need --message, so only project creation gets it.
+        if (arguments is ["project", "create", ..])
+            start.Environment[SIL.Motif.Commands.Catalog.CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1";
         return CliProcess.RunAsync(start);
     }
 
