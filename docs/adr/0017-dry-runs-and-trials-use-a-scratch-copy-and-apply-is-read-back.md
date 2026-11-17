@@ -57,7 +57,8 @@ to Readiness policy, but cannot force a stale field, changed target or unenumera
 to a manually authored inverse Proposal.
 
 Apply depends on Readiness, not an approved-Decision record or one-use authorization grant. MCP never Applies;
-ExposurePolicy and the HumanOnly catalog command enforce the human boundary. Completed parser findings remain
+ExposurePolicy and the HumanOnly catalog command enforce the human boundary. An autonomous Apply additionally needs a green declared gate
+([ADR 0021](0021-a-trial-review-report-has-three-levels-and-no-verdict.md) D16). Completed parser findings remain
 advisory; incomplete/pending/cancelled/tool-failed evidence needs the explicit override where policy permits.
 
 ### D5. Apply is synchronous, exclusive and one-way

@@ -24,6 +24,13 @@ Apply, discard and store deletion remain unavailable to MCP. “Finalize” is u
 submit or commit. Individual older drafting/removal commands have AdvancedAi exposure; the default profile
 consolidates them under the tools below rather than exposing a primitive route.
 
+`discard-draft` and `discard-empty-drafts` hard-delete Drafts that were never finalized. They stay HumanOnly with no
+MCP tool, and they refuse the pending-changes Draft, which belongs to the person's window. Today they sit on the
+Developer surface, so an autonomous grammar loop that probes with throwaway Drafts needs the developer switch. They
+move to the Autonomous audience, and the Autonomous playbook gains a probe-loop note. That promotion rides with the
+Autonomous audience, which replaces the Developer surface and its environment variable with no alias, and whose
+commands, like Developer ones before, are never tools.
+
 ### D2. The default profile has seven always-loaded tools
 
 | Tool | Effect | Role |
@@ -90,7 +97,7 @@ A Composer's linguistic-intent name is its CLI verb and compose-step `verb`. Sub
 grammar Subjects are Phenomena (sound inventory, natural classes, rules/environments, conditioned
 allomorphy, templates/slots, agreement/features, noun class/gender, inflection classes, stem alternation,
 infixation and reduplication); other Subjects cover lexicography, description, texts/analyses and Parsimony
-dispositions. A new Subject arrives with its first Composer and Help page explaining order and pitfalls.
+rulings. A new Subject arrives with its first Composer and Help page explaining order and pitfalls.
 
 Each Composer supplies translatable example goals searched with its Title and Description. Missing Subject,
 Help or example goals fails the build. A Composer is never language-specific. Agents never stage Layer 0

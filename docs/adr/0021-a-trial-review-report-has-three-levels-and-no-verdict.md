@@ -214,13 +214,36 @@ Freeze `[gain-gate]` mode and `min-attested-per-object` from `<project>.motif.to
 (default) and hold; default threshold is 1.5 attested types per added object. Below it is under-threshold;
 hold also sets the report's hold field. Added phonological rules or affix processes are exempt as rule-added.
 Incomplete cases, no objects or off never produce under-threshold. This is report-only: Apply and Readiness
-do not read the hold. Older reports lacking `gains` remain readable.
+do not read the hold; an autonomous Apply reads it only through a declared gate (D16). Older reports lacking
+`gains` remain readable.
 
 ### D15. Review supplies no Apply authority
 
 Reading a report grants no permission, approval token or Trial/Apply parity check. MCP never Applies.
 Human Apply remains separate; autonomous CLI policy is separate. Motif's tests establish its own behavior;
 the review describes grammar evidence. Parsimony's narrowly opted-in autonomous policy is in ADR 0022.
+
+### D16. A declared gate gives autonomous Apply a verdict
+
+The report gives people no verdict (D15). A project may also declare a gate in `<project>.motif.toml`: the named
+word sets that must show no attested word lost and be fully measured, the gain-gate mode of D14, and the
+`[parsimony] block-on` list of ADR 0022. A Trial then carries one gate verdict, shared by the CLI and MCP:
+
+- **green:** nothing declared was lost and everything declared was measured.
+- **loss:** a new word failure or any lost confirmed reading, unless the word is listed in the file passed to
+  `--expect-loss` for intended retirements. A `--review-set none` run does not suppress this check.
+- **unmeasured:** a word that had an analysis in the Baseline was stopped by a budget or timeout. The word is named.
+  A stopped word with no Baseline analysis does not affect the gate. A loss outranks unmeasured, because a known loss
+  is definite and actionable.
+
+The command exits 0 on green, 2 on unmeasured and 6 on loss. A new second reading on an attested word is a hold: it
+keeps the gate from being green.
+
+`apply --autonomous` refuses unless the project declares a gate and the newest Trial's gate, for the current content
+and project state, is green. `--force` stays refused in autonomous mode. This amends D15 for autonomous mode only;
+a person's Apply, the window and the MCP keep the Readiness checks of
+[ADR 0017](0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md) D4, MCP never Applies, and
+advisory reports stay advisory. Blocking measures remain opt-in as in ADR 0022 D6.
 
 ## Consequences
 
