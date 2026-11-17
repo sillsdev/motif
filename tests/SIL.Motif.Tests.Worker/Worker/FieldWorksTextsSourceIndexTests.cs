@@ -203,6 +203,79 @@ public sealed class FieldWorksTextsSourceIndexTests(PristineProjectFixture prist
         Assert.Equal([$"read {order[0]}", $"staged {order[0]}", $"read {order[1]}", $"staged {order[1]}"], events);
     }
 
+    [Fact]
+    public void ADeletedAndAnAddedTextEachLeaveTheIncrementalBuildEqualToAFullRebuild()
+    {
+        using var cache = pristine.NewScratch();
+        var first = SeededProject.SeedText(cache, pristine.Seed);
+        var second = SeededProject.SeedText(cache, pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        Assert.True(Build(cache));
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(second.TextId).Delete());
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        Assert.Equal([first.TextId.ToString("D")], BuildCounting(cache));
+        var afterDelete = Dump(_database!);
+        Assert.Equal([first.TextId.ToString("D")], afterDelete.Passages.Select(p => p.PassageId));
+        Assert.Equal(afterDelete, FullRebuildDump(cache));
+
+        var third = SeededProject.SeedText(cache, pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        Assert.Equal([first.TextId.ToString("D")], BuildCounting(cache));
+        var afterAdd = Dump(_database!);
+        Assert.Contains(afterAdd.Passages, p => p.PassageId == third.TextId.ToString("D"));
+        Assert.Equal(afterAdd, FullRebuildDump(cache));
+    }
+
+    [Fact]
+    public void AWritingSystemChangeCopiesNothingAndEqualsAFullRebuild()
+    {
+        using var cache = pristine.NewScratch();
+        SeededProject.SeedText(cache, pristine.Seed);
+        SeededProject.SeedText(cache, pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        Assert.True(Build(cache));
+        var reused = new List<string>();
+        FieldWorksTextsIndex.TextReused.Value = reused.Add;
+        Assert.True(FieldWorksTextsIndex.Build(_database!, cache, "qaa-x-other",
+            ProgressSourceIdentity.Capture(_database!.Project.FullFwDataPath)!));
+        Assert.Empty(reused);
+        var incremental = Dump(_database!);
+        using var fresh = MotifDatabase.OpenOwned(Path.Combine(_root, "ws-full.motif.db"), _database.Project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        Assert.True(FieldWorksTextsIndex.Build(fresh, cache, "qaa-x-other",
+            ProgressSourceIdentity.Capture(_database.Project.FullFwDataPath)!));
+        Assert.Equal(incremental, Dump(fresh));
+    }
+
+    [Fact]
+    public void ASegmentationChangeRebuildsOnlyThatTextAndEqualsAFullRebuild()
+    {
+        using var cache = pristine.NewScratch();
+        var first = SeededProject.SeedText(cache, pristine.Seed);
+        var second = SeededProject.SeedText(cache, pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        Assert.True(Build(cache));
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var segments = cache.ServiceLocator.GetInstance<ISegmentRepository>();
+            var from = segments.GetObject(second.SecondSegmentId);
+            var into = segments.GetObject(second.FirstSegmentId);
+            var moved = from.AnalysesRS.ToArray();
+            from.AnalysesRS.Clear();
+            foreach (var item in moved) into.AnalysesRS.Add(item);
+        });
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        Assert.Equal([first.TextId.ToString("D")], BuildCounting(cache));
+        Assert.Equal(Dump(_database!), FullRebuildDump(cache));
+    }
+
     private List<string> BuildCounting(LcmCache cache)
     {
         var reused = new List<string>();

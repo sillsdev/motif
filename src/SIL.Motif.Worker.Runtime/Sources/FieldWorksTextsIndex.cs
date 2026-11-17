@@ -150,7 +150,7 @@ internal static class FieldWorksTextsIndex
         public string Fingerprint(List<Line> lines)
         {
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            Append(hash, "fw-texts-fingerprint-1");
+            Append(hash, "fw-texts-fingerprint-1/" + TokenizerVersion + "/" + AnchorVersion);
             Append(hash, writingSystem);
             foreach (var line in lines)
             {
