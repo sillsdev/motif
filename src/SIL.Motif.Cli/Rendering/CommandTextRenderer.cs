@@ -132,6 +132,7 @@ public static class CommandTextRenderer
             SourceStageResponse r => SourceTextRenderer.RenderStaged(r),
             WordContextResponse r => RenderWordContext(r),
             ProposalStandings r => RenderProposalStandings(r),
+            ProposalStatusChangedResponse r => ProposalCommandRenderer.RenderStatusChanged(r),
             ProposalTextChangedResponse r => ProposalCommandRenderer.RenderTextChanged(r),
             ProposalCommentChangedResponse r => ProposalCommandRenderer.RenderCommentChanged(r),
             ProposalPictureChangedResponse r => ProposalCommandRenderer.RenderPictureChanged(r),

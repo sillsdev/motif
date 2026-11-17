@@ -70,7 +70,7 @@ public static class ProposalCommandRenderer
             DuplicatedResponse r => RenderDuplicated(r),
             OperationsRemovedResponse r => RenderOperationsRemoved(r),
             ProposalSplitResponse r => RenderProposalSplit(r),
-            ProposalStatusChangedResponse r => $"Proposal {r.ProposalId} is now '{r.Status}'.{Environment.NewLine}",
+            ProposalStatusChangedResponse r => RenderStatusChanged(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
@@ -254,6 +254,9 @@ public static class ProposalCommandRenderer
         sb.AppendLine($"Draft now has {r.OperationCount} operation(s).");
         return sb.ToString();
     }
+
+    internal static string RenderStatusChanged(ProposalStatusChangedResponse response) =>
+        $"Proposal {response.ProposalId} is now '{response.Status}'.{Environment.NewLine}";
 
     internal static string RenderTextChanged(ProposalTextChangedResponse response)
     {
