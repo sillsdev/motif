@@ -1,8 +1,8 @@
 {
-  "gdr show": {
-    "title": "Read a Grammar Design Record",
-    "description": "Reads one Grammar Design Record from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs; available in Advanced AI mode.",
-    "source": "Hand-written from the GDR read command and shared Markdown view."
+  "guide show": {
+    "title": "Read a Grammar Guide section",
+    "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs; available in Advanced AI mode.",
+    "source": "Hand-written from the Grammar Guide read command and shared Markdown view."
   },
   "progress": {
     "title": "Read Progress",
@@ -2485,12 +2485,12 @@
   },
   "hypothesis decide": {
     "title": "Decide a hypothesis",
-    "description": "Marks a hypothesis passed, failed or superseded with its decision. A pass needs a PASS test, a GDR link and no passed neighbour with another mechanism.",
+    "description": "Marks a hypothesis passed, failed or superseded with its decision. A pass needs a PASS test, a Guide link and no passed neighbour with another mechanism.",
     "source": "Hand-written from command behavior."
   },
   "hypothesis link": {
-    "title": "Link a hypothesis to Proposals and a GDR",
-    "description": "Links a hypothesis to the Proposals that carry its rule change and to the GDR section it changed, or states why no GDR changed.",
+    "title": "Link a hypothesis to Proposals and a Guide section",
+    "description": "Links a hypothesis to the Proposals that carry its rule change and to the Guide section it changed, or states why no Guide section changed.",
     "source": "Hand-written from command behavior."
   },
   "hypothesis grade": {
@@ -2515,7 +2515,7 @@
   },
   "list hypotheses": {
     "title": "List the hypotheses",
-    "description": "Lists hypotheses in id order with their tests, Proposals, GDR link and graded numbers, or shows one by id.",
+    "description": "Lists hypotheses in id order with their tests, Proposals, Guide link and graded numbers, or shows one by id.",
     "source": "Hand-written from command behavior."
   },
   "query forms": {

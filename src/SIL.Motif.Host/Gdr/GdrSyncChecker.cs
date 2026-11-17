@@ -22,11 +22,11 @@ public interface IGdrExampleEvidence
     IReadOnlyDictionary<string, GdrExampleReading> Read(IReadOnlyCollection<string> words);
 }
 
-/// <summary>A passed hypothesis's link to a GDR section, from the ledger (ADR 0011).</summary>
+/// <summary>A passed hypothesis's link to a Guide section, from the ledger (ADR 0011).</summary>
 public sealed record GdrLedgerLink(string HypothesisId, string GdrId, string? Section);
 
 /// <summary>
-/// The GDR sync check (ADR 0005). One pass over the grammar's rules and affix processes, one over the records' paragraphs
+/// The Guide check check (ADR 0005). One pass over the grammar's rules and affix processes, one over the records' paragraphs
 /// and runs, one batched read of example words: O(rules + sections + examples). It never opens a unit of work and never parses.
 /// </summary>
 public static class GdrSyncChecker
@@ -72,7 +72,7 @@ public static class GdrSyncChecker
                 missing.Take(SubjectCap).Select(guid => guid.ToString("D")).ToArray()));
         }
 
-        // The ledger's own links: a passed hypothesis names a GDR and section that must still exist.
+        // The ledger's own links: a passed hypothesis names a Guide section and section that must still exist.
         foreach (var link in ledger)
         {
             var record = records.FirstOrDefault(candidate => string.Equals(candidate.Abbreviation, link.GdrId, StringComparison.OrdinalIgnoreCase));
@@ -95,13 +95,13 @@ public static class GdrSyncChecker
             if (uncovered.Length == 0) continue;
             anyUncovered = true;
             findings.Add(new GdrSyncFinding(GdrSyncCodes.ObjectUncovered,
-                $"{uncovered.Length} of {all.Length} {Plural(kind.Key)} have no GDR section. Add a section that links them, " +
+                $"{uncovered.Length} of {all.Length} {Plural(kind.Key)} have no Guide section. Add a section that links them, " +
                 "or link them from the section that already describes them.",
                 null, null, kind.Key, uncovered.Length, uncovered.Take(SubjectCap).Select(subject => subject.Name).ToArray()));
         }
         if (anyUncovered && records.Count == 0)
             findings.Insert(0, new GdrSyncFinding(GdrSyncCodes.NoRecords,
-                "The project has no Grammar Design Records list, so no rule has a section. Create the first records (ADR 0005).",
+                "The project has no Grammar Guide list, so no rule has a section. Create the first records (ADR 0005).",
                 null, null, null, 0, []));
 
         // (c) examples against the stored rows.

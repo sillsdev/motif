@@ -1,6 +1,6 @@
 # List the hypotheses
 
-`list hypotheses` lists hypotheses in id order with their tests, Proposals, GDR link and graded numbers, or shows one by id.
+`list hypotheses` lists hypotheses in id order with their tests, Proposals, Guide link and graded numbers, or shows one by id.
 
 ## Example
 

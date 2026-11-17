@@ -12,7 +12,7 @@ using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Queries;
 
-/// <summary>Reads Grammar Design Records from the current Baseline, never from the live project.</summary>
+/// <summary>Reads Grammar Guide from the current Baseline, never from the live project.</summary>
 public static class GdrQuery
 {
     /// <summary>Lists the records; with no Baseline the list is empty and says so.</summary>
@@ -44,7 +44,7 @@ public static class GdrQuery
     }
 
     /// <summary>
-    /// Checks the Grammar Design Records against the grammar in the current Baseline (ADR 0005): rules and affix processes
+    /// Checks the Grammar Guide against the grammar in the current Baseline (ADR 0005): rules and affix processes
     /// without a section, links to deleted objects, and examples that no longer parse as their section says, read from the
     /// Trial and Assessment rows already stored. It parses nothing. The warning count is what the loop's completion test reads.
     /// </summary>
@@ -154,13 +154,13 @@ public static class GdrQuery
         RefusalCodes.GdrEmptyId, FailureReason.InvalidArgument, "Name a Grammar Design Record, for example GDR-1."));
 
     private static CommandOutcome<T> NotFound<T>(string id) where T : class => CommandOutcome<T>.Refused(new Refusal(
-        RefusalCodes.GdrNotFound, FailureReason.NotFound, $"No Grammar Design Record is named '{id}'."));
+        RefusalCodes.GdrNotFound, FailureReason.NotFound, $"No Grammar Guide section is named '{id}'."));
 
     private static CommandOutcome<T> NoBaseline<T>() where T : class => CommandOutcome<T>.Refused(new Refusal(
         RefusalCodes.GdrNoBaseline, FailureReason.NotFound,
-        "This project has no Baseline yet. Capture one to read its Grammar Design Records."));
+        "This project has no Baseline yet. Capture one to read its Grammar Guide."));
 
     private static CommandOutcome<T> BaselineUnavailable<T>() where T : class => CommandOutcome<T>.Refused(new Refusal(
         RefusalCodes.GdrBaselineUnavailable, FailureReason.StoreInconsistent,
-        "The exact Baseline file is unavailable. Capture a new Baseline to read its Grammar Design Records."));
+        "The exact Baseline file is unavailable. Capture a new Baseline to read its Grammar Guide."));
 }

@@ -44,7 +44,7 @@ public static partial class ProposalCommands
                             var inputProperties = authored.EnumerateObject()
                                 .ToDictionary(property => property.Name, property => property.Value.Clone());
                             inputProperties["pendingName"] = JsonSerializer.SerializeToElement(
-                                name is { Length: > 0 } ? $"GDR '{name}'" : $"text '{intent.Target.Value}'");
+                                name is { Length: > 0 } ? $"Guide section '{name}'" : $"text '{intent.Target.Value}'");
                             var input = JsonSerializer.SerializeToElement(inputProperties);
                             return (input, SetTextParagraphsComposer.Build(cache, intent));
                         },

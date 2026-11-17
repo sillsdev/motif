@@ -58,9 +58,9 @@ public sealed record HypothesisGradeItem(
 /// <param name="Status"><c>proposed</c>, <c>passed</c>, <c>failed</c> or <c>superseded</c>.</param>
 /// <param name="Decision">The decision text; null while proposed.</param>
 /// <param name="SupersededBy">The hypothesis that replaces this one, or null.</param>
-/// <param name="GdrId">The Grammar Design Record this hypothesis changed, as <c>GDR-n</c>, or null.</param>
-/// <param name="GdrSection">The section of that GDR.</param>
-/// <param name="GdrNone">Why no GDR changed, when none did.</param>
+/// <param name="GuideId">The Grammar Guide section this hypothesis changed, as <c>GDR-n</c>, or null.</param>
+/// <param name="GuideSection">The section of that Guide section.</param>
+/// <param name="GuideNone">Why no Guide section changed, when none did.</param>
 /// <param name="Proposals">The Proposals that carry the hypothesis's rule change, oldest link first.</param>
 /// <param name="Tests">Every recorded test, oldest first.</param>
 /// <param name="Grade">The four numbers, all null before grading.</param>
@@ -70,7 +70,7 @@ public sealed record HypothesisItem(
     string HypothesisId, string? Pattern, string Statement, string Mechanism, string Change, string Environment,
     string HostClass, string Slot, string? Neighbour, IReadOnlyList<string> Predictions, string? Falsifier,
     string? Exceptions, int? ObjectsAdded, int? AttestedTypesGained, IReadOnlyList<HypothesisQuestionItem> Questions,
-    string Status, string? Decision, string? SupersededBy, string? GdrId, string? GdrSection, string? GdrNone,
+    string Status, string? Decision, string? SupersededBy, string? GuideId, string? GuideSection, string? GuideNone,
     IReadOnlyList<string> Proposals, IReadOnlyList<HypothesisTestItem> Tests, HypothesisGradeItem Grade,
     string CreatedUtc, string UpdatedUtc);
 

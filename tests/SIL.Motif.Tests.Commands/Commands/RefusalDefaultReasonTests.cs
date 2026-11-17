@@ -54,7 +54,7 @@ public sealed class RefusalDefaultReasonTests
         ["agent.version-conflict"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["evidence.missing"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["evidence.wrong-target"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
-        ["gdr.record-moved"] = "reason not determinable statically: GdrMarkdownRefusal carries Refused for each code",
+        ["guide.record-moved"] = "reason not determinable statically: GdrMarkdownRefusal carries Refused for each code",
         ["command.advanced-ai-mode-required"] = "reason not determinable statically: chosen by the caller of the availability facts, not where the code is spelled",
         ["command.developer-commands-required"] = "reason not determinable statically: chosen by the caller of the availability facts, not where the code is spelled",
         ["machine-store.inconsistent"] = "reason not determinable statically: a window problem report, which carries no FailureReason",

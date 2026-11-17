@@ -80,7 +80,7 @@ public static int Main(string[] args)
     }
 
     var formatIndex = Array.LastIndexOf(args, "--format");
-    if (args.Length > 0 && args[0] == "gdr" && formatIndex >= 0 && formatIndex + 1 < args.Length &&
+    if (args.Length > 0 && args[0] == "guide" && formatIndex >= 0 && formatIndex + 1 < args.Length &&
         args[formatIndex + 1] == "fw-md")
         Console.OutputEncoding = new UTF8Encoding(false);
 
@@ -1816,14 +1816,14 @@ try
             result = RenderCommand(WritingSystemsQuery.Query(new WritingSystemsRequest(writingSystemsProject)));
             break;
 
-        case "gdr":
+        case "guide":
             if (!flags.TryGetValue("project", out var gdrProject) || positionals.Count is < 1 or > 2 ||
                 (positionals[0] is "list" or "check" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2))
-                return Usage(UsageLineFor("gdr list") + " OR " + UsageLineFor("gdr show") + " OR " + UsageLineFor("gdr check"), asJson);
+                return Usage(UsageLineFor("guide list") + " OR " + UsageLineFor("guide show") + " OR " + UsageLineFor("guide check"), asJson);
             if (flags.TryGetValue("format", out var gdrFormat))
             {
                 if (positionals[0] != "show" || gdrFormat != "fw-md" || asJson)
-                    return Usage("Use --format fw-md with gdr show, without --json.", asJson);
+                    return Usage("Use --format fw-md with guide show, without --json.", asJson);
                 var shown = GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1]));
                 result = shown.Succeeded
                     ? new CommandResult(0, new GdrMarkdownView(shown.Value!, Path.GetFileNameWithoutExtension(gdrProject)).Text)
@@ -2290,7 +2290,7 @@ try
                 case "link":
                     result = RenderCommand(HypothesisCommands.Link(new LinkHypothesisRequest(hypothesisProject,
                         CliProductVersion(), hypothesisId!, Split(flags.GetValueOrDefault("proposal")),
-                        flags.GetValueOrDefault("gdr"), flags.GetValueOrDefault("gdr-section"), flags.GetValueOrDefault("gdr-none"))));
+                        flags.GetValueOrDefault("guide"), flags.GetValueOrDefault("guide-section"), flags.GetValueOrDefault("guide-none"))));
                     break;
                 case "grade":
                     int? Count(string name) => int.TryParse(flags.GetValueOrDefault(name), NumberStyles.None, CultureInfo.InvariantCulture, out var n) ? n : null;

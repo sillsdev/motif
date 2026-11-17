@@ -76,7 +76,7 @@ public sealed class RuleAttemptLedgerTests : IDisposable
         var shapes = Variants(5);
         var id = Add(shapes[0].Correspondence.Key);
         Test(id, "PASS");
-        Assert.True(HypothesisCommands.Link(new LinkHypothesisRequest(_project, "1.0", id, GdrId: "gdr-8", GdrSection: "Examples")).Succeeded);
+        Assert.True(HypothesisCommands.Link(new LinkHypothesisRequest(_project, "1.0", id, GuideId: "gdr-8", GuideSection: "Examples")).Succeeded);
         Assert.True(HypothesisCommands.Decide(new DecideHypothesisRequest(_project, "1.0", id, "passed", "Rule stands.", null, null)).Succeeded);
 
         Assert.False(Summary(shapes).Hold);

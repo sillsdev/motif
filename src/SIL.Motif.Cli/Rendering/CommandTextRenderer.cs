@@ -958,8 +958,8 @@ public static class CommandTextRenderer
 
     private static string RenderGdrList(GdrListResponse response)
     {
-        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to read Grammar Design Records." + Environment.NewLine;
-        if (response.Records.Count == 0) return "This project has no Grammar Design Records." + Environment.NewLine;
+        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to read the Grammar Guide." + Environment.NewLine;
+        if (response.Records.Count == 0) return "This project has no the Grammar Guide." + Environment.NewLine;
         var text = new StringBuilder();
         foreach (var record in response.Records) text.AppendLine($"{record.Abbreviation}  {record.Title}");
         return text.ToString();
@@ -967,10 +967,10 @@ public static class CommandTextRenderer
 
     private static string RenderGdrCheck(GdrCheckResponse response)
     {
-        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to check Grammar Design Records." + Environment.NewLine;
+        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to check the Grammar Guide." + Environment.NewLine;
         var text = new StringBuilder();
         var counts = response.Counts;
-        text.AppendLine(response.InSync ? "GDRs are in sync with the grammar." : $"{response.Findings.Count} GDR warning(s). The GDRs are not in sync with the grammar.");
+        text.AppendLine(response.InSync ? "The Grammar Guide is in sync with the grammar." : $"{response.Findings.Count} Guide warning(s). The Grammar Guide is not in sync with the grammar.");
         text.AppendLine($"Read {counts.Records} record(s), {counts.Sections} section(s), {counts.Links} link(s); " +
             $"{counts.ExamplesChecked} of {counts.Examples} example word(s) settled by stored Trial or Assessment rows.");
         foreach (var kind in response.Coverage) text.AppendLine($"  {kind.Kind}: {kind.Covered} of {kind.Objects} have a section");

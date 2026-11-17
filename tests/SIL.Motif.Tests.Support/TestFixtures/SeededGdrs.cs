@@ -12,7 +12,7 @@ using SIL.TextEditing.Project;
 namespace SIL.Motif.Tests.TestFixtures;
 
 /// <summary>
-/// Writes Grammar Design Records into a run-time project: GDR-1 with a right-to-left paragraph, a character style, a
+/// Writes Grammar Guide into a run-time project: GDR-1 with a right-to-left paragraph, a character style, a
 /// hyperlink and an object run, and a sub-item GDR-1a under it; GDR-2 with no Discussion; and a record with neither an
 /// abbreviation nor an abstract. It also adds a character and a paragraph style that no Discussion uses.
 /// </summary>
@@ -189,7 +189,7 @@ public static class SeededGdrs
         }
     });
 
-    /// <summary>The seeded Grammar Design Records list.</summary>
+    /// <summary>The seeded Grammar Guide list.</summary>
     public static ICmPossibilityList Records(LcmCache cache) => cache.ServiceLocator
         .GetInstance<ICmPossibilityListRepository>().AllInstances().Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == GdrReader.ListName);
 

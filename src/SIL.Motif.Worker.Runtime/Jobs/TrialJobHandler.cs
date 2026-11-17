@@ -603,7 +603,7 @@ internal sealed class TrialJobHandler
         try { return check(); }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            ReportTrialMaintenanceFailure(jobId, "run the advisory GDR sync check", exception);
+            ReportTrialMaintenanceFailure(jobId, "run the advisory Guide check check", exception);
             return null;
         }
     }

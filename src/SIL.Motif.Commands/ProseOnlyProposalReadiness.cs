@@ -8,7 +8,7 @@ using SIL.Motif.Runner.Operations;
 namespace SIL.Motif.Commands;
 
 /// <summary>
-/// Lets a Proposal that only edits prose fields or GDR titles apply without a Correctness Assessment.
+/// Lets a Proposal that only edits prose fields or Guide titles apply without a Correctness Assessment.
 /// </summary>
 internal static class ProseOnlyProposalReadiness
 {

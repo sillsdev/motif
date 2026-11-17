@@ -132,29 +132,29 @@ public static class RefusalCodes
     /// <summary>An agent identity already exists under another name or version.</summary>
     public const string AgentVersionConflict = "agent.version-conflict";
 
-    /// <summary>Two lists share the Grammar Design Records name, or two records share an abbreviation.</summary>
-    public const string GdrAmbiguous = "gdr.ambiguous";
-    /// <summary>The exact Baseline file is missing, so no Grammar Design Record can be read.</summary>
-    public const string GdrBaselineUnavailable = "gdr.baseline-unavailable";
+    /// <summary>Two lists share the Grammar Guide name, or two records share an abbreviation.</summary>
+    public const string GdrAmbiguous = "guide.ambiguous";
+    /// <summary>The exact Baseline file is missing, so no Grammar Guide section can be read.</summary>
+    public const string GdrBaselineUnavailable = "guide.baseline-unavailable";
     /// <summary>The current Baseline is not the one the request named.</summary>
-    public const string GdrBaselineChanged = "gdr.baseline-changed";
+    public const string GdrBaselineChanged = "guide.baseline-changed";
     /// <summary>A style in the project is based on itself, so no style can be resolved.</summary>
-    public const string GdrStyleCycle = "gdr.style-cycle";
+    public const string GdrStyleCycle = "guide.style-cycle";
     /// <summary>A project path for a link names more than one object.</summary>
-    public const string GdrLinkAmbiguous = "gdr.link-ambiguous";
+    public const string GdrLinkAmbiguous = "guide.link-ambiguous";
     /// <summary>A project path for a link names an object no FieldWorks tool opens.</summary>
-    public const string GdrLinkNoTool = "gdr.link-no-tool";
+    public const string GdrLinkNoTool = "guide.link-no-tool";
     /// <summary>A project path for a link names nothing in the project.</summary>
-    public const string GdrLinkNotFound = "gdr.link-not-found";
+    public const string GdrLinkNotFound = "guide.link-not-found";
     /// <summary>A link's project path is not a path to an object.</summary>
-    public const string GdrLinkPathInvalid = "gdr.link-path-invalid";
-    /// <summary>A gdr show request named no record.</summary>
-    public const string GdrEmptyId = "gdr.empty-id";
-    /// <summary>The project has no Baseline to read a Grammar Design Record from.</summary>
-    public const string GdrNoBaseline = "gdr.no-baseline";
-    /// <summary>No Grammar Design Record has that id or number.</summary>
-    public const string GdrNotFound = "gdr.not-found";
-    public const string GdrRecordMoved = "gdr.record-moved";
+    public const string GdrLinkPathInvalid = "guide.link-path-invalid";
+    /// <summary>A guide show request named no section.</summary>
+    public const string GdrEmptyId = "guide.empty-id";
+    /// <summary>The project has no Baseline to read the Grammar Guide from.</summary>
+    public const string GdrNoBaseline = "guide.no-baseline";
+    /// <summary>No Grammar Guide section has that id or number.</summary>
+    public const string GdrNotFound = "guide.not-found";
+    public const string GdrRecordMoved = "guide.record-moved";
 
     /// <summary>More than one possibility list is named "Motif Sources", so no Source list can be chosen.</summary>
     public const string SourceListAmbiguous = "source.list-ambiguous";

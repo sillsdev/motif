@@ -14,7 +14,7 @@ content is a view; the importer ignores its marked blocks. Use FieldWorks Markdo
 and stable IDs. Do not turn a working guess into a decision.
 
 The accepted CLI direction is `guide …`, without `gdr` aliases; the current implementation still exposes the
-developer command `motif gdr check --project <fwdata>` until that rename is implemented. The check reads the
+developer command `motif guide check --project <fwdata>`. The check reads the
 captured project and existing Trial rows; it does not parse. Missing links, unverified examples and other
 findings are advisory, including in the Trial review report. Include relevant words in a subsequent Trial when
 there is no conclusive row. A warning does not block Finalize, Apply or Trial success.

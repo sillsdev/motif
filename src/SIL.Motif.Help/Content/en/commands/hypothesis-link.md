@@ -1,14 +1,14 @@
-# Link a hypothesis to Proposals and a GDR
+# Link a hypothesis to Proposals and a Guide section
 
-`hypothesis link` links a hypothesis to the Proposals that carry its rule change and to the GDR section it changed, or states why no GDR changed.
+`hypothesis link` links a hypothesis to the Proposals that carry its rule change and to the Guide section it changed, or states why no Guide section changed.
 
 ## Example
 
 ```text
-motif hypothesis link H-12 --project <fwdata> --proposal <proposalId> --gdr GDR-8 --gdr-section Examples
+motif hypothesis link H-12 --project <fwdata> --proposal <proposalId> --guide GDR-8 --guide-section Examples
 ```
 
-`--proposal` takes one or more Proposal ids separated by commas. `--gdr` and `--gdr-section` go together; `--gdr-none` gives the reason no GDR changed and excludes them. A Proposal is not looked up, because Proposals can be archived.
+`--proposal` takes one or more Proposal ids separated by commas. `--guide` and `--guide-section` go together; `--guide-none` gives the reason no Guide section changed and excludes them. A Proposal is not looked up, because Proposals can be archived.
 
 ## Related commands
 

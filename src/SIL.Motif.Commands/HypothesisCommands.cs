@@ -92,7 +92,7 @@ public static class HypothesisCommands
     }
 
     /// <summary>
-    /// Decides a hypothesis. <c>passed</c> needs a PASS as the latest test, a GDR link or a stated reason for none, and no
+    /// Decides a hypothesis. <c>passed</c> needs a PASS as the latest test, a Guide link or a stated reason for none, and no
     /// passed neighbour with another mechanism that it does not supersede (the contradiction guard).
     /// </summary>
     public static CommandOutcome<HypothesisResponse> Decide(DecideHypothesisRequest request)
@@ -136,8 +136,8 @@ public static class HypothesisCommands
                     return Rule<HypothesisResponse>("A hypothesis passes only when its latest recorded test is PASS. " +
                         "Record the test first.");
                 if (hypothesis.GdrId is null && hypothesis.GdrNone is null)
-                    return Rule<HypothesisResponse>("A passed hypothesis names the GDR section its Proposal changes, or says " +
-                        "why none changed. Link it first: hypothesis link --gdr GDR-n --gdr-section <text>, or --gdr-none <reason>.");
+                    return Rule<HypothesisResponse>("A passed hypothesis names the Guide section its Proposal changes, or says " +
+                        "why none changed. Link it first: hypothesis link --guide GDR-n --guide-section <text>, or --guide-none <reason>.");
                 var named = (request.Supersedes ?? []).Select(id => ledger.Get(id)?.HypothesisId).ToList();
                 if (named.Any(id => id is null))
                     return NotFound<HypothesisResponse>(request.Supersedes!.First(id => ledger.Get(id) is null));
@@ -160,7 +160,7 @@ public static class HypothesisCommands
         });
     }
 
-    /// <summary>Links Proposals and a GDR section to a hypothesis. A Proposal is not looked up: Proposals can be archived.</summary>
+    /// <summary>Links Proposals and a Guide section to a hypothesis. A Proposal is not looked up: Proposals can be archived.</summary>
     public static CommandOutcome<HypothesisResponse> Link(LinkHypothesisRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -169,19 +169,19 @@ public static class HypothesisCommands
             var ledger = new HypothesisRepository(database);
             if (ledger.Get(request.HypothesisId) is not { } hypothesis) return NotFound<HypothesisResponse>(request.HypothesisId);
             var proposals = (request.ProposalIds ?? []).Select(id => id?.Trim() ?? "").ToList();
-            var gdrId = Clean(request.GdrId);
-            var gdrSection = Clean(request.GdrSection);
-            var gdrNone = Clean(request.GdrNone);
+            var gdrId = Clean(request.GuideId);
+            var gdrSection = Clean(request.GuideSection);
+            var gdrNone = Clean(request.GuideNone);
             if (proposals.Any(id => id.Length == 0) ||
                 proposals.Count == 0 && gdrId is null && gdrNone is null && gdrSection is null)
-                return Invalid<HypothesisResponse>("Name at least one Proposal id, or a GDR (--gdr GDR-n --gdr-section <text>), " +
-                    "or the reason none changed (--gdr-none <reason>).");
+                return Invalid<HypothesisResponse>("Name at least one Proposal id, or a Guide section (--guide GDR-n --guide-section <text>), " +
+                    "or the reason none changed (--guide-none <reason>).");
             if (gdrId is not null && !GdrIdPattern.IsMatch(gdrId))
-                return Invalid<HypothesisResponse>($"'{gdrId}' is not a GDR id; use GDR-n, as gdr list shows.");
+                return Invalid<HypothesisResponse>($"'{gdrId}' is not a Guide section id; use GDR-n, as guide list shows.");
             if (gdrId is null != gdrSection is null && gdrNone is null)
-                return Invalid<HypothesisResponse>("Give the GDR id and the section together.");
+                return Invalid<HypothesisResponse>("Give the Guide section id and the section together.");
             if (gdrNone is not null && (gdrId is not null || gdrSection is not null))
-                return Invalid<HypothesisResponse>("A GDR link and 'no GDR changed' exclude each other.");
+                return Invalid<HypothesisResponse>("A Guide link and 'no Guide section changed' exclude each other.");
             var columns = new Dictionary<string, object?>();
             if (gdrId is not null) { columns["GdrId"] = gdrId.ToUpperInvariant(); columns["GdrSection"] = gdrSection; columns["GdrNone"] = null; }
             if (gdrNone is not null) { columns["GdrNone"] = gdrNone; columns["GdrId"] = null; columns["GdrSection"] = null; }
@@ -373,8 +373,8 @@ public static class HypothesisCommands
             if (h.SupersededBy is not null) text.Append($"- Superseded by {h.SupersededBy}\n");
             var proposals = ledger.ProposalsOf(h.HypothesisId);
             if (proposals.Count > 0) text.Append($"- Proposals: {string.Join(", ", proposals)}\n");
-            text.Append(h.GdrId is not null ? $"- GDR: {h.GdrId}, {h.GdrSection}\n"
-                : h.GdrNone is not null ? $"- GDR: none, {h.GdrNone}\n" : "");
+            text.Append(h.GdrId is not null ? $"- Guide: {h.GdrId}, {h.GdrSection}\n"
+                : h.GdrNone is not null ? $"- Guide: none, {h.GdrNone}\n" : "");
         }
         if (decided.Count == 0) text.Append("\nNo hypothesis has been decided.\n");
         return new HypothesisReportResponse("decisions", text.ToString(), decided.Count);

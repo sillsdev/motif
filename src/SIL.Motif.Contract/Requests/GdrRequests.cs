@@ -2,7 +2,7 @@ using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.Contract.Requests;
 
-/// <summary>Lists the Grammar Design Records in the current Baseline.</summary>
+/// <summary>Lists the Grammar Guide in the current Baseline.</summary>
 /// <param name="ProjectPath">The recorded project path.</param>
 /// <param name="ExpectedBaseline">The required Baseline identity; null accepts the current Baseline.</param>
 public sealed record GdrListRequest(string ProjectPath, BaselineToken? ExpectedBaseline = null);
@@ -20,7 +20,7 @@ public sealed record GdrShowRequest(string ProjectPath, string Id, BaselineToken
 public sealed record GdrLinkToPathRequest(string ProjectPath, string Path, BaselineToken? ExpectedBaseline = null);
 
 /// <summary>
-/// Checks that the Grammar Design Records are in sync with the grammar in the current Baseline (ADR 0005): every rule and
+/// Checks that the Grammar Guide are in sync with the grammar in the current Baseline (ADR 0005): every rule and
 /// affix process has a section, no section cites a deleted object, and every example still parses as its section says
 /// by the latest Trial or Assessment rows already stored.
 /// </summary>

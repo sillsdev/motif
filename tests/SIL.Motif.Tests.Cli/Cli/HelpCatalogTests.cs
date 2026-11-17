@@ -18,13 +18,13 @@ public sealed class HelpCatalogTests
     public void GdrShowHelpExplainsTheMarkdownFormatAndAdvancedAiMode()
     {
         var entry = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"))
-            .Find(HelpEntryKind.Command, "gdr show")!;
+            .Find(HelpEntryKind.Command, "guide show")!;
         Assert.Contains("format fw-md", entry.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("--format", entry.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("--json", entry.Description, StringComparison.Ordinal);
         Assert.Contains("Advanced AI mode", entry.Description, StringComparison.Ordinal);
         Assert.Contains("--json", entry.HelpPage!, StringComparison.Ordinal);
-        Assert.Contains("--format fw-md", CliVerbCatalog.All.Single(verb => verb.CommandName == "gdr show").UsageLines.Single());
+        Assert.Contains("--format fw-md", CliVerbCatalog.All.Single(verb => verb.CommandName == "guide show").UsageLines.Single());
     }
 
     [Fact]

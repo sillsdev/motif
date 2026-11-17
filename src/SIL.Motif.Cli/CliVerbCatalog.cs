@@ -32,12 +32,12 @@ public static class CliVerbCatalog
             new[] { "progress --project <fwdata> [--texts <guid,guid> | --source <id>] [--detail summary|passages] [--limit <n>] [--cursor <cursor>] [--since-revision <revision>] [--json]" }),
         new CliVerbDescriptor("Project", "writing-systems", "writing-systems",
             new[] { "writing-systems --project <fwdata> [--json]" }),
-        new CliVerbDescriptor("Project", "gdr", "gdr list",
-            new[] { "gdr list --project <fwdata> [--json]" }),
-        new CliVerbDescriptor("Project", "gdr", "gdr show",
-            new[] { "gdr show --project <fwdata> <GDR-n> [--json | --format fw-md]" }),
-        new CliVerbDescriptor("Project", "gdr", "gdr check",
-            new[] { "gdr check --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Project", "guide", "guide list",
+            new[] { "guide list --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Project", "guide", "guide show",
+            new[] { "guide show --project <fwdata> <GDR-n> [--json | --format fw-md]" }),
+        new CliVerbDescriptor("Project", "guide", "guide check",
+            new[] { "guide check --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Project", "source", "source list",
             new[] { "source list --project <fwdata> [--all] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source show",
@@ -638,7 +638,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "hypothesis", "hypothesis link",
             new[]
             {
-                "hypothesis link <H-n> --project <fwdata> [--proposal <id,...>] [--gdr <GDR-n> --gdr-section <text> | --gdr-none <reason>] [--json]",
+                "hypothesis link <H-n> --project <fwdata> [--proposal <id,...>] [--guide <GDR-n> --guide-section <text> | --guide-none <reason>] [--json]",
             }),
         new CliVerbDescriptor("Commands", "hypothesis", "hypothesis grade",
             new[]

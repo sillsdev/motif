@@ -58,7 +58,7 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
         var options = format switch { "json" => new[] { "--json" }, "fw-md" => ["--format", "fw-md"], _ => [] };
 
         var cli = await CliProcess.RunAsync(_root, null, true,
-            ["gdr", "show", "--project", path, "GDR-1", .. options]);
+            ["guide", "show", "--project", path, "GDR-1", .. options]);
 
         Assert.Equal(files.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName), StoreFiles().Select(Path.GetFileName));
         foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
@@ -105,7 +105,7 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
         var app = new GdrMarkdownDocument(shown, Path.GetFileNameWithoutExtension(path));
 
         using var process = Process.Start(CliProcess.CreateStartInfo(_root, null, true,
-            "gdr", "show", "--project", path, id, "--format", "fw-md"))!;
+            "guide", "show", "--project", path, id, "--format", "fw-md"))!;
         using var bytes = new MemoryStream();
         var copy = process.StandardOutput.BaseStream.CopyToAsync(bytes);
         var stderr = process.StandardError.ReadToEndAsync();
@@ -163,21 +163,21 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
     public async Task MarkdownFormatRejectsInvalidOptionsWithoutOutput(params string[] options)
     {
         var path = ProjectWithBaseline();
-        var arguments = new[] { "gdr", options[0], "--project", path }
+        var arguments = new[] { "guide", options[0], "--project", path }
             .Concat(options[0] == "show" ? new[] { "GDR-1" } : [])
             .Concat(options.Skip(1)).ToArray();
         var cli = await CliProcess.RunAsync(_root, null, true, arguments);
 
         Assert.True(cli.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), cli.Error);
         Assert.Empty(cli.Output);
-        Assert.Contains("Use --format fw-md with gdr show, without --json.", cli.Error);
+        Assert.Contains("Use --format fw-md with guide show, without --json.", cli.Error);
     }
 
     [Fact]
     public async Task MarkdownKeepsUnknownRecordAndMissingBaselineRefusals()
     {
         var path = ProjectWithBaseline();
-        var unknown = await CliProcess.RunAsync(_root, null, true, "gdr", "show", "--project", path, "GDR-99", "--format", "fw-md");
+        var unknown = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path, "GDR-99", "--format", "fw-md");
         Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
         Assert.Empty(unknown.Output);
         var unknownRefusal = GdrQuery.Show(new GdrShowRequest(path, "GDR-99")).Refusal!;
@@ -190,7 +190,7 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
             new FwDataProjectLoader().Save(cache);
             absentPath = cache.ProjectId.Path;
         }
-        var absent = await CliProcess.RunAsync(Path.Combine(_root, "no-baseline"), null, true, "gdr", "show", "--project", absentPath,
+        var absent = await CliProcess.RunAsync(Path.Combine(_root, "no-baseline"), null, true, "guide", "show", "--project", absentPath,
             "GDR-1", "--format", "fw-md");
         Assert.True(absent.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), absent.Error);
         Assert.Empty(absent.Output);
@@ -258,17 +258,17 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
     {
         var path = ProjectWithBaseline();
 
-        var list = await CliProcess.RunAsync(_root, null, true, "gdr", "list", "--project", path, "--json");
+        var list = await CliProcess.RunAsync(_root, null, true, "guide", "list", "--project", path, "--json");
         Assert.True(list.ExitCode == 0, list.Error);
         Assert.Equal(ProjectionJson.Serialize(GdrQuery.List(new GdrListRequest(path)).Value),
             ProjectionJson.Serialize(ProjectionJson.Deserialize<GdrListResponse>(list.Output)));
 
-        var show = await CliProcess.RunAsync(_root, null, true, "gdr", "show", "--project", path, "GDR-1", "--json");
+        var show = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path, "GDR-1", "--json");
         Assert.True(show.ExitCode == 0, show.Error);
         Assert.Equal(ProjectionJson.Serialize(GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value),
             ProjectionJson.Serialize(ProjectionJson.Deserialize<GdrShowResponse>(show.Output)));
 
-        var text = await CliProcess.RunAsync(_root, null, true, "gdr", "show", "--project", path, "GDR-1");
+        var text = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path, "GDR-1");
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains("GDR-1  title-1", text.Output);
         Assert.Contains("xylink", text.Output);
@@ -280,15 +280,15 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
     {
         var path = ProjectWithBaseline();
 
-        var json = await CliProcess.RunAsync(_root, null, true, "gdr", "check", "--project", path, "--json");
+        var json = await CliProcess.RunAsync(_root, null, true, "guide", "check", "--project", path, "--json");
         Assert.True(json.ExitCode == 0, json.Error);
         var wire = ProjectionJson.Deserialize<GdrCheckResponse>(json.Output)!;
         var query = GdrQuery.Check(new GdrCheckRequest(path)).Value!;
         Assert.Equal(ProjectionJson.Serialize(query with { Timing = null }), ProjectionJson.Serialize(wire with { Timing = null }));
 
-        var text = await CliProcess.RunAsync(_root, null, true, "gdr", "check", "--project", path);
+        var text = await CliProcess.RunAsync(_root, null, true, "guide", "check", "--project", path);
         Assert.True(text.ExitCode == 0, text.Error);
-        Assert.Contains("GDRs are in sync with the grammar.", text.Output);
+        Assert.Contains("The Grammar Guide is in sync with the grammar.", text.Output);
         Assert.Contains("Read 4 record(s)", text.Output);
     }
 
@@ -297,11 +297,20 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
     {
         var path = ProjectWithBaseline();
 
-        var missing = await CliProcess.RunAsync(_root, null, true, "gdr", "show", "--project", path);
+        var missing = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path);
         Assert.True(missing.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), missing.Error);
 
-        var unknown = await CliProcess.RunAsync(_root, null, true, "gdr", "show", "--project", path, "GDR-99");
+        var unknown = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path, "GDR-99");
         Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
+    }
+
+    [Fact]
+    public async Task TheRetiredGdrVerbIsAnUnknownCommand()
+    {
+        var old = await CliProcess.RunAsync(_root, null, true, "gdr", "list", "--project", ProjectWithBaseline());
+
+        Assert.NotEqual(0, old.ExitCode);
+        Assert.Contains("Unknown command 'gdr'", old.Error, StringComparison.Ordinal);
     }
 
     public void Dispose()

@@ -22,7 +22,7 @@ public sealed class ToolSurfaceTests
     [Fact]
     public void TheGeneratedGdrReadToolHasAClosedOptionalFormatChoice()
     {
-        var tool = Assert.Single(AgentTools.All, candidate => candidate.Name == "motif_gdr_show");
+        var tool = Assert.Single(AgentTools.All, candidate => candidate.Name == "motif_guide_show");
         Assert.Equal(AgentClass.Read, tool.Class);
         Assert.True(tool.ReadOnly);
         Assert.True(tool.Idempotent);

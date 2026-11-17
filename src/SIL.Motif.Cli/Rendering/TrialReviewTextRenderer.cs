@@ -94,7 +94,7 @@ public static class TrialReviewTextRenderer
     private static void AppendGdrSync(StringBuilder text, SIL.Motif.Contract.Responses.GdrCheckResponse gdr)
     {
         foreach (var finding in gdr.Findings)
-            text.AppendLine("GDR sync (advisory, incomplete until fixed): " + finding.Message);
+            text.AppendLine("Guide check (advisory, incomplete until fixed): " + finding.Message);
     }
 
     private static void AppendRuleAttempts(StringBuilder text, RuleAttemptSummary attempts)

@@ -113,7 +113,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var arguments = new Dictionary<string, object?> { ["project"] = project.FwDataPath, ["id"] = "GDR-1" };
         if (format is not null) arguments["format"] = format;
 
-        var response = await session.Client.CallToolAsync("motif_gdr_show", arguments);
+        var response = await session.Client.CallToolAsync("motif_guide_show", arguments);
 
         Assert.Equal(files.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName), StoreFiles().Select(Path.GetFileName));
         foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
@@ -134,7 +134,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var before = File.ReadAllBytes(project.FwDataPath);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(), openStore: false);
 
-        var response = await session.Client.CallToolAsync("motif_gdr_show", new Dictionary<string, object?>
+        var response = await session.Client.CallToolAsync("motif_guide_show", new Dictionary<string, object?>
         {
             ["project"] = project.FwDataPath,
             ["id"] = "GDR-1",
@@ -163,7 +163,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var before = File.ReadAllBytes(project.FwDataPath);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(), openStore: false);
 
-        var response = await session.Client.CallToolAsync("motif_gdr_show", new Dictionary<string, object?>
+        var response = await session.Client.CallToolAsync("motif_guide_show", new Dictionary<string, object?>
         {
             ["project"] = project.FwDataPath,
             ["id"] = "GDR-1",
@@ -193,7 +193,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             MotifProductVersion.CurrentText, "word", "wordform", "wordform", "Check this word.")).Succeeded);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
 
-        var response = await session.Client.CallToolAsync("motif_gdr_show", new Dictionary<string, object?>
+        var response = await session.Client.CallToolAsync("motif_guide_show", new Dictionary<string, object?>
         {
             ["project"] = project.FwDataPath,
             ["id"] = "GDR-1",
@@ -220,12 +220,12 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var arguments = new List<(string, object?)> { ("id", "GDR-1") };
         if (format is not null) arguments.Add(("format", format));
 
-        var response = await session.CallAsync("motif_gdr_show", arguments.ToArray());
+        var response = await session.CallAsync("motif_guide_show", arguments.ToArray());
 
         var value = response.GetProperty("result");
         if (format == "fw-md")
         {
-            var cli = await CliProcess.RunAsync(project.ManagedRoot, null, false, "gdr", "show", "--project",
+            var cli = await CliProcess.RunAsync(project.ManagedRoot, null, false, "guide", "show", "--project",
                 project.FwDataPath, "GDR-1", "--format", "fw-md");
             Assert.True(cli.ExitCode == 0, cli.Error);
             Assert.Equal(Encoding.UTF8.GetBytes(cli.Output), Encoding.UTF8.GetBytes(value.GetString()!));
@@ -251,7 +251,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
         var before = File.ReadAllBytes(project.FwDataPath);
 
-        var response = await session.Client.CallToolAsync("motif_gdr_show", new Dictionary<string, object?>
+        var response = await session.Client.CallToolAsync("motif_guide_show", new Dictionary<string, object?>
         {
             ["project"] = project.FwDataPath, ["id"] = "GDR-1", ["format"] = format,
         });

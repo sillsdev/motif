@@ -3,13 +3,13 @@ using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.Contract.Responses;
 
-/// <summary>The wire version of the Grammar Design Record responses, raised when their shape changes.</summary>
+/// <summary>The wire version of the Grammar Guide section responses, raised when their shape changes.</summary>
 public static class GdrWire
 {
     public const int SchemaVersion = 6;
 }
 
-/// <summary>One Grammar Design Record as the list shows it.</summary>
+/// <summary>One Grammar Guide section as the list shows it.</summary>
 /// <param name="Id">The record's canonical id.</param>
 /// <param name="Abbreviation">The <c>GDR-n</c> number a person says.</param>
 /// <param name="Title">The record's name.</param>
@@ -95,7 +95,7 @@ public sealed record GdrStyle(
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record GdrWritingSystem(string Tag, string Direction, string DefaultFont);
 
-/// <summary>The current Baseline's Grammar Design Records, without opening the FieldWorks project.</summary>
+/// <summary>The current Baseline's Grammar Guide, without opening the FieldWorks project.</summary>
 public sealed record GdrListResponse(bool HasBaseline, IReadOnlyList<GdrSummary> Records)
 {
     public int SchemaVersion { get; init; } = GdrWire.SchemaVersion;
@@ -104,7 +104,7 @@ public sealed record GdrListResponse(bool HasBaseline, IReadOnlyList<GdrSummary>
     public bool IsStale { get; init; }
 }
 
-/// <summary>One Grammar Design Record with its Discussion as paragraphs of runs, and what they need to be drawn.</summary>
+/// <summary>One Grammar Guide section with its Discussion as paragraphs of runs, and what they need to be drawn.</summary>
 public sealed record GdrShowResponse(GdrSummary Record, IReadOnlyList<GdrParagraph> Discussion)
 {
     public int SchemaVersion { get; init; } = GdrWire.SchemaVersion;

@@ -30,7 +30,7 @@ public static class TextRunsDigest
         return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(canonical))).ToLowerInvariant();
     }
 
-    /// <summary>The fingerprint of a paragraph as <c>gdr show</c> returns it.</summary>
+    /// <summary>The fingerprint of a paragraph as <c>guide show</c> returns it.</summary>
     public static string Of(GdrParagraph paragraph) => OfRuns(paragraph.Runs);
 
     /// <summary>The fingerprint of runs as the project's readers return them.</summary>

@@ -8,7 +8,7 @@
 motif hypothesis report --project <fwdata> --kind decisions
 ```
 
-`--kind decisions` lists every decided hypothesis with its test, Proposals and GDR. `--kind questions` lists the speaker questions with their answers and never shows the predicted answers.
+`--kind decisions` lists every decided hypothesis with its test, Proposals and Guide section. `--kind questions` lists the speaker questions with their answers and never shows the predicted answers.
 
 ## Related commands
 

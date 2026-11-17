@@ -58,7 +58,7 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
         HypothesisCommands.Decide(new DecideHypothesisRequest(Project, "1.0", id, status, "Decided in words.", by, supersedes));
 
     private void LinkGdr(string id) => Assert.True(HypothesisCommands.Link(new LinkHypothesisRequest(
-        Project, "1.0", id, GdrId: "gdr-8", GdrSection: "Examples")).Succeeded);
+        Project, "1.0", id, GuideId: "gdr-8", GuideSection: "Examples")).Succeeded);
 
     [Fact]
     public void AControlQueryResultFileIsAcceptedByHypothesisTestOnlyOnceTheTrialLossesAreRecorded()
@@ -208,7 +208,7 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
         LinkGdr(id);
         var decided = Decide(id, "passed");
         Assert.True(decided.Succeeded, decided.Refusal?.Message);
-        Assert.Equal("GDR-8", decided.Value!.Hypothesis.GdrId);
+        Assert.Equal("GDR-8", decided.Value!.Hypothesis.GuideId);
         Assert.Contains("superseded", Decide(id, "failed").Refusal!.Message);
     }
 
@@ -217,11 +217,11 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
     {
         var id = Add(Draft()).HypothesisId;
         Test(id, "PASS");
-        Assert.True(HypothesisCommands.Link(new LinkHypothesisRequest(Project, "1.0", id, GdrNone: "lexical tag only")).Succeeded);
+        Assert.True(HypothesisCommands.Link(new LinkHypothesisRequest(Project, "1.0", id, GuideNone: "lexical tag only")).Succeeded);
 
         Assert.True(Decide(id, "passed").Succeeded);
         Assert.Equal(RefusalCodes.HypothesisInvalid, HypothesisCommands.Link(new LinkHypothesisRequest(
-            Project, "1.0", id, GdrId: "GDR-1", GdrSection: "A", GdrNone: "both")).Refusal!.Code);
+            Project, "1.0", id, GuideId: "GDR-1", GuideSection: "A", GuideNone: "both")).Refusal!.Code);
     }
 
     // An earlier ruling (build the ordered rule, not a variant) binds a later variant until superseded.
@@ -274,7 +274,7 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
         HypothesisCommands.Link(new LinkHypothesisRequest(Project, "1.0", id, ["proposal/a"]));
 
         Assert.Equal(["proposal/a", "proposal/b"], linked.Proposals);
-        Assert.Equal("Examples", linked.GdrSection);
+        Assert.Equal("Examples", linked.GuideSection);
         using var database = ProjectMotifDatabase.Open(Project);
         Assert.Equal([id], new HypothesisRepository(database).HypothesesOf("proposal/b"));
     }
@@ -311,7 +311,7 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
 
         Assert.Equal(1, decisions.Count);
         Assert.Contains("H-1 passed: d>r", decisions.Text);
-        Assert.Contains("GDR: GDR-8, Examples", decisions.Text);
+        Assert.Contains("Guide: GDR-8, Examples", decisions.Text);
         Assert.Contains("Is kadan a word? Answer: yes", questions.Text);
         Assert.DoesNotContain("Predicted", questions.Text);
         Assert.Equal(RefusalCodes.HypothesisInvalid, HypothesisCommands.AnswerQuestion(

@@ -70,12 +70,12 @@ public sealed record DecideHypothesisRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="HypothesisId">The hypothesis linked.</param>
 /// <param name="ProposalIds">Proposals that carry the rule change.</param>
-/// <param name="GdrId">The GDR changed, as <c>GDR-n</c>.</param>
-/// <param name="GdrSection">The section of that GDR changed.</param>
-/// <param name="GdrNone">Why no GDR changed; excludes <paramref name="GdrId"/>.</param>
+/// <param name="GuideId">The Guide section changed, as <c>GDR-n</c>.</param>
+/// <param name="GuideSection">The section of that Guide section changed.</param>
+/// <param name="GuideNone">Why no Guide section changed; excludes <paramref name="GuideId"/>.</param>
 public sealed record LinkHypothesisRequest(
     string FwDataPath, string ProductVersion, string HypothesisId, IReadOnlyList<string>? ProposalIds = null,
-    string? GdrId = null, string? GdrSection = null, string? GdrNone = null);
+    string? GuideId = null, string? GuideSection = null, string? GuideNone = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

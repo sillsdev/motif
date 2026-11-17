@@ -14,7 +14,7 @@ using SIL.TextEditing.Project;
 namespace SIL.Motif.Host.Gdr;
 
 /// <summary>
-/// Reads Grammar Design Records from an open project copy: the possibility list named <see cref="ListName"/>, each
+/// Reads Grammar Guide from an open project copy: the possibility list named <see cref="ListName"/>, each
 /// record's title, number and abstract, and a Discussion as paragraphs of runs. Every style and writing system of the
 /// project, and any other the Discussion uses, is resolved beside them. Sub-items are part of the outline and are listed
 /// after their parent. It never opens a unit of work. An ambiguous list or abbreviation, or a style cycle, is thrown as
@@ -23,7 +23,7 @@ namespace SIL.Motif.Host.Gdr;
 public static class GdrReader
 {
     /// <summary>The name of the custom possibility list that holds the records.</summary>
-    public const string ListName = "Grammar Design Records";
+    public const string ListName = "Grammar Guide";
 
     /// <summary>The records in list order; empty when the project has no such list.</summary>
     public static IReadOnlyList<GdrSummary> List(LcmCache cache) =>
@@ -53,7 +53,7 @@ public static class GdrReader
         if (matches.Length == 0) return null;
         if (matches.Length > 1)
             throw new GdrRefusalException(new Refusal(RefusalCodes.GdrAmbiguous, FailureReason.Refused,
-                $"More than one Grammar Design Record is named '{id}'. Name one by its canonical id."));
+                $"More than one Grammar Guide section is named '{id}'. Name one by its canonical id."));
         var entry = matches[0];
         var record = entry.Record;
 
@@ -130,7 +130,7 @@ public static class GdrReader
     /// <summary>
     /// The object data FieldWorks stores in a run that links to the record <paramref name="canonicalId"/> of the project
     /// <paramref name="projectName"/>: a <c>silfw://</c> link naming the project and <see cref="ListTool"/>, as
-    /// <see cref="FieldWorksLinks"/> builds them, which <c>gdr show</c> resolves back to that record.
+    /// <see cref="FieldWorksLinks"/> builds them, which <c>guide show</c> resolves back to that record.
     /// </summary>
     public static string LinkData(string projectName, string canonicalId)
     {
@@ -311,7 +311,7 @@ public sealed record GdrPathLink(string Id, string Kind, string Name, string Des
     public bool IsStale { get; init; }
 }
 
-/// <summary>A Grammar Design Record read that the project's contents make impossible, carrying the refusal to return.</summary>
+/// <summary>A Grammar Guide section read that the project's contents make impossible, carrying the refusal to return.</summary>
 public sealed class GdrRefusalException(Refusal refusal) : Exception(refusal.Message)
 {
     /// <summary>The refusal the command answers with.</summary>

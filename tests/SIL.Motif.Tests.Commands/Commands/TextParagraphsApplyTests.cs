@@ -28,7 +28,7 @@ namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
 /// A person's paragraph edit of a rich-text field, staged in the pending-changes Draft and applied to a project
-/// built at run time from <see cref="SeededGdrs"/> (ADR 0002), then read back through <c>gdr show</c>.
+/// built at run time from <see cref="SeededGdrs"/> (ADR 0002), then read back through <c>guide show</c>.
 /// </summary>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
@@ -52,11 +52,11 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
         var refusal = Assert.IsType<Refusal>(core.Refusal);
         Assert.Equal(RefusalCodes.ApplyPendingChanges, refusal.Code);
         Assert.Equal(refusal.Code, workflow.Refusal?.Code);
-        Assert.Contains("GDR 'title-1'", refusal.Message);
+        Assert.Contains("Guide section 'title-1'", refusal.Message);
         Assert.True(cli.ExitCode != 0, cli.Error);
         var failure = ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!;
         Assert.Equal(refusal.Code, failure.Code);
-        Assert.Contains("GDR 'title-1'", failure.Message);
+        Assert.Contains("Guide section 'title-1'", failure.Message);
     }
 
     [Fact]
