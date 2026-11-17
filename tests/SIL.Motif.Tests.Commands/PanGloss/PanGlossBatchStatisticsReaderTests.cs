@@ -273,6 +273,10 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         var result = PanGlossBatchStatisticsReader.ReadBounded(path, expectedWords, detailWordLimit: 2000, budget);
         var growth = GC.GetTotalMemory(forceFullCollection: true) - before;
         GC.KeepAlive(result);
+        var wholeBefore = GC.GetTotalMemory(forceFullCollection: true);
+        var whole = PanGlossBatchStatisticsReader.ReadBounded(path, expectedWords, detailWordLimit: 2000, int.MaxValue);
+        var wholeGrowth = GC.GetTotalMemory(forceFullCollection: true) - wholeBefore;
+        GC.KeepAlive(whole);
 
         Assert.Equal(words * objects, result.TotalObjectTimingRows);
         Assert.True(result.DetailTruncatedByRows);
@@ -280,8 +284,9 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         Assert.Equal(result.DetailWordCount * objects, result.ObjectTimings.Count);
         Assert.Equal(objects, result.Aggregates.Count);
         Assert.All(result.Aggregates, aggregate => Assert.Equal(words, aggregate.WordsTouched));
-        // 25,000 kept rows are a few MB; 80,000 timing rows, if all were kept, would be several times this.
-        Assert.True(growth < 12_000_000, $"kept {growth:N0} bytes");
+        // Relative to a whole read, so load cannot move the bar: 31% of the rows must cost under 60%.
+        Assert.Equal(words * objects, whole.ObjectTimings.Count);
+        Assert.True(growth < wholeGrowth * 0.6, $"kept {growth:N0} bytes against {wholeGrowth:N0} for every row");
         Assert.True(result.ObjectTimings.Select(row => row.Key).Distinct(ReferenceEqualityComparer.Instance).Count() <= objects);
     }
 

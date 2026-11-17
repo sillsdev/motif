@@ -251,6 +251,13 @@ public static class MotifMcpServer
         {
             return ToolOutcome.Refused("tool.cancelled", FailureReason.Cancelled, "The call was cancelled.");
         }
+        catch (OutOfMemoryException exception)
+        {
+            await context.Log.WriteLineAsync($"tool {tool.Name} ran out of memory: {exception}");
+            return ToolOutcome.Refused(HostRefusalCodes.ToolOutOfMemory, FailureReason.Refused,
+                "The tool ran out of memory. Nothing is damaged; repeat with a smaller request, such as fewer words.",
+                new Dictionary<string, string> { ["toolName"] = tool.Name });
+        }
         catch (Exception exception)
         {
             // Busy, not Refused: an unexpected failure may be transient, and the code's hint caps the retry at one.

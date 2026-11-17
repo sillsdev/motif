@@ -76,6 +76,24 @@ public sealed class CatalogExecutionTests
     }
 
     [Fact]
+    public async Task AnOutOfMemoryInsideAToolIsARefusalWithAnOutOfMemoryCodeNotABusyToolFailure()
+    {
+        var context = new ServerContext("unused.fwdata", "1.0", new NoRunnerLauncher(
+            new JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin,
+            TextWriter.Null, advancedAiModeEnabled: true);
+        var agent = new AgentTool("motif_memory_hungry_handler", "", AgentClass.Read,
+            new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }, true, true,
+            false, false, (_, _, _) => Task.FromException<ToolOutcome>(new OutOfMemoryException("injected"))) { NeedsProject = false };
+        var exposed = new ExposedTool(agent, agent.Name, agent.Description, "detailed");
+
+        var result = await MotifMcpServer.CallAsync(context, [exposed], exposed.Name, null, CancellationToken.None);
+
+        Assert.True(result.IsError);
+        Assert.Equal("tool.out-of-memory", result.StructuredContent!.Value.GetProperty("code").GetString());
+        Assert.Equal("Refused", result.StructuredContent.Value.GetProperty("reason").GetString());
+    }
+
+    [Fact]
     public async Task CatalogJobResponsesUseProjectionJsonEnumAndNullConventions()
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-catalog-json-" + Guid.NewGuid().ToString("N"));

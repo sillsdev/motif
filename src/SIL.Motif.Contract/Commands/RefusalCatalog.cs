@@ -706,6 +706,7 @@ public static class RefusalCatalog
             Command("open", Caller("path"))),
         Spec(HostRefusalCodes.ProjectUnknown, FailureReason.InvalidArgument),
         Spec(HostRefusalCodes.ToolCancelled, FailureReason.Cancelled),
+        Spec(HostRefusalCodes.ToolOutOfMemory, FailureReason.Refused),
         Spec(HostRefusalCodes.ToolFailed, FailureReason.Busy,
             NextStep.Repeat()),
         Spec(HostRefusalCodes.ToolInvalidArgument, FailureReason.InvalidArgument),

@@ -33,6 +33,8 @@ public static class HostRefusalCodes
 
     /// <summary>An MCP tool call was cancelled.</summary>
     public const string ToolCancelled = "tool.cancelled";
+    /// <summary>An MCP tool ran out of memory; nothing is damaged and a smaller request is the cure.</summary>
+    public const string ToolOutOfMemory = "tool.out-of-memory";
     /// <summary>An MCP tool failed unexpectedly.</summary>
     public const string ToolFailed = "tool.failed";
     /// <summary>An MCP tool argument has the wrong type or value.</summary>
