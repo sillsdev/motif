@@ -29,6 +29,17 @@ public sealed class StoreDeletionButtonTests
 
     public StoreDeletionButtonTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
+    [Fact]
+    public void AnUpgradableOlderStoreNeverOffersDeletion()
+    {
+        var refusal = WindowRefusal.From(new Refusal(RefusalCodes.StoreOtherVersion, FailureReason.Refused, "older",
+            new Dictionary<string, string>
+            {
+                ["fwDataPath"] = Project, [RefusalFactNames.StorePath] = StorePath, [RefusalFactNames.StoreUpgradable] = "true",
+            }));
+        Assert.False(refusal.OffersStoreDeletion);
+    }
+
     [Theory]
     [InlineData(RefusalCodes.StoreOtherVersion, true)]
     [InlineData(RefusalCodes.StoreUnsupported, false)]

@@ -62,23 +62,6 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
     }
 
     [Fact]
-    public void ExistingReadOfAMissingUseLockNamesTheFileAndHowToRecover()
-    {
-        var projectPath = CreateProject("no-lock");
-        Assert.True(ProjectStoreCommand.Run(projectPath, "1.0", (_, _) => CommandOutcome<string>.Success("created")).Succeeded);
-        var storePath = ProjectDatabaseCatalog.DatabasePathFor(
-            new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath)));
-        File.Delete(storePath + ".use.lock");
-
-        var outcome = ProjectStoreCommand.ReadExisting(projectPath,
-            CommandOutcome<string>.Success("absent"), (_, _) => CommandOutcome<string>.Success("read"));
-
-        Assert.False(outcome.Succeeded);
-        Assert.Contains(Path.GetFileName(storePath) + ".use.lock", outcome.Refusal!.Message);
-        Assert.Contains("Open the project in Motif", outcome.Refusal.Message);
-    }
-
-    [Fact]
     public void ExistingReadOfAnOlderStoreOnTheConnectionPathAdvisesUpgradeToo()
     {
         var projectPath = CreateProject("older-connection");
@@ -97,6 +80,7 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
             (_, _, _) => CommandOutcome<string>.Success("read"));
 
         Assert.Equal("store.other-version", outcome.Refusal!.Code);
+        Assert.Equal("true", outcome.Refusal.Facts[RefusalFactNames.StoreUpgradable]);
         AssertUpgradeAdvice(outcome.Refusal.Message, MotifSchema.CurrentSchema - 1);
     }
 

@@ -67,7 +67,7 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
         Assert.Empty(cli.Output);
         Assert.True(cli.ExitCode == FailureEnvelope.ExitCodeFor(older ? FailureReason.Refused : FailureReason.NotFound), cli.Error);
         if (format == "json")
-            Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.GdrNoBaseline,
+            Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.GdrNoBaseline,
                 ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!.Code);
     }
 

@@ -74,7 +74,7 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
             Assert.Equal(state switch
             {
                 "missing" or "current" => RefusalCodes.SourceIndexMissing,
-                "older" => RefusalCodes.StoreUnsupported,
+                "older" => RefusalCodes.StoreOtherVersion,
                 "empty" => RefusalCodes.StoreInconsistent,
                 _ => "project.operation-io",
             }, outcome!.Refusal!.Code);

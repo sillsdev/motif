@@ -39,7 +39,7 @@ public sealed class ProgressArgvTests(PristineProjectFixture pristine) : IDispos
         var start = CliProcess.CreateStartInfo(_root, null, false, "progress", "--project", path, "--json");
         CliProcess.EnableAdvancedAiMode(start, _root);
         var result = await CliProcess.RunAsync(start);
-        Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.ProgressIndexNotReady,
+        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.ProgressIndexNotReady,
             ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!.Code);
         Assert.Equal(files.Keys.Order(StringComparer.Ordinal), StoreFiles());
         foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));

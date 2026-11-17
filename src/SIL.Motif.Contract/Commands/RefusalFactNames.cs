@@ -23,6 +23,9 @@ public static class RefusalFactNames
     /// </summary>
     public const string StoreLockMissing = "storeLockMissing";
 
+    /// <summary>Present, as "true", on a store.other-version refusal whose store is older and a normal open upgrades it.</summary>
+    public const string StoreUpgradable = "storeUpgradable";
+
     /// <summary>Fact key for the parser refusal code on a grammarcheck.not-run refusal.</summary>
     public const string LastParserRefusalCode = "lastParserRefusalCode";
 

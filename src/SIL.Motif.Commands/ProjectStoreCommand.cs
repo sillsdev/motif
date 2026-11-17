@@ -293,16 +293,7 @@ public static class ProjectStoreCommand
     private static Refusal StoreRefusal(Exception exception, string ioCode, string fwDataPath) => exception switch
     {
         MotifStoreVersionException version => new Refusal(
-            "store.other-version", FailureReason.Refused, version.Message, new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["fwDataPath"] = fwDataPath,
-                [RefusalFactNames.StorePath] = version.StorePath,
-            }),
-        FileNotFoundException { FileName: { Length: > 0 } missing } => new Refusal(
-            ioCode, FailureReason.Refused,
-            $"The project could not access required storage: '{Path.GetFileName(missing)}' is missing. " +
-            "Open the project in Motif to recreate it, or restore it from a backup.",
-            OperationFacts(fwDataPath, exception)),
+            "store.other-version", FailureReason.Refused, version.Message, VersionFacts(version, fwDataPath)),
         IOException { InnerException: Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 or 10 } } => new Refusal(
             ioCode, FailureReason.Busy, StorageFailureMessage, OperationFacts(fwDataPath, exception)),
         FileNotFoundException { FileName: { } lockPath } when lockPath.EndsWith(".use.lock", StringComparison.Ordinal) => new Refusal(
@@ -318,6 +309,17 @@ public static class ProjectStoreCommand
         _ => throw new ArgumentOutOfRangeException(nameof(exception), exception.GetType(),
             "The exception is not a recognized project-store failure."),
     };
+
+    private static Dictionary<string, string> VersionFacts(MotifStoreVersionException version, string fwDataPath)
+    {
+        var facts = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["fwDataPath"] = fwDataPath,
+            [RefusalFactNames.StorePath] = version.StorePath,
+        };
+        if (version.Upgradable) facts[RefusalFactNames.StoreUpgradable] = "true";
+        return facts;
+    }
 
     // The store is not adopted: it names the original's Baseline files.
     private static Refusal OtherProjectRefusal(

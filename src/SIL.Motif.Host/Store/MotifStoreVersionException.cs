@@ -19,4 +19,7 @@ public sealed class MotifStoreVersionException : NotSupportedException
 
     /// <summary>The fully resolved path of the refused store file.</summary>
     public string StorePath { get; }
+
+    /// <summary>True when the store is older and a normal open would upgrade it, so deleting it is never the advice.</summary>
+    public bool Upgradable { get; init; }
 }

@@ -182,7 +182,8 @@ public sealed class MotifDatabase : IDisposable
             var schema = Convert.ToInt32(command.ExecuteScalar());
             if (schema > 0 && schema < MotifSchema.CurrentSchema)
                 throw new MotifStoreVersionException(Path.GetFullPath(path), StoreUpgradeMessages.Format(
-                    "OlderStore", descriptor.Name, Path.GetFileName(path), schema, MotifSchema.CurrentSchema));
+                    "OlderStore", descriptor.Name, Path.GetFileName(path), schema, MotifSchema.CurrentSchema))
+                { Upgradable = true };
             if (schema != MotifSchema.CurrentSchema)
                 throw new NotSupportedException("The project database has another schema version.");
         }

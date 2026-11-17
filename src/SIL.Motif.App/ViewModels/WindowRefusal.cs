@@ -349,7 +349,8 @@ public sealed partial record WindowRefusal
     /// person can clear by deleting that file so Motif recreates it.
     /// </summary>
     public bool OffersStoreDeletion =>
-        Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StorePath);
+        Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StorePath) &&
+        !Facts.ContainsKey(RefusalFactNames.StoreUpgradable);
 
     /// <summary>The heading for a refused Motif store that can be deleted and recreated.</summary>
     public string? Heading => OffersStoreDeletion ? MotifAppStrings.RefusalStoreOtherVersionHeading : null;

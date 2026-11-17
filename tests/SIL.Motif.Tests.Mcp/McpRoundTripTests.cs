@@ -69,7 +69,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ["scope"] = new Dictionary<string, object?> { ["kind"] = "texts" },
         });
         Assert.True(response.IsError, response.StructuredContent?.ToString());
-        Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.ProgressIndexNotReady,
+        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.ProgressIndexNotReady,
             response.StructuredContent!.Value.GetProperty("code").GetString());
         var sourceResponse = await session.Client.CallToolAsync("motif_progress", new Dictionary<string, object?>
         {
@@ -77,7 +77,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ["scope"] = new Dictionary<string, object?> { ["kind"] = "source", ["source"] = "WEB" },
         });
         Assert.True(sourceResponse.IsError, sourceResponse.StructuredContent?.ToString());
-        Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.SourceIndexMissing,
+        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.SourceIndexMissing,
             sourceResponse.StructuredContent!.Value.GetProperty("code").GetString());
         Assert.Equal(files.Keys.Order(StringComparer.Ordinal), StoreFiles());
         foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
@@ -120,7 +120,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
         Assert.Equal(older, File.Exists(store));
         Assert.True(response.IsError, response.StructuredContent?.ToString());
-        Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.GdrNoBaseline,
+        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.GdrNoBaseline,
             response.StructuredContent!.Value.GetProperty("code").GetString());
     }
 
