@@ -6,6 +6,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Commands.Catalog;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -158,6 +159,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
             CreateNoWindow = true,
         };
         start.Environment[RunnerOptions.RootVariable] = _workerRoot;
+        start.Environment[CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1";
         CliProcess.EnableAdvancedAiMode(start, _workerRoot);
 
         using var process = Process.Start(start)!;

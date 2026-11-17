@@ -21,6 +21,7 @@ public sealed class UsageRecordingTests
         {
             [RunnerOptions.RootVariable] = workerRoot,
             [CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1",
+            [CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1",
         };
 
         try

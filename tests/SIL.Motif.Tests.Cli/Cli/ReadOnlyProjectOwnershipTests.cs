@@ -12,6 +12,7 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Model.AppliedLog;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Commands.Catalog;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -95,6 +96,7 @@ public sealed class ReadOnlyProjectOwnershipTests(PristineProjectFixture pristin
         var childStore = Path.Combine(_root, "writing-systems-" + Guid.NewGuid().ToString("N"));
         var start = CliProcess.CreateStartInfo(_root, null, true, arguments);
         start.Environment[ProcessWritingSystemRepository.RepositoryPathVariable] = childStore;
+        start.Environment[CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1";
         var processStore = Snapshot(ProcessWritingSystemRepository.BasePath);
         var machineStore = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
             "SIL", "WritingSystemRepository");

@@ -1348,7 +1348,7 @@
   },
   {
     "name": "motif_parsimony_record_types",
-    "description": "List Notebook record types. Lists the saved Notebook record types with their portable IDs and readable names. Use the ID when you stage a Parsimony disposition.\nCommand: parsimony record-types. Agent class: Read.\n",
+    "description": "List Notebook record types. Lists the saved Notebook record types with their portable IDs and readable names. Use the ID when you stage a Parsimony ruling.\nCommand: parsimony record-types. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1368,7 +1368,7 @@
   },
   {
     "name": "motif_dispose_parsimony_finding",
-    "description": "Stage a finding disposition. Stages a keep, fix, ask, or defer decision from one finding in a stored Parsimony Report. It derives the exact subject and evidence from that finding and appends the existing Notebook operations to a Draft Proposal. Only a person can Apply.\nCommand: parsimony dispose. Agent class: Draft.\nReportId: The exact stored Parsimony report identity.\nFindingId: The exact finding identity within that report.\nDisposition: The advisory disposition to record for the finding.\nRecordTypeId: The project\u0027s Notebook record type for the advisory record.\nDraftName: The mutable Draft receiving the semantic intent.\nReason: The person\u0027s reason for the advisory disposition, when supplied.\nQuestion: The question to retain for later review, when supplied.",
+    "description": "Stage a finding ruling. Stages a keep, fix, ask, or defer decision from one finding in a stored Parsimony Report. It derives the exact subject and evidence from that finding and appends the existing Notebook operations to a Draft Proposal. Only a person can Apply.\nCommand: parsimony dispose. Agent class: Draft.\nReportId: The exact stored Parsimony report identity.\nFindingId: The exact finding identity within that report.\nDisposition: The advisory disposition to record for the finding.\nRecordTypeId: The project\u0027s Notebook record type for the advisory record.\nDraftName: The mutable Draft receiving the semantic intent.\nReason: The person\u0027s reason for the advisory disposition, when supplied.\nQuestion: The question to retain for later review, when supplied.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2036,7 +2036,7 @@
         },
         "disposition": {
           "type": "string",
-          "description": "Disposition filter.",
+          "description": "Ruling filter.",
           "enum": [
             "keep",
             "defer",
@@ -2091,7 +2091,7 @@
   },
   {
     "name": "motif_revise_parsimony_disposition",
-    "description": "Revise a disposition. Stages a revision to a saved Parsimony disposition using its exact current Notebook heads and digests. The revision keeps the same finding subject and evidence, and only a person can Apply it.\nCommand: parsimony revise. Agent class: Draft.\nDraftName: The mutable Draft receiving the semantic intent.\nIntentJson: The closed semantic intent consumed by the typed composer.",
+    "description": "Revise a ruling. Stages a revision to a saved Parsimony ruling using its exact current Notebook heads and digests. The revision keeps the same finding subject and evidence, and only a person can Apply it.\nCommand: parsimony revise. Agent class: Draft.\nDraftName: The mutable Draft receiving the semantic intent.\nIntentJson: The closed semantic intent consumed by the typed composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2101,7 +2101,7 @@
         },
         "recordId": {
           "type": "string",
-          "description": "Notebook record id of a current disposition head."
+          "description": "Notebook record id of a current ruling head."
         },
         "expectedHeads": {
           "type": "array",
@@ -2167,7 +2167,7 @@
   },
   {
     "name": "motif_retract_parsimony_disposition",
-    "description": "Retract a disposition. Stages a withdrawal of a saved Parsimony disposition using its exact current Notebook heads and digests. The history stays in FieldWorks, and the finding returns to Active after a person Applies the current retraction.\nCommand: parsimony retract. Agent class: Draft.\nDraftName: The mutable Draft receiving the semantic intent.\nIntentJson: The closed semantic intent consumed by the typed composer.",
+    "description": "Retract a ruling. Stages a withdrawal of a saved Parsimony ruling using its exact current Notebook heads and digests. The history stays in FieldWorks, and the finding returns to Active after a person Applies the current retraction.\nCommand: parsimony retract. Agent class: Draft.\nDraftName: The mutable Draft receiving the semantic intent.\nIntentJson: The closed semantic intent consumed by the typed composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2177,7 +2177,7 @@
         },
         "recordId": {
           "type": "string",
-          "description": "Notebook record id of a current disposition head."
+          "description": "Notebook record id of a current ruling head."
         },
         "expectedHeads": {
           "type": "array",

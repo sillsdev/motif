@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 

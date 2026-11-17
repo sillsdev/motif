@@ -208,7 +208,7 @@ public sealed class ParsimonyRecipeCatalogTests
         var page = ParsimonyRecipeCatalog.Load().GetPage("B-affix-null-vs-optional")!;
 
         Assert.Contains("RetireRedundantZeroAffix", page, StringComparison.Ordinal);
-        Assert.Contains("record a `keep` disposition with a reason", page, StringComparison.Ordinal);
+        Assert.Contains("record a `keep` ruling with a reason", page, StringComparison.Ordinal);
         Assert.Contains("whole entry graph", page, StringComparison.Ordinal);
         Assert.Contains("ordinary primary prefix or suffix with no alternate forms", page, StringComparison.Ordinal);
         Assert.Contains("last primary form", page, StringComparison.Ordinal);
@@ -258,6 +258,6 @@ public sealed class ParsimonyRecipeCatalogTests
             .Select(line => line[3..])
             .ToArray();
 
-        Assert.Equal(["Analyse", "Disposition", "Ask the linguist", "Update", "Verify", "Grounding"], headings);
+        Assert.Equal(["Analyse", "Ruling", "Ask the linguist", "Update", "Verify", "Grounding"], headings);
     }
 }

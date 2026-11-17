@@ -450,7 +450,10 @@ public sealed class ProposalWorkflowTests : IDisposable
             _fwDataPath, "--draft", glossDraft, "--target", CanonicalId.FromGuid(_seed.FirstSenseId).Value,
             "--ws", NewLangProjFixture.AnalysisTag, "--text", "cited gloss", "--cite-source", "Grammar 2026",
             "--cite-locator", "§ 4", "--json");
-        var delete = CliInProcess.Run(_workerRoot, null, developerCommands: true, "add-delete-lexeme-form", "--project",
+        var deleteStart = CliProcess.CreateStartInfo(_workerRoot, null, developerCommands: true);
+        CliProcess.EnableAdvancedAiMode(deleteStart, _workerRoot);
+        deleteStart.Environment["MOTIF_AUTONOMOUS"] = "1";
+        var delete = CliInProcess.Run(deleteStart, "add-delete-lexeme-form", "--project",
             _fwDataPath, "--draft", deleteDraft, "--target", CanonicalId.FromGuid(_seed.FirstEntryId).Value,
             "--cite-source", "Grammar 2026", "--cite-locator", "§ 5", "--json");
 
@@ -1263,6 +1266,7 @@ public sealed class ProposalWorkflowTests : IDisposable
     {
         var start = new ProcessStartInfo(BuildOutput.Cli);
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+        start.Environment["MOTIF_AUTONOMOUS"] = "1";
         var result = CliInProcess.RunCommandLine(start,
             $"preflight --project \"{_fwDataPath}\" {proposalId}" + (json ? " --json" : ""));
         Assert.Equal(0, result.ExitCode);

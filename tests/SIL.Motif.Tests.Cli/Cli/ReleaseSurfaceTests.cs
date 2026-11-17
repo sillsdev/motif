@@ -249,7 +249,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
     }
 
     [Fact]
-    public void ReleasedDeveloperCommandRefusalIsJsonAndDoesNotRegisterTheProject()
+    public void ReleasedAutonomousCommandRefusalIsJsonAndDoesNotRegisterTheProject()
     {
         var projectPath = Path.Combine(_root, "Project.fwdata");
         File.WriteAllText(projectPath, string.Empty);
@@ -260,9 +260,9 @@ public sealed class ReleaseSurfaceTests : IDisposable
         Assert.Equal(string.Empty, result.Output);
         var envelope = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
         Assert.Equal(FailureReason.Refused, envelope.Reason);
-        Assert.Equal("command.developer-commands-required", envelope.Code);
+        Assert.Equal("command.autonomous-required", envelope.Code);
         Assert.Contains("add-delete-lexeme-form", envelope.Message, StringComparison.Ordinal);
-        Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", envelope.Message, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_AUTONOMOUS=1", envelope.Message, StringComparison.Ordinal);
 
         using var machine = MachineDatabase.Open(Path.Combine(_root, "machine"));
         Assert.Empty(new KnownProjectRegistry(machine).List());

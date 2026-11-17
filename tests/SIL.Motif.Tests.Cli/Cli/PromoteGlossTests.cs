@@ -13,6 +13,7 @@ using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Commands.Catalog;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -80,7 +81,10 @@ public sealed class PromoteGlossTests : IDisposable
         SeedCorpus();
         Assert.True(NewDraft(_fwDataPath, ProductVersion, "cited", null).Succeeded);
 
-        var result = CliInProcess.Run(_workerRoot, null, developerCommands: true,
+        var start = CliProcess.CreateStartInfo(_workerRoot, null, developerCommands: true);
+        CliProcess.EnableAdvancedAiMode(start, _workerRoot);
+        start.Environment[CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1";
+        var result = CliInProcess.Run(start,
             "promote-gloss", "--project", _fwDataPath, "--draft", "cited", "--target", CanonicalId.Mint().Value,
             "--ws", "en", "--text", "a cited gloss", "--corpus", "wiki-testlang", "--cite-source",
             "Grammar 2026", "--cite-locator", "§ 6", "--json");

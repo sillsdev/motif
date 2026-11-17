@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Commands.Catalog;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -187,6 +188,7 @@ public sealed class DiscardDraftTests : IDisposable
             $"--text \"Keep the citations.\" --person Alex{author}").ExitCode);
         var start = CliProcess.CreateStartInfo(_root, parserPath: null, developerCommands: true,
             "discard-empty-drafts", "--project", Project);
+        start.Environment[CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1";
 
         var result = await CliProcess.RunAsync(start);
 
@@ -236,6 +238,7 @@ public sealed class DiscardDraftTests : IDisposable
             CreateNoWindow = true,
         };
         start.Environment[RunnerOptions.RootVariable] = _root;
+        start.Environment[CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1";
         CliProcess.EnableAdvancedAiMode(start, _root);
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.

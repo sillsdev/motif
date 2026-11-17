@@ -20,6 +20,7 @@ public sealed class ProgramTests
         var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [key] = "1",
+            [CommandSurfacePolicy.AutonomousEnvironmentVariable] = "1",
             [RunnerOptions.RootVariable] = workerRoot,
         };
         using var output = new StringWriter();
