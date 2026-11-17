@@ -251,6 +251,23 @@ try
                     return Usage("The --notes-tsv file is not usable: " + exception.Message, asJson);
                 }
             }
+            if (typedVerb == "compose-set-entry-attribution" && flags.TryGetValue("entries-file", out var entriesFile))
+            {
+                if (flags.ContainsKey("intent"))
+                    return Usage("Give --entries-file or --intent, not both.", asJson);
+                if (!flags.TryGetValue("tag", out var attributionTag))
+                    return Usage("--entries-file needs --tag '<source>@<revision> <licence>'.", asJson);
+                if (!File.Exists(entriesFile)) return Usage($"The --entries-file '{entriesFile}' does not exist.", asJson);
+                try
+                {
+                    flags["intent"] = SIL.Motif.Runner.Composers.SetEntryAttributionIntentParser
+                        .FromList(File.ReadAllText(entriesFile), attributionTag, flags.GetValueOrDefault("analysis-ws")).GetRawText();
+                }
+                catch (SIL.Motif.Contract.Parsing.ContractParseException exception)
+                {
+                    return Usage("The --entries-file is not usable: " + exception.Message, asJson);
+                }
+            }
             if (!flags.TryGetValue("draft", out var typedDraft) ||
                 !flags.TryGetValue("project", out var typedProject) ||
                 !flags.TryGetValue("intent", out var typedIntent))

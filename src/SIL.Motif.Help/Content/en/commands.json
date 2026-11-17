@@ -611,6 +611,51 @@
     ],
     "redirect": "The flag changes no parse, so it does not retire an entry. To stop a stem parsing, retype or delete it."
   },
+  "lexicon-import": {
+    "title": "Lexicon import and attribution",
+    "description": "How a project keeps the source and licence of lexicon data brought in from elsewhere: a tag in each entry's Bibliography and one notice in the project Description. The command that imports a lexicon is not available yet; this page holds the attribution rule it will follow.",
+    "source": "Authored from the Attribution decision."
+  },
+  "compose-set-entry-attribution": {
+    "title": "Tag entries with their source",
+    "description": "Stages, for many lexical entries at once, the Attribution tag <source>@<revision> <licence> in each entry's Bibliography, written after any Bibliography text already there. An entry that already carries the tag stages nothing, so the command is safe to run again. Give one intent with many entries, or --entries-file and --tag; only a person can Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "tag": "The Attribution tag: source, @, revision, a space, then the licence, such as lang-sme@9ba7be7 GPL-3.0.",
+      "analysisWs": "Analysis writing system the tag is written in; the project's default analysis writing system when omitted.",
+      "entries": "The entries to tag: each has entry (an entry id) and optionally at, a label such as line 7 that refusals quote."
+    },
+    "goals": [
+      "Record the source and licence of imported entries in their Bibliography",
+      "Backfill attribution on entries that were imported without it",
+      "Tag many lexical entries with where they came from"
+    ],
+    "guides": [
+      "workflow",
+      "ask-the-linguist"
+    ],
+    "redirect": "Only records the source and licence in the Bibliography field; it authors no entry. Also stage compose-set-project-attribution once for the project."
+  },
+  "compose-set-project-attribution": {
+    "title": "State the project's source",
+    "description": "Stages one notice in the project's Description saying which source, revision and licence imported data came from, after any Description text already there. A project that already states the notice stages nothing. Only a person can Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "tag": "The Attribution tag: source, @, revision, a space, then the licence, such as lang-sme@9ba7be7 GPL-3.0.",
+      "analysisWs": "Analysis writing system the notice is written in; the project's default analysis writing system when omitted."
+    },
+    "goals": [
+      "State the licence of imported lexicon data in the project",
+      "Add a source and licence notice to the project description"
+    ],
+    "guides": [
+      "workflow",
+      "ask-the-linguist"
+    ],
+    "redirect": "Only states the source and licence in the project Description; per-entry tags are staged by compose-set-entry-attribution."
+  },
   "compose-set-no-default-compounding": {
     "title": "Set default compounding",
     "description": "Stages one explicit change to the parser's built-in default compounding in a Draft. A project with no compound rules of its own still has the parser join any two stems unless default compounding is turned off; the expected value guards against stale evidence, and only a person can Apply.",

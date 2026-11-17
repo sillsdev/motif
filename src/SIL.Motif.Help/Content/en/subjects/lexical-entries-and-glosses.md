@@ -30,6 +30,7 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 16. `compose-rewrite-lexeme-form` rewrites existing lexeme forms in a guarded batch. Use `foldStressMarks=false` and explicit new forms when underlying distinctions condition the grammar.
 17. `compose-edit-allomorph-form` edits one ordinary alternate in place, guarded by its expected owner and current text, while keeping its conditions and references.
 18. `compose-edit-citation-form` retains a selected source headword separately from parser forms, guarded by its current text.
+19. `compose-set-entry-attribution` records the source and licence of imported entries in their Bibliography, and `compose-set-project-attribution` states it once in the project Description; [how you handle attribution](cmd:lexicon-import).
 
 ## Splitting one lexeme into homographs
 

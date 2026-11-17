@@ -8565,6 +8565,130 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-set-entry-attribution"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-entry-attribution.",
+                    "properties": {
+                      "tag": {
+                        "type": "string",
+                        "description": "The Attribution tag: source, @, revision, a space, then the licence, such as lang-sme@9ba7be7 GPL-3.0."
+                      },
+                      "analysisWs": {
+                        "type": "string",
+                        "description": "Analysis writing system the tag is written in; the project\u0027s default analysis writing system when omitted."
+                      },
+                      "entries": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "entry": {
+                              "type": "string"
+                            },
+                            "at": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "entry"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "The entries to tag: each has entry (an entry id) and optionally at, a label such as line 7 that refusals quote."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "tag",
+                      "entries"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-set-project-attribution"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-project-attribution.",
+                    "properties": {
+                      "tag": {
+                        "type": "string",
+                        "description": "The Attribution tag: source, @, revision, a space, then the licence, such as lang-sme@9ba7be7 GPL-3.0."
+                      },
+                      "analysisWs": {
+                        "type": "string",
+                        "description": "Analysis writing system the notice is written in; the project\u0027s default analysis writing system when omitted."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "tag"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-rewrite-lexeme-form"
                     ]
                   },
@@ -12181,6 +12305,94 @@
         "target",
         "expectedDoNotParse",
         "doNotParse",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_set_entry_attribution",
+    "description": "Tag entries with their source. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. Only records the source and licence in the Bibliography field; it authors no entry. Also stage compose-set-project-attribution once for the project. Stages, for many lexical entries at once, the Attribution tag \u003Csource\u003E@\u003Crevision\u003E \u003Clicence\u003E in each entry\u0027s Bibliography, written after any Bibliography text already there. An entry that already carries the tag stages nothing, so the command is safe to run again. Give one intent with many entries, or --entries-file and --tag; only a person can Apply.\nCommand: compose-set-entry-attribution. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "tag": {
+          "type": "string",
+          "description": "The Attribution tag: source, @, revision, a space, then the licence, such as lang-sme@9ba7be7 GPL-3.0."
+        },
+        "analysisWs": {
+          "type": "string",
+          "description": "Analysis writing system the tag is written in; the project\u0027s default analysis writing system when omitted."
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "type": "string"
+              },
+              "at": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "entry"
+            ],
+            "additionalProperties": false
+          },
+          "description": "The entries to tag: each has entry (an entry id) and optionally at, a label such as line 7 that refusals quote."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "tag",
+        "entries",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_set_project_attribution",
+    "description": "State the project\u0027s source. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. Only states the source and licence in the project Description; per-entry tags are staged by compose-set-entry-attribution. Stages one notice in the project\u0027s Description saying which source, revision and licence imported data came from, after any Description text already there. A project that already states the notice stages nothing. Only a person can Apply.\nCommand: compose-set-project-attribution. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "tag": {
+          "type": "string",
+          "description": "The Attribution tag: source, @, revision, a space, then the licence, such as lang-sme@9ba7be7 GPL-3.0."
+        },
+        "analysisWs": {
+          "type": "string",
+          "description": "Analysis writing system the notice is written in; the project\u0027s default analysis writing system when omitted."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "tag",
         "project"
       ],
       "additionalProperties": false

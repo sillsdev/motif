@@ -77,6 +77,8 @@
     { "tool": "motif_add_circumfix" },
     { "tool": "motif_add_morphosyntax_analysis" },
     { "tool": "motif_set_entry_do_not_parse" },
+    { "tool": "motif_set_entry_attribution" },
+    { "tool": "motif_set_project_attribution" },
     { "tool": "motif_rewrite_lexeme_form" },
     { "tool": "motif_edit_allomorph_form" },
     { "tool": "motif_edit_citation_form" },
