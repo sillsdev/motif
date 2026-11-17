@@ -210,12 +210,42 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
     private static (bool Tall, bool StartIsRed, bool EndIsRed) Turned(byte[] bytes)
     {
         using var result = new Bitmap(new MemoryStream(bytes));
+        return Turned(result);
+    }
+
+    private static (bool Tall, bool StartIsRed, bool EndIsRed) Turned(Bitmap result)
+    {
         using var copy = new WriteableBitmap(result.PixelSize, new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
         using var frame = copy.Lock();
-        result.CopyPixels(new PixelRect(result.PixelSize), frame.Address, frame.RowBytes * result.PixelSize.Height, frame.RowBytes);
+        result.CopyPixels(frame);
         bool Red(int x, int y) => System.Runtime.InteropServices.Marshal.ReadByte(frame.Address, y * frame.RowBytes + x * 4 + 2) > 200;
         var (w, h) = (result.PixelSize.Width, result.PixelSize.Height);
         return h > w ? (true, Red(w / 2, 20), Red(w / 2, h - 20)) : (false, Red(20, h / 2), Red(w - 20, h / 2));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OrientationSamplesReadRedInEitherPixelFormat(bool rgba)
+    {
+        avalonia.Invoke(() =>
+        {
+            using var bitmap = new WriteableBitmap(new PixelSize(80, 40), new Vector(96, 96),
+                rgba ? PixelFormat.Rgba8888 : PixelFormat.Bgra8888, AlphaFormat.Opaque);
+            using (var frame = bitmap.Lock())
+            {
+                var row = new byte[frame.RowBytes];
+                for (var x = 0; x < 80; x++)
+                {
+                    row[x * 4 + ((x < 40) == rgba ? 0 : 2)] = 255;
+                    row[x * 4 + 3] = 255;
+                }
+                for (var y = 0; y < 40; y++)
+                    System.Runtime.InteropServices.Marshal.Copy(row, 0, frame.Address + y * frame.RowBytes, row.Length);
+            }
+
+            Assert.Equal((false, true, false), Turned(bitmap));
+        });
     }
 
     [Theory]
