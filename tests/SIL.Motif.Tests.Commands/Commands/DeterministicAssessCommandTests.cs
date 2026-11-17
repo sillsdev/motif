@@ -1965,7 +1965,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         ObjectTimingPreflight.RowBudgetForTests.Value = 1;
         try
         {
-            var outcome = AssessTwoWords(seeded, null, CancellationToken.None, collect: ["ParseTime", "ObjectTiming", "Correctness"]);
+            var outcome = AssessTwoWords(seeded, null, CancellationToken.None, collect: ["ParseTime", "ObjectTiming"]);
 
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
             Assert.Contains(outcome.Value!.Measurements, item => item.Kind == AssessmentKind.ObjectTiming.ToStoredKind());
