@@ -60,11 +60,16 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         var overlappingLosses = new HashSet<(string Word, string Reading)>();
         var negativeSets = new HashSet<string>(StringComparer.Ordinal);
         var named = new TrialGateEvidence();
+        var requiredIncomplete = false;
+        var required = inputs.DeclaredGate?.WordSets.Select(set => set.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var item in Classify(inputs, before, after))
         {
             ct.ThrowIfCancellationRequested();
             accumulator.Add(item);
             named.Add(item);
+            if (required is not null && item.Memberships.Any(member => required.Contains(member.SetId)) &&
+                (item.Before.Completion != Completion.Complete || item.After.Completion != Completion.Complete))
+                requiredIncomplete = true;
             if (item.NewNoParse || item.NewApprovedLoss)
                 foreach (var loss in item.ReadingLosses) overlappingLosses.Add((item.WordKey, loss.ReadingIdentity));
             if (item.NewlyAcceptedNegative)
@@ -77,7 +82,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         }
         var facts = accumulator.Snapshot();
         var manifestBytes = JsonSerializer.SerializeToUtf8Bytes(new { input = reference.Sha256, job.JobId,
-            job.InputJson, job.ResultJson, ledger, parsimony = parsimony?.ResultDigest, algorithm = "review-v2" }, MotifJson.CreateOptions());
+            job.InputJson, job.ResultJson, ledger, parsimony = parsimony?.ResultDigest, algorithm = "review-v3" }, MotifJson.CreateOptions());
         var digest = "sha256:" + Convert.ToHexStringLower(SHA256.HashData(manifestBytes));
         var beforeAssessmentIds = (input.BaselineAssessmentIds ?? []).Concat(input.ReviewBaselines?.SelectMany(part => part.AssessmentIds) ?? [])
             .Distinct(StringComparer.Ordinal).ToArray();
@@ -89,7 +94,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             (input.Prerequisites ?? []).Select(item => new PrerequisitePin(item.ProposalId, item.IntentDigest)).ToArray(),
             job.JobId, baseline, new CandidatePin(job.JobId, ledger.CandidateFileDigest, null), dryRun?.Pin, checkpoints, inputs.Sets.Count,
             Digest(inputs.Sets), Digest(inputs.Cases.Select(item => item.Assertions)), new WarningCheckPins(null, null),
-            parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, "review-v2");
+            parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, "review-v3");
         var summary = BuildSummary(facts, inputs, ledger, overlappingLosses.Count, negativeSets.Order(StringComparer.Ordinal).ToArray(), hasWarnings)
             with { Gains = BuildGains(facts, inputs, proposal.Operations), RuleAttempts = BuildRuleAttempts(inputs, proposal.Operations, new HypothesisRuleAttemptLedger(new HypothesisRepository(_database))), GdrSync = ledger.GdrSync };
         summary = summary with { SectionCounts = summary.SectionCounts.Select(section => section.Section == "parser-work"
@@ -134,12 +139,16 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
                 ReviewFlagId.ParserWorkIncrease => facts.Flags.Contains(ReviewFlagId.ParserWorkIncrease) ? 1 : 0,
                 ReviewFlagId.NewWarningsOrParsimony => (facts.Findings?.AddedWarnings.Count ?? 0) +
                     (facts.Findings?.Measures.Sum(measure => measure.Limitation is null ? measure.Added.Count : 0) ?? 0), _ => 0 })).ToArray();
+        var losses = named.Losses;
         var report = new ReportView("motif.proposal-review-report", 1, "pending", digest, DetailLevel.Summary,
             pins, new Freshness(FreshnessRelation.Unknown, ["freshness-not-checked"]), summary, evidence,
             limitations, DetailAvailability.Available, [], null, null, null, [])
-        { Losses = named.Losses, StoppedWords = named.StoppedWords };
+        { Losses = losses, StoppedWords = named.StoppedWords, HeldWords = named.HeldWords, DeclaredGate = inputs.DeclaredGate };
         report = report with { Gate = TrialGateEvaluation.GateOf(new AvailableTrialResult(report), input.ExpectedLosses ?? [],
-            new TrialGateEvaluation.GateWords(named.Losses.Words, named.BlockingStoppedWords)) };
+            new TrialGateEvaluation.GateWords(losses.Words, named.BlockingStoppedWords)) };
+        if (report.Gate!.State == TrialGateState.Green &&
+            DeclaredTrialGateEvaluation.Reason(inputs, summary, requiredIncomplete, parsimony) is { } policyReason)
+            report = report with { Gate = report.Gate with { State = TrialGateState.Unmeasured, Reason = policyReason } };
         var estimate = Math.Min(100_000_001L, checked((long)manifestBytes.Length * 12 + (long)inputs.Cases.Count * 20_000 + 100_000));
         var references = (input.BaselineAssessmentIds ?? []).Concat(input.ReviewBaselines?.SelectMany(part => part.AssessmentIds) ?? [])
             .Concat(AfterAssessments(job.ResultJson)).Concat(["sha256:" + reference.Sha256])
@@ -268,8 +277,8 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         analyses.All(ReviewCaseClassifier.Exact);
 
     private static ReviewCaseSideFacts SideState(ReviewCaseSideFacts side, TrialReviewObservation? observation) =>
-        observation?.Completion == Completion.Stopped
-            ? side with { Completion = Completion.Stopped, StopReasons = observation.StopReasons,
+        observation?.Completion is Completion.Stopped or Completion.Unavailable
+            ? side with { Completion = observation.Completion, StopReasons = observation.StopReasons, Outcome = observation.Outcome,
                 StopDetails = ReviewCaseClassifier.InvalidDetails(observation.Morphology) }
             : side;
 

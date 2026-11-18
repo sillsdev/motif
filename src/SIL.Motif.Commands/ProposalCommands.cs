@@ -2051,6 +2051,9 @@ public static partial class ProposalCommands
             try
             {
                 FwDataProjectLoader.RequireProjectPath(cache, project.FullFwDataPath);
+                if (attribution.Mode == ApplyModes.Autonomous &&
+                    AutonomousTrialGate.Check(database, project, record, cache) is { } liveGateRefusal)
+                    return CommandOutcome<ApplyProjection>.Refused(liveGateRefusal);
                 if (loadedSidecars?.Current(project.FullFwDataPath) != true) loadedSidecars = null;
                 var loadedSource = originalIdentity is null ? null : ProgressSourceIdentity.Capture(project.FullFwDataPath);
                 if (record.Status != ManifestStatus.Applied)

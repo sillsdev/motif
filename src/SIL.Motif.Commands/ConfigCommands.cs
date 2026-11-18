@@ -43,6 +43,7 @@ public static class ConfigCommands
                 scope.Name, scope.Query, scope.Assessor, scope.Collect,
                 (long)scope.PerWordLimit.TotalMilliseconds, scope.PerWordParserWorkLimit) { TimingDetailWords = scope.TimingDetailWords })
             .ToArray()) {
+            GateWordSets = configuration.GateWordSets,
             StandaloneAssessmentCount = configuration.StandaloneAssessmentCount,
             ParsimonyBlockOn = configuration.ParsimonyBlockOn,
             ParsimonyFold = configuration.ParsimonyFold,

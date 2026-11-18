@@ -36,6 +36,7 @@ internal static class ReviewTrialCapture
                 if (selected is not null && selected.Except(configuration.ReviewWordSets.Select(set => set.Id),
                         StringComparer.Ordinal).Any())
                     throw new InvalidOperationException("A selected review set is not declared.");
+                selected?.UnionWith(configuration.GateWordSets ?? []);
                 var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
                     includeResolvedReadings: false, includeWordContext: false);
                 if (!current.Succeeded) return CommandOutcome<EnqueueTrialRequest>.Refused(current.Refusal!);
@@ -118,7 +119,7 @@ internal static class ReviewTrialCapture
                     scope,
                 });
                 var policyDigest = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(policyBytes));
-                IReadOnlyList<string>? selectedIds = request.ReviewSetIds;
+                IReadOnlyList<string>? selectedIds = selected?.Order(StringComparer.Ordinal).ToArray();
                 if (request.NegativeWords is { Count: > 0 } probes)
                 {
                     const string probeSetId = "$inline-negative-probes";
@@ -145,6 +146,7 @@ internal static class ReviewTrialCapture
                         ParsimonyBlockOn = configuration.ParsimonyBlockOn.Count == 0 ? null : configuration.ParsimonyBlockOn,
                         VariantForms = VariantFormCapture.Read(cache, request.ReviewProposal),
                     };
+                inputs = inputs with { DeclaredGate = DeclaredTrialGatePolicy.Capture(configuration, inputs) };
                 IReadOnlyList<ReviewBaselinePartition>? suppliedBaselines = null;
                 if (request.BaselineAssessmentIds is { } assessmentIds)
                 {
@@ -172,9 +174,11 @@ internal static class ReviewTrialCapture
                     throw new InvalidOperationException("Applied source decisions changed during review capture.");
                 using var baselineBytes = File.OpenRead(evidence.Baseline.FwDataPath);
                 var baselineFileDigest = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(baselineBytes));
+                var sidecars = SIL.Motif.Worker.Baselines.ProgressSourceIdentity.CaptureSidecars(evidence.Baseline.FwDataPath)
+                    ?? throw new InvalidOperationException("The Baseline writing-system files changed during review capture.");
                 var reference = ReviewInputArtifacts.Store(database, new ReviewInputArtifact(inputs, sources)
                     { Baseline = evidence.Baseline.Token, Scope = scope, Limits = limits, BaselineFile = evidence.Baseline.FwDataPath,
-                        BaselineFileDigest = baselineFileDigest });
+                        BaselineFileDigest = baselineFileDigest, BaselineSidecarDigest = sidecars.Digest });
                 return CommandOutcome<EnqueueTrialRequest>.Success(request with
                 {
                     Words = inputs.Cases.Select(item => item.Word).Distinct(StringComparer.Ordinal).ToArray(),

@@ -45,7 +45,9 @@ internal static partial class StoredRetirementReview
                 new JsonSerializerOptions { WriteIndented = true }) + "\n");
             return (string.Empty, string.Empty);
         }
-        return (Normalize(File.ReadAllText(path)), Normalize(liveJson));
+        var stored = JsonSerializer.Deserialize<RetirementReviewQueryResponse>(File.ReadAllText(path),
+            MotifJson.CreateOptions())!;
+        return (Normalize(JsonSerializer.Serialize(stored, MotifJson.CreateOptions())), Normalize(liveJson));
     }
 
     private static string SourceDirectory([CallerFilePath] string source = "") => Path.GetDirectoryName(source)!;

@@ -26,7 +26,7 @@ public sealed record RuleAttemptGroupRow(
 /// <summary>
 /// Whether the Proposal adds five or more same-shape variants without a recorded rule attempt (ADR 0022). Advisory;
 /// <see cref="Hold"/> is true only when the project opted <c>P-variant-same-shape</c> in to blocking, and like the gain
-/// gate it is report only: Apply does not read it.
+/// gate it affects Autonomous Apply only through a declared gate.
 /// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record RuleAttemptSummary(

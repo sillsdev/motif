@@ -84,7 +84,8 @@ public sealed class TrialReviewArgvTests
 
     private static (string Project, string Proposal, string Job, string Root) SeedTrial(
         Func<string, (TrialReviewObservation[] Before, TrialReviewObservation[] After)> observe, string[] words,
-        ReviewAssertion[]? assertions = null, string[]? expectedLosses = null)
+        ReviewAssertion[]? assertions = null, string[]? expectedLosses = null, bool declaredGate = false,
+        GainGatePolicy? gainGate = null, string[]? blockOn = null, bool addsObject = false)
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-cli-review-job-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -102,12 +103,22 @@ public sealed class TrialReviewArgvTests
                 command.Parameters.AddWithValue("$id", proposal);
                 command.ExecuteNonQuery();
             }
-            var inputs = new FrozenReviewInputs(key, proposal, "scope", "manifest", null, [], [],
-                words.Select(word => new ReviewPlannedCase("case-" + word, "key-" + word, word, "ws", null, [], assertions ?? [])).ToArray());
+            var inputs = new FrozenReviewInputs(key, proposal, "scope", "manifest", null,
+                declaredGate ? [new ReviewSetBinding("gold", "Gold", "regression", "members", "expectations", "source", [])] : [], [],
+                words.Select(word => new ReviewPlannedCase("case-" + word, "key-" + word, word, "ws", null,
+                    declaredGate ? [new ReviewMembership("gold", "case-" + word, "regression", 1, null, null, [])] : [], assertions ?? [])).ToArray())
+            {
+                GainGate = gainGate, ParsimonyBlockOn = blockOn,
+                DeclaredGate = declaredGate ? new TrialGateDeclaration("policy", "scope",
+                    [new TrialGateSet("gold", "source", "members", "expectations")]) : null,
+            };
             var digest = "sha256:" + new string('a', 64);
             var baseline = new BaselineToken(key, digest, "v1", "2026-01-01T00:00:00Z", digest);
             var reference = ReviewInputArtifacts.Store(database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
-            var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = proposal, operations = Array.Empty<object>() });
+            var proposalJson = JsonSerializer.Serialize(new { contractVersions = addsObject
+                    ? new Dictionary<string, string> { ["lexical"] = "1.0" } : new Dictionary<string, string>(), proposalId = proposal,
+                operations = addsObject ? new object[] { new { operationId = CanonicalId.Mint("x/").Value,
+                    kind = "lexical/lexDb/createEntries", entityId = CanonicalId.Mint("x/").Value, after = new { } } } : Array.Empty<object>() });
             var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference);
             var inputNode = JsonSerializer.SerializeToNode(input, MotifJson.CreateOptions())!.AsObject();
             inputNode["expectedLosses"] = JsonSerializer.SerializeToNode(expectedLosses);
@@ -214,6 +225,91 @@ public sealed class TrialReviewArgvTests
         finally { Directory.Delete(seed.Root, recursive: true); }
     }
 
+    [Theory]
+    [InlineData(false, GainGateMode.Hold, false, TrialGateState.Green)]
+    [InlineData(true, GainGateMode.Hold, false, TrialGateState.Unmeasured)]
+    [InlineData(true, GainGateMode.Advisory, false, TrialGateState.Green)]
+    [InlineData(true, GainGateMode.Off, false, TrialGateState.Green)]
+    [InlineData(true, GainGateMode.Advisory, true, TrialGateState.Unmeasured)]
+    public void ADeclaredGateReusesExistingGainAndParsimonyPolicies(bool declared, GainGateMode mode,
+        bool parsimony, TrialGateState expected)
+    {
+        var seed = SeedTrial(_ => ([new("case-word", "word", "analysed", Analysed("word"))],
+            [new("case-word", "word", "analysed", Analysed("word"))]), ["word"],
+            declaredGate: declared, gainGate: new GainGatePolicy(mode, 1.5),
+            blockOn: parsimony ? ["R-word-negative-accepted"] : [], addsObject: true);
+        try
+        {
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            var result = Assert.IsType<AvailableTrialResult>(read.Value);
+            Assert.Equal(expected, result.Gate!.State);
+            Assert.Equal(mode == GainGateMode.Hold, result.Report.Summary.Gains!.Gate.Hold);
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(1, true, false)]
+    [InlineData(5100, true, false)]
+    [InlineData(1, false, false)]
+    [InlineData(1, true, true)]
+    public void ANewSecondReadingOnAnAttestedWordIsHeldUntilReviewed(int count, bool attested, bool reviewed)
+    {
+        var words = Enumerable.Range(0, count).Select(index => "word-" + index.ToString("D4")).ToArray();
+        var second = AnalysedAs(words[0], OtherForm).Analyses[0];
+        var seed = SeedTrial(_ => (
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Analysed(word))).ToArray(),
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", word == words[0]
+                ? Analysed(word) with { Analyses = [Analysed(word).Analyses[0], second] } : Analysed(word))).ToArray()), words,
+            attested ? reviewed ? [Approved(Form), Approved(OtherForm)] : [Approved(Form)] : []);
+        try
+        {
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            var result = Assert.IsType<AvailableTrialResult>(read.Value);
+            var held = attested && !reviewed;
+            Assert.Equal(held ? TrialGateState.Unmeasured : TrialGateState.Green, result.Gate!.State);
+            if (count == 5100) Assert.Equal(DetailAvailability.Unavailable, result.Report.DetailAvailability);
+            var saved = TrialReviewReads.ReadStored(seed.Project, new ReviewReadRequest("", seed.Proposal));
+            var available = Assert.IsType<AvailableTrialResult>(saved.Value);
+            using var json = JsonDocument.Parse(JsonSerializer.Serialize(available, ReviewJson.Options));
+            Assert.Equal(held ? new[] { words[0] } : Array.Empty<string>(), json.RootElement.GetProperty("report")
+                .GetProperty("heldWords").EnumerateArray().Select(item => item.GetString()));
+            if (held) Assert.Contains(words[0], SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(available));
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("timed-out", "time-limit")]
+    [InlineData("capped", "work-limit")]
+    [InlineData("memory-capped", "memory-limit")]
+    [InlineData("skipped", null)]
+    public void AttributedStopsWithoutMorphologySurviveTheDetailBudget(string outcome, string? reason)
+    {
+        var words = Enumerable.Range(0, 5100).Select(index => "word-" + index.ToString("D4")).ToArray();
+        var seed = SeedTrial(_ => (
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Analysed(word))).ToArray(),
+            words.Skip(1).Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Analysed(word)))
+                .Select(item => item.Word == words[1] ? item with { Outcome = outcome, Morphology = null } : item)
+                .ToArray()), words);
+        try
+        {
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            var result = Assert.IsType<AvailableTrialResult>(read.Value);
+            Assert.Equal(DetailAvailability.Unavailable, result.Report.DetailAvailability);
+            var stopped = Assert.Single(result.Report.StoppedWords!);
+            Assert.Equal(words[1], stopped.Word);
+            Assert.Equal(outcome, stopped.Outcome);
+            Assert.Equal(reason is null ? Array.Empty<string>() : new[] { reason }, stopped.Reasons);
+            Assert.Equal(new[] { words[1] }, result.Gate!.StoppedWords);
+            Assert.Equal(TrialGateState.Unmeasured, result.Gate.State);
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
     [Fact]
     public void StoppedWordsWithoutBaselineAnalysesKeepTheirNamesAndSpecificCauses()
     {
@@ -243,6 +339,70 @@ public sealed class TrialReviewArgvTests
             Assert.Contains("Unrecognized segment 'c'", rowJson.RootElement.GetProperty("after").GetProperty("stopDetails")[0].GetString());
             Assert.Contains("canada", SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(available));
             Assert.Contains("Unrecognized segment 'c'", SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(available));
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Fact]
+    public void LegacyLossCountsWithoutRetainedNamesAreExplicitlyUnmeasured()
+    {
+        var seed = SeedTrial(_ => ([new("case-word", "word", "analysed", Analysed("word"))],
+            [new("case-word", "word", "no-analysis", NoAnalysis("word"))]), ["word"]);
+        try
+        {
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            var report = Assert.IsType<AvailableTrialResult>(read.Value).Report with { Gate = null, Losses = null };
+            var gate = TrialReviewReads.GateOf(new AvailableTrialResult(report), [], new(null, null));
+            Assert.Equal(TrialGateState.Unmeasured, gate.State);
+            Assert.Contains("rerun", gate.Reason!, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("unavailable", gate.Reason!, StringComparison.OrdinalIgnoreCase);
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task LegacyBudgetDroppedReportsRequireAnExplicitRebuildOrRerun(bool retained)
+    {
+        var words = Enumerable.Range(0, 5100).Select(index => "word-" + index.ToString("D4")).ToArray();
+        var seed = SeedTrial(_ => (
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Analysed(word))).ToArray(),
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "complete",
+                word == words[0] ? NoAnalysis(word) : Analysed(word))).ToArray()), words);
+        try
+        {
+            var first = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            var available = Assert.IsType<AvailableTrialResult>(first.Value);
+            using var database = ProjectMotifDatabase.Open(seed.Project);
+            var legacy = available.Report with { Gate = null, Losses = null, HeldWords = null };
+            var json = JsonSerializer.Serialize(legacy, ReviewJson.Options);
+            using (var connection = database.OpenConnection())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "UPDATE ReviewReports SET SummaryJson=$json,SummaryDigest=$hash,ManifestDigest='legacy' WHERE ReportId=$id;";
+                command.Parameters.AddWithValue("$json", json);
+                command.Parameters.AddWithValue("$hash", Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(json))));
+                command.Parameters.AddWithValue("$id", available.Report.ReportId);
+                command.ExecuteNonQuery();
+            }
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            var old = Assert.IsType<AvailableTrialResult>(read.Value);
+            Assert.Equal(TrialGateState.Unmeasured, old.Gate!.State);
+            Assert.Contains("rerun", old.Gate.Reason!, StringComparison.OrdinalIgnoreCase);
+            if (!retained)
+                foreach (var file in Directory.GetFiles(database.FullPath + ".review-inputs")) File.Delete(file);
+            var key = ProjectWorkspaceKey.Compute(new SIL.Motif.Contract.Projects.ProjectLocator(seed.Project, "project"));
+            var rebuilt = await new TrialReviewCommands(database).ProduceAsync(new ReviewProduceRequest(key, seed.Proposal, seed.Job, null));
+            if (retained)
+            {
+                Assert.True(rebuilt.Succeeded, rebuilt.Refusal?.Message);
+                var fresh = Assert.IsType<AvailableTrialResult>(rebuilt.Value);
+                Assert.Equal(TrialGateState.Loss, fresh.Gate!.State);
+                Assert.Equal(new[] { words[0] }, fresh.Gate.UnexpectedLosses);
+            }
+            else Assert.False(rebuilt.Succeeded);
         }
         finally { Directory.Delete(seed.Root, recursive: true); }
     }
@@ -325,6 +485,24 @@ public sealed class TrialReviewArgvTests
         Assert.Equal(["slow"], gate.StoppedWords);
         Assert.Equal(SIL.Motif.Contract.Responses.FailureEnvelope.ExitCodeFor(FailureReason.Refused),
             SIL.Motif.Cli.Program.TrialGateExitCode(gate));
+    }
+
+    [Theory]
+    [InlineData("timed-out")]
+    [InlineData("skipped")]
+    public void AnUnavailableBaselineObservationCannotAuthorizeADeclaredGate(string outcome)
+    {
+        var seed = SeedTrial(_ => ([new("case-word", "word", outcome, null)],
+            [new("case-word", "word", "analysed", Analysed("word"))]), ["word"], declaredGate: true);
+        try
+        {
+            var result = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(result.Succeeded, result.Refusal?.Message);
+            var available = Assert.IsType<AvailableTrialResult>(result.Value);
+            Assert.Equal(TrialGateState.Unmeasured, available.Gate!.State);
+            Assert.Contains(available.Report.StoppedWords!, item => item.Word == "word" && item.Side == Side.Before);
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
     }
 
     [Fact]
@@ -431,7 +609,8 @@ public sealed class TrialReviewArgvTests
                 var digest = "sha256:" + new string('a', 64);
                 var baseline = new BaselineToken(key, digest, "v1", "2026-01-01T00:00:00Z", digest);
                 var reference = ReviewInputArtifacts.Store(database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
-                var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = proposal, operations = Array.Empty<object>() });
+                var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = proposal,
+                operations = Array.Empty<object>() });
                 var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference);
                 const string job = "job/cli-review";
                 new JobRepository(database).RecordInterrupted(job, key, "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),

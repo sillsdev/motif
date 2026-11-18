@@ -46,6 +46,8 @@ public static class TrialReviewTextRenderer
             foreach (var reading in losses.NewlyLostReadings)
                 text.AppendLine("Lost reading: " + reading.Word + "; " + reading.ReadingIdentity);
         }
+        if (report.HeldWords is { Count: > 0 } held)
+            text.AppendLine("New second readings held for review: " + string.Join(", ", held));
         foreach (var stopped in report.StoppedWords ?? [])
             text.AppendLine(stopped.Word + " (" + stopped.Side.ToString().ToLowerInvariant() + "): " +
                 string.Join(", ", stopped.Reasons) + "; " + string.Join("; ", stopped.Details));
@@ -113,7 +115,7 @@ public static class TrialReviewTextRenderer
         var ratio = gains.ObjectsPerAttestedType is { } value ? value.ToString("0.##", CultureInfo.InvariantCulture) : "none";
         text.AppendLine($"Objects per attested type gained: {ratio}; gain gate {gains.Gate.Mode.ToString().ToLowerInvariant()}: " +
             $"{gains.Gate.Outcome}" +
-            (gains.Gate.Hold ? "; HOLD (report only; Apply does not read it)" : ""));
+            (gains.Gate.Hold ? "; HOLD (Autonomous Apply reads this through a declared gate)" : ""));
     }
 
     private static void AppendGdrSync(StringBuilder text, SIL.Motif.Contract.Responses.GdrCheckResponse gdr)
@@ -132,7 +134,7 @@ public static class TrialReviewTextRenderer
                 (group.AttemptRecorded ? "attempt recorded" : "no rule attempt recorded (advisory)"));
         if (attempts.Groups.Count > TextListLimit)
             text.AppendLine($"  and {attempts.Groups.Count - TextListLimit:N0} more; use --json for all");
-        if (attempts.Hold) text.AppendLine("HOLD: rule attempt required (opted in; report only; Apply does not read it)");
+        if (attempts.Hold) text.AppendLine("HOLD: rule attempt required (opted in; Autonomous Apply reads this through a declared gate)");
     }
 
     private static string Flag(FlagFact flag) => flag.Facts switch

@@ -39,7 +39,7 @@ public sealed class TrialReviewRenderingTests
         var held = GainSummary.Create(1, 0, size, new GainGatePolicy(GainGateMode.Hold, 1.5), incomplete: false);
         var heldText = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with
             { Summary = report.Summary with { Flags = [], Gains = held } }));
-        Assert.Contains("HOLD (report only; Apply does not read it)", heldText, StringComparison.Ordinal);
+        Assert.Contains("HOLD (Autonomous Apply reads this through a declared gate)", heldText, StringComparison.Ordinal);
     }
 
     [Fact]

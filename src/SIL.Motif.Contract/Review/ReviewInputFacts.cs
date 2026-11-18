@@ -69,6 +69,9 @@ public sealed record ReviewCaseSideFacts(
     IReadOnlyList<string> MatchedExpectationIds, IReadOnlyList<string> MissingExpectationIds,
     IReadOnlyList<string> UnknownExpectationIds)
 {
+    /// <summary>The outcome attributed by the producer, when an observation exists.</summary>
+    public string? Outcome { get; init; }
+
     /// <summary>The recorded parser explanation or the specific evidence validation failure.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? StopDetails { get; init; }
@@ -134,6 +137,9 @@ public sealed record FrozenReviewInputs(
     string? ParserDigest, IReadOnlyList<ReviewSetBinding> Sets, IReadOnlyList<string> OmittedSetIds,
     IReadOnlyList<ReviewPlannedCase> Cases)
 {
+    /// <summary>The declared autonomous gate and exact required scope frozen before the Trial.</summary>
+    public TrialGateDeclaration? DeclaredGate { get; init; }
+
     /// <summary>The gain gate frozen with the Trial; null means the default policy.</summary>
     public GainGatePolicy? GainGate { get; init; }
 

@@ -20,8 +20,8 @@ public sealed record TrialReviewObservation(string CaseKey, string Word, string 
         .Concat(Morphology?.InvalidShape == true ? ["invalid-evidence"] : []).ToArray();
 
     /// <summary>Distinguishes incomplete search and unavailable detail from a complete observation.</summary>
-    public Completion Completion => Morphology is null || Outcome == "skipped" && !Morphology.InvalidShape ? Completion.Unavailable :
-        StopReasons.Count != 0 || Morphology.Capped ? Completion.Stopped :
+    public Completion Completion => StopReasons.Count != 0 || Morphology?.Capped == true ? Completion.Stopped :
+        Morphology is null || Outcome == "skipped" && !Morphology.InvalidShape ? Completion.Unavailable :
             Morphology.Unavailable.Count != 0 ? Completion.Unavailable : Completion.Complete;
 }
 

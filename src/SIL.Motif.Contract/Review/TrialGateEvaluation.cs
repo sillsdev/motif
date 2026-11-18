@@ -34,6 +34,10 @@ public static class TrialGateEvaluation
         var matched = listed?.Where(word => expected.Contains(Key(word))).Order(StringComparer.Ordinal).ToArray() ?? [];
         var unexpected = listed?.Where(word => !expected.Contains(Key(word))).Order(StringComparer.Ordinal).ToArray() ?? [];
         var unexpectedCount = lostCount == 0 ? 0 : listed is null ? lostCount : unexpected.Length;
+        if (lostCount > 0 && listed is null)
+            return new TrialGate(TrialGateState.Unmeasured,
+                "Exact named losses are unavailable. Refresh the report from retained evidence or rerun the Trial.",
+                lostCount, [], [], stopped);
         if (unexpectedCount > 0)
             return new TrialGate(TrialGateState.Loss,
                 unexpectedCount + " measured word(s) lost their analysis or a confirmed reading and were not listed as expected losses.",
@@ -45,6 +49,9 @@ public static class TrialGateEvaluation
                 (stopped.Length > 0 ? stopped.Length + " word(s)" : "Some words") +
                 " that had an analysis in the Baseline were stopped before they finished, so their loss is not measured.",
                 lostCount, matched, [], stopped);
+        if (result.Report.HeldWords is { Count: > 0 } held)
+            return new TrialGate(TrialGateState.Unmeasured,
+                held.Count + " attested word(s) have a new second reading held for review.", lostCount, matched, [], stopped);
         return new TrialGate(TrialGateState.Green, null, lostCount, matched, [], []);
     }
 

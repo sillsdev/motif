@@ -1,3 +1,7 @@
+using SIL.Motif.Host.Config;
+using SIL.LCModel;
+using SIL.Motif.LiveHost.Baselines;
+using SIL.Motif.Worker.Baselines;
 using System.Globalization;
 using System.Text.Json;
 using SIL.Motif.Commands.Review;
@@ -18,7 +22,7 @@ namespace SIL.Motif.Commands;
 /// <summary>Requires the newest Trial's current green gate for Autonomous Apply (ADR 0017 and ADR 0021).</summary>
 internal static class AutonomousTrialGate
 {
-    internal static Refusal? Check(MotifDatabase database, ProjectLocator project, ProposalRecord proposal)
+    internal static Refusal? Check(MotifDatabase database, ProjectLocator project, ProposalRecord proposal, LcmCache? live = null)
     {
         var key = ProjectWorkspaceKey.Compute(project);
         string? jobId = null;
@@ -29,6 +33,18 @@ internal static class AutonomousTrialGate
             new Dictionary<string, string> { ["proposalId"] = proposal.ProposalId.Value, ["jobId"] = jobId ?? "" });
         try
         {
+            var configuration = new ProjectConfigurationReader().Read(project);
+            if (configuration.GateWordSets is null)
+            {
+                var existing = configuration.ReviewWordSets.FirstOrDefault();
+                var declaration = "[gate]\nword-sets = [\"" + (existing?.Id ?? "gold") + "\"]";
+                if (existing is null)
+                    declaration += "\n\n[[review-word-set]]\nid = \"gold\"\nname = \"Gold words\"\nrole = \"regression\"\nmanifest = \"gold.jsonl\"";
+                return new Refusal(RefusalCodes.ApplyGateUndeclared, FailureReason.Refused,
+                    "Autonomous Apply requires a declared gate. Add this TOML to " + ProjectConfigurationReader.PathFor(project) +
+                    ":\n" + declaration + "\nSupply the named word-set manifest (or use selection = \"Your saved Selection\" instead of manifest), " +
+                    "then run a fresh Trial. The gate reuses [gain-gate] and [parsimony] block-on.");
+            }
             var jobs = new JobRepository(database).ListByProjectAndKind(key, "trial")
                 .OrderByDescending(job => DateTimeOffset.Parse(job.CreatedUtc, CultureInfo.InvariantCulture))
                 .ThenByDescending(job => job.JobId, StringComparer.Ordinal);
@@ -45,13 +61,28 @@ internal static class AutonomousTrialGate
                 if (available.Report.Pins.IntentDigest != proposal.IntentDigest ||
                     available.Report.Freshness.Relation != FreshnessRelation.Current)
                     return Refuse("The newest Trial's evidence is historical or its current identity cannot be verified.");
+                if (available.Report.DeclaredGate is not { } declaration ||
+                    !DeclaredTrialGatePolicy.Current(database, project, configuration, declaration))
+                    return Refuse("The Trial did not capture the current declared gate scope and policy.");
+                if (live is not null)
+                {
+                    var baseline = available.Report.Pins.BaselineToken;
+                    var captured = input.ReviewInputs is { } reference ? ReviewInputArtifacts.Read(database, reference) : null;
+                    if (baseline.ProjectionVersion != BaselineSemanticDigest.ProjectionVersion ||
+                        baseline.ProjectIdentity != live.LangProject.Guid.ToString("D") ||
+                        baseline.SemanticSnapshotDigest != BaselineSemanticDigest.Compute(live) ||
+                        captured?.Baseline != baseline || captured.BaselineSidecarDigest is not { } measuredSidecars ||
+                        ProgressSourceIdentity.CaptureSidecars(project.FullFwDataPath) is not { } liveSidecars ||
+                        measuredSidecars != liveSidecars.Digest)
+                        return Refuse("The loaded live project's semantic state or writing-system files differ from the Trial Baseline.");
+                }
                 return gate.State == TrialGateState.Green ? null : Refuse("The newest Trial's gate is " +
                     gate.State.ToString().ToLowerInvariant() + ": " + (gate.Reason ?? "Read the Trial report."));
             }
             return Refuse("No Trial exists for this Proposal.");
         }
         catch (Exception exception) when (exception is JsonException or ContractParseException or InvalidDataException or
-            InvalidOperationException or ArgumentException or KeyNotFoundException or FormatException)
+            InvalidOperationException or ArgumentException or KeyNotFoundException or FormatException or IOException or UnauthorizedAccessException or ProjectConfigurationException)
         {
             return Refuse("The retained Trial evidence could not be read: " + exception.Message);
         }

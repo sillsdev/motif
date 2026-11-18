@@ -1,3 +1,4 @@
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Review;
@@ -80,6 +81,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
     [InlineData(true)]
     public void AnAutonomousApplyWithAMessageAndNoForceSucceeds_AndTheLogShowsModeAndMessage(bool expectedLoss)
     {
+        WriteGateConfiguration();
         var proposalId = FinalizeAndTrial("autonomous-ready", "autonomous ready gloss");
         RecordAssessment(proposalId, GetRecord(proposalId).IntentDigest!, "Correctness", ("alpha", true));
         RecordGate(proposalId, expectedLoss ? "covered-loss" : "green");
@@ -96,6 +98,11 @@ public sealed class ApplyPromotionGatingAndSweepTests
 
     [Theory]
     [InlineData("missing-report")]
+    [InlineData("undeclared-scope")]
+    [InlineData("omitted-required")]
+    [InlineData("changed-policy")]
+    [InlineData("changed-gold-list")]
+    [InlineData("legacy")]
     [InlineData("loss")]
     [InlineData("partial-expected")]
     [InlineData("unmeasured")]
@@ -105,6 +112,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
     [InlineData("pending-latest")]
     public void AutonomousApplyRequiresTheNewestTrialsCurrentGreenGate(string scenario)
     {
+        WriteGateConfiguration();
         var proposalId = FinalizeAndTrial("autonomous-gate", "gate protected gloss");
         RecordAssessment(proposalId, GetRecord(proposalId).IntentDigest!, "Correctness", ("alpha", true));
         if (scenario != "missing-report")
@@ -120,6 +128,70 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.Contains("Trial", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Contains("--expect-loss", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
+    }
+
+    [Fact]
+    public void AutonomousApplyRequiresADeclaredGateAndShowsExactToml()
+    {
+        var id = FinalizeAndTrial("undeclared", "proposal gloss");
+        RecordAssessment(id, GetRecord(id).IntentDigest!, "Correctness", ("alpha", true));
+        var refused = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id,
+            Attribution: new ApplyAttribution(ApplyModes.Autonomous, "Review confirmed")));
+        Assert.False(refused.Succeeded);
+        Assert.Equal("apply.gate-undeclared", refused.Refusal!.Code);
+        Assert.Contains("[gate]\nword-sets = [\"gold\"]", refused.Refusal.Message);
+        Assert.Contains("[[review-word-set]]", refused.Refusal.Message);
+        Assert.Contains("gold.jsonl", refused.Refusal.Message);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void AutonomousApplyRefusesExternalChangesOutsideTheProposalFootprint(bool writingSystem, bool recapture)
+    {
+        WriteGateConfiguration();
+        var id = FinalizeAndTrial("external-state", "proposal gloss");
+        RecordAssessment(id, GetRecord(id).IntentDigest!, "Correctness", ("alpha", true));
+        RecordGate(id, "green");
+        if (writingSystem)
+        {
+            var path = Directory.GetFiles(Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "WritingSystemStore"), "*.ldml")[0];
+            var document = System.Xml.Linq.XDocument.Load(path);
+            var special = new System.Xml.Linq.XElement("special",
+                new System.Xml.Linq.XElement(System.Xml.Linq.XName.Get("caseAlias", "urn://palaso.org/ldmlExtensions/v2"),
+                    new System.Xml.Linq.XAttribute("value", "tr")));
+            document.Root!.Add(special);
+            document.Save(path);
+        }
+        else
+        {
+            var loader = new FwDataProjectLoader();
+            using var cache = loader.LoadCache(_fwDataPath);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.LangProject.PartsOfSpeechOA.PossibilitiesOS[0].Name.set_String(cache.DefaultAnalWs,
+                    TsStringUtils.MakeString("External category", cache.DefaultAnalWs)));
+            loader.Save(cache);
+        }
+        if (recapture)
+        {
+            using var database = ProjectMotifDatabase.Open(_fwDataPath);
+            var key = ProjectWorkspaceKey.Compute(new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath)));
+            var before = new BaselineRepository(database).GetCurrent(key)!.Token;
+            var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath));
+            Assert.True(captured.Succeeded, captured.Refusal?.Message);
+            var after = new BaselineRepository(database).GetCurrent(key)!.Token;
+            Assert.Equal(before.SemanticIdentity, after.SemanticIdentity);
+            Assert.NotEqual(before.BundleDigest, after.BundleDigest);
+            Assert.True(DryRunJobRunner.Run(_fwDataPath, ProductVersion, id).Succeeded);
+        }
+        var bytes = File.ReadAllBytes(_fwDataPath);
+        var refused = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id,
+            Attribution: new ApplyAttribution(ApplyModes.Autonomous, "Review confirmed")));
+        Assert.False(refused.Succeeded);
+        Assert.Equal("apply.trial-gate", refused.Refusal!.Code);
+        Assert.Equal(bytes, File.ReadAllBytes(_fwDataPath));
+        Assert.Equal("proposed", GetRecord(id).Status);
     }
 
     [Fact]
@@ -493,14 +565,24 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var proposalJson = scenario == "old-revision"
             ? JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId, operations = Array.Empty<object>() })
             : proposal.ProposalJson!;
-        var baseline = new BaselineRepository(database).GetCurrent(key)!.Token;
+        var saved = new BaselineRepository(database).GetCurrent(key)!;
+        var baseline = saved.Token;
         if (scenario == "old-baseline") baseline = new BaselineToken(baseline.ProjectIdentity,
             "sha256:" + new string('f', 64), baseline.ProjectionVersion, baseline.CapturedUtc, baseline.BundleDigest);
         string[] words = ["alpha", "beta"];
-        var inputs = new FrozenReviewInputs(key, proposalId, "scope", "manifest", null, [], [],
-            words.Select(word => new ReviewPlannedCase("case-" + word, "key-" + word, word, "ws", null, [], [])).ToArray());
+        var configuration = new ProjectConfigurationReader().Read(project);
+        var manifest = ReviewWordSetManifestReader.Read(Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "gold.jsonl"), "regression");
+        var inputs = new FrozenReviewInputs(key, proposalId, "scope", "manifest", null,
+            [new ReviewSetBinding("gold", "Gold", "regression", "members", "expectations", manifest.SourceDigest, [])], [],
+            words.Select(word => new ReviewPlannedCase("case-" + word, "key-" + word, word, "ws", null,
+                [new ReviewMembership("gold", "case-" + word, "regression", 1, null, null, [])], [])).ToArray());
+        inputs = inputs with { DeclaredGate = DeclaredTrialGatePolicy.Capture(configuration, inputs) };
+        if (scenario == "undeclared-scope") inputs = inputs with { DeclaredGate = null };
+        if (scenario == "omitted-required") inputs = inputs with { Sets = [], OmittedSetIds = ["gold"],
+            Cases = inputs.Cases.Select(item => item with { Memberships = [] }).ToArray() };
         var reference = ReviewInputArtifacts.Store(database,
-            new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
+            new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>())
+                { Baseline = baseline, BaselineSidecarDigest = ProgressSourceIdentity.CaptureSidecars(saved.FwDataPath)!.Digest });
         var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference)
         { ExpectedLosses = scenario == "covered-loss" ? words : scenario == "partial-expected" ? ["alpha"] : [] };
         var jobs = new JobRepository(database);
@@ -521,7 +603,38 @@ public sealed class ApplyPromotionGatingAndSweepTests
                 scenario == "unmeasured" ? "timed-out" : loses ? "no-analysis" : "analysed",
                 scenario == "unmeasured" ? Before(word) with { TimedOut = true, Analyses = [] } :
                 loses ? Before(word) with { Analyses = [] } : Before(word))).ToArray(), []));
-        new TrialReviewPublisher(database).PublishAsync(new ReviewPublishRequest(job.JobId)).GetAwaiter().GetResult();
+        var reportId = new TrialReviewPublisher(database).PublishAsync(new ReviewPublishRequest(job.JobId)).GetAwaiter().GetResult();
+        if (scenario == "changed-policy")
+            File.AppendAllText(Path.ChangeExtension(_fwDataPath, ".motif.toml"), "\n[gain-gate]\nmode = \"hold\"\n");
+        if (scenario == "changed-gold-list")
+            File.AppendAllText(Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "gold.jsonl"), "\n");
+        if (scenario == "legacy")
+        {
+            var report = new ReviewReportRepository(database).ReadManifest(reportId)!.Summary with { Gate = null, Losses = null, DeclaredGate = null };
+            var json = JsonSerializer.Serialize(report, ReviewJson.Options);
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE ReviewReports SET SummaryJson=$json,SummaryDigest=$hash WHERE ReportId=$id;";
+            command.Parameters.AddWithValue("$json", json);
+            command.Parameters.AddWithValue("$hash", Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(json))));
+            command.Parameters.AddWithValue("$id", reportId.Value);
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private void WriteGateConfiguration()
+    {
+        File.WriteAllText(Path.ChangeExtension(_fwDataPath, ".motif.toml"),
+            "[gate]\nword-sets = [\"gold\"]\n[[review-word-set]]\nid = \"gold\"\nname = \"Gold\"\nrole = \"regression\"\nmanifest = \"gold.jsonl\"\n");
+        var rows = new[] { "alpha", "beta" }.Select(word => JsonSerializer.Serialize(new
+        {
+            caseId = "case-" + word, word, writingSystemId = "ws", source = new { citation = "Gold list" },
+            expectationRefs = Array.Empty<string>(),
+        }));
+        File.WriteAllLines(Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "gold.jsonl"),
+            new[] { "{\"schema\":\"motif.review-word-set\",\"schemaVersion\":1}" }.Concat(rows));
+        var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath));
+        Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
     }
 
     private ProposalRecord GetRecord(string proposalId)

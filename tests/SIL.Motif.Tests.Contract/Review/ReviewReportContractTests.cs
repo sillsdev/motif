@@ -6,6 +6,45 @@ namespace SIL.Motif.Tests.Contract.Review;
 
 public class ReviewReportContractTests
 {
+    public static IEnumerable<object[]> NamedGateRecords()
+    {
+        yield return [typeof(TrialStoppedWord), "{\"caseKey\":\"c\",\"word\":\"w\",\"side\":\"after\",\"reasons\":[],\"details\":[]}"];
+        yield return [typeof(TrialLostReading), "{\"word\":\"w\",\"caseKey\":\"c\",\"readingIdentity\":\"r\",\"approved\":true,\"referenceConfirmed\":false,\"assertionIds\":[]}"];
+        yield return [typeof(TrialGateSet), "{\"id\":\"gold\",\"sourceDigest\":\"s\",\"membershipDigest\":\"m\",\"expectationDigest\":\"e\"}"];
+        yield return [typeof(TrialGateDeclaration), "{\"policyDigest\":\"p\",\"scopeDigest\":\"s\",\"wordSets\":[{\"id\":\"gold\",\"sourceDigest\":\"s\",\"membershipDigest\":\"m\",\"expectationDigest\":\"e\"}]}"];
+        yield return [typeof(TrialLosses), "{\"newNoParseWords\":[],\"newApprovedLossWords\":[],\"newlyLostReadings\":[]}"];
+    }
+
+    [Theory]
+    [MemberData(nameof(NamedGateRecords))]
+    public void NamedGateRecordsRequireEveryMemberAndRejectNulls(Type type, string valid)
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(valid)!.AsObject();
+        Assert.NotNull(JsonSerializer.Deserialize(valid, type, ReviewJson.Options));
+        foreach (var property in node.ToArray())
+        {
+            var missing = node.DeepClone().AsObject();
+            missing.Remove(property.Key);
+            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize(missing.ToJsonString(), type, ReviewJson.Options));
+            var nulled = node.DeepClone().AsObject();
+            nulled[property.Key] = null;
+            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize(nulled.ToJsonString(), type, ReviewJson.Options));
+            if (property.Value is System.Text.Json.Nodes.JsonArray)
+            {
+                nulled[property.Key] = new System.Text.Json.Nodes.JsonArray((System.Text.Json.Nodes.JsonNode?)null);
+                Assert.Throws<JsonException>(() => JsonSerializer.Deserialize(nulled.ToJsonString(), type, ReviewJson.Options));
+            }
+        }
+    }
+
+    [Fact]
+    public void NamedGateRecordsRejectInvalidRuntimeValuesOnWrite()
+    {
+        Assert.Throws<JsonException>(() => JsonSerializer.Serialize(new TrialStoppedWord(null!, "w", Side.After, [], []), ReviewJson.Options));
+        Assert.Throws<JsonException>(() => JsonSerializer.Serialize(new TrialLostReading("w", "c", "r", true, false, [null!]), ReviewJson.Options));
+        Assert.Throws<JsonException>(() => JsonSerializer.Serialize(new TrialLosses([], [], [null!]), ReviewJson.Options));
+    }
+
     [Fact]
     public void FlagsHaveExactlyFiveIdsAndIncompleteIsSeparate()
     {

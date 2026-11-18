@@ -31,7 +31,7 @@
   },
   "config show": {
     "title": "Show project settings",
-    "description": "Reads the project's Assessment scopes and settings. Use it to see the limits and options Motif will use for a later Assessment.",
+    "description": "Reads the project's Assessment scopes and settings, including declared gate word sets. Use it to see the limits and policies Motif will use for later Trials and Autonomous Apply.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "store upgrade": {
@@ -522,12 +522,12 @@
   },
   "apply": {
     "title": "Apply with Readiness override",
-    "description": "Applies one Proposal using its bound Dry Run; --force skips Readiness checks only, and Autonomous mode refuses it and requires a current green Trial gate. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies.",
+    "description": "Applies one Proposal using its bound Dry Run; --force skips Readiness checks only, and Autonomous mode refuses it and requires a project-declared gate and the newest Trial's green verdict for its required words, current policy and live project state. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies.",
     "source": "Hand-written from command behavior."
   },
   "apply --all-pending": {
     "title": "Apply pending changes",
-    "description": "Applies current pending changes to the FieldWorks project as one unit of work; the optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and a current Dry Run can waive Correctness for a judgment-only Proposal while mixed changes still need normal Readiness evidence. Autonomous mode requires the newest Trial to have a saved green gate for the current Proposal content and project state.",
+    "description": "Applies current pending changes to the FieldWorks project as one unit of work; the optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and a current Dry Run can waive Correctness for a judgment-only Proposal while mixed changes still need normal Readiness evidence. Autonomous mode requires a project-declared gate and the newest Trial's green verdict for its required words, current policy and live project state.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "writing-systems": {
@@ -1816,12 +1816,12 @@
   },
   "trial": {
     "title": "Trial a Proposal",
-    "description": "Measures a Proposal on a throwaway copy and records review evidence. Read observed red flags, incomplete cases and retained details before deciding what to do.",
+    "description": "Measures a Proposal on a throwaway copy and records review evidence, always including declared gate word sets. Read named losses, incomplete cases and new second readings held for review before deciding what to do.",
     "source": "Authored from ADR 0009 and the typed command contract."
   },
   "proposal trial": {
     "title": "Read a Trial report",
-    "description": "Reads the saved report of a Proposal's Trial: red flags, incomplete cases, counts and every stopped word with its cause. It reads stored evidence and does not rerun the parser.",
+    "description": "Reads the saved report of a Proposal's Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.",
     "source": "Authored from ADR 0021 and the typed command contract."
   },
   "trial --wait": {
@@ -1977,7 +1977,7 @@
   },
   "apply --proposal": {
     "title": "Apply one Proposal",
-    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using its latest Trial; Autonomous mode requires a current green Trial gate. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies or offers a Readiness override here.",
+    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using its latest Trial; Autonomous mode requires a project-declared gate and the newest Trial's green verdict for its required words, current policy and live project state. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies or offers a Readiness override here.",
     "source": "Hand-written from command behavior."
   },
   "label": {

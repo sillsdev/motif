@@ -26,3 +26,24 @@ With `MOTIF_DEVELOPER_COMMANDS=1` set, start the app with `--text-editor-preview
 Motif stages the parser pinned in [`pangloss-release.json`](../pangloss-release.json). Set `MOTIF_PANGLOSS_EXE` to use a different executable. Evaluation data is pinned separately; fetch it with `pwsh ./evals/Get-TestGrammars.ps1` or set `MOTIF_TEST_GRAMMARS` to a checkout at the pin.
 
 The documentation site consumes the Help export. With Node 22.12 or later, export it with `motif help --all --json`, set `MOTIF_HELP_EXPORT` to the export, then run `npm ci`, `npm test` and `npm run build` in `site/`.
+
+## Project-declared Autonomous Apply gate
+
+`<project>.motif.toml` beside the project declares the word sets that must be completely measured by a Trial before Autonomous Apply:
+
+```toml
+[gate]
+word-sets = ["gold"]
+
+[[review-word-set]]
+id = "gold"
+name = "Gold words"
+role = "regression"
+selection = "Gold words"
+```
+
+Save the named Selection first. A review word-set JSONL manifest is an alternative: replace `selection` with `manifest = "gold.jsonl"`, resolved relative to the TOML file. A gate needs at least one distinct declared set. No declaration means `apply.gate-undeclared`, with the exact TOML to add in the refusal. Required sets cannot be omitted with `--review-set none`.
+
+This reuses the existing `[gain-gate] mode` (`off`, `advisory`, `hold`) and `min-attested-per-object` (default 1.5), plus `[parsimony] block-on` (default empty). These policies are frozen alongside the declaration and required sets' membership, expectation and source digests. A held gain, opted-in Parsimony hold, new second reading on an attested word, missing required evidence, or unexpected loss prevents green. A fresh Trial after independent approval resolves a second-reading hold; `--expect-loss` only excuses named intended losses. Ordinary Readiness and a person's Apply retain their separate contracts (ADR 0021 and ADR 0022).
+
+Autonomous Apply checks the current declaration and source digests, the newest Trial's revision and Baseline, and the loaded live semantic project state and writing-system file contents under the Apply lease. Changed external state refuses with `apply.trial-gate`; capture a new Baseline and Trial before retrying. Reports without retained compact gate facts are unmeasured; `proposal trial --refresh-report` rebuilds from exact retained inputs when available, otherwise rerun the Trial.

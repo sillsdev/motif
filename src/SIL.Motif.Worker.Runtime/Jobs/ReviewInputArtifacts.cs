@@ -21,6 +21,8 @@ public sealed record ReviewInputArtifact(FrozenReviewInputs Inputs, IReadOnlyDic
 {
     /// <summary>The Baseline whose project and decisions were captured.</summary>
     public BaselineToken? Baseline { get; init; }
+    /// <summary>The writing-system file digest measured with the captured Baseline.</summary>
+    public string? BaselineSidecarDigest { get; init; }
     /// <summary>The captured Assessment scope used for the candidate.</summary>
     public AssessmentScopeConfiguration? Scope { get; init; }
     /// <summary>The Trial limits captured for an exact diagnostic rerun.</summary>

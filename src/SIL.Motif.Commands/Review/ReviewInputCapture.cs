@@ -74,10 +74,8 @@ public static class ReviewInputCapture
                 };
                 item.Memberships.Add(membership);
                 memberships.Add((word, member.WritingSystemId, member.WordformId, membership));
-                var matchingWordforms = identities.Where(value => value.Word == word &&
-                    value.WritingSystemId == member.WritingSystemId &&
-                    (member.WordformId is null || member.WordformId == value.WordformId))
-                    .Select(value => value.WordformId).Distinct(StringComparer.Ordinal).ToArray();
+                var matchingWordforms = matchingIdentities.Select(value => value.WordformId)
+                    .Distinct(StringComparer.Ordinal).ToArray();
                 foreach (var assertion in assertions.Where(value => References(member, value) &&
                              matchingWordforms.Length == 1 && SourceWordform(value) == matchingWordforms[0]))
                 {
@@ -85,6 +83,10 @@ public static class ReviewInputCapture
                     item.Assertions.TryAdd(frozen.Id, frozen);
                     setAssertions.Add(frozen);
                 }
+                foreach (var assertion in assertions.Where(value => value.Approved && value.Eligible &&
+                             !value.WholeWordNegative && value.Authority == ReferenceAuthority.Human &&
+                             SourceWordform(value) is { } wordform && matchingWordforms.Contains(wordform, StringComparer.Ordinal)))
+                    item.Assertions.TryAdd(assertion.Id, FreezeAssertion(assertion));
                 foreach (var negative in negatives.Where(value => value.CaseId == member.CaseId &&
                              value.WritingSystem == member.WritingSystemId && value.Word == word &&
                              References(member, value.Assertion)))

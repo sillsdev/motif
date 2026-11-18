@@ -1,13 +1,26 @@
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
+using System.Text.Json;
+using SIL.LCModel;
+using SIL.LCModel.Core.Text;
+using SIL.LCModel.Infrastructure;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Config;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Runtime.Review;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -58,6 +71,198 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
                 SIL.Motif.Contract.Ids.CanonicalId.Mint("job/").Value,
                 SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(project), "{}", null);
             Assert.False(atomic.Succeeded);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void DeclaredGateWordSetsCannotBeSuppressedByReviewSetNone()
+    {
+        string path;
+        using (var cache = pristine.NewScratch())
+        {
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var root = Directory.CreateTempSubdirectory("motif-review-declared-gate-").FullName;
+        try
+        {
+            File.WriteAllText(Path.ChangeExtension(path, ".motif.toml"),
+                "[gate]\nword-sets = [\"gold\"]\n[[review-word-set]]\nid = \"gold\"\nname = \"Gold\"\nrole = \"regression\"\nselection = \"Gold words\"\n");
+            var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+            Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+            var draft = SIL.Motif.Commands.ProposalCommands.New(new(path, "1.0", "capture-revision", null));
+            Assert.True(draft.Succeeded, draft.Refusal?.Message);
+            var project = new ProjectLocator(path, Path.GetFileNameWithoutExtension(path));
+            using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+                MotifSchema.CurrentSchema, new Version(1, 0));
+            new NamedSelectionRepository(database).SetDefault("Gold words", [], ["goldword"],
+                new SIL.Motif.Contract.Requests.SelectionParsingLimits(SIL.Motif.Contract.Assess.ParserWorkLimit.Default,
+                    SIL.Motif.Contract.Requests.SelectionTimeLimitMode.Estimated, null), null);
+            AddWordChange(new ProposalRepository(database), "gatealpha");
+            var frozen = SIL.Motif.Commands.JobCommands.FreezeTrialProposal(new EnqueueTrialRequest(path, "1.0", draft.Value!.ProposalId)
+                { ReviewSetIds = [] });
+            Assert.True(frozen.Succeeded, frozen.Refusal?.Message);
+            var captured = ReviewTrialCapture.Capture(frozen.Value!, ["gatealpha"], null);
+            Assert.True(captured.Succeeded, captured.Refusal?.Message);
+            var inputs = ReviewInputArtifacts.Read(database, captured.Value!.ReviewInputs!).Inputs;
+            Assert.Contains(inputs.Cases, item => item.Word == "goldword" && item.Memberships.Any(member => member.SetId == "gold"));
+            Assert.DoesNotContain("gold", inputs.OmittedSetIds);
+            Assert.NotNull(inputs.DeclaredGate);
+            Assert.NotEmpty(inputs.DeclaredGate.ScopeDigest);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("single", false, false)]
+    [InlineData("single", true, false)]
+    [InlineData("ambiguous", false, false)]
+    [InlineData("ambiguous", true, false)]
+    [InlineData("ambiguous", false, true)]
+    [InlineData("exact", false, false)]
+    [InlineData("exact", true, false)]
+    [InlineData("exact", false, true)]
+    [InlineData("unresolved", false, false)]
+    public async Task RequiredManifestWordKeepsItsNativeApprovalAndHoldsAnUnapprovedSecondReading(
+        string identity, bool approveSecond, bool loseFirst)
+    {
+        string path;
+        string writingSystem;
+        string wordformId = "";
+        var readings = new List<ParseAnalysis>();
+        using (var cache = pristine.NewScratch())
+        {
+            writingSystem = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var word = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("goldword", cache.DefaultVernWs));
+                wordformId = SIL.Motif.Contract.Ids.CanonicalId.FromGuid(word.Guid).Value;
+                var other = identity != "single" ? cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("goldword", cache.DefaultVernWs)) : word;
+                foreach (var senseId in new[] { pristine.Seed.FirstSenseId, pristine.Seed.SecondSenseId })
+                {
+                    var sense = cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(senseId);
+                    var entry = (ILexEntry)sense.Owner;
+                    var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                    (readings.Count == 0 ? word : other).AnalysesOC.Add(analysis);
+                    var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                    analysis.MorphBundlesOS.Add(bundle);
+                    bundle.MorphRA = entry.LexemeFormOA;
+                    bundle.MsaRA = sense.MorphoSyntaxAnalysisRA;
+                    if (readings.Count == 0 || approveSecond)
+                        cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.approves);
+                    readings.Add(new ParseAnalysis([new ParseMorph(bundle.MorphRA.Guid.ToString("D"),
+                        bundle.MsaRA.Guid.ToString("D"), null, null)]));
+                }
+            });
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var root = Directory.CreateTempSubdirectory("motif-review-manifest-approval-").FullName;
+        try
+        {
+            File.WriteAllText(Path.ChangeExtension(path, ".motif.toml"),
+                "[gate]\nword-sets = [\"gold\"]\n[[review-word-set]]\nid = \"gold\"\nname = \"Gold\"\nrole = \"regression\"\nmanifest = \"gold.jsonl\"\n");
+            var member = new Dictionary<string, object>
+            {
+                ["caseId"] = "gold-case", ["word"] = "goldword", ["writingSystemId"] = writingSystem,
+                ["source"] = new { citation = "Gold list" }, ["expectationRefs"] = Array.Empty<string>(),
+            };
+            if (identity is "exact" or "unresolved")
+                member["wordformId"] = identity == "exact" ? wordformId : SIL.Motif.Contract.Ids.CanonicalId.Mint().Value;
+            File.WriteAllLines(Path.Combine(Path.GetDirectoryName(path)!, "gold.jsonl"),
+                ["{\"schema\":\"motif.review-word-set\",\"schemaVersion\":1}", JsonSerializer.Serialize(member)]);
+            var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+            Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+            var draft = SIL.Motif.Commands.ProposalCommands.New(new(path, "1.0", "capture-revision", null));
+            Assert.True(draft.Succeeded, draft.Refusal?.Message);
+            Assert.True(SIL.Motif.Commands.ProposalCommands.AddSetGloss(new(path, "1.0", "capture-revision",
+                SIL.Motif.Contract.Ids.CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value,
+                NewLangProjFixture.AnalysisTag, "reviewed gloss")).Succeeded);
+            DraftRationale.Author(path, "capture-revision", "Clarify the gloss", "Keep the required readings.");
+            var finalized = SIL.Motif.Commands.ProposalCommands.Finalize(new(path, "1.0", "capture-revision"));
+            Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+            Assert.True(DryRunJobRunner.Run(path, "1.0", draft.Value!.ProposalId).Succeeded);
+            var captured = ReviewTrialCapture.Capture(new EnqueueTrialRequest(path, "1.0", draft.Value!.ProposalId,
+                Words: ["ordinary"]) { ReviewSetIds = [] }, ["ordinary"], null);
+            if (identity == "unresolved")
+            {
+                Assert.False(captured.Succeeded);
+                Assert.Equal(SIL.Motif.Contract.Commands.RefusalCodes.TrialReviewInputUnavailable, captured.Refusal!.Code);
+                Assert.Contains("unresolved project word identity", captured.Refusal.Message);
+                return;
+            }
+            Assert.True(captured.Succeeded, captured.Refusal?.Message);
+            var project = new ProjectLocator(path, Path.GetFileNameWithoutExtension(path));
+            using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+                MotifSchema.CurrentSchema, new Version(1, 0));
+            var artifact = ReviewInputArtifacts.Read(database, captured.Value!.ReviewInputs!);
+            var jobs = new JobRepository(database);
+            var proposal = new ProposalRepository(database).Get(SIL.Motif.Contract.Ids.CanonicalId.Parse(draft.Value.ProposalId));
+            var assessmentId = SIL.Motif.Contract.Ids.CanonicalId.Mint("assessment/").Value;
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                AssessmentId: assessmentId, ProposalId: proposal.ProposalId, ProposalIntentDigest: proposal.IntentDigest,
+                Assessor: "pangloss", Kind: "Correctness",
+                ScopeJson: """{"perWordLimitMs":1000,"perWordParserWorkLimit":{"steps":200000,"isUnbounded":false}}""",
+                ScopeDigest: "scope",
+                Subject: new AssessmentSubject.Words(Selection.Create("test", ["ordinary"]), "none", "1"),
+                BaselineToken: JsonSerializer.Serialize(artifact.Baseline, MotifJson.CreateOptions()),
+                OutcomeDigest: "outcome", SemanticDigest: "semantic", GrammarSourceSha256: "grammar",
+                ModelFingerprint: "model", Pipeline: "pipeline", DiagnosticCount: 0,
+                Material: new AssessmentRecordMaterial.Words([CorrectnessFixture.Word("ordinary", true)], null, null, [])));
+            var input = new TrialJobInput(SIL.Motif.Commands.JobCommands.CanonicalProposalJson(proposal), null,
+                ReviewInputs: captured.Value.ReviewInputs);
+            var job = jobs.Create("manifest-approval", ProjectWorkspaceKey.Compute(project), "trial",
+                JsonSerializer.Serialize(input, MotifJson.CreateOptions()), JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+            jobs.Transition(job.JobId, JobStatus.Running);
+            jobs.Transition(job.JobId, JobStatus.Completed, JsonSerializer.Serialize(new
+                { baselineToken = artifact.Baseline, assessmentIds = new[] { assessmentId }, allWords = false,
+                    droppedGrammar = new DroppedGrammar([], 0) }, MotifJson.CreateOptions()));
+            TrialReviewObservation Observe(ReviewPlannedCase item, bool after) => new(item.CaseKey, item.Word,
+                item.Word == "goldword" ? "analysed" : "no-analysis",
+                new ParseWordEvidence("fieldworks-parse-analysis/v1", 0, item.Word, 0, false, false, false,
+                    item.Word != "goldword" ? [] : after ? loseFirst ? [readings[1]] : readings.ToArray() : [readings[0]], []));
+            TrialReviewEvidence.Save(database, new(job.JobId, captured.Value.ReviewInputs!,
+                artifact.Inputs.Cases.Select(item => Observe(item, false)).ToArray(),
+                artifact.Inputs.Cases.Select(item => Observe(item, true)).ToArray(), []));
+            var reportId = await new TrialReviewPublisher(database).PublishAsync(new ReviewPublishRequest(job.JobId));
+            var report = new ReviewReportRepository(database).ReadManifest(reportId)!.Summary;
+
+            var secondApproved = approveSecond && identity != "exact";
+            var green = secondApproved && !loseFirst;
+            var bytes = File.ReadAllBytes(path);
+            var applied = SIL.Motif.Commands.ProposalCommands.Apply(new(path, "1.0", draft.Value.ProposalId,
+                Attribution: new ApplyAttribution(ApplyModes.Autonomous, "Review confirmed")));
+            if (green)
+                Assert.True(applied.Succeeded, applied.Refusal?.Message);
+            else
+            {
+                Assert.False(applied.Succeeded);
+                Assert.Equal("apply.trial-gate", applied.Refusal!.Code);
+                Assert.Equal(bytes, File.ReadAllBytes(path));
+                Assert.Equal("proposed", new ProposalRepository(database).Get(proposal.ProposalId).Status);
+            }
+            Assert.Equal(loseFirst ? TrialGateState.Loss : green ? TrialGateState.Green : TrialGateState.Unmeasured,
+                report.Gate!.State);
+            Assert.Equal(!green && !loseFirst ? ["goldword"] : Array.Empty<string>(), report.HeldWords);
+            if (loseFirst)
+            {
+                var loss = Assert.Single(report.Losses!.NewlyLostReadings);
+                Assert.Equal("goldword", loss.Word);
+                Assert.True(loss.Approved);
+                Assert.NotEmpty(loss.AssertionIds);
+            }
+            var gold = Assert.Single(artifact.Inputs.Cases, item => item.Word == "goldword");
+            Assert.Empty(Assert.Single(gold.Memberships).ExpectationIds);
+            Assert.Equal(secondApproved ? 2 : 1, gold.Assertions.Count(assertion => assertion.Approved && assertion.Eligible));
+            Assert.All(gold.Assertions, assertion => Assert.NotNull(assertion.Morphology!.SourceWordformGuid));
+            if (identity == "ambiguous")
+                Assert.Null(gold.WordformId);
+            if (identity == "exact")
+                Assert.Equal(wordformId, gold.WordformId);
+            Assert.NotNull(artifact.BaselineSidecarDigest);
         }
         finally { Directory.Delete(root, recursive: true); }
     }

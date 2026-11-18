@@ -123,7 +123,9 @@ public sealed class TrialReviewCommands(MotifDatabase database)
         if (report.Page is { } selectedPage && request.Word is null && request.Case is null && request.Set is null && request.Outcome is null && request.Flag is null && request.Filter is null)
             links.Add(Resource(request.ProjectKey, reportId, "section", "sections/" + Uri.EscapeDataString(selectedPage.Section) +
                 "?limit=" + (request.Limit ?? 50) + (request.Cursor is null ? "" : "&cursor=" + Uri.EscapeDataString(request.Cursor))));
-        report = report with { Links = links };
+        report = report with { Links = links, Gate = report.Gate ?? new TrialGate(TrialGateState.Unmeasured,
+            "The saved report has no compact named gate evidence. Use refresh-report to rebuild from exact retained evidence, or rerun the Trial.",
+            0, [], [], []) };
         return CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(report) { Gate = report.Gate });
     }
 
@@ -153,6 +155,9 @@ public sealed class TrialReviewCommands(MotifDatabase database)
             var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(job.JobId), ct).ConfigureAwait(false);
             return Read(new ReviewReadRequest(request.ProjectKey, request.ProposalId, ReportId: id.Value));
         }
+        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+        { return Refused(RefusalCodes.DifferenceNoBefore, FailureReason.Refused,
+            "Exact retained evidence is unavailable; rerun the Trial. " + exception.Message); }
         catch (Exception exception) when (exception is InvalidDataException or InvalidOperationException or KeyNotFoundException)
         { return Refused(RefusalCodes.DifferenceUnreadable, FailureReason.StoreInconsistent, exception.Message); }
     }

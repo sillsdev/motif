@@ -9,6 +9,9 @@ public sealed record ProjectConfigurationProjection(
     bool PurgeOnApply,
     IReadOnlyList<AssessmentScopeProjection> Scopes)
 {
+    /// <summary>Required word sets for Autonomous Apply; null means no declared gate.</summary>
+    public IReadOnlyList<string>? GateWordSets { get; init; }
+
     /// <summary>Recent standalone Assessments kept per kind alongside cited evidence.</summary>
     public int StandaloneAssessmentCount { get; init; } = 20;
 

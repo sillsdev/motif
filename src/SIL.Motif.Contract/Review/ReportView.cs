@@ -216,9 +216,17 @@ public sealed record ReportView(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public TrialGate? Gate { get; init; }
 
+    /// <summary>The project declaration and required scope measured by this Trial.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TrialGateDeclaration? DeclaredGate { get; init; }
+
     /// <summary>The complete named loss categories, independent of optional detail retention.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public TrialLosses? Losses { get; init; }
+
+    /// <summary>Attested words held for review of a new second reading, outside the optional detail index.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? HeldWords { get; init; }
 
     /// <summary>Every stopped case, retained independently of the optional detail index.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -229,7 +237,8 @@ public sealed record ReportView(
 
     private void Validate()
     {
-        if (Schema is null ||
+        if (HeldWords?.Any(item => item is null) == true || StoppedWords?.Any(item => item is null) == true ||
+            Schema is null ||
             ReportId is null ||
             ReportDigest is null ||
             Pins is null ||

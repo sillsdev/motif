@@ -31,6 +31,38 @@ Motif keeps the newest 20 standalone Assessments per kind, as well as Assessment
 standalone-assessments-per-kind = 20
 ```
 
+## Declare an Autonomous Apply gate
+
+Add this to `<project>.motif.toml`, beside the project, to require the saved Selection named Gold words:
+
+```toml
+[gate]
+word-sets = ["gold"]
+
+[[review-word-set]]
+id = "gold"
+name = "Gold words"
+role = "regression"
+selection = "Gold words"
+```
+
+Save that Selection before running a Trial. To use a review word-set JSONL manifest instead, replace `selection` with `manifest = "gold.jsonl"`; relative paths resolve beside the TOML file. The list must be nonempty and name distinct declared review sets. An absent `[gate]` refuses Autonomous Apply with `apply.gate-undeclared`; it does not imply a default gate. `config show --json` reports the required ids as `gateWordSets` when declared and omits that field otherwise.
+
+Required sets are measured even with `trial --review-set none`. The Trial freezes their source, membership, expectation and policy digests. Autonomous Apply requires complete measurement and the current declaration; changing a Selection, manifest or policy requires a fresh Trial.
+
+The gate reuses these existing settings:
+
+```toml
+[gain-gate]
+mode = "advisory"
+min-attested-per-object = 1.5
+
+[parsimony]
+block-on = []
+```
+
+Gain modes are `off`, `advisory` (default) and `hold`. `hold` keeps a declared gate from being green below the threshold. Added phonological rules and affix processes are exempt. Parsimony blocks only opted-in measures: `R-word-disapproved-produced`, `R-word-negative-accepted`, and `P-variant-same-shape`. Missing required measurement remains unmeasured. A person's Apply keeps its existing Readiness checks.
+
 ## Related commands
 
 - [Measure a Selection](cmd:assess) uses the configured scope when one is named.

@@ -4,9 +4,9 @@ Waits for a Trial job and reads its state. When the job completes, `motif trial 
 
 | Gate | What it means | Exit code |
 | --- | --- | --- |
-| `green` | Every measured word kept its analysis and its confirmed readings, or its loss was listed as expected, and no word that was analysed before the change was stopped early. | 0 |
+| `green` | No unexpected loss, blocking incomplete evidence or review hold remains; every declared required case was measured. | 0 |
 | `loss` | A measured word went from analysed to no analysis, or lost a confirmed reading, and the word was not listed as an expected loss. A loss wins over `unmeasured`. | 6 |
-| `unmeasured` | The Trial measured no words, left required cases unmeasured, was interrupted, did not finish (for example the parser was killed), or stopped a word by budget or timeout that had an analysis before the change. | 2 |
+| `unmeasured` | The Trial measured no words, left required cases unmeasured, was interrupted, did not finish (for example the parser was killed), or stopped a word by budget or timeout that had an analysis before the change. A new second reading held for review, or a declared gain/Parsimony hold, also prevents green. | 2 |
 
 A word that was stopped but had no analysis before the change does not change the gate. The gate names stopped words that had a Baseline analysis under `stoppedWords`, expected losses under `expectedLosses` and unlisted losses under `unexpectedLosses`. The report also keeps every stopped word in `report.stoppedWords`, including words with no Baseline analysis: each names its before or after side, reason codes and specific parser explanation. For `invalid-evidence`, the explanation identifies the invalid shape or morphology evidence. These diagnostics remain available when the optional detail index is not retained.
 
@@ -19,3 +19,5 @@ With `--json`, a terminal Job that could not finish the Trial is printed as one 
 The stored result keeps its `gate` and `report.losses`: `newNoParseWords` and `newApprovedLossWords` name every affected word, and `newlyLostReadings` names each word and frozen reading identity. These lists survive when the optional detail index exceeds the store budget. Expected losses are frozen when the Trial is queued; later reads keep that Trial’s verdict.
 
 When a word had a Baseline analysis but its spelling cannot be segmented by the candidate phoneme inventory, the parser may mark it `skipped`. This is a named loss, including any confirmed readings it lost, rather than a pass or an unknown search result. Malformed evidence cannot establish that loss. A listed intended inventory loss is covered by the Trial's saved expected losses.
+
+Sets required by `[gate] word-sets` are measured even with `--review-set none`; [config show](cmd:config%20show) documents the declaration. Held second readings are named in `report.heldWords`, independently of the detail budget. Independently approve the added reading and run a fresh Trial to clear that hold. Older reports without compact gate facts are unmeasured: use `proposal trial --refresh-report` with retained inputs, or rerun the Trial.

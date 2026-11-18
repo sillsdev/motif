@@ -32,6 +32,7 @@ public static class ProjectConfigurationFile
     private const string RegressionTable = "regression";
     private const string ApplyTable = "apply";
     private const string RetentionTable = "retention";
+    private const string GateTable = "gate";
     private const string GainGateTable = "gain-gate";
     private const string ParsimonyTable = "parsimony";
     private const string ScopeTable = "scope";
@@ -62,6 +63,8 @@ public static class ProjectConfigurationFile
         double? gateMinimum = null;
         List<string>? blockOn = null;
         List<string>? fold = null;
+        List<string>? gateSets = null;
+        var declaredGate = false;
         var scopes = new List<AssessmentScopeConfiguration>();
         var reviewSets = new List<ReviewWordSetConfiguration>();
         var review = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -97,8 +100,13 @@ public static class ProjectConfigurationFile
                 var name = HeaderName(trimmed, "[", "]", path, lineNumber);
                 if (name == ScopeTable)
                     throw Malformed(path, lineNumber, "'scope' must be declared as '[[scope]]', not '[scope]'");
-                if (name != RegressionTable && name != ApplyTable && name != RetentionTable && name != GainGateTable && name != ParsimonyTable)
+                if (name != RegressionTable && name != ApplyTable && name != RetentionTable && name != GainGateTable && name != ParsimonyTable && name != GateTable)
                     throw Malformed(path, lineNumber, $"unknown table '[{name}]'");
+                if (name == GateTable)
+                {
+                    if (declaredGate) throw Malformed(path, lineNumber, "duplicate [gate] table");
+                    declaredGate = true;
+                }
                 section = name;
                 continue;
             }
@@ -126,6 +134,11 @@ public static class ProjectConfigurationFile
                 case RetentionTable:
                     if (!RetentionKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[retention]");
                     standaloneCount = ParsePositiveInteger(path, lineNumber, key, rawValue);
+                    break;
+                case GateTable:
+                    if (key != "word-sets") throw UnknownKey(path, lineNumber, key, "[gate]");
+                    if (gateSets is not null) throw Malformed(path, lineNumber, "duplicate word-sets key");
+                    gateSets = ParseStringArray(path, lineNumber, key, rawValue);
                     break;
                 case GainGateTable:
                     if (!GainGateKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[gain-gate]");
@@ -170,11 +183,15 @@ public static class ProjectConfigurationFile
             throw new ProjectConfigurationException(
                 $"{Path.GetFileName(path)}: scope name '{duplicate.Key}' is declared more than once.");
 
+        if (declaredGate && (gateSets is null || gateSets.Count == 0 ||
+            gateSets.Distinct(StringComparer.Ordinal).Count() != gateSets.Count ||
+            gateSets.Except(reviewSets.Select(set => set.Id), StringComparer.Ordinal).Any()))
+            throw Malformed(path, lines.Length, "[gate] word-sets requires distinct declared review word set IDs");
         return new ProjectConfiguration(scopes, gate ?? true, purge ?? true,
             standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount, reviewSets,
             new GainGatePolicy(gateMode ?? GainGatePolicy.Default.Mode,
                 gateMinimum ?? GainGatePolicy.Default.MinAttestedPerObject),
-            blockOn, fold);
+            blockOn, fold, gateSets);
     }
 
     /// <summary>Renders a resolved configuration back to the same TOML shape <see cref="Parse"/> reads.</summary>
@@ -190,6 +207,13 @@ public static class ProjectConfigurationFile
         sb.AppendLine();
         sb.AppendLine($"[{RetentionTable}]");
         sb.AppendLine($"standalone-assessments-per-kind = {configuration.StandaloneAssessmentCount}");
+
+        if (configuration.GateWordSets is { } gateSets)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"[{GateTable}]");
+            sb.AppendLine($"word-sets = [{string.Join(", ", gateSets.Select(Quote))}]");
+        }
 
         if (configuration.GainGate != GainGatePolicy.Default)
         {

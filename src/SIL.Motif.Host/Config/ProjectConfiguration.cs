@@ -101,7 +101,8 @@ public sealed record ProjectConfiguration
         IReadOnlyList<ReviewWordSetConfiguration>? reviewWordSets = null,
         GainGatePolicy? gainGate = null,
         IReadOnlyList<string>? parsimonyBlockOn = null,
-        IReadOnlyList<string>? parsimonyFold = null)
+        IReadOnlyList<string>? parsimonyFold = null,
+        IReadOnlyList<string>? gateWordSets = null)
     {
         ArgumentNullException.ThrowIfNull(scopes);
         if (scopes.Count == 0)
@@ -116,6 +117,11 @@ public sealed record ProjectConfiguration
         GainGate = gainGate ?? GainGatePolicy.Default;
         ParsimonyBlockOn = parsimonyBlockOn ?? Array.Empty<string>();
         ParsimonyFold = parsimonyFold ?? Array.Empty<string>();
+        if (gateWordSets is not null && (gateWordSets.Count == 0 ||
+            gateWordSets.Distinct(StringComparer.Ordinal).Count() != gateWordSets.Count ||
+            gateWordSets.Except(ReviewWordSets.Select(set => set.Id), StringComparer.Ordinal).Any()))
+            throw new ArgumentException("A gate requires distinct declared review word sets.", nameof(gateWordSets));
+        GateWordSets = gateWordSets;
     }
 
     /// <summary>Every declared Assessment scope, at least one.</summary>
@@ -141,6 +147,9 @@ public sealed record ProjectConfiguration
 
     /// <summary>Orthographic fold rules for near-duplicate lexemes, each <c>from&gt;to</c> (ADR 0022); none by default, Cebuano sets <c>iy&gt;y</c>.</summary>
     public IReadOnlyList<string> ParsimonyFold { get; }
+
+    /// <summary>Required review word sets; null means the project has not declared an autonomous gate.</summary>
+    public IReadOnlyList<string>? GateWordSets { get; }
 
     /// <summary>The documented configuration for a project with no <c>.motif.toml</c>.</summary>
     public static ProjectConfiguration Defaults() => new(
