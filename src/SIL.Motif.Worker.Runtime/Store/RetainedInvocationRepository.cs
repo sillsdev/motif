@@ -12,6 +12,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Baselines;
 
 namespace SIL.Motif.Worker.Store;
 
@@ -84,6 +85,25 @@ public sealed class RetainedInvocationRepository
         while (reader.Read()) ids.Add(reader.GetString(0));
         reader.Dispose();
         return ids.Select(id => ReadComplete(connection, transaction, id, includeWords: false)).ToArray();
+    }
+
+    internal BaselineRecord? FindAssessmentBaseline(string projectKey, BaselineToken token, AssessmentRecord assessment)
+    {
+        if (assessment.Invocation is not { } invocation) return null;
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        var retained = ReadAggregate(connection, transaction, invocation.InvocationId)?.Record;
+        if (retained is null || retained.ProjectKey != projectKey || retained.BaselineToken != token ||
+            retained.ArtifactInvocationId != invocation.InvocationId ||
+            !ReadMembers(connection, transaction, invocation.InvocationId)
+                .Any(member => member.AssessmentId == assessment.AssessmentId && member.Kind == assessment.Kind))
+            return null;
+
+        var baselineJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
+        ValidateMember(retained, baselineJson, invocation, assessment.BaselineToken,
+            assessment.Assessor, assessment.ScopeJson, assessment.ScopeDigest, assessment.GrammarSourceSha256, assessment.Selection);
+        return new(projectKey, token, retained.BaselineRootDirectory, retained.BaselineFwDataPath,
+            retained.BaselineSourceLastWriteUtc, retained.BaselinePublishedUtc);
     }
 
     private RetainedInvocationRecord ReadComplete(SqliteConnection connection, SqliteTransaction transaction,

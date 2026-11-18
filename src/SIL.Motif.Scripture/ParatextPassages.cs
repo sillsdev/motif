@@ -19,8 +19,8 @@ public sealed record ParatextWord(string Anchor, string Verse, string Surface);
 /// <summary>Reads Paratext chapters through Machine and applies the permanent anchor policy.</summary>
 public static class ParatextPassages
 {
-    /// <summary>The tokeniser's <c>Name</c> and <c>Version</c>, so a change to either rebuilds every stored index.</summary>
-    public const string TokenizerVersion = "fieldworks-word-forming-1";
+    /// <summary>The tokeniser and profile-reuse policy version. A change rebuilds every stored Paratext index.</summary>
+    public const string TokenizerVersion = "fieldworks-word-forming-1.profile-2";
     public const string AnchorVersion = "scripture-1";
 
     /// <summary>

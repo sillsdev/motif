@@ -169,8 +169,7 @@ public sealed partial class MotifDatabase : IDisposable
     {
         ArgumentNullException.ThrowIfNull(read);
         var descriptor = Describe(path, project, MotifSchema.CurrentSchema, MotifProductVersion.Current);
-        using var lease = new FileStream(path + ".use.lock", FileMode.Open, FileAccess.Read,
-            FileShare.ReadWrite | FileShare.Delete);
+        using var lease = MotifSqliteStore.AcquireExistingReadLease(path);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
             DataSource = Path.GetFullPath(path),
@@ -195,7 +194,7 @@ public sealed partial class MotifDatabase : IDisposable
             if (schema != MotifSchema.CurrentSchema)
                 throw new NotSupportedException("The project database has another schema version.");
         }
-        descriptor.ValidateSchema(connection, transaction);
+        MotifSchema.ValidateReadSchema(connection, transaction);
         var metadata = MotifSchema.ReadMetadata(connection, transaction);
         EnsureLocatorMatches(metadata.Project, project, path);
         if (MotifProductVersion.Current < metadata.MinimumWorkerVersion)

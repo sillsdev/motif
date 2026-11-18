@@ -20,6 +20,7 @@ using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -367,15 +368,67 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
         }
     }
 
-    [Fact]
-    public void MalformedProducerRetryMemberLeavesItsSourceUnknown()
+    [Theory]
+    [InlineData("")]
+    [InlineData("capability: an affix rule was omitted on retry\n")]
+    public async Task SuccessfulRetryWithEmptyStandardErrorOrWarningsKeepsArtifactOwnership(string stderr)
+    {
+        var parser = FakeParser.Copy(Path.Combine(_root, "parser"));
+        FakeParser.BehaveBesideExecutable(parser, new
+        {
+            retryStandardError = stderr,
+            words = new[] { new { word = "word", outcome = "timed-out", recoversAtTimeoutMs = 5000 } },
+        });
+        using var invoker = new PanGlossInvoker(parser);
+        var artifactRoot = Path.Combine(_root, "retry-worker");
+        var assessor = new PanGlossAssessor(new StatsCacheStore(WorkspaceOwnership.Bootstrap(artifactRoot)), invoker);
+        var candidate = Directory.CreateDirectory(Path.Combine(_root, "candidate")).FullName;
+        File.Copy(_project, Path.Combine(candidate, "project.fwdata"));
+        var assessment = Assert.Single(await assessor.ProduceAsync(
+            new AssessmentScope.Words(["word"], [AssessmentKind.ParseTime], TimeSpan.FromMilliseconds(700)),
+            candidate, CancellationToken.None));
+        using var lease = assessment.ArtifactLease;
+        var evidence = Assert.IsType<BatchInvocationEvidence>(assessment.Invocation);
+        var retry = Assert.IsType<StoppedWordRetry>(evidence.StoppedWordRetry);
+        Assert.Null(retry.Failure);
+        var retryStderr = Path.Combine(Path.GetDirectoryName(evidence.TsvPath)!, StoppedWordRetry.StandardErrorFileName);
+        Assert.Equal(stderr, File.ReadAllText(retryStderr));
+        Assert.Equal(BatchInvocationEvidence.DigestFile(retryStderr), retry.RetryStandardErrorSha256);
+        var token = CreateBaselineToken();
+        RecordBaseline(token);
+        RecordProducedAssessment("retried", token, evidence);
+        lease?.Retain();
+
+        var result = RunInventory(artifactRoot: artifactRoot);
+
+        Assert.True(result.ExitCode == 0, result.Error);
+        using var inventory = JsonDocument.Parse(result.Output);
+        Assert.DoesNotContain("malformed-invocation-evidence", inventory.RootElement.GetProperty("diagnostics")
+            .EnumerateArray().Select(item => item.GetProperty("code").GetString()));
+        Assert.True(inventory.RootElement.GetProperty("referenceDomainComplete").GetBoolean());
+        Assert.True(inventory.RootElement.TryGetProperty("logicalBytes", out _));
+        foreach (var path in new[] { evidence.SourcePath, retryStderr })
+        {
+            var artifact = Assert.Single(inventory.RootElement.GetProperty("artifacts").EnumerateArray(), item =>
+                item.GetProperty("path").GetString() == path);
+            Assert.Equal(evidence.InvocationId, Assert.Single(artifact.GetProperty("ownerInvocationIds").EnumerateArray()).GetString());
+            Assert.Equal("Retained", artifact.GetProperty("disposition").GetString());
+        }
+    }
+
+    [Theory]
+    [InlineData("FutureRetryMember", "\"unknown\"")]
+    [InlineData("RetryStandardErrorSha256", "\"not-a-digest\"")]
+    [InlineData("RetryStandardErrorSha256", "null")]
+    [InlineData("GrammarWarnings", "[]")]
+    public void MalformedProducerRetryMemberLeavesItsSourceUnknown(string member, string value)
     {
         var token = CreateBaselineToken();
         RecordBaseline(token);
         var produced = RecordProducedInvocation("producer-malformed-retry", token, withRetry: true);
         var evidenceJson = ReadInvocationEvidence(produced.InvocationId);
         var evidence = JsonNode.Parse(evidenceJson)!.AsObject();
-        evidence["StoppedWordRetry"]!.AsObject()["FutureRetryMember"] = "unknown";
+        evidence["StoppedWordRetry"]!.AsObject()[member] = JsonNode.Parse(value);
         WriteInvocationEvidence(produced.InvocationId, evidence.ToJsonString());
 
         var result = RunInventory();
@@ -710,6 +763,13 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
                     digest, digest, digest, digest, "0\tword\t1000\t500\trecovered")
                 : null,
         };
+        RecordProducedAssessment(assessmentId, token, invocation);
+        return new ProducerInvocation(assessmentId, invocationId, sourcePath);
+    }
+
+    private void RecordProducedAssessment(string assessmentId, BaselineToken token, BatchInvocationEvidence invocation)
+    {
+        var digest = invocation.SourceBytesSha256;
         var record = new NewAssessmentRecord(assessmentId, null, null, "PanGloss", "ParseTime", "{}", digest,
             new AssessmentSubject.Words(Selection.Create("producer-selection", ["word"]), "whitespace", "1"),
             JsonSerializer.Serialize(token, MotifJson.CreateOptions()), null, null, digest, null, null, null,
@@ -717,7 +777,6 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
         using var database = MotifDatabase.OpenOwned(_store,
             new ProjectLocator(_project, "inventory-test"), MotifSchema.CurrentSchema, MotifProductVersion.Current);
         new AssessmentRepository(database).Record(record);
-        return new ProducerInvocation(assessmentId, invocationId, sourcePath);
     }
 
     private string ReadInvocationEvidence(string invocationId)
@@ -894,12 +953,12 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
 
     private static long FileInfoLength(string path) => new FileInfo(path).Length;
 
-    private CliRun RunInventory(bool developerCommands = true)
+    private CliRun RunInventory(bool developerCommands = true, string? artifactRoot = null)
     {
         var start = new ProcessStartInfo(BuildOutput.Cli);
         start.Environment[RunnerOptions.RootVariable] = _workerRoot;
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = developerCommands ? "1" : null;
-        var result = CliInProcess.Run(start, "store", "artifacts", "--root", _root, "--stores", StoresManifest, "--json");
+        var result = CliInProcess.Run(start, "store", "artifacts", "--root", artifactRoot ?? _root, "--stores", StoresManifest, "--json");
         return new CliRun(result.ExitCode, result.Output, result.Error);
     }
 

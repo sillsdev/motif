@@ -354,7 +354,8 @@ public static class SourceIndexRefresh
             source.Status.ToString(), writingSystem, projectIdentity.Serialize(), files);
         var oldIdentity = previous is null ? null : SourceIndexIdentity.Parse(previous.IdentityJson);
         var reuse = previous?.TokenizerVersion == ParatextPassages.TokenizerVersion &&
-            previous.AnchorVersion == ParatextPassages.AnchorVersion && oldIdentity?.WritingSystem == writingSystem;
+            previous.AnchorVersion == ParatextPassages.AnchorVersion && oldIdentity?.WritingSystem == writingSystem &&
+            ProgressSourceIdentity.Parse(oldIdentity.ProjectIdentityJson)?.SidecarDigest == projectIdentity.SidecarDigest;
         var chapters = ParatextPassages.Read(folder, cancellationToken);
         var passages = new List<SourcePassage>();
         var wordforms = new Dictionary<string, SourceWordform>(StringComparer.Ordinal);

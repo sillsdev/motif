@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Worker.Baselines;
 
@@ -104,11 +105,7 @@ internal sealed record ProgressSourceIdentity(string Digest, ProgressFileStamp[]
             var content = SHA256.HashData(stream);
             hash.AppendData(content);
             if (file.Name != "project")
-            {
-                sidecars.AppendData(BitConverter.GetBytes(name.Length));
-                sidecars.AppendData(name);
-                sidecars.AppendData(content);
-            }
+                WritingSystemProfileDigest.Append(sidecars, file.Name, content);
         }
         return (Convert.ToHexString(hash.GetHashAndReset()), Convert.ToHexString(sidecars.GetHashAndReset()));
     }

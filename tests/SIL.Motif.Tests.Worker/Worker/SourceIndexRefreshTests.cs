@@ -286,6 +286,39 @@ public sealed class SourceIndexRefreshTests : IDisposable
     }
 
     [Fact]
+    public void AChangedSegmentationProfileRetokenizesEvenUnchangedPassages()
+    {
+        Assert.True(Build());
+        var writingSystems = Path.Combine(_root, "WritingSystemStore");
+        Directory.CreateDirectory(writingSystems);
+        File.WriteAllText(Path.Combine(writingSystems, "qaa.ldml"), "new profile witness");
+        var tokenized = new List<string>();
+        SourceIndexRefresh.PassageTokenized.Value = tokenized.Add;
+        Assert.True(Build());
+        Assert.NotEmpty(tokenized);
+        Assert.Equal(new SourceIndexRepository(_database).ReadPassages(_entry.Id).Count, tokenized.Count);
+    }
+
+    [Fact]
+    public void AnIndexStampedByTheOldProfileReusePolicyRetokenizesEvenWithTheCurrentLdmlDigest()
+    {
+        Assert.True(Build());
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE SourceIndexState SET TokenizerVersion='fieldworks-word-forming-1' WHERE SourceId=$id;";
+            command.Parameters.AddWithValue("$id", _entry.Id);
+            command.ExecuteNonQuery();
+        }
+
+        Assert.True(SourceIndexRefresh.Reconcile(_database));
+        var tokenized = new List<string>();
+        SourceIndexRefresh.PassageTokenized.Value = tokenized.Add;
+        Assert.True(Build());
+        Assert.Equal(new SourceIndexRepository(_database).ReadPassages(_entry.Id).Count, tokenized.Count);
+    }
+
+    [Fact]
     public void AnIndexBuiltWithTheOldMachineTokeniserIsQueuedForRebuildAndRetokenizesEveryChapter()
     {
         Assert.True(Build());

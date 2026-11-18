@@ -84,9 +84,9 @@ public sealed class ParatextPassageTests
     }
 
     [Fact]
-    public void TheIndexVersionNamesTheTokeniserAndItsRuleVersion()
+    public void TheIndexVersionNamesTheTokeniserRuleAndProfileReusePolicy()
     {
         var tokeniser = FieldWorksTokeniser.Create();
-        Assert.Equal(ParatextPassages.TokenizerVersion, tokeniser.Name + "-" + tokeniser.Version);
+        Assert.Equal(ParatextPassages.TokenizerVersion, tokeniser.Name + "-" + tokeniser.Version + ".profile-2");
     }
 }

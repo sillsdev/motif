@@ -185,8 +185,7 @@ internal sealed class MotifSqliteStore : IDisposable
         FileStream? useLease = null;
         try
         {
-            useLease = new FileStream(fullPath + ".use.lock", FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.None);
+            useLease = AcquireExistingReadLease(fullPath);
             using var connection = OpenReadOnlyConfiguredConnection(fullPath);
             if (Inspect(connection, descriptor, fullPath) == 0)
                 throw new InvalidDataException($"The {descriptor.Name} has not been initialized.");
@@ -666,6 +665,19 @@ internal sealed class MotifSqliteStore : IDisposable
     /// <summary>Acquires a database's ownership file for a platform-specific lock test.</summary>
     internal static FileStream AcquireOwnershipForTesting(string path, TimeSpan patience) =>
         AcquireOwnership(path, patience);
+
+    internal static FileStream AcquireExistingReadLease(string path)
+    {
+        try
+        {
+            return new FileStream(path + ".use.lock", FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.None);
+        }
+        catch (IOException exception) when (IsOwnershipLockContention(exception))
+        {
+            throw new MotifStoreLockException("Another Motif process is resetting this database.", exception);
+        }
+    }
 
     private static FileStream AcquireUseLease(string path, TimeSpan patience)
     {

@@ -475,7 +475,7 @@ internal static class GeneratedArtifactReferences
             var retry = retries[0];
             string[] retryAllowed = ["LimitMs", "Stopped", "Retried", "Recovered", "StillStopped", "RetryInvocationId",
                 "FirstPassTsvSha256", "FirstPassAnalysesSha256", "RetryTsvSha256", "RetryAnalysesSha256", "Words",
-                "NotRetried", "Failure"];
+                "NotRetried", "Failure", "RetryStandardErrorSha256", "GrammarWarnings"];
             string[] retryRequired = ["LimitMs", "Stopped", "Retried", "Recovered", "StillStopped", "RetryInvocationId",
                 "FirstPassTsvSha256", "FirstPassAnalysesSha256", "RetryTsvSha256", "RetryAnalysesSha256", "Words",
                 "NotRetried"];
@@ -483,6 +483,9 @@ internal static class GeneratedArtifactReferences
             var retryIds = Properties(retry, "RetryInvocationId").ToArray();
             if (retryIds.Length != 1 || retryIds[0].ValueKind != JsonValueKind.String ||
                 string.IsNullOrWhiteSpace(retryIds[0].GetString())) valid = false;
+            var retryStderr = Properties(retry, "RetryStandardErrorSha256").ToArray();
+            if (retryStderr.Length > 1 || retryStderr.Any(hash => hash.ValueKind != JsonValueKind.String ||
+                !IsCanonicalSha256(hash.GetString()))) valid = false;
             foreach (var retryId in retryIds.Where(value => value.ValueKind == JsonValueKind.String))
                 AddRequiredReference(builder, ArtifactReferenceFamily.InvocationArtifacts, storeIdentity,
                     ArtifactReferenceTargetKind.Invocation, retryId.GetString() ?? string.Empty, recordId,

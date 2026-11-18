@@ -321,7 +321,7 @@ internal static class Program
             Words = behaviour.Words.Select(word => word.Outcome == "timed-out" && word.RecoversAtTimeoutMs is { } at &&
                 wordTimeoutMs >= at ? word with
                 {
-                    Outcome = "complete",
+                    Outcome = word.RecoveredOutcome ?? "complete",
                     Attempts = word.RecoveredAttempts ?? word.Attempts,
                     Passes = word.RecoveredPasses ?? word.Passes,
                     ParserWork = word.RecoveredParserWork ?? word.ParserWork,
@@ -404,6 +404,7 @@ internal static class Program
                 }
                 if (statsManifestPath is not null && behaviour.Mode != "noStatsManifest")
                     File.WriteAllText(statsManifestPath, "{}");
+                if (recovered && behaviour.RetryStandardError is { } retryError) Console.Error.Write(retryError);
                 return behaviour.ExitCode;
         }
     }
@@ -1016,7 +1017,8 @@ internal static class Program
     private sealed record FakeWord(string Word, string Outcome, string? Signature = null,
         IReadOnlyList<JsonElement>? Analyses = null, int? Attempts = null, int? Passes = null, double ElapsedMs = 3,
         int? RecoversAtTimeoutMs = null, long? ParserWork = null,
-        int? RecoveredAttempts = null, int? RecoveredPasses = null, long? RecoveredParserWork = null);
+        int? RecoveredAttempts = null, int? RecoveredPasses = null, long? RecoveredParserWork = null,
+        string? RecoveredOutcome = null);
 
     private sealed record Behaviour
     {
@@ -1028,6 +1030,7 @@ internal static class Program
         public int StartupDelayMilliseconds { get; init; }
         public bool StreamProgress { get; init; }
         public string RetryStatisticsMode { get; init; } = "present";
+        public string? RetryStandardError { get; init; }
         public string? HeartbeatPath { get; init; }
         public string? StartedPath { get; init; }
         public string? StartOrderPath { get; init; }

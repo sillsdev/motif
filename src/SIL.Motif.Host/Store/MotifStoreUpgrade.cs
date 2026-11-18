@@ -17,6 +17,15 @@ public static class MotifStoreUpgrade
         "Receipts", "AppliedIndex", "NamedSelections", "DefaultSelection", "ParsimonySelection", "ReviewMarks", "ReadOccurrences",
         "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples", "ReviewReports", "Requests",
         "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations"];
+    private static readonly string[] Schema76Carry =
+    [
+        "Baselines", "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex",
+        "AssessmentInvocations", "Assessments", "AssessmentWordPayloads", "AssessmentWordSetBindings",
+        "AssessedWords", "ParsedAnalyses", "AssessmentObjectTimings", "RetainedInvocations", "RetainedInvocationMembers",
+        "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies",
+        "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
+    ];
+
     private static readonly HashSet<string> Derived = new(StringComparer.Ordinal)
     {
         "ActiveParse", "AssessedWords", "AssessmentInvocations", "AssessmentObjectTimings", "AssessmentPins",
@@ -28,7 +37,8 @@ public static class MotifStoreUpgrade
         "ProposalDifferenceBuckets", "ProposalDifferenceCases", "ProposalDifferenceOccurrences",
         "Reports", "RetainedInvocationMembers", "RetainedInvocations",
         "query_snapshot", "query_forms", "query_stems", "query_uses", "query_objects",
-        "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents"
+        "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents",
+        "GrammarCoverageSegmentations", "GrammarCoverageMeasurements", "GrammarCoverageNoAnalysisRank"
     };
 
     private static void ReleaseReviewReportDetails(SqliteConnection connection, SqliteTransaction transaction)
@@ -136,7 +146,9 @@ public static class MotifStoreUpgrade
             // Summaries written before their current shape cannot be read, so they are dropped like any derived table.
             var carriesSummaries = version >= firstSummarySchema;
             var kept = carriesSummaries ? Kept.Append("ProposalDifferences").ToArray() : Kept;
-            bool IsDerived(string name) => Derived.Contains(name) || (!carriesSummaries && name == "ProposalDifferences");
+            if (version == 76) kept = [.. kept, .. Schema76Carry];
+            bool IsDerived(string name) => !kept.Contains(name, StringComparer.Ordinal) &&
+                (Derived.Contains(name) || name == "ProposalDifferences");
             var unknown = tables.Except(kept, StringComparer.Ordinal).Where(name => name != "MotifMetadata" && !IsDerived(name)).ToArray();
             if (unknown.Length != 0) throw new InvalidDataException(StoreUpgradeMessages.Format("UnknownTable", string.Join(", ", unknown)));
             var carried = kept.ToDictionary(table => table, _ => 0L, StringComparer.Ordinal);
@@ -165,6 +177,8 @@ public static class MotifStoreUpgrade
                 if (carried[table] != Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)}{where};", transaction))
                     throw new InvalidDataException(StoreUpgradeMessages.Format("CountChanged", table));
             }
+            if (version == 76)
+                Execute(destination, "UPDATE SourceIndexState SET Status = 'stale' WHERE Kind = 'Paratext';", transaction);
             ReleaseReviewReportDetails(destination, transaction);
             FoldNotesIntoComments(destination, transaction, tables, carried);
             // The word rows are not carried, so every carried summary says its word detail is gone.
