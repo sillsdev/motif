@@ -713,7 +713,10 @@ namespace SIL.TextEditing.Project
 
         byte[] BinaryValue(int hvo, int flid)
         {
-            _data.BinaryPropRgb(hvo, flid, ArrayPtr.Null, 0, out int length);
+            int length;
+            // liblcm throws a NullReferenceException for a binary field that was never set on this object.
+            try { _data.BinaryPropRgb(hvo, flid, ArrayPtr.Null, 0, out length); }
+            catch (NullReferenceException) { return new byte[0]; }
             if (length == 0) return new byte[0];
             using (var buffer = MarshalEx.ArrayToNative<byte>(length))
             {
