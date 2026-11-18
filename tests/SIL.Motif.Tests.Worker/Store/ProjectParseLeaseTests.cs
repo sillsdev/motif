@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Store;
@@ -71,10 +72,9 @@ public sealed class ProjectParseLeaseTests : IDisposable
         Assert.NotNull(next);
     }
 
-    [Fact]
+    [RequiresSymbolicLinkFact]
     public void AStoreOpenedThroughADirectoryAliasKeepsItsLeaseForPublication()
     {
-        if (OperatingSystem.IsWindows()) return;
         Directory.CreateDirectory(_root);
         var target = Path.Combine(_root, "target");
         Directory.CreateDirectory(target);
