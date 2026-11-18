@@ -35,9 +35,17 @@ namespace SIL.TextEditing.Project.Tests
         {
             Directory.CreateDirectory(_root);
             string copy = Path.Combine(_root, Path.GetFileName(fwdata));
-            File.Copy(fwdata, copy);
-            Cache = LcmCache.CreateCacheFromLocalProjectFile(copy, null,
-                new SilentLcmUI(new SingleThreadedSynchronizeInvoke()), new Directories(_root), new LcmSettings(), new QuietProgress());
+            try
+            {
+                File.Copy(fwdata, copy);
+                Cache = LcmCache.CreateCacheFromLocalProjectFile(copy, null,
+                    new SilentLcmUI(new SingleThreadedSynchronizeInvoke()), new Directories(_root), new LcmSettings(), new QuietProgress());
+            }
+            catch
+            {
+                try { Directory.Delete(_root, true); } catch (IOException) { }
+                throw;
+            }
         }
 
         static string Initialize()

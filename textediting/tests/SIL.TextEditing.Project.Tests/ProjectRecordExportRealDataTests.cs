@@ -19,7 +19,7 @@ namespace SIL.TextEditing.Project.Tests
         public void EveryRecordOfARealProjectExportsAndReadsBackWithOnlyKnownLosses()
         {
             string? path = Environment.GetEnvironmentVariable("TEXTEDITING_EXPORT_FWDATA");
-            if (string.IsNullOrEmpty(path)) return; // not opted in
+            if (string.IsNullOrEmpty(path)) { _output.WriteLine("not opted in: TEXTEDITING_EXPORT_FWDATA is not set"); return; }
             using var fixture = new ProjectFixture(path!);
             var reasons = new Dictionary<string, int>(StringComparer.Ordinal);
             var failures = new List<string>();
@@ -38,27 +38,35 @@ namespace SIL.TextEditing.Project.Tests
                         string reason = Category(u.Reason);
                         reasons[kind + ": " + reason] = reasons.TryGetValue(kind + ": " + reason, out int n) ? n + 1 : 1;
                     }
-                    if (export.Text == null) { failures.Add(export.Guid + " not written"); continue; }
+                    if (export.Text == null) { failures.Add(kind + " " + export.Guid + " not written"); continue; }
                     var read = RecordFileReader.Read(export.Text, exporter.Schema, exporter.CreateReadOptions());
                     var errors = read.Diagnostics.Where(d => d.Severity == MarkdownSeverity.Error).Select(d => d.Id).Distinct().ToList();
-                    if (errors.Count > 0) failures.Add(export.Guid + " read-back errors " + string.Join(",", errors));
-                    else if (!RecordDocument.AreEquivalent(export.Document, read.Document!, exporter.Schema)) failures.Add(export.Guid + " reads back unequal");
+                    if (errors.Count > 0) failures.Add(kind + " " + export.Guid + " read-back errors " + string.Join(",", errors));
+                    else if (!RecordDocument.AreEquivalent(export.Document, read.Document!, exporter.Schema)) failures.Add(kind + " " + export.Guid + " reads back unequal");
                     else
                     {
                         try { ExportOracle.Check(exporter.Cache, exporter.Result, export, read.Document!); }
-                        catch (Xunit.Sdk.XunitException e) { failures.Add(export.Guid + " oracle: " + e.Message.Split('\n')[0]); }
+                        catch (Xunit.Sdk.XunitException e) { failures.Add(kind + " " + export.Guid + " oracle: " + OracleCategory(e.Message)); }
                     }
                 }
-                Assert.Equal(exports.Count, exports.Select(e => e.Path).Distinct(StringComparer.Ordinal).Count());
+                Assert.True(exports.Count == exports.Select(e => e.Path).Distinct(StringComparer.Ordinal).Count(), kind + " has records that share a path");
                 _output.WriteLine(kind + ": " + exports.Count + " records, " + unexported + " unexported values");
             }
             foreach (var r in reasons.OrderBy(r => r.Key, StringComparer.Ordinal)) _output.WriteLine("  " + r.Value + " x " + r.Key);
             _output.WriteLine("failures: " + failures.Count + " of " + total);
             foreach (var f in failures.Take(20)) _output.WriteLine("  " + f);
-            Assert.Empty(failures);
+            Assert.True(failures.Count == 0, failures.Count + " records failed; see the output lines above (guids and categories only)");
             Assert.DoesNotContain(reasons.Keys, k => k.EndsWith("unknown", StringComparison.Ordinal));
         }
 
+
+        /// <summary>The oracle's messages carry project text; only the kind of mismatch is kept.</summary>
+        static string OracleCategory(string message)
+        {
+            foreach (var kind in new[] { "alternatives differ", "rich text differs", "text differs", "integer differs", "boolean differs", "guid differs", "reference differs", "has an object the project lacks", "items in the project", "neither exported nor reported" })
+                if (message.Contains(kind)) return kind;
+            return "mismatch";
+        }
 
         /// <summary>Maps a reason to a name from a fixed set, so that counts never carry project text; an unrecognised reason is "unknown" and fails the test.</summary>
         static string Category(string reason)
