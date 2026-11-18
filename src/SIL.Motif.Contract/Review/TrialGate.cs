@@ -30,3 +30,18 @@ public sealed record TrialGate(
 /// <summary>A named stopped case with its producer-attributed cause on one side of a Trial.</summary>
 public sealed record TrialStoppedWord(string CaseKey, string Word, Side Side,
     IReadOnlyList<string> Reasons, IReadOnlyList<string> Details);
+
+/// <summary>A named reading lost from a word, including its frozen expectation identities.</summary>
+public sealed record TrialLostReading(string Word, string CaseKey, string ReadingIdentity,
+    bool Approved, bool ReferenceConfirmed, IReadOnlyList<string> AssertionIds);
+
+/// <summary>Exact named losses retained with the summary when optional detail rows are unavailable.</summary>
+public sealed record TrialLosses(IReadOnlyList<string> NewNoParseWords,
+    IReadOnlyList<string> NewApprovedLossWords, IReadOnlyList<TrialLostReading> NewlyLostReadings)
+{
+    /// <summary>The distinct spellings affected by any measured loss.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> Words => NewNoParseWords.Concat(NewApprovedLossWords)
+        .Concat(NewlyLostReadings.Select(reading => reading.Word)).Distinct(StringComparer.Ordinal)
+        .Order(StringComparer.Ordinal).ToArray();
+}

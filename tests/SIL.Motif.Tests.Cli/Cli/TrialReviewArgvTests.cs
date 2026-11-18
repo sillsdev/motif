@@ -84,7 +84,7 @@ public sealed class TrialReviewArgvTests
 
     private static (string Project, string Proposal, string Job, string Root) SeedTrial(
         Func<string, (TrialReviewObservation[] Before, TrialReviewObservation[] After)> observe, string[] words,
-        ReviewAssertion[]? assertions = null)
+        ReviewAssertion[]? assertions = null, string[]? expectedLosses = null)
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-cli-review-job-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -109,7 +109,9 @@ public sealed class TrialReviewArgvTests
             var reference = ReviewInputArtifacts.Store(database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
             var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = proposal, operations = Array.Empty<object>() });
             var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference);
-            new JobRepository(database).RecordInterrupted(job, key, "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
+            var inputNode = JsonSerializer.SerializeToNode(input, MotifJson.CreateOptions())!.AsObject();
+            inputNode["expectedLosses"] = JsonSerializer.SerializeToNode(expectedLosses);
+            new JobRepository(database).RecordInterrupted(job, key, "trial", inputNode.ToJsonString(),
                 "{}", "2026-01-01T00:00:00Z", JobStatus.Failed);
             var (before, after) = observe("");
             TrialReviewEvidence.Save(database, new TrialReviewLedger(job, reference, before, after, []));
@@ -134,12 +136,59 @@ public sealed class TrialReviewArgvTests
             words.Select((word, i) => new TrialReviewObservation("case-" + word, word,
                 OutcomeOf(before[i]), before[i])).Where(o => o.Morphology is not null).ToArray(),
             words.Select((word, i) => new TrialReviewObservation("case-" + word, word,
-                OutcomeOf(after[i]), after[i])).Where(o => o.Morphology is not null).ToArray()), words, assertions);
+                OutcomeOf(after[i]), after[i])).Where(o => o.Morphology is not null).ToArray()), words, assertions, expected);
         try
         {
-            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job, expected);
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
             Assert.True(read.Succeeded, read.Refusal?.Message);
             return Assert.IsType<AvailableTrialResult>(read.Value).Gate!;
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void StoredLossNamesSurviveDetailBudgetAndKeepTheTrialsExpectedLosses(bool expected, bool incomplete)
+    {
+        var words = Enumerable.Range(0, 5100).Select(index => "word-" + index.ToString("D4")).ToArray();
+        var lost = words.Take(7).ToArray();
+        var seed = SeedTrial(_ => (
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Analysed(word))).ToArray(),
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "complete",
+                lost.Contains(word) ? NoAnalysis(word) : Analysed(word))).Where(item => !incomplete || item.Word != words[^1]).ToArray()), words,
+            [Approved(Form)], expected ? lost : []);
+        try
+        {
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            var waited = Assert.IsType<AvailableTrialResult>(read.Value);
+            Assert.Equal(DetailAvailability.Unavailable, waited.Report.DetailAvailability);
+            Assert.Equal(7, waited.Gate!.LostWords);
+            Assert.Equal(expected ? incomplete ? TrialGateState.Unmeasured : TrialGateState.Green : TrialGateState.Loss, waited.Gate.State);
+            Assert.Equal(lost, expected ? waited.Gate.ExpectedLosses : waited.Gate.UnexpectedLosses);
+            var saved = TrialReviewReads.ReadStored(seed.Project, new ReviewReadRequest("project", seed.Proposal));
+            Assert.True(saved.Succeeded, saved.Refusal?.Message);
+            var available = Assert.IsType<AvailableTrialResult>(saved.Value);
+            Assert.NotNull(available.Gate);
+            Assert.Equal(waited.Gate.State, available.Gate.State);
+            Assert.Equal(lost, expected ? available.Gate.ExpectedLosses : available.Gate.UnexpectedLosses);
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+            var exit = SIL.Motif.Cli.Program.Run(
+                ["proposal", "trial", "--project", seed.Project, seed.Proposal, "--json"], output, error,
+                new Dictionary<string, string?>(StringComparer.Ordinal), static (_, _) => { });
+            Assert.True(exit == 0, error.ToString());
+            using var json = JsonDocument.Parse(output.ToString());
+            Assert.Equal(expected ? incomplete ? "unmeasured" : "green" : "loss",
+                json.RootElement.GetProperty("gate").GetProperty("state").GetString());
+            var losses = json.RootElement.GetProperty("report").GetProperty("losses");
+            Assert.Equal(lost, losses.GetProperty("newNoParseWords").EnumerateArray().Select(item => item.GetString()));
+            Assert.Equal(lost, losses.GetProperty("newApprovedLossWords").EnumerateArray().Select(item => item.GetString()));
+            Assert.Equal(lost, losses.GetProperty("newlyLostReadings").EnumerateArray().Select(item => item.GetProperty("word").GetString()));
+            Assert.Contains("word-0000", SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(available));
         }
         finally { Directory.Delete(seed.Root, recursive: true); }
     }

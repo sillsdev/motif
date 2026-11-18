@@ -59,10 +59,12 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         var wordWorkRows = work is null ? null : WordWorkRows(inputs, before, after, work);
         var overlappingLosses = new HashSet<(string Word, string Reading)>();
         var negativeSets = new HashSet<string>(StringComparer.Ordinal);
+        var named = new TrialGateEvidence();
         foreach (var item in Classify(inputs, before, after))
         {
             ct.ThrowIfCancellationRequested();
             accumulator.Add(item);
+            named.Add(item);
             if (item.NewNoParse || item.NewApprovedLoss)
                 foreach (var loss in item.ReadingLosses) overlappingLosses.Add((item.WordKey, loss.ReadingIdentity));
             if (item.NewlyAcceptedNegative)
@@ -135,12 +137,9 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         var report = new ReportView("motif.proposal-review-report", 1, "pending", digest, DetailLevel.Summary,
             pins, new Freshness(FreshnessRelation.Unknown, ["freshness-not-checked"]), summary, evidence,
             limitations, DetailAvailability.Available, [], null, null, null, [])
-        { StoppedWords = Classify(inputs, before, after).SelectMany(item => new[]
-            {
-                (Side.Before, item.Before), (Side.After, item.After)
-            }.Where(side => side.Item2.Completion is Completion.Stopped or Completion.Unavailable)
-            .Select(side => new TrialStoppedWord(item.CaseKey, item.Word, side.Item1,
-                side.Item2.StopReasons, side.Item2.StopDetails ?? []))).ToArray() };
+        { Losses = named.Losses, StoppedWords = named.StoppedWords };
+        report = report with { Gate = TrialGateEvaluation.GateOf(new AvailableTrialResult(report), input.ExpectedLosses ?? [],
+            new TrialGateEvaluation.GateWords(named.Losses.Words, named.BlockingStoppedWords)) };
         var estimate = Math.Min(100_000_001L, checked((long)manifestBytes.Length * 12 + (long)inputs.Cases.Count * 20_000 + 100_000));
         var references = (input.BaselineAssessmentIds ?? []).Concat(input.ReviewBaselines?.SelectMany(part => part.AssessmentIds) ?? [])
             .Concat(AfterAssessments(job.ResultJson)).Concat(["sha256:" + reference.Sha256])

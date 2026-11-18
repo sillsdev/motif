@@ -91,10 +91,9 @@ internal static class TrialReviewTools
             Limit: args.OptionalInt("limit")));
     }
 
-    internal static ToolOutcome ReadJob(ServerContext context, string proposal, string job,
-        IReadOnlyCollection<string>? expectedLosses = null)
+    internal static ToolOutcome ReadJob(ServerContext context, string proposal, string job)
     {
-        var outcome = TrialReviewReads.ReadJob(context.ProjectPath, context.ProductVersion, proposal, job, expectedLosses);
+        var outcome = TrialReviewReads.ReadJob(context.ProjectPath, context.ProductVersion, proposal, job);
         return outcome.Succeeded ? ToolOutcome.Ok(JsonSerializer.SerializeToNode<TrialReviewResult>(outcome.Value!, ReviewJson.Options)!, jobId: job)
             : ToolOutcome.Refused(outcome.Refusal!);
     }

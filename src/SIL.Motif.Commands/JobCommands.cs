@@ -275,7 +275,8 @@ public static class JobCommands
                 ReviewBeforePartial: request.ReviewBeforePartial is { Count: > 0 } partial
                     ? TrialReviewEvidence.StoreBefore(database, partial) : null,
                 ReviewRevision: record.DraftName is null ? IntentDigest.Compute(proposal) : null,
-                ReviewCounterSemantics: request.ReviewInputs is null ? null : SIL.Motif.Host.PanGloss.PanGlossInterfaceVersions.StatsCounterSemanticsVersion);
+                ReviewCounterSemantics: request.ReviewInputs is null ? null : SIL.Motif.Host.PanGloss.PanGlossInterfaceVersions.StatsCounterSemanticsVersion)
+                { ExpectedLosses = request.ExpectedLosses?.ToArray() };
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var stamped = JobParserPin.Stamp(inputJson, parserPath);
             if (stop is null)

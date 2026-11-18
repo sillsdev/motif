@@ -859,7 +859,7 @@ internal static class AgentTools
                 ("wordsFile", Schema.String("Path to a UTF-8 word list."), false),
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("review_sets", Schema.StringArray("Named review sets to include."), false),
-                ("expect_loss", Schema.StringArray("Words the change intends to lose, such as retirements. They are reported in the gate and do not make it a loss; any other lost word does."), false),
+                ("expect_loss", Schema.StringArray("Words the change intends to lose, frozen when the Trial is queued. They are reported in the saved gate and do not make it a loss; any other lost word does. A resumed Trial cannot change them."), false),
                 ("job", Schema.String("Exact Trial job to resume or read."), false),
                 ("report", Schema.String("Exact stored report to read."), false),
                 ("wait_seconds", Schema.Integer("How long to wait. Default 40.", 1, 300), false),
@@ -878,7 +878,7 @@ internal static class AgentTools
                     ["ProposalId"] = "proposal", ["Words"] = "words", ["NegativeWords"] = "negative_words",
                     ["JobId"] = "job", ["Timeout"] = "wait_seconds", ["Scope"] = null, ["AllWords"] = null,
                     ["ExpectedDraftRevision"] = null, ["Limits"] = null, ["BaselineAssessmentIds"] = null,
-                    ["ReviewSetIds"] = null,
+                    ["ReviewSetIds"] = null, ["ExpectedLosses"] = "expect_loss",
                 } },
 
         new("motif_try_word",
@@ -1738,7 +1738,7 @@ internal static class AgentTools
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Run cannot use report selectors.");
         var wait = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         var job = args.Optional("job");
-        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets")))
+        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss")))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "A resumed Trial cannot change its inputs.");
         if (job is null)
         {
@@ -1748,7 +1748,7 @@ internal static class AgentTools
             var words = named.Value!.Concat(negatives).Distinct(StringComparer.Ordinal).ToArray();
             var request = new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion, proposal,
                 Words: words.Length == 0 ? null : words, NegativeWords: negatives)
-                { ReviewSetIds = args.Has("review_sets") ? args.List("review_sets") : null };
+                { ReviewSetIds = args.Has("review_sets") ? args.List("review_sets") : null, ExpectedLosses = args.List("expect_loss") };
             var queued = await Task.Run(() => TrialWorkflow.Enqueue(request,
                 RunnerOptions.ResolveRoot(), context.JobParserPath, BaselineMode.Required, cancellation), cancellation);
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
@@ -1759,7 +1759,7 @@ internal static class AgentTools
             new WaitForJobRequest(context.ProjectPath, job, context.ProductVersion, wait), context.StartRunner), cancellation);
         if (!waited.Succeeded && waited.Refusal!.Code is not ("job.wait-timeout" or "job.wait-cancelled"))
             return ToolOutcome.Refused(waited.Refusal!);
-        return TrialReviewTools.ReadJob(context, proposal, job, args.List("expect_loss"));
+        return TrialReviewTools.ReadJob(context, proposal, job);
     }
 
     // A wait that ran out is progress, not a failure: say where the job is and how to keep waiting.

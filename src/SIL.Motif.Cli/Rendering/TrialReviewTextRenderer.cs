@@ -33,6 +33,19 @@ public static class TrialReviewTextRenderer
             foreach (var flag in report.Summary.Flags)
                 text.AppendLine(flag.Text + ": " + Flag(flag));
         text.AppendLine(report.Summary.Notice);
+        if (report.Gate is { } gate)
+        {
+            text.AppendLine("Gate: " + gate.State.ToString().ToLowerInvariant() + (gate.Reason is null ? "" : "; " + gate.Reason));
+            if (gate.ExpectedLosses.Count > 0) text.AppendLine("Expected losses: " + string.Join(", ", gate.ExpectedLosses));
+            if (gate.UnexpectedLosses.Count > 0) text.AppendLine("Unexpected losses: " + string.Join(", ", gate.UnexpectedLosses));
+        }
+        if (report.Losses is { } losses)
+        {
+            if (losses.NewNoParseWords.Count > 0) text.AppendLine("New no-parse words: " + string.Join(", ", losses.NewNoParseWords));
+            if (losses.NewApprovedLossWords.Count > 0) text.AppendLine("New Approved losses: " + string.Join(", ", losses.NewApprovedLossWords));
+            foreach (var reading in losses.NewlyLostReadings)
+                text.AppendLine("Lost reading: " + reading.Word + "; " + reading.ReadingIdentity);
+        }
         foreach (var stopped in report.StoppedWords ?? [])
             text.AppendLine(stopped.Word + " (" + stopped.Side.ToString().ToLowerInvariant() + "): " +
                 string.Join(", ", stopped.Reasons) + "; " + string.Join("; ", stopped.Details));

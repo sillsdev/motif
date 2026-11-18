@@ -60,6 +60,10 @@ public sealed record TrialJobInput(
     [property: JsonPropertyName("reviewRevision")] string? ReviewRevision = null,
     [property: JsonPropertyName("reviewCounterSemantics")] int? ReviewCounterSemantics = null)
 {
+    /// <summary>The expected losses frozen when this Trial was queued.</summary>
+    [JsonPropertyName("expectedLosses")]
+    public IReadOnlyList<string>? ExpectedLosses { get; init; }
+
     /// <exception cref="InvalidOperationException">The input is not a well-formed Trial job input.</exception>
     public static TrialJobInput Parse(string inputJson) =>
         JsonSerializer.Deserialize<TrialJobInput>(inputJson, MotifJson.CreateOptions())

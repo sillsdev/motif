@@ -265,6 +265,29 @@
         }
       ]
     },
+    "TrialLosses": {
+      "type": "object",
+      "properties": {
+        "newNoParseWords": { "type": "array", "items": { "type": "string" } },
+        "newApprovedLossWords": { "type": "array", "items": { "type": "string" } },
+        "newlyLostReadings": { "type": "array", "items": { "$ref": "#/$defs/TrialLostReading" } }
+      },
+      "required": ["newNoParseWords", "newApprovedLossWords", "newlyLostReadings"],
+      "additionalProperties": false
+    },
+    "TrialLostReading": {
+      "type": "object",
+      "properties": {
+        "word": { "type": "string" },
+        "caseKey": { "type": "string" },
+        "readingIdentity": { "type": "string" },
+        "approved": { "type": "boolean" },
+        "referenceConfirmed": { "type": "boolean" },
+        "assertionIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["word", "caseKey", "readingIdentity", "approved", "referenceConfirmed", "assertionIds"],
+      "additionalProperties": false
+    },
     "TrialStoppedWord": {
       "type": "object",
       "properties": {
@@ -281,6 +304,8 @@
       "type": "object",
       "properties": {
         "stoppedWords": { "type": "array", "items": { "$ref": "#/$defs/TrialStoppedWord" } },
+        "gate": { "$ref": "#/$defs/TrialGate" },
+        "losses": { "$ref": "#/$defs/TrialLosses" },
         "schema": {
           "const": "motif.proposal-review-report"
         },

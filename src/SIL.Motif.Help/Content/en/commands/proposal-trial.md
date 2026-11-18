@@ -11,3 +11,5 @@ Use `--job` or `--report` to pick a particular Trial or saved report, and `--det
 A Proposal with no Trial returns a "no Trial" result that names the command to start one.
 
 Every stopped word is retained in `report.stoppedWords` with its before or after side, reason codes and specific cause. The same cause appears on the word’s full review page when detail is available. An invalid shape means the parser could not segment the spelling with the phoneme inventory; inspect the recorded explanation before changing the grammar.
+
+The stored result keeps its `gate` and `report.losses`: `newNoParseWords` and `newApprovedLossWords` name every affected word, and `newlyLostReadings` names each word and frozen reading identity. These lists survive when the optional detail index exceeds the store budget. Expected losses are frozen when the Trial is queued; later reads keep that Trial’s verdict.

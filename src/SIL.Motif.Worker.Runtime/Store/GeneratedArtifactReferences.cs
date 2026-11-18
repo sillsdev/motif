@@ -1106,12 +1106,13 @@ internal static class GeneratedArtifactReferences
                 {
                     RequireObjectShape(json, "Trial job input",
                         ["proposalJson", "scope", "words", "allWords", "prerequisites", "limits",
-                            "baselineAssessmentIds", "negativeWords", "wordList", "reviewInputs", "reviewBaselines", "reviewBeforeStopCode", "reviewBeforePartial", "reviewRevision", "reviewCounterSemantics"], ["proposalJson", "scope"]);
+                            "baselineAssessmentIds", "negativeWords", "expectedLosses", "wordList", "reviewInputs", "reviewBaselines", "reviewBeforeStopCode", "reviewBeforePartial", "reviewRevision", "reviewCounterSemantics"], ["proposalJson", "scope"]);
                     var input = JsonSerializer.Deserialize<TrialJobInput>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The Trial input is null.");
                     if (string.IsNullOrWhiteSpace(input.ProposalJson) ||
                         input.Words?.Any(string.IsNullOrWhiteSpace) == true ||
                         input.NegativeWords?.Any(string.IsNullOrWhiteSpace) == true ||
+                        input.ExpectedLosses?.Any(string.IsNullOrWhiteSpace) == true ||
                         input.Prerequisites?.Any(prerequisite => prerequisite is null) == true)
                         throw new InvalidDataException("The Trial input contains an invalid typed member.");
                     foreach (var assessmentId in input.BaselineAssessmentIds ?? [])

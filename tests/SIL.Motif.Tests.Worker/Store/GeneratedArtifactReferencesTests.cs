@@ -639,7 +639,8 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
         var completion = new DryRunJobCompletion(token, token.CapturedUtc, "known-old", source, Digest('4'));
         var anchor = new BoundDryRunAnchor(Digest('5'), Digest('6'), Digest('7'), "runner", "liblcm", "projection",
             token.CapturedUtc);
-        var trialInput = new TrialJobInput("{}", null, BaselineAssessmentIds: ["assessment-job-input"]);
+        var trialInput = new TrialJobInput("{}", null, BaselineAssessmentIds: ["assessment-job-input"])
+        { ExpectedLosses = ["sol"] };
         var trialResult = JsonSerializer.Serialize(new
         {
             baselineToken = token,

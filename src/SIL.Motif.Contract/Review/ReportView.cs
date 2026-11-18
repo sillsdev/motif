@@ -212,6 +212,14 @@ public sealed record ReportView(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] TracePage? Trace,
     [property: JsonRequired] IReadOnlyList<ReadTarget> Links) : IJsonOnDeserialized, IJsonOnSerializing
 {
+    /// <summary>The verdict over this Trial's captured facts and expected losses.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TrialGate? Gate { get; init; }
+
+    /// <summary>The complete named loss categories, independent of optional detail retention.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TrialLosses? Losses { get; init; }
+
     /// <summary>Every stopped case, retained independently of the optional detail index.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<TrialStoppedWord>? StoppedWords { get; init; }
@@ -1254,7 +1262,7 @@ public sealed record AvailableTrialResult(
     [JsonRequired]
     public string State { get; init; } = "report";
 
-    /// <summary>What a script gates on; present when a waiting caller computed it from the finished Trial.</summary>
+    /// <summary>The saved Trial verdict, shared by waited results and subsequent report reads.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public TrialGate? Gate { get; init; }
 

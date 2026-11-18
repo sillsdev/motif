@@ -89,7 +89,7 @@ public sealed class ReviewReportExpandedTests
     {
         var expected = new Dictionary<string, string>
         {
-            ["ReportView"] = "schema schemaVersion reportId reportDigest detail pins freshness summary flagEvidence limitations detailAvailability sections page word trace links stoppedWords",
+            ["ReportView"] = "schema schemaVersion reportId reportDigest detail pins freshness summary flagEvidence limitations detailAvailability sections page word trace links stoppedWords gate losses",
             ["ReviewSummary"] = "notice flags incomplete wordforms approved sampledTokens paradigmCells controls negatives parserWork warnings parsimony effects sectionCounts gains ruleAttempts",
             ["FlagFact"] = "id text wordCount readingCount evidenceState sectionIds sampleEventIds facts",
             ["WorkChange"] = "kind percentChange wordCount scopeDigest comparison reasonCodes",

@@ -1109,7 +1109,7 @@ try
                 var queued = TrialWorkflow.Enqueue(
                     new EnqueueTrialRequest(
                         trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
-                        Words: trialWords, AllWords: flags.ContainsKey("all-words")) { ReviewSetIds = reviewSets },
+                        Words: trialWords, AllWords: flags.ContainsKey("all-words")) { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses },
                     ResolveRoot(), null, BaselineMode.BestEffort, cancellationToken);
                 if (queued.Value?.BaselineWarning is { } reason)
                     error.WriteLine(
@@ -1130,8 +1130,7 @@ try
                 // A finished Trial returns its summary report, as motif_trial does, not just the job's progress.
                 if (trialWaited.Value is { Status: SIL.Motif.Contract.Jobs.JobStatus.Completed })
                 {
-                    var trialReview = TrialReviewReads.ReadJob(trialProject, CliProductVersion(), positionals[0], trialJobId,
-                        expectedLosses);
+                    var trialReview = TrialReviewReads.ReadJob(trialProject, CliProductVersion(), positionals[0], trialJobId);
                     result = RenderCommand(trialReview);
                     // The summary still prints; the exit code lets a script gate on the Trial.
                     if (result.ExitCode == 0 && trialReview.Value is AvailableTrialResult { Gate: { } gate } &&

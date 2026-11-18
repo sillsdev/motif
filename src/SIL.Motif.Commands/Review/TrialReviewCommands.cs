@@ -32,7 +32,7 @@ public sealed class TrialReviewCommands(MotifDatabase database)
                 "trace", "traces/" + Uri.EscapeDataString(trace.Value!.TraceId) + "?limit=" + (request.Limit ?? 50) +
                 (request.Cursor is null ? "" : "&cursor=" + Uri.EscapeDataString(request.Cursor)))] } : null;
             return trace.Succeeded ? CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(
-                available.Report with { Trace = traced })) : CommandOutcome<TrialReviewResult>.Refused(trace.Refusal!);
+                available.Report with { Trace = traced }) { Gate = available.Gate }) : CommandOutcome<TrialReviewResult>.Refused(trace.Refusal!);
         }
         if (request.ReportId?.StartsWith("legacy/", StringComparison.Ordinal) == true)
         {
@@ -124,7 +124,7 @@ public sealed class TrialReviewCommands(MotifDatabase database)
             links.Add(Resource(request.ProjectKey, reportId, "section", "sections/" + Uri.EscapeDataString(selectedPage.Section) +
                 "?limit=" + (request.Limit ?? 50) + (request.Cursor is null ? "" : "&cursor=" + Uri.EscapeDataString(request.Cursor))));
         report = report with { Links = links };
-        return CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(report));
+        return CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(report) { Gate = report.Gate });
     }
 
     private static ReadTarget Resource(string project, string report, string name, string? suffix) => new(TargetKind.Resource,

@@ -45,10 +45,8 @@ public static class TrialReviewReads
     /// <param name="productVersion">The running product version.</param>
     /// <param name="proposal">The proposal id.</param>
     /// <param name="job">The finished Trial job id.</param>
-    /// <param name="expectedLosses">Words the author intends to lose; they are reported but do not fail the gate.</param>
     public static CommandOutcome<TrialReviewResult> ReadJob(
-        string projectPath, string productVersion, string proposal, string job,
-        IReadOnlyCollection<string>? expectedLosses = null) =>
+        string projectPath, string productVersion, string proposal, string job) =>
         ProjectStoreCommand.Run<TrialReviewResult>(projectPath, productVersion, (database, project) =>
         {
             var commands = new TrialReviewCommands(database);
@@ -59,7 +57,7 @@ public static class TrialReviewReads
             if (!read.Succeeded || read.Value is not AvailableTrialResult available) return read;
             return CommandOutcome<TrialReviewResult>.Success(available with
             {
-                Gate = GateOf(available, expectedLosses ?? [], ReadGateWords(commands, key, proposal, available)),
+                Gate = available.Report.Gate ?? GateOf(available, [], ReadGateWords(commands, key, proposal, available)),
             });
         });
 
@@ -68,49 +66,9 @@ public static class TrialReviewReads
     /// <param name="StoppedWords">Words stopped by a budget or timeout that had an analysis in the Baseline.</param>
     public sealed record GateWords(IReadOnlyList<string>? LostWords, IReadOnlyList<string>? StoppedWords);
 
-    /// <summary>
-    /// The gate of a report. <c>unmeasured</c> when nothing or not everything was measured; otherwise <c>loss</c>
-    /// when a measured word lost its analysis or a confirmed reading and is not in
-    /// <paramref name="expectedLosses"/>; otherwise <c>unmeasured</c> when a word that had a Baseline analysis was
-    /// stopped before it finished; otherwise <c>green</c>.
-    /// </summary>
-    /// <param name="result">The report to judge.</param>
-    /// <param name="expectedLosses">Words the author intends to lose.</param>
-    /// <param name="words">The rows behind the flags, when the report can list them.</param>
-    public static TrialGate GateOf(AvailableTrialResult result, IReadOnlyCollection<string> expectedLosses, GateWords words)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-        var summary = result.Report.Summary;
-        long Flagged(ReviewFlagId id) => summary.Flags.Where(flag => flag.Id == id).Sum(flag => flag.WordCount ?? 0);
-        var flaggedCount = Math.Max(Flagged(ReviewFlagId.NewWordFailures), Flagged(ReviewFlagId.ConfirmedReadingsLost));
-        var lost = words.LostWords?.Distinct(StringComparer.Ordinal).ToArray();
-        var lostCount = lost is { } named && named.Length >= flaggedCount ? named.Length : flaggedCount;
-        var stopped = (words.StoppedWords ?? []).Order(StringComparer.Ordinal).ToArray();
-        // Stopped words that cannot be listed are assumed to matter: an unlisted stop must not look green.
-        var stoppedUnknown = words.StoppedWords is null &&
-            ((summary.Incomplete.Before.Stopped ?? 0) + (summary.Incomplete.After.Stopped ?? 0)) > 0;
-        if (UnusableReason(result) is { } unusable)
-            return new TrialGate(TrialGateState.Unmeasured, unusable, lostCount, [], [], stopped);
-
-        var expected = expectedLosses.Select(Key).ToHashSet(StringComparer.Ordinal);
-        // A loss the report cannot name stays unexpected: only a listed word is excused.
-        var listed = lost is { } all && all.Length >= flaggedCount ? all : null;
-        var matched = listed?.Where(word => expected.Contains(Key(word))).Order(StringComparer.Ordinal).ToArray() ?? [];
-        var unexpected = listed?.Where(word => !expected.Contains(Key(word))).Order(StringComparer.Ordinal).ToArray() ?? [];
-        var unexpectedCount = lostCount == 0 ? 0 : listed is null ? lostCount : unexpected.Length;
-        if (unexpectedCount > 0)
-            return new TrialGate(TrialGateState.Loss,
-                unexpectedCount + " measured word(s) lost their analysis or a confirmed reading and were not listed as expected losses.",
-                lostCount, matched, unexpected, stopped);
-        if (stopped.Length > 0 || stoppedUnknown)
-            return new TrialGate(TrialGateState.Unmeasured,
-                (stopped.Length > 0 ? stopped.Length + " word(s)" : "Some words") +
-                " that had an analysis in the Baseline were stopped before they finished, so their loss is not measured.",
-                lostCount, matched, [], stopped);
-        return new TrialGate(TrialGateState.Green, null, lostCount, matched, [], []);
-    }
-
-    private static string Key(string word) => word.Normalize(System.Text.NormalizationForm.FormC);
+    /// <summary>Evaluates captured facts with the shared Trial gate policy.</summary>
+    public static TrialGate GateOf(AvailableTrialResult result, IReadOnlyCollection<string> expectedLosses, GateWords words) =>
+        TrialGateEvaluation.GateOf(result, expectedLosses, new(words.LostWords, words.StoppedWords));
 
     private static GateWords ReadGateWords(TrialReviewCommands commands, string key, string proposal,
         AvailableTrialResult available)
@@ -145,21 +103,8 @@ public static class TrialReviewReads
         return rows;
     }
 
-    /// <summary>
-    /// Why a finished Trial's report cannot gate a script as a pass, or <see langword="null"/> when it measured
-    /// words and every required case finished: nothing was requested, or evidence is incomplete or interrupted.
-    /// </summary>
-    public static string? UnusableReason(TrialReviewResult result)
-    {
-        if (result is not AvailableTrialResult { Report.Summary: { } summary }) return null;
-        if (summary.Wordforms.Requested == 0) return "The Trial measured no words.";
-        var notMeasured = (summary.Incomplete.Before.NotMeasured ?? 0) + (summary.Incomplete.After.NotMeasured ?? 0);
-        if (summary.Incomplete.RunInterruptions.Count > 0 || notMeasured > 0)
-            return "The Trial finished with incomplete evidence: " + notMeasured +
-                   " required case(s) were not measured" +
-                   (summary.Incomplete.RunInterruptions.Count > 0 ? ", and the run was interrupted." : ".");
-        return null;
-    }
+    /// <summary>The recorded incompleteness that prevents a Trial from establishing a green gate.</summary>
+    public static string? UnusableReason(TrialReviewResult result) => TrialGateEvaluation.UnusableReason(result);
 
     /// <summary>
     /// Why a Trial job that ended without a finished measurement must not look green, or <see langword="null"/>

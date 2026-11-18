@@ -28,6 +28,9 @@ public sealed record EnqueueTrialRequest(
     TrialLimits? Limits = null, IReadOnlyList<string>? BaselineAssessmentIds = null,
     IReadOnlyList<string>? NegativeWords = null)
 {
+    /// <summary>Words the author declares as intended losses before this Trial is queued.</summary>
+    public IReadOnlyList<string>? ExpectedLosses { get; init; }
+
     /// <summary>The named review sets to include, or null to include every configured set.</summary>
     public IReadOnlyList<string>? ReviewSetIds { get; init; }
 
