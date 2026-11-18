@@ -1,5 +1,9 @@
+using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 using SIL.LCModel.Core.WritingSystems;
+using SIL.Motif.Host.LcmUtils;
+using SIL.WritingSystems;
 
 namespace SIL.Motif.Host.Corpus;
 
@@ -82,6 +86,28 @@ public sealed class WritingSystemWordTokeniser : IWordTokeniser, IWordSpanTokeni
             _ws.CharacterSets.TryGet("main", out var main) && main.Characters.Count > 0;
     }
 
+    /// <summary>Loads and hashes the same LDML bytes so an indexed Source can bind the exact profile it used.</summary>
+    public static WritingSystemWordTokeniser FromLdml(string path, string writingSystemId)
+    {
+        var bytes = File.ReadAllBytes(path);
+        FwDataProjectLoader.Init();
+        var definition = new CoreWritingSystemDefinition();
+        using var stream = new MemoryStream(bytes);
+        using var xml = XmlReader.Create(stream, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
+        new LdmlDataMapper(new WritingSystemFactory()).Read(xml, definition);
+        if (!string.Equals(definition.LanguageTag, writingSystemId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The LDML file identifies a different writing system.");
+        new WritingSystemManager().Set(definition);
+        return new WritingSystemWordTokeniser(definition)
+        {
+            Profile = new(definition.Id, Convert.ToHexStringLower(SHA256.HashData(bytes))),
+        };
+    }
+
+    public WordSpanProfile? Profile { get; private init; }
+
+    public string? ProfileSha256 => Profile?.Sha256;
+
     /// <summary>
     /// Matched against a corpus's declared <see cref="TokenisationRecord.Method"/> by
     /// <see cref="CorpusTokenisation.ToSelection"/>. A new name, not a replacement for
@@ -89,6 +115,8 @@ public sealed class WritingSystemWordTokeniser : IWordTokeniser, IWordSpanTokeni
     /// declares whichever one it was actually tokenised with.
     /// </summary>
     public string Name => "fieldworks-word-forming";
+
+    public string WritingSystemId => _ws.Id;
 
     /// <summary>
     /// Matched against a corpus's declared <see cref="TokenisationRecord.Version"/>. See

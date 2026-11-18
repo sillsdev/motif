@@ -17,7 +17,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 77;
+    public const int CurrentSchema = 78;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -32,7 +32,7 @@ public static class MotifSchema
         using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
-            command.CommandText = SourceIndexDdl + MetadataDdl + CorpusDdl + GrammarCoverageDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
+            command.CommandText = IndexedCorpusDdl + SourceIndexDdl + MetadataDdl + CorpusDdl + GrammarCoverageDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + ProgressDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
@@ -95,6 +95,8 @@ public static class MotifSchema
             "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding",
             "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations",
             "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
+            "IndexedCorpusHeads", "IndexedCorpusGenerations", "IndexedCorpusDocuments", "IndexedCorpusShards",
+            "IndexedCorpusForms", "IndexedCorpusOccurrences", "IndexedCorpusWeights", "IndexedCorpusShardWeights",
             "query_snapshot", "query_forms", "query_stems", "query_uses", "query_objects"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
@@ -112,7 +114,9 @@ public static class MotifSchema
             "IX_ReviewReports_ProjectManifest", "IX_ReviewReportCases_Order", "IX_ReviewReportMemberships_Cell",
             "IX_PhonologyExampleSets_Name", "IX_PhonologyExampleSetRevisions_SetRevision",
             "IX_PhonologyExamples_RevisionExampleId", "IX_Requests_Status",
-            "IX_Hypotheses_Shape", "IX_Hypotheses_Seq", "IX_Hypotheses_StatusSeq", "IX_HypothesisProposals_Proposal"
+            "IX_Hypotheses_Shape", "IX_Hypotheses_Seq", "IX_Hypotheses_StatusSeq", "IX_HypothesisProposals_Proposal",
+            "IX_IndexedCorpusOccurrences_Form", "IX_IndexedCorpusOccurrences_Anchor",
+            "IX_IndexedCorpusDocuments_Shard", "IX_IndexedCorpusShards_Stage"
         };
         var expectedTriggers = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -286,6 +290,11 @@ public static class MotifSchema
             "SourcePassages" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL", "CHECK (TotalPlaces >= 0 AND EligiblePlaces BETWEEN 0 AND TotalPlaces)" },
             "SourceWordPlaces" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL", "CHECK (Ordinal >= 0)", "UNIQUE (SourceId, PassageId, Anchor)" },
             "GrammarCoverageNoAnalysisRank" => new[] { "WITHOUT ROWID" },
+            "IndexedCorpusGenerations" => new[] { "CHECK (Published IN (0, 1))", "CHECK (ProjectionValid IN (0, 1))" },
+            "IndexedCorpusDocuments" => new[] { "UNIQUE (Generation, DocumentId)" },
+            "IndexedCorpusForms" => new[] { "FormKey TEXT NOT NULL UNIQUE" },
+            "IndexedCorpusOccurrences" => new[] { "CHECK (ByteOffset > 0)", "CHECK (ByteLength > 0)" },
+            "IndexedCorpusShardWeights" or "IndexedCorpusWeights" => new[] { "CHECK (Frequency > 0)" },
             "PhonologyAssessmentBindings" => new[] { "UNIQUE (AssessmentId, RevisionId)" },
             "PhonologyAssessmentRows" => new[] { "CHECK (Ordinal >= 0)", "PRIMARY KEY (AssessmentId, Ordinal)",
                 "UNIQUE (AssessmentId, ExampleId)", "FOREIGN KEY (AssessmentId, RevisionId)",
@@ -376,6 +385,9 @@ public static class MotifSchema
 
     private static string IndexTableFor(string index) => index switch
     {
+        "IX_IndexedCorpusOccurrences_Form" or "IX_IndexedCorpusOccurrences_Anchor" => "IndexedCorpusOccurrences",
+        "IX_IndexedCorpusDocuments_Shard" => "IndexedCorpusDocuments",
+        "IX_IndexedCorpusShards_Stage" => "IndexedCorpusShards",
         "IX_AssessedWords_Assessment" or "IX_AssessedWords_Word" or "IX_AssessedWords_MorphologyJson" or
             "IX_AssessedWords_CorrectnessJson" or "IX_AssessedWords_ReadingGradesJson" or
             "IX_AssessedWords_AnalysisComparisonJson" or "IX_AssessedWords_MissedApprovedJson" => "AssessedWords",
@@ -411,7 +423,7 @@ public static class MotifSchema
     private static bool IsUniqueIndex(string index) => index is "IX_Jobs_Lineage_Attempt" or
         "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" or
         "IX_PhonologyExampleSets_Name" or "IX_PhonologyExampleSetRevisions_SetRevision" or "IX_PhonologyExamples_RevisionExampleId" or
-        "IX_ProposalDifferences_ProposalText" or "IX_ReviewReports_ProjectManifest";
+        "IX_ProposalDifferences_ProposalText" or "IX_ReviewReports_ProjectManifest" or "IX_IndexedCorpusOccurrences_Anchor";
 
     private static bool IsPartialIndex(string index) => index is "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or
         "IX_GrammarChecks_Proposal" or "IX_AssessedWords_MorphologyJson" or "IX_AssessedWords_CorrectnessJson" or
@@ -456,6 +468,10 @@ public static class MotifSchema
         "IX_PhonologyExampleSetRevisions_SetRevision" => ["SetId", "RevisionNumber"],
         "IX_PhonologyExamples_RevisionExampleId" => ["RevisionId", "ExampleId"],
         "IX_Requests_Status" => ["Status", "CreatedUtc"],
+        "IX_IndexedCorpusOccurrences_Form" => ["FormId", "ShardId", "Ordinal"],
+        "IX_IndexedCorpusOccurrences_Anchor" => ["ShardId", "Segment", "Word"],
+        "IX_IndexedCorpusDocuments_Shard" => ["ShardId"],
+        "IX_IndexedCorpusShards_Stage" => ["StageGeneration"],
         "IX_Hypotheses_Shape" => ["ChangeText", "Environment", "HostClass", "Slot"],
         "IX_Hypotheses_Seq" => ["Seq"],
         "IX_Hypotheses_StatusSeq" => ["Status", "Seq"],
@@ -494,6 +510,16 @@ public static class MotifSchema
         "BaselineTextReadIndex" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentWordSetBindings" => [new("Assessments", "OwnerAssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
             new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
+        "IndexedCorpusHeads" => [new("IndexedCorpusGenerations", "Generation", "Id", "NO ACTION", "NO ACTION", "NONE")],
+        "IndexedCorpusDocuments" => [new("IndexedCorpusShards", "ShardId", "Id", "NO ACTION", "NO ACTION", "NONE"),
+            new("IndexedCorpusGenerations", "Generation", "Id", "NO ACTION", "CASCADE", "NONE")],
+        "IndexedCorpusShards" => [new("IndexedCorpusGenerations", "StageGeneration", "Id", "NO ACTION", "NO ACTION", "NONE")],
+        "IndexedCorpusOccurrences" => [new("IndexedCorpusForms", "FormId", "Id", "NO ACTION", "NO ACTION", "NONE"),
+            new("IndexedCorpusShards", "ShardId", "Id", "NO ACTION", "CASCADE", "NONE")],
+        "IndexedCorpusWeights" => [new("IndexedCorpusForms", "FormId", "Id", "NO ACTION", "NO ACTION", "NONE"),
+            new("IndexedCorpusGenerations", "Generation", "Id", "NO ACTION", "CASCADE", "NONE")],
+        "IndexedCorpusShardWeights" => [new("IndexedCorpusForms", "FormId", "Id", "NO ACTION", "NO ACTION", "NONE"),
+            new("IndexedCorpusShards", "ShardId", "Id", "NO ACTION", "CASCADE", "NONE")],
         "AssessedWords" => [new("AssessmentWordPayloads", "MissedApprovedJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
             new("AssessmentWordPayloads", "AnalysisComparisonJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
             new("AssessmentWordPayloads", "ReadingGradesJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
@@ -536,6 +562,27 @@ public static class MotifSchema
         "GrammarCoverageNoAnalysisRank" =>
             [C("StampId", "TEXT", true, 1), C("NegativeWeight", "INTEGER", true, 2), C("WordformId", "TEXT", true, 3),
                 C("WritingSystemId", "TEXT", true), C("FormNfd", "TEXT", true)],
+        "IndexedCorpusHeads" => [C("SourceId", "TEXT", true, 1), C("Generation", "TEXT", true),
+            C("CheckedUtc", "TEXT", true), C("Freshness", "INTEGER", true)],
+        "IndexedCorpusGenerations" => [C("Id", "TEXT", true, 1), C("SourceId", "TEXT", true),
+            C("BindingJson", "TEXT", true), C("InventoryJson", "TEXT", true), C("DocumentDigest", "TEXT", true),
+            C("DocumentCount", "INTEGER", true), C("TypeCount", "INTEGER", true), C("TokenCount", "INTEGER", true),
+            C("Published", "INTEGER", true),
+            C("PublishedUtc", "TEXT", true), C("ProjectionValid", "INTEGER", true)],
+        "IndexedCorpusDocuments" => [C("Generation", "TEXT", true, 1), C("Ordinal", "INTEGER", true, 2),
+            C("DocumentId", "TEXT", true), C("Container", "TEXT", true), C("Position", "INTEGER", true),
+            C("RawHash", "TEXT", true), C("TextHash", "TEXT", true), C("Metadata", "TEXT"),
+            C("ShardId", "INTEGER", true), C("Tokens", "INTEGER", true)],
+        "IndexedCorpusShards" => [C("Id", "INTEGER", false, 1), C("StageGeneration", "TEXT", true), C("Digest", "TEXT", true)],
+        "IndexedCorpusForms" => [C("Id", "INTEGER", false, 1), C("FormKey", "TEXT", true),
+            C("WritingSystem", "TEXT", true), C("FormNfd", "TEXT")],
+        "IndexedCorpusOccurrences" => [C("ShardId", "INTEGER", true, 1), C("Ordinal", "INTEGER", true, 2),
+            C("FormId", "INTEGER", true), C("Segment", "INTEGER", true), C("Word", "INTEGER", true),
+            C("ByteOffset", "INTEGER"), C("ByteLength", "INTEGER"), C("Verse", "TEXT"), C("Surface", "TEXT")],
+        "IndexedCorpusWeights" => [C("Generation", "TEXT", true, 1), C("FormId", "INTEGER", true, 2),
+            C("Frequency", "INTEGER", true)],
+        "IndexedCorpusShardWeights" => [C("ShardId", "INTEGER", true, 1), C("FormId", "INTEGER", true, 2),
+            C("Frequency", "INTEGER", true)],
         "SourceIndexState" => [C("SourceId", "TEXT", true, 1), C("Kind", "TEXT", true), C("Generation", "TEXT", true), C("SourceDigest", "TEXT", true), C("IdentityJson", "TEXT", true), C("Status", "TEXT", true), C("TokenizerVersion", "TEXT", true), C("AnchorVersion", "TEXT", true)],
         "SourcePassages" => [C("SourceId", "TEXT", true, 1), C("PassageId", "TEXT", true, 2), C("Locator", "TEXT", true), C("ContentHash", "TEXT", true), C("TotalPlaces", "INTEGER", true), C("EligiblePlaces", "INTEGER", true)],
         "SourceWordforms" => [C("SourceId", "TEXT", true, 1), C("WordformKey", "TEXT", true, 2), C("WritingSystem", "TEXT", true), C("Normalized", "TEXT", true), C("Display", "TEXT", true), C("FieldWorksId", "TEXT", false)],
@@ -809,6 +856,81 @@ public static class MotifSchema
         string OnUpdate,
         string OnDelete,
         string Match);
+
+    private const string IndexedCorpusDdl = """
+        CREATE TABLE IndexedCorpusGenerations (
+            Id TEXT NOT NULL PRIMARY KEY,
+            SourceId TEXT NOT NULL,
+            BindingJson TEXT NOT NULL,
+            InventoryJson TEXT NOT NULL,
+            DocumentDigest TEXT NOT NULL,
+            DocumentCount INTEGER NOT NULL,
+            TypeCount INTEGER NOT NULL,
+            TokenCount INTEGER NOT NULL,
+            Published INTEGER NOT NULL CHECK (Published IN (0, 1)),
+            PublishedUtc TEXT NOT NULL,
+            ProjectionValid INTEGER NOT NULL CHECK (ProjectionValid IN (0, 1))
+        );
+        CREATE TABLE IndexedCorpusHeads (
+            SourceId TEXT NOT NULL PRIMARY KEY,
+            Generation TEXT NOT NULL REFERENCES IndexedCorpusGenerations(Id),
+            CheckedUtc TEXT NOT NULL,
+            Freshness INTEGER NOT NULL
+        );
+        CREATE TABLE IndexedCorpusShards (
+            Id INTEGER PRIMARY KEY,
+            StageGeneration TEXT NOT NULL REFERENCES IndexedCorpusGenerations(Id),
+            Digest TEXT NOT NULL
+        );
+        CREATE INDEX IX_IndexedCorpusShards_Stage ON IndexedCorpusShards (StageGeneration);
+        CREATE TABLE IndexedCorpusDocuments (
+            Generation TEXT NOT NULL REFERENCES IndexedCorpusGenerations(Id) ON DELETE CASCADE,
+            Ordinal INTEGER NOT NULL,
+            DocumentId TEXT NOT NULL,
+            Container TEXT NOT NULL,
+            Position INTEGER NOT NULL,
+            RawHash TEXT NOT NULL,
+            TextHash TEXT NOT NULL,
+            Metadata TEXT,
+            ShardId INTEGER NOT NULL REFERENCES IndexedCorpusShards(Id),
+            Tokens INTEGER NOT NULL,
+            PRIMARY KEY (Generation, Ordinal),
+            UNIQUE (Generation, DocumentId)
+        ) WITHOUT ROWID;
+        CREATE INDEX IX_IndexedCorpusDocuments_Shard ON IndexedCorpusDocuments (ShardId);
+        CREATE TABLE IndexedCorpusForms (
+            Id INTEGER PRIMARY KEY,
+            FormKey TEXT NOT NULL UNIQUE,
+            WritingSystem TEXT NOT NULL,
+            FormNfd TEXT
+        );
+        CREATE TABLE IndexedCorpusOccurrences (
+            ShardId INTEGER NOT NULL REFERENCES IndexedCorpusShards(Id) ON DELETE CASCADE,
+            Ordinal INTEGER NOT NULL,
+            FormId INTEGER NOT NULL REFERENCES IndexedCorpusForms(Id),
+            Segment INTEGER NOT NULL,
+            Word INTEGER NOT NULL,
+            ByteOffset INTEGER CHECK (ByteOffset > 0),
+            ByteLength INTEGER CHECK (ByteLength > 0),
+            Verse TEXT,
+            Surface TEXT,
+            PRIMARY KEY (ShardId, Ordinal)
+        ) WITHOUT ROWID;
+        CREATE INDEX IX_IndexedCorpusOccurrences_Form ON IndexedCorpusOccurrences (FormId, ShardId, Ordinal);
+        CREATE UNIQUE INDEX IX_IndexedCorpusOccurrences_Anchor ON IndexedCorpusOccurrences (ShardId, Segment, Word);
+        CREATE TABLE IndexedCorpusShardWeights (
+            ShardId INTEGER NOT NULL REFERENCES IndexedCorpusShards(Id) ON DELETE CASCADE,
+            FormId INTEGER NOT NULL REFERENCES IndexedCorpusForms(Id),
+            Frequency INTEGER NOT NULL CHECK (Frequency > 0),
+            PRIMARY KEY (ShardId, FormId)
+        ) WITHOUT ROWID;
+        CREATE TABLE IndexedCorpusWeights (
+            Generation TEXT NOT NULL REFERENCES IndexedCorpusGenerations(Id) ON DELETE CASCADE,
+            FormId INTEGER NOT NULL REFERENCES IndexedCorpusForms(Id),
+            Frequency INTEGER NOT NULL CHECK (Frequency > 0),
+            PRIMARY KEY (Generation, FormId)
+        ) WITHOUT ROWID;
+        """;
 
     internal const string SourceIndexDdl = """
         CREATE TABLE SourceIndexState (

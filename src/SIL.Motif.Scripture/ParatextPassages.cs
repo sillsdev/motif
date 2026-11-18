@@ -43,29 +43,70 @@ public static class ParatextPassages
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!Canon.IsCanonical(Canon.BookIdToNumber(text.Id)) || books is not null && !books.Contains(text.Id)) continue;
-            var chapters = new Dictionary<int, List<ParatextVerse>>();
-            foreach (var row in text.GetRows())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var reference = (ScriptureRef)row.Ref;
-                if (!reference.IsVerse || reference.ChapterNum < 1 || reference.VerseNum < 1) continue;
-                var normalized = Regex.Replace(row.Text, @"\s+", " ").Trim();
-                if (!chapters.TryGetValue(reference.ChapterNum, out var verses))
-                    chapters[reference.ChapterNum] = verses = [];
-                verses.Add(new(reference.ToString(), $"{text.Id} {reference.ChapterNum}:{reference.VerseNum}", normalized));
-            }
-            foreach (var chapter in chapters)
-            {
-                using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-                foreach (var verse in chapter.Value)
-                {
-                    Append(hash, verse.Reference);
-                    Append(hash, verse.Text);
-                }
-                passages.Add(new($"{text.Id} {chapter.Key}", Convert.ToHexStringLower(hash.GetHashAndReset()), chapter.Value));
-            }
+            passages.AddRange(ReadBook(text, cancellationToken));
         }
         return passages;
+    }
+
+    /// <summary>Parses captured stylesheet bytes using Machine, which accepts a file path for custom stylesheets.</summary>
+    public static UsfmStylesheet ReadStylesheet(byte[]? bytes)
+    {
+        if (bytes is null) return new UsfmTokenizer().Stylesheet;
+        var path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(path, bytes);
+            return new UsfmStylesheet(path);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    /// <summary>Reads one declared USFM book with the same verse and bridge policy as a Paratext Source.</summary>
+    public static IEnumerable<ParatextPassage> ReadUsfm(string usfm, UsfmStylesheet stylesheet, ScrVers versification,
+        CancellationToken cancellationToken = default)
+    {
+        using var lines = new StringReader(usfm);
+        string? line;
+        while ((line = lines.ReadLine()) is not null)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var fields = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (fields.Length < 2 || fields[0] != @"\id") continue;
+            var id = fields[1].ToUpperInvariant();
+            if (!Canon.IsCanonical(Canon.BookIdToNumber(id)))
+                throw new InvalidDataException($"The USFM book id '{id}' is invalid.");
+            var text = new UsfmMemoryText(stylesheet, Encoding.UTF8, id, usfm, versification);
+            return ReadBook(text, cancellationToken);
+        }
+        throw new InvalidDataException("The USFM book is missing its id marker.");
+    }
+
+    private static IEnumerable<ParatextPassage> ReadBook(IText text, CancellationToken cancellationToken)
+    {
+        var chapters = new Dictionary<int, List<ParatextVerse>>();
+        foreach (var row in text.GetRows())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var reference = (ScriptureRef)row.Ref;
+            if (!reference.IsVerse || reference.ChapterNum < 1 || reference.VerseNum < 1) continue;
+            var normalized = Regex.Replace(row.Text, @"\s+", " ").Trim();
+            if (!chapters.TryGetValue(reference.ChapterNum, out var verses))
+                chapters[reference.ChapterNum] = verses = [];
+            verses.Add(new(reference.ToString(), $"{text.Id} {reference.ChapterNum}:{reference.VerseNum}", normalized));
+        }
+        foreach (var chapter in chapters)
+        {
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            foreach (var verse in chapter.Value)
+            {
+                Append(hash, verse.Reference);
+                Append(hash, verse.Text);
+            }
+            yield return new($"{text.Id} {chapter.Key}", Convert.ToHexStringLower(hash.GetHashAndReset()), chapter.Value);
+        }
     }
 
     /// <summary>Segments with the given tokeniser, so the index holds the words the corpus denominator counts; bridges anchor to their first verse.</summary>
