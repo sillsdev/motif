@@ -114,7 +114,8 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             Assert.Equal(RecordChangeKind.AddObject, c.Kind);
             Assert.Equal(G(2), c.ItemGuid);
             Assert.Equal(2, c.Index);
-            Assert.Equal(G(1).ToString("D"), c.After);
+            Assert.Equal(RecordAnchorKind.Object, c.Anchor!.Kind);
+            Assert.Equal(G(1), c.Anchor.ItemGuid);
             Assert.Equal("entry", c.ObjectType);
             Assert.Single(((RecordList)c.Subtree!["examples"]!).Items);
         }
@@ -188,7 +189,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             Assert.Equal(RecordChangeKind.MoveObject, c.Kind);
             Assert.Equal(G(4), c.ItemGuid);
             Assert.Equal(1, c.Index);
-            Assert.Null(c.After);
+            Assert.Equal(RecordAnchorKind.Start, c.Anchor!.Kind);
         }
 
         [Fact]
@@ -217,7 +218,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             var set = Diff(Doc(b), Doc(t));
             Assert.Equal(new[] { "pronunciations RemoveObject", "pronunciations AddObject", "tags RemoveReference", "tags AddReference", "labels RemoveItem", "labels AddItem" },
                 set.Changes.OrderBy(c => c.Field == "pronunciations" ? 0 : c.Field == "tags" ? 1 : 2).Select(c => c.Field + " " + c.Kind).ToArray());
-            Assert.All(set.Changes, c => { Assert.Null(c.Index); Assert.Null(c.After); });
+            Assert.All(set.Changes, c => { Assert.Null(c.Index); Assert.Null(c.Anchor); });
         }
 
         [Fact]
@@ -240,7 +241,9 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             var c = One(set);
             Assert.Equal(RecordChangeKind.AddItem, c.Kind);
             Assert.Equal("a#3", c.ItemKey);
-            Assert.Equal("a#2", c.After);
+            Assert.Equal(RecordAnchorKind.Item, c.Anchor!.Kind);
+            Assert.Equal("a", c.Anchor.Text);
+            Assert.Equal(2, c.Anchor.Occurrence);
         }
 
         // ---------------------------------------------------------------- omission, duplicates, read-only
@@ -276,6 +279,32 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             var inBase = Diff(Doc(t), Doc(b));
             Assert.Equal(RecordRefusalKind.DuplicateGuid, Assert.Single(inBase.Refusals).Kind);
             Assert.Empty(inBase.Changes);
+        }
+
+        [Fact]
+        public void ADuplicateGuidOutsideAPartialFilesSubtreeDoesNotRefuseIt()
+        {
+            var b = Entry().Set("senses", List(Sense(1, "a"), Sense(2, "b"), Sense(2, "c")));
+            var set = Diff(Doc(b), Doc(new RecordObject().Set("gloss", Alts(("en", "A"))), "/lexicon/foo/senses/1"));
+            Assert.Empty(set.Refusals);
+            Assert.Equal(G(1), One(set).ObjectGuid);
+            Assert.Single(Diff(Doc(Entry().Set("senses", List(Sense(1, "a"), Sense(1, "c")))), Doc(new RecordObject().Set("gloss", Alts(("en", "A"))), "/lexicon/foo/senses/1")).Refusals);
+        }
+
+        [Fact]
+        public void AnchorsNameTheirPlaceWithoutAStringConvention()
+        {
+            RecordObject Gloss(string t) => new RecordObject().Set("text", S(t));
+            var positional = Diff(Doc(Entry().Set("glosses", List(Gloss("a")))), Doc(Entry().Set("glosses", List(Gloss("a"), Gloss("b"), Gloss("c")))));
+            Assert.Equal(new[] { RecordAnchorKind.Position, RecordAnchorKind.Position }, positional.Changes.Select(c => c.Anchor!.Kind).ToArray());
+            Assert.Equal(new[] { 1, 2 }, positional.Changes.Select(c => c.Anchor!.Position).ToArray());
+            var guided = Diff(Doc(Senses(1)), Doc(Entry().Set("senses", List(new RecordObject().Set("gloss", Alts(("en", "n"))), Sense(1)))));
+            Assert.Equal(RecordAnchorKind.Start, One(guided).Anchor!.Kind);
+            var chain = Diff(Doc(Senses(1)), Doc(Entry().Set("senses", List(Sense(1), new RecordObject().Set("gloss", Alts(("en", "n"))), Sense(2)))));
+            Assert.Equal(new[] { RecordAnchorKind.Object, RecordAnchorKind.Added }, chain.Changes.Select(c => c.Anchor!.Kind).ToArray());
+            Assert.Equal(0, chain.Changes[1].Anchor!.ChangeIndex);
+            var removal = Diff(Doc(Entry().Set("glosses", List(Gloss("a"), Gloss("b")))), Doc(Entry().Set("glosses", List(Gloss("a")))));
+            Assert.Equal(2, One(removal).OldPosition);
         }
 
         [Fact]

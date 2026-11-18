@@ -21,7 +21,7 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>Clear a rich value that held <see cref="RecordChange.Old"/>.</summary>
         ClearRich,
         /// <summary>Add an owned object; <see cref="RecordChange.Subtree"/> is the whole new object. In a sequence, <see cref="RecordChange.Index"/> and
-        /// <see cref="RecordChange.After"/> place it.</summary>
+        /// <see cref="RecordChange.Anchor"/> place it.</summary>
         AddObject,
         /// <summary>Remove an owned object; <see cref="RecordChange.Subtree"/> is what the base held.</summary>
         RemoveObject,
@@ -76,6 +76,46 @@ namespace SIL.TextEditing.Markdown.Records
         public override string ToString() => (Kind == RecordWordSpanKind.Added ? "+" : Kind == RecordWordSpanKind.Removed ? "-" : "=") + Text;
     }
 
+    /// <summary>What an anchor points at.</summary>
+    public enum RecordAnchorKind
+    {
+        /// <summary>The start of the list: the item goes first.</summary>
+        Start,
+        /// <summary>The owned object with <see cref="RecordAnchor.ItemGuid"/>, in the list at that moment.</summary>
+        Object,
+        /// <summary>The <see cref="RecordAnchor.Occurrence"/>-th item (1-based) of a list of values whose text is <see cref="RecordAnchor.Text"/> (and, for a reference,
+        /// whose link target is <see cref="RecordAnchor.Target"/>).</summary>
+        Item,
+        /// <summary>The object with no GUID that the change at <see cref="RecordAnchor.ChangeIndex"/> of the set added.</summary>
+        Added,
+        /// <summary>The item now at the 1-based <see cref="RecordAnchor.Position"/> in the list, counting every item in it when the change is applied.</summary>
+        Position,
+    }
+
+    /// <summary>A place in a sequence, resolvable from the change data alone (no knowledge of the list's item types is needed): the item goes right after the anchored one.</summary>
+    public sealed class RecordAnchor
+    {
+        RecordAnchor(RecordAnchorKind kind) { Kind = kind; }
+
+        public RecordAnchorKind Kind { get; }
+        public Guid? ItemGuid { get; private set; }
+        public string? Text { get; private set; }
+        public Guid? Target { get; private set; }
+        public int Occurrence { get; private set; }
+        public int ChangeIndex { get; private set; }
+        public int Position { get; private set; }
+
+        internal static readonly RecordAnchor Start = new RecordAnchor(RecordAnchorKind.Start);
+        internal static RecordAnchor OfObject(Guid guid) => new RecordAnchor(RecordAnchorKind.Object) { ItemGuid = guid };
+        internal static RecordAnchor OfItem(string text, Guid? target, int occurrence) => new RecordAnchor(RecordAnchorKind.Item) { Text = text, Target = target, Occurrence = occurrence };
+        internal static RecordAnchor AddedBy(int changeIndex) => new RecordAnchor(RecordAnchorKind.Added) { ChangeIndex = changeIndex };
+        internal static RecordAnchor AtPosition(int position) => new RecordAnchor(RecordAnchorKind.Position) { Position = position };
+
+        public override string ToString()
+            => Kind == RecordAnchorKind.Object ? "after " + ItemGuid : Kind == RecordAnchorKind.Item ? "after " + Text + "#" + Occurrence : Kind == RecordAnchorKind.Added ? "after change " + ChangeIndex
+                : Kind == RecordAnchorKind.Position ? "after position " + Position : "first";
+    }
+
     /// <summary>One change to the base: which object, which field, what kind, and the old and new values.</summary>
     public sealed class RecordChange
     {
@@ -117,13 +157,16 @@ namespace SIL.TextEditing.Markdown.Records
         public Guid? ItemGuid { get; internal set; }
 
         /// <summary>For an add or move in a sequence: the 1-based index the item has in the target. Null for a collection. For a partial target this counts only the items
-        /// the file holds, not the base's other items; rely on <see cref="After"/> there.</summary>
+        /// the file holds, not the base's other items; rely on <see cref="Anchor"/> there.</summary>
         public int? Index { get; internal set; }
 
-        /// <summary>For an add or move in a sequence: the key of the item that comes just before it in the target; null for first. A change set is applied in
-        /// order: removals first, then adds and moves in ascending target order, each placed right after its <see cref="After"/> item. An <see cref="After"/> of the form <c>#n</c> names either an object with no GUID that an earlier
-        /// change of this set added (its <see cref="ItemKey"/>), or, in a list of types that have no GUIDs, the item at position n.</summary>
-        public string? After { get; internal set; }
+        /// <summary>For an add or move in a sequence: where the item goes, as a typed <see cref="RecordAnchor"/> (right after the anchored item, or first). A change set
+        /// is applied in order: removals first, then adds and moves in ascending target order. Null for a collection, which has no order.</summary>
+        public RecordAnchor? Anchor { get; internal set; }
+
+        /// <summary>For removing an object that has no GUID: its 1-based position in the base list. Such removals come first and from the last, so the position is
+        /// still right when the change is applied.</summary>
+        public int? OldPosition { get; internal set; }
 
         /// <summary>For adding or removing an object: a detached copy of the object (the target's for an add, the base's for a remove). Changing it changes neither document.</summary>
         public RecordObject? Subtree { get; internal set; }

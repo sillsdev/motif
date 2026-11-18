@@ -44,10 +44,15 @@ namespace SIL.TextEditing.Markdown.Records
             }
 
             var differ = new Differ(partial);
-            differ.IndexOwners(baseWhole, differ.BaseOwners, "export", null, TypeOfRoot(kind, baseDocument.Data, baseDocument.Root == target.Root ? info.Type : null, baseDocument.Root));
+            // Who owns what comes from the whole export; a duplicate GUID is refused only inside the subtree a partial target names.
+            differ.IndexOwners(baseWhole, differ.BaseOwners, "export", null, TypeOfRoot(kind, baseDocument.Data, baseDocument.Root == target.Root ? info.Type : null, baseDocument.Root), report: !partial || ReferenceEquals(baseRoot, baseWhole));
+            if (partial && !ReferenceEquals(baseRoot, baseWhole))
+                differ.IndexOwners(baseRoot, new Dictionary<Guid, string>(), "export", baseRoot.Guid, info.Type, report: true);
             var targetRootType = info.Type;
             var rootGuid = targetRootType.HasGuid ? (baseRoot.Guid ?? target.Data.Guid) : null;
             differ.IndexOwners(target.Data, differ.TargetOwners, "file", rootGuid, targetRootType);
+            // The object a partial file names must be unambiguous in the export, wherever else a duplicate is.
+            if (rootGuid != null && differ.OutsideDuplicates.Contains(rootGuid.Value)) differ.RefuseDuplicate(rootGuid.Value, "export", string.Empty);
 
             differ.DiffRoot(baseRoot, target.Data, targetRootType, rootGuid);
             differ.Finish();
@@ -114,10 +119,12 @@ namespace SIL.TextEditing.Markdown.Records
 
             // ------------------------------------------------------------ who owns which object
 
-            public void IndexOwners(RecordObject obj, Dictionary<Guid, string> map, string side, Guid? guid, RecordObjectType type)
+            public void IndexOwners(RecordObject obj, Dictionary<Guid, string> map, string side, Guid? guid, RecordObjectType type, bool report = true)
             {
+                _report = report;
                 var rootGuid = guid ?? (type.HasGuid ? obj.Guid : null);
                 if (rootGuid != null) map[rootGuid.Value] = "|";
+
                 IndexOwners(obj, map, side, new Addr(rootGuid, string.Empty), type);
             }
 
@@ -139,9 +146,8 @@ namespace SIL.TextEditing.Markdown.Records
                         {
                             if (map.ContainsKey(child.Guid.Value))
                             {
-                                if (Duplicates.Add(child.Guid.Value))
-                                    Refusals.Add(new RecordRefusal(RecordRefusalKind.DuplicateGuid, "The guid " + child.Guid.Value.ToString("D") + " is on more than one object in the " + side + "; none of them is compared.")
-                                        { ObjectGuid = child.Guid, Field = addr.Prefix + field.Name });
+                                if (!_report) OutsideDuplicates.Add(child.Guid.Value);
+                                else RefuseDuplicate(child.Guid.Value, side, addr.Prefix + field.Name);
                             }
                             else map[child.Guid.Value] = OwnerKey(addr, field.Name);
                             IndexOwners(child, map, side, new Addr(child.Guid, string.Empty), childType);
@@ -149,6 +155,17 @@ namespace SIL.TextEditing.Markdown.Records
                         else IndexOwners(child, map, side, new Addr(addr.Guid, addr.Prefix + field.Name + "/" + (i + 1).ToString(CultureInfo.InvariantCulture) + "/"), childType);
                     }
                 }
+            }
+
+            bool _report = true;
+            /// <summary>GUIDs found twice in an index that did not report them (the whole export, for a partial target).</summary>
+            public readonly HashSet<Guid> OutsideDuplicates = new HashSet<Guid>();
+
+            public void RefuseDuplicate(Guid guid, string side, string field)
+            {
+                if (Duplicates.Add(guid))
+                    Refusals.Add(new RecordRefusal(RecordRefusalKind.DuplicateGuid, "The guid " + guid.ToString("D") + " is on more than one object in the " + side + "; none of them is compared.")
+                        { ObjectGuid = guid, Field = field });
             }
 
             public readonly HashSet<Guid> Duplicates = new HashSet<Guid>();
@@ -347,14 +364,16 @@ namespace SIL.TextEditing.Markdown.Records
                 return guid != null ? new Addr(guid, string.Empty) : new Addr(addr.Guid, addr.Prefix + nestedPrefix);
             }
 
-            void EmitAdd(string fieldName, RecordField itemField, RecordObject t, RecordObjectType type, Addr addr, int? index, string? after, int ordinal)
+            // Returns the index of the change in Changes, or -1 when none was made (the object is refused as moved to another owner).
+            int EmitAdd(string fieldName, RecordField itemField, RecordObject t, RecordObjectType type, Addr addr, int? index, RecordAnchor? anchor, int ordinal)
             {
                 var change = New(RecordChangeKind.AddObject, type, addr, fieldName);
                 SetObjectItem(change, t, ordinal);
                 change.Index = index;
-                change.After = after;
-                if (t.Guid != null && ReportMoved(t.Guid.Value, addr, fieldName)) return;
+                change.Anchor = anchor;
+                if (t.Guid != null && ReportMoved(t.Guid.Value, addr, fieldName)) return -1;
                 Changes.Add(change);
+                return Changes.Count - 1;
             }
 
             void EmitRemove(string fieldName, RecordField itemField, RecordObject b, RecordObjectType type, Addr addr, int ordinal, bool byOmission)
@@ -362,6 +381,7 @@ namespace SIL.TextEditing.Markdown.Records
                 var change = New(RecordChangeKind.RemoveObject, type, addr, fieldName);
                 SetObjectItem(change, b, ordinal);
                 change.ByOmission = byOmission;
+                if (b.Guid == null) change.OldPosition = ordinal;
                 if (b.Guid != null && ReportMoved(b.Guid.Value, addr, fieldName)) return;
                 Changes.Add(change);
             }
@@ -405,6 +425,16 @@ namespace SIL.TextEditing.Markdown.Records
                 var bByGuid = FirstIndexByGuid(bItems);
                 var tByGuid = FirstIndexByGuid(tItems);
 
+                // Objects with no GUID on both sides (new objects in the file the export was made from) are matched by position among themselves.
+                var unkeyedBase = Enumerable.Range(0, bItems.Count).Where(i => bItems[i].Guid == null).ToList();
+                var unkeyedTarget = Enumerable.Range(0, tItems.Count).Where(i => tItems[i].Guid == null).ToList();
+                var pairedBase = new Dictionary<int, int>();
+                for (int k = 0; k < Math.Min(unkeyedBase.Count, unkeyedTarget.Count); k++) pairedBase[unkeyedTarget[k]] = unkeyedBase[k];
+                // Removals of objects with no GUID come first and from the last, so each OldPosition is still the base position.
+                if (!_partial)
+                    for (int k = unkeyedBase.Count - 1; k >= unkeyedTarget.Count; k--)
+                        EmitRemove(field.Name, itemField, bItems[unkeyedBase[k]], type, addr, unkeyedBase[k] + 1, byOmission: true);
+
                 // Removals, in base order (a collection: in key order).
                 var removed = Enumerable.Range(0, bItems.Count).Where(i => bItems[i].Guid != null && bByGuid[bItems[i].Guid!.Value] == i && !tByGuid.ContainsKey(bItems[i].Guid!.Value)).ToList();
                 if (!ordered) removed = removed.OrderBy(i => bItems[i].Guid!.Value.ToString("D"), StringComparer.Ordinal).ToList();
@@ -414,15 +444,6 @@ namespace SIL.TextEditing.Markdown.Records
                     if (_partial) ReportMoved(bItems[i].Guid!.Value, addr, field.Name);
                     else EmitRemove(field.Name, itemField, bItems[i], type, addr, i + 1, byOmission: true);
                 }
-
-                // Objects with no GUID on both sides (new objects in the file the export was made from) are matched by position among themselves.
-                var unkeyedBase = Enumerable.Range(0, bItems.Count).Where(i => bItems[i].Guid == null).ToList();
-                var unkeyedTarget = Enumerable.Range(0, tItems.Count).Where(i => tItems[i].Guid == null).ToList();
-                var pairedBase = new Dictionary<int, int>();
-                for (int k = 0; k < Math.Min(unkeyedBase.Count, unkeyedTarget.Count); k++) pairedBase[unkeyedTarget[k]] = unkeyedBase[k];
-                if (!_partial)
-                    for (int k = unkeyedBase.Count - 1; k >= unkeyedTarget.Count; k--)
-                        EmitRemove(field.Name, itemField, bItems[unkeyedBase[k]], type, addr, unkeyedBase[k] + 1, byOmission: true);
 
                 // Target items (the first of a repeated GUID) in target order; a collection in key order, new objects with no GUID last.
                 var order = Enumerable.Range(0, tItems.Count).Where(i => tItems[i].Guid == null || tByGuid[tItems[i].Guid!.Value] == i).ToList();
@@ -434,22 +455,26 @@ namespace SIL.TextEditing.Markdown.Records
                     var inLis = Lis(kept.Select(i => bByGuid[tItems[i].Guid!.Value]).ToList());
                     for (int k = 0; k < kept.Count; k++) if (!inLis.Contains(k)) moved.Add(kept[k]);
                 }
+                // What stands in the list once a target item has been handled: a typed anchor later items are placed after.
+                var anchors = new Dictionary<int, RecordAnchor>();
+                RecordAnchor? previousAnchor = RecordAnchor.Start;
                 for (int p = 0; p < order.Count; p++)
                 {
                     int i = order[p];
                     var item = tItems[i];
-                    string key = KeyOf(item, i + 1);
-                    string? after = ordered && p > 0 ? KeyOf(tItems[order[p - 1]], order[p - 1] + 1) : null;
+                    var after = ordered ? previousAnchor : null;
                     if (item.Guid == null && pairedBase.TryGetValue(i, out int pairedIndex))
                     {
                         DiffPair(itemField, bItems[pairedIndex], item, addr, field.Name + "/" + (pairedIndex + 1).ToString(CultureInfo.InvariantCulture) + "/");
+                        previousAnchor = RecordAnchor.AtPosition(pairedIndex + 1);
                         continue;
                     }
                     if (item.Guid == null || !bByGuid.ContainsKey(item.Guid.Value))
                     {
                         var at = TypeFor(itemField, item);
                         if (at == null) { Refuse(RecordRefusalKind.UnknownClass, addr, addr.Prefix + field.Name, null, "The class " + item.Class + " is not one the field allows.", null, null); continue; }
-                        EmitAdd(field.Name, itemField, item, type, addr, ordered ? p + 1 : (int?)null, after, i + 1);
+                        int made = EmitAdd(field.Name, itemField, item, type, addr, ordered ? p + 1 : (int?)null, after, i + 1);
+                        if (made >= 0) previousAnchor = item.Guid != null ? RecordAnchor.OfObject(item.Guid.Value) : RecordAnchor.AddedBy(made);
                         continue;
                     }
                     var b0 = bItems[bByGuid[item.Guid.Value]];
@@ -457,12 +482,13 @@ namespace SIL.TextEditing.Markdown.Records
                     {
                         var move = New(RecordChangeKind.MoveObject, type, addr, field.Name);
                         move.ItemGuid = item.Guid;
-                        move.ItemKey = key;
+                        move.ItemKey = KeyOf(item, i + 1);
                         move.Index = p + 1;
-                        move.After = after;
+                        move.Anchor = after;
                         Changes.Add(move);
                     }
                     DiffPair(itemField, b0, item, addr, field.Name + "/");
+                    previousAnchor = RecordAnchor.OfObject(item.Guid.Value);
                 }
             }
 
@@ -491,7 +517,7 @@ namespace SIL.TextEditing.Markdown.Records
                 {
                     var at = TypeFor(itemField, t[i]);
                     if (at == null) { Refuse(RecordRefusalKind.UnknownClass, addr, addr.Prefix + field.Name, null, "The class " + t[i].Class + " is not one the field allows.", null, null); continue; }
-                    EmitAdd(field.Name, itemField, t[i], type, addr, ordered ? i + 1 : (int?)null, i == 0 ? null : "#" + i.ToString(CultureInfo.InvariantCulture), i + 1);
+                    EmitAdd(field.Name, itemField, t[i], type, addr, ordered ? i + 1 : (int?)null, ordered ? (i == 0 ? RecordAnchor.Start : RecordAnchor.AtPosition(i)) : null, i + 1);
                 }
                 // Removed from the end, so each "#n" key (n being the position in the base) still names the right item when it is applied.
                 if (!_partial)
@@ -553,7 +579,7 @@ namespace SIL.TextEditing.Markdown.Records
                     if (ordered)
                     {
                         change.Index = p + 1;
-                        change.After = p == 0 ? null : order[p - 1].Key;
+                        change.Anchor = p == 0 ? RecordAnchor.Start : order[p - 1].Anchor;
                     }
                     Changes.Add(change);
                 }
@@ -563,6 +589,7 @@ namespace SIL.TextEditing.Markdown.Records
             {
                 public string Key = string.Empty;
                 public RecordScalar Scalar = null!;
+                public RecordAnchor Anchor = null!;
             }
 
             static List<KeyedItem> Keyed(RecordField itemField, RecordList? list)
@@ -576,7 +603,11 @@ namespace SIL.TextEditing.Markdown.Records
                     string key = itemField.Kind == RecordFieldKind.Reference && s.Target != null ? s.Target.Value.ToString("D") : s.Text;
                     seen.TryGetValue(key, out int count);
                     seen[key] = count + 1;
-                    result.Add(new KeyedItem { Key = count == 0 ? key : key + "#" + (count + 1).ToString(CultureInfo.InvariantCulture), Scalar = s });
+                    result.Add(new KeyedItem
+                    {
+                        Key = count == 0 ? key : key + "#" + (count + 1).ToString(CultureInfo.InvariantCulture), Scalar = s,
+                        Anchor = RecordAnchor.OfItem(s.Text, s.Target, count + 1),
+                    });
                 }
                 return result;
             }

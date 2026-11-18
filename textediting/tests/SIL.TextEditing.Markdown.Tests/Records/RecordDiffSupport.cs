@@ -135,7 +135,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         }
 
         // ---------------------------------------------------------------- the applier
-        // It works from the documented contract of a change (object GUID, field path, kind, Old/New, ItemGuid, Index, After) and the schema, and it checks Old
+        // It works from the documented contract of a change (object GUID, field path, kind, Old/New, ItemGuid, OldPosition, Index, Anchor) and the schema, and it checks Old
         // against what is there before it writes: a wrong Old fails here, so `expected` is proved, not copied.
 
         static string TextOf(RecordValue? v) => v is RecordScalar s && !s.IsEmpty ? s.Text : null!;
@@ -174,9 +174,10 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         public static RecordObject Apply(RecordObject baseData, RecordChangeSet changes, RecordSchema schema)
         {
             var root = Clone(baseData);
-            _added.Clear();
-            foreach (var c in changes.Changes)
+            var added = new Dictionary<int, RecordValue>(); // the objects with no GUID this set added, by change index: what an Added anchor points at
+            for (int changeIndex = 0; changeIndex < changes.Changes.Count; changeIndex++)
             {
+                var c = changes.Changes[changeIndex];
                 var cur = c.ObjectGuid == null ? root : FindByGuid(root, c.ObjectGuid.Value) ?? throw new InvalidOperationException("No object " + c.ObjectGuid + " for " + c);
                 string[] path = c.Field.Split('/');
                 for (int i = 0; i < path.Length - 1; i++)
@@ -211,19 +212,16 @@ namespace SIL.TextEditing.Markdown.Tests.Records
                         break;
                     }
                     default:
-                        ApplyListChange(cur, field, c, FieldOf(schema, c));
+                        ApplyListChange(cur, field, c, FieldOf(schema, c), changeIndex, added);
                         break;
                 }
             }
             return root;
         }
 
-        // An object with no GUID added by this change set, by its list and key: a later change names it as `After` by that "#n" key.
-        static readonly Dictionary<(RecordObject Owner, string Field, string Key), RecordValue> _added = new Dictionary<(RecordObject, string, string), RecordValue>();
-
         static bool SameScalar(RecordValue v, string? text, Guid? target) => v is RecordScalar s && s.Text == text && s.Target == target;
 
-        static void ApplyListChange(RecordObject owner, string field, RecordChange c, RecordField schemaField)
+        static void ApplyListChange(RecordObject owner, string field, RecordChange c, RecordField schemaField, int changeIndex, Dictionary<int, RecordValue> addedObjects)
         {
             string DumpOf(RecordValue? v) => Dump(v, null!);
             if (schemaField.Kind == RecordFieldKind.Object)
@@ -246,34 +244,46 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             int FindObject()
             {
                 if (c.ItemGuid != null) return items.FindIndex(i => i is RecordObject o && o.Guid == c.ItemGuid);
-                return int.Parse(c.ItemKey!.Substring(1), CultureInfo.InvariantCulture) - 1; // documented: "#n" is the base position
+                return c.OldPosition!.Value - 1;
             }
             int FindScalar(string? text, Guid? target) => items.FindIndex(i => SameScalar(i, text, target));
             int Place()
             {
-                if (c.Index == null) return items.Count;
-                if (c.After == null) return 0;
-                int at = items.FindIndex(i => i is RecordObject o ? o.Guid?.ToString("D") == c.After : i is RecordScalar s && (s.Target?.ToString("D") ?? s.Text) == c.After);
-                if (at >= 0) return at + 1;
-                if (_added.TryGetValue((owner, field, c.After), out var earlier) && items.FindIndex(i => ReferenceEquals(i, earlier)) is int e && e >= 0) return e + 1;
-                // In a list of objects that have no GUIDs, "#n" after a pair means: after the item now at position n.
-                if (c.After.StartsWith("#", StringComparison.Ordinal) && items.OfType<RecordObject>().Any() && int.TryParse(c.After.Substring(1), out int position)) return Math.Min(position, items.Count);
-                // a repeated text: "a#2" is the second "a"
-                int hash = c.After.LastIndexOf('#');
-                string text = c.After.Substring(0, hash);
-                int nth = int.Parse(c.After.Substring(hash + 1), CultureInfo.InvariantCulture);
-                int seen = 0;
-                for (int i = 0; i < items.Count; i++) if (items[i] is RecordScalar s && s.Text == text && ++seen == nth) return i + 1;
-                throw new InvalidOperationException("No predecessor " + c.After + " for " + c);
+                var anchor = c.Anchor;
+                if (anchor == null) return items.Count; // a collection has no order
+                switch (anchor.Kind)
+                {
+                    case RecordAnchorKind.Start: return 0;
+                    case RecordAnchorKind.Object:
+                    {
+                        int at = items.FindIndex(i => i is RecordObject o && o.Guid == anchor.ItemGuid);
+                        if (at < 0) throw new InvalidOperationException("No object " + anchor.ItemGuid + " for " + c);
+                        return at + 1;
+                    }
+                    case RecordAnchorKind.Item:
+                    {
+                        int seen = 0;
+                        for (int i = 0; i < items.Count; i++) if (SameScalar(items[i], anchor.Text, anchor.Target) && ++seen == anchor.Occurrence) return i + 1;
+                        throw new InvalidOperationException("No item " + anchor + " for " + c);
+                    }
+                    case RecordAnchorKind.Added:
+                    {
+                        int at = items.FindIndex(i => ReferenceEquals(i, addedObjects[anchor.ChangeIndex]));
+                        if (at < 0) throw new InvalidOperationException("The object added by change " + anchor.ChangeIndex + " is not in the list for " + c);
+                        return at + 1;
+                    }
+                    default:
+                        return Math.Min(anchor.Position, items.Count);
+                }
             }
             int index;
             switch (c.Kind)
             {
                 case RecordChangeKind.AddObject:
                 {
-                    var added = Clone(c.Subtree!);
-                    items.Insert(Place(), added);
-                    if (c.ItemGuid == null) _added[(owner, field, c.ItemKey!)] = added;
+                    var created = Clone(c.Subtree!);
+                    items.Insert(Place(), created);
+                    addedObjects[changeIndex] = created;
                     break;
                 }
                 case RecordChangeKind.RemoveObject:
@@ -315,7 +325,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         {
             var sb = new StringBuilder();
             foreach (var c in set.Changes)
-                sb.Append(c.Kind).Append('|').Append(c.Slot).Append('|').Append(c.Old).Append('|').Append(c.New).Append('|').Append(c.Index).Append('|').Append(c.After)
+                sb.Append(c.Kind).Append('|').Append(c.Slot).Append('|').Append(c.Old).Append('|').Append(c.New).Append('|').Append(c.Index).Append('|').Append(c.Anchor)
                     .Append('|').Append(c.ByOmission).Append('|').Append(c.Words == null ? string.Empty : string.Join("", c.Words.Select(w => w.ToString()))).Append('\n');
             foreach (var r in set.Refusals) sb.Append("refuse ").Append(r.Kind).Append('|').Append(r.ObjectGuid).Append('|').Append(r.Field).Append('|').Append(r.Reason).Append('\n');
             return sb.ToString();
