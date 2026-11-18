@@ -14,6 +14,11 @@ public sealed class GenericRecord : IObjectBase<GenericRecord>
     public int OwningField { get; init; }
     public Dictionary<string, JsonElement> Values { get; set; } = new(StringComparer.Ordinal);
 
+    public NativeProvenance? Provenance { get; init; }
+    internal int OwnOrdinal { get; init; }
+    internal byte IdentityFields { get; init; }
+    internal JsonElement Layout { get; init; } = RecordInitialization.EmptyLayout;
+
     // Deletion must go through an explicit usage-warning transaction, never Harmony's link cascade.
     public Guid[] GetReferences() => [];
     public void RemoveReference(Guid id, CommitBase commit) =>
@@ -22,7 +27,8 @@ public sealed class GenericRecord : IObjectBase<GenericRecord>
     public IObjectBase Copy() => new GenericRecord
     {
         Id = Id, DeletedAt = DeletedAt, Kind = Kind, ClassId = ClassId, Owner = Owner,
-        OwningField = OwningField, Values = new(Values, StringComparer.Ordinal)
+        OwningField = OwningField, Values = new(Values, StringComparer.Ordinal),
+        OwnOrdinal = OwnOrdinal, IdentityFields = IdentityFields, Layout = Layout, Provenance = Provenance
     };
 }
 

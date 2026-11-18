@@ -21,6 +21,13 @@ public static class LcmRecordBridge
         var imports = graph.Read().Select(record => new RecordImport(record, fieldTypes)).ToList();
         var manifest = Auxiliary("manifest", "project");
         manifest.Values["schema"] = graph.Schema();
+        manifest.Values["nativeProject"] = JsonSerializer.SerializeToElement(cache.ProjectId.Name);
+        manifest.Values["nativeImport"] = JsonSerializer.SerializeToElement(new
+        {
+            traversalVersion = LcmGraphReader.TraversalVersion, objects = imports.Count,
+            classes = imports.GroupBy(r => r.Record.ClassId).OrderBy(g => g.Key).Select(g => new { classId = g.Key, count = g.Count() }),
+            vectorMembers = imports.Sum(r => r.Record.Provenance!.Vectors.Values.Sum(v => v.Length))
+        });
         manifest.Values["formatVersion"] = JsonSerializer.SerializeToElement(1);
         imports.Add(new RecordImport(manifest, new Dictionary<int, int>()));
         var directory = Path.GetDirectoryName(Path.GetFullPath(sourcePath))!;
@@ -55,7 +62,7 @@ public static class LcmRecordBridge
             imports.Add(new RecordImport(record, new Dictionary<int, int>()));
         }
         var content = new ResourceContentStore(storePath);
-        foreach (var path in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Where(path => IsResource(path, directory, wsDirectory)))
+        foreach (var path in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Where(path => IsResource(path, directory, wsDirectory) && !IsStoreArtifact(path, storePath)).ToArray())
         {
             var relative = Path.GetRelativePath(directory, path).Replace(Path.DirectorySeparatorChar, '/');
             var record = Auxiliary("resource", relative);
@@ -64,7 +71,18 @@ public static class LcmRecordBridge
             imports.Add(new RecordImport(record, new Dictionary<int, int>()));
         }
         await using var store = new RecordStore(storePath);
-        await store.ImportAsync(imports, Guid.NewGuid());
+        await store.ImportAsync(imports, Guid.NewGuid(), graph.Coverage());
+    }
+
+    private static bool IsStoreArtifact(string path, string storePath)
+    {
+        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var full = Path.GetFullPath(path);
+        var database = Path.GetFullPath(storePath);
+        return full.Equals(database, comparison) || full.Equals(database + "-wal", comparison) ||
+            full.Equals(database + "-shm", comparison) || full.Equals(database + "-journal", comparison) ||
+            full.StartsWith(database + ".resources" + Path.DirectorySeparatorChar, comparison);
     }
 
     private static bool IsResource(string path, string projectDirectory, string writingSystemDirectory)
@@ -101,7 +119,7 @@ public static class LcmRecordBridge
         if (Directory.Exists(destination) || File.Exists(destination)) throw new IOException("Export requires a fresh directory.");
         IReadOnlyList<GenericRecord> records;
         await using (var store = new RecordStore(storePath)) records = await store.ReadAsync();
-        if (records.Any(r => r.Kind is not ("lcm" or "manifest" or "writing-system" or "resource")))
+        if (records.Any(r => r.Kind is not ("lcm" or "manifest" or "writing-system" or "resource" or "native-coverage")))
             throw new NotSupportedException("Unsupported record kind in project export.");
         var manifest = records.Single(r => r.Id == ManifestId && r.Kind == "manifest");
         if (manifest.Values["formatVersion"].GetInt32() != 1) throw new NotSupportedException("Unsupported record-store format.");

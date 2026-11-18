@@ -7,18 +7,20 @@ using SIL.Harmony.Core;
 
 namespace SIL.Motif.RecordStore;
 
-internal sealed class CreateRecord(Guid entityId, string kind, int classId, Guid? owner, int owningField)
+internal sealed class CreateRecord(Guid entityId, string kind, int classId, Guid? owner, int owningField,
+    int ownOrdinal, byte identityFields, JsonElement layout, NativeProvenance? provenance)
     : CreateChange<GenericRecord>(entityId), ISelfNamedType<CreateRecord>
 {
     public string Kind { get; } = kind;
     public int ClassId { get; } = classId;
     public Guid? Owner { get; } = owner;
     public int OwningField { get; } = owningField;
-    public override ValueTask<GenericRecord> NewEntity(Commit commit, IChangeContext context) =>
-        ValueTask.FromResult(new GenericRecord
-        {
-            Id = EntityId, Kind = Kind, ClassId = ClassId, Owner = Owner, OwningField = OwningField
-        });
+    public int OwnOrdinal { get; } = ownOrdinal;
+    public byte IdentityFields { get; } = identityFields;
+    public JsonElement Layout { get; } = layout;
+    public NativeProvenance? Provenance { get; } = provenance;
+    public override ValueTask<GenericRecord> NewEntity(Commit commit, IChangeContext context) => ValueTask.FromResult(
+        RecordInitialization.Create(EntityId, Kind, ClassId, Owner, OwningField, OwnOrdinal, IdentityFields, Layout, Provenance));
 }
 
 internal sealed class SetRecordValue(Guid entityId, string field, JsonElement value)

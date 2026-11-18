@@ -3,6 +3,9 @@ using System.Security.Cryptography;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.RecordStore;
 using SIL.WritingSystems;
+using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
+using SIL.LCModel.Application;
 using SIL.Motif.RecordStore.Lcm;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -22,7 +25,18 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
         var projectRoot = Path.Combine(root, "Temp");
         using (var cache = NewLangProjFixture.CreateCache(projectRoot))
         {
-            SeededProject.Seed(cache);
+            var seed = SeededProject.Seed(cache);
+            SeededProject.SeedText(cache, seed);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var entries = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances().ToArray();
+                var variant = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                var reference = cache.ServiceLocator.GetInstance<ILexEntryRefFactory>().Create();
+                variant.EntryRefsOS.Add(reference);
+                reference.RefType = LexEntryRefTags.krtVariant;
+                reference.ComponentLexemesRS.Add(entries[0]);
+                Assert.Empty(variant.SensesOS);
+            });
             new FwDataProjectLoader().Save(cache);
         }
         var source = NewLangProjFixture.FwDataPath(projectRoot);
@@ -39,6 +53,30 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
     [PrivateProjectFact("MOTIF_RECORD_STORE_CEBUANO")]
     public async Task CebuanoCopySurvivesStoreReopenAndLcmSerialization() =>
         await Check(CopyProject(Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_CEBUANO")!));
+
+    [Fact]
+    public void GraphReaderCapturesNativeTraversalBeforeCanonicalSorting()
+    {
+        using var cache = NewLangProjFixture.CreateCache(root);
+        SeededProject.Seed(cache);
+        var graph = new LcmGraphReader(cache);
+        var records = graph.Read().ToDictionary(r => r.Id);
+        var native = cache.ServiceLocator.GetInstance<SIL.LCModel.ICmObjectRepository>().AllInstances().ToArray();
+        var data = (ISilDataAccessManaged)cache.DomainDataByFlid;
+        for (var ordinal = 0; ordinal < native.Length; ordinal++)
+        {
+            var item = native[ordinal];
+            var provenance = Assert.IsType<NativeProvenance>(records[item.Guid].Provenance);
+            Assert.Equal(ordinal, provenance.EncounterOrdinal);
+            Assert.Contains(typeof(LcmCache).Assembly.ManifestModule.ModuleVersionId.ToString("D"), provenance.TraversalVersion);
+            foreach (var (field, type) in graph.FieldTypes.Where(p => p.Value >= 25))
+            {
+                if (!records[item.Guid].Values.ContainsKey(field.ToString())) continue;
+                var expected = data.VecProp(item.Hvo, field).Select(hvo => cache.ServiceLocator.GetObject(hvo).Guid);
+                Assert.Equal(expected, provenance.Vectors.GetValueOrDefault(field, []));
+            }
+        }
+    }
 
     [Fact]
     public async Task ImportRefusesUnsavedChangesToAnExistingWritingSystem()
@@ -96,11 +134,13 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
         IReadOnlyList<GenericRecord> before;
         JsonElement schema;
         SourceAssets assets;
+        NativeExpectations native;
         var loader = new FwDataProjectLoader();
         using (var cache = loader.LoadScratchCache(source, Path.Combine(root, "templates")))
         {
             var graph = new LcmGraphReader(cache);
             before = graph.Read();
+            native = new NativeExpectations(cache);
             schema = graph.Schema();
             if (indonesian)
             {
@@ -117,6 +157,16 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
         {
             imported = await store.ReadAsync();
             assets.AssertImported(imported, database);
+            native.Check(imported, await store.ReferencesAsync());
+            var initial = StorageMeasurement.Read(database);
+            initial.Write(output, "after import/reopen");
+            if (indonesian) Assert.InRange(initial.Total, 1, 16_500_000);
+            await store.RegenerateAsync();
+            var replayed = await store.ReadAsync();
+            Assert.Equal(imported.OrderBy(r => r.Id).Select(LcmGraphReader.Canonical),
+                replayed.OrderBy(r => r.Id).Select(LcmGraphReader.Canonical));
+            native.Check(replayed, await store.ReferencesAsync());
+            imported = replayed;
             Assert.Equal(before.Select(LcmGraphReader.Canonical), imported.Where(r => r.Kind == "lcm")
                 .OrderBy(r => r.Id.ToString("D"), StringComparer.Ordinal).Select(LcmGraphReader.Canonical));
             var commits = await store.CommitsAsync();
@@ -128,6 +178,9 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
             });
             output.WriteLine($"Objects={before.Count}; classes={before.Select(r => r.ClassId).Distinct().Count()}; commits={commits.Count}; changes={commits.Sum(c => c.ChangeCount)}; storeBytes={new FileInfo(database).Length}");
         }
+        var measurement = StorageMeasurement.Read(database);
+        measurement.Write(output, "after full history replay");
+        if (indonesian) Assert.InRange(measurement.Total, 1, 16_500_000);
         var destination = Path.Combine(root, "restored");
         var exported = await LcmRecordBridge.ExportAsync(database, destination);
         using var reopened = loader.LoadScratchCache(exported, Path.Combine(root, "templates"));

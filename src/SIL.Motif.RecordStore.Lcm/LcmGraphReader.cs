@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Collections.Immutable;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Application;
@@ -14,6 +15,9 @@ public sealed class LcmGraphReader
     private readonly IFwMetaDataCacheManaged metadata;
     private readonly Dictionary<int, ICmObject> objects;
     private readonly Dictionary<int, int[]> layouts;
+    private readonly Dictionary<int, NativeProvenance> provenance = new();
+    public static string TraversalVersion { get; } = "LCModel/" + typeof(LcmCache).Assembly.GetName().Version + "/" +
+        typeof(LcmCache).Assembly.ManifestModule.ModuleVersionId.ToString("D") + "/repository-and-vectors/1";
     private readonly Dictionary<int, (int Owner, int Field, int Ordinal)> ownership = new();
 
     public LcmGraphReader(LcmCache cache)
@@ -22,7 +26,45 @@ public sealed class LcmGraphReader
         metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
         layouts = metadata.GetClassIds().ToDictionary(c => c, c => metadata.GetFields(c, true, -1)
             .Where(f => !metadata.get_IsVirtual(f)).Order().ToArray());
-        objects = cache.ServiceLocator.GetInstance<ICmObjectRepository>().AllInstances().ToDictionary(o => o.Hvo);
+        var encountered = cache.ServiceLocator.GetInstance<ICmObjectRepository>().AllInstances().ToArray();
+        objects = encountered.ToDictionary(o => o.Hvo);
+        var repositories = new Dictionary<int, Dictionary<string, long>>();
+        var traversals = new Dictionary<string, IEnumerable<ICmObject>>(StringComparer.Ordinal)
+        {
+            ["MoForm"] = cache.ServiceLocator.GetInstance<IMoFormRepository>().AllInstances(),
+            ["WfiMorphBundle"] = cache.ServiceLocator.GetInstance<IWfiMorphBundleRepository>().AllInstances(),
+            ["WfiWordform"] = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances(),
+            ["WfiAnalysis"] = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>().AllInstances(),
+            ["WfiGloss"] = cache.ServiceLocator.GetInstance<IWfiGlossRepository>().AllInstances(),
+            ["LexEntry"] = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances(),
+            ["LexSense"] = cache.ServiceLocator.GetInstance<ILexSenseRepository>().AllInstances(),
+            ["MoMorphSynAnalysis"] = cache.ServiceLocator.GetInstance<IMoMorphSynAnalysisRepository>().AllInstances(),
+            ["LexEntryRef"] = cache.ServiceLocator.GetInstance<ILexEntryRefRepository>().AllInstances(),
+            ["CmAgentEvaluation"] = cache.ServiceLocator.GetInstance<ICmAgentEvaluationRepository>().AllInstances()
+        };
+        foreach (var (name, traversal) in traversals)
+        {
+            long position = 0;
+            foreach (var value in traversal)
+            {
+                if (!objects.ContainsKey(value.Hvo)) throw new InvalidDataException("Typed repository object is absent from the full graph.");
+                if (!repositories.TryGetValue(value.Hvo, out var positions)) repositories.Add(value.Hvo, positions = new(StringComparer.Ordinal));
+                positions.Add(name, position++);
+            }
+        }
+        for (var ordinal = 0; ordinal < encountered.Length; ordinal++)
+        {
+            var value = encountered[ordinal];
+            var vectors = Fields(value.ClassID).Where(f => metadata.GetFieldType(f) >= 25)
+                .Select(f => (Field: f, Items: ((ISilDataAccessManaged)cache.DomainDataByFlid).VecProp(value.Hvo, f)
+                    .Select(hvo => objects[hvo].Guid).ToImmutableArray()))
+                .Where(v => !v.Items.IsEmpty).ToImmutableDictionary(v => v.Field, v => v.Items);
+            provenance.Add(value.Hvo, new NativeProvenance(ordinal, TraversalVersion, vectors)
+            {
+                RepositoryOrdinals = repositories.TryGetValue(value.Hvo, out var positions)
+                    ? positions.ToImmutableDictionary(StringComparer.Ordinal) : ImmutableDictionary<string, long>.Empty
+            });
+        }
         foreach (var parent in objects.Values)
         foreach (var field in Fields(parent.ClassID).Where(f => metadata.GetFieldType(f) is 23 or 25 or 27))
         {
@@ -40,6 +82,10 @@ public sealed class LcmGraphReader
     private int[] Fields(int classId) => layouts[classId];
     public IReadOnlyDictionary<int, int> FieldTypes => metadata.GetFieldIds().Where(f => !metadata.get_IsVirtual(f))
         .ToDictionary(f => f, metadata.GetFieldType);
+
+    public NativeImportCoverage Coverage() => NativeImportCoverage.Capture(objects.Values.Select(o =>
+        new ReferenceRecord(o.Guid, o.ClassID, o.Owner?.Guid, ownership.GetValueOrDefault(o.Hvo).Field)),
+        layouts.ToImmutableDictionary(p => p.Key, p => p.Value.ToImmutableDictionary(f => f, metadata.GetFieldType)), TraversalVersion);
 
     public JsonElement Schema() => JsonSerializer.SerializeToElement(new
     {
@@ -59,6 +105,7 @@ public sealed class LcmGraphReader
     public IReadOnlyList<GenericRecord> Read() => objects.Values.OrderBy(o => o.Guid.ToString("D"), StringComparer.Ordinal)
         .Select(o => new GenericRecord
         {
+            Provenance = provenance[o.Hvo],
             Id = o.Guid, ClassId = o.ClassID, Owner = o.Owner?.Guid,
             OwningField = ownership.GetValueOrDefault(o.Hvo).Field,
             Values = Fields(o.ClassID).ToDictionary(f => f.ToString(CultureInfo.InvariantCulture), f => JsonSerializer.SerializeToElement(Value(o, f)))

@@ -18,7 +18,7 @@ public sealed class StoreCoreTests : IDisposable
     public async Task LargeCreateIsSplitAtFiveHundredChangesAndReplayIsEqual()
     {
         var record = new GenericRecord { Id = Guid.NewGuid() };
-        var items = Enumerable.Range(0, 2527).Select(_ => Guid.NewGuid()).ToArray();
+        var items = Enumerable.Range(0, 2528).Select(_ => Guid.NewGuid()).ToArray();
         record.Values["1000"] = JsonSerializer.SerializeToElement(items);
         var types = new Dictionary<int, int> { [1000] = 27 };
         await using (var store = new Store(Database))
@@ -42,7 +42,7 @@ public sealed class StoreCoreTests : IDisposable
         var now = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.FromHours(1)).AddTicks(19);
         var clock = new FixedClock(now);
         var record = new GenericRecord { Id = Guid.NewGuid() };
-        for (var i = 0; i < 1001; i++) record.Values[i.ToString()] = JsonSerializer.SerializeToElement(i);
+        for (var i = 0; i < 1001; i++) record.Values[(i + 10000).ToString()] = JsonSerializer.SerializeToElement(i + 1);
         IReadOnlyList<RecordCommit> written;
         await using (var store = new Store(Database, clock))
         {
