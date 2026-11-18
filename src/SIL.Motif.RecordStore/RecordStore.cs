@@ -31,7 +31,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         writeLockPath = path + ".write.lock";
         using var writer = AcquireWriter();
         var services = new ServiceCollection();
-        var connection = new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString();
+        var connection = RecordSqlite.ConnectionString(path);
         services.AddSingleton<RecordContent>();
         // Converters close over this store's immutable content cache; their EF model must have the same lifetime.
         services.AddDbContext<RecordDatabase>(options => options.UseSqlite(connection).EnableServiceProviderCaching(false));
@@ -286,17 +286,16 @@ public sealed partial class RecordStore : IAsyncDisposable
         var temporary = Directory.CreateTempSubdirectory("motif-record-replay-");
         try
         {
-            var original = database.Database.GetConnectionString()!;
+            var originalPath = database.Database.GetDbConnection().DataSource;
             var stagedPath = Path.Combine(temporary.FullName, "records.sqlite");
-            var staged = new SqliteConnectionStringBuilder(original) { DataSource = stagedPath }.ToString();
-            await CopyDatabaseAsync(original, staged);
+            await CopyDatabaseAsync(originalPath, stagedPath);
             await using (var candidate = new RecordStore(stagedPath))
             {
                 await candidate.RegenerateVerifiedAsync();
                 if ((await candidate.PublishedStateAsync()).ContentDigest != state.ContentDigest)
                     throw new InvalidDataException("Replay changed immutable content; the original store has been preserved.");
             }
-            await CopyDatabaseAsync(staged, original);
+            await CopyDatabaseAsync(stagedPath, originalPath);
             database.ChangeTracker.Clear();
         }
         finally { temporary.Delete(true); }
@@ -311,13 +310,11 @@ public sealed partial class RecordStore : IAsyncDisposable
         await PublishIndexAsync(records, state.Revision);
     }
 
-    private static async Task CopyDatabaseAsync(string source, string destination)
+    private static async Task CopyDatabaseAsync(string sourcePath, string destinationPath)
     {
-        await using var from = new SqliteConnection(source);
-        await using var to = new SqliteConnection(destination);
-        await from.OpenAsync();
-        await to.OpenAsync();
-        from.BackupDatabase(to);
+        await using var source = new SqliteConnection(RecordSqlite.ConnectionString(sourcePath));
+        await source.OpenAsync();
+        RecordSqlite.BackupTo(source, destinationPath);
     }
 
     public async ValueTask DisposeAsync()

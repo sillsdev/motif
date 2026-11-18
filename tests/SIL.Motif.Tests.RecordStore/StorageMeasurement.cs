@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using SIL.Motif.RecordStore;
 using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.RecordStore;
@@ -10,12 +11,12 @@ internal sealed record StorageMeasurement(long Main, long Wal, long Assets,
 
     public static StorageMeasurement Read(string path)
     {
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        IReadOnlyList<(string Name, long Bytes, long Payload)> tables;
+        using (var connection = new SqliteConnection(RecordSqlite.ConnectionString(path, SqliteOpenMode.ReadOnly)))
         {
-            DataSource = path, Mode = SqliteOpenMode.ReadOnly, Pooling = false
-        }.ToString());
-        connection.Open();
-        var tables = SqlitePageStatistics.Read(connection);
+            connection.Open();
+            tables = SqlitePageStatistics.Read(connection);
+        }
         return new StorageMeasurement(new FileInfo(path).Length, Length(path + "-wal"),
             Directory.Exists(path + ".resources") ? Directory.EnumerateFiles(path + ".resources", "*", SearchOption.AllDirectories)
                 .Sum(file => new FileInfo(file).Length) : 0, tables);

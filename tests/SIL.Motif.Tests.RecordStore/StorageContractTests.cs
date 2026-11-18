@@ -120,6 +120,31 @@ public sealed class StorageContractTests : IDisposable
     }
 
     [Fact]
+    public void PageAccountingClosesItsSqliteBackupBeforeReadingBytes()
+    {
+        using var source = Open(PathFor("closed-backup"));
+        using var command = source.CreateCommand();
+        command.CommandText = "CREATE TABLE Payload(Data BLOB); INSERT INTO Payload VALUES(zeroblob(32));";
+        command.ExecuteNonQuery();
+
+        var tables = SqlitePageStatistics.Read(source, path =>
+        {
+            if (OperatingSystem.IsLinux())
+            {
+                var resolved = Store.ResolvePath(path);
+                Assert.DoesNotContain(Directory.EnumerateFiles("/proc/self/fd"),
+                    fd => new FileInfo(fd).LinkTarget == resolved);
+            }
+            using var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None);
+            var bytes = new byte[file.Length];
+            file.ReadExactly(bytes);
+            return bytes;
+        });
+
+        Assert.Contains(tables, table => table.Name == "Payload" && table.Payload >= 32);
+    }
+
+    [Fact]
     public void PageAccountingIncludesOverflowAndUncheckpointedWal()
     {
         var path = PathFor("pages");

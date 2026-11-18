@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using Microsoft.Data.Sqlite;
+using SIL.Motif.RecordStore;
 
 namespace SIL.Motif.Tests.RecordStore;
 
@@ -9,27 +10,37 @@ internal sealed class SqlitePageStatistics(byte[] bytes)
     private readonly int size = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(16)) is var s && s == 1 ? 65536 : s;
     private readonly HashSet<int> visited = [];
 
-    public static IReadOnlyList<(string, long, long)> Read(SqliteConnection source)
+    public static IReadOnlyList<(string Name, long Bytes, long Payload)> Read(
+        SqliteConnection source, Func<string, byte[]>? readSnapshot = null)
     {
-        var temporary = Path.Combine(Path.GetTempPath(), "motif-dbstat-" + Guid.NewGuid().ToString("N"));
+        var temporary = Directory.CreateTempSubdirectory("motif-dbstat-");
+        var snapshot = Path.Combine(temporary.FullName, "snapshot.sqlite");
         try
         {
-            using var copy = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = temporary, Pooling = false }.ToString());
-            copy.Open();
-            source.BackupDatabase(copy);
-            var walker = new SqlitePageStatistics(File.ReadAllBytes(temporary));
-            var result = new List<(string, long, long)>();
-            using var command = copy.CreateCommand();
-            command.CommandText = "SELECT name, rootpage FROM sqlite_schema WHERE rootpage > 0 UNION ALL SELECT 'sqlite_schema', 1 ORDER BY name";
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
+            RecordSqlite.BackupTo(source, snapshot);
+            var roots = ReadRoots(snapshot);
+            var walker = new SqlitePageStatistics((readSnapshot ?? File.ReadAllBytes)(snapshot));
+            var result = new List<(string Name, long Bytes, long Payload)>(roots.Count);
+            foreach (var (name, page) in roots)
             {
-                var allocation = walker.Walk(reader.GetInt32(1));
-                result.Add((reader.GetString(0), allocation.Pages * walker.size, allocation.Payload));
+                var allocation = walker.Walk(page);
+                result.Add((name, allocation.Pages * walker.size, allocation.Payload));
             }
             return result;
         }
-        finally { File.Delete(temporary); }
+        finally { temporary.Delete(recursive: true); }
+    }
+
+    private static List<(string Name, int Page)> ReadRoots(string snapshot)
+    {
+        using var copy = new SqliteConnection(RecordSqlite.ConnectionString(snapshot, SqliteOpenMode.ReadOnly));
+        copy.Open();
+        using var command = copy.CreateCommand();
+        command.CommandText = "SELECT name, rootpage FROM sqlite_schema WHERE rootpage > 0 UNION ALL SELECT 'sqlite_schema', 1 ORDER BY name";
+        using var reader = command.ExecuteReader();
+        var roots = new List<(string Name, int Page)>();
+        while (reader.Read()) roots.Add((reader.GetString(0), reader.GetInt32(1)));
+        return roots;
     }
 
     // SQLite's file format fixes cell payload fractions and overflow placement: https://sqlite.org/fileformat2.html
