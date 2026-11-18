@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using System.Globalization;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -27,16 +27,18 @@ public sealed class RunnerKickRaceTests : IDisposable
     public async Task ARealCliKickRunsTheJobAfterTheOtherOwnerOutlastsTheInitialRetry()
     {
         var project = _projects.CopyProjectFile();
-        using var occupying = JobRunnerHost.ForNamespace(_ownerNamespace);
+        using var occupying = JobRunnerHost.ForRoot(_root, _ownerNamespace);
         Assert.True(occupying.TryAcquireOwnership());
+        using var competing = JobRunnerHost.ForRoot(_root, _ownerNamespace);
+        Assert.False(competing.TryAcquireOwnership());
 
         var run = await Cli(project);
         Assert.True(run.ExitCode == 0, run.Error);
         var jobId = run.Output.Trim();
         Assert.False(string.IsNullOrWhiteSpace(jobId));
+        await WaitForWakeWaiter(occupying);
         Assert.Equal(JobStatus.Queued, JobProgress.Read(project, jobId).Status);
 
-        await Task.Delay(TimeSpan.FromSeconds(3));
         occupying.Dispose();
 
         var completed = JobProgress.WaitUntilFinished(project, jobId, "The kicked runner's Baseline refresh");
@@ -55,7 +57,7 @@ public sealed class RunnerKickRaceTests : IDisposable
         try
         {
             var first = await Task.WhenAll(runners.Select(runner =>
-                runner.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(60))));
+                runner.StandardOutput.ReadLineAsync().WaitAsync(Wait.Scaled(TimeSpan.FromSeconds(60)))));
 
             Assert.Equal(1, first.Count(line => line is not null && line.StartsWith("existing runner:", StringComparison.Ordinal)));
             Assert.Equal(1, first.Count(line => !string.IsNullOrWhiteSpace(line) &&
@@ -90,20 +92,34 @@ public sealed class RunnerKickRaceTests : IDisposable
     public async Task ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked()
     {
         var project = _projects.CopyProjectFile();
-        var elapsed = Stopwatch.StartNew();
+        using var occupying = JobRunnerHost.ForRoot(_root, _ownerNamespace);
+        Assert.True(occupying.TryAcquireOwnership());
 
-        var run = await Cli(project, idleSeconds: 12);
+        var run = await Cli(project);
 
         Assert.True(run.ExitCode == 0, run.Error);
-        Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(8),
-            $"Reading the CLI's output took {elapsed.Elapsed}: the kicked runner held its standard handles.");
+        await WaitForWakeWaiter(occupying);
+        occupying.Dispose();
+        var completed = JobProgress.WaitUntilFinished(project, run.Output.Trim(), "The capturing caller's Baseline refresh");
+        Assert.Equal(JobStatus.Completed, completed.Status);
     }
 
-    private async Task<CliRun> Cli(string project, int idleSeconds = 2)
+    private static async Task WaitForWakeWaiter(JobRunnerHost occupying)
+    {
+        using var waiter = new WorkerMutexOwner(occupying.OwnerName + ".WakeWaiter");
+        await Wait.UntilAsync(() =>
+        {
+            if (!waiter.TryAcquire()) return true;
+            waiter.Release();
+            return false;
+        }, "The kicked runner waits beyond its initial ownership retry window");
+    }
+
+    private async Task<CliRun> Cli(string project)
     {
         var options = new JobRunnerLaunchOptions(_root, null) { OwnerNamespace = _ownerNamespace };
         var start = CliProcess.Start(options, "baseline-refresh", "--project", project);
-        start.Environment[RunnerOptions.IdleVariable] = idleSeconds.ToString(CultureInfo.InvariantCulture);
+        start.Environment[RunnerOptions.IdleVariable] = "2";
         start.Environment.Remove(ProcessRunnerLauncher.SuppressVariable);
         using var process = Process.Start(start)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
@@ -131,7 +147,7 @@ public sealed class RunnerKickRaceTests : IDisposable
         return new CliRun(process.ExitCode, outputTask.Result, errorTask.Result);
     }
 
-    private static readonly TimeSpan CliBound = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan CliBound = Wait.Scaled(TimeSpan.FromMinutes(2));
 
     private sealed record CliRun(int ExitCode, string Output, string Error);
 
