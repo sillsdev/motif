@@ -444,7 +444,7 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
-        public void BinaryCustomFieldsAreReportedAsBase64AndALongOneWithoutItsBytes()
+        public void BinaryCustomFieldsAreReportedAsBase64AndALongOneByLengthAndHash()
         {
             using var fixture = new ProjectFixture();
             var cache = fixture.Cache;
@@ -464,7 +464,8 @@ namespace SIL.TextEditing.Project.Tests
             ReadsBackClean(exporter, export);
             Assert.Equal("AQID", Assert.Single(export.Unexported, u => u.Field == "Small").Value);
             var big = Assert.Single(export.Unexported, u => u.Field == "Large");
-            Assert.Null(big.Value);
+            Assert.StartsWith("2048 bytes, sha256 ", big.Value);
+            Assert.Equal(64, big.Value!.Substring("2048 bytes, sha256 ".Length).Length);
             Assert.Contains("Binary", big.Reason);
         }
 

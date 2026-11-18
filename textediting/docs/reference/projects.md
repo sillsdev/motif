@@ -200,7 +200,7 @@ against the same project; every exported file reads back with no error finding a
   Integers and Booleans are written even when they hold the default, so absent never means zero.
 - **No-loss policy (report, not skip).** A value the file cannot hold is never dropped silently: it is listed in `Unexported` with the object's GUID and class, the field, the reason and
   the value as invariant text. The list covers:
-  - fields the overlay excludes that hold data: timestamps (ISO 8601 UTC), general dates (`AD 2024-3-5 Approximate`), binary (base64, with no value over 1,024 bytes), and any
+  - fields the overlay excludes that hold data: timestamps (ISO 8601 UTC), general dates (`AD 2024-3-5 Approximate`), binary (base64 up to 1,024 bytes; longer binary is described by its byte count and SHA-256, and its bytes stay only in the project), and any
     other excluded stored field (an object or reference list as GUIDs);
   - custom fields the generator omitted (unsupported types, undeclared owned classes, overlay exclusions);
   - what a structured text holds beyond its paragraphs: its own properties (such as its modified time) and a paragraph's analysis segments when they carry analyses, translations or notes;
@@ -208,6 +208,9 @@ against the same project; every exported file reads back with no error finding a
     file naming an undefined style would not read back;
   - a formatted string in a plain-text field: the characters are exported and the formatting reported;
   - a record the writer refuses: `Text` is null and one `(record)` entry says why.
+
+  `UnexportedValue.Value` keeps the value itself for most entries. For long binary it is a description, and it is null for a style, a record-level failure or a value that could not be read, so
+  the report is then a pointer to the data in the project, not a copy of it.
 
   Not reported, because the record holds them already or they are derived: an object's own identity and ownership (`Guid`, `Owner`, `OwningFlid`, `OwnOrd`, `ClassID`, `ShortNameTSS`, which
   the nesting and the `guid:` key give), and excluded virtual (computed) fields.

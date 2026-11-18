@@ -663,7 +663,13 @@ namespace SIL.TextEditing.Project
                 {
                     var bytes = BinaryValue(hvo, flid);
                     if (bytes.Length == 0) return false;
-                    value = bytes.Length > 1024 ? null : Convert.ToBase64String(bytes);
+                    if (bytes.Length <= 1024) value = Convert.ToBase64String(bytes);
+                    else
+                    {
+                        using (var sha = System.Security.Cryptography.SHA256.Create())
+                            value = bytes.Length.ToString(CultureInfo.InvariantCulture) + " bytes, sha256 "
+                                + string.Concat(sha.ComputeHash(bytes).Select(b => b.ToString("x2", CultureInfo.InvariantCulture)));
+                    }
                     return true;
                 }
                 case CellarPropertyType.ReferenceAtom:
