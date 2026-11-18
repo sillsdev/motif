@@ -3,6 +3,7 @@
 A FieldWorks record (an entry, a notebook record, a list item) can be one file: YAML front matter for the tree of objects and fields, FieldWorks
 Markdown for every rich value, and for some record kinds a Markdown body. `SIL.TextEditing.Markdown` reads and writes the frame (ADR 0031). This is the
 first slice (R1a): the frame, its schema, its findings and its fixtures. Export from liblcm (R1b), diff and shape checks (R2) and Motif come later.
+*Note, 2026-11-18: the pure tree diff now exists (R1d phase 1: `RecordDiffer`, see `docs/formats/record-files.md`, "Comparing two record documents"); the project-dependent checks stay R2.*
 
 **Owner decisions** (2026-11-05, `decisions-2026-11-05-records.md`; they override research report 17 where they differ):
 - **R-2:** YamlDotNet parses the frame, in `SIL.TextEditing.Markdown` only: its parser layer, never the reflection serializer. Our own writer quotes every
@@ -85,6 +86,7 @@ The rest is **defaults**: how this version does it where the owner has not decid
 - A rich value is read with `ParseInline` (one paragraph) or `Parse` (paragraphs). Unmarked text means the alternative's writing system, or the field's
   default (the file's `analysis` or `vernacular`); `.v` is the file's vernacular.
 - Not read here: whether a reference resolves, its target's class, plain-text markup in a quoted value, collection order, deletes and moves. They are R2.
+  *Note, 2026-11-18: `RecordDiffer` (R1d phase 1) now reports collection order (ignored), deletes by omission (flagged) and moves within a sequence, and refuses moves between owners; see `docs/formats/record-files.md`. Whether a delete is safe, and whether a reference resolves, stay with the importer.*
 
 **Considered**
 - Our own strict YAML reader (report 17's recommendation). The owner chose YamlDotNet (R-2).

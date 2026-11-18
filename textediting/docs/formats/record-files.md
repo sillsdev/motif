@@ -452,11 +452,52 @@ schema always gives the same bytes. `records/test.schema.json` is the fixtures' 
 VS Code's YAML extension does not validate Markdown front matter by itself. `fwmd check --schema <file.json>` checks record
 files using serialized `RecordSchema` data, rather than the draft-07 JSON Schema ([CLI usage](../../README.md#standalone-fwmd)).
 
+## Comparing two record documents
+
+`RecordDiffer.Diff(base, target, schema)` compares the export (`base`) with the edited file (`target`) and returns a `RecordChangeSet`. It is
+pure: it needs no project, reads both documents and changes neither. Resolving references, writing systems and styles against a project is
+the importer's job, not the differ's.
+
+- **Address.** A change names the GUID of the object that holds the field (`ObjectGuid`), the field (`Field`, a path from that object, with
+  1-based indices only through objects that have no GUID) and, for an alternative, the writing system. A partial file that does not carry its
+  object's `guid:` is addressed by the export's. At most one change has a given `Slot`, and changes come in a fixed order: fields in schema
+  order, writing systems in ordinal order, then list items.
+- **Kinds.** `Set` and `Clear` for a scalar or a single reference; `SetAlternative` and `ClearAlternative` for one writing system of a plain
+  multi field; `SetRich` and `ClearRich` for a rich value, which carry the whole new value, the old one as the value the change expects, and a
+  word-level summary (`Words`) for display only; `AddObject`, `RemoveObject` and `MoveObject` for owned objects; `AddReference`,
+  `RemoveReference` and `MoveReference` for references; `AddItem`, `RemoveItem` and `MoveItem` for other lists of values.
+- **Order.** A collection (`col`) is unordered: reordering it is no change, and its adds and removes carry no place. A sequence (`seq`)
+  reports the fewest moves it can (the items outside a longest run that keeps its order). Apply removals first, then adds and moves in order,
+  each placed right after its `Anchor`.
+- **Partial files.** When `root:` names an owned object or a field, only that subtree is compared, and omission is no change: a field,
+  alternative or list item the file leaves out is untouched. A value that is present but empty clears. A root that names the record itself is a
+  whole file.
+- **Whole files.** Omission is empty. Every clear or removal that exists only because the file leaves something out (`Clear`, `ClearAlternative`,
+  `ClearRich`, `RemoveItem`, `RemoveReference`, `RemoveObject`) has `ByOmission` set, so the importer can apply one rule to all of them (for example
+  "delete by omission only when safe"). A partial file never sets it. Deleting a computed field's line from a whole file is a computed-field refusal.
+- **Anchors.** An add or move in a sequence carries a typed `Anchor` that a consumer resolves from the change alone, whatever the list holds:
+  `Start` (first); `Object` (the object with `ItemGuid`); `Item` (the `Occurrence`-th item of a list of values with that `Text`, and for a reference that `Target`);
+  `Added` (the object with no GUID added by the change at `ChangeIndex` in `Changes`); `Position` (the item now at 1-based `Position`, used in lists of types that
+  have no GUIDs). A collection's changes have no anchor. Removing an object with no GUID carries `OldPosition`, its base position; those removals come first and
+  from the last, so the position is still right when applied. `ItemKey` only keeps slots unique; nothing needs to parse it.
+- **Places in a partial file.** `Index` counts only the items the file holds; rely on `Anchor`. A collection of objects whose types have no GUIDs
+  cannot be told apart, so it is compared by position and reordering it is a change. A repeated text in a list gets keys `a`, `a#2`, `a#3`, and a
+  text that is literally `a#2` can collide with them; the kind of change says which a key is.
+- **Refusals.** A computed field that differs; a changed `guid:` (on the record, or on an owned object in a single-object field) or `class:` on an
+  existing object; an object under another owner (or another field) than in the export; an object of a class its field does not allow; and a GUID on
+  more than one object in the export or the file (`DuplicateGuid`: none of those objects is compared; for a partial file, only duplicates inside the subtree it names, or of that object's own GUID, count) are listed in `Refusals`, each typed with a
+  reason. They are never also changes.
+- **Read-only.** `Changes`, `Refusals` and `Words` are read-only lists, and `Subtree` is a detached copy of the object.
+
 ## What the tests hold the format to
 
 - `RecordConformanceTests` runs every case: the document read, the findings, and the canonical text written back byte for byte.
 - `RecordGateTests`: YamlDotNet's representation model reads each canonical front matter to the same tree; Pandoc (with the flags in
   [Relation to Pandoc](fieldworks-markdown.md#relation-to-pandoc)) reads each canonical file, its rich values and its body as the reader
   does; a whole-record canonical file validates against the published JSON Schema.
+- `RecordDifferTests` and `RecordDifferPropertyTests` hold the diff to the rules in [Comparing two record documents](#comparing-two-record-documents): a
+  table of edits per field kind, `diff(x, x)` empty (including every readable conformance case), and seeded fuzz: the diff applied to the base by an
+  independent applier (which checks `Old` first) gives the target, results are slot-unique and deterministic, partial subtrees change only their own object,
+  and each refusal kind is raised and never applied.
 - `RecordFuzzTests` mutates the canonical cases (seeded). The reader never throws, and a mutated file it reads without an error writes and
   reads back without one.
