@@ -14,6 +14,7 @@ namespace SIL.Motif.Tests.App;
 /// Pins that a word's row reads the same on every page that reaches it, in the window's marks and words, with the
 /// three next steps always present.
 /// </summary>
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WordRowViewModelTests
 {
     private const string Digest = "sha256:" + "0000000000000000000000000000000000000000000000000000000000000000";

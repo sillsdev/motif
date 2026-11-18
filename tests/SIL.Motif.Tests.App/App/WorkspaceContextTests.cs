@@ -34,6 +34,7 @@ namespace SIL.Motif.Tests.App;
 /// evidence the context publishes, requests pass through context navigation, and page model types do not name
 /// the shell or one another.
 /// </summary>
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WorkspaceContextTests
 {
     private const string ProjectPath = @"C:\projects\one.fwdata";

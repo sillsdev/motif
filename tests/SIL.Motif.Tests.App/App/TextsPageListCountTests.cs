@@ -8,6 +8,7 @@ using Owner = SIL.Motif.Tests.App.WorkspaceContextTests.CapturedSelectionOwner;
 
 namespace SIL.Motif.Tests.App;
 
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TextsPageListCountTests
 {
     private static readonly string[] Words = ["kaon", "baga", "plain"];
