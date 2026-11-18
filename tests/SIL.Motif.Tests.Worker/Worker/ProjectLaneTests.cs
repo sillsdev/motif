@@ -193,9 +193,11 @@ public sealed class ProjectLaneTests
         }), CancellationToken.None);
         await started.Task;
 
-        await Task.Run(lane.Dispose).WaitAsync(TimeSpan.FromSeconds(2));
+        var disposal = Task.Run(lane.Dispose);
+        await Wait.UntilAsync(() => disposal.IsCompleted, "Lane disposal did not finish after cancelling active work.");
+        await disposal;
 
-        await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.True(cancelled.Task.IsCompletedSuccessfully);
     }
 
     [Fact]
