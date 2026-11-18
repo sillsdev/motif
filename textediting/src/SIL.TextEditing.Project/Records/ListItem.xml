@@ -1,0 +1,220 @@
+<overlay version="1" id="https://software.sil.org/textediting/schemas/list-item-v1.json">
+  <kind name="lists/item" root="CmPossibility" pathSegments="3" subclasses="true" />
+  <class name="ChkRef">
+    <field name="Ref" key="ref" />
+    <field name="KeyWord" key="key-word" />
+    <field name="Status" key="status" />
+    <field name="Rendering" key="rendering" />
+    <field name="Location" key="location" />
+  </class>
+  <class name="ChkRendering">
+    <field name="SurfaceForm" key="surface-form" />
+    <field name="Meaning" key="meaning" />
+    <field name="Explanation" key="explanation" />
+  </class>
+  <class name="ChkTerm">
+    <field name="Occurrences" key="occurrences" />
+    <field name="SeeAlso" key="see-also" />
+    <field name="Renderings" key="renderings" />
+    <field name="TermId" key="term-id" />
+  </class>
+  <class name="CmAnnotationDefn">
+    <field name="AllowsComment" key="allows-comment" />
+    <field name="AllowsFeatureStructure" key="allows-feature-structure" />
+    <field name="AllowsInstanceOf" key="allows-instance-of" />
+    <field name="InstanceOfSignature" key="instance-of-signature" />
+    <field name="UserCanCreate" key="user-can-create" />
+    <field name="CanCreateOrphan" key="can-create-orphan" />
+    <field name="PromptUser" key="prompt-user" />
+    <field name="CopyCutPastable" key="copy-cut-pastable" />
+    <field name="ZeroWidth" key="zero-width" />
+    <field name="Multi" key="multi" />
+    <field name="Severity" key="severity" />
+    <field name="MaxDupOccur" key="max-dup-occur" />
+  </class>
+  <class name="CmAnthroItem" />
+  <class name="CmCustomItem" />
+  <class name="CmDomainQ">
+    <field name="Question" key="question" />
+    <field name="ExampleWords" key="example-words" />
+    <field name="ExampleSentences" key="example-sentences" />
+  </class>
+  <class name="CmLocation">
+    <field name="Alias" key="alias" />
+  </class>
+  <class name="CmObject">
+    <exclude name="Self" />
+    <exclude name="Owner" />
+    <exclude name="OwningFlid" />
+    <exclude name="OwnOrd" />
+    <exclude name="Guid" />
+    <exclude name="ShortNameTSS" />
+    <exclude name="ClassID" />
+  </class>
+  <class name="CmPerson">
+    <field name="Alias" key="alias" />
+    <field name="Gender" key="gender" />
+    <exclude name="DateOfBirth" />
+    <field name="PlaceOfBirth" key="place-of-birth" />
+    <field name="IsResearcher" key="is-researcher" />
+    <field name="PlacesOfResidence" key="places-of-residence" />
+    <field name="Education" key="education" />
+    <exclude name="DateOfDeath" />
+    <field name="Positions" key="positions" />
+  </class>
+  <class name="CmPossibility">
+    <field name="Name" key="name" />
+    <field name="Abbreviation" key="abbreviation" />
+    <field name="Description" key="description" />
+    <field name="SubPossibilities" key="sub-possibilities" />
+    <field name="SortSpec" key="sort-spec" />
+    <field name="Restrictions" key="restrictions" />
+    <field name="Confidence" key="confidence" />
+    <field name="Status" key="status" />
+    <exclude name="DateCreated" />
+    <exclude name="DateModified" />
+    <field name="Discussion" key="discussion" />
+    <field name="Researchers" key="researchers" />
+    <field name="HelpId" key="help-id" />
+    <field name="ForeColor" key="fore-color" />
+    <field name="BackColor" key="back-color" />
+    <field name="UnderColor" key="under-color" />
+    <field name="UnderStyle" key="under-style" />
+    <field name="Hidden" key="hidden" />
+    <field name="IsProtected" key="is-protected" />
+  </class>
+  <class name="CmSemanticDomain">
+    <exclude name="ReferringSenses" />
+    <field name="LouwNidaCodes" key="louw-nida-codes" />
+    <field name="OcmCodes" key="ocm-codes" />
+    <field name="OcmRefs" key="ocm-refs" />
+    <field name="RelatedDomains" key="related-domains" />
+    <field name="Questions" key="questions" />
+  </class>
+  <class name="FsAbstractStructure" />
+  <class name="FsClosedValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsComplexValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsDisjunctiveValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsFeatStruc">
+    <exclude name="IsEmpty" />
+    <exclude name="LongNameTSS" />
+    <exclude name="LongNameSortedTSS" />
+    <exclude name="ChooserNameTS" />
+    <field name="FeatureDisjunctions" key="feature-disjunctions" />
+    <field name="FeatureSpecs" key="feature-specs" />
+    <field name="Type" key="type" />
+  </class>
+  <class name="FsFeatStrucDisj">
+    <field name="Contents" key="contents" />
+  </class>
+  <class name="FsFeatureSpecification">
+    <field name="RefNumber" key="ref-number" />
+    <field name="ValueState" key="value-state" />
+    <field name="Feature" key="feature" />
+  </class>
+  <class name="FsNegatedValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsOpenValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="FsSharedValue">
+    <field name="Value" key="value" />
+  </class>
+  <class name="LexEntryInflType">
+    <field name="GlossPrepend" key="gloss-prepend" />
+    <field name="GlossAppend" key="gloss-append" />
+    <field name="InflFeats" key="infl-feats" />
+    <field name="Slots" key="slots" />
+  </class>
+  <class name="LexEntryType">
+    <field name="ReverseAbbr" key="reverse-abbr" />
+    <field name="ReverseName" key="reverse-name" />
+  </class>
+  <class name="LexReference">
+    <exclude name="OwnerType" />
+    <exclude name="ConfigTargets" />
+    <exclude name="FullDisplayText" />
+    <field name="Comment" key="comment" />
+    <field name="Targets" key="targets" />
+    <field name="Name" key="name" />
+    <field name="LiftResidue" key="lift-residue" />
+  </class>
+  <class name="LexRefType">
+    <field name="ReverseAbbreviation" key="reverse-abbreviation" />
+    <field name="MappingType" key="mapping-type" />
+    <field name="Members" key="members" />
+    <field name="ReverseName" key="reverse-name" />
+  </class>
+  <class name="MoInflAffixSlot">
+    <exclude name="Affixes" />
+    <field name="Name" key="name" />
+    <field name="Description" key="description" />
+    <field name="Optional" key="optional" />
+  </class>
+  <class name="MoInflAffixTemplate">
+    <field name="Name" key="name" />
+    <field name="Description" key="description" />
+    <field name="Slots" key="slots" />
+    <field name="Stratum" key="stratum" />
+    <field name="Region" key="region" />
+    <field name="PrefixSlots" key="prefix-slots" />
+    <field name="SuffixSlots" key="suffix-slots" />
+    <field name="Final" key="final" />
+    <field name="Disabled" key="disabled" />
+    <field name="ProcliticSlots" key="proclitic-slots" />
+    <field name="EncliticSlots" key="enclitic-slots" />
+  </class>
+  <class name="MoInflClass">
+    <field name="Abbreviation" key="abbreviation" />
+    <field name="Description" key="description" />
+    <field name="Name" key="name" />
+    <field name="Subclasses" key="subclasses" />
+    <field name="RulesOfReferral" key="rules-of-referral" />
+    <field name="StemNames" key="stem-names" />
+    <field name="ReferenceForms" key="reference-forms" />
+  </class>
+  <class name="MoMorphType">
+    <field name="Postfix" key="postfix" />
+    <field name="Prefix" key="prefix" />
+    <field name="SecondaryOrder" key="secondary-order" />
+  </class>
+  <class name="MoReferralRule">
+    <field name="Name" key="name" />
+    <field name="Description" key="description" />
+    <field name="Input" key="input" />
+    <field name="Output" key="output" />
+  </class>
+  <class name="MoStemName">
+    <field name="Abbreviation" key="abbreviation" />
+    <field name="Description" key="description" />
+    <field name="Name" key="name" />
+    <field name="Regions" key="regions" />
+    <field name="DefaultAffix" key="default-affix" />
+    <field name="DefaultStem" key="default-stem" />
+  </class>
+  <class name="PartOfSpeech">
+    <field name="InherFeatVal" key="inher-feat-val" />
+    <field name="EmptyParadigmCells" key="empty-paradigm-cells" />
+    <field name="RulesOfReferral" key="rules-of-referral" />
+    <field name="InflectionClasses" key="inflection-classes" />
+    <field name="AffixTemplates" key="affix-templates" />
+    <field name="AffixSlots" key="affix-slots" />
+    <field name="StemNames" key="stem-names" />
+    <field name="BearableFeatures" key="bearable-features" />
+    <field name="InflectableFeats" key="inflectable-feats" />
+    <field name="ReferenceForms" key="reference-forms" />
+    <field name="DefaultFeatures" key="default-features" />
+    <field name="DefaultInflectionClass" key="default-inflection-class" />
+    <field name="CatalogSourceId" key="catalog-source-id" />
+  </class>
+  <class name="PhPhonRuleFeat">
+    <field name="Item" key="item" />
+  </class>
+</overlay>

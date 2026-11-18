@@ -59,11 +59,12 @@ namespace SIL.TextEditing.Markdown.Records
             var all = new J.Arr();
             foreach (var kind in schema.Kinds)
             {
+                var dataSchema = kind.Roots.Count == 1 ? Ref(DefinitionName(kind)) : Alternatives(kind.Roots);
                 var whole = new J.Obj()
                     .Add("if", new J.Obj().Add("properties", new J.Obj()
                         .Add("record", new J.Obj().Add("const", kind.Name))
                         .Add("root", new J.Obj().Add("pattern", "^(/[^/#]+){" + kind.PathSegments.ToString(CultureInfo.InvariantCulture) + "}$"))))
-                    .Add("then", new J.Obj().Add("properties", new J.Obj().Add("record-data", Ref(DefinitionName(kind)))));
+                    .Add("then", new J.Obj().Add("properties", new J.Obj().Add("record-data", dataSchema)));
                 all.Items.Add(whole);
             }
             if (all.Items.Count > 0) root.Add("allOf", all);
@@ -113,8 +114,13 @@ namespace SIL.TextEditing.Markdown.Records
         static J.Obj ObjectField(RecordField field)
         {
             if (field.ObjectType != null) return Ref(field.ObjectType.Name);
+            return Alternatives(field.ObjectTypes);
+        }
+
+        static J.Obj Alternatives(IEnumerable<RecordObjectType> types)
+        {
             var alternatives = new J.Arr();
-            foreach (var type in field.ObjectTypes)
+            foreach (var type in types)
                 alternatives.Items.Add(new J.Obj().Add("allOf", new J.Arr(new J.Node[]
                 {
                     Ref(type.Name), new J.Obj().Add("required", new J.Arr(new J.Node[] { new J.Str("class") }))

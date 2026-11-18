@@ -358,7 +358,7 @@ conformance README documents:
   A missing or disallowed class is `fwmd.record.class-not-allowed`. The writer puts GUID first, class next, then ordinary fields.
   Version-1 schemas that explicitly declare an ordinary `class` field retain those field semantics; such types cannot be polymorphic
   alternatives. Class-only objects are retained.
-- A record kind has a name (`record:`), a root type, how many path segments name a record (`pathSegments`) and an optional body field (`RecordSchemaBuilder.Kind`).
+- A record kind has a name (`record:`), one or more root types, how many path segments name a record (`pathSegments`) and an optional body field (`RecordSchemaBuilder.Kind`). Multiple root types require the record's `class` to select one, and cannot use a body field.
 - A text field in one writing system has a default: `RecordWritingSystem.Analysis` or `Vernacular`.
 - A field name has no `.`, `/`, `#`, space or control character, because those delimit field paths (`senses/1/definition.en`).
 
@@ -397,7 +397,7 @@ The field kinds are `text`, `rich`, `notation`, `integer`, `boolean`, `guid`, `r
 `sequence`). Lists have an `item` of kind object, reference, text or notation. Text, rich and notation fields may use `multi: true`;
 text fields in one writing system use `ws: analysis` or `vernacular`. Notation fields name their `notation`; rich fields preserve
 `paragraphs` and optional `blocks` (`tables`, `lists`, `headings`). Types preserve field order and GUID policy. Kinds declare `name`,
-`root`, `pathSegments` and optional `body`.
+`root` or version-2 `roots` (an array of alternatives), `pathSegments` and optional `body`. Multiple roots require a `class` in the record data and cannot have a body.
 
 Defaults are `guid: true`, `multi: false`, `paragraphs: false`, `ws: analysis`, `pathSegments: 2` and `computed: false`. Omitted `blocks`
 uses the builder default (all block kinds for rich paragraphs, none for a single paragraph); `blocks: []` explicitly allows none.

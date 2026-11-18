@@ -23,8 +23,14 @@ namespace SIL.TextEditing.Markdown.Records
             var kinds = new J.Arr();
             foreach (var kind in schema.Kinds)
             {
-                var value = new J.Obj().Add("name", kind.Name).Add("root", kind.Root.Name)
-                    .Add("pathSegments", Number(kind.PathSegments));
+                var value = new J.Obj().Add("name", kind.Name);
+                if (kind.Roots.Count == 1) value.Add("root", kind.Root.Name);
+                else
+                {
+                    if (version == 1) throw new InvalidOperationException("Polymorphic roots require version 2.");
+                    value.Add("roots", new J.Arr(kind.Roots.Select(t => (J.Node)new J.Str(t.Name))));
+                }
+                value.Add("pathSegments", Number(kind.PathSegments));
                 if (kind.BodyField != null) value.Add("body", kind.BodyField.Name);
                 kinds.Items.Add(value);
             }
@@ -103,8 +109,13 @@ namespace SIL.TextEditing.Markdown.Records
             }
             foreach (var k in Json.Arr(json["kinds"]).Select(Json.Obj))
             {
-                Keys(k, "name", "root", "pathSegments", "body");
-                builder.Kind(Json.Str(k["name"]), Json.Str(k["root"]), Json.OptInt(k, "pathSegments", 2), Json.OptStr(k, "body"));
+                Keys(k, "name", "root", "roots", "pathSegments", "body");
+                if (k.ContainsKey("roots"))
+                {
+                    if (version < 2 || k.ContainsKey("root")) throw new FormatException("Use either root or version-2 roots.");
+                    builder.Kind(Json.Str(k["name"]), Json.Arr(k["roots"]).Select(Json.Str).ToArray(), Json.OptInt(k, "pathSegments", 2), Json.OptStr(k, "body"));
+                }
+                else builder.Kind(Json.Str(k["name"]), Json.Str(k["root"]), Json.OptInt(k, "pathSegments", 2), Json.OptStr(k, "body"));
             }
             return builder.Build();
         }

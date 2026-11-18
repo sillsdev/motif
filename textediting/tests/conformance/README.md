@@ -130,7 +130,7 @@ every rich value and, for a record kind that has one, the body. `SIL.TextEditing
 | field `paragraphs` | For `rich`: several paragraphs (an StText), read as a document; otherwise one paragraph of inline text (block syntax is `fwmd.field.block-syntax`). |
 | field `blocks` | For `rich` with `paragraphs`: the block kinds the field allows, a list of `tables`, `lists` and `headings` (`[]`: none). Absent: all (a field of one paragraph allows none, and may not list any). ADR 0033. |
 | field `ws` | For a field in one writing system: `analysis` (default) or `vernacular`, what unmarked text means. In an alternative of a `multi` field, unmarked text means that alternative's writing system. |
-| `kinds` | Record kinds: `name` (the file's `record:`), `root` (the root object type), `pathSegments` (how many segments of a `root:` path name the record) and `body` (the root type's rich field of paragraphs written below the front matter, or none). |
+| `kinds` | Record kinds: `name` (the file's `record:`), `root` (one root object type) or `roots` (version 2: a list of root object types, exclusive with `root`), `pathSegments` (how many segments of a `root:` path name the record) and `body` (the root type's rich field of paragraphs written below the front matter, or none). A kind with several roots requires `class` in `record-data` to select one, and cannot declare a `body`. This applies whether or not the file supplies a `root:` path. |
 
 ### A case
 

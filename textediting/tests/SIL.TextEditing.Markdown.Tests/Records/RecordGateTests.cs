@@ -372,7 +372,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
                 }
             }
             var kind = schema.Kind(d.Kind)!;
-            var (type, body, fragment) = Layout(kind, d.Root);
+            var (type, body, fragment) = Layout(kind, d.Root, d.Data.Class);
             var frame = new StringBuilder();
             ObjectTree(frame, d.Data, type, 4, body);
             if (frame.Length > 0) sb.Append("  record-data: map\n").Append(frame);
@@ -381,9 +381,9 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         }
 
         /// <summary>The type of the data a root names, and the field that is the body (as the reader resolves it).</summary>
-        static (RecordObjectType type, string? body, string? fragment) Layout(RecordKind kind, string? root)
+        static (RecordObjectType type, string? body, string? fragment) Layout(RecordKind kind, string? root, string? objectClass)
         {
-            var type = kind.Root;
+            var type = kind.Roots.FirstOrDefault(t => t.Name == objectClass) ?? kind.Root;
             if (root == null) return (type, kind.BodyField?.Name, null);
             var path = ProjectPath.Parse(root)!;
             bool record = path.Segments.Count == kind.PathSegments;
@@ -520,7 +520,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             var root = Json.Obj(Json.Parse(PandocRunner.ToJson(text)));
             var meta = Json.Obj(root["meta"]);
             var kind = schema.Kind(document.Kind)!;
-            var (type, body, _) = Layout(kind, document.Root);
+            var (type, body, _) = Layout(kind, document.Root, document.Data.Class);
             string analysis = document.Analysis ?? options.Markdown.WritingSystems.DefaultAnalysis;
             string vernacular = document.Vernacular ?? options.Markdown.WritingSystems.DefaultVernacular;
             var frame = new StringBuilder();

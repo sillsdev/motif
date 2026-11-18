@@ -8,7 +8,7 @@
     <TargetDir>$(MSBuildProjectDirectory)\</TargetDir>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Records/LexiconEntry.xml" />
+    <EmbeddedResource Include="Records/*.xml" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="SIL.LCModel" />

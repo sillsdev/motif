@@ -1,0 +1,60 @@
+[
+  {
+    "name": "a whole record selects a root class without a root path",
+    "schema": "whole-classes",
+    "file": "---\nfwmd: 1\nrecord: \"records/record\"\nschema: \"whole-classes.schema.json\"\nrecord-data:\n  class: \"note\"\n  text: \"A note.\"\n---\n",
+    "canonical": null,
+    "document": {
+      "record": "records/record",
+      "schema": "whole-classes.schema.json",
+      "data": {
+        "class": "note",
+        "text": "A note."
+      }
+    },
+    "findings": []
+  },
+  {
+    "name": "a whole record selects a root class with a root path",
+    "schema": "whole-classes",
+    "file": "---\nfwmd: 1\nrecord: \"records/record\"\nschema: \"whole-classes.schema.json\"\nroot: \"/records/example\"\nrecord-data:\n  class: \"tag\"\n  label: \"A tag.\"\n---\n",
+    "canonical": null,
+    "document": {
+      "record": "records/record",
+      "schema": "whole-classes.schema.json",
+      "root": "/records/example",
+      "data": {
+        "class": "tag",
+        "label": "A tag."
+      }
+    },
+    "findings": []
+  },
+  {
+    "name": "a writer selects the root class",
+    "schema": "whole-classes",
+    "document": {
+      "record": "records/record",
+      "schema": "whole-classes.schema.json",
+      "data": {
+        "class": "note",
+        "text": "A note."
+      }
+    },
+    "canonical": "---\nfwmd: 1\nrecord: \"records/record\"\nschema: \"whole-classes.schema.json\"\nrecord-data:\n  class: \"note\"\n  text: \"A note.\"\n---\n"
+  },
+  {
+    "name": "a whole record rejects an unlisted class",
+    "schema": "whole-classes",
+    "file": "---\nfwmd: 1\nrecord: \"records/record\"\nschema: \"whole-classes.schema.json\"\nrecord-data:\n  class: \"other\"\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.record.class-not-allowed",
+        "line": 6,
+        "column": 10,
+        "endLine": 6,
+        "endColumn": 17
+      }
+    ]
+  }
+]

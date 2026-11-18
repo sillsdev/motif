@@ -180,7 +180,7 @@
     <field name="MediaFiles" key="media-files" />
     <exclude name="OwningEntry" />
     <exclude name="PublishIn" />
-    <field name="Tone" key="tone" />
+    <field name="Tone" key="tone" ws="vernacular" />
   </class>
   <class name="LexSense">
     <field name="AnthroCodes" key="anthro-codes" />
