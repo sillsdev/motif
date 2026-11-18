@@ -703,25 +703,32 @@ namespace SIL.TextEditing.Project.Tests
             Assert.Empty(plan.ChangeSet.Changes);
         }
 
-        [Fact]
-        public void ABinaryGuidLinkInsideRichTextBlocksADeleteByOmission()
+        [Theory]
+        [InlineData("3f2504e0-4f89-41d3-9a0c-0305e82c3301")]
+        [InlineData("0001d800-1234-5678-9abc-def012345678")] // its first UTF-16 code unit is a lone high surrogate (U+D800)
+        [InlineData("0001dc00-1234-5678-9abc-def012345678")] // lone low surrogate (U+DC00)
+        public void ABinaryGuidLinkInsideRichTextBlocksADeleteByOmission(string fixedGuid)
         {
             using var fixture = new ProjectFixture();
             var w = Build(fixture);
             var cache = fixture.Cache;
+            var guid = Guid.Parse(fixedGuid);
+            string data = ((char)FwObjDataTypes.kodtOwnNameGuidHot) + SIL.LCModel.Utils.MiscUtils.GetObjDataFromGuid(guid);
+            Assert.Equal(guid, SIL.LCModel.Utils.MiscUtils.GetGuidFromObjData(data.Substring(1)));
             fixture.Change(() =>
             {
+                cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create(guid, w.Entry);
                 var other = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
                 var sense = cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
                 other.SensesOS.Add(sense);
                 var b = TsStringUtils.MakeStrBldr();
                 b.Replace(0, 0, "see sell", TsStringUtils.MakeProps("", cache.DefaultAnalWs));
-                // liblcm's own form: one type character, then the GUID's 16 bytes as eight UTF-16 characters.
-                string data = ((char)FwObjDataTypes.kodtOwnNameGuidHot) + System.Text.Encoding.Unicode.GetString(w.Second.Guid.ToByteArray());
                 b.SetStrPropValue(0, 8, (int)FwTextPropType.ktptObjData, data);
                 sense.Definition.set_String(cache.DefaultAnalWs, b.GetString());
             });
-            Assert.Contains("link", Single(DeleteSecondSense(w, out _), RecordRefusalKind.DeleteHasIncomingReferences).Reason);
+            var exporter = LexiconExporter(fixture);
+            var text = Edited(exporter, exporter.Export(w.Entry.Guid), d => { var l = (RecordList)d.Data["senses"]!; l.Items.RemoveAt(l.Items.Count - 1); });
+            Assert.Contains("link", Single(Plan(exporter, text), RecordRefusalKind.DeleteHasIncomingReferences).Reason);
         }
 
         [Fact]

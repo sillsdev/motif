@@ -595,9 +595,10 @@ namespace SIL.TextEditing.Project
                     if (string.IsNullOrEmpty(objData)) continue;
                     foreach (System.Text.RegularExpressions.Match m in GuidText.Matches(objData!))
                         if (Guid.TryParse(m.Value, out var g)) Add(found, g, owner.Guid);
-                    // Hot links to objects keep a type character and the GUID's 16 bytes as eight UTF-16 characters.
+                    // Hot links to objects keep a type character and the GUID's 16 bytes as eight UTF-16 characters. liblcm decodes them code unit by code unit; an encoder would
+                    // replace a lone surrogate (about a fifth of all GUIDs have one) and name another GUID.
                     if (objData!.Length == 9)
-                        Add(found, new Guid(System.Text.Encoding.Unicode.GetBytes(objData.Substring(1))), owner.Guid);
+                        Add(found, SIL.LCModel.Utils.MiscUtils.GetGuidFromObjData(objData.Substring(1)), owner.Guid);
                 }
             }
 
