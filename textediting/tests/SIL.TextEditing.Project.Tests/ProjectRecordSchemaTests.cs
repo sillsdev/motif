@@ -180,6 +180,28 @@ namespace SIL.TextEditing.Project.Tests
             Assert.Equal(id, ProjectRecordSchema.Generate(second.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id);
             Assert.NotEqual(id, ProjectRecordSchema.Generate(third.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id);
             Assert.Equal(plain.Length + "-custom-".Length + 24, id.Length);
+            Assert.Equal(id, ProjectRecordSchema.Generate(second.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id);
+        }
+
+        [Fact]
+        public void ExcludingACustomFieldOnCmObjectIsReported()
+        {
+            using var fixture = new ProjectFixture();
+            ((IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor).AddCustomField("CmObject", "Everywhere", CellarPropertyType.Integer, 0);
+            string excluded = ChangeOverlay(root => Class(root, "CmObject").Add(new XElement("exclude", new XAttribute("name", "Everywhere"))));
+            var result = ProjectRecordSchema.Generate(fixture.Cache, excluded);
+            var omission = Assert.Single(result.OmittedCustomFields, o => o.Field == "Everywhere");
+            Assert.Equal("CmObject", omission.Class);
+            Assert.Null(result.Schema.Kind("lexicon/entry")!.Root.Field("custom-CmObject-Everywhere"));
+        }
+
+        [Fact]
+        public void ExcludingACustomFieldOnAClassOutsideTheOverlayIsRejected()
+        {
+            using var fixture = new ProjectFixture();
+            ((IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor).AddCustomField("RnGenericRec", "Elsewhere", CellarPropertyType.Integer, 0);
+            string excluded = ChangeOverlay(root => Class(root, "LexEntry").Add(new XElement("exclude", new XAttribute("name", "Elsewhere"))));
+            Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, excluded));
         }
 
         [Fact]
