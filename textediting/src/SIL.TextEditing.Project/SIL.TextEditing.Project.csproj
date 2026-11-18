@@ -8,6 +8,9 @@
     <TargetDir>$(MSBuildProjectDirectory)\</TargetDir>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="SIL.TextEditing.Project.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <EmbeddedResource Include="Records/*.xml" />
   </ItemGroup>
   <ItemGroup>

@@ -30,6 +30,24 @@ namespace SIL.TextEditing.Project.Tests
             });
         }
 
+        /// <summary>Opens a private copy of an existing project file (the original is never opened); Dispose deletes the copy.</summary>
+        public ProjectFixture(string fwdata)
+        {
+            Directory.CreateDirectory(_root);
+            string copy = Path.Combine(_root, Path.GetFileName(fwdata));
+            try
+            {
+                File.Copy(fwdata, copy);
+                Cache = LcmCache.CreateCacheFromLocalProjectFile(copy, null,
+                    new SilentLcmUI(new SingleThreadedSynchronizeInvoke()), new Directories(_root), new LcmSettings(), new QuietProgress());
+            }
+            catch
+            {
+                try { Directory.Delete(_root, true); } catch (IOException) { }
+                throw;
+            }
+        }
+
         static string Initialize()
         {
             var root = Path.Combine(Path.GetTempPath(), "textediting-project-tests", Guid.NewGuid().ToString("N"));
