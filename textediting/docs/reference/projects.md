@@ -162,7 +162,7 @@ apply; absent hints use analysis. Mixed ordered hints are unsupported. Timestamp
 have no schema kind and must be excluded.
 
 Custom fields on included classes are appended after all overlay fields, in metadata order, including inherited
-custom fields. Their keys use the reserved `custom-` prefix followed by four lowercase hexadecimal digits per
-UTF-16 code unit of the declaring class name, a zero code unit, and the field name. This encoding is reversible
-and separates custom names from overlay keys; overlays cannot declare custom fields or use that prefix. Unsupported
+custom fields. Their keys use `custom-<declaring-class>-<field-name>`, percent-encoding UTF-8 bytes for `%`, whitespace, control
+characters and characters forbidden in field paths or file names. The encoding is reversible and separates custom
+names from overlay keys; overlays cannot declare custom fields or use the `custom-` prefix. Unsupported
 custom field types fail generation instead of being silently omitted.

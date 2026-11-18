@@ -137,13 +137,20 @@ namespace SIL.TextEditing.Project.Tests
             var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
             metadata.AddCustomField("MoForm", "AddedField", CellarPropertyType.Unicode, 0);
             metadata.AddCustomField("MoStemAllomorph", "SecondField", CellarPropertyType.Integer, 0);
-            var cache = (IFwMetaDataCache)metadata;
-            var expected = metadata.GetFields(cache.GetClassId("MoStemAllomorph"), true, -1).Where(metadata.IsCustom)
-                .Select(f => "custom-" + string.Concat((cache.GetOwnClsName(f) + "\0" + cache.GetFieldName(f)).Select(c => ((int)c).ToString("x4")))).ToArray();
             var type = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).ObjectType("MoStemAllomorph")!;
-            Assert.Equal(2, expected.Length);
-            Assert.Equal(expected, type.Fields.Skip(type.Fields.Count - 2).Select(f => f.Name));
-            Assert.Equal(RecordFieldKind.Text, type.Field("custom-004d006f0046006f0072006d000000410064006400650064004600690065006c0064")!.Kind);
+            Assert.Equal(new[] { "custom-MoStemAllomorph-SecondField", "custom-MoForm-AddedField" },
+                type.Fields.Skip(type.Fields.Count - 2).Select(f => f.Name));
+            Assert.Equal(RecordFieldKind.Text, type.Field("custom-MoForm-AddedField")!.Kind);
+        }
+
+        [Fact]
+        public void CustomFieldKeysEscapeDelimitersWithoutChangingReadableNames()
+        {
+            using var fixture = new ProjectFixture();
+            var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
+            metadata.AddCustomField("RnGenericRec", "A ./%#é\u00a0\ufeff\ufffe\uffff", CellarPropertyType.Unicode, 0);
+            var root = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.NotebookRecordOverlay).Kind("notebook/record")!.Root;
+            Assert.NotNull(root.Field("custom-RnGenericRec-A%20%2E%2F%25%23é%C2%A0%EF%BB%BF%EF%BF%BE%EF%BF%BF"));
         }
 
         [Fact]

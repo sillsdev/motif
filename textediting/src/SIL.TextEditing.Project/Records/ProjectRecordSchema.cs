@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Xml.Linq;
 using SIL.LCModel;
 using SIL.LCModel.Core.Cellar;
@@ -148,7 +149,24 @@ namespace SIL.TextEditing.Project
 
         static string CustomKey(string owner, string name)
         {
-            return "custom-" + string.Concat((owner + "\0" + name).Select(c => ((int)c).ToString("x4")));
+            var key = new StringBuilder("custom-").Append(owner).Append('-');
+            for (int i = 0; i < name.Length; i++)
+            {
+                char c = name[i];
+                if (char.IsSurrogate(c))
+                {
+                    if (!char.IsHighSurrogate(c) || i + 1 >= name.Length || !char.IsLowSurrogate(name[i + 1]))
+                        throw new ArgumentException("A custom field name contains an unpaired surrogate.");
+                    key.Append(c).Append(name[++i]);
+                }
+                else if (char.IsControl(c) || char.IsWhiteSpace(c) || c == '\uFEFF' || c == '\uFFFE' || c == '\uFFFF'
+                    || "./#%\\:*?\"<>|".IndexOf(c) >= 0)
+                {
+                    foreach (byte b in Encoding.UTF8.GetBytes(new[] { c })) key.Append('%').Append(b.ToString("X2"));
+                }
+                else key.Append(c);
+            }
+            return key.ToString();
         }
 
         static string Required(XElement e, string name) => (string?)e.Attribute(name) is string value && value.Length > 0
