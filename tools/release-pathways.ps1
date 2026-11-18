@@ -159,6 +159,8 @@ $fixtureMap = [ordered]@{
 }
 $sampleBuilds = [ordered]@{}
 foreach ($fixture in $fixtureMap.Keys) {
+    # A seed runner must not discover another fixture before the App opens it.
+    $env:MOTIF_WORKER_ROOT = Join-Path $releaseRoot ('seed-worker-' + $fixture)
     $built = Build-Sample (Join-Path $releaseRoot ('app-' + $fixture)) ('app' + @($fixtureMap.Keys).IndexOf($fixture))
     $text = @($built.texts | Where-Object { $_.id -eq 'plural-harmony' })
     if ($text.Count -ne 1) { throw "The synthetic sample has no unique plural-harmony Text for $fixture." }
@@ -168,11 +170,8 @@ foreach ($fixture in $fixtureMap.Keys) {
 
 foreach ($fixture in $fixtureMap.Keys) {
     $build = $sampleBuilds[$fixture]
-    if ($fixture -eq 'first-run-ready') {
-        # First-time Setup needs a Baseline even when a background sweep already created the store.
-        [void] (Invoke-CliJson @('baseline', 'capture', '--project', $build.ProjectPath))
-        continue
-    }
+    if ($fixture -eq 'first-run-ready') { continue }
+    $env:MOTIF_WORKER_ROOT = Join-Path $releaseRoot ('seed-worker-' + $fixture)
     Seed-Selection $build.ProjectPath $build.TextId
     if ($fixture -in @('explained-word-card', 'apply-refresh-ready', 'handoff-cancel-ready')) {
         [void] (Invoke-Cli @('assess', $build.ProjectPath, '--texts', $build.TextId))
@@ -180,6 +179,7 @@ foreach ($fixture in $fixtureMap.Keys) {
     if ($fixture -eq 'apply-refresh-ready') { Seed-IncorrectSpelling $build.ProjectPath }
 }
 
+$env:MOTIF_WORKER_ROOT = Join-Path $releaseRoot 'launch-worker'
 $cliProjects = [ordered]@{}
 foreach ($fixture in $fixtureMap.Keys) {
     $built = Build-Sample (Join-Path $releaseRoot ('cli-' + $fixture)) ('cli' + @($fixtureMap.Keys).IndexOf($fixture))
@@ -207,6 +207,12 @@ $seedManifestPath = Join-Path $releaseRoot 'seed-manifest.json'
     extraProjects = $extraProjectPaths } |
     ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $seedManifestPath -Encoding utf8
 Set-Content -LiteralPath (Join-Path $work 'release-pathways-root.txt') -Value $releaseRoot -Encoding utf8
+
+$firstRunProject = $projectPaths['first-run-ready']
+$firstRunStore = [System.IO.Path]::ChangeExtension($firstRunProject, '.motif.db')
+if (Test-Path -LiteralPath $firstRunStore) {
+    throw "The first-run-ready store was created before the App replay: $firstRunStore"
+}
 
 # Hosted Unix runners also link dotnet from /usr/bin or /usr/local/bin, which can't leave PATH whole.
 $shadowRoot = Join-Path $releaseRoot 'path-without-dotnet'
@@ -242,6 +248,10 @@ if (-not $launchResult.opened -or $launchResult.width -le 0 -or $launchResult.he
     throw 'The installed App launch check did not report a visible window.'
 }
 
+if (Test-Path -LiteralPath $firstRunStore) {
+    throw "The first-run-ready store was created before the App replay: $firstRunStore"
+}
+Write-Host 'The first-run-ready store is absent before the installed App replay.'
 $replay = Invoke-InstalledApp @('--release-pathways')
 if ($replay.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $env:MOTIF_RELEASE_RESULT -PathType Leaf)) {
     throw "The installed App replay failed. $($replay.Error) $($replay.Output)"
@@ -258,6 +268,15 @@ foreach ($pathway in $appResult.pathways) {
         if (-not (Test-Path -LiteralPath $capture -PathType Leaf)) { throw "Missing App screenshot: $capture" }
     }
 }
+
+if (-not (Test-Path -LiteralPath $firstRunStore -PathType Leaf)) {
+    throw 'The installed App did not create the first-run-ready store.'
+}
+$firstRunOverview = Invoke-CliJson @('overview', '--project', $firstRunProject)
+if ($null -eq $firstRunOverview.baselineToken -or $null -eq $firstRunOverview.baselineCapturedUtc) {
+    throw 'The installed App did not capture the first-run-ready Baseline.'
+}
+Write-Host 'The installed App created the first-run-ready store and captured its Baseline.'
 
 $first = $cliProjects['first-run-ready']
 Seed-Selection $first.ProjectPath $first.TextId
