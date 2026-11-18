@@ -199,6 +199,7 @@ Libraries target netstandard2.0 and net10.0. Details: [Projects and tests](docs/
 - [Decisions](docs/adr): the architecture decision records.
 - [Feature inventory](docs/feature-inventory.md): FieldWorks' editing features and where each stands here.
 - [Manual testing](docs/manual-testing.md): the checklist a person runs.
+- [Manual run sheet](docs/manual-run-sheet.md): the per-host results sheet for that checklist.
 - [Glossary](GLOSSARY.md): the words this project uses.
 - [Screenshots](docs/images/README.md): every image, and how to regenerate it.
 

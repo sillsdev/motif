@@ -12,6 +12,8 @@ Write **PASS** or **FAIL** in the Result column of every step you do, and put wh
 from Expected. A step you could not do is **SKIP** with the reason. Copy the Model tab or the event log (select the
 text, Ctrl+C) into a bug report; they are plain text and show exactly what the model holds.
 
+The per-host run sheet to fill in and file is [manual-run-sheet.md](manual-run-sheet.md); it marks the rows that need a Windows machine.
+
 ## Start
 
 From the repository root on Windows (the .NET 10 SDK and the .NET Framework 4.8 targeting pack are needed):
@@ -151,7 +153,7 @@ only by the playground and the tests) and plain text. A FieldWorks host also cop
 | 9.2 | Move the window to a monitor at 150 percent (or change the scale), or set the scale to 150 percent. | Text is sharp; the caret and selection stay aligned with the glyphs; the picture is not blurry. | needs a real display at another scale | | | | |
 | 9.3 | *Long document*: press Ctrl+End, type, press Ctrl+Home. | The view follows the caret; typing is not slower than in a short document; the Model tab shows a window around the caret. | how typing feels in a long document | | | | |
 | 9.4 | *Many fields* with 1000 fields (Fields picker, then pick the scenario again): scroll and type in a field far down. | The window stays usable. Record how long it takes to load and whether scrolling stutters. | how loading and scrolling feel with 1000 fields | | | | |
-| 9.5 | Select all (Ctrl+A) in the *Long document* and press B. | It finishes in a reasonable time; Undo restores it in one step. | whether a wait is reasonable is a human judgement (no wall-clock assertions) | | | | |
+| 9.5 | Select all (Ctrl+A) in the *Long document* and press B. | It finishes in a reasonable time. (Undo restoring it in one step is `ScenarioTests.Select_all_then_bold_in_the_long_document_is_undone_in_one_step`.) | whether a wait is reasonable is a human judgement (no wall-clock assertions) | | | | |
 | 9.6 | Switch Windows between light, dark and a high contrast theme (Settings, Accessibility, Contrast themes) while the playground is open, with the fields' Foreground and Background not set. | The text and page follow at once, without a pause: in high contrast the page is the system window colour, the text the window text colour and a selection the highlight colour. Record anything unreadable. A field whose host set both colours keeps them (the host's choice, docs/reference/rendering.md, "Colours and themes"). | needs the real Windows themes, including high contrast | | | | |
 
 ## 10. Mouse and keyboard selection (all hosts)

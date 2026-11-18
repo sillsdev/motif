@@ -112,6 +112,19 @@ namespace SIL.TextEditing.Playground.Tests
         });
 
         [Fact]
+        public void Select_all_then_bold_in_the_long_document_is_undone_in_one_step() => Headless.Run(() =>
+        {
+            using (var s = new Session(Scenarios.Long))
+            {
+                s.Press(Key.A, KeyModifiers.Control);
+                s.Click(PlaygroundView.Names.Bold);
+                Assert.All(s.Editor.Document.Paragraphs, p => Assert.All(p.Runs, r => Assert.True(r.Props.IntProps.ContainsKey(TextPropertyNumbers.Bold))));
+                s.Click(PlaygroundView.Names.Undo);
+                Assert.All(s.Editor.Document.Paragraphs, p => Assert.All(p.Runs, r => Assert.False(r.Props.IntProps.ContainsKey(TextPropertyNumbers.Bold))));
+            }
+        });
+
+        [Fact]
         public void Many_fields_scenario_follows_the_focused_field_and_keeps_undo_per_field() => Headless.Run(() =>
         {
             using (var s = new Session(Scenarios.Empty))
