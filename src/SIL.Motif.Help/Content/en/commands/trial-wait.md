@@ -17,3 +17,5 @@ If PanGloss is killed by a signal or terminated by the operating system, the Job
 With `--json`, a terminal Job that could not finish the Trial is printed as one JSON object on stdout, with its status and failure category. Warnings and diagnostics go to stderr. An enqueue refusal is a FailureEnvelope on stderr.
 
 The stored result keeps its `gate` and `report.losses`: `newNoParseWords` and `newApprovedLossWords` name every affected word, and `newlyLostReadings` names each word and frozen reading identity. These lists survive when the optional detail index exceeds the store budget. Expected losses are frozen when the Trial is queued; later reads keep that Trial’s verdict.
+
+When a word had a Baseline analysis but its spelling cannot be segmented by the candidate phoneme inventory, the parser may mark it `skipped`. This is a named loss, including any confirmed readings it lost, rather than a pass or an unknown search result. Malformed evidence cannot establish that loss. A listed intended inventory loss is covered by the Trial's saved expected losses.

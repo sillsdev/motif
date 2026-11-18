@@ -1999,6 +1999,10 @@ public static partial class ProposalCommands
             if (ApplyAuthorization.PendingChangesRefusal(database, record.ProposalId) is { } pendingRefusal)
                 return CommandOutcome<ApplyProjection>.Refused(pendingRefusal);
 
+            if (attribution.Mode == ApplyModes.Autonomous &&
+                AutonomousTrialGate.Check(database, project, record) is { } gateRefusal)
+                return CommandOutcome<ApplyProjection>.Refused(gateRefusal);
+
             var manifest = ProposalRecordMapping.ToManifest(record);
 
             // ADR 0017 decision 4: a bare apply with no bound DryRun is a hard error, checked before loading the project.

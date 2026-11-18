@@ -53,6 +53,8 @@ public static class RefusalCodes
     public const string ApplyNotSaved = "apply.not-saved";
     public const string ApplyPendingChanges = "apply.pending-changes";
 
+    /// <summary>The newest Trial has no current green gate for Autonomous Apply.</summary>
+    public const string ApplyTrialGate = "apply.trial-gate";
     public const string ApplyNotReady = "apply.not-ready";
     public const string ApplyPreconditionFailed = "apply.precondition-failed";
     public const string ApplyProjectInUse = "apply.project-in-use";

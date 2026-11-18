@@ -20,6 +20,8 @@ Without `--force`, Apply can be refused with `apply.not-ready` when its current 
 
 ## Mode, message and note
 
+Autonomous Apply also requires the newest Trial of this exact Proposal content and current project state to have a saved `green` gate (ADR 0017 and ADR 0021). Missing or historical gate evidence, a failed or pending newest Trial, unmeasured evidence, or an unexpected loss is refused with `apply.trial-gate`; Motif does not fall back to an older green Trial. Start a fresh Trial with `--wait`, inspect its named losses and stopped words, and supply `--expect-loss <file>` when starting that Trial only for intended losses. Every measured loss must be covered; the saved Trial verdict keeps those exemptions.
+
 Every Receipt records how the Proposal was applied, `person` or `autonomous`, and a message. With no marker the mode is `person`, and the message defaults to the Proposal's label; `--message <text>` replaces it (one line, at most 128 characters). An agent declares Autonomous mode with `--autonomous` or by setting `MOTIF_AUTONOMOUS=1` in its environment, and an autonomous Apply is refused with `apply.message-required` unless it gives a `--message`; combining Autonomous mode with `--force` is refused with `apply.autonomous-force`. The window always records `person`.
 
 `--note` also writes one Notebook record of the "Motif change" type in the same unit of work as the changes: its title is the Proposal's label, and its text is the Rationale, the Receipt reference and the message. It is off by default. A later Proposal applied with `--note` writes its own note, and the earlier note remains.

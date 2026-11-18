@@ -522,12 +522,12 @@
   },
   "apply": {
     "title": "Apply with Readiness override",
-    "description": "Applies one Proposal using its already bound Dry Run; --force skips Readiness checks only, and Autonomous mode refuses it. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies.",
+    "description": "Applies one Proposal using its bound Dry Run; --force skips Readiness checks only, and Autonomous mode refuses it and requires a current green Trial gate. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies.",
     "source": "Hand-written from command behavior."
   },
   "apply --all-pending": {
     "title": "Apply pending changes",
-    "description": "Applies current pending changes to the FieldWorks project as one unit of work; the optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and a current Dry Run can waive Correctness for a judgment-only Proposal while mixed changes still need normal Readiness evidence.",
+    "description": "Applies current pending changes to the FieldWorks project as one unit of work; the optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and a current Dry Run can waive Correctness for a judgment-only Proposal while mixed changes still need normal Readiness evidence. Autonomous mode requires the newest Trial to have a saved green gate for the current Proposal content and project state.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "writing-systems": {
@@ -1977,7 +1977,7 @@
   },
   "apply --proposal": {
     "title": "Apply one Proposal",
-    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies or offers a Readiness override here.",
+    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using its latest Trial; Autonomous mode requires a current green Trial gate. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies or offers a Readiness override here.",
     "source": "Hand-written from command behavior."
   },
   "label": {

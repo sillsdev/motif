@@ -21,6 +21,8 @@ public static class ReviewCaseClassifier
         if (!facts.IdentityAvailable) facts = facts with { Assertions = [] };
         var before = Observe(facts.Before, facts.Word);
         var after = Observe(facts.After, facts.Word);
+        var inventoryRejected = InventoryRejected(facts.After, facts.Word);
+        var absenceKnown = after.Complete || inventoryRejected;
         var limitations = new List<string>();
         if (!facts.IdentityAvailable) limitations.Add("assertion-identity-unavailable");
         if (!before.Complete) limitations.Add("before-incomplete");
@@ -42,7 +44,7 @@ public static class ReviewCaseClassifier
                 limitations.Add("expectation-identity-unavailable");
                 continue;
             }
-            if (!after.Complete || !before.Readings.Any(reading => AnalysisMorphologyMatcher.Matches(reading, assertion.Morphology)) ||
+            if (!absenceKnown || !before.Readings.Any(reading => AnalysisMorphologyMatcher.Matches(reading, assertion.Morphology)) ||
                 after.Readings.Any(reading => AnalysisMorphologyMatcher.Matches(reading, assertion.Morphology)))
                 continue;
             if (!losses.TryGetValue(assertion.ReadingIdentity, out var loss))
@@ -56,7 +58,7 @@ public static class ReviewCaseClassifier
         var lost = losses.OrderBy(pair => pair.Key, StringComparer.Ordinal)
             .Select(pair => new ReviewReadingLoss(pair.Key, pair.Value.Approved, pair.Value.Reference,
                 pair.Value.Ids.Order(StringComparer.Ordinal).ToArray())).ToArray();
-        var noParse = before.Readings.Count > 0 && after.Complete && after.Readings.Count == 0;
+        var noParse = before.Readings.Count > 0 && absenceKnown && after.Readings.Count == 0;
         var approvedLoss = lost.Any(item => item.Approved);
         var negativeIds = facts.Assertions.Where(item => item.Eligible && item.WholeWordNegative)
             .Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
@@ -72,7 +74,7 @@ public static class ReviewCaseClassifier
             limitations.Distinct(StringComparer.Ordinal).ToArray())
         {
             Before = SideFacts(facts.Before, before, facts.Assertions),
-            After = SideFacts(facts.After, after, facts.Assertions),
+            After = SideFacts(facts.After, after, facts.Assertions, inventoryRejected),
             Assertions = facts.Assertions,
             AssertionsCaptured = true,
             Changed = CompareReadings(before, after),
@@ -94,7 +96,7 @@ public static class ReviewCaseClassifier
     }
 
     private static ReviewCaseSideFacts SideFacts(ParseWordEvidence? evidence,
-        (IReadOnlyList<ParseAnalysis> Readings, bool Complete) observed, IReadOnlyList<ReviewAssertion> assertions)
+        (IReadOnlyList<ParseAnalysis> Readings, bool Complete) observed, IReadOnlyList<ReviewAssertion> assertions, bool inventoryRejected = false)
     {
         var matched = new List<string>();
         var missing = new List<string>();
@@ -106,7 +108,7 @@ public static class ReviewCaseClassifier
             if (assertion.Morphology is null || !Exact(assertion.Morphology)) { unknown.Add(assertion.Id); continue; }
             if (observed.Readings.Any(reading => AnalysisMorphologyMatcher.Matches(reading, assertion.Morphology)))
                 matched.Add(assertion.Id);
-            else if (observed.Complete) missing.Add(assertion.Id);
+            else if (observed.Complete || inventoryRejected) missing.Add(assertion.Id);
             else unknown.Add(assertion.Id);
         }
         var reasons = new List<string>();
@@ -115,7 +117,7 @@ public static class ReviewCaseClassifier
         if (evidence is not null && !observed.Complete && reasons.Count == 0) reasons.Add("invalid-evidence");
         var completion = evidence is null ? Completion.NotMeasured : observed.Complete ? Completion.Complete :
             evidence.Capped || evidence.TimedOut ? Completion.Stopped : Completion.Unavailable;
-        bool? parsed = observed.Readings.Count > 0 ? true : observed.Complete ? false : null;
+        bool? parsed = observed.Readings.Count > 0 ? true : observed.Complete || inventoryRejected ? false : null;
         return new ReviewCaseSideFacts(completion, parsed, reasons, matched, missing, unknown)
         { StopDetails = observed.Complete ? null : InvalidDetails(evidence) };
     }
@@ -140,6 +142,10 @@ public static class ReviewCaseClassifier
         if (details.Count == 0) details.Add("The evidence word does not match the requested word in Unicode normalization.");
         return details;
     }
+
+    private static bool InventoryRejected(ParseWordEvidence? evidence, string word) =>
+        evidence is { InvalidShape: true, Refusal: null, Analyses.Count: 0 } &&
+        Observe(evidence with { InvalidShape = false }, word).Complete;
 
     private static (IReadOnlyList<ParseAnalysis> Readings, bool Complete) Observe(ParseWordEvidence? evidence, string word)
     {

@@ -21,7 +21,8 @@ internal sealed class TrialGateEvidence
         foreach (var (side, facts) in new[] { (Side.Before, item.Before), (Side.After, item.After) })
             if (facts.Completion is Completion.Stopped or Completion.Unavailable)
                 _stopped.Add(new TrialStoppedWord(item.CaseKey, item.Word, side, facts.StopReasons, facts.StopDetails ?? []));
-        if (item.Before.Parsed == true && item.After.Completion == Completion.Stopped)
+        if (item.Before.Parsed == true && !item.NewNoParse &&
+            item.After.Completion is Completion.Stopped or Completion.Unavailable)
             _blockingStopped.Add(item.Word);
     }
 

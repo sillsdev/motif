@@ -1,3 +1,8 @@
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Review;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Runtime.Review;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Assess;
 using System;
@@ -70,11 +75,14 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.Equal(new[] { candidateId }, remaining.Select(record => record.AssessmentId));
     }
 
-    [Fact]
-    public void AnAutonomousApplyWithAMessageAndNoForceSucceeds_AndTheLogShowsModeAndMessage()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AnAutonomousApplyWithAMessageAndNoForceSucceeds_AndTheLogShowsModeAndMessage(bool expectedLoss)
     {
         var proposalId = FinalizeAndTrial("autonomous-ready", "autonomous ready gloss");
         RecordAssessment(proposalId, GetRecord(proposalId).IntentDigest!, "Correctness", ("alpha", true));
+        RecordGate(proposalId, expectedLoss ? "covered-loss" : "green");
 
         var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId,
             Attribution: new ApplyAttribution(ApplyModes.Autonomous, "Glossed from the corpus", WriteNote: true)));
@@ -84,6 +92,34 @@ public sealed class ApplyPromotionGatingAndSweepTests
             (result.Value!.AppliedLogEntry.Mode, result.Value.AppliedLogEntry.Message));
         var entry = Assert.Single(ProposalCommands.Log(new LogRequest(_fwDataPath)).Value!.Entries);
         Assert.Equal(("autonomous", "Glossed from the corpus"), (entry.Mode, entry.Description));
+    }
+
+    [Theory]
+    [InlineData("missing-report")]
+    [InlineData("loss")]
+    [InlineData("partial-expected")]
+    [InlineData("unmeasured")]
+    [InlineData("old-revision")]
+    [InlineData("old-baseline")]
+    [InlineData("failed-latest")]
+    [InlineData("pending-latest")]
+    public void AutonomousApplyRequiresTheNewestTrialsCurrentGreenGate(string scenario)
+    {
+        var proposalId = FinalizeAndTrial("autonomous-gate", "gate protected gloss");
+        RecordAssessment(proposalId, GetRecord(proposalId).IntentDigest!, "Correctness", ("alpha", true));
+        if (scenario != "missing-report")
+        {
+            RecordGate(proposalId, "green");
+            RecordGate(proposalId, scenario);
+        }
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId,
+            Attribution: new ApplyAttribution(ApplyModes.Autonomous, "Review confirmed")));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("apply.trial-gate", result.Refusal!.Code);
+        Assert.Contains("Trial", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("--expect-loss", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal("proposed", GetRecord(proposalId).Status);
     }
 
     [Fact]
@@ -446,6 +482,46 @@ public sealed class ApplyPromotionGatingAndSweepTests
 
         Assert.True(DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId).Succeeded);
         return proposalId;
+    }
+
+    private void RecordGate(string proposalId, string scenario)
+    {
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var project = new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath));
+        var key = ProjectWorkspaceKey.Compute(project);
+        var proposal = new ProposalRepository(database).Get(CanonicalId.Parse(proposalId));
+        var proposalJson = scenario == "old-revision"
+            ? JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId, operations = Array.Empty<object>() })
+            : proposal.ProposalJson!;
+        var baseline = new BaselineRepository(database).GetCurrent(key)!.Token;
+        if (scenario == "old-baseline") baseline = new BaselineToken(baseline.ProjectIdentity,
+            "sha256:" + new string('f', 64), baseline.ProjectionVersion, baseline.CapturedUtc, baseline.BundleDigest);
+        string[] words = ["alpha", "beta"];
+        var inputs = new FrozenReviewInputs(key, proposalId, "scope", "manifest", null, [], [],
+            words.Select(word => new ReviewPlannedCase("case-" + word, "key-" + word, word, "ws", null, [], [])).ToArray());
+        var reference = ReviewInputArtifacts.Store(database,
+            new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
+        var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference)
+        { ExpectedLosses = scenario == "covered-loss" ? words : scenario == "partial-expected" ? ["alpha"] : [] };
+        var jobs = new JobRepository(database);
+        var job = jobs.Create("gate-" + Guid.NewGuid().ToString("N"), key, "trial",
+            JsonSerializer.Serialize(input, MotifJson.CreateOptions()), JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+        if (scenario == "pending-latest") return;
+        jobs.Transition(job.JobId, JobStatus.Running);
+        var completion = JsonSerializer.Serialize(new { baselineToken = baseline, assessmentIds = Array.Empty<string>(),
+            allWords = false, droppedGrammar = new DroppedGrammar([], 0) }, MotifJson.CreateOptions());
+        jobs.Transition(job.JobId, scenario == "failed-latest" ? JobStatus.Failed : JobStatus.Completed, completion);
+        ParseWordEvidence Before(string word) => new("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false,
+            [new ParseAnalysis([new ParseMorph("11111111-1111-1111-1111-111111111111",
+                "33333333-3333-3333-3333-333333333333", null, null)])], []);
+        var loses = scenario is "loss" or "partial-expected" or "covered-loss";
+        TrialReviewEvidence.Save(database, new TrialReviewLedger(job.JobId, reference,
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Before(word))).ToArray(),
+            words.Select(word => new TrialReviewObservation("case-" + word, word,
+                scenario == "unmeasured" ? "timed-out" : loses ? "no-analysis" : "analysed",
+                scenario == "unmeasured" ? Before(word) with { TimedOut = true, Analyses = [] } :
+                loses ? Before(word) with { Analyses = [] } : Before(word))).ToArray(), []));
+        new TrialReviewPublisher(database).PublishAsync(new ReviewPublishRequest(job.JobId)).GetAwaiter().GetResult();
     }
 
     private ProposalRecord GetRecord(string proposalId)

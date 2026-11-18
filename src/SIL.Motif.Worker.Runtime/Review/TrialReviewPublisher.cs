@@ -373,7 +373,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
     {
         if (observation?.Morphology is not { } evidence) return null;
         if (observation.Completion == Completion.Complete) return evidence;
-        if (observation.Completion == Completion.Stopped && !evidence.Capped && !evidence.TimedOut)
+        if (observation.Completion == Completion.Stopped && !evidence.Capped && !evidence.TimedOut && !evidence.InvalidShape)
             return evidence with { Unavailable = [.. evidence.Unavailable, "stopped"] };
         return evidence;
     }

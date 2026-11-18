@@ -127,7 +127,7 @@ public sealed class TrialReviewArgvTests
     private static ParseWordEvidence TimedOut(string word) => new("fieldworks-parse-analysis/v1", 0, word, 0, false, true, false, [], []);
 
     private static string OutcomeOf(ParseWordEvidence? evidence) =>
-        evidence is { TimedOut: true } ? "timed-out" : evidence is { Analyses.Count: > 0 } ? "analysed" : "no-analysis";
+        evidence is { InvalidShape: true } ? "skipped" : evidence is { TimedOut: true } ? "timed-out" : evidence is { Analyses.Count: > 0 } ? "analysed" : "no-analysis";
 
     private static TrialGate Gate(string[] words, ParseWordEvidence?[] before, ParseWordEvidence?[] after,
         string[]? expected = null, ReviewAssertion[]? assertions = null)
@@ -144,6 +144,27 @@ public sealed class TrialReviewArgvTests
             return Assert.IsType<AvailableTrialResult>(read.Value).Gate!;
         }
         finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InventoryRejectionOfAPreviouslyParsedWordIsANamedLoss(bool expected)
+    {
+        var gate = Gate(["sol"], [Analysed("sol")], [NoAnalysis("sol") with { InvalidShape = true }],
+            expected ? ["sol"] : [], [Approved(Form)]);
+        Assert.Equal(expected ? TrialGateState.Green : TrialGateState.Loss, gate.State);
+        Assert.Equal(1, gate.LostWords);
+        Assert.Equal(new[] { "sol" }, expected ? gate.ExpectedLosses : gate.UnexpectedLosses);
+        Assert.Empty(gate.StoppedWords);
+    }
+
+    [Fact]
+    public void MalformedInventoryRejectionCannotProveAnExpectedLoss()
+    {
+        var gate = Gate(["sol"], [Analysed("sol")], [NoAnalysis("wrong-word") with { InvalidShape = true }], ["sol"]);
+        Assert.Equal(TrialGateState.Unmeasured, gate.State);
+        Assert.Equal(0, gate.LostWords);
     }
 
     [Theory]

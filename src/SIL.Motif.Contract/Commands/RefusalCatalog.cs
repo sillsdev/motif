@@ -241,6 +241,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.ApplyMessageRequired, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ApplyNoteUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.ApplyPendingChanges, FailureReason.Refused),
+        Spec(RefusalCodes.ApplyTrialGate, FailureReason.Refused),
         Spec(RefusalCodes.ApplyNotReady, FailureReason.Refused),
         Spec(RefusalCodes.ApplyNotSaved, FailureReason.Refused),
         Spec(RefusalCodes.ApplyPreconditionFailed, FailureReason.Refused),
