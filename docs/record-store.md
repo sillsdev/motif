@@ -156,10 +156,11 @@ They count native edges, including owning edges; they are not unique analysis co
 
 Native closure alone cannot establish complete usage. `ReferenceEvidence` supplies
 caller observations and their revision stamps for anchors, conflicting heads and
-parser references. These are retained as witnesses and checked for stale revisions,
-unknown targets and duplicate identities; they never prove that an external domain
-was exhaustively indexed. Supplying three strings or an empty witness list cannot
-establish usage coverage. `UsageComplete` (also exposed as `Complete`) stays false,
+parser references. These supplement the Home's stored anchor witnesses and are
+checked for stale revisions, unknown targets and duplicate identities. A conflicting
+anchor observation leaves anchor coverage unknown. Supplying three strings or an
+empty witness list cannot establish usage coverage. `UsageComplete` (also exposed as
+`Complete`) stays false,
 `Total` stays null and `RequireComplete` refuses until the index can independently
 prove those external domains. M4 owns that trusted domain index and full hand-analysis
 Stamp, along with unique linguistic counts. The store exposes no deletion authority.
@@ -279,3 +280,54 @@ typed repository membership, and verifies the built-in bundle owning field's typ
 destination and non-custom identity. Missing or inconsistent proof leaves semantic
 native counts null. Earlier imports without the schema digest can still expose
 native edge facts; reimport them to establish semantic warning counts.
+
+## Hand analysis projection
+
+`SIL.Motif.RecordStore.HandAnalysis` serves read-only, revisioned, immutable pins of the Wfi facts: wordform
+headers, analyses with ordered morph bundles, glosses and native human and parser evaluations.
+
+`HandAnalysisHost` opens an existing published Home with read-only SQLite access. Opening a missing Home
+refuses. Reads take no application writer lock and leave the main database and WAL content unchanged.
+SQLite may create sidecars and update shared memory to coordinate with a live writer. RecordStore writers
+retain the sidecars and SQLite truncates the WAL after a successful final checkpoint. A WAL can remain
+nonempty when a writer closes while a reader is active.
+
+The host and snapshot implement `IHandAnalysisIndex` and `IHandAnalysisSnapshot` from Contract. They
+return `CommandOutcome<T>` for acquisition and queries. `WordsAsync` accepts Identity and encounter
+Alternatives by native GUID or by writing system and exact NFD case form. An Identity can also request
+the writing-system-resolved other case and receive those distinct wordform GUIDs. Reading accepts
+either a native analysis or a gloss GUID. It carries the shared `ReadingSignature` when the ordered
+native bundle links, sense selection and authored feature paths establish an exact identity.
+`ReferencesAsync` accepts typed Uses and DeleteClosure selectors. Project, Occurrence, Forms and
+Lexicon return explicit limitations where their data is unavailable.
+
+**Binding by name.** The retained manifest schema identifies classes and fields by owner class, name,
+type and destination. A mismatch in the native schema, repository membership, Wfi fields or reference
+index produces an index-unavailable refusal with an acquisition cause. An evaluation approves when it
+sits under the agent's Approves field. The agent's Human flag marks a person when the agent is resolved.
+
+Each page and detached reference row carries its pin's Stamp. The snapshot ID binds the store path,
+native project GUID, published Home proof, Source, parser and settings revisions, comparison version
+and index schema. The Stamp records Full verification. A pin keeps immutable facts without a transaction,
+lease or lock. The host retains four composite points, including different external bases at the same
+Home revision, and any older point with a live pin. An unavailable exact ID receives a snapshot-expired
+refusal. `IsCurrent` checks the published Home proof independently of the pin. Acquiring the latest pin
+checks that proof before reusing a result.
+
+**Order and paging.** Wordforms, analyses, glosses and evaluations are ordered by the native repository ordinal
+captured at import, never by GUID or display order; bundles keep their owning-sequence order. Pages hold 50 items by
+default and at most 200. A cursor binds the snapshot id, the query and the last order key, and is refused when any
+differs. Completeness describes the query as a whole, and a next cursor indicates further rows.
+Totals are exact, or null with a limitation. Use counts need occurrence data and are absent, not zero;
+default-rank order returns a limitation instead of an arbitrary order.
+
+A `hand-anchor` carries its target GUID and occurrence location into Uses and into deletion warnings for
+the lexical records the target uses. The same plan supplies the preview, DeleteClosure and deletion
+preparation. Each anchor-to-target relationship appears in the preview and its rows. Occurrence totals
+count each witness once by kind, opaque ID and evidence revision. Known native links, bundles, analyses
+and anchor witnesses are available in the rows. Incomplete coverage leaves usage totals and the
+actionable plan token null. DeleteClosure carries a diagnostic digest for the incomplete plan. `hand-request` adds no references. An unregistered record kind makes the native
+closure incomplete.
+
+**Cost.** The first pin on a handle pays the store's full verification plus the projection build; later pins at the
+same point copy references. A new process pays the verification again.

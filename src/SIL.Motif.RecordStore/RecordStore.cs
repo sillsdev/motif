@@ -1,4 +1,5 @@
 using SIL.Harmony.Changes;
+using SIL.Motif.RecordStore.HandAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -22,16 +23,21 @@ public sealed partial class RecordStore : IAsyncDisposable
     internal DataModel Model => model;
     private readonly RecordDatabase database;
     private readonly RecordContent content;
+    private readonly bool readOnly;
     public static SIL.ListCrdt.ListLimits ListLimits => StoreListLimits.Default;
     public IRecordList Lists { get; } = new CrdtRecordList();
 
-    public RecordStore(string path, TimeProvider? timeProvider = null)
+    public RecordStore(string path, TimeProvider? timeProvider = null) : this(ResolvePath(path), timeProvider, false) { }
+
+    internal static RecordStore OpenPublishedReader(string resolvedPath) => new(resolvedPath, null, true);
+
+    private RecordStore(string path, TimeProvider? timeProvider, bool readOnly)
     {
-        path = ResolvePath(path);
+        this.readOnly = readOnly;
         writeLockPath = path + ".write.lock";
-        using var writer = AcquireWriter();
+        using var writer = readOnly ? null : AcquireWriter();
         var services = new ServiceCollection();
-        var connection = RecordSqlite.ConnectionString(path);
+        var connection = RecordSqlite.ConnectionString(path, readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate);
         services.AddSingleton<RecordContent>();
         // Converters close over this store's immutable content cache; their EF model must have the same lifetime.
         services.AddDbContext<RecordDatabase>(options => options.UseSqlite(connection).EnableServiceProviderCaching(false));
@@ -50,7 +56,11 @@ public sealed partial class RecordStore : IAsyncDisposable
         try
         {
             database = scope.ServiceProvider.GetRequiredService<RecordDatabase>();
-            var created = database.Database.EnsureCreated();
+            if (readOnly)
+                database.Database.GetDbConnection().StateChange += PublishedHomeConnection.ConfigureReader;
+            else
+                database.Database.GetDbConnection().StateChange += PublishedHomeConnection.ConfigureWriter;
+            var created = !readOnly && database.Database.EnsureCreated();
             using (var command = database.Database.GetDbConnection().CreateCommand())
             {
                 database.Database.OpenConnection();
@@ -60,7 +70,7 @@ public sealed partial class RecordStore : IAsyncDisposable
                 database.Database.CloseConnection();
             }
             content = scope.ServiceProvider.GetRequiredService<RecordContent>();
-            content.Load(database.Set<ContentRow>().AsNoTracking().ToArray());
+            if (!readOnly) content.Load(database.Set<ContentRow>().AsNoTracking().ToArray());
             if (created)
             {
                 ReferencePersistence.Create(database);
@@ -68,7 +78,9 @@ public sealed partial class RecordStore : IAsyncDisposable
                 database.SaveChanges();
             }
             var state = database.Set<StoreState>().AsNoTracking().Single();
-            if (state.Published && state.ContentDigest != content.Digest()) throw new InvalidDataException("Corrupt immutable record content.");
+            if (readOnly && !state.Published) throw new InvalidDataException("The store import has not been published.");
+            if (!readOnly && state.Published && state.ContentDigest != content.Digest())
+                throw new InvalidDataException("Corrupt immutable record content.");
             database.ChangeTracker.Clear();
             model = scope.ServiceProvider.GetRequiredService<DataModel>();
         }
@@ -78,6 +90,25 @@ public sealed partial class RecordStore : IAsyncDisposable
             provider.Dispose();
             throw;
         }
+    }
+
+    internal static bool IsPublishedPoint(string path, StoreState point)
+    {
+        using var connection = new SqliteConnection(RecordSqlite.ConnectionString(path, SqliteOpenMode.ReadOnly));
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT EXISTS(SELECT 1 FROM "RecordStoreState" WHERE "Published" = 1 AND "Revision" = $revision
+                AND "SnapshotDigest" = $snapshot AND "ReplayDigest" = $replay AND "ContentDigest" = $content
+                AND "IndexDigest" = $index AND "IndexLimitations" = $limitations)
+            """;
+        command.Parameters.AddWithValue("$revision", point.Revision);
+        command.Parameters.AddWithValue("$snapshot", point.SnapshotDigest);
+        command.Parameters.AddWithValue("$replay", point.ReplayDigest);
+        command.Parameters.AddWithValue("$content", point.ContentDigest);
+        command.Parameters.AddWithValue("$index", point.IndexDigest);
+        command.Parameters.AddWithValue("$limitations", point.IndexLimitations);
+        return (long)command.ExecuteScalar()! == 1;
     }
 
     public static Guid AuxiliaryId(string kind, string identity)
@@ -143,11 +174,14 @@ public sealed partial class RecordStore : IAsyncDisposable
         return records;
     });
 
-    private async Task<IReadOnlyList<GenericRecord>> ReadRecordsAsync()
+    private async Task<IReadOnlyList<GenericRecord>> ReadRecordsAsync(CancellationToken ct = default)
     {
         var records = new List<GenericRecord>();
-        await foreach (var snapshot in model.GetLatestSnapshots())
+        await foreach (var snapshot in model.GetLatestSnapshots().WithCancellation(ct))
+        {
+            ct.ThrowIfCancellationRequested();
             if (snapshot.Entity is GenericRecord { DeletedAt: null } record) records.Add((GenericRecord)record.Copy());
+        }
         return records;
     }
 
@@ -158,25 +192,50 @@ public sealed partial class RecordStore : IAsyncDisposable
     public async Task<ReferenceIndexSnapshot> ReferencesAsync(ReferenceEvidence? evidence = null)
     {
         var acquired = await ReadPublishedAsync(state => AcquireAsync(state));
-        return evidence is null ? acquired.Index : acquired.Index.WithEvidence(evidence);
+        var index = acquired.GetPlanningIndex();
+        return evidence is null ? index : index.WithObservations(evidence);
     }
 
     /// <summary>Reads and verifies the published point; a trusted result is retained for reuse.</summary>
-    private async Task<VerifiedPoint> AcquireAsync(StoreState state)
+    private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default)
     {
         point = null;
-        var records = await ReadRecordsAsync();
-        var snapshot = VerifySnapshots(state, records);
-        var projection = new ReferenceProjection(await ReferencePersistence.ReadAsync(database), records.Where(r => r.Kind == "lcm")
-            .Select(r => new ReferenceRecord(r.Id, r.ClassId, r.Owner, r.OwningField)).ToArray(),
+        var records = await ReadRecordsAsync(ct);
+        var snapshot = VerifySnapshots(state, records, ct);
+        var native = new Dictionary<Guid, GenericRecord>();
+        var headers = new List<ReferenceRecord>();
+        var anchors = new List<GenericRecord>();
+        foreach (var record in records)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (record.Kind == "lcm")
+            {
+                native.Add(record.Id, record);
+                headers.Add(new(record.Id, record.ClassId, record.Owner, record.OwningField));
+            }
+            else if (record.Kind == HandAnalysisKinds.Anchor) anchors.Add(record);
+        }
+        var projection = new ReferenceProjection(await ReferencePersistence.ReadAsync(database, ct), headers.ToArray(),
             state.IndexLimitations.Split('\n', StringSplitOptions.RemoveEmptyEntries));
         var limitations = projection.Limitations.ToList();
-        var digest = projection.Accumulate();
+        var digest = projection.Accumulate(ct);
         var trusted = digest.Final() == state.IndexDigest;
         if (!trusted) limitations.Add("Incoming-reference index is corrupt; rebuild it before use.");
-        var schema = NativeUsageSchema.Read(records);
-        var verified = new VerifiedPoint(state, records.Where(r => r.Kind == "lcm").ToDictionary(r => r.Id),
-            new ReferenceIndexSnapshot(state.Revision, projection.Edges, projection.Records, limitations, null, schema), snapshot, digest);
+        var schema = NativeUsageSchema.Read(records, ct);
+        var projectClass = schema?.ClassId("LangProject");
+        var projects = projectClass.HasValue ? headers.Where(r =>
+        {
+            ct.ThrowIfCancellationRequested();
+            return r.ClassId == projectClass;
+        }).Take(2).ToArray() : [];
+        var verified = new VerifiedPoint(state, native,
+            new ReferenceIndexSnapshot(state.Revision, projection.Edges, projection.Records, limitations, schema, ct), snapshot, digest)
+        {
+            Anchors = anchors.ToArray(),
+            ProjectId = projects.Length == 1 ? projects[0].Id : null,
+            IndexTrusted = trusted
+        };
+        ct.ThrowIfCancellationRequested();
         PointAcquisitions++;
         if (trusted) point = verified;
         return verified;
@@ -191,10 +250,10 @@ public sealed partial class RecordStore : IAsyncDisposable
     internal int PointAcquisitions { get; private set; }
 
     /// <summary>The reference snapshot that planning and guarded writes currently reuse.</summary>
-    internal async Task<ReferenceIndexSnapshot> PlanningIndexAsync() => (await PointAsync()).Index;
+    internal async Task<ReferenceIndexSnapshot> PlanningIndexAsync() => (await PointAsync()).GetPlanningIndex();
 
-    private Task<VerifiedPoint> PointAsync() => ReadPublishedAsync(async state =>
-        point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state));
+    private Task<VerifiedPoint> PointAsync(CancellationToken ct = default) => ReadPublishedAsync(async state =>
+        point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct), ct);
 
     public async Task RebuildReferenceIndexAsync()
     {
@@ -227,21 +286,31 @@ public sealed partial class RecordStore : IAsyncDisposable
         database.ChangeTracker.Clear();
     }
 
-    private async Task<StoreState> PublishedStateAsync()
+    private async Task<StoreState> PublishedStateAsync(CancellationToken ct = default)
     {
         if (requiresReopen) throw new InvalidOperationException("A failed field write requires reopening this handle.");
-        var state = await database.Set<StoreState>().AsNoTracking().SingleAsync();
+        var state = await database.Set<StoreState>().AsNoTracking().SingleAsync(ct);
         if (!state.Published) throw new InvalidOperationException("The store import has not been published.");
-        if (state.ContentDigest != content.Digest())
-            throw new InvalidOperationException("The store was published through another handle; reopen this handle before reading.");
-        if (state.Revision != await CommitRevisionAsync()) throw new InvalidOperationException("The store index revision is unavailable.");
+        if (state.ContentDigest != content.Digest(ct))
+        {
+            if (!readOnly)
+                throw new InvalidOperationException("The store was published through another handle; reopen this handle before reading.");
+            var rows = await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct);
+            content.Reload(rows, state.ContentDigest, ct);
+        }
+        if (state.Revision != await CommitRevisionAsync(ct)) throw new InvalidOperationException("The store index revision is unavailable.");
         return state;
     }
 
-    private async Task<string> CommitRevisionAsync()
+    private async Task<string> CommitRevisionAsync(CancellationToken ct = default)
     {
-        var hashes = await database.Set<Commit>().AsNoTracking().Select(c => c.Hash).ToArrayAsync();
-        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", hashes.Order(StringComparer.Ordinal)))));
+        var hashes = await database.Set<Commit>().AsNoTracking().Select(c => c.Hash).ToArrayAsync(ct);
+        ct.ThrowIfCancellationRequested();
+        Array.Sort(hashes, StringComparer.Ordinal);
+        ct.ThrowIfCancellationRequested();
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", hashes)));
+        ct.ThrowIfCancellationRequested();
+        return Convert.ToHexStringLower(digest);
     }
 
     internal static byte[] SnapshotItem(GenericRecord record)
@@ -261,16 +330,20 @@ public sealed partial class RecordStore : IAsyncDisposable
         }));
     }
 
-    private static SetDigest SnapshotDigest(IEnumerable<GenericRecord> records)
+    private static SetDigest SnapshotDigest(IEnumerable<GenericRecord> records, CancellationToken ct = default)
     {
         var digest = new SetDigest();
-        foreach (var record in records) digest = digest.Add(SnapshotItem(record));
+        foreach (var record in records)
+        {
+            ct.ThrowIfCancellationRequested();
+            digest = digest.Add(SnapshotItem(record));
+        }
         return digest;
     }
 
-    private static SetDigest VerifySnapshots(StoreState state, IReadOnlyList<GenericRecord> records)
+    private static SetDigest VerifySnapshots(StoreState state, IReadOnlyList<GenericRecord> records, CancellationToken ct = default)
     {
-        var digest = SnapshotDigest(records);
+        var digest = SnapshotDigest(records, ct);
         if (state.SnapshotDigest != digest.Final("snapshot"))
             throw new InvalidDataException("The snapshot projection is corrupt; regenerate it from history before use.");
         return digest;
@@ -314,7 +387,8 @@ public sealed partial class RecordStore : IAsyncDisposable
     {
         await using var source = new SqliteConnection(RecordSqlite.ConnectionString(sourcePath));
         await source.OpenAsync();
-        RecordSqlite.BackupTo(source, destinationPath);
+        PublishedHomeConnection.KeepWal(source);
+        RecordSqlite.BackupTo(source, destinationPath, PublishedHomeConnection.KeepWal);
     }
 
     public async ValueTask DisposeAsync()

@@ -8,10 +8,11 @@ internal static class RecordSqlite
     internal static string ConnectionString(string path, SqliteOpenMode mode = SqliteOpenMode.ReadWriteCreate) =>
         new SqliteConnectionStringBuilder { DataSource = path, Mode = mode, Pooling = false }.ToString();
 
-    internal static void BackupTo(SqliteConnection source, string destinationPath)
+    internal static void BackupTo(SqliteConnection source, string destinationPath, Action<SqliteConnection>? configureDestination = null)
     {
         using var destination = new SqliteConnection(ConnectionString(destinationPath));
         destination.Open();
+        configureDestination?.Invoke(destination);
         source.BackupDatabase(destination);
     }
 }

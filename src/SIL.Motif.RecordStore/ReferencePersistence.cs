@@ -63,18 +63,28 @@ internal static class ReferencePersistence
         await Task.CompletedTask;
     }
 
-    public static async Task<NativeReference[]> ReadAsync(RecordDatabase database)
+    public static async Task<NativeReference[]> ReadAsync(RecordDatabase database, CancellationToken ct = default)
     {
-        await database.Database.OpenConnectionAsync();
+        await database.Database.OpenConnectionAsync(ct);
         try
         {
             await using var command = database.Database.GetDbConnection().CreateCommand();
             command.CommandText = "SELECT Source,Field,Position,Target,Owning,Occurrence FROM IncomingReferences";
-            await using var reader = await command.ExecuteReaderAsync();
+            await using var reader = await command.ExecuteReaderAsync(ct);
             var edges = new List<NativeReference>();
-            while (await reader.ReadAsync()) edges.Add(new NativeReference(
-                new Guid((byte[])reader[0], bigEndian: true), reader.GetInt32(1), reader.GetInt32(2),
-                new Guid((byte[])reader[3], bigEndian: true), reader.GetBoolean(4), reader.GetString(5)));
+            while (await reader.ReadAsync(ct))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (reader.GetValue(0) is not byte[] { Length: 16 } source ||
+                    reader.GetValue(1) is not long field || field is < int.MinValue or > int.MaxValue ||
+                    reader.GetValue(2) is not long position || position is < int.MinValue or > int.MaxValue ||
+                    reader.GetValue(3) is not byte[] { Length: 16 } target ||
+                    reader.GetValue(4) is not long owning || owning is not (0 or 1) ||
+                    reader.GetValue(5) is not string occurrence)
+                    throw new InvalidDataException("Malformed row in the persisted incoming-reference index.");
+                edges.Add(new NativeReference(new Guid(source, bigEndian: true), (int)field, (int)position,
+                    new Guid(target, bigEndian: true), owning == 1, occurrence));
+            }
             return edges.ToArray();
         }
         finally { await database.Database.CloseConnectionAsync(); }
