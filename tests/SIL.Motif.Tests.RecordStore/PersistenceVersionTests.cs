@@ -52,10 +52,10 @@ public sealed class PersistenceVersionTests : IDisposable
             else
             {
                 var version = Encoding.UTF8.GetBytes("version");
-                byte[] marker = [0, (byte)version.Length, ..version, 3, 2];
+                byte[] marker = [0, (byte)version.Length, ..version, 3, 4];
                 selected = Assert.Single(rows, row => Unpack(row.Data).AsSpan().EndsWith(marker));
                 var raw = Unpack(selected.Data);
-                raw[^1] = 4;
+                raw[^1] = 6;
                 bytes = [0, ..raw];
             }
             command.CommandText = "UPDATE RecordContent SET Data=$bytes WHERE Id=$id";

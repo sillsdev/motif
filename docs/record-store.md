@@ -50,9 +50,28 @@ fails. To require Indonesian on a validation runner, use
 before invoking the suite. Public CI runs the generated-project gate; private-data
 CI must provision these copies externally.
 
-Static generated built-in layout tables, portable custom-field remapping and
-edit-size/performance budgets have separate milestone exits. The current format is an internal development
-contract and must not be used for a shared-project migration.
+The current format is an internal development contract and must not be used for a shared-project migration.
+
+## Built-in layout table and custom fields
+
+Field types of built-in native fields come from a checked-in, versioned table
+(`BuiltInLayouts.g.cs`) generated from the pinned LCM metadata. A record's initialization layout names the
+table version and embeds types only for fields the table cannot answer for (custom fields and synthetic
+test fields). The table also carries a digest of the built-in class and field metadata. Import throws when
+the live LCM metadata digest differs, and a test regenerates the table and compares it with the checked-in
+file. After an intentional LCM upgrade, run the store tests with `MOTIF_REGENERATE_LAYOUT_TABLE=1`, review the
+diff and pin the new digests in `BuiltInLayoutTests`. A layout naming another table version, or any field
+type outside the supported set, is refused when a record is built.
+
+Custom fields have a portable identity: a hash of the owner class name, field name, type and destination
+class. The manifest schema stores it next to the numeric field id. Export recreates the custom fields
+in a blank project, maps each stored id to the id the new project assigned, and restores values under the
+new ids, so a project whose custom field numbers differ round-trips equal. A stored identity that does not
+match its definition, or a repeated identity, is refused.
+
+Budgets: an oversize create splits at 500 changes and equals the unsplit application of the same changes;
+one guarded scalar edit adds at most 2 KB of row payload. Multilingual (gloss) edits have no write seam in
+this library yet, so no gloss edit growth is claimed.
 
 For an existing writing system whose LDML is already on disk, save its definition
 before calling `ImportAsync`. Unsaved edits are refused, so graph fields and LDML
@@ -64,7 +83,7 @@ used by `InsertRecordItem`, as well as the `RecordStore.Lists` reader.
 
 ## Compact persistence and import provenance
 
-The SQLite development format is version 3 (set-hash digests for snapshots, history and the reference index). Earlier development formats are refused;
+The SQLite development format is version 4 (set-hash digests for snapshots, history and the reference index, and layouts that name the built-in table). Earlier development formats are refused;
 reimport the external project into a fresh store. Harmony remains the stock package.
 Its change and snapshot columns use bounded, versioned binary converters; GUID
 columns contain 16 network-order bytes. Immutable typed field payloads, initialization

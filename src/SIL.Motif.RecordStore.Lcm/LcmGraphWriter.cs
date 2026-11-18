@@ -41,14 +41,28 @@ internal static class LcmGraphWriter
         var classes = schema.GetProperty("classes").EnumerateArray().ToDictionary(c => c.GetProperty("id").GetInt32(), c => c.GetProperty("name").GetString()!);
         var objects = new Dictionary<Guid, ICmObject>();
         var tags = new HashSet<string>(StringComparer.Ordinal) { "en" };
+        var identities = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var field in fields.Values.Where(f => f.GetProperty("custom").GetBoolean()))
+        {
+            var identity = LcmLayoutTable.CustomIdentity(field.GetProperty("owner").GetString()!, field.GetProperty("name").GetString()!,
+                field.GetProperty("type").GetInt32(), field.GetProperty("destination").GetInt32());
+            var stored = field.TryGetProperty("identity", out var declared) ? declared.GetString() : null;
+            if (stored != identity)
+                throw new CustomFieldIdentityException(identity, $"Custom field {field.GetProperty("owner").GetString()}.{field.GetProperty("name").GetString()} " +
+                    $"was renamed or edited: its definition has identity {identity} but the store recorded {stored ?? "none"}.");
+            if (!identities.Add(identity)) throw new CustomFieldIdentityException(identity, "Duplicate custom-field identity " + identity + ".");
+        }
         foreach (var record in records)
         foreach (var (key, value) in record.Values)
         {
-            var kind = fields[int.Parse(key, CultureInfo.InvariantCulture)].GetProperty("type").GetInt32();
+            if (!fields.TryGetValue(int.Parse(key, CultureInfo.InvariantCulture), out var defined))
+                throw new CustomFieldIdentityException(null, $"Record {record.Id} holds field {key} but the schema has no definition for it; a custom field is missing.");
+            var kind = defined.GetProperty("type").GetInt32();
             if (kind is 14 or 16) foreach (var alternative in value.EnumerateObject()) tags.Add(alternative.Name);
             CollectTags(value, tags);
         }
         foreach (var tag in tags) cache.ServiceLocator.WritingSystemManager.GetOrSet(tag, out _);
+        var remap = new Dictionary<int, int>();
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             foreach (var field in fields.Values.Where(f => f.GetProperty("custom").GetBoolean()))
@@ -64,8 +78,8 @@ internal static class LcmGraphWriter
                 if (field.GetProperty("help").GetString() is { } help) description.HelpString = help;
                 if (field.GetProperty("xml").GetString() is { } xml) description.XmlUI = xml;
                 description.UpdateCustomField();
-                if (description.Id != field.GetProperty("id").GetInt32())
-                    throw new NotSupportedException("Custom-field IDs require an explicit remap for this schema.");
+                // The numeric id belongs to the project that created it; the identity is what travels.
+                remap[field.GetProperty("id").GetInt32()] = description.Id;
             }
             var setup = cache.ServiceLocator.GetInstance<IDataSetup>();
             var nextHvo = setup.GetType().GetMethod("GetNextRealHvo", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!;
@@ -108,7 +122,7 @@ internal static class LcmGraphWriter
                 var field = int.Parse(key, CultureInfo.InvariantCulture);
                 var kind = fields[field].GetProperty("type").GetInt32();
                 if (field <= 105 || kind >= 23 || (kind is 14 or 16) != multiPhase) continue;
-                try { Set(cache, objects[record.Id], field, kind, value); }
+                try { Set(cache, objects[record.Id], remap.GetValueOrDefault(field, field), kind, value); }
                 catch (Exception error) { throw new InvalidDataException($"Cannot restore {classes[record.ClassId]}.{fields[field].GetProperty("name").GetString()} ({record.Id}/{field}).", error); }
             }
         });
@@ -169,4 +183,10 @@ internal sealed class InternalLcmObject(ICmObject value)
     private static readonly Type Contract = typeof(LcmCache).Assembly.GetType("SIL.LCModel.ICmObjectInternal")!;
     public object? Invoke(string name, Type[] types, object?[] arguments) => Contract.GetMethod(name, types)!.Invoke(value, arguments);
     public void Set<T>(int field, T stored) => Invoke("SetProperty", [typeof(int), typeof(T), typeof(bool)], [field, stored, false]);
+}
+
+/// <summary>A stored custom field cannot be matched to its portable identity; <see cref="Identity"/> is null when the definition is gone.</summary>
+public sealed class CustomFieldIdentityException(string? identity, string message) : InvalidOperationException(message)
+{
+    public string? Identity { get; } = identity;
 }

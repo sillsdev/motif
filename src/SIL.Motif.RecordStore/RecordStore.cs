@@ -52,9 +52,9 @@ public sealed partial class RecordStore : IAsyncDisposable
             using (var command = database.Database.GetDbConnection().CreateCommand())
             {
                 database.Database.OpenConnection();
-                command.CommandText = created ? "PRAGMA user_version=3" : "PRAGMA user_version";
+                command.CommandText = created ? "PRAGMA user_version=4" : "PRAGMA user_version";
                 if (created) command.ExecuteNonQuery();
-                else if (Convert.ToInt32(command.ExecuteScalar()) != 3) throw new InvalidDataException("Unsupported record store format.");
+                else if (Convert.ToInt32(command.ExecuteScalar()) != 4) throw new InvalidDataException("Unsupported record store format.");
                 database.Database.CloseConnection();
             }
             content = scope.ServiceProvider.GetRequiredService<RecordContent>();
@@ -99,17 +99,16 @@ public sealed partial class RecordStore : IAsyncDisposable
         var materialized = imported.ToArray();
         if (materialized.Select(r => r.Record.Id).Distinct().Count() != materialized.Length)
             throw new InvalidDataException("Duplicate record identity in import.");
-        var prepared = materialized.GroupBy(r => (r.Record.Kind, r.Record.ClassId, Fields: JsonSerializer.Serialize(r.Record.Values.Keys.Order(StringComparer.Ordinal)))).SelectMany(group =>
-        {
-            var layout = RecordInitialization.Layout(group);
-            return group.Select(r => new RecordImport(RecordInitialization.Prepare(r.Record, layout), r.FieldTypes));
-        });
+        // Layouts are validated for every group before the first change is written, so a refusal leaves no history.
+        var layouts = materialized.GroupBy(r => (r.Record.Kind, r.Record.ClassId, Fields: JsonSerializer.Serialize(r.Record.Values.Keys.Order(StringComparer.Ordinal))))
+            .Select(group => (Group: group, Layout: RecordInitialization.Layout(group))).ToList();
+        var prepared = layouts.SelectMany(entry => entry.Group.Select(r => new RecordImport(RecordInitialization.Prepare(r.Record, entry.Layout), r.FieldTypes)));
         await model.AddManyChanges(clientId, Changes(prepared), () => null, MaximumChangesPerCommit);
         database.ChangeTracker.Clear();
         await PublishIndexAsync(await ReadRecordsAsync(), await CommitRevisionAsync());
     }
 
-    private static IEnumerable<IChange> Changes(IEnumerable<RecordImport> imports)
+    internal static IEnumerable<IChange> Changes(IEnumerable<RecordImport> imports)
     {
         foreach (var import in imports)
         {

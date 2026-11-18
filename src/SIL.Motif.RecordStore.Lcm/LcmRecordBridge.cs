@@ -18,6 +18,7 @@ public static class LcmRecordBridge
             throw new ArgumentException("Resource source must match the loaded project.", nameof(sourcePath));
         storePath = RecordStore.ResolvePath(storePath);
         var graph = new LcmGraphReader(cache);
+        graph.RequirePinnedMetadata();
         var fieldTypes = graph.FieldTypes;
         var imports = graph.Read().Select(record => new RecordImport(record, fieldTypes)).ToList();
         var manifest = Auxiliary("manifest", "project");

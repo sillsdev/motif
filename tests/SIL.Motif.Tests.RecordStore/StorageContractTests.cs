@@ -92,7 +92,7 @@ public sealed class StorageContractTests : IDisposable
             command.CommandText = "PRAGMA user_version=999";
             command.ExecuteNonQuery();
             Assert.Throws<InvalidDataException>(() => new Store(path));
-            command.CommandText = "PRAGMA user_version=3";
+            command.CommandText = "PRAGMA user_version=4";
             command.ExecuteNonQuery();
             command.CommandText = "UPDATE ChangeEntities SET Change = x'ff'";
             command.ExecuteNonQuery();
@@ -101,16 +101,18 @@ public sealed class StorageContractTests : IDisposable
         await Assert.ThrowsAsync<InvalidDataException>(() => reopened.RegenerateAsync());
     }
 
-    [Fact]
-    public async Task FormatTwoStoresAreRefusedWithAClearMessage()
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task EarlierDevelopmentFormatsAreRefusedWithAClearMessage(int format)
     {
-        var path = PathFor("format2");
+        var path = PathFor("format" + format);
         await using (var store = new Store(path))
             await store.ImportAsync([new(Record("value"), new Dictionary<int, int>())], Guid.NewGuid());
         using (var connection = Open(path))
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "PRAGMA user_version=2";
+            command.CommandText = $"PRAGMA user_version={format}";
             command.ExecuteNonQuery();
         }
         var error = Assert.Throws<InvalidDataException>(() => new Store(path));

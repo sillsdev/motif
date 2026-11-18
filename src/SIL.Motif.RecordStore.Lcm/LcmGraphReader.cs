@@ -80,6 +80,9 @@ public sealed class LcmGraphReader
     }
 
     private int[] Fields(int classId) => layouts[classId];
+    /// <summary>Throws when the project's built-in metadata is not the metadata behind the static layout table.</summary>
+    public void RequirePinnedMetadata() => LcmLayoutTable.Require(metadata);
+
     public IReadOnlyDictionary<int, int> FieldTypes => metadata.GetFieldIds().Where(f => !metadata.get_IsVirtual(f))
         .ToDictionary(f => f, metadata.GetFieldType);
 
@@ -98,7 +101,9 @@ public sealed class LcmGraphReader
             id = f, name = metadata.GetFieldName(f), owner = metadata.GetOwnClsName(f), type = metadata.GetFieldType(f),
             destination = metadata.GetDstClsId(f), custom = metadata.IsCustom(f), ws = metadata.GetFieldWs(f),
             label = metadata.GetFieldLabel(f), help = metadata.GetFieldHelp(f), xml = metadata.GetFieldXml(f),
-            listRoot = metadata.IsCustom(f) ? metadata.GetFieldListRoot(f).ToString("D") : null
+            listRoot = metadata.IsCustom(f) ? metadata.GetFieldListRoot(f).ToString("D") : null,
+            identity = metadata.IsCustom(f)
+                ? LcmLayoutTable.CustomIdentity(metadata.GetOwnClsName(f), metadata.GetFieldName(f), metadata.GetFieldType(f), metadata.GetDstClsId(f)) : null
         }).ToArray()
     });
 
