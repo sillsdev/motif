@@ -258,6 +258,7 @@ if (-not $Project -and -not $changedClasses) {
         @{ Name = 'resource sizing regression'; Title = 'node, slot and thread sizing regression'; Script = 'MotifTestResources.Tests.ps1' }
         @{ Name = 'artifact plan regression'; Title = 'test artifact plan regression'; Script = 'Test-MotifTestRunPlan.Tests.ps1' }
         @{ Name = 'release version regression'; Title = 'release version regression'; Script = 'MotifReleaseVersion.Tests.ps1' }
+        @{ Name = 'package smoke regression'; Title = 'package smoke regression'; Script = 'PackageSmoke.Tests.ps1' }
         @{ Name = 'PanGloss interface regression'; Title = 'PanGloss interface regression'; Script = 'Test-PanGlossInterfaces.Tests.ps1'; Configured = $true }
         @{ Name = 'tunnel staging regression'; Title = 'tunnel staging regression'; Script = 'Test-StageTunnelClient.Tests.ps1' }
         @{ Name = 'artifact preparation host regression'; Title = 'artifact preparation host regression'; Script = 'Test-PrepareTestArtifacts.Tests.ps1'; Configured = $true }

@@ -32,7 +32,7 @@ if (-not [OperatingSystem]::IsWindows()) {
 # `motif --version` prints the product version, then " (source SHA <full sha>)" when the build embedded one.
 function Get-CliProductVersion {
     param([string[]] $VersionOutput)
-    $text = [string]::Join('', $VersionOutput).Trim()
+    $text = (@($VersionOutput) -join '').Trim()
     if ($text -match '^(?<version>\S+)(?: \(source SHA [0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?\))?$') {
         return $Matches['version']
     }
