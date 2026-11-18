@@ -99,6 +99,7 @@ public sealed class SourcesPageTests
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
                 var page = workspace.PageModel<TextsPageModel>();
+                await workspace.Context.EvidencePublication;
                 await page.ResultsInText.SelectionRefresh;
                 var prompt = window.PageView<TextsPage>().GetVisualDescendants().OfType<ParsePrompt>().Single();
                 Assert.True(prompt.IsEffectivelyVisible);
