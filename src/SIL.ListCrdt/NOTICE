@@ -1,0 +1,18 @@
+SIL.ListCrdt is MIT licensed (see LICENSE).
+
+The implementation was ported deliberately from the local L1 ListCrdt spike
+(commits d6130c4, e5677cd, 1703149, c819563), which was written from papers.
+No third-party implementation source was copied, including the Apache-2.0
+fugue/ directory (Collabs). LoroCs 1.17.1 (MIT) is a separate test-only oracle;
+its code and native binaries are not included in this package.
+
+Algorithm references:
+- Matthew Weidner and Martin Kleppmann, The Art of the Fugue: Minimizing
+  Interleaving in Collaborative Text Editing, arXiv:2305.00583, section IV.
+  https://arxiv.org/abs/2305.00583
+  This package implements Fugue, not FugueMax.
+- Martin Kleppmann, Moving Elements in List CRDTs, PaPoC 2020, section 3.
+  https://martin.kleppmann.com/papers/list-move-papoc20.pdf
+  Permanent delete-wins tombstones are the package's membership policy.
+- RFC 8785, JSON Canonicalization Scheme, for the supported wire domain.
+  https://www.rfc-editor.org/rfc/rfc8785
