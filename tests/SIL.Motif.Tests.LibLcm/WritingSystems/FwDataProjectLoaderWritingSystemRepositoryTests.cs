@@ -1,5 +1,6 @@
 using SIL.LCModel.Core.WritingSystems;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.WritingSystems;
 using Xunit;
@@ -25,6 +26,23 @@ public sealed class FwDataProjectLoaderWritingSystemRepositoryTests
         Assert.Equal(
             CoreGlobalWritingSystemRepository.CurrentVersionPath(ProcessWritingSystemRepository.BasePath),
             repository.PathToWritingSystems);
+    }
+
+    [Fact]
+    public void RepositoryInitializationUsesTheLockPathInheritedByChildren()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var repository = Assert.IsType<SerializedGlobalWritingSystemRepository>(
+            ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
+        var lockName = SerializedGlobalWritingSystemRepository.GetRepositoryLockName(repository.PathToWritingSystems);
+        var inheritedPath = WorkerLockPaths.GetLockPath(lockName, machineWide: false);
+        var unscopedPath = Path.Combine(Path.GetTempPath(), Path.GetFileName(inheritedPath));
+
+        Assert.True(unscopedPath == inheritedPath || !File.Exists(unscopedPath),
+            $"The test host initialized the repository lock outside its namespace: {unscopedPath}");
+        Assert.True(File.Exists(inheritedPath),
+            $"The test host did not initialize the lock its children inherit: {inheritedPath}");
     }
 
     [Fact]

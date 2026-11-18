@@ -23,7 +23,6 @@
     <AssemblyMetadata Include="MotifTestDefaultLevel" Value="$(MotifTestDefaultLevel)" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\LcmCacheTestCollection.cs" Link="LcmCacheTestCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessPanGlossQueueInitializer.cs" Link="ProcessPanGlossQueueInitializer.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessIdentity.cs" Link="ProcessIdentity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessRunnerEnvironmentInitializer.cs" Link="ProcessRunnerEnvironmentInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessWritingSystemRepositoryInitializer.cs" Link="ProcessWritingSystemRepositoryInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\NoCrashDialogs.cs" Link="NoCrashDialogs.cs" />
@@ -46,6 +45,7 @@
     with it the test assembly's own initializers, so Support carries the one that must precede that open.
   -->
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Support'">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessIdentity.cs" Link="ProcessIdentity.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessWritingSystemRepositoryInitializer.cs" Link="ProcessWritingSystemRepositoryInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessMemoryDiagnostics.cs" Link="ProcessMemoryDiagnostics.cs" />
   </ItemGroup>

@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
@@ -11,6 +12,8 @@ internal static class ProcessWritingSystemRepositoryInitializer
     {
         StaleTestDirectories.SweepTemporaryRoots();
         ProcessWritingSystemRepository.Install();
+        // Configure locks before LibLCM starts so the host and its children share one repository lock.
+        ConfigureWorkerLocks();
         // A developer who opts into online lookups must not make the suite, or the runners it starts, use the network.
         Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrOnlineVariable, null);
         Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrCachePathVariable, ProcessWritingSystemRepository.SldrCachePath);
@@ -23,4 +26,13 @@ internal static class ProcessWritingSystemRepositoryInitializer
 #endif
     }
 #pragma warning restore CA2255
+
+    private static void ConfigureWorkerLocks()
+    {
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(WorkerLockPaths.TestRegistryNamespaceVariable)))
+            Environment.SetEnvironmentVariable(WorkerLockPaths.TestRegistryNamespaceVariable, ProcessIdentity.Name);
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(WorkerLockPaths.TestLockNamespaceVariable)))
+            Environment.SetEnvironmentVariable(WorkerLockPaths.TestLockNamespaceVariable,
+                Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.WorkerLockRegistries", ProcessIdentity.Name));
+    }
 }
