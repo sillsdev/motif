@@ -21,7 +21,7 @@ internal sealed class NativeExpectations
     private readonly Guid[] deletionBundles;
     private readonly NativeReference[] deletionLinks;
 
-    public NativeExpectations(LcmCache cache)
+    public NativeExpectations(LcmCache cache, bool highestFanIn = false)
     {
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
         var data = (ISilDataAccessManaged)cache.DomainDataByFlid;
@@ -75,10 +75,10 @@ internal sealed class NativeExpectations
             }
             provenance.Add(source.Guid, (ordinal, vectors));
         }
-        var candidate = objects.OfType<IWfiMorphBundle>().Select(b => FindEntry(b.MorphRA) ?? FindEntry(b.SenseRA) ?? FindEntry(b.MsaRA))
-            .FirstOrDefault(e => e is not null) ?? objects.OfType<ILexEntry>().First();
-        DeletionTarget = candidate.Guid;
-        var subtree = objects.Where(o => FindEntry(o)?.Guid == DeletionTarget).Select(o => o.Guid).ToHashSet();
+        DeletionTarget = highestFanIn ? HighestFanIn(objects) :
+            (objects.OfType<IWfiMorphBundle>().Select(b => FindEntry(b.MorphRA) ?? FindEntry(b.SenseRA) ?? FindEntry(b.MsaRA))
+                .FirstOrDefault(e => e is not null) ?? objects.OfType<ILexEntry>().First()).Guid;
+        var subtree = objects.Where(o => InSubtree(o, DeletionTarget)).Select(o => o.Guid).ToHashSet();
         deletionLinks = edges.Where(e => !e.Owning && subtree.Contains(e.Target) && !subtree.Contains(e.Source)).ToArray();
         var analyses = new HashSet<Guid>();
         var bundles = new HashSet<Guid>();
@@ -94,6 +94,27 @@ internal sealed class NativeExpectations
         }
         deletionAnalyses = analyses.Order().ToArray();
         deletionBundles = bundles.Order().ToArray();
+    }
+
+    private Guid HighestFanIn(ICmObject[] objects)
+    {
+        var byId = objects.ToDictionary(o => o.Guid);
+        var counts = objects.Where(o => o is ILexEntry or ILexSense).ToDictionary(o => o.Guid, _ => 0);
+        foreach (var edge in edges)
+        {
+            if (edge.Owning || !byId.TryGetValue(edge.Target, out var target)) continue;
+            for (ICmObject? item = target; item is not null; item = item.Owner)
+                if (counts.TryGetValue(item.Guid, out var count) && !InSubtree(byId[edge.Source], item.Guid))
+                    counts[item.Guid] = count + 1;
+        }
+        return counts.OrderByDescending(pair => pair.Value).ThenBy(pair => pair.Key).First().Key;
+    }
+
+    private static bool InSubtree(ICmObject? item, Guid root)
+    {
+        for (; item is not null; item = item.Owner)
+            if (item.Guid == root) return true;
+        return false;
     }
 
     private static ILexEntry? FindEntry(ICmObject? item)

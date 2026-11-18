@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Security.Cryptography;
+using System.Xml;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.RecordStore;
 using SIL.WritingSystems;
 using SIL.LCModel;
+using SIL.LCModel.Core.WritingSystems;
 using SIL.LCModel.Infrastructure;
 using SIL.LCModel.Application;
 using SIL.Motif.RecordStore.Lcm;
@@ -17,6 +20,9 @@ namespace SIL.Motif.Tests.RecordStore;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
 {
+    private const string CebuanoWrapper =
+        "pwsh -NoProfile -File ./tools/Test-RecordStoreRoundTrip.ps1 -Configuration Release -CebuanoCopy <path>";
+
     private readonly string root = Path.Combine(Path.GetTempPath(), "motif-record-store-" + Guid.NewGuid().ToString("N"));
 
     [Fact]
@@ -51,46 +57,126 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
     public async Task IndonesianCopySurvivesStoreReopenAndLcmSerialization() =>
         await Check(CopyProject(Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_INDONESIAN")!), true);
 
-    [PrivateProjectFact("MOTIF_RECORD_STORE_CEBUANO")]
-    public async Task CebuanoCopySurvivesStoreReopenAndLcmSerialization() =>
-        await Check(CopyProject(Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_CEBUANO")!));
-
-    [PrivateProjectFact("MOTIF_RECORD_STORE_CEBUANO")]
-    public async Task CebuanoCopyProvidesNativeDeletionPlanningWithoutAuthorizingPartialUsage()
+    [PrivateProjectFact("MOTIF_RECORD_STORE_CEBUANO", CebuanoWrapper)]
+    public async Task CebuanoCopySurvivesStoreReopenAndLcmSerialization()
     {
-        var source = CopyProject(Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_CEBUANO")!);
-        var database = Path.Combine(root, "planning.sqlite");
-        NativeExpectations native;
-        using (var cache = new FwDataProjectLoader().LoadScratchCache(source, Path.Combine(root, "templates")))
-        {
-            native = new NativeExpectations(cache);
-            await LcmRecordBridge.ImportAsync(cache, source, database);
-        }
+        var external = Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_CEBUANO")!;
+        var workspace = Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_CEBUANO_WORKSPACE");
+        var stage = Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_CEBUANO_STAGE");
+        Assert.True(Directory.Exists(workspace) && stage is ("import" or "verify"), "Run the staged Cebuano gate with " + CebuanoWrapper);
+        var runRoot = workspace!;
+        var sourceWorkspace = Path.Combine(runRoot, "source");
+        var database = Path.Combine(runRoot, "store", "records.sqlite");
+        var loader = new FwDataProjectLoader();
+        var templates = Path.Combine(runRoot, "templates");
+        if (stage == "import")
+            await ImportCebuano(external, sourceWorkspace, database, loader, templates);
+        else
+            await VerifyCebuano(ProjectCopyPath(external, sourceWorkspace), database, loader, templates, runRoot);
+        File.WriteAllText(Path.Combine(runRoot, stage + ".complete"), stage);
+    }
+
+    private async Task ImportCebuano(string external, string sourceWorkspace, string database,
+        FwDataProjectLoader loader, string templates)
+    {
         var watch = Stopwatch.StartNew();
-        await using (var store = new SIL.Motif.RecordStore.RecordStore(database))
+        Directory.CreateDirectory(Path.GetDirectoryName(database)!);
+        var source = CopyProject(external, sourceWorkspace);
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(database)!, "import-root.txt"), Path.GetDirectoryName(source)!);
+        using var cache = loader.LoadScratchCache(source, templates);
+        output.WriteLine($"Cebuano copy and LCM load={watch.Elapsed.TotalSeconds:F3} s");
+        watch.Restart();
+        await LcmRecordBridge.ImportAsync(cache, source, database);
+        output.WriteLine($"Cebuano store import={watch.Elapsed.TotalSeconds:F3} s");
+        WriteCebuanoPeakMemory();
+    }
+
+    private async Task VerifyCebuano(string source, string database, FwDataProjectLoader loader, string templates, string workspace)
+    {
+        Assert.True(File.Exists(source) && File.Exists(database), "The Cebuano import artifacts must be transferred before verification.");
+        var destination = Path.Combine(workspace, "restored");
+        var canonical = Path.Combine(workspace, "source.jsonl");
+        var sourceRoot = Path.GetDirectoryName(source)!;
+        // The wrapper moves the closed import artifacts, so the store still names the project's import-time folder.
+        var importedRoot = File.ReadAllText(Path.Combine(Path.GetDirectoryName(database)!, "import-root.txt"));
+        SourceAssets assets;
+        JsonElement schema;
+        int objects;
+        NativeExpectations native;
+        var watch = Stopwatch.StartNew();
+        using (var cache = loader.LoadScratchCache(source, templates))
         {
-            output.WriteLine($"Cebuano store open={watch.Elapsed.TotalMilliseconds:F3} ms");
+            output.WriteLine($"Cebuano copied source LCM reload={watch.Elapsed.TotalSeconds:F3} s");
             watch.Restart();
-            var references = await store.ReferencesAsync();
-            watch.Stop();
-            output.WriteLine($"Cebuano reference snapshot acquisition={watch.Elapsed.TotalMilliseconds:F3} ms");
-            native.CheckReferences(references);
-            var times = new double[100];
-            for (var repetition = 0; repetition < times.Length; repetition++)
-            {
-                var start = Stopwatch.GetTimestamp();
-                var impact = references.DeletionImpact(native.DeletionTarget);
-                Assert.Throws<IncompleteDeletionClosureException>(() => impact.RequireDeletionAllowed(impact.PlanToken));
-                times[repetition] = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
-            }
-            Array.Sort(times);
-            output.WriteLine($"Cebuano ready lookup and deletion refusal p95={times[94]:F3} ms; max={times[^1]:F3} ms over 100 queries");
-            Assert.InRange(times[^1], 0, 500);
-            var facts = references.DeletionImpact(native.DeletionTarget);
-            output.WriteLine($"Cebuano native warning: analyses={facts.NativeAnalysisCount}; bundles={facts.NativeBundleCount}; links={facts.NativeLinkCount}; complete={facts.Complete}; deleteAllowed={facts.DeleteAllowed}");
-            await Assert.ThrowsAsync<IncompleteDeletionClosureException>(() => store.PrepareDeletionAsync(native.DeletionTarget, references.Revision, references.DeletionImpact(native.DeletionTarget).PlanToken));
+            assets = new SourceAssets(sourceRoot, cache.ServiceLocator.WritingSystemManager.WritingSystems);
+            (schema, objects) = WriteSourceCanonical(cache, canonical);
+            Assert.Equal(401_759, objects);
+            output.WriteLine($"Cebuano source canonical graph={watch.Elapsed.TotalSeconds:F3} s");
+
+            watch.Restart();
+            native = new NativeExpectations(cache, highestFanIn: true);
+            output.WriteLine($"Cebuano independent LCM scan={watch.Elapsed.TotalSeconds:F3} s; target class={cache.ServiceLocator.GetObject(native.DeletionTarget).ClassName}");
         }
-        StorageMeasurement.Read(database).Write(output, "Cebuano planning after import/read/dispose");
+        await CheckCebuanoDeletion(database, native);
+        StorageMeasurement.Read(database).Write(output, "Cebuano after import/reopen");
+
+        watch.Restart();
+        var exported = await LcmRecordBridge.ExportAsync(database, destination);
+        output.WriteLine($"Cebuano store reopen and LCM export={watch.Elapsed.TotalSeconds:F3} s");
+        watch.Restart();
+        assets.AssertExported(destination);
+        using var reopened = loader.LoadScratchCache(exported, templates);
+        var restored = new LcmGraphReader(reopened);
+        Assert.Equal(CanonicalJson.Normalize(schema), CanonicalJson.Normalize(restored.Schema()));
+        GraphComparison.AssertCanonical(canonical, restored.ReadRecords(), schema, sourceRoot, destination, importedRoot);
+        assets.AssertLiveWritingSystems(reopened.ServiceLocator.WritingSystemManager.WritingSystems);
+        output.WriteLine($"Cebuano fresh LCM reload and comparison={watch.Elapsed.TotalSeconds:F3} s");
+        output.WriteLine($"Canonical equality: {objects} objects, zero unexempted differences; writing systems={assets.WritingSystemCount}");
+        WriteCebuanoPeakMemory();
+    }
+
+    private void WriteCebuanoPeakMemory()
+    {
+        using var process = Process.GetCurrentProcess();
+        output.WriteLine($"Cebuano test-host peak working set={process.PeakWorkingSet64} bytes");
+    }
+
+    private static (JsonElement Schema, int Objects) WriteSourceCanonical(LcmCache cache, string canonical)
+    {
+        var graph = new LcmGraphReader(cache);
+        var schema = graph.Schema();
+        return (schema, GraphComparison.WriteCanonical(canonical, graph.ReadRecords()));
+    }
+
+    private async Task CheckCebuanoDeletion(string database, NativeExpectations native)
+    {
+        var watch = Stopwatch.StartNew();
+        await using var store = new SIL.Motif.RecordStore.RecordStore(database);
+        output.WriteLine($"Cebuano store open={watch.Elapsed.TotalMilliseconds:F3} ms");
+        watch.Restart();
+        var references = await store.ReferencesAsync();
+        output.WriteLine($"Cebuano reference snapshot acquisition={watch.Elapsed.TotalMilliseconds:F3} ms");
+        watch.Restart();
+        native.CheckReferences(references);
+        output.WriteLine($"Cebuano native reference and warning comparison={watch.Elapsed.TotalSeconds:F3} s");
+        var times = new double[100];
+        for (var repetition = 0; repetition < times.Length; repetition++)
+        {
+            var start = Stopwatch.GetTimestamp();
+            references.DeletionImpact(native.DeletionTarget);
+            times[repetition] = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+        }
+        Array.Sort(times);
+        output.WriteLine($"Cebuano high-fan-in deletion planning p95={times[94]:F3} ms; max={times[^1]:F3} ms over {times.Length} queries");
+        Assert.InRange(times[^1], 0, 500);
+        var facts = references.DeletionImpact(native.DeletionTarget);
+        Assert.True(facts.NativeLinkCount > 0);
+        output.WriteLine($"Cebuano native warning: analyses={facts.NativeAnalysisCount}; bundles={facts.NativeBundleCount}; links={facts.NativeLinkCount}; complete={facts.Complete}; deleteAllowed={facts.DeleteAllowed}");
+        var token = facts.PlanToken;
+        watch.Restart();
+        await Assert.ThrowsAsync<IncompleteDeletionClosureException>(() =>
+            store.PrepareDeletionAsync(native.DeletionTarget, references.Revision, token));
+        output.WriteLine($"Cebuano retained deletion preparation and refusal={watch.Elapsed.TotalMilliseconds:F3} ms");
     }
 
     [Fact]
@@ -131,15 +217,18 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
     public void SourceAssetGateDetectsDroppedWritingSystemsResourcesAndChangedBytes()
     {
         var directory = Path.Combine(root, "assets");
-        Directory.CreateDirectory(directory);
+        var writingSystems = Path.Combine(directory, "WritingSystemStore");
+        Directory.CreateDirectory(writingSystems);
         var bytes = RandomNumberGenerator.GetBytes(61);
         var tag = "en";
+        var definitionPath = Path.Combine(writingSystems, tag + ".ldml");
+        WriteWritingSystem(definitionPath, new CoreWritingSystemDefinition(tag));
         File.WriteAllBytes(Path.Combine(directory, "opaque.bin"), bytes);
-        var source = new SourceAssets(directory, [tag]);
+        var source = new SourceAssets(directory, []);
         var ws = new GenericRecord { Id = Guid.NewGuid(), Kind = "writing-system" };
         ws.Values["tag"] = JsonSerializer.SerializeToElement(tag);
         ws.Values["path"] = JsonSerializer.SerializeToElement("WritingSystemStore/en.ldml");
-        ws.Values["ldml"] = JsonSerializer.SerializeToElement(Convert.ToBase64String(bytes));
+        ws.Values["ldml"] = JsonSerializer.SerializeToElement(Convert.ToBase64String(File.ReadAllBytes(definitionPath)));
         var resource = new GenericRecord { Id = Guid.NewGuid(), Kind = "resource" };
         resource.Values["path"] = JsonSerializer.SerializeToElement("opaque.bin");
         var database = Path.Combine(root, "assets.sqlite");
@@ -152,11 +241,49 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
         Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => source.AssertImported([ws, resource], database));
     }
 
-    private string CopyProject(string source)
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SourceAssetGateRejectsDroppedOrChangedLiveWritingSystem(bool changed)
+    {
+        using var cache = NewLangProjFixture.CreateCache(Path.Combine(root, "project"));
+        var sourceDirectory = Path.Combine(root, "source");
+        Directory.CreateDirectory(sourceDirectory);
+        var manager = cache.ServiceLocator.WritingSystemManager;
+        manager.GetOrSet("qaa-x-motif", out var definition);
+        var source = new SourceAssets(sourceDirectory, [definition]);
+
+        var destination = Path.Combine(root, "export");
+        var systemsDirectory = Path.Combine(destination, "WritingSystemStore");
+        Directory.CreateDirectory(systemsDirectory);
+        var path = Path.Combine(systemsDirectory, definition.Id + ".ldml");
+        WriteWritingSystem(path, definition);
+        source.AssertExported(destination);
+        if (changed)
+        {
+            definition.DefaultFont = new FontDefinition("Changed test font");
+            WriteWritingSystem(path, definition);
+        }
+        else File.Delete(path);
+        var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => source.AssertExported(destination));
+        Assert.Contains($"{(changed ? "Changed" : "Missing")} exported writing system {definition.Id}", error.Message);
+    }
+
+    private static void WriteWritingSystem(string path, CoreWritingSystemDefinition definition)
+    {
+        using var writer = XmlWriter.Create(path, new XmlWriterSettings { Encoding = new UTF8Encoding(false) });
+        definition.WriteLdml(writer);
+    }
+
+    private static string ProjectCopyPath(string source, string copyRoot) =>
+        Path.Combine(copyRoot, Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(source))!), Path.GetFileName(source));
+
+    private string CopyProject(string source, string? copyRoot = null)
     {
         Assert.True(File.Exists(source), "Private gate input does not exist: " + source);
         var directory = Path.GetDirectoryName(Path.GetFullPath(source))!;
-        var destination = Path.Combine(root, Path.GetFileName(directory));
+        var copy = ProjectCopyPath(source, copyRoot ?? root);
+        var destination = Path.GetDirectoryName(copy)!;
         foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
         {
             if (Path.GetFileName(file).Contains(".motif.", StringComparison.OrdinalIgnoreCase)) continue;
@@ -164,7 +291,7 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target);
         }
-        return Path.Combine(destination, Path.GetFileName(source));
+        return copy;
     }
 
     private async Task Check(string source, bool indonesian = false)
@@ -188,7 +315,7 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
                 Assert.Equal(54, before.Count(r => r.ClassId == classes["WfiAnalysis"]));
                 Assert.Equal(123, before.Count(r => r.ClassId == classes["WfiMorphBundle"]));
             }
-            assets = new SourceAssets(Path.GetDirectoryName(source)!, cache.ServiceLocator.WritingSystemManager.WritingSystems.Select(ws => ws.Id));
+            assets = new SourceAssets(Path.GetDirectoryName(source)!, cache.ServiceLocator.WritingSystemManager.WritingSystems);
             await LcmRecordBridge.ImportAsync(cache, source, database);
         }
         IReadOnlyList<GenericRecord> imported;
@@ -236,13 +363,13 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
         if (indonesian) Assert.InRange(measurement.Total, 1, 16_500_000);
         var destination = Path.Combine(root, "restored");
         var exported = await LcmRecordBridge.ExportAsync(database, destination);
+        assets.AssertExported(destination);
         using var reopened = loader.LoadScratchCache(exported, Path.Combine(root, "templates"));
         var restored = new LcmGraphReader(reopened);
         var after = restored.Read();
         Assert.Equal(CanonicalJson.Normalize(schema), CanonicalJson.Normalize(restored.Schema()));
         Assert.Equal(before.Count, after.Count);
         var differences = GraphComparison.Differences(before, after, schema, Path.GetDirectoryName(source), destination);
-        assets.AssertExported(destination);
         Assert.True(differences.Count == 0, string.Join(Environment.NewLine, differences.Take(30)));
         foreach (var record in imported.Where(r => r.Kind is "writing-system" or "resource"))
         {
@@ -284,9 +411,12 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
 
 public sealed class PrivateProjectFactAttribute : FactAttribute
 {
-    public PrivateProjectFactAttribute(string variable)
+    public PrivateProjectFactAttribute(string variable, string? wrapper = null)
     {
         if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(variable)))
-            Skip = "Private copy gate: set " + variable + " to an external .fwdata copy; never commit project data.";
+        {
+            var optIn = wrapper is null ? $"set {variable} to an external .fwdata copy" : $"run {wrapper} (sets {variable})";
+            Skip = $"Private copy gate: {optIn}; never commit project data.";
+        }
     }
 }

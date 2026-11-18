@@ -94,6 +94,9 @@
   .PARAMETER NoProcessSweep
   Keep the worktree lock and process policy but skip stale-process cleanup.
 
+  .PARAMETER ResultsSuffix
+  Write to test-results-<suffix> under the configuration directory to keep results from separate runs.
+
   .EXAMPLE
   ./test.ps1
 #>
@@ -112,7 +115,9 @@ param(
     [switch] $BuildMap,
     [string] $MapPath,
     [int] $MaxMapAge = 40,
-    [switch] $NoProcessSweep
+    [switch] $NoProcessSweep,
+    [ValidatePattern('\A[A-Za-z0-9-]+\z')]
+    [string] $ResultsSuffix
 )
 
 Set-StrictMode -Version Latest
@@ -257,6 +262,7 @@ if (-not $Project -and -not $changedClasses) {
         @{ Name = 'tool environment regression'; Title = 'tool environment regression'; Script = 'MotifToolEnvironment.Tests.ps1' }
         @{ Name = 'resource sizing regression'; Title = 'node, slot and thread sizing regression'; Script = 'MotifTestResources.Tests.ps1' }
         @{ Name = 'artifact plan regression'; Title = 'test artifact plan regression'; Script = 'Test-MotifTestRunPlan.Tests.ps1' }
+        @{ Name = 'round-trip wrapper regression'; Title = 'RecordStore round-trip wrapper regression'; Script = 'Test-RecordStoreRoundTrip.Tests.ps1' }
         @{ Name = 'release version regression'; Title = 'release version regression'; Script = 'MotifReleaseVersion.Tests.ps1' }
         @{ Name = 'package smoke regression'; Title = 'package smoke regression'; Script = 'PackageSmoke.Tests.ps1' }
         @{ Name = 'PanGloss interface regression'; Title = 'PanGloss interface regression'; Script = 'Test-PanGlossInterfaces.Tests.ps1'; Configured = $true }
@@ -358,7 +364,8 @@ $testThreads = Get-MotifTestThreadCount -ProjectConcurrency $projectConcurrency 
 $projectConcurrency = [Math]::Min($testRuns.Count, $projectConcurrency)
 
 $binRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'bin')) + [IO.Path]::DirectorySeparatorChar
-$resultsRoot = [IO.Path]::GetFullPath((Join-Path (Join-Path $repoRoot 'bin') (Join-Path $Configuration 'test-results')))
+$resultsName = if ($ResultsSuffix) { "test-results-$ResultsSuffix" } else { 'test-results' }
+$resultsRoot = [IO.Path]::GetFullPath((Join-Path (Join-Path $repoRoot 'bin') (Join-Path $Configuration $resultsName)))
 if (-not $resultsRoot.StartsWith($binRoot, [StringComparison]::OrdinalIgnoreCase)) {
     throw "Results path must stay under the repository bin directory: $resultsRoot"
 }
