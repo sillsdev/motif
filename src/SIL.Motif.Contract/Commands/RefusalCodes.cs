@@ -7,7 +7,7 @@ namespace SIL.Motif.Contract.Commands;
 /// <remarks>
 /// This class, <see cref="HostRefusalCodes"/> and the Parsimony codes together are the closed registry of
 /// every refusal code, pinned by `RegistryCoversEveryCodeTheSourceUses`: a code the source spells that no
-/// constant names fails the suite. Some call sites still spell their code as a literal. Every constant here
+/// constant names fails the suite. Some call sites still spell their code as a literal. Codes shown in the window
 /// must appear as a literal or a reference in the commands or the window, pinned by
 /// `EveryCatalogueCodeIsOneACommandOrTheWindowDeclares`. The CLI does not read this list; it prints each
 /// command's own message.
@@ -23,6 +23,17 @@ public static class RefusalCodes
     public const string HandAnalysisBusy = "hand-analysis.busy";
     public const string HandAnalysisStoreUnavailable = "hand-analysis.store-unavailable";
     public const string HandAnalysisOutcomeUnknown = "hand-analysis.outcome-unknown";
+    public const string HandAnalysisSnapshotExpired = "hand-analysis.snapshot-expired";
+    public const string HandAnalysisIndexUnavailable = "hand-analysis.index-unavailable";
+    public const string HandAnalysisInvalidCursor = "hand-analysis.invalid-cursor";
+    public const string HandAnalysisInvalidPageLimit = "hand-analysis.invalid-page-limit";
+    public const string HandAnalysisSourceUnavailable = "hand-analysis.source-unavailable";
+    public const string HandAnalysisInvalidBuffer = "hand-analysis.invalid-buffer";
+    public const string HandAnalysisIncompleteReferences = "hand-analysis.incomplete-references";
+    public const string HandAnalysisStaleReadSet = "hand-analysis.stale-read-set";
+    public const string HandAnalysisReferenced = "hand-analysis.referenced";
+    public const string HandAnalysisDeletionPlanMismatch = "hand-analysis.deletion-plan-mismatch";
+    public const string HandAnalysisUnsupportedOperation = "hand-analysis.unsupported-operation";
 
     /// <summary>The saved Text Progress projection has not been published or needs reconciliation.</summary>
     public const string ProgressIndexNotReady = "progress.index-not-ready";

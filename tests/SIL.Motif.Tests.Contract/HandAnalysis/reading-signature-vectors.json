@@ -1,0 +1,78 @@
+[
+  {
+    "name": "ambiguous",
+    "id": "sha256:850fa472ca7189a98008f32510aff70808019053aa3e7cec0bf5364969f6d018",
+    "signature": {
+      "morphemes": [
+        {
+          "entryId": "AAAAAQAAAAAAAAAAAAAAAA",
+          "senseId": null,
+          "senseCandidates": ["AAAAAgAAAAAAAAAAAAAAAA", "AAAAAwAAAAAAAAAAAAAAAA"],
+          "senseStatus": "ambiguous",
+          "msaId": "AAAABAAAAAAAAAAAAAAAAA",
+          "allomorphId": "AAAABQAAAAAAAAAAAAAAAA",
+          "inflectionTypeId": null,
+          "isStem": true,
+          "derivation": null,
+          "featureValues": [
+            {"role": "stem", "featurePath": ["AAAABwAAAAAAAAAAAAAAAA", "AAAACAAAAAAAAAAAAAAAAA"], "valueIds": ["AAAACQAAAAAAAAAAAAAAAA", "AAAACgAAAAAAAAAAAAAAAA"]},
+            {"role": "stem", "featurePath": ["AAAAFAAAAAAAAAAAAAAAAA", "AAAACAAAAAAAAAAAAAAAAA"], "valueIds": ["AAAACQAAAAAAAAAAAAAAAA"]}
+          ]
+        },
+        {
+          "entryId": "AAAACwAAAAAAAAAAAAAAAA",
+          "senseId": "AAAADAAAAAAAAAAAAAAAAA",
+          "senseCandidates": [],
+          "senseStatus": "resolved",
+          "msaId": "AAAADQAAAAAAAAAAAAAAAA",
+          "allomorphId": "AAAADgAAAAAAAAAAAAAAAA",
+          "inflectionTypeId": "AAAADwAAAAAAAAAAAAAAAA",
+          "isStem": false,
+          "derivation": {"fromCategoryId": "AAAAEAAAAAAAAAAAAAAAAA", "toCategoryId": "AAAAEQAAAAAAAAAAAAAAAA"},
+          "featureValues": [
+            {"role": "derivation-input", "featurePath": ["AAAABwAAAAAAAAAAAAAAAA", "AAAACAAAAAAAAAAAAAAAAA"], "valueIds": ["AAAAEgAAAAAAAAAAAAAAAA"]},
+            {"role": "derivation-output", "featurePath": ["AAAABwAAAAAAAAAAAAAAAA", "AAAACAAAAAAAAAAAAAAAAA"], "valueIds": ["AAAAEwAAAAAAAAAAAAAAAA"]}
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "explicit",
+    "id": "sha256:2011f4bf3b7cdc1fce8bacb54f1962da6705259ce5a181060cc1981257b72f15",
+    "signature": {
+      "morphemes": [
+        {
+          "entryId": "AAAAAQAAAAAAAAAAAAAAAA",
+          "senseId": "AAAAAgAAAAAAAAAAAAAAAA",
+          "senseCandidates": [],
+          "senseStatus": "resolved",
+          "msaId": "AAAABAAAAAAAAAAAAAAAAA",
+          "allomorphId": "AAAABQAAAAAAAAAAAAAAAA",
+          "inflectionTypeId": null,
+          "isStem": true,
+          "derivation": null,
+          "featureValues": [
+            {"role": "stem", "featurePath": ["AAAABwAAAAAAAAAAAAAAAA", "AAAACAAAAAAAAAAAAAAAAA"], "valueIds": ["AAAACQAAAAAAAAAAAAAAAA", "AAAACgAAAAAAAAAAAAAAAA"]},
+            {"role": "stem", "featurePath": ["AAAAFAAAAAAAAAAAAAAAAA", "AAAACAAAAAAAAAAAAAAAAA"], "valueIds": ["AAAACQAAAAAAAAAAAAAAAA"]}
+          ]
+        },
+        {
+          "entryId": "AAAACwAAAAAAAAAAAAAAAA",
+          "senseId": "AAAADAAAAAAAAAAAAAAAAA",
+          "senseCandidates": [],
+          "senseStatus": "resolved",
+          "msaId": "AAAADQAAAAAAAAAAAAAAAA",
+          "allomorphId": "AAAADgAAAAAAAAAAAAAAAA",
+          "inflectionTypeId": "AAAADwAAAAAAAAAAAAAAAA",
+          "isStem": false,
+          "derivation": {"fromCategoryId": "AAAAEAAAAAAAAAAAAAAAAA", "toCategoryId": "AAAAEQAAAAAAAAAAAAAAAA"},
+          "featureValues": [
+            {"role": "derivation-input", "featurePath": ["AAAABwAAAAAAAAAAAAAAAA", "AAAACAAAAAAAAAAAAAAAAA"], "valueIds": ["AAAAEgAAAAAAAAAAAAAAAA"]},
+            {"role": "derivation-output", "featurePath": ["AAAABwAAAAAAAAAAAAAAAA", "AAAACAAAAAAAAAAAAAAAAA"], "valueIds": ["AAAAEwAAAAAAAAAAAAAAAA"]}
+          ]
+        }
+      ]
+    }
+  }
+]

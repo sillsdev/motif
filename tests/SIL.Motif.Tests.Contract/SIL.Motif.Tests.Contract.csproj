@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Update="HandAnalysis/reading-signature-vectors.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="JsonSchema.Net" Version="9.4.0" />
     <SupportedPlatform Include="windows" />
     <ProjectReference Include="..\..\src\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />

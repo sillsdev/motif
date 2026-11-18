@@ -12,6 +12,16 @@ namespace SIL.Motif.Contract;
 /// </remarks>
 public static class MotifJson
 {
+    /// <summary>Creates the strict camel-case wire profile for detached hand-analysis reads.</summary>
+    public static JsonSerializerOptions CreateHandAnalysisReadOptions() => new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = false,
+        NumberHandling = JsonNumberHandling.Strict,
+        AllowDuplicateProperties = false,
+        RespectRequiredConstructorParameters = true,
+        RespectNullableAnnotations = true
+    };
+
     /// <summary>Creates fresh options with Motif's established enum and property conventions.</summary>
     public static JsonSerializerOptions CreateOptions()
     {

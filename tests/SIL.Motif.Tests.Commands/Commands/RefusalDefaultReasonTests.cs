@@ -44,6 +44,8 @@ public sealed class RefusalDefaultReasonTests
         ["stats.no-assessment"] = ("InvalidArgument+NotFound", PerSite),
     };
 
+    private const string HandAnalysisContract = "the hand-analysis contract supplies the refusal reason";
+
     // Codes whose reason the scan cannot resolve from a refusal construction.
     private static readonly Dictionary<string, string> NotDeterminable = new(StringComparer.Ordinal)
     {
@@ -59,6 +61,17 @@ public sealed class RefusalDefaultReasonTests
         ["evidence.wrong-target"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["hand-analysis.busy"] = "contract code for an annotation mutation lease outcome, outside identity resolution",
         ["hand-analysis.disapproved"] = "contract code for an annotation Opinion conflict, outside identity resolution",
+        ["hand-analysis.deletion-plan-mismatch"] = HandAnalysisContract,
+        ["hand-analysis.incomplete-references"] = HandAnalysisContract,
+        ["hand-analysis.index-unavailable"] = HandAnalysisContract,
+        ["hand-analysis.invalid-buffer"] = HandAnalysisContract,
+        ["hand-analysis.invalid-cursor"] = HandAnalysisContract,
+        ["hand-analysis.invalid-page-limit"] = HandAnalysisContract,
+        ["hand-analysis.referenced"] = HandAnalysisContract,
+        ["hand-analysis.snapshot-expired"] = HandAnalysisContract,
+        ["hand-analysis.source-unavailable"] = HandAnalysisContract,
+        ["hand-analysis.stale-read-set"] = HandAnalysisContract,
+        ["hand-analysis.unsupported-operation"] = HandAnalysisContract,
         ["hand-analysis.outcome-unknown"] = "contract code for an annotation persistence outcome, outside identity resolution",
         ["hand-analysis.request-id-reused"] = "contract code for an annotation idempotency outcome, outside identity resolution",
         ["hand-analysis.store-unavailable"] = "contract code for an annotation Home availability outcome, outside identity resolution",
