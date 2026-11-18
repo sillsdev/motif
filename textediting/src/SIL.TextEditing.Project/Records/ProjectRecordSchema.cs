@@ -69,12 +69,15 @@ namespace SIL.TextEditing.Project
                     throw new ArgumentException("Unknown kind root " + rootName + ".");
             }
             var omitted = new Dictionary<int, OmittedCustomField>();
+            var bindings = new SchemaBindings();
             var builder = new RecordSchemaBuilder(SchemaId(Required(root, "id"), metadata, managed));
             foreach (var pair in classes)
             {
                 if (pair.Key == "CmObject") continue;
                 int id = ids[pair.Key];
                 var type = builder.ObjectType(pair.Key);
+                var keys = bindings.Keys[pair.Key] = new Dictionary<string, int>(StringComparer.Ordinal);
+                var excluded = bindings.Excluded[pair.Key] = new List<int>();
                 var chain = new Stack<int>();
                 int current = id;
                 while (true)
@@ -97,8 +100,12 @@ namespace SIL.TextEditing.Project
                         if (field == 0 || metadata.GetOwnClsId(field) != ancestor) throw new ArgumentException("Unknown declared field " + className + "." + fieldName + ".");
                         if (managed.IsCustom(field) && entry.Name != "exclude") throw new ArgumentException("Custom fields may only be excluded: " + className + "." + fieldName + ".");
                         if (!decisions.Add(field)) throw new ArgumentException("Duplicate field decision " + className + "." + fieldName + ".");
-                        if (entry.Name == "field") Add(type, entry, field, metadata, managed, classes);
-                        else if (managed.IsCustom(field)) omitted[field] = new OmittedCustomField(className, fieldName, "Excluded by overlay.");
+                        if (entry.Name == "field") Add(type, entry, field, metadata, managed, classes, keys);
+                        else
+                        {
+                            excluded.Add(field);
+                            if (managed.IsCustom(field)) omitted[field] = new OmittedCustomField(className, fieldName, "Excluded by overlay.");
+                        }
                     }
                 }
                 foreach (int field in managed.GetFields(id, true, -1)
@@ -114,11 +121,12 @@ namespace SIL.TextEditing.Project
                         string? reason = UnsupportedCustomOwnership(field, metadata, managed, classes);
                         if (reason != null) throw new NotSupportedException(reason);
                         string key = CustomKey(owner, name);
-                        Add(type, new XElement("field", new XAttribute("key", key)), field, metadata, managed, classes);
+                        Add(type, new XElement("field", new XAttribute("key", key)), field, metadata, managed, classes, keys);
                     }
                     catch (NotSupportedException error)
                     {
                         omitted[field] = new OmittedCustomField(owner, name, error.Message);
+                        excluded.Add(field);
                     }
                 }
             }
@@ -135,7 +143,7 @@ namespace SIL.TextEditing.Project
             var schema = builder.Build();
             CheckReachability(schema, classes, metadata);
             return new ProjectRecordSchemaResult(schema, omitted.Values.OrderBy(o => o.Class, StringComparer.Ordinal)
-                .ThenBy(o => o.Field, StringComparer.Ordinal).ToArray());
+                .ThenBy(o => o.Field, StringComparer.Ordinal).ToArray(), bindings);
         }
 
         static string SchemaId(string id, IFwMetaDataCache metadata, IFwMetaDataCacheManaged managed)
@@ -224,7 +232,7 @@ namespace SIL.TextEditing.Project
             ? value : throw new ArgumentException("Missing " + name + " on " + e.Name + ".");
 
         static void Add(RecordObjectTypeBuilder b, XElement entry, int field, IFwMetaDataCache m,
-            IFwMetaDataCacheManaged managed, Dictionary<string, XElement> classes)
+            IFwMetaDataCacheManaged managed, Dictionary<string, XElement> classes, Dictionary<string, int> keys)
         {
             string key = Required(entry, "key");
             if (entry.Attribute("name") != null && key.StartsWith("custom-", StringComparison.Ordinal))
@@ -268,6 +276,7 @@ namespace SIL.TextEditing.Project
             }
             else throw new NotSupportedException("Unsupported metadata type " + t + " for " + key + ".");
             if (m.get_IsVirtual(field)) b.Computed(key);
+            keys[key] = field;
         }
 
         static RecordWritingSystem OverlayWritingSystem(string value)

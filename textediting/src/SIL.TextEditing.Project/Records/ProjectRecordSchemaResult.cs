@@ -6,17 +6,29 @@ namespace SIL.TextEditing.Project
     /// <summary>A generated schema and custom fields that it cannot or should not represent.</summary>
     public sealed class ProjectRecordSchemaResult
     {
-        internal ProjectRecordSchemaResult(RecordSchema schema, OmittedCustomField[] omitted)
+        internal ProjectRecordSchemaResult(RecordSchema schema, OmittedCustomField[] omitted, SchemaBindings bindings)
         {
             Schema = schema;
+            Bindings = bindings;
             OmittedCustomFields = System.Array.AsReadOnly(omitted);
         }
+
+        /// <summary>Which metadata field each schema key of each object type reads, and the fields the type leaves out (for export).</summary>
+        internal SchemaBindings Bindings { get; }
 
         /// <summary>The detached schema built from the overlay and supported custom fields.</summary>
         public RecordSchema Schema { get; }
 
         /// <summary>Each omitted custom field, once per declaring class and field name.</summary>
         public IReadOnlyList<OmittedCustomField> OmittedCustomFields { get; }
+    }
+
+    /// <summary>For each concrete object type: schema key to field id, and the ids of the fields the overlay or the generator left out. The ids are
+    /// those of the cache the schema was generated from.</summary>
+    internal sealed class SchemaBindings
+    {
+        public Dictionary<string, Dictionary<string, int>> Keys { get; } = new Dictionary<string, Dictionary<string, int>>(System.StringComparer.Ordinal);
+        public Dictionary<string, List<int>> Excluded { get; } = new Dictionary<string, List<int>>(System.StringComparer.Ordinal);
     }
 
     /// <summary>A custom field absent from the generated schema and the reason for its omission.</summary>
