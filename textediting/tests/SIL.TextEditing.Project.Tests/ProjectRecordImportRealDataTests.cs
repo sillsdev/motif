@@ -63,8 +63,10 @@ namespace SIL.TextEditing.Project.Tests
             {
                 var exporter = new ProjectRecordExporter(fixture.Cache, ProjectRecordSchema.Generate(fixture.Cache, overlay));
                 var importer = new ProjectRecordImporter(exporter);
+                int tried = 0;
                 foreach (var export in exporter.ExportAll(kind))
                 {
+                    if (++tried > 300) break;
                     var read = RecordFileReader.Read(export.Text!, exporter.Schema, exporter.CreateReadOptions());
                     if (read.HasErrors) continue;
                     var list = read.Document!.Data.Fields.Select(f => f.Value).OfType<RecordList>().FirstOrDefault(l => l.Items.Count > 0 && l.Items[l.Items.Count - 1] is RecordObject);
@@ -73,7 +75,8 @@ namespace SIL.TextEditing.Project.Tests
                     ProjectRecordImporter.LastRichLinkScan = (0, 0);
                     var plan = importer.Plan(RecordFileWriter.Write(read.Document!, exporter.Schema));
                     var scan = ProjectRecordImporter.LastRichLinkScan;
-                    _output.WriteLine("delete in " + kind + ": changes " + plan.ChangeSet.Changes.Count + ", refusals " + plan.ChangeSet.Refusals.Count + ", rich-text scan read " + scan.Fields + " fields in " + scan.Milliseconds + " ms");
+                    if (scan.Fields == 0) continue; // refused before the scan (data the file cannot show, or a reference); try the next record
+                    _output.WriteLine("delete in " + kind + ": changes " + plan.ChangeSet.Changes.Count + ", refusals " + plan.ChangeSet.Refusals.Count + ", rich-text scan read " + scan.Fields + " fields in " + scan.Milliseconds + " ms (record " + tried + ")");
                     break;
                 }
             }
