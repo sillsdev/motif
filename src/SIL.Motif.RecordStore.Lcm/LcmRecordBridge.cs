@@ -16,6 +16,7 @@ public static class LcmRecordBridge
     {
         if (Path.GetFullPath(sourcePath) != Path.GetFullPath(cache.ProjectId.Path))
             throw new ArgumentException("Resource source must match the loaded project.", nameof(sourcePath));
+        storePath = RecordStore.ResolvePath(storePath);
         var graph = new LcmGraphReader(cache);
         var fieldTypes = graph.FieldTypes;
         var imports = graph.Read().Select(record => new RecordImport(record, fieldTypes)).ToList();
@@ -78,10 +79,10 @@ public static class LcmRecordBridge
     {
         var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
             ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        var full = Path.GetFullPath(path);
-        var database = Path.GetFullPath(storePath);
+        var full = RecordStore.ResolvePath(path);
+        var database = RecordStore.ResolvePath(storePath);
         return full.Equals(database, comparison) || full.Equals(database + "-wal", comparison) ||
-            full.Equals(database + "-shm", comparison) || full.Equals(database + "-journal", comparison) ||
+            full.Equals(database + "-shm", comparison) || full.Equals(database + "-journal", comparison) || full.Equals(database + ".write.lock", comparison) ||
             full.StartsWith(database + ".resources" + Path.DirectorySeparatorChar, comparison);
     }
 
@@ -116,6 +117,7 @@ public static class LcmRecordBridge
 
     public static async Task<string> ExportAsync(string storePath, string destination)
     {
+        storePath = RecordStore.ResolvePath(storePath);
         if (Directory.Exists(destination) || File.Exists(destination)) throw new IOException("Export requires a fresh directory.");
         IReadOnlyList<GenericRecord> records;
         await using (var store = new RecordStore(storePath)) records = await store.ReadAsync();

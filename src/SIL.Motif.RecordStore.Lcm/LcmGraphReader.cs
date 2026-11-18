@@ -85,7 +85,7 @@ public sealed class LcmGraphReader
 
     public NativeImportCoverage Coverage() => NativeImportCoverage.Capture(objects.Values.Select(o =>
         new ReferenceRecord(o.Guid, o.ClassID, o.Owner?.Guid, ownership.GetValueOrDefault(o.Hvo).Field)),
-        layouts.ToImmutableDictionary(p => p.Key, p => p.Value.ToImmutableDictionary(f => f, metadata.GetFieldType)), TraversalVersion);
+        layouts.ToImmutableDictionary(p => p.Key, p => p.Value.ToImmutableDictionary(f => f, metadata.GetFieldType)), TraversalVersion, Schema());
 
     public JsonElement Schema() => JsonSerializer.SerializeToElement(new
     {

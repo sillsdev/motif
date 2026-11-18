@@ -35,7 +35,7 @@ public sealed class ReferenceResult
     }
 }
 
-public sealed class ReferenceIndexSnapshot
+public sealed partial class ReferenceIndexSnapshot
 {
     private readonly ImmutableDictionary<Guid, ImmutableArray<NativeReference>> incoming;
     private readonly ImmutableDictionary<Guid, ImmutableArray<Guid>> children;
@@ -46,9 +46,10 @@ public sealed class ReferenceIndexSnapshot
     public string Revision { get; }
 
     internal ReferenceIndexSnapshot(string revision, IEnumerable<NativeReference> edges,
-        IEnumerable<ReferenceRecord> records, IEnumerable<string> limitations, ReferenceEvidence? evidence)
+        IEnumerable<ReferenceRecord> records, IEnumerable<string> limitations, ReferenceEvidence? evidence, NativeUsageSchema? usageSchema = null)
     {
         Revision = revision;
+        this.usageSchema = usageSchema;
         var materialized = edges.ToArray();
         incoming = materialized.GroupBy(e => e.Target).ToImmutableDictionary(g => g.Key, g => g.ToImmutableArray());
         children = materialized.Where(e => e.Owning).GroupBy(e => e.Source)

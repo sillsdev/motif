@@ -147,5 +147,76 @@ It does not checkpoint or vacuum the measured store to meet the cap.
 
 Store open currently decodes and canonicalizes every content row, and `ReferencesAsync`
 reads and verifies all snapshots. Hold the returned immutable snapshot for repeated
-lookups. Lazy decoding and private Cebuano open/reference timing belong to the next
-hardening work; no sub-second lookup claim is made by this gate.
+lookups. Lazy decoding belongs to the next hardening work. Private gates report
+store-open and reference-acquisition time separately from repeated planning on a
+retained snapshot; the ready-planning budget does not cover acquisition.
+
+## Deletion-impact planning
+
+A retained reference snapshot can calculate `DeletionImpact` for an entry, sense or
+allomorph. It includes the owning descendants, lists incoming non-owning link
+occurrences from outside that subtree, and joins their native sources through
+ownership to distinct morph bundles and analyses. Multiple fields or bundles in
+one analysis do not inflate the analysis count. The retained LCM schema supplies
+class inheritance and the analysis/bundle owning field; absent or inconsistent
+metadata leaves native counts unavailable. Internal subtree links and the owning
+attachment are not counted as external uses.
+
+`NativeAnalysisCount`, `NativeBundleCount` and `NativeLinkCount` describe the native
+graph only. `AnalysisCount` and `LinkCount` stay null while whole usage closure is
+unavailable. Anchor, conflicting-head and parser witnesses remain visible with their
+revision stamps and limitations. A command must present those limitations with the
+warning; a known native count cannot be presented as a complete count of all uses.
+`RequireDeletionAllowed` refuses partial closure even when its caller acknowledges
+the warning. It does not remove a record or clear a reference.
+
+`SetFieldAsync` is a guarded storage primitive beneath command lowering. It accepts
+native boolean, integer, GUID and atomic-reference fields, with both the expected
+revision and expected whole field value. Reference replacements must name an
+existing object of the retained destination class. Identity, ownership, auxiliary,
+multilingual and vector fields require other typed contracts and are refused.
+A no-op produces no history. Successful writes publish their history, snapshots,
+content roots and rebuilt inverse index in one SQLite transaction. After an attempted
+write fails, reopen its handle; its prior durable state remains available. Commands
+still own semantic validation, intent and audit; this primitive is not a command API.
+
+`PrepareDeletionAsync` reacquires current impact facts and refuses with
+`StaleRevisionException` for an older revision. The caller confirms by passing back the
+`DeletionImpact.PlanToken` it showed (revision, targets, links, analyses, bundles,
+witnesses and limitations); a token for any other plan is refused with
+`DeletionPlanMismatchException`. It refuses incomplete usage closure with
+`IncompleteDeletionClosureException` regardless of acknowledgement. Field writes refuse
+with `StaleRevisionException` or `StalePriorValueException`, so the two are distinguishable.
+Cost warning: `PrepareDeletionAsync` and `SetFieldAsync` each reacquire a full snapshot
+(about 4 s Indonesian, about 85 s Cebuano); M4 must not call them per interaction until
+slice 4's lazy decoding (S7) lands.
+It performs no durable write. Actual deletion, explicit link-handling decisions,
+trusted external-domain coverage and the complete hand-analysis stamp belong to the
+hand-analysis transaction layer.
+
+Import, field writes, index rebuild and replay acquire `<store path>.write.lock`
+exclusively; contention refuses with an I/O error so the caller can retry. Store
+construction also acquires it while opening/initializing. The empty lease file
+remains on disk to keep one stable locking identity. It is not project content and
+is excluded from import. Normal reads use SQLite's committed snapshot; previously
+returned reference snapshots remain immutable facts about their older revision.
+
+All paths to a store pass through `RecordStore.ResolvePath`: file symlinks, parent
+directory symlinks and targets that themselves pass through aliases resolve to the
+same SQLite filename, WAL, writer lease and resource directory. Hard-linked database
+files are unsupported; use one canonical store path or a SQLite backup copy. Do not
+rename or replace database files or aliases while handles are open.
+
+Normal reads hold a deferred SQLite read transaction across publication state,
+revision, snapshots and inverse-table queries. They return one committed point while
+a writer may publish a newer point. A guarded write reuses its ambient transaction.
+A handle whose immutable content cache cannot resolve another handle's publication
+still explicitly requires reopening.
+
+Semantic warning counts require more than the native edge layout. The LCM importer
+captures a digest of the complete source schema in its native coverage basis. The
+index binds the retained schema to that digest, checks observed class identities and
+typed repository membership, and verifies the built-in bundle owning field's type,
+destination and non-custom identity. Missing or inconsistent proof leaves semantic
+native counts null. Earlier imports without the schema digest can still expose
+native edge facts; reimport them to establish semantic warning counts.

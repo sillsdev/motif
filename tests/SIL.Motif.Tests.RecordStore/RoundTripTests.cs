@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Security.Cryptography;
 using SIL.Motif.Host.LcmUtils;
@@ -53,6 +54,44 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
     [PrivateProjectFact("MOTIF_RECORD_STORE_CEBUANO")]
     public async Task CebuanoCopySurvivesStoreReopenAndLcmSerialization() =>
         await Check(CopyProject(Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_CEBUANO")!));
+
+    [PrivateProjectFact("MOTIF_RECORD_STORE_CEBUANO")]
+    public async Task CebuanoCopyProvidesNativeDeletionPlanningWithoutAuthorizingPartialUsage()
+    {
+        var source = CopyProject(Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_CEBUANO")!);
+        var database = Path.Combine(root, "planning.sqlite");
+        NativeExpectations native;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(source, Path.Combine(root, "templates")))
+        {
+            native = new NativeExpectations(cache);
+            await LcmRecordBridge.ImportAsync(cache, source, database);
+        }
+        var watch = Stopwatch.StartNew();
+        await using (var store = new SIL.Motif.RecordStore.RecordStore(database))
+        {
+            output.WriteLine($"Cebuano store open={watch.Elapsed.TotalMilliseconds:F3} ms");
+            watch.Restart();
+            var references = await store.ReferencesAsync();
+            watch.Stop();
+            output.WriteLine($"Cebuano reference snapshot acquisition={watch.Elapsed.TotalMilliseconds:F3} ms");
+            native.CheckReferences(references);
+            var times = new double[100];
+            for (var repetition = 0; repetition < times.Length; repetition++)
+            {
+                var start = Stopwatch.GetTimestamp();
+                var impact = references.DeletionImpact(native.DeletionTarget);
+                Assert.Throws<IncompleteDeletionClosureException>(() => impact.RequireDeletionAllowed(impact.PlanToken));
+                times[repetition] = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+            }
+            Array.Sort(times);
+            output.WriteLine($"Cebuano ready lookup and deletion refusal p95={times[94]:F3} ms; max={times[^1]:F3} ms over 100 queries");
+            Assert.InRange(times[^1], 0, 500);
+            var facts = references.DeletionImpact(native.DeletionTarget);
+            output.WriteLine($"Cebuano native warning: analyses={facts.NativeAnalysisCount}; bundles={facts.NativeBundleCount}; links={facts.NativeLinkCount}; complete={facts.Complete}; deleteAllowed={facts.DeleteAllowed}");
+            await Assert.ThrowsAsync<IncompleteDeletionClosureException>(() => store.PrepareDeletionAsync(native.DeletionTarget, references.Revision, references.DeletionImpact(native.DeletionTarget).PlanToken));
+        }
+        StorageMeasurement.Read(database).Write(output, "Cebuano planning after import/read/dispose");
+    }
 
     [Fact]
     public void GraphReaderCapturesNativeTraversalBeforeCanonicalSorting()
@@ -157,10 +196,23 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
         {
             imported = await store.ReadAsync();
             assets.AssertImported(imported, database);
-            native.Check(imported, await store.ReferencesAsync());
+            var acquisition = Stopwatch.StartNew();
+            var references = await store.ReferencesAsync();
+            acquisition.Stop();
+            native.Check(imported, references);
+            var times = new double[100];
+            for (var repetition = 0; repetition < times.Length; repetition++)
+            {
+                var start = Stopwatch.GetTimestamp();
+                Assert.False(references.DeletionImpact(native.DeletionTarget).DeleteAllowed);
+                times[repetition] = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+            }
+            Array.Sort(times);
+            output.WriteLine($"Reference snapshot acquisition={acquisition.Elapsed.TotalMilliseconds:F3} ms; ready deletion planning p95={times[94]:F3} ms; max={times[^1]:F3} ms over 100 queries");
             var initial = StorageMeasurement.Read(database);
             initial.Write(output, "after import/reopen");
             if (indonesian) Assert.InRange(initial.Total, 1, 16_500_000);
+            await CheckUnrelatedEdit(store, imported, native);
             await store.RegenerateAsync();
             var replayed = await store.ReadAsync();
             Assert.Equal(imported.OrderBy(r => r.Id).Select(LcmGraphReader.Canonical),
@@ -199,6 +251,28 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
             Assert.Equal(bytes, File.ReadAllBytes(LcmRecordBridge.ResourcePath(destination, record.Values["path"].GetString()!)));
         }
         output.WriteLine($"Canonical equality: {after.Count} objects, zero unexempted differences; writing systems={imported.Count(r => r.Kind == "writing-system")}; resources={imported.Count(r => r.Kind == "resource")}");
+    }
+
+    private static async Task CheckUnrelatedEdit(SIL.Motif.RecordStore.RecordStore store,
+        IReadOnlyList<GenericRecord> original, NativeExpectations native)
+    {
+        var entry = original.Single(r => r.Id == native.DeletionTarget);
+        var field = LexEntryTags.kflidHomographNumber;
+        var old = entry.Values[field.ToString()];
+        var next = JsonSerializer.SerializeToElement(old.GetInt32() == int.MaxValue ? old.GetInt32() - 1 : old.GetInt32() + 1);
+        var revision = (await store.ReferencesAsync()).Revision;
+        var changed = await store.SetFieldAsync(entry.Id, field, old, next, revision, Guid.NewGuid());
+        var edited = await store.ReadAsync();
+        var classes = new[] { WfiAnalysisTags.kClassId, WfiMorphBundleTags.kClassId };
+        Assert.Equal(original.Where(r => classes.Contains(r.ClassId)).OrderBy(r => r.Id).Select(LcmGraphReader.Canonical),
+            edited.Where(r => classes.Contains(r.ClassId)).OrderBy(r => r.Id).Select(LcmGraphReader.Canonical));
+        native.Check(edited, await store.ReferencesAsync());
+        await Assert.ThrowsAsync<IncompleteDeletionClosureException>(() => store.PrepareDeletionAsync(entry.Id, changed, null));
+        await store.RebuildReferenceIndexAsync();
+        native.Check(edited, await store.ReferencesAsync());
+        await store.SetFieldAsync(entry.Id, field, next, old, changed, Guid.NewGuid());
+        Assert.Equal(original.OrderBy(r => r.Id).Select(LcmGraphReader.Canonical),
+            (await store.ReadAsync()).OrderBy(r => r.Id).Select(LcmGraphReader.Canonical));
     }
 
     public void Dispose()

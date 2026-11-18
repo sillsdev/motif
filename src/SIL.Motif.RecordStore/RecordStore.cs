@@ -13,7 +13,7 @@ namespace SIL.Motif.RecordStore;
 public sealed record RecordImport(GenericRecord Record, IReadOnlyDictionary<int, int> FieldTypes);
 public sealed record RecordCommit(Guid Id, DateTimeOffset UtcTime, long Counter, int ChangeCount);
 
-public sealed class RecordStore : IAsyncDisposable
+public sealed partial class RecordStore : IAsyncDisposable
 {
     public const int MaximumChangesPerCommit = 500;
     private readonly ServiceProvider provider;
@@ -25,6 +25,9 @@ public sealed class RecordStore : IAsyncDisposable
 
     public RecordStore(string path, TimeProvider? timeProvider = null)
     {
+        path = ResolvePath(path);
+        writeLockPath = path + ".write.lock";
+        using var writer = AcquireWriter();
         var services = new ServiceCollection();
         var connection = new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString();
         services.AddSingleton<RecordContent>();
@@ -83,6 +86,7 @@ public sealed class RecordStore : IAsyncDisposable
 
     public async Task ImportAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage? nativeCoverage = null)
     {
+        using var writer = AcquireWriter();
         if ((await database.Set<StoreState>().AsNoTracking().SingleAsync()).Published || await database.Set<Commit>().AnyAsync()) throw new InvalidOperationException("Import requires an empty store.");
         var imported = records.ToList();
         if (nativeCoverage is not null)
@@ -130,13 +134,12 @@ public sealed class RecordStore : IAsyncDisposable
         }
     }
 
-    public async Task<IReadOnlyList<GenericRecord>> ReadAsync()
+    public Task<IReadOnlyList<GenericRecord>> ReadAsync() => ReadPublishedAsync(async state =>
     {
-        var state = await PublishedStateAsync();
         var records = await ReadRecordsAsync();
         VerifySnapshots(state, records);
         return records;
-    }
+    });
 
     private async Task<IReadOnlyList<GenericRecord>> ReadRecordsAsync()
     {
@@ -150,9 +153,8 @@ public sealed class RecordStore : IAsyncDisposable
         .Select(c => new RecordCommit(c.Id, c.HybridDateTime.DateTime, c.HybridDateTime.Counter, c.ChangeEntities.Count))
         .ToListAsync();
 
-    public async Task<ReferenceIndexSnapshot> ReferencesAsync(ReferenceEvidence? evidence = null)
+    public Task<ReferenceIndexSnapshot> ReferencesAsync(ReferenceEvidence? evidence = null) => ReadPublishedAsync(async state =>
     {
-        var state = await PublishedStateAsync();
         var records = await ReadRecordsAsync();
         VerifySnapshots(state, records);
         var projection = new ReferenceProjection(await ReferencePersistence.ReadAsync(database), records.Where(r => r.Kind == "lcm")
@@ -160,11 +162,12 @@ public sealed class RecordStore : IAsyncDisposable
             state.IndexLimitations.Split('\n', StringSplitOptions.RemoveEmptyEntries));
         var limitations = projection.Limitations.ToList();
         if (projection.Digest() != state.IndexDigest) limitations.Add("Incoming-reference index is corrupt; rebuild it before use.");
-        return new ReferenceIndexSnapshot(state.Revision, projection.Edges, projection.Records, limitations, evidence);
-    }
+        return new ReferenceIndexSnapshot(state.Revision, projection.Edges, projection.Records, limitations, evidence, NativeUsageSchema.Read(records));
+    });
 
     public async Task RebuildReferenceIndexAsync()
     {
+        using var writer = AcquireWriter();
         var state = await PublishedStateAsync();
         var records = await ReadRecordsAsync();
         VerifySnapshots(state, records);
@@ -176,7 +179,7 @@ public sealed class RecordStore : IAsyncDisposable
     private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision)
     {
         var projection = ReferenceProjection.Build(records);
-        await using var transaction = await database.Database.BeginTransactionAsync();
+        await using var transaction = database.Database.CurrentTransaction is null ? await database.Database.BeginTransactionAsync() : null;
         await ReferencePersistence.ReplaceAsync(database, projection.Edges);
         var state = await database.Set<StoreState>().SingleAsync();
         state.Revision = revision;
@@ -187,12 +190,13 @@ public sealed class RecordStore : IAsyncDisposable
         state.ContentDigest = content.Digest();
         state.Published = true;
         await database.SaveChangesAsync();
-        await transaction.CommitAsync();
+        if (transaction is not null) await transaction.CommitAsync();
         database.ChangeTracker.Clear();
     }
 
     private async Task<StoreState> PublishedStateAsync()
     {
+        if (requiresReopen) throw new InvalidOperationException("A failed field write requires reopening this handle.");
         var state = await database.Set<StoreState>().AsNoTracking().SingleAsync();
         if (!state.Published) throw new InvalidOperationException("The store import has not been published.");
         if (state.ContentDigest != content.Digest())
@@ -228,6 +232,7 @@ public sealed class RecordStore : IAsyncDisposable
 
     public async Task RegenerateAsync()
     {
+        using var writer = AcquireWriter();
         var state = await PublishedStateAsync();
         if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database))
             throw new InvalidDataException("History is corrupt; the existing snapshot projection has been preserved.");

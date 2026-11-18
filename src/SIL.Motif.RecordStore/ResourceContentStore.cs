@@ -4,7 +4,7 @@ namespace SIL.Motif.RecordStore;
 
 public sealed class ResourceContentStore(string storePath)
 {
-    private readonly string root = Path.GetFullPath(storePath) + ".resources";
+    private readonly string root = RecordStore.ResolvePath(storePath) + ".resources";
 
     public string Put(byte[] bytes)
     {
