@@ -14,8 +14,8 @@ using SIL.TextEditing.Markdown.Records;
 
 namespace SIL.TextEditing.Project
 {
-    /// <summary>A value of a project object that an exported record file does not hold. Export never drops data silently: each such value is listed here,
-    /// with enough of the value (<see cref="Value"/>) that the list is itself a lossless account of what the file lacks.</summary>
+    /// <summary>A value of a project object that an exported record file does not hold. Export never drops data silently: each such value is listed here with
+    /// its place and reason, and with its value where <see cref="Value"/> keeps it. A null or described <see cref="Value"/> means the report alone does not hold the data.</summary>
     public sealed class UnexportedValue
     {
         internal UnexportedValue(Guid owner, string className, string field, string reason, string? value)
@@ -39,8 +39,10 @@ namespace SIL.TextEditing.Project
         /// <summary>Why the file does not hold it.</summary>
         public string Reason { get; }
 
-        /// <summary>The value as invariant text: a timestamp as ISO 8601 UTC, an integer in digits, binary as base64, the GUIDs of related objects separated
-        /// by commas; null when it is too long to list (binary over 1,024 bytes).</summary>
+        /// <summary>What the report keeps of the value, as invariant text. For most values it is the value itself: a timestamp as ISO 8601 UTC, an integer in
+        /// digits, text as it is, binary up to 1,024 bytes as base64, the GUIDs of related objects separated by commas. It is only a description for binary over 1,024 bytes
+        /// (its length and SHA-256: the bytes are not kept), and it is null when the value could not be read or is a style or a record-level failure; read those from the
+        /// project.</summary>
         public string? Value { get; }
 
         public override string ToString() => Object.ToString("D") + " " + Class + "." + Field + ": " + Reason + (Value == null ? string.Empty : " [" + Value + "]");
@@ -59,6 +61,8 @@ namespace SIL.TextEditing.Project
             Document = document;
             Unexported = unexported;
         }
+
+        internal ProjectRecordExport WithPath(string path) => new ProjectRecordExport(Kind, Guid, path, Text, Document, Unexported);
 
         /// <summary>The record kind (<c>lexicon/entry</c>).</summary>
         public string Kind { get; }
@@ -157,10 +161,23 @@ namespace SIL.TextEditing.Project
                 default:
                     throw new NotSupportedException("Exporting every root of " + found.Name + " is not supported; export objects by GUID.");
             }
-            return roots.Where(r => found.Roots.Any(t => t.Name == r.ClassName))
-                .Select(r => Export(found, r))
-                .OrderBy(e => e.Path, StringComparer.Ordinal).ThenBy(e => e.Guid)
-                .ToList();
+            var outside = roots.FirstOrDefault(r => found.Roots.All(t => t.Name != r.ClassName));
+            if (outside != null) throw new InvalidOperationException(outside.ClassName + " is not a root class of " + found.Name + ", and would have been left out.");
+            var exports = roots.Select(r => Export(found, r)).ToList();
+            // Two records never share a path: a path that more than one record has takes the first eight hex digits of its record's GUID.
+            var shared = new HashSet<string>(exports.GroupBy(e => e.Path, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key), StringComparer.Ordinal);
+            if (shared.Count > 0)
+                exports = exports.Select(e => shared.Contains(e.Path) ? e.WithPath(WithGuidSuffix(e.Path, e.Guid)) : e).ToList();
+            return exports.OrderBy(e => e.Path, StringComparer.Ordinal).ThenBy(e => e.Guid).ToList();
+        }
+
+        static string WithGuidSuffix(string path, Guid guid)
+        {
+            var parsed = ProjectPath.Parse(path)!;
+            var segments = parsed.Segments.ToList();
+            var last = segments[segments.Count - 1];
+            segments[segments.Count - 1] = new ProjectPathSegment(last.Name, null, guid.ToString("N").Substring(0, 8));
+            return new ProjectPath(segments).ToString();
         }
 
         ICmObject Find(Guid guid)
@@ -246,7 +263,9 @@ namespace SIL.TextEditing.Project
                 try { value = Value(obj, flid, field, run); }
                 catch (Exception e) when (e is MarkdownWriteException || e is ArgumentException || e is InvalidOperationException || e is NotSupportedException)
                 {
-                    run.Unexported.Add(new UnexportedValue(obj.Guid, obj.ClassName, _metadata.GetFieldName(flid), "The value could not be converted: " + e.Message, null));
+                    string? kept = null;
+                    try { Describe(obj.Hvo, flid, out kept); } catch (Exception) { kept = null; }
+                    run.Unexported.Add(new UnexportedValue(obj.Guid, obj.ClassName, _metadata.GetFieldName(flid), "The value could not be converted: " + e.Message, kept));
                     continue;
                 }
                 if (value != null && !value.IsEmpty) result[field.Name] = value;
@@ -339,24 +358,38 @@ namespace SIL.TextEditing.Project
             foreach (var alt in found.OrderBy(a => a.Key, StringComparer.Ordinal))
             {
                 if (field.Kind == RecordFieldKind.Rich) { run.Use(alt.Key); result.Add(alt.Key, RichScalar(alt.Value, alt.Key, run, obj, flid)!); }
-                else result.Add(alt.Key, new RecordScalar(alt.Value.Text ?? string.Empty));
+                else
+                {
+                    ReportPlainFormatting(obj, flid, alt.Value, alt.Key, run);
+                    result.Add(alt.Key, new RecordScalar(alt.Value.Text ?? string.Empty));
+                }
             }
             return result;
         }
 
         RecordScalar? PlainFromString(ICmObject obj, int flid, ITsString s, ExportRun run)
         {
-            // A plain or notation field over a formatted string would lose its formatting: the formatting is reported, the characters are kept.
+            ReportPlainFormatting(obj, flid, s, null, run);
+            return new RecordScalar(s.Text ?? string.Empty);
+        }
+
+        /// <summary>A plain or notation field over a formatted string keeps the characters; any property other than the writing system is reported.</summary>
+        void ReportPlainFormatting(ICmObject obj, int flid, ITsString s, string? ws, ExportRun run)
+        {
             for (int i = 0; i < s.RunCount; i++)
             {
                 var props = s.get_Properties(i);
-                if (props.StrPropCount > 0 || props.IntPropCount > 1)
+                bool formatted = props.StrPropCount > 0;
+                for (int k = 0; k < props.IntPropCount && !formatted; k++)
                 {
-                    run.Unexported.Add(new UnexportedValue(obj.Guid, obj.ClassName, _metadata.GetFieldName(flid), "The record field is plain text; the string's formatting is not exported.", null));
-                    break;
+                    props.GetIntProp(k, out int tpt, out _);
+                    formatted = tpt != (int)FwTextPropType.ktptWs;
                 }
+                if (!formatted) continue;
+                run.Unexported.Add(new UnexportedValue(obj.Guid, obj.ClassName, _metadata.GetFieldName(flid),
+                    "The record field is plain text; the string's formatting is not exported" + (ws == null ? "." : " (alternative " + ws + ")."), null));
+                return;
             }
-            return new RecordScalar(s.Text ?? string.Empty);
         }
 
         RecordScalar? RichScalar(ITsString s, string defaultWs, ExportRun run, ICmObject obj, int flid)
@@ -365,7 +398,26 @@ namespace SIL.TextEditing.Project
             var runs = TsStringConversion.ToRuns(s, _writingSystems);
             foreach (var r in runs) run.Use(r.Ws);
             KnownStyles(runs, run, obj, flid);
-            return RecordScalar.RichInline(runs, Options(defaultWs, _writingSystems.DefaultVernacular));
+            var options = Options(defaultWs, _writingSystems.DefaultVernacular);
+            var scalar = RecordScalar.RichInline(runs, options);
+            var source = new Paragraph { Style = options.StyleNames.Normal };
+            source.Props.StrProps[TextPropertyNumbers.NamedStyle] = options.StyleNames.Normal;
+            foreach (var r in runs) source.Runs.Add(r.Clone());
+            if (source.Runs.Count > 0) source.DefaultWs = source.Runs[0].Ws;
+            var again = new Paragraph { Style = options.StyleNames.Normal };
+            again.Props.StrProps[TextPropertyNumbers.NamedStyle] = options.StyleNames.Normal;
+            foreach (var r in MarkdownConverter.ParseInline(scalar.Text, options).Runs) again.Runs.Add(r);
+            if (again.Runs.Count > 0) again.DefaultWs = again.Runs[0].Ws;
+            if (!MarkdownConverter.AreEquivalent(source, again)) ReportNotPreserved(obj, flid, run);
+            return scalar;
+        }
+
+        void ReportNotPreserved(ICmObject obj, int flid, ExportRun run)
+        {
+            string? kept = null;
+            try { Describe(obj.Hvo, flid, out kept); } catch (Exception) { kept = null; }
+            run.Unexported.Add(new UnexportedValue(obj.Guid, obj.ClassName, _metadata.GetFieldName(flid),
+                "Direct formatting that the file's Markdown does not spell, so the file reads back differently from the project.", kept));
         }
 
         RecordScalar? Paragraphs(ICmObject obj, int flid, RecordField field, ExportRun run)
@@ -389,7 +441,11 @@ namespace SIL.TextEditing.Project
             }
             ReportStText(text, run);
             if (paragraphs.Count == 0) return null;
-            return RecordScalar.Rich(paragraphs, Options(Default(field), _writingSystems.DefaultVernacular));
+            var options = Options(Default(field), _writingSystems.DefaultVernacular);
+            var scalar = RecordScalar.Rich(paragraphs, options);
+            if (!MarkdownConverter.AreEquivalent(paragraphs, MarkdownConverter.Parse(scalar.Text, options).Document.Paragraphs.ToList()))
+                ReportNotPreserved(obj, flid, run);
+            return scalar;
         }
 
         /// <summary>A character style the project does not define cannot be read back (<c>fwmd.style.unknown</c>): the run is exported without it and the style is

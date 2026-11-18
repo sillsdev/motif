@@ -350,6 +350,99 @@ namespace SIL.TextEditing.Project.Tests
         }
 
 
+
+        static string Notation(string className, string name, string notation)
+        {
+            var document = System.Xml.Linq.XDocument.Parse(ProjectRecordSchema.LexiconEntryOverlay);
+            document.Root!.Elements("class").Single(e => (string?)e.Attribute("name") == className)
+                .Elements("field").Single(e => (string?)e.Attribute("name") == name).SetAttributeValue("notation", notation);
+            return document.ToString();
+        }
+
+        static ITsString Bold(LcmCache cache, string text, int ws, bool withWs)
+        {
+            var props = TsStringUtils.MakePropsBldr();
+            if (withWs) props.SetIntPropValues((int)FwTextPropType.ktptWs, 0, ws);
+            props.SetIntPropValues((int)FwTextPropType.ktptBold, (int)FwTextPropVar.ktpvEnum, (int)FwTextToggleVal.kttvForceOn);
+            var builder = TsStringUtils.MakeStrBldr();
+            builder.Replace(0, 0, text, props.GetTextProps());
+            return builder.GetString();
+        }
+
+        [Fact]
+        public void FormattingInAPlainAlternativeIsReportedWithItsWritingSystem()
+        {
+            using var fixture = new ProjectFixture();
+            var cache = fixture.Cache;
+            ILexEntry entry = null!;
+            fixture.Change(() =>
+            {
+                entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                entry.Comment.set_String(cache.DefaultAnalWs, Bold(cache, "loud", cache.DefaultAnalWs, true));
+                entry.Comment.set_String(cache.DefaultVernWs, Vern(cache, "quiet"));
+            });
+            var exporter = new ProjectRecordExporter(cache, ProjectRecordSchema.Generate(cache, Notation("LexEntry", "Comment", "test")));
+            var export = exporter.Export(entry.Guid);
+            var lost = Assert.Single(export.Unexported, u => u.Field == "Comment");
+            Assert.Contains("alternative en", lost.Reason);
+            Assert.Equal("loud", ((RecordAlternatives)export.Document.Data["comment"]!)["en"]!.Text);
+        }
+
+        [Fact]
+        public void ASingleDirectPropertyWithNoWritingSystemCountsAsFormatting()
+        {
+            using var fixture = new ProjectFixture();
+            var cache = fixture.Cache;
+            int field = cache.MetaDataCacheAccessor.GetFieldId("LexEntry", "ImportResidue", false);
+            ILexEntry bolded = null!, plain = null!;
+            fixture.Change(() =>
+            {
+                bolded = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                plain = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                Data(cache).SetString(bolded.Hvo, field, Bold(cache, "heavy", cache.DefaultAnalWs, false));
+                Data(cache).SetString(plain.Hvo, field, Anal(cache, "light"));
+            });
+            var exporter = new ProjectRecordExporter(cache, ProjectRecordSchema.Generate(cache, Notation("LexEntry", "ImportResidue", "test")));
+            Assert.Single(exporter.Export(bolded.Guid).Unexported, u => u.Field == "ImportResidue");
+            Assert.DoesNotContain(exporter.Export(plain.Guid).Unexported, u => u.Field == "ImportResidue");
+        }
+
+        [Fact]
+        public void DirectParagraphAndRunFormattingEitherRoundTripsOrIsReported()
+        {
+            using var fixture = new ProjectFixture();
+            var cache = fixture.Cache;
+            IRnGenericRec record = null!;
+            fixture.Change(() =>
+            {
+                var notebook = cache.LangProject.ResearchNotebookOA ?? (cache.LangProject.ResearchNotebookOA = cache.ServiceLocator.GetInstance<IRnResearchNbkFactory>().Create());
+                record = cache.ServiceLocator.GetInstance<IRnGenericRecFactory>().Create();
+                notebook.RecordsOC.Add(record);
+                record.ConclusionsOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
+                var para = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+                record.ConclusionsOA.ParagraphsOS.Add(para);
+                var rules = TsStringUtils.MakePropsBldr();
+                rules.SetIntPropValues((int)FwTextPropType.ktptAlign, (int)FwTextPropVar.ktpvEnum, (int)FwTextAlign.ktalCenter);
+                rules.SetIntPropValues((int)FwTextPropType.ktptFirstIndent, (int)FwTextPropVar.ktpvMilliPoint, 36000);
+                para.StyleRules = rules.GetTextProps();
+                var run = TsStringUtils.MakePropsBldr();
+                run.SetIntPropValues((int)FwTextPropType.ktptWs, 0, cache.DefaultAnalWs);
+                run.SetStrPropValue((int)FwTextPropType.ktptFontFamily, "Arial");
+                var text = TsStringUtils.MakeStrBldr();
+                text.Replace(0, 0, "centred in Arial", run.GetTextProps());
+                para.Contents = text.GetString();
+            });
+            var (exporter, _) = Exporter(fixture, ProjectRecordSchema.NotebookRecordOverlay);
+            var export = exporter.Export(record.Guid);
+            var read = RecordFileReader.Read(export.Text!, exporter.Schema, exporter.CreateReadOptions());
+            var paragraph = ((RecordScalar)read.Document!.Data["conclusions"]!).Paragraphs!.Single();
+            bool keptAlign = paragraph.Props.IntProps.ContainsKey((int)FwTextPropType.ktptAlign) && paragraph.Props.IntProps.ContainsKey((int)FwTextPropType.ktptFirstIndent);
+            bool keptFont = paragraph.Runs.Single().Props.StrProps.ContainsKey((int)FwTextPropType.ktptFontFamily);
+            bool reported = export.Unexported.Any(u => u.Field == "Conclusions" && u.Reason.Contains("Direct formatting"));
+            Assert.True((keptAlign && keptFont) || reported, "direct formatting was lost without a report:\n" + export.Text);
+            Assert.False((keptAlign && keptFont) && reported, "formatting was kept but reported as lost");
+        }
+
         [Fact]
         public void BinaryCustomFieldsAreReportedAsBase64AndALongOneWithoutItsBytes()
         {
