@@ -377,6 +377,105 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
+    public void HandoffExportsARetainedAssessmentWhoseObjectTimingWasSkipped()
+    {
+        using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        using var invoker = NewInvoker();
+        AssessCommandResponse assessment;
+        ObjectTimingPreflight.RowBudgetForTests.Value = 1;
+        try
+        {
+            assessment = RunAssessment(seeded, managedRoot, NewAssessor(), invoker);
+        }
+        finally
+        {
+            ObjectTimingPreflight.RowBudgetForTests.Value = null;
+        }
+
+        var note = Assert.IsType<ObjectTimingNote>(assessment.ObjectTimingNote);
+        Assert.Equal(ObjectTimingNote.Skipped, note.State);
+        Assert.True(note.EstimatedRows > note.RowBudget);
+        Assert.DoesNotContain(assessment.Measurements, item => item.Kind == AssessmentKind.ObjectTiming.ToStoredKind());
+        var before = WalkthroughStoreAssertions.ListInvocations(seeded.FwDataPath);
+        var retained = Assert.Single(before);
+        string? importedDigest = null;
+        var inspectingInvoker = new InspectingInvoker(invoker, request =>
+        {
+            if (request is PanGlossRequest.Import import)
+            {
+                Assert.NotEqual(retained.Assessments[0].Invocation!.SourcePath, import.FwDataPath);
+                importedDigest = BatchInvocationEvidence.DigestFile(import.FwDataPath);
+            }
+        });
+        var destination = Path.Combine(_root, "handoff-timing-skipped");
+
+        var outcome = HandoffCommand.Run(
+            AssessedRequest(seeded, destination, assessment.InvocationId),
+            managedRoot, NewAssessor(), inspectingInvoker, null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(assessment.InvocationId, outcome.Value!.InvocationId);
+        Assert.Equal(assessment.AssessmentIds.Order(), outcome.Value.AssessmentIds.Order());
+        Assert.Equal(retained.Assessments[0].Invocation!.SourceBytesSha256, importedDigest);
+        Assert.Equal(before.Count, WalkthroughStoreAssertions.ListInvocations(seeded.FwDataPath).Count);
+        using var results = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "parse-results.json")));
+        Assert.Equal(assessment.Selection.Words.Order(), results.RootElement.EnumerateArray()
+            .Select(word => word.GetProperty("word").GetString()).Order());
+        var markdown = File.ReadAllText(Path.Combine(destination, "handoff.md"));
+        Assert.Contains(note.Message, markdown, StringComparison.Ordinal);
+        Assert.Contains("ObjectTiming", markdown, StringComparison.Ordinal);
+        Assert.Contains(".motif.toml", markdown, StringComparison.Ordinal);
+        Assert.Equal(markdown, outcome.Value.HandoffMarkdown);
+    }
+
+    [Fact]
+    public void SelectedWordsCanBeHandedOffWhenTheFreshAssessmentSkipsObjectTiming()
+    {
+        using var seeded = NewSeededScratch();
+        using var invoker = NewInvoker();
+        var destination = Path.Combine(_root, "handoff-fresh-timing-skipped");
+        ObjectTimingPreflight.RowBudgetForTests.Value = 1;
+        try
+        {
+            var outcome = HandoffCommand.Run(
+                new HandoffRequest(seeded.FwDataPath, destination,
+                    new SelectionRequest(false, [], ["motifa", "motifb"], false, null), true),
+                NewManagedRoot(), NewAssessor(), invoker, null, CancellationToken.None);
+
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            Assert.Contains("Per-object timing was skipped:", outcome.Value!.HandoffMarkdown, StringComparison.Ordinal);
+            Assert.True(File.Exists(Path.Combine(destination, "parse-results.json")));
+        }
+        finally
+        {
+            ObjectTimingPreflight.RowBudgetForTests.Value = null;
+        }
+    }
+
+    [Fact]
+    public void MissingObjectTimingWithoutAStoredPreflightSkipStillRefusesHandoff()
+    {
+        using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        using var invoker = NewInvoker();
+        var assessment = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordformsAllTexts) { Collect = ["ParseTime"] },
+            managedRoot, NewAssessor(), invoker, null, CancellationToken.None);
+        Assert.True(assessment.Succeeded, assessment.Refusal?.Message);
+        Assert.Null(assessment.Value!.ObjectTimingNote);
+        var destination = Path.Combine(_root, "handoff-no-timing-evidence");
+
+        var outcome = HandoffCommand.Run(
+            AssessedRequest(seeded, destination, assessment.Value.InvocationId),
+            managedRoot, NewAssessor(), invoker, null, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("handoff.statistics-unavailable", outcome.Refusal!.Code);
+        Assert.False(Directory.Exists(destination));
+    }
+
+    [Fact]
     public void UnknownRetainedInvocationRefusesBeforeTouchingTheDestination()
     {
         using var seeded = NewSeededScratch();

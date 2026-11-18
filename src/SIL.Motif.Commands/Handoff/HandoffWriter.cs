@@ -292,7 +292,8 @@ public static class HandoffWriter
     /// </summary>
     internal static string BuildHandoffMarkdown(
         bool hasAssessment, string sampleTextKey, string sampleWord, bool hasTrace = false,
-        bool selectedTrace = false, WarningHandoffScope? warningScope = null, bool hasRequests = false)
+        bool selectedTrace = false, WarningHandoffScope? warningScope = null, bool hasRequests = false,
+        ObjectTimingNote? timingNote = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sampleTextKey);
 
@@ -421,6 +422,7 @@ public static class HandoffWriter
             python read_results.py text {sampleTextKey}
             ```
             {assessmentSection}
+            {timingNote?.Message}
             {traceSection}
             {warningSection}
             """;

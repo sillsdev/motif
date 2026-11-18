@@ -147,6 +147,8 @@ public static class HandoffCommand
                 SelectionProjection selectionProjection;
                 IReadOnlyList<HandoffWriter.AssessedWordStatistics>? assessedWords = null;
                 string? statisticsAssessmentId = null;
+                string? sourceOnlyAssessmentId = null;
+                ObjectTimingNote? timingNote = null;
                 var assessmentIds = new List<string>();
                 string? exportedInvocationId = null;
                 WordTraceResponse? handoffTrace = null;
@@ -241,28 +243,18 @@ public static class HandoffCommand
                     if (sourceRefusal is not null)
                         return CommandOutcome<HandoffCommandResponse>.Refused(sourceRefusal);
 
-                    if (statisticsAssessment?.Invocation is null ||
+                    timingNote = SkippedTimingNote(sourceAssessment.TimingEvidence);
+                    if (statisticsAssessment is null && timingNote is not null)
+                    {
+                        sourceOnlyAssessmentId = sourceAssessment.AssessmentId;
+                    }
+                    else if (statisticsAssessment?.Invocation is null ||
                         string.IsNullOrWhiteSpace(statisticsAssessment.CachePath) ||
                         string.IsNullOrWhiteSpace(statisticsAssessment.CacheDigest))
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.statistics-unavailable", FailureReason.Refused,
                             $"Retained invocation '{request.InvocationId}' has no available statistics evidence.",
                             Fact(("invocationId", request.InvocationId))));
-
-                    try
-                    {
-                        replay = StatsEvidenceReplay.Create(
-                            statisticsAssessment.Invocation, statisticsAssessment.CachePath,
-                            statisticsAssessment.CacheDigest, cancellationToken);
-                    }
-                    catch (Exception exception) when (exception is IOException or InvalidDataException or
-                        UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
-                    {
-                        replay?.Dispose();
-                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
-                            "handoff.statistics-unavailable", FailureReason.Refused, exception.Message,
-                            Fact(("invocationId", request.InvocationId))));
-                    }
 
                     try
                     {
@@ -274,7 +266,6 @@ public static class HandoffCommand
                     catch (Exception exception) when (exception is IOException or InvalidDataException or
                         UnauthorizedAccessException or ArgumentException)
                     {
-                        replay?.Dispose();
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.source-unavailable", FailureReason.Refused, exception.Message,
                             Fact(("invocationId", request.InvocationId))));
@@ -292,7 +283,6 @@ public static class HandoffCommand
                     }
                     if (missingTextId is not null)
                     {
-                        replay.Dispose();
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.text-not-found", FailureReason.InvalidArgument,
                             $"Text '{missingTextId:D}' is not present in the retained Baseline source.",
@@ -306,7 +296,7 @@ public static class HandoffCommand
                         retained.Selection.ResolvedWords, retained.Selection.SourceCounts);
                     assessmentIds.AddRange(retained.Members.Select(member => member.AssessmentId));
                     exportedInvocationId = retained.InvocationId;
-                    statisticsAssessmentId = statisticsAssessment.AssessmentId;
+                    statisticsAssessmentId = statisticsAssessment?.AssessmentId;
                     languageName = LanguageNameOf(sourceReader.Cache);
                     projectName = sourceReader.Cache.ProjectId.Name;
 
@@ -314,7 +304,6 @@ public static class HandoffCommand
                         item.Kind.IsStoredKind(AssessmentKind.ParseTime));
                     if (parseAssessment is null)
                     {
-                        replay.Dispose();
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.statistics-unavailable", FailureReason.Refused,
                             $"Retained invocation '{request.InvocationId}' has no ParseTime Assessment.",
@@ -344,7 +333,12 @@ public static class HandoffCommand
                     assessmentIds.AddRange(assessOutcome.Value!.AssessmentIds);
                     statisticsAssessmentId = assessOutcome.Value.Measurements
                         .SingleOrDefault(item => item.Kind == AssessmentKind.ObjectTiming.ToStoredKind())?.AssessmentId;
-                    if (statisticsAssessmentId is null)
+                    timingNote = assessOutcome.Value.ObjectTimingNote is { State: ObjectTimingNote.Skipped } skipped
+                        ? skipped : null;
+                    if (statisticsAssessmentId is null && timingNote?.State == ObjectTimingNote.Skipped)
+                        sourceOnlyAssessmentId = assessOutcome.Value.Measurements
+                            .Single(item => item.Kind == AssessmentKind.ParseTime.ToStoredKind()).AssessmentId;
+                    else if (statisticsAssessmentId is null)
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.statistics-unavailable", FailureReason.Refused,
                             "The Assessment returned no identified ObjectTiming measurement for this Handoff."));
@@ -379,23 +373,34 @@ public static class HandoffCommand
                     projectName = sourceReader.Cache.ProjectId.Name;
                 }
 
-                if (statisticsAssessmentId is not null && replay is null)
+                var replayAssessmentId = statisticsAssessmentId ?? sourceOnlyAssessmentId;
+                if (replayAssessmentId is not null)
                 {
                     try
                     {
-                        var recorded = new AssessmentRepository(database).Get(statisticsAssessmentId);
-                        if (!recorded.Kind.IsStoredKind(AssessmentKind.ObjectTiming) || recorded.Invocation is null ||
-                            recorded.CachePath is null || recorded.CacheDigest is null)
-                            throw new InvalidDataException("The Handoff's ObjectTiming Assessment has no complete retained evidence.");
-                        replay = StatsEvidenceReplay.Create(recorded.Invocation, recorded.CachePath, recorded.CacheDigest,
-                            cancellationToken);
+                        var recorded = new AssessmentRepository(database).Get(replayAssessmentId);
+                        if (statisticsAssessmentId is null && recorded.Invocation is not null &&
+                            recorded.Kind.IsStoredKind(AssessmentKind.ParseTime) &&
+                            SkippedTimingNote(recorded.TimingEvidence) is { } skippedNote)
+                        {
+                            timingNote = skippedNote;
+                            replay = StatsEvidenceReplay.CreateSourceOnly(recorded.Invocation, cancellationToken);
+                        }
+                        else
+                        {
+                            if (!recorded.Kind.IsStoredKind(AssessmentKind.ObjectTiming) || recorded.Invocation is null ||
+                                recorded.CachePath is null || recorded.CacheDigest is null)
+                                throw new InvalidDataException("The Handoff's ObjectTiming Assessment has no complete retained evidence.");
+                            replay = StatsEvidenceReplay.Create(recorded.Invocation, recorded.CachePath, recorded.CacheDigest,
+                                cancellationToken);
+                        }
                     }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or
                         UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
                     {
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.statistics-unavailable", FailureReason.Refused, exception.Message,
-                            Fact(("assessmentId", statisticsAssessmentId))));
+                            Fact(("assessmentId", replayAssessmentId))));
                     }
                 }
                 using var replayLease = replay;
@@ -462,7 +467,7 @@ public static class HandoffCommand
                     if (openRequests.Length > 0) HandoffWriter.WriteRequestsJson(incoming, openRequests);
                     var handoffMarkdown = HandoffWriter.BuildHandoffMarkdown(
                         request.Assess, sampleTextKey ?? "text", sampleWord, handoffTrace is not null,
-                        request.SelectedTrace is not null, request.WarningScope, openRequests.Length > 0);
+                        request.SelectedTrace is not null, request.WarningScope, openRequests.Length > 0, timingNote);
                     File.WriteAllText(Path.Combine(incoming, HandoffWriter.HandoffMarkdownFileName), handoffMarkdown);
 
                     return null;
@@ -500,6 +505,12 @@ public static class HandoffCommand
         WritingSystemInventoryReader.Read(cache).DefaultVernacular?.Name is { Length: > 0 } name
             ? name
             : "the language";
+
+    private static ObjectTimingNote? SkippedTimingNote(AssessmentTimingEvidence? evidence) =>
+        evidence is { StatisticsUnavailable: true, SkippedEstimatedRows: { } rows, SkippedRowBudget: > 0 } &&
+        rows > evidence.SkippedRowBudget
+            ? ObjectTimingPreflight.Skipped(rows, evidence.SkippedRowBudget.Value)
+            : null;
 
     private static string ResolveCapturedBaselinePath(string managedRoot, BaselineToken token)
     {
