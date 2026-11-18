@@ -114,6 +114,9 @@ namespace SIL.TextEditing.Project
             _objects = new LinkMapper(_paths);
         }
 
+        internal ProjectRecordSchemaResult Result => _result;
+        internal LcmCache Cache => _cache;
+
         /// <summary>The schema the files are written against.</summary>
         public RecordSchema Schema => _result.Schema;
 

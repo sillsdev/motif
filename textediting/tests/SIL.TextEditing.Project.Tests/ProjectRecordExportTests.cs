@@ -7,6 +7,7 @@ using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
+using SIL.TextEditing.Markdown;
 using SIL.TextEditing.Markdown.Records;
 using Xunit;
 
@@ -70,12 +71,12 @@ namespace SIL.TextEditing.Project.Tests
 
         static void ReadsBackClean(ProjectRecordExporter exporter, ProjectRecordExport export)
         {
-            
             Assert.NotNull(export.Text);
             var read = RecordFileReader.Read(export.Text!, exporter.Schema, exporter.CreateReadOptions());
             var errors = read.Diagnostics.Where(d => d.Severity == SIL.TextEditing.Markdown.MarkdownSeverity.Error).ToList();
             Assert.True(errors.Count == 0, export.Path + ": " + string.Join("; ", errors.Select(e => e.Id + " " + e.Message)) + "\n" + export.Text);
             Assert.True(RecordDocument.AreEquivalent(export.Document, read.Document!, exporter.Schema), export.Path + " does not read back equal:\n" + export.Text);
+            ExportOracle.Check(exporter.Cache, exporter.Result, export, read.Document!);
         }
 
         [Fact]
@@ -470,20 +471,92 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
-        public void ExportChangesNothingInTheProject()
+        public void HomographsExportUnderDistinctNumberedPaths()
         {
             using var fixture = new ProjectFixture();
-            int integer = AddCustom(fixture.Cache, "LexEntry", "Count", CellarPropertyType.Integer);
-            int text = AddCustom(fixture.Cache, "LexEntry", "Remark", CellarPropertyType.Unicode);
-            int date = AddCustom(fixture.Cache, "LexEntry", "Seen", CellarPropertyType.GenDate);
-            var entry = MakeEntry(fixture, integer, text, date);
-            var repository = fixture.Cache.ServiceLocator.GetInstance<ICmObjectRepository>();
-            int objects = repository.AllInstances().Count();
-            var modified = entry.DateModified;
+            var cache = fixture.Cache;
+            fixture.Change(() =>
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    var entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                    var allomorph = cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create();
+                    entry.LexemeFormOA = allomorph;
+                    allomorph.Form.set_String(cache.DefaultVernWs, Vern(cache, "palit"));
+                    allomorph.MorphTypeRA = (IMoMorphType)cache.LangProject.LexDbOA.MorphTypesOA.PossibilitiesOS.First();
+                    entry.CitationForm.set_String(cache.DefaultVernWs, Vern(cache, "palit"));
+                }
+            });
             var (exporter, _) = Exporter(fixture, ProjectRecordSchema.LexiconEntryOverlay);
-            exporter.ExportAll("lexicon/entry");
-            Assert.Equal(objects, repository.AllInstances().Count());
-            Assert.Equal(modified, entry.DateModified);
+            var paths = exporter.ExportAll("lexicon/entry").Select(e => e.Path).ToList();
+            Assert.Equal(new[] { "/lexicon/palit(1)", "/lexicon/palit(2)" }, paths.OrderBy(p => p, StringComparer.Ordinal).ToArray());
+        }
+
+        [Fact]
+        public void NotebookRecordsWithOneTitleOrAwkwardTitlesGetDistinctPathsThatParse()
+        {
+            using var fixture = new ProjectFixture();
+            var cache = fixture.Cache;
+            var titles = new[] { "Same", "Same", "a/b#c (d) 100% ok.", "trailing dot.", "ctrl\u0001char", new string('x', 600), "" };
+            fixture.Change(() =>
+            {
+                var notebook = cache.LangProject.ResearchNotebookOA ?? (cache.LangProject.ResearchNotebookOA = cache.ServiceLocator.GetInstance<IRnResearchNbkFactory>().Create());
+                foreach (var title in titles)
+                {
+                    var record = cache.ServiceLocator.GetInstance<IRnGenericRecFactory>().Create();
+                    notebook.RecordsOC.Add(record);
+                    if (title.Length > 0) record.Title = Anal(cache, title);
+                }
+            });
+            var (exporter, _) = Exporter(fixture, ProjectRecordSchema.NotebookRecordOverlay);
+            var exports = exporter.ExportAll("notebook/record");
+            Assert.Equal(titles.Length, exports.Count);
+            Assert.Equal(exports.Count, exports.Select(e => e.Path).Distinct(StringComparer.Ordinal).Count());
+            foreach (var export in exports)
+            {
+                var parsed = ProjectPath.Parse(export.Path);
+                Assert.NotNull(parsed);
+                Assert.Equal(export.Path, parsed!.ToString());
+                ReadsBackClean(exporter, export);
+            }
+        }
+
+        [Fact]
+        public void ExportChangesNothingInTheProjectForAnyKind()
+        {
+            using var fixture = new ProjectFixture();
+            var cache = fixture.Cache;
+            int integer = AddCustom(cache, "LexEntry", "Count", CellarPropertyType.Integer);
+            int text = AddCustom(cache, "LexEntry", "Remark", CellarPropertyType.Unicode);
+            int date = AddCustom(cache, "LexEntry", "Seen", CellarPropertyType.GenDate);
+            MakeEntry(fixture, integer, text, date);
+            fixture.Change(() =>
+            {
+                var notebook = cache.LangProject.ResearchNotebookOA ?? (cache.LangProject.ResearchNotebookOA = cache.ServiceLocator.GetInstance<IRnResearchNbkFactory>().Create());
+                var record = cache.ServiceLocator.GetInstance<IRnGenericRecFactory>().Create();
+                notebook.RecordsOC.Add(record);
+                record.Title = Anal(cache, "Survey");
+                record.DescriptionOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
+                var para = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+                record.DescriptionOA.ParagraphsOS.Add(para);
+                para.Contents = Anal(cache, "Some words.");
+            });
+            var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
+            Dictionary<Guid, DateTime> Snapshot() => repository.AllInstances().OfType<ICmObject>()
+                .ToDictionary(o => o.Guid, o => (o as ICmMajorObject)?.DateModified ?? default);
+            var before = Snapshot();
+            bool dirty = cache.ActionHandlerAccessor.CanUndo();
+            Assert.Equal(0, cache.ActionHandlerAccessor.CurrentDepth);
+            foreach (var (kind, overlay) in new[] { ("lexicon/entry", ProjectRecordSchema.LexiconEntryOverlay), ("notebook/record", ProjectRecordSchema.NotebookRecordOverlay), ("lists/item", ProjectRecordSchema.ListItemOverlay) })
+            {
+                var (exporter, _) = Exporter(fixture, overlay);
+                Assert.NotEmpty(exporter.ExportAll(kind));
+            }
+            var after = Snapshot();
+            Assert.Equal(before.Count, after.Count);
+            Assert.True(before.All(b => after.TryGetValue(b.Key, out var d) && d == b.Value), "an object appeared, vanished or changed its modified time");
+            Assert.Equal(0, cache.ActionHandlerAccessor.CurrentDepth);
+            Assert.Equal(dirty, cache.ActionHandlerAccessor.CanUndo());
         }
 
         [Fact]

@@ -193,6 +193,9 @@ against the same project; every exported file reads back with no error finding a
   project path resolver's spelling, with the homograph number), or `/lexicon/<guid>` for an entry with no name. `notebook/record` is `/notebook/<title>(<first 8 hex digits of the GUID>)`,
   or `/notebook/<guid>` for an untitled record. `lists/item` is `/lists/<list name>/<item guid>`, so renumbering an outline never moves a file. `ExportAll` supports these
   three kinds; a list item is a root when it is a top-level item of its list (its sub-items are inside its record) and a notebook record when it is not a sub-record.
+  `ExportAll` never returns two records with one path: a path that more than one record has takes the first eight hex digits of the record's GUID on its last segment, and it throws
+  if a record's class is not a root of the kind. Characters that a file system forbids (`: * ? "`, Windows reserved names) are the host's job when it names the file.
+  Empty values and empty paragraphs are equal to absent ones in a record, so they are not reported.
 - **Values.** Plain text is a double-quoted string; per-writing-system text is its alternatives in writing-system id order; rich text goes through `TsStringConversion` and
   FieldWorks Markdown (inline for a string, paragraphs for a structured text, a paragraph with no style in the Normal style); integers, Booleans and GUIDs are plain; a
   reference is one FieldWorks Markdown link with `guid=` (a collection in GUID order, a sequence in stored order); an owned object carries its `guid`, and its `class` where the
