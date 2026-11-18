@@ -119,6 +119,21 @@ public sealed class UserDataSweep
     {
         var now = _clock.GetUtcNow().UtcDateTime;
         var failures = new List<string>();
+        foreach (var workspace in Directory.EnumerateDirectories(_root))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!Directory.Exists(Path.Combine(workspace, "artifacts", "effects"))) continue;
+            try
+            {
+                var cleaner = new WorkspaceCleaner(new WorkspaceOwnership(_root));
+                var result = cleaner.CleanupEffects(Path.GetFileName(workspace), new DateTimeOffset(now, TimeSpan.Zero));
+                failures.AddRange(result.Failures.Select(failure => failure.Path + ": " + failure.Message));
+            }
+            catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+            {
+                failures.Add(workspace + ": " + exception.Message);
+            }
+        }
         var liveStores = new Dictionary<string, bool>(PathComparer);
         var forgotten = 0;
         var unaccounted = 0;

@@ -1,11 +1,40 @@
+using System.Collections.Generic;
+using System.Text.Json;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Model.DryRun;
+using SIL.Motif.Model.Effects;
+using SIL.Motif.Projection;
 using SIL.Motif.Projection.Rendering;
+using DryRunResult = SIL.Motif.Model.DryRun.DryRun;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
 public sealed class DryRunOperationRenderingTests
 {
+    [Fact]
+    public void DryRunTextShowsOperationCountsAndOmitsTheFullEffectsByDefault()
+    {
+        var projection = new DryRunProjection("proposal/one", "intent/one", "Baseline",
+            [new("bundle/one", "analysis/wfiMorphBundle/form", [], null)], "effects/one", "footprint/one")
+        {
+            Operations =
+            [
+                new("operation/retarget", "analysis/wfiMorphBundle/setMorph", null, null, [], null),
+                new("operation/delete", "lexical/lexEntry/deleteAlternateForm", null, null, [], null),
+            ],
+        };
+
+        var text = CommandTextRenderer.Render(projection);
+
+        Assert.Contains("analysis/wfiMorphBundle/setMorph: 1", text, StringComparison.Ordinal);
+        Assert.Contains("lexical/lexEntry/deleteAlternateForm: 1", text, StringComparison.Ordinal);
+        Assert.Contains("effects: 1", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("bundle/one", text, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void DryRunTextKeepsTheDependencyAndEffectOperationLinkVisible()
     {
@@ -23,12 +52,72 @@ public sealed class DryRunOperationRenderingTests
             ],
         };
 
-        var text = CommandTextRenderer.Render(projection);
+        var text = CommandTextRenderer.Render(projection, includeEffects: true);
 
         Assert.Contains("operations (2)", text, StringComparison.Ordinal);
         Assert.Contains("dependsOn: operation/retarget", text, StringComparison.Ordinal);
         Assert.Contains("operations: operation/retarget", text, StringComparison.Ordinal);
         Assert.Contains("field=analysis/wfiMorphBundle/form", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DryRunJsonKeepsFullListsAndAddsAnEffectsSummary()
+    {
+        var digest = "sha256:" + new string('a', 64);
+        var projection = new DryRunProjection("proposal/one", "intent/one", "Baseline",
+            [new("bundle/one", "analysis/wfiMorphBundle/form", [], null)], "effects/one", "footprint/one")
+        {
+            Operations = [new("operation/one", "analysis/wfiMorphBundle/setMorph", null, null, [], null)],
+            Baseline = new BaselineToken("project/one", digest, "projection/one", "2024-01-01T00:00:00Z",
+                digest, "session/one", 1),
+        };
+
+        using var json = System.Text.Json.JsonDocument.Parse(ProjectionJson.Serialize(projection));
+        var root = json.RootElement;
+
+        Assert.Equal(1, root.GetProperty("operations").GetArrayLength());
+        Assert.Equal(1, root.GetProperty("effects").GetArrayLength());
+        Assert.Equal(1, root.GetProperty("effectsSummary").GetProperty("operationCount").GetInt32());
+        Assert.Equal(digest, root.GetProperty("effectsSummary").GetProperty("projectHashBefore").GetString());
+    }
+
+    [Fact]
+    public void DryRunProjectionCarriesWarningsFromWarningEffects()
+    {
+        const string warning = "This affix has no feeding stem.";
+        var effect = new ExpectedEffect(CanonicalId.FromGuid(Guid.NewGuid()), "dryRunWarning",
+            new Dictionary<string, string>(), new Dictionary<string, string> { ["warning"] = warning },
+            JsonSerializer.SerializeToElement(new { warning }));
+        var dryRun = new DryRunResult("intent/one", "Baseline", [effect], "effects/one",
+            new BoundDryRunAnchor("intent/one", "footprint/one", "effects/one", "runner", "lcm",
+                "projection", "2026-01-01T00:00:00Z"));
+
+        var projection = DryRunProjectionBuilder.Build("proposal/one", dryRun);
+
+        Assert.Equal(warning, Assert.Single(projection.Warnings));
+        Assert.Equal(warning, Assert.Single(projection.EffectsSummary.Warnings));
+    }
+
+    [Fact]
+    public void ApplyTextShowsCountsAndHidesTheEffectsUntilRequested()
+    {
+        var projection = new ApplyProjection("proposal/one", false, "Applied.",
+            [new("bundle/one", "analysis/wfiMorphBundle/form", [], null)], "effects/one",
+            new AppliedLogEntrySummary("proposal/one", "now", "person", "intent/one"))
+        {
+            OperationKinds = ["analysis/wfiMorphBundle/setMorph"],
+        };
+
+        var summary = CommandTextRenderer.Render(projection);
+        var detailed = CommandTextRenderer.Render(projection, includeEffects: true);
+
+        Assert.Contains("analysis/wfiMorphBundle/setMorph: 1", summary, StringComparison.Ordinal);
+        Assert.Contains("effects: 1", summary, StringComparison.Ordinal);
+        Assert.DoesNotContain("bundle/one", summary, StringComparison.Ordinal);
+        Assert.Contains("bundle/one", detailed, StringComparison.Ordinal);
+        using var json = System.Text.Json.JsonDocument.Parse(ProjectionJson.Serialize(projection));
+        Assert.Equal(1, json.RootElement.GetProperty("effects").GetArrayLength());
+        Assert.Equal(1, json.RootElement.GetProperty("effectsSummary").GetProperty("effectCount").GetInt32());
     }
 
     [Fact]

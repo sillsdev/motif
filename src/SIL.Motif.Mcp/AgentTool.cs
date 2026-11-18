@@ -27,6 +27,8 @@ internal sealed class ServerContext(string projectPath, string productVersion, I
 
     public string ProductVersion { get; } = productVersion;
 
+    public string WorkerRoot => runner.Options.Root;
+
     public ActivityLog Activity { get; } = activity;
 
     public ToolProfile Profile { get; } = profile;

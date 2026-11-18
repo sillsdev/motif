@@ -202,16 +202,55 @@ try
     // RenderProposal below already fully renders text or JSON; the bottom printer must not wrap it again.
     var alreadyRendered = false;
 
-    CommandResult RenderProposal<T>(CommandOutcome<T> outcome, bool successAsJson = true) where T : class
+    CommandResult RenderProposal<T>(CommandOutcome<T> outcome, bool successAsJson = true,
+        bool includeEffects = false) where T : class
     {
         alreadyRendered = true;
-        return ProposalCommandRenderer.Render(outcome, asJson, successAsJson);
+        return ProposalCommandRenderer.Render(outcome, asJson, successAsJson, includeEffects);
     }
 
-    CommandResult RenderCommand<T>(CommandOutcome<T> outcome, bool successAsJson = true) where T : class?
+    CommandResult RenderCommand<T>(CommandOutcome<T> outcome, bool successAsJson = true,
+        bool includeEffects = false) where T : class?
     {
         alreadyRendered = true;
-        return CommandTextRenderer.Render(outcome, asJson, successAsJson);
+        return CommandTextRenderer.Render(outcome, asJson, successAsJson, includeEffects);
+    }
+
+    CommandOutcome<ApplyPendingResult> WriteApplyEffectsArtifact(
+        CommandOutcome<ApplyPendingResult> outcome, string projectPath)
+    {
+        if (!outcome.Succeeded || outcome.Value?.Receipt is not { } receipt) return outcome;
+        try
+        {
+            var path = EffectsArtifactWriter.WriteApply(ResolveRoot(), projectPath, receipt.ProposalId,
+                receipt.EffectDigest, receipt.Effects);
+            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(
+                receipt with { EffectsFile = path }, outcome.Value.Summary));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(
+                receipt with { Warnings = receipt.Warnings.Append("The full effects file could not be written.").ToArray() },
+                outcome.Value.Summary));
+        }
+    }
+
+    CommandOutcome<DryRunProjection> WriteDryRunEffectsArtifact(
+        CommandOutcome<DryRunProjection> outcome, string projectPath, string jobId)
+    {
+        if (!outcome.Succeeded || outcome.Value is null) return outcome;
+        try
+        {
+            var path = EffectsArtifactWriter.WriteDryRun(ResolveRoot(), projectPath, jobId, outcome.Value);
+            return CommandOutcome<DryRunProjection>.Success(outcome.Value with { EffectsFile = path });
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return CommandOutcome<DryRunProjection>.Success(outcome.Value with
+            {
+                Warnings = outcome.Value.Warnings.Append("The full effects file could not be written.").ToArray(),
+            });
+        }
     }
 
     // --apply stages the change, then applies every pending change like apply --all-pending.
@@ -225,7 +264,8 @@ try
         if (!staged.Succeeded) return RenderCommand(staged);
         var request = new ApplyPendingRequest(projectPath, DraftId: null, Revision: null, Attribution: attribution);
         var applied = RunWithConsoleCancellation(cancellationToken => RenderProposal(
-            PendingChangesWorkflow.Apply(request, cancellationToken)));
+            WriteApplyEffectsArtifact(PendingChangesWorkflow.Apply(request, cancellationToken), projectPath),
+            includeEffects: flags.ContainsKey("effects")));
         if (applied.ExitCode == 0) startRunner(projectPath, error.WriteLine);
         return applied;
     }
@@ -962,10 +1002,12 @@ try
                 return Usage(
                     "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] [--json]", asJson);
             }
+            if (flags.ContainsKey("effects") && !flags.ContainsKey("wait"))
+                return Usage("Usage: motif dry-run --project <fwdata> <proposalId> --wait [--effects] [--json]", asJson);
             var dryRunWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                 "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] " +
-                "[--wait-timeout-ms <ms>] [--json]", asJson, out dryRunWaitTimeout) is { } dryRunUsage)
+                "[--wait-timeout-ms <ms>] [--effects] [--json]", asJson, out dryRunWaitTimeout) is { } dryRunUsage)
                 return dryRunUsage;
             result = RenderCommand(
                 JobCommands.EnqueueDryRun(
@@ -977,10 +1019,12 @@ try
             {
                 var dryRunJobId = result.Output.Trim();
                 var dryRunWakeWarnings = RunnerWarnings.Once(error.WriteLine);
-                result = RenderCommand(JobCommands.WaitForDryRun(new WaitForDryRunRequest(
+                var waitedDryRun = JobCommands.WaitForDryRun(new WaitForDryRunRequest(
                     dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, dryRunWaitTimeout),
                     wakeRunner: () => startRunner(dryRunProject, dryRunWakeWarnings),
-                    reportStall: error.WriteLine));
+                    reportStall: error.WriteLine);
+                result = RenderCommand(WriteDryRunEffectsArtifact(waitedDryRun, dryRunProject, dryRunJobId),
+                    includeEffects: flags.ContainsKey("effects"));
             }
             break;
 
@@ -1126,12 +1170,13 @@ try
                     !flags.TryGetValue("project", out var pendingApplyProject))
                     return Usage(
                         "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] " +
-                        "[--autonomous] [--message <text>] [--note] [--json]", asJson);
+                        "[--autonomous] [--message <text>] [--note] [--effects] [--json]", asJson);
                 var pendingRequest = new ApplyPendingRequest(pendingApplyProject,
                     DraftId: null, Revision: flags.GetValueOrDefault("revision"),
                     Attribution: applyAttribution);
                 result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
-                    PendingChangesWorkflow.Apply(pendingRequest, cancellationToken)));
+                    WriteApplyEffectsArtifact(PendingChangesWorkflow.Apply(pendingRequest, cancellationToken),
+                        pendingApplyProject), includeEffects: flags.ContainsKey("effects")));
                 if (result.ExitCode == 0) startRunner(pendingApplyProject, error.WriteLine);
                 break;
             }
@@ -1144,7 +1189,8 @@ try
                 var proposalRequest = new ApplyProposalRequest(proposalApplyProject, flags["proposal"],
                     flags.GetValueOrDefault("revision"), applyAttribution);
                 result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
-                    PendingChangesWorkflow.Apply(proposalRequest, cancellationToken)));
+                    WriteApplyEffectsArtifact(PendingChangesWorkflow.Apply(proposalRequest, cancellationToken),
+                        proposalApplyProject), includeEffects: flags.ContainsKey("effects")));
                 if (result.ExitCode == 0) startRunner(proposalApplyProject, error.WriteLine);
                 break;
             }
@@ -1154,13 +1200,14 @@ try
             {
                 return Usage(
                     "Usage: motif apply <proposalId> --project <fwdata> " +
-                    "[--force] [--autonomous] [--message <text>] [--note] [--json]", asJson);
+                    "[--force] [--autonomous] [--message <text>] [--note] [--effects] [--json]", asJson);
             }
             var applyForce = flags.ContainsKey("force");
-            result = RenderProposal(
-                PendingChangesWorkflow.Apply(
-                    new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyForce,
-                        applyAttribution)));
+            result = RenderProposal(WriteApplyEffectsArtifact(
+                    PendingChangesWorkflow.Apply(
+                        new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyForce,
+                            applyAttribution)), applyProject),
+                includeEffects: flags.ContainsKey("effects"));
             if (result.ExitCode == 0) startRunner(applyProject, error.WriteLine);
             break;
 
@@ -3569,7 +3616,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "word-results" or "refresh-report" or "trace" or "apply" or "bulk")
+            if (name is "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects")
             {
                 flags[name] = "true";
                 continue;

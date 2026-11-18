@@ -11,19 +11,27 @@ namespace SIL.Motif.Projection;
 public static class ApplyProjectionBuilder
 {
     public static ApplyProjection Build(string proposalId, Receipt receipt, ReadinessProjection? readiness = null,
-        IReadOnlyList<CitedOperationRow>? citations = null) => new(
-        proposalId,
-        receipt.AlreadyApplied,
-        receipt.ResultNote,
-        EffectProjectionBuilder.Build(receipt.ActualEffects),
-        receipt.EffectDigest,
-        new AppliedLogEntrySummary(
-            receipt.AppliedLogEntry.ProposalId.ToString("D"),
-            receipt.AppliedLogEntry.TimestampUtc,
-            receipt.AppliedLogEntry.User,
-            receipt.AppliedLogEntry.IntentDigest,
-            receipt.Mode,
-            receipt.Message),
-        readiness,
-        citations);
+        IReadOnlyList<CitedOperationRow>? citations = null, IReadOnlyList<string>? operationKinds = null)
+    {
+        var effects = EffectProjectionBuilder.Build(receipt.ActualEffects);
+        return new ApplyProjection(
+            proposalId,
+            receipt.AlreadyApplied,
+            receipt.ResultNote,
+            effects,
+            receipt.EffectDigest,
+            new AppliedLogEntrySummary(
+                receipt.AppliedLogEntry.ProposalId.ToString("D"),
+                receipt.AppliedLogEntry.TimestampUtc,
+                receipt.AppliedLogEntry.User,
+                receipt.AppliedLogEntry.IntentDigest,
+                receipt.Mode,
+                receipt.Message),
+            readiness,
+            citations)
+        {
+            OperationKinds = operationKinds ?? [],
+            Warnings = DryRunProjectionBuilder.ExtractWarnings(effects),
+        };
+    }
 }

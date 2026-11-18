@@ -28,6 +28,17 @@
           "operationIds": []
         }
       ],
+      "effectsSummary": {
+        "effectCount": "\u003Cnumber\u003E",
+        "effectsFile": "\u003Cstring\u003E",
+        "operationCount": "\u003Cnumber\u003E",
+        "operationsByKind": {
+          "analysis/wfiWordform/setSpellingStatus": "\u003Cnumber\u003E"
+        },
+        "warningCount": "\u003Cnumber\u003E",
+        "warnings": [],
+        "warningsOmitted": "\u003Cnumber\u003E"
+      },
       "proposalId": "\u003Cstring\u003E",
       "readiness": {
         "correctnessAssessmentExempt": "\u003Cfalse\u003E",

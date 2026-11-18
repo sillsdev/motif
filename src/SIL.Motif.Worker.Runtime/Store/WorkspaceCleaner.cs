@@ -182,8 +182,9 @@ public sealed class WorkspaceCleaner
         var workspace = Path.Combine(_ownership.WorkerRoot, projectKey);
         var work = Path.Combine(workspace, "work");
         if (!ValidateWorkTarget(work, work, out var error, allowRoot: true)) return Failure(work, error!);
-        var deleted = new List<string>();
-        var failures = new List<WorkspaceCleanupFailure>();
+        var effects = CleanupEffects(projectKey);
+        var deleted = new List<string>(effects.DeletedPaths);
+        var failures = new List<WorkspaceCleanupFailure>(effects.Failures);
         try
         {
             if (!_fileSystem.Exists(work)) return new WorkspaceCleanupResult(deleted, failures);
@@ -204,6 +205,53 @@ public sealed class WorkspaceCleaner
             failures.Add(new WorkspaceCleanupFailure(work, "Unable to enumerate owned work.", exception));
         }
         return new WorkspaceCleanupResult(new ReadOnlyCollection<string>(deleted), new ReadOnlyCollection<WorkspaceCleanupFailure>(failures));
+    }
+
+    /// <summary>
+    /// Retains effects for seven days, with a 64 MiB per-project budget after a one-day writer grace.
+    /// Abandoned sibling staging files follow the same policy. Only owned regular files are eligible.
+    /// </summary>
+    public WorkspaceCleanupResult CleanupEffects(string projectKey, DateTimeOffset? now = null)
+    {
+        if (!IsSafeSegment(projectKey))
+            return Failure(_ownership.WorkerRoot, "Project key must be one safe path segment.");
+        var root = Path.Combine(_ownership.WorkerRoot, projectKey, "artifacts", "effects");
+        if (!_ownership.IsOwned(root)) return Failure(root, "The effects root is not worker-owned.");
+        var deleted = new List<string>();
+        var failures = new List<WorkspaceCleanupFailure>();
+        try
+        {
+            if (!Directory.Exists(root)) return new(deleted, failures);
+            var files = new List<FileInfo>();
+            foreach (var path in Directory.EnumerateFileSystemEntries(root))
+            {
+                if (!_ownership.IsOwned(path) ||
+                    (File.GetAttributes(path) & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0)
+                {
+                    failures.Add(new(path, "Only owned regular effects files may be swept."));
+                    continue;
+                }
+                if (path.EndsWith(".json", StringComparison.Ordinal) || path.EndsWith(".json.tmp", StringComparison.Ordinal))
+                    files.Add(new FileInfo(path));
+            }
+            var bytes = files.Sum(file => file.Length);
+            var utc = (now ?? DateTimeOffset.UtcNow).UtcDateTime;
+            foreach (var file in files.OrderBy(file => file.LastWriteTimeUtc))
+            {
+                var age = utc - file.LastWriteTimeUtc;
+                if (age < TimeSpan.FromDays(7) && (bytes <= 64L * 1024 * 1024 || age < TimeSpan.FromDays(1)))
+                    continue;
+                var result = DeleteExact(file.FullName);
+                deleted.AddRange(result.DeletedPaths);
+                failures.AddRange(result.Failures);
+                if (result.Succeeded) bytes -= file.Length;
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            failures.Add(new(root, "Unable to sweep owned effects.", exception));
+        }
+        return new(deleted, failures);
     }
 
     private WorkspaceCleanupResult DeleteExact(string target)

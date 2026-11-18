@@ -517,12 +517,12 @@
   },
   "apply": {
     "title": "Apply with Readiness override",
-    "description": "Applies one Proposal using its already bound Dry Run. The optional --message must be one line of at most 128 characters. The optional --force option skips Readiness checks only; MCP never applies and Autonomous mode refuses --force.",
+    "description": "Applies one Proposal using its already bound Dry Run; --force skips Readiness checks only, and Autonomous mode refuses it. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies.",
     "source": "Hand-written from command behavior."
   },
   "apply --all-pending": {
     "title": "Apply pending changes",
-    "description": "Applies the current pending changes to the FieldWorks project as one unit of work. The optional --message must be one line of at most 128 characters. A current Dry Run can waive Correctness for a judgment-only Proposal; mixed changes still need normal Readiness evidence.",
+    "description": "Applies current pending changes to the FieldWorks project as one unit of work; the optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and a current Dry Run can waive Correctness for a judgment-only Proposal while mixed changes still need normal Readiness evidence.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "writing-systems": {
@@ -1922,7 +1922,7 @@
   },
   "dry-run --wait": {
     "title": "Read a Dry Run",
-    "description": "Waits for the Dry Run of a Draft or finalized Proposal and reads its effects. Content and Baseline identify whether the evidence remains current.",
+    "description": "Waits for a Draft or finalized Proposal's Dry Run and prints operation counts, warnings, the Baseline hash and the effects-file path. Add --effects for the full terminal list; --json keeps the full operations and effects arrays with an effectsSummary.",
     "source": "Authored from ADR 0009 and the typed command contract."
   },
   "remove-operations": {
@@ -1972,7 +1972,7 @@
   },
   "apply --proposal": {
     "title": "Apply one Proposal",
-    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. The optional --message must be one line of at most 128 characters. MCP never applies, and this command has no Readiness override of its own.",
+    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. The optional --message must be one line of at most 128 characters. Text summarizes counts and points to the full effects file; --effects prints it, --json keeps the full effects array, and MCP never applies or offers a Readiness override here.",
     "source": "Hand-written from command behavior."
   },
   "label": {

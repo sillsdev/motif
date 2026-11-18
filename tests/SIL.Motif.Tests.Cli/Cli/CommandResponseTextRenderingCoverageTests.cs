@@ -68,7 +68,13 @@ public sealed class CommandResponseTextRenderingCoverageTests
 
         try
         {
-            render.Invoke(null, [outcome, false, true]);
+            var arguments = render.GetParameters().Select(parameter => parameter.Position switch
+            {
+                0 => outcome,
+                1 => false,
+                _ => parameter.DefaultValue,
+            }).ToArray();
+            render.Invoke(null, arguments);
             return true;
         }
         catch (TargetInvocationException exception) when (

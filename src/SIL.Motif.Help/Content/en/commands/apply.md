@@ -5,8 +5,10 @@ This CLI command applies a Proposal using its already bound Dry Run. The optiona
 ## Usage
 
 ```text
-motif apply <proposalId> --project <fwdata> [--force] [--autonomous] [--message <text>] [--note] [--json]
+motif apply <proposalId> --project <fwdata> [--force] [--autonomous] [--message <text>] [--note] [--effects] [--json]
 ```
+
+Text output summarizes operation counts by kind, observed effects and warnings, then gives the path to the complete effects list under the project's worker-root `artifacts/effects` folder. Add `--effects` to print the list in the terminal. `--json` keeps the full `effects` array and adds an `effectsSummary` object.
 
 After Apply has saved the project, the next Dry Run or Trial of another Proposal captures a new Baseline by itself. A save made outside Motif is different: a Dry Run is refused with `change.refresh-required` until you capture a new Baseline with `motif baseline capture` (in the window, Refresh).
 
@@ -23,3 +25,7 @@ Every Receipt records how the Proposal was applied, `person` or `autonomous`, an
 `--note` also writes one Notebook record of the "Motif change" type in the same unit of work as the changes: its title is the Proposal's label, and its text is the Rationale, the Receipt reference and the message. It is off by default. A later Proposal applied with `--note` writes its own note, and the earlier note remains.
 
 Apply is not available to MCP clients. The other Released paths are [Apply one Proposal](cmd:apply%20--proposal) and [Apply pending changes](cmd:apply%20--all-pending).
+
+Apply does not report before/after project hashes. Its save check verifies the applied-log entry; the effect digest identifies the effects list.
+
+The summary shows at most ten warnings, each limited to 240 characters, with total and omitted counts. Complete warnings remain in the effects list. Effects files expire after seven days; a per-project 64 MiB budget may remove files older than one day sooner.

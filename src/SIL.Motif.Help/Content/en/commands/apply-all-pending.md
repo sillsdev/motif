@@ -13,7 +13,7 @@ When Apply is refused with `apply.not-ready`, the current evidence does not sati
 ## Example
 
 ```text
-motif apply --all-pending --project <project> [--revision <r>] [--autonomous] [--message <text>] [--note] [--json]
+motif apply --all-pending --project <project> [--revision <r>] [--autonomous] [--message <text>] [--note] [--effects] [--json]
 ```
 
 ## Mode, message and note
@@ -24,8 +24,12 @@ Every Receipt records how the Proposal was applied, `person` or `autonomous`, an
 
 ## What it prints
 
-The JSON response has `ok`, `applied`, `summary` and, when changes were applied, a `receipt` that carries the Readiness decision. Reload after `applied: true`. When the response carries `apply.reconciliation-needed`, a write may have happened or an earlier one was never confirmed. Reload, open Motif to check the project, and do not retry automatically. A no-op does not need a reload, and an uncertain change stays pending for review.
+Text output summarizes operation counts by kind, observed effects and warnings, then gives the path to the complete effects list under the project's worker-root `artifacts/effects` folder. Add `--effects` to print the list in the terminal. The JSON response has `ok`, `applied`, `summary` and, when changes were applied, a `receipt` that carries the Readiness decision and full `effects` array, with an `effectsSummary` alongside it. Reload after `applied: true`. When the response carries `apply.reconciliation-needed`, a write may have happened or an earlier one was never confirmed. Reload, open Motif to check the project, and do not retry automatically. A no-op does not need a reload, and an uncertain change stays pending for review.
 
 ## Related commands
 
 - [Read the project Overview](cmd:overview) reads stored evidence after you reload the project.
+
+Apply does not report before/after project hashes. Its save check verifies the applied-log entry; the effect digest identifies the effects list.
+
+The summary shows at most ten warnings, each limited to 240 characters, with total and omitted counts. Complete warnings remain in the effects list. Effects files expire after seven days; a per-project 64 MiB budget may remove files older than one day sooner.

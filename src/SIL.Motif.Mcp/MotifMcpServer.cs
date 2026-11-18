@@ -272,7 +272,9 @@ public static class MotifMcpServer
     {
         var detailed = (args["detail"]?.GetValue<string>() ?? tool.DefaultDetail) == "detailed";
         var limit = args["limit"]?.GetValue<int>() ?? 25;
-        var value = tool.Tool.HasDetail && !detailed ? ResultShaper.Concise(outcome.Value, limit) : outcome.Value;
+        var isDryRun = tool.Tool.Name == "motif_dry_run";
+        var value = tool.Tool.HasDetail && !detailed && !isDryRun
+            ? ResultShaper.Concise(outcome.Value, limit) : outcome.Value;
         var envelope = new JsonObject { ["ok"] = true, ["result"] = value?.DeepClone() };
         if (outcome.Next is not null) envelope["next"] = outcome.Next;
         var text = envelope.ToJsonString(Json);

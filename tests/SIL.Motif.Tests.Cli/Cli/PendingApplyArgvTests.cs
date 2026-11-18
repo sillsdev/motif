@@ -28,6 +28,34 @@ namespace SIL.Motif.Tests.Cli;
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
 {
+    [Theory]
+    [InlineData("apply", true)]
+    [InlineData("apply", false)]
+    [InlineData("dry-run", true)]
+    [InlineData("dry-run", false)]
+    public async Task EffectsSwitchKeepsTheProposalPositionalBeforeOrAfterIt(string verb, bool before)
+    {
+        var (path, _) = ReleasedProjectWithWord("effects-switch");
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "effects-switch-worker");
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var id = CanonicalId.Mint().Value;
+        var arguments = new List<string> { verb };
+        if (before) arguments.Add("--effects");
+        arguments.Add(id);
+        if (!before) arguments.Add("--effects");
+        arguments.AddRange(["--project", path, "--json"]);
+        if (verb == "dry-run") arguments.Add("--wait");
+
+        var result = await CliInProcess.RunAsync(root, null, true, arguments.ToArray());
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Empty(result.Output);
+        Assert.DoesNotContain("Usage:", result.Error);
+        using var failure = JsonDocument.Parse(result.Error);
+        Assert.Equal("proposal.not-found", failure.RootElement.GetProperty("code").GetString());
+    }
+
     [Fact]
     public async Task PendingWordApprovalRefusesBothCliAndEngineApply()
     {
@@ -176,9 +204,24 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
 
         var apply = await Cli("apply", "--all-pending", "--project", path, "--json");
         Assert.True(apply.ExitCode == 0, apply.Error + apply.Output);
+        using (var applied = JsonDocument.Parse(apply.Output))
+        {
+            var receipt = applied.RootElement.GetProperty("receipt");
+            Assert.True(receipt.GetProperty("effectsSummary").GetProperty("operationCount").GetInt32() > 0);
+            Assert.True(File.Exists(receipt.GetProperty("effectsSummary").GetProperty("effectsFile").GetString()));
+            Assert.True(receipt.GetProperty("effects").GetArrayLength() > 0);
+        }
 
         var dryRun = await Cli("dry-run", "--project", path, laterId, "--wait", "--json");
         Assert.True(dryRun.ExitCode == 0, dryRun.Error + dryRun.Output);
+        using (var dryRunResult = JsonDocument.Parse(dryRun.Output))
+        {
+            var projection = dryRunResult.RootElement;
+            Assert.True(projection.GetProperty("effectsSummary").GetProperty("operationCount").GetInt32() > 0);
+            Assert.True(File.Exists(projection.GetProperty("effectsSummary").GetProperty("effectsFile").GetString()));
+            Assert.True(projection.GetProperty("operations").GetArrayLength() > 0);
+            Assert.True(projection.GetProperty("effects").GetArrayLength() > 0);
+        }
         var trial = await Cli("trial", "--project", path, laterId, "--words", wordsPath, "--wait", "--json");
         Assert.True(trial.ExitCode == 0, trial.Error + trial.Output);
         // A waited Trial prints its review summary with the gate, not the job's status.

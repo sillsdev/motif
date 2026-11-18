@@ -12,12 +12,24 @@ public static class DryRunProjectionBuilder
 {
     public static DryRunProjection Build(string proposalId, DryRunResult dryRun, Proposal? proposal = null)
     {
+        var effects = proposal is null ? EffectProjectionBuilder.Build(dryRun.ExpectedEffects) :
+            EffectProjectionBuilder.Build(dryRun.ExpectedEffects, proposal);
         var projection = new DryRunProjection(proposalId, dryRun.IntentDigest, dryRun.BaselineNote,
-            proposal is null ? EffectProjectionBuilder.Build(dryRun.ExpectedEffects) :
-                EffectProjectionBuilder.Build(dryRun.ExpectedEffects, proposal), dryRun.EffectDigest,
-            dryRun.Anchor.FootprintDigest);
+            effects, dryRun.EffectDigest, dryRun.Anchor.FootprintDigest)
+        {
+            Warnings = ExtractWarnings(effects),
+        };
         return proposal is null ? projection : projection with { Operations = OrderOperations(proposal) };
     }
+
+    internal static IReadOnlyList<string> ExtractWarnings(IReadOnlyList<EffectView> effects) => effects
+        .Where(effect => effect.Field == "dryRunWarning")
+        .Select(effect => effect.Preview is { ValueKind: System.Text.Json.JsonValueKind.Object } preview &&
+            preview.TryGetProperty("warning", out var warning) && warning.ValueKind == System.Text.Json.JsonValueKind.String
+                ? warning.GetString() : null)
+        .OfType<string>()
+        .Distinct(System.StringComparer.Ordinal)
+        .ToArray();
 
     private static IReadOnlyList<ProposalOperationView> OrderOperations(Proposal proposal)
     {

@@ -1427,7 +1427,7 @@
   },
   {
     "name": "motif_dry_run",
-    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nRead a Dry Run. Waits for the Dry Run of a Draft or finalized Proposal and reads its effects. Content and Baseline identify whether the evidence remains current.\nCommand: dry-run --wait. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nJobId: The exact job identity returned when evidence was queued.\nTimeout: The maximum wait for a result before returning progress.",
+    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nRead a Dry Run. Waits for a Draft or finalized Proposal\u0027s Dry Run and prints operation counts, warnings, the Baseline hash and the effects-file path. Add --effects for the full terminal list; --json keeps the full operations and effects arrays with an effectsSummary.\nCommand: dry-run --wait. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nJobId: The exact job identity returned when evidence was queued.\nTimeout: The maximum wait for a result before returning progress.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1444,6 +1444,10 @@
           "description": "How long to wait for the result. Default 40.",
           "minimum": 1,
           "maximum": 300
+        },
+        "effects": {
+          "type": "boolean",
+          "description": "Include the complete operation and effects lists in the result."
         },
         "detail": {
           "type": "string",

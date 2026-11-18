@@ -262,26 +262,47 @@ public static class CommandTextRenderer
         return sb.ToString();
     }
 
-    public static string Render(DryRunProjection projection)
+    public static string Render(DryRunProjection projection, bool includeEffects = false)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"DryRun of Proposal {projection.ProposalId}");
         sb.AppendLine($"  intentDigest: {projection.IntentDigest}");
         sb.AppendLine($"  baseline:     {projection.BaselineNote}");
-        if (projection.Operations.Count > 0)
+        var summary = projection.EffectsSummary;
+        sb.AppendLine($"  operations: {summary.OperationCount}");
+        foreach (var (kind, count) in summary.OperationsByKind)
+            sb.AppendLine($"    {kind}: {count}");
+        sb.AppendLine($"  effects: {summary.EffectCount}");
+        if (summary.Warnings.Count == 0)
+            sb.AppendLine("  warnings: none");
+        else
         {
-            sb.AppendLine($"  operations ({projection.Operations.Count}):");
-            foreach (var operation in projection.Operations)
-            {
-                sb.AppendLine($"    {operation.OperationId}  ({operation.Kind})");
-                if (operation.DependsOn.Count > 0)
-                    sb.AppendLine($"      dependsOn: {string.Join(", ", operation.DependsOn)}");
-                if (operation.Citation is not null)
-                    sb.AppendLine($"      cites:     {operation.Citation}");
-            }
+            sb.AppendLine($"  warnings: {summary.WarningCount} ({summary.WarningsOmitted} omitted)");
+            foreach (var warning in summary.Warnings) sb.AppendLine($"    {warning}");
         }
-        sb.AppendLine($"  effects ({projection.Effects.Count}):");
-        AppendEffects(sb, projection.Effects);
+        if (summary.ProjectHashBefore is { } before)
+            sb.AppendLine($"  project hash before: {before}");
+        if (summary.ProjectHashAfter is { } after)
+            sb.AppendLine($"  project hash after:  {after}");
+        if (summary.EffectsFile is { } effectsFile)
+            sb.AppendLine($"  full effects: {effectsFile}");
+        if (includeEffects)
+        {
+            if (projection.Operations.Count > 0)
+            {
+                sb.AppendLine($"  operations ({projection.Operations.Count}):");
+                foreach (var operation in projection.Operations)
+                {
+                    sb.AppendLine($"    {operation.OperationId}  ({operation.Kind})");
+                    if (operation.DependsOn.Count > 0)
+                        sb.AppendLine($"      dependsOn: {string.Join(", ", operation.DependsOn)}");
+                    if (operation.Citation is not null)
+                        sb.AppendLine($"      cites:     {operation.Citation}");
+                }
+            }
+            sb.AppendLine($"  effects ({projection.Effects.Count}):");
+            AppendEffects(sb, projection.Effects);
+        }
         sb.AppendLine($"  effectDigest: {projection.EffectDigest}");
         sb.AppendLine($"  footprintDigest: {projection.FootprintDigest}");
         sb.AppendLine("  (bound-DryRun anchor recorded on the manifest; 'apply' will require it)");
@@ -386,7 +407,7 @@ public static class CommandTextRenderer
     private static string Counts(SIL.Motif.Contract.Retirement.RetirementOpinionCounts counts) =>
         $"{counts.Approved} Approved, {counts.Disapproved} Disapproved, {counts.Unknown} Unknown, {counts.Mixed} Mixed";
 
-    public static string Render(ApplyProjection projection)
+    public static string Render(ApplyProjection projection, bool includeEffects = false)
     {
         var sb = new StringBuilder();
         if (projection.AlreadyApplied)
@@ -398,10 +419,28 @@ public static class CommandTextRenderer
         {
             sb.AppendLine($"Applied Proposal {projection.ProposalId}.");
             sb.AppendLine($"  {projection.ResultNote}");
+        }
+
+        var summary = projection.EffectsSummary;
+        sb.AppendLine($"  operations: {summary.OperationCount}");
+        foreach (var (kind, count) in summary.OperationsByKind)
+            sb.AppendLine($"    {kind}: {count}");
+        sb.AppendLine($"  effects: {summary.EffectCount}");
+        if (summary.Warnings.Count == 0)
+            sb.AppendLine("  warnings: none");
+        else
+        {
+            sb.AppendLine($"  warnings: {summary.WarningCount} ({summary.WarningsOmitted} omitted)");
+            foreach (var warning in summary.Warnings) sb.AppendLine($"    {warning}");
+        }
+        if (summary.EffectsFile is { } effectsFile)
+            sb.AppendLine($"  full effects: {effectsFile}");
+        if (includeEffects)
+        {
             sb.AppendLine($"  effects ({projection.Effects.Count}):");
             AppendEffects(sb, projection.Effects);
-            sb.AppendLine($"  effectDigest: {projection.EffectDigest}");
         }
+        sb.AppendLine($"  effectDigest: {projection.EffectDigest}");
 
         if (projection.Readiness is { } readiness)
         {

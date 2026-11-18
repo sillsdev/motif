@@ -2213,7 +2213,8 @@ public static partial class ProposalCommands
                             item.Citation))
                         .ToArray();
                     projection = ApplyProjectionBuilder.Build(id, receipt, readinessProjection,
-                        citations.Length == 0 ? null : citations);
+                        citations.Length == 0 ? null : citations,
+                        envelope.Operations.Select(operation => operation.Kind).ToArray());
                 }
                 catch (Exception exception)
                 {
@@ -2222,7 +2223,10 @@ public static partial class ProposalCommands
                         receipt.EffectDigest, new AppliedLogEntrySummary(
                             receipt.AppliedLogEntry.ProposalId.ToString("D"), receipt.AppliedLogEntry.TimestampUtc,
                             receipt.AppliedLogEntry.User, receipt.AppliedLogEntry.IntentDigest,
-                            receipt.Mode, receipt.Message), readinessProjection);
+                            receipt.Mode, receipt.Message), readinessProjection)
+                    {
+                        OperationKinds = envelope.Operations.Select(operation => operation.Kind).ToArray(),
+                    };
                 }
                 if (readiness.CorrectnessAssessmentExemptionReason is { } reason)
                     postApplyNotes.Add("Correctness Assessment not required: " + reason);

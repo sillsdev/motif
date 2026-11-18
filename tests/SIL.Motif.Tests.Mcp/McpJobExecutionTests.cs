@@ -42,6 +42,22 @@ public sealed class McpJobExecutionTests(PristineProjectFixture pristine)
         var result = dryRun.GetProperty("result");
         Assert.True(result.TryGetProperty("evidenceCurrent", out var evidenceCurrent), dryRun.ToString());
         Assert.True(evidenceCurrent.GetBoolean(), dryRun.ToString());
+        var summary = result.GetProperty("effectsSummary");
+        Assert.Equal(0, summary.GetProperty("operationCount").GetInt32());
+        Assert.Equal(0, summary.GetProperty("effectCount").GetInt32());
+        Assert.False(result.TryGetProperty("operations", out _), dryRun.ToString());
+        Assert.False(result.TryGetProperty("effects", out _), dryRun.ToString());
+        var effectsFile = summary.GetProperty("effectsFile").GetString()!;
+        Assert.Contains(Path.Combine("artifacts", "effects"), effectsFile, StringComparison.Ordinal);
+        using (var effects = JsonDocument.Parse(File.ReadAllText(effectsFile)))
+            Assert.Equal(JsonValueKind.Array, effects.RootElement.ValueKind);
+
+        var detailed = await session.CallAsync("motif_dry_run", project.FwDataPath,
+            ("proposal", proposalId), ("job", result.GetProperty("job").GetString()),
+            ("wait_seconds", 60), ("effects", true));
+        var detailedResult = detailed.GetProperty("result");
+        Assert.True(detailedResult.TryGetProperty("operations", out _), detailed.ToString());
+        Assert.True(detailedResult.TryGetProperty("effects", out _), detailed.ToString());
         Assert.False(firstRootOwner.Process.HasExited,
             "The first root's runner exited before the MCP Dry Run completed.");
     }

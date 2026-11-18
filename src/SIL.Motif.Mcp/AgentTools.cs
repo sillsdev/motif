@@ -842,6 +842,7 @@ internal static class AgentTools
             Schema.Object([("proposal", Schema.String("The proposal id."), true),
                 ("job", Schema.String("A job id from an earlier 'running' result, to keep waiting for it."), false),
                 ("wait_seconds", Schema.Integer("How long to wait for the result. Default 40.", 1, 300), false),
+                ("effects", Schema.Boolean("Include the complete operation and effects lists in the result."), false),
                 ..Schema.Verbosity()]),
             false,
             false,
@@ -1648,7 +1649,26 @@ internal static class AgentTools
             context.ProjectPath, context.ProductVersion, proposal, job, wait), cancellation,
             wakeRunner: context.StartRunner), cancellation);
         if (!waited.Succeeded) return StillRunning(context, waited.Refusal!, job) ?? ToolOutcome.Refused(waited.Refusal!);
-        var result = JsonNode.Parse(ProjectionJson.Serialize(waited.Value!))!.AsObject();
+        var projection = waited.Value!;
+        try
+        {
+            var effectsFile = EffectsArtifactWriter.WriteDryRun(context.WorkerRoot, context.ProjectPath, job,
+                projection);
+            projection = projection with { EffectsFile = effectsFile };
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            projection = projection with
+            {
+                Warnings = projection.Warnings.Append("The full effects file could not be written.").ToArray(),
+            };
+        }
+        var result = JsonNode.Parse(ProjectionJson.Serialize(projection))!.AsObject();
+        if (args.OptionalBoolean("effects") != true)
+        {
+            result.Remove("operations");
+            result.Remove("effects");
+        }
         result["job"] = job;
         return ToolOutcome.Ok(result, "If the changes fit, run motif_trial on sample words; if not, fix the draft first.", job);
     }

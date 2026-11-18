@@ -25,13 +25,14 @@ public static class ProposalCommandRenderer
     /// success even when the caller passed <c>--json</c>; a refusal always follows <paramref name="asJson"/>
     /// regardless, matching every verb's documented failure contract.
     /// </param>
-    public static CommandResult Render<T>(CommandOutcome<T> outcome, bool asJson, bool successAsJson = true)
+    public static CommandResult Render<T>(CommandOutcome<T> outcome, bool asJson, bool successAsJson = true,
+        bool includeEffects = false)
         where T : class =>
         outcome.Succeeded
-            ? RenderSuccess(outcome.Value!, asJson && successAsJson)
+            ? RenderSuccess(outcome.Value!, asJson && successAsJson, includeEffects)
             : RenderRefusal(outcome.Refusal!, asJson);
 
-    private static CommandResult RenderSuccess<T>(T value, bool asJson) where T : class
+    private static CommandResult RenderSuccess<T>(T value, bool asJson, bool includeEffects) where T : class
     {
         if (asJson)
             return new CommandResult(0, ProjectionJson.Serialize(value) + Environment.NewLine);
@@ -44,8 +45,8 @@ public static class ProposalCommandRenderer
             ProposalDetailProjection p => ProjectionText.Render(p),
             PreflightResponse p => RenderPreflight(p),
             PendingChangesSnapshot p => RenderPendingChanges(p),
-            ApplyProjection p => ProjectionText.Render(p),
-            ApplyPendingResult { Receipt: { } receipt } => ProjectionText.Render(receipt),
+            ApplyProjection p => ProjectionText.Render(p, includeEffects),
+            ApplyPendingResult { Receipt: { } receipt } => ProjectionText.Render(receipt, includeEffects),
             ApplyPendingResult => "Nothing to apply." + Environment.NewLine,
             AppliedLogProjection p => ProjectionText.Render(p),
             CitationTraceResponse r => RenderCitations(r),

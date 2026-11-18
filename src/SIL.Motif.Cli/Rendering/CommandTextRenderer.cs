@@ -39,13 +39,14 @@ public static class CommandTextRenderer
     /// and must keep printing its bare id even when the caller passed <c>--json</c>; a refusal always
     /// follows <paramref name="asJson"/> regardless.
     /// </param>
-    public static CommandResult Render<T>(CommandOutcome<T> outcome, bool asJson, bool successAsJson = true)
+    public static CommandResult Render<T>(CommandOutcome<T> outcome, bool asJson, bool successAsJson = true,
+        bool includeEffects = false)
         where T : class? =>
         outcome.Succeeded
-            ? RenderSuccess(outcome.Value!, asJson && successAsJson)
+            ? RenderSuccess(outcome.Value!, asJson && successAsJson, includeEffects)
             : RenderRefusal(outcome.Refusal!, asJson);
 
-    private static CommandResult RenderSuccess<T>(T value, bool asJson) where T : class?
+    private static CommandResult RenderSuccess<T>(T value, bool asJson, bool includeEffects) where T : class?
     {
         if (asJson)
             return new CommandResult(0, (value is WordTraceResponse trace ? TraceJson(trace) :
@@ -71,7 +72,7 @@ public static class CommandTextRenderer
                 r.Changed ? CliStrings.StoreRelocateFormat : CliStrings.StoreRelocateUnchangedFormat,
                 r.OldProjectPath, r.NewProjectPath, r.IdentityEvidence) +
                 (r.OldProjectStillExists ? CliStrings.StoreRelocateOldStillExists : "") + Environment.NewLine,
-            DryRunProjection p => ProjectionText.Render(p),
+            DryRunProjection p => ProjectionText.Render(p, includeEffects),
             RetirementProposalReviewProjection p => ProjectionText.Render(p),
             RetirementReviewQueryResponse r => RenderRetirementReview(r),
             CorpusAddedResponse r => RenderCorpusAdded(r),

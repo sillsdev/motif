@@ -149,7 +149,7 @@ internal sealed class ProcessReplacementProof(PristineProjectFixture pristine, I
         Assert.DoesNotContain(dryRun.ExpectedEffects, effect => senses.Concat(analyses).Append(entryId).Contains(effect.CanonicalId) &&
             effect.Field == "class" && effect.After.Count == 0);
         var text = SIL.Motif.Projection.Rendering.CommandTextRenderer.Render(
-            SIL.Motif.Projection.DryRunProjectionBuilder.Build(proposal.ProposalId.Value, dryRun, shuffled));
+            SIL.Motif.Projection.DryRunProjectionBuilder.Build(proposal.ProposalId.Value, dryRun, shuffled), includeEffects: true);
         Assert.Contains("Delete affix process", text);
         Assert.Contains("Retarget ad hoc prohibition", text);
         Assert.Contains("Keep the entry, senses, grammatical analyses", text);

@@ -22,4 +22,21 @@ public sealed record ApplyProjection(
     string EffectDigest,
     AppliedLogEntrySummary AppliedLogEntry,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReadinessProjection? Readiness = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<CitedOperationRow>? Citations = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<CitedOperationRow>? Citations = null)
+{
+    /// <summary>The operation kinds in the applied Proposal.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> OperationKinds { get; init; } = [];
+
+    /// <summary>Warnings reported with the applied effects.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> Warnings { get; init; } = [];
+
+    /// <summary>The file containing the complete effects list, when one was written.</summary>
+    [JsonIgnore]
+    public string? EffectsFile { get; init; }
+
+    /// <summary>The operation counts, warning previews and effects-file path for this result.</summary>
+    public OperationEffectSummary EffectsSummary => OperationEffectSummary.Create(
+        OperationKinds, Effects.Count, Warnings, effectsFile: EffectsFile);
+}

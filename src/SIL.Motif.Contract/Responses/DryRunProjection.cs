@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -20,4 +22,17 @@ public sealed record DryRunProjection(
 
     /// <summary>The Proposal's operations in declared dependency order, with prerequisites named explicitly.</summary>
     public IReadOnlyList<ProposalOperationView> Operations { get; init; } = [];
+
+    /// <summary>Warnings attached to the completed Dry Run.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> Warnings { get; init; } = [];
+
+    /// <summary>The file containing the complete effects list, when one was written.</summary>
+    [JsonIgnore]
+    public string? EffectsFile { get; init; }
+
+    /// <summary>The operation counts, warnings, project hash and effects-file path for this result.</summary>
+    public OperationEffectSummary EffectsSummary => OperationEffectSummary.Create(
+        Operations.Select(operation => operation.Kind), Effects.Count, Warnings,
+        Baseline?.SemanticSnapshotDigest, effectsFile: EffectsFile);
 }

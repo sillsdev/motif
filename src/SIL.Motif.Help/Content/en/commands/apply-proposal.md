@@ -9,7 +9,7 @@ Use it after reviewing a Proposal and trying it. The Proposal's latest Trial mus
 ## Example
 
 ```text
-motif apply --proposal <id> --project <project> [--autonomous] [--message <text>] [--note] --json
+motif apply --proposal <id> --project <project> [--autonomous] [--message <text>] [--note] [--effects] [--json]
 ```
 
 ## Mode, message and note
@@ -20,7 +20,7 @@ Every Receipt records how the Proposal was applied, `person` or `autonomous`, an
 
 ## What it prints
 
-The JSON response has `ok`, `applied`, and a one-line `summary`, as `apply --all-pending` does. A Proposal that has not been tried is refused with `apply.trial-missing`; one that changed since its Trial is refused with `apply.trial-stale`. If the response contains `apply.reconciliation-needed`, reload and inspect the project because a write may have happened.
+Text output summarizes operation counts by kind, observed effects and warnings, then gives the path to the complete effects list under the project's worker-root `artifacts/effects` folder. Add `--effects` to print the list in the terminal. The JSON response has `ok`, `applied`, a one-line `summary` and the full `effects` array inside its `receipt`, with an `effectsSummary` alongside it. A Proposal that has not been tried is refused with `apply.trial-missing`; one that changed since its Trial is refused with `apply.trial-stale`. If the response contains `apply.reconciliation-needed`, reload and inspect the project because a write may have happened.
 
 ## Readiness
 
@@ -29,3 +29,7 @@ Apply can be refused with `apply.not-ready` when the current Trial has no Correc
 ## Related commands
 
 See [Review a Proposal's changes](cmd:proposal%20review) and [Apply pending changes](cmd:apply%20--all-pending).
+
+Apply does not report before/after project hashes. Its save check verifies the applied-log entry; the effect digest identifies the effects list.
+
+The summary shows at most ten warnings, each limited to 240 characters, with total and omitted counts. Complete warnings remain in the effects list. Effects files expire after seven days; a per-project 64 MiB budget may remove files older than one day sooner.
