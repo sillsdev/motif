@@ -161,14 +161,14 @@ apply; absent hints use analysis. Mixed ordered hints are unsupported. The lexic
 `LexPronunciation.Tone` field vernacular; this changes the earlier lexicon schema's analysis default. Timestamps, binary and general dates
 have no schema kind and must be excluded.
 
-Custom fields on included classes are appended after all overlay fields, in metadata order, including inherited
+Custom fields on included classes are appended after all overlay fields, sorted by declaring class then field name (ordinal), including inherited
 custom fields. Their keys use `custom-<declaring-class>-<field-name>`, percent-encoding UTF-8 bytes for `%`, whitespace, control
 characters and characters forbidden in field paths or file names. The encoding is reversible and separates custom
 names from overlay keys; overlays cannot include custom fields by name or use the `custom-` prefix. An overlay may
 exclude a custom field by name. Excluded and unsupported custom fields are listed once in `OmittedCustomFields`,
 with their declaring class, name and reason, so the host can report data the schema does not represent.
 
-The schema id stays the overlay id when the project has no custom fields. Otherwise it appends `-custom-` and the
+The schema id stays the overlay id when the project has no custom fields. Otherwise it inserts `-custom-` and the
 first 24 lowercase hexadecimal digits of SHA-256 over the sorted, length-prefixed custom-field signatures in the
 whole project. Each signature names the declaring class, field name, metadata type, destination class, writing-system
-hint and list-root GUID. Excluded and unsupported fields participate. Cache-local field IDs and display labels do not.
+hint and list-root GUID. The suffix goes before a trailing `.json`, so `x-v1.json` becomes `x-v1-custom-<hex>.json`. Excluded and unsupported fields participate. Cache-local field IDs and display labels do not.

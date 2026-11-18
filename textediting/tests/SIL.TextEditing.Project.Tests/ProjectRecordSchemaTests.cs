@@ -143,7 +143,7 @@ namespace SIL.TextEditing.Project.Tests
             metadata.AddCustomField("MoForm", "AddedField", CellarPropertyType.Unicode, 0);
             metadata.AddCustomField("MoStemAllomorph", "SecondField", CellarPropertyType.Integer, 0);
             var type = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).Schema.ObjectType("MoStemAllomorph")!;
-            Assert.Equal(new[] { "custom-MoStemAllomorph-SecondField", "custom-MoForm-AddedField" },
+            Assert.Equal(new[] { "custom-MoForm-AddedField", "custom-MoStemAllomorph-SecondField" },
                 type.Fields.Skip(type.Fields.Count - 2).Select(f => f.Name));
             Assert.Equal(RecordFieldKind.Text, type.Field("custom-MoForm-AddedField")!.Kind);
         }
@@ -176,11 +176,26 @@ namespace SIL.TextEditing.Project.Tests
             c.AddCustomField("RnGenericRec", "First", CellarPropertyType.Integer, 0);
             c.AddCustomField("LexEntry", "Second", CellarPropertyType.Integer, 0);
             string id = ProjectRecordSchema.Generate(first.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id;
-            Assert.StartsWith(plain + "-custom-", id);
+            Assert.StartsWith(plain.Substring(0, plain.Length - ".json".Length) + "-custom-", id);
+            Assert.EndsWith(".json", id);
             Assert.Equal(id, ProjectRecordSchema.Generate(second.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id);
             Assert.NotEqual(id, ProjectRecordSchema.Generate(third.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id);
             Assert.Equal(plain.Length + "-custom-".Length + 24, id.Length);
             Assert.Equal(id, ProjectRecordSchema.Generate(second.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id);
+        }
+
+        [Fact]
+        public void CustomFieldKeyOrderDoesNotDependOnMetadataOrder()
+        {
+            using var first = new ProjectFixture();
+            using var second = new ProjectFixture();
+            foreach (var (fixture, names) in new[] { (first, new[] { "Alpha", "Beta" }), (second, new[] { "Beta", "Alpha" }) })
+                foreach (string name in names)
+                    ((IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor).AddCustomField("RnGenericRec", name, CellarPropertyType.Integer, 0);
+            var a = ProjectRecordSchema.Generate(first.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema;
+            var b = ProjectRecordSchema.Generate(second.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema;
+            Assert.Equal(a.Id, b.Id);
+            Assert.Equal(a.Kind("notebook/record")!.Root.Fields.Select(f => f.Name), b.Kind("notebook/record")!.Root.Fields.Select(f => f.Name));
         }
 
         [Fact]

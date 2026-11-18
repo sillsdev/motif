@@ -101,7 +101,10 @@ namespace SIL.TextEditing.Project
                         else if (managed.IsCustom(field)) omitted[field] = new OmittedCustomField(className, fieldName, "Excluded by overlay.");
                     }
                 }
-                foreach (int field in managed.GetFields(id, true, -1))
+                foreach (int field in managed.GetFields(id, true, -1)
+                    .OrderBy(f => managed.IsCustom(f) ? 1 : 0)
+                    .ThenBy(f => managed.IsCustom(f) ? metadata.GetOwnClsName(f) : "", StringComparer.Ordinal)
+                    .ThenBy(f => managed.IsCustom(f) ? metadata.GetFieldName(f) : "", StringComparer.Ordinal))
                 {
                     if (decisions.Contains(field)) continue;
                     if (!managed.IsCustom(field)) throw new ArgumentException("Unmentioned metadata field " + metadata.GetOwnClsName(field) + "." + metadata.GetFieldName(field) + " on " + pair.Key + ".");
@@ -151,7 +154,9 @@ namespace SIL.TextEditing.Project
             signatures.Sort(StringComparer.Ordinal);
             var bytes = Encoding.UTF8.GetBytes(string.Concat(signatures.Select(s => s.Length.ToString(CultureInfo.InvariantCulture) + ":" + s)));
             using var hash = SHA256.Create();
-            return id + "-custom-" + string.Concat(hash.ComputeHash(bytes).Take(12).Select(b => b.ToString("x2", CultureInfo.InvariantCulture)));
+            string suffix = "-custom-" + string.Concat(hash.ComputeHash(bytes).Take(12).Select(b => b.ToString("x2", CultureInfo.InvariantCulture)));
+            const string extension = ".json";
+            return id.EndsWith(extension, StringComparison.Ordinal) ? id.Substring(0, id.Length - extension.Length) + suffix + extension : id + suffix;
         }
 
         static string? UnsupportedCustomOwnership(int field, IFwMetaDataCache m, IFwMetaDataCacheManaged managed,
