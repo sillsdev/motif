@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Projects;
@@ -505,7 +506,7 @@ public sealed class StatsCacheStoreTests : IDisposable
         using (var insert = connection.CreateCommand())
         {
             insert.CommandText = "INSERT INTO Proposals (ProposalId, Status, DraftJson) VALUES ('p', 'proposed', $draft);";
-            insert.Parameters.AddWithValue("$draft", $"{{\"source\":\"{cited}\"}}");
+            insert.Parameters.AddWithValue("$draft", JsonSerializer.Serialize(new { source = cited }));
             insert.ExecuteNonQuery();
         }
 
