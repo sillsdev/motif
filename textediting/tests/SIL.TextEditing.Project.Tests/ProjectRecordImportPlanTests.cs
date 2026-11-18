@@ -566,6 +566,24 @@ namespace SIL.TextEditing.Project.Tests
             Assert.Equal(4, allowing.ChangeSet.Changes.Count);
         }
 
+        [Fact]
+        public void TheNamesPassedToTheHostAreFieldWorksMetadataNamesNeverRecordKeys()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var text = Edited(exporter, exporter.Export(w.Entry.Guid), d =>
+            {
+                d.Data["custom-LexEntry-Count"] = RecordScalar.Of(43);
+                ((RecordAlternatives)SenseAt(d, 0)["gloss"]!).Add("en", new RecordScalar("purchase"));
+            });
+            var host = new Writable();
+            Assert.Empty(Plan(exporter, text, host).ChangeSet.Refusals);
+            // A custom field is asked by the class it was added to and its metadata name; a model field by the declaring class and the metadata spelling (Gloss, not gloss).
+            Assert.Equal(new[] { "write LexEntry.Count", "write LexSense.Gloss" }, host.Asked.OrderBy(a => a, StringComparer.Ordinal).ToArray());
+            Assert.DoesNotContain(host.Asked, a => a.Contains("custom-", StringComparison.Ordinal));
+        }
+
         // ------------------------------------------------------------------ delete by omission
 
         [Fact]
