@@ -157,10 +157,10 @@ namespace SIL.TextEditing.Markdown.Records
     /// record itself, and the field written as the Markdown body, if the kind has one (owner decision R-6).</summary>
     public sealed class RecordKind
     {
-        internal RecordKind(string name, RecordObjectType root, int pathSegments, RecordField? body)
+        internal RecordKind(string name, IReadOnlyList<RecordObjectType> roots, int pathSegments, RecordField? body)
         {
             Name = name;
-            Root = root;
+            Roots = roots;
             PathSegments = pathSegments;
             BodyField = body;
         }
@@ -168,7 +168,11 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>What the file's <c>record:</c> key says.</summary>
         public string Name { get; }
 
-        public RecordObjectType Root { get; }
+        /// <summary>The first root type, retained for single-root callers.</summary>
+        public RecordObjectType Root => Roots[0];
+
+        /// <summary>Allowed concrete root types. Multiple types require a class in record-data.</summary>
+        public IReadOnlyList<RecordObjectType> Roots { get; }
 
         /// <summary>How many segments of a <c>root:</c> path name the record (<c>/lexicon/palit(2)</c> is 2). The segments after them walk the record's
         /// owned objects: a field name, then for a sequence a 1-based index (<c>/lexicon/palit(2)/senses/1</c>).</summary>
@@ -228,11 +232,11 @@ namespace SIL.TextEditing.Markdown.Records
         public RecordObjectType? ObjectType(string name) => _types.TryGetValue(name, out var t) ? t : null;
 
         /// <summary>The field at a schema path from a kind's root object: field names joined by <c>/</c>, no indices or writing systems
-        /// (<c>senses/examples/translations/translation</c>). Null when the path names no field.</summary>
+        /// (<c>senses/examples/translations/translation</c>). Null when the path names no field or the kind has several root types.</summary>
         public RecordField? FieldAt(string kind, string path)
         {
             var k = Kind(kind);
-            if (k == null || path == null) return null;
+            if (k == null || path == null || k.Roots.Count != 1) return null;
             var type = k.Root;
             RecordField? field = null;
             foreach (string name in path.Split('/'))
@@ -256,7 +260,7 @@ namespace SIL.TextEditing.Markdown.Records
     {
         readonly string _id;
         readonly List<RecordObjectTypeBuilder> _types = new List<RecordObjectTypeBuilder>();
-        readonly List<(string Name, string Type, int Segments, string? Body)> _kinds = new List<(string, string, int, string?)>();
+        readonly List<(string Name, string[] Types, int Segments, string? Body)> _kinds = new List<(string, string[], int, string?)>();
 
         /// <param name="id">What a file's <c>schema:</c> says: the schema's id, also its JSON Schema's <c>$id</c>.</param>
         public RecordSchemaBuilder(string id)
@@ -280,10 +284,19 @@ namespace SIL.TextEditing.Markdown.Records
         /// <param name="bodyField">The root type's field written as the Markdown body, or null for none: a rich field of paragraphs, one writing system.</param>
         public RecordSchemaBuilder Kind(string name, string rootType, int pathSegments, string? bodyField = null)
         {
+            return Kind(name, new[] { rootType }, pathSegments, bodyField);
+        }
+
+        /// <summary>Declares a record kind with alternative root types selected by class.</summary>
+        public RecordSchemaBuilder Kind(string name, string[] rootTypes, int pathSegments, string? bodyField = null)
+        {
+            if (rootTypes == null || rootTypes.Length == 0 || rootTypes.Any(string.IsNullOrEmpty) || rootTypes.Distinct(StringComparer.Ordinal).Count() != rootTypes.Length)
+                throw new ArgumentException("A record kind needs distinct root types.", nameof(rootTypes));
+            if (rootTypes.Length > 1 && bodyField != null) throw new ArgumentException("A polymorphic root cannot have a body field.");
             if (string.IsNullOrEmpty(name)) throw new ArgumentException("A record kind has a name.", nameof(name));
             if (pathSegments < 1) throw new ArgumentOutOfRangeException(nameof(pathSegments), "A record's path has at least one segment.");
             if (_kinds.Any(k => k.Name == name)) throw new ArgumentException("The record kind " + name + " is declared twice.", nameof(name));
-            _kinds.Add((name, rootType, pathSegments, bodyField));
+            _kinds.Add((name, (string[])rootTypes.Clone(), pathSegments, bodyField));
             return this;
         }
 
@@ -302,17 +315,20 @@ namespace SIL.TextEditing.Markdown.Records
                 }
             }
             var kinds = new List<RecordKind>();
-            foreach (var (name, rootType, segments, body) in _kinds)
+            foreach (var (name, rootTypes, segments, body) in _kinds)
             {
-                if (!byName.TryGetValue(rootType, out var root)) throw new InvalidOperationException("The record kind " + name + " names the object type " + rootType + ", which is not declared.");
+                var roots = rootTypes.Select(rootType => byName.TryGetValue(rootType, out var type) ? type
+                    : throw new InvalidOperationException("The record kind " + name + " names the object type " + rootType + ", which is not declared.")).ToList();
+                if (roots.Count > 1 && roots.Any(t => t.Field("class") != null)) throw new InvalidOperationException("Polymorphic roots reserve class as metadata.");
+                var root = roots[0];
                 RecordField? bodyField = null;
                 if (body != null)
                 {
-                    bodyField = root.Field(body) ?? throw new InvalidOperationException("The body field " + body + " of " + name + " is not a field of " + rootType + ".");
+                    bodyField = root.Field(body) ?? throw new InvalidOperationException("The body field " + body + " of " + name + " is not a field of " + root.Name + ".");
                     if (bodyField.Kind != RecordFieldKind.Rich || !bodyField.Paragraphs || bodyField.MultiWritingSystem)
                         throw new InvalidOperationException("The body field " + body + " of " + name + " must be a rich field of paragraphs in one writing system.");
                 }
-                kinds.Add(new RecordKind(name, root, segments, bodyField));
+                kinds.Add(new RecordKind(name, roots.AsReadOnly(), segments, bodyField));
             }
             return new RecordSchema(_id, kinds, types);
         }

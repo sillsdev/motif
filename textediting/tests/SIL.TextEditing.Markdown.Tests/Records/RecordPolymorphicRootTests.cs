@@ -48,6 +48,47 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             Assert.Contains(RecordFileReader.Read(text, Schema()).Diagnostics, d => d.Id == RecordDiagnosticIds.ClassNotAllowed);
         }
 
+        static RecordSchema WholeRootSchema()
+        {
+            var builder = new RecordSchemaBuilder("whole-classes");
+            builder.ObjectType("note").Text("text");
+            builder.ObjectType("tag").Text("label");
+            return builder.Kind("records/record", new[] { "note", "tag" }, 2).Build();
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("/records/x")]
+        public void WholeRecordSelectsItsRootClassAndRoundTrips(string? path)
+        {
+            var schema = RecordSchema.FromJson(WholeRootSchema().ToJson());
+            var document = new RecordDocument("records/record") { Root = path };
+            document.Data.Class = "tag";
+            document.Data.Set("label", new RecordScalar("label"));
+            string text = RecordFileWriter.Write(document, schema);
+            var read = RecordFileReader.Read(text, schema);
+            Assert.False(read.HasErrors, string.Join("\n", read.Diagnostics));
+            Assert.True(RecordDocument.AreEquivalent(document, read.Document!));
+            Assert.Contains("\"anyOf\"", schema.ToJsonSchema());
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("/records/x")]
+        public void WholeRecordRequiresAnAllowedClass(string? path)
+        {
+            var schema = WholeRootSchema();
+            var document = new RecordDocument("records/record") { Root = path };
+            Assert.Throws<RecordWriteException>(() => RecordFileWriter.Write(document, schema));
+            string text = "---\nfwmd: 1\nrecord: \"records/record\"\n" +
+                (path == null ? "" : "root: \"" + path + "\"\n") + "record-data:\n  label: \"x\"\n---\n";
+            Assert.Contains(RecordFileReader.Read(text, schema).Diagnostics, d => d.Id == RecordDiagnosticIds.ClassNotAllowed);
+            document.Data.Class = "other";
+            Assert.Throws<RecordWriteException>(() => RecordFileWriter.Write(document, schema));
+            string wrong = text.Replace("  label:", "  class: \"other\"\n  label:");
+            Assert.Contains(RecordFileReader.Read(wrong, schema).Diagnostics, d => d.Id == RecordDiagnosticIds.ClassNotAllowed);
+        }
+
         [Fact]
         public void InvalidAllowedTypeListsAndLegacyClassAlternativesAreRefused()
         {

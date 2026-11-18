@@ -501,21 +501,18 @@ namespace SIL.TextEditing.Markdown.Records
                 }
             }
             if (kind == null) return document;
-            if (document.Root != null || keys.ContainsKey("root"))
             {
                 var classNode = data?.Pairs.FirstOrDefault(p => p.Key.IsScalar && p.Key.Value == "class").Value;
                 root = RecordRoot.Resolve(kind, document.Root, out string? error, out bool classError,
                     classNode != null && classNode.Kind == YamlFrameKind.Scalar ? classNode.Value : null);
                 if (root == null)
                 {
-                    var r = keys["root"];
-                    var location = classError ? classNode ?? data ?? r.Value : r.Value;
+                    var location = classError ? classNode ?? data ?? map : keys["root"].Value;
                     Error(classError ? RecordDiagnosticIds.ClassNotAllowed : RecordDiagnosticIds.BadRoot,
                         error!, location.Start, location.End);
                     return null;
                 }
             }
-            else root = RecordRoot.Resolve(kind, null, out _);
             return document;
         }
 

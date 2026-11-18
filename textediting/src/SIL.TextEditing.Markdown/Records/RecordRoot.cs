@@ -35,6 +35,17 @@ namespace SIL.TextEditing.Markdown.Records
             classError = false;
             error = null;
             var result = new RecordRoot { Type = kind.Root, IsRecord = true };
+            if (root == null && kind.Roots.Count > 1)
+            {
+                var selected = kind.Roots.FirstOrDefault(t => t.Name == objectClass);
+                if (selected == null)
+                {
+                    classError = true;
+                    error = "The record requires an allowed class in record-data: " + string.Join(", ", kind.Roots.Select(t => t.Name)) + ".";
+                    return null;
+                }
+                result.Type = selected;
+            }
             if (root != null)
             {
                 var path = ProjectPath.Parse(root);
@@ -62,7 +73,7 @@ namespace SIL.TextEditing.Markdown.Records
                     furthestFailure = index;
                     pathError = message;
                 }
-                pending.Push((kind.Root, kind.PathSegments));
+                foreach (var candidate in kind.Roots) pending.Push((candidate, kind.PathSegments));
                 while (pending.Count > 0)
                 {
                     var state = pending.Pop();
