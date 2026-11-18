@@ -1,8 +1,8 @@
 {
-  "version": "0.23.0",
+  "version": "0.24.0",
   "source": "rust/crates/pg-rules/src/trace.rs",
-  "commit": "62da5c4f4d185e60721866cbafc055343b5af03f",
-  "provenance": "annotated v0.23.0 source tag",
+  "commit": "f5fa182f24f8e2984635a82c98ede5ba9bb132d6",
+  "provenance": "annotated v0.24.0 source tag",
   "codes": [
     "ObligatorySyntacticFeatures",
     "AllomorphCoOccurrenceRules",
