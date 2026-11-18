@@ -472,11 +472,17 @@ the importer's job, not the differ's.
 - **Partial files.** When `root:` names an owned object or a field, only that subtree is compared, and omission is no change: a field,
   alternative or list item the file leaves out is untouched. A value that is present but empty clears. A root that names the record itself is a
   whole file.
-- **Whole files.** Omission is empty. An object the file leaves out is reported as `RemoveObject` with `ByOmission` set; whether that deletes
-  anything is for the importer to decide.
-- **Refusals.** A computed field that differs, a changed `guid:` or `class:` on an existing object, an object under another owner (or another
-  field) than in the export, and an object of a class its field does not allow are listed in `Refusals`, each typed with a reason. They are
-  never also changes.
+- **Whole files.** Omission is empty. Every clear or removal that exists only because the file leaves something out (`Clear`, `ClearAlternative`,
+  `ClearRich`, `RemoveItem`, `RemoveReference`, `RemoveObject`) has `ByOmission` set, so the importer can apply one rule to all of them (for example
+  "delete by omission only when safe"). A partial file never sets it. Deleting a computed field's line from a whole file is a computed-field refusal.
+- **Places in a partial file.** `Index` counts only the items the file holds; rely on `After`. A collection of objects whose types have no GUIDs
+  cannot be told apart, so it is compared by position and reordering it is a change. A repeated text in a list gets keys `a`, `a#2`, `a#3`, and a
+  text that is literally `a#2` can collide with them; the kind of change says which a key is.
+- **Refusals.** A computed field that differs; a changed `guid:` (on the record, or on an owned object in a single-object field) or `class:` on an
+  existing object; an object under another owner (or another field) than in the export; an object of a class its field does not allow; and a GUID on
+  more than one object in the export or the file (`DuplicateGuid`: none of those objects is compared) are listed in `Refusals`, each typed with a
+  reason. They are never also changes.
+- **Read-only.** `Changes`, `Refusals` and `Words` are read-only lists, and `Subtree` is a detached copy of the object.
 
 ## What the tests hold the format to
 
@@ -485,7 +491,8 @@ the importer's job, not the differ's.
   [Relation to Pandoc](fieldworks-markdown.md#relation-to-pandoc)) reads each canonical file, its rich values and its body as the reader
   does; a whole-record canonical file validates against the published JSON Schema.
 - `RecordDifferTests` and `RecordDifferPropertyTests` hold the diff to the rules in [Comparing two record documents](#comparing-two-record-documents): a
-  table of edits per field kind, `diff(x, x)` empty (including every readable conformance case), the diff applied to the base gives the target, and a
-  seeded fuzz that the result is slot-unique and deterministic.
+  table of edits per field kind, `diff(x, x)` empty (including every readable conformance case), and seeded fuzz: the diff applied to the base by an
+  independent applier (which checks `Old` first) gives the target, results are slot-unique and deterministic, partial subtrees change only their own object,
+  and each refusal kind is raised and never applied.
 - `RecordFuzzTests` mutates the canonical cases (seeded). The reader never throws, and a mutated file it reads without an error writes and
   reads back without one.
