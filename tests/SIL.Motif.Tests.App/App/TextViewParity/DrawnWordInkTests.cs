@@ -93,6 +93,24 @@ public sealed class DrawnWordInkTests
             }
         });
 
+    [Fact]
+    public void RasterizedStackedMarksStayInsideTheStripAtFractionalFontSizes() =>
+        AvaloniaHeadlessPlatform.Invoke(() =>
+        {
+            for (var size = 6.0; size <= 24; size += 0.5)
+            {
+                using var scene = TextViewScene.SingleWord(Sample("ltr-stacked"),
+                    state: StripState.Agrees, fontSize: size);
+                var strip = scene.Window.GetVisualDescendants().OfType<WordStripToken>().Single();
+                var drawn = strip.GetVisualDescendants().OfType<InterlinearWord>().Single();
+                var (bottom, lastRow) = PaintedBottom(scene, drawn);
+                var limit = strip.TranslatePoint(new Point(0,
+                    strip.Bounds.Height - strip.BorderThickness.Bottom - strip.Padding.Bottom), scene.Window)!.Value.Y;
+                Assert.True(bottom <= Math.Ceiling(limit) + Epsilon,
+                    $"At {size} points, ink ends at {bottom}, outside strip content {limit}; {lastRow}");
+            }
+        });
+
     private static TextViewSample Sample(string name)
     {
         var plain = TextViewSample.Named(name.Split('-')[0]);

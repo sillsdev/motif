@@ -156,7 +156,7 @@ internal sealed class InterlinearWord : Control
         var contentWidth = Math.Max(Math.Max(wordWidth, noteWidth), Math.Max(fieldWidth, panWidth));
         _width = Math.Min(widthLimit, contentWidth);
         if (!double.IsFinite(_width)) _width = contentWidth;
-        var (wordRise, wordDrop) = InkExtent(word);
+        var (wordRise, wordDrop) = InkExtent(word, scale);
         var wordInset = WholePixels(wordRise, scale);
         var wordHeight = WholePixels(wordInset + wordDrop, scale);
         var y = wordHeight;
@@ -201,7 +201,7 @@ internal sealed class InterlinearWord : Control
     internal static double WholePixels(double value, double scale) => Math.Ceiling(value * scale - 1e-6) / scale;
 
     // Hinting can paint past the outlines, while positioned marks can paint past the backend's bounds.
-    private static (double Rise, double Drop) InkExtent(TextLayout layout)
+    private static (double Rise, double Drop) InkExtent(TextLayout layout, double scale)
     {
         var top = 0d;
         var bottom = layout.Height;
@@ -212,8 +212,9 @@ internal sealed class InterlinearWord : Control
                 ink = ink.Union(outline);
             if (ink.Height > 0)
             {
-                top = Math.Min(top, ink.Top);
-                bottom = Math.Max(bottom, ink.Bottom);
+                // Raster coverage can reach the next device pixel beyond measured ink.
+                top = Math.Min(top, ink.Top - 1 / scale);
+                bottom = Math.Max(bottom, ink.Bottom + 1 / scale);
             }
         }
         return (-top, bottom);
@@ -241,10 +242,10 @@ internal sealed class InterlinearWord : Control
         foreach (var group in groups)
         {
             // One inset per row so every column in it keeps the same text line.
-            var formInset = WholePixels(group.Max(c => InkExtent(c.Form).Rise), scale);
-            var glossInset = WholePixels(group.Max(c => InkExtent(c.Gloss).Rise), scale);
-            var formHeight = WholePixels(formInset + group.Max(c => InkExtent(c.Form).Drop), scale);
-            var glossHeight = WholePixels(glossInset + group.Max(c => InkExtent(c.Gloss).Drop), scale);
+            var formInset = WholePixels(group.Max(c => InkExtent(c.Form, scale).Rise), scale);
+            var glossInset = WholePixels(group.Max(c => InkExtent(c.Gloss, scale).Rise), scale);
+            var formHeight = WholePixels(formInset + group.Max(c => InkExtent(c.Form, scale).Drop), scale);
+            var glossHeight = WholePixels(glossInset + group.Max(c => InkExtent(c.Gloss, scale).Drop), scale);
             var x = rtl ? width : 0;
             foreach (var column in group)
             {
