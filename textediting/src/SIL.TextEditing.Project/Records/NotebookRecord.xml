@@ -1,0 +1,53 @@
+<overlay version="1" id="https://software.sil.org/textediting/schemas/notebook-record-v1.json">
+  <kind name="notebook/record" root="RnGenericRec" pathSegments="2" body="description" />
+  <class name="CmObject">
+    <exclude name="Self" />
+    <exclude name="Owner" />
+    <exclude name="OwningFlid" />
+    <exclude name="OwnOrd" />
+    <exclude name="Guid" />
+    <exclude name="ShortNameTSS" />
+    <exclude name="ClassID" />
+  </class>
+  <class name="RnGenericRec">
+    <exclude name="ShortNameTSS" />
+    <exclude name="SubrecordOf" />
+    <exclude name="IndexInOwnerTSS" />
+    <field name="Title" key="title" />
+    <field name="VersionHistory" key="version-history" />
+    <field name="Reminders" key="reminders" />
+    <field name="Researchers" key="researchers" />
+    <field name="Confidence" key="confidence" />
+    <field name="Restrictions" key="restrictions" />
+    <field name="AnthroCodes" key="anthro-codes" />
+    <field name="PhraseTags" key="phrase-tags" />
+    <field name="SubRecords" key="sub-records" />
+    <exclude name="DateCreated" />
+    <exclude name="DateModified" />
+    <field name="CrossReferences" key="cross-references" />
+    <field name="ExternalMaterials" key="external-materials" />
+    <field name="FurtherQuestions" key="further-questions" />
+    <field name="SeeAlso" key="see-also" />
+    <exclude name="DateOfEvent" />
+    <field name="CounterEvidence" key="counter-evidence" />
+    <field name="Status" key="status" />
+    <field name="SupersededBy" key="superseded-by" />
+    <field name="SupportingEvidence" key="supporting-evidence" />
+    <field name="Conclusions" key="conclusions" />
+    <field name="Hypothesis" key="hypothesis" />
+    <field name="ResearchPlan" key="research-plan" />
+    <field name="Locations" key="locations" />
+    <field name="Sources" key="sources" />
+    <field name="TimeOfEvent" key="time-of-event" />
+    <field name="Type" key="type" />
+    <field name="Description" key="description" />
+    <field name="Participants" key="participants" />
+    <field name="PersonalNotes" key="personal-notes" />
+    <field name="Discussion" key="discussion" />
+    <field name="Text" key="text" />
+  </class>
+  <class name="RnRoledPartic">
+    <field name="Participants" key="participants" />
+    <field name="Role" key="role" />
+  </class>
+</overlay>

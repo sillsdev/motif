@@ -15,15 +15,20 @@ namespace SIL.TextEditing.Project
     public static class ProjectRecordSchema
     {
         /// <summary>The shipped XML overlay for lexicon entries.</summary>
-        public static string LexiconEntryOverlay
+        public static string LexiconEntryOverlay => Overlay("LexiconEntry");
+
+        /// <summary>The shipped XML overlay for notebook records.</summary>
+        public static string NotebookRecordOverlay => Overlay("NotebookRecord");
+
+        /// <summary>The shipped XML overlay for possibility-list items.</summary>
+        public static string ListItemOverlay => Overlay("ListItem");
+
+        static string Overlay(string name)
         {
-            get
-            {
-                using var stream = typeof(ProjectRecordSchema).Assembly.GetManifestResourceStream("SIL.TextEditing.Project.Records.LexiconEntry.xml")
-                    ?? throw new InvalidOperationException("The lexicon entry overlay is missing.");
-                using var reader = new StreamReader(stream);
-                return reader.ReadToEnd();
-            }
+            using var stream = typeof(ProjectRecordSchema).Assembly.GetManifestResourceStream("SIL.TextEditing.Project.Records." + name + ".xml")
+                ?? throw new InvalidOperationException("The " + name + " overlay is missing.");
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
         }
 
         /// <summary>Combines metadata with an XML overlay. The root <c>overlay</c> has <c>version="1"</c> and an <c>id</c>.
@@ -31,9 +36,11 @@ namespace SIL.TextEditing.Project
         /// or excludes them with <c>exclude name="..."</c>. Decisions on a base class apply to its subclasses.
         /// A field can specify <c>notation="..."</c>, or <c>blocks="tables,lists,headings"</c> on a paragraph field;
         /// an empty blocks attribute allows no blocks. Each <c>kind</c> gives <c>name</c>, <c>root</c>,
-        /// <c>pathSegments</c> and optional <c>body</c>. Every metadata field of each declared class must be accounted for,
-        /// and each class must be reachable from a kind root through owned-object fields or be a base of a reachable class.
-        /// The metadata's analysis/vernacular hint determines the default writing system; an absent hint uses analysis.
+        /// <c>pathSegments</c> and optional <c>body</c>; <c>subclasses="true"</c> allows every concrete root subclass.
+        /// Every model field of each declared class must be accounted for. Custom fields are included after overlay fields,
+        /// with keys reserved to the generator. Each class must be reachable from a root or be a base of a reachable class.
+        /// An optional <c>ws="analysis"</c> or <c>ws="vernacular"</c> overrides a single text field's writing system.
+        /// Otherwise the metadata's analysis/vernacular hint determines it; an absent hint uses analysis.
         /// Ordered analysis-vernacular and vernacular-analysis hints cannot be represented and are rejected.
         /// Timestamps, binary and general dates have no record-schema representation and must be excluded.</summary>
         /// <exception cref="ArgumentException">An overlay declaration is invalid or leaves a metadata field unmentioned.</exception>
@@ -84,15 +91,29 @@ namespace SIL.TextEditing.Project
                         if (!managed.FieldExists(ancestor, fieldName, false)) throw new ArgumentException("Unknown declared field " + className + "." + fieldName + ".");
                         int field = metadata.GetFieldId2(ancestor, fieldName, false);
                         if (field == 0 || metadata.GetOwnClsId(field) != ancestor) throw new ArgumentException("Unknown declared field " + className + "." + fieldName + ".");
+                        if (managed.IsCustom(field)) throw new ArgumentException("Custom fields are included automatically: " + className + "." + fieldName + ".");
                         if (!decisions.Add(field)) throw new ArgumentException("Duplicate field decision " + className + "." + fieldName + ".");
                         if (entry.Name == "field") Add(type, entry, field, metadata, managed, classes);
                     }
                 }
                 foreach (int field in managed.GetFields(id, true, -1))
-                    if (!decisions.Contains(field)) throw new ArgumentException("Unmentioned metadata field " + metadata.GetOwnClsName(field) + "." + metadata.GetFieldName(field) + " on " + pair.Key + ".");
+                {
+                    if (decisions.Contains(field)) continue;
+                    if (!managed.IsCustom(field)) throw new ArgumentException("Unmentioned metadata field " + metadata.GetOwnClsName(field) + "." + metadata.GetFieldName(field) + " on " + pair.Key + ".");
+                    string key = CustomKey(metadata.GetOwnClsName(field), metadata.GetFieldName(field));
+                    Add(type, new XElement("field", new XAttribute("key", key)), field, metadata, managed, classes);
+                }
             }
             foreach (var kind in root.Elements("kind"))
-                builder.Kind(Required(kind, "name"), Required(kind, "root"), (int?)kind.Attribute("pathSegments") ?? throw new ArgumentException("A kind needs pathSegments."), (string?)kind.Attribute("body"));
+            {
+                string rootName = Required(kind, "root");
+                string? subclasses = (string?)kind.Attribute("subclasses");
+                if (subclasses != null && subclasses != "true") throw new ArgumentException("subclasses must be true when specified.");
+                var roots = subclasses == null ? new[] { rootName } : new[] { ids[rootName] }.Concat(managed.GetAllSubclasses(ids[rootName]))
+                    .Distinct().Where(i => !metadata.GetAbstract(i)).Select(metadata.GetClassName).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+                if (roots.Any(n => !classes.ContainsKey(n))) throw new ArgumentException("Missing concrete overlay class for kind " + Required(kind, "name") + ".");
+                builder.Kind(Required(kind, "name"), roots, (int?)kind.Attribute("pathSegments") ?? throw new ArgumentException("A kind needs pathSegments."), (string?)kind.Attribute("body"));
+            }
             var schema = builder.Build();
             CheckReachability(schema, classes, metadata);
             return schema;
@@ -102,7 +123,7 @@ namespace SIL.TextEditing.Project
         {
             var seen = new HashSet<string>(StringComparer.Ordinal);
             var reachableClasses = new HashSet<string>(StringComparer.Ordinal);
-            var pending = new Stack<RecordObjectType>(schema.Kinds.Select(k => k.Root));
+            var pending = new Stack<RecordObjectType>(schema.Kinds.SelectMany(k => k.Roots));
             while (pending.Count > 0)
             {
                 var type = pending.Pop();
@@ -125,6 +146,11 @@ namespace SIL.TextEditing.Project
                 if (!reachableClasses.Contains(name)) throw new ArgumentException("Unreachable overlay class " + name + ".");
         }
 
+        static string CustomKey(string owner, string name)
+        {
+            return "custom-" + string.Concat((owner + "\0" + name).Select(c => ((int)c).ToString("x4")));
+        }
+
         static string Required(XElement e, string name) => (string?)e.Attribute(name) is string value && value.Length > 0
             ? value : throw new ArgumentException("Missing " + name + " on " + e.Name + ".");
 
@@ -132,6 +158,8 @@ namespace SIL.TextEditing.Project
             IFwMetaDataCacheManaged managed, Dictionary<string, XElement> classes)
         {
             string key = Required(entry, "key");
+            if (entry.Attribute("name") != null && key.StartsWith("custom-", StringComparison.Ordinal))
+                throw new ArgumentException("The custom- key prefix is reserved: " + key);
             string? notation = (string?)entry.Attribute("notation");
             string? blockText = (string?)entry.Attribute("blocks");
             var t = (CellarPropertyType)m.GetFieldType(field);
@@ -141,8 +169,12 @@ namespace SIL.TextEditing.Project
             bool paragraph = t == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "StText";
             if (notation != null && !isText && !isRich) throw new ArgumentException("Notation requires a string field: " + key);
             if (blockText != null && !paragraph) throw new ArgumentException("Blocks require a paragraph field: " + key);
+            string? wsText = (string?)entry.Attribute("ws");
+            if (wsText != null && (!(isText || isRich || paragraph) || multi))
+                throw new ArgumentException("Writing-system override requires single-valued text: " + key);
             var ws = (isText || isRich || paragraph) && !multi
-                ? WritingSystem(m.GetFieldWs(field), key) : RecordWritingSystem.Analysis;
+                ? wsText == null ? WritingSystem(m.GetFieldWs(field), key) : OverlayWritingSystem(wsText)
+                : RecordWritingSystem.Analysis;
             if (notation != null) { if (multi) b.MultiNotation(key, notation); else b.Notation(key, notation, ws); }
             else if (isText) { if (multi) b.MultiText(key); else b.Text(key, ws); }
             else if (isRich) { if (multi) b.MultiRich(key); else b.Rich(key, ws: ws); }
@@ -167,6 +199,16 @@ namespace SIL.TextEditing.Project
             }
             else throw new NotSupportedException("Unsupported metadata type " + t + " for " + key + ".");
             if (m.get_IsVirtual(field)) b.Computed(key);
+        }
+
+        static RecordWritingSystem OverlayWritingSystem(string value)
+        {
+            switch (value)
+            {
+                case "analysis": return RecordWritingSystem.Analysis;
+                case "vernacular": return RecordWritingSystem.Vernacular;
+                default: throw new ArgumentException("Unknown writing-system override " + value + ".");
+            }
         }
 
         static RecordWritingSystem WritingSystem(int hint, string key)

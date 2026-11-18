@@ -140,3 +140,29 @@ Windows with the .NET 10 SDK and the .NET Framework 4.8 targeting pack. net48 bu
 - The samples are built by the solution.
 - The headless tests use the Windows fonts Segoe UI, Nirmala UI, Leelawadee UI and Constantia.
 - A person tests with the checklist in [docs/manual-testing.md](../manual-testing.md).
+
+
+## Record schema overlays
+
+`ProjectRecordSchema.Generate(cache, overlay)` builds a detached record schema from an open `LcmCache`.
+The caller owns the cache and serializes access. The embedded `LexiconEntryOverlay`, `NotebookRecordOverlay`
+and `ListItemOverlay` supply separate schemas. `lexicon/entry` and `notebook/record` have two path segments;
+`lists/item` has three, `/lists/<list-name>/<item-guid>`. A list record contains its ordered sub-items, so
+renumbering an outline does not move its files. Its required `class` selects one concrete possibility subclass.
+The notebook's description is the body; the list item has no body. These schemas do not export or import values.
+
+An overlay is XML with `<overlay version="1" id="...">`. Each `<kind name="..." root="..." pathSegments="...">`
+may give `body` or `subclasses="true"`; the latter selects every concrete subclass and cannot be combined with a
+body. Each `<class name="...">` declares its own metadata fields in output order with `<field name="..."
+key="..."/>`, or `<exclude name="..."/>`. Base-class decisions are inherited. Every model field must have a
+decision and every class must be reachable from a kind root through included owned objects or be a base of one.
+Metadata supplies field shapes and concrete owned-object alternatives. A field can set `notation`, `blocks` for
+paragraphs, or `ws="analysis"`/`ws="vernacular"` for single-valued text. Without a `ws` override, metadata hints
+apply; absent hints use analysis. Mixed ordered hints are unsupported. Timestamps, binary and general dates
+have no schema kind and must be excluded.
+
+Custom fields on included classes are appended after all overlay fields, in metadata order, including inherited
+custom fields. Their keys use the reserved `custom-` prefix followed by four lowercase hexadecimal digits per
+UTF-16 code unit of the declaring class name, a zero code unit, and the field name. This encoding is reversible
+and separates custom names from overlay keys; overlays cannot declare custom fields or use that prefix. Unsupported
+custom field types fail generation instead of being silently omitted.
