@@ -22,8 +22,10 @@ public sealed class ConcurrentWalkthroughTests
         var secondParserPath = FakeParser.CopyRecordingInvocations(Path.Combine(managedRoot, "second-parser"));
         var firstStarted = Path.Combine(managedRoot, "first-assessment-started");
         var secondStarted = Path.Combine(managedRoot, "second-assessment-started");
+        var secondStartOrder = Path.Combine(managedRoot, "second-assessment-start-order");
         var firstRelease = Path.Combine(managedRoot, "first-assessment-release");
         var secondRelease = Path.Combine(managedRoot, "second-assessment-release");
+        const string parserWaitMessage = "Waiting for parser capacity.";
         var deadline = WalkthroughSteps.DeadlineIn(120);
 
         try
@@ -58,7 +60,13 @@ public sealed class ConcurrentWalkthroughTests
                 {
                     subcommands = new Dictionary<string, object>
                     {
-                        ["batch"] = new { startedPath = secondStarted, holdUntilPath = secondRelease },
+                        ["batch"] = new
+                        {
+                            startedPath = secondStarted,
+                            holdUntilPath = secondRelease,
+                            startOrderPath = secondStartOrder,
+                            startOrderAfterPath = firstRelease,
+                        },
                     },
                 });
 
@@ -76,14 +84,24 @@ public sealed class ConcurrentWalkthroughTests
                     secondWalkthrough.Workspace.Assess.RunCommand.Execute(null);
                     var secondExecution = secondWalkthrough.Workspace.Assess.RunCommand.ExecutionTask;
                     Assert.NotNull(secondExecution);
+                    secondWalkthrough.WaitUntil(
+                        () => File.Exists(secondStarted) ||
+                            secondWalkthrough.Workspace.Assess.Progress?.Message == parserWaitMessage,
+                        WalkthroughSteps.Remaining(deadline),
+                        "the second Assessment neither waited for parser capacity nor reached its fake parser");
+                    Assert.False(File.Exists(secondStarted),
+                        "the second fake parser started while the first parser was held");
+                    Assert.Equal(parserWaitMessage, secondWalkthrough.Workspace.Assess.Progress?.Message);
                     Assert.Empty(PanglossProcesses.Snapshot(secondParserPath));
 
                     File.WriteAllText(firstRelease, string.Empty);
                     firstWalkthrough.WaitUntil(
                         () => firstExecution.IsCompleted && firstWalkthrough.Workspace.Assess.State == RunState.Completed &&
                             firstWalkthrough.Workspace.Context.EvidencePublication.IsCompleted && File.Exists(secondStarted) &&
+                            File.Exists(secondStartOrder) &&
                             secondWalkthrough.Workspace.Assess.State == RunState.Running,
                         WalkthroughSteps.Remaining(deadline), "the second fake Assessment did not follow the first");
+                    Assert.Equal("after", File.ReadAllText(secondStartOrder));
                     Assert.NotEmpty(PanglossProcesses.Snapshot(secondParserPath));
 
                     File.WriteAllText(secondRelease, string.Empty);

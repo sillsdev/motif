@@ -324,6 +324,15 @@ internal static class Program
         };
         var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
         if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
+        if (behaviour.StartOrderPath is { } startOrderPath)
+        {
+            var order = behaviour.StartOrderAfterPath is { } requiredPath && File.Exists(requiredPath)
+                ? "after"
+                : "before";
+            var pendingPath = startOrderPath + ".pending";
+            File.WriteAllText(pendingPath, order);
+            File.Move(pendingPath, startOrderPath, overwrite: true);
+        }
         if (behaviour.ProcessIdPath is { } processIdPath)
             File.WriteAllText(processIdPath, Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
         if (behaviour.HoldUntilPath is { } holdUntilPath)
@@ -1016,6 +1025,8 @@ internal static class Program
         public string RetryStatisticsMode { get; init; } = "present";
         public string? HeartbeatPath { get; init; }
         public string? StartedPath { get; init; }
+        public string? StartOrderPath { get; init; }
+        public string? StartOrderAfterPath { get; init; }
         public string? HoldUntilPath { get; init; }
         // A streamed batch stays on word i until a file named this path plus ".i" exists.
         public string? HoldEachWordUntil { get; init; }
