@@ -31,8 +31,11 @@ public static class LexEntryInflTypeSlotsOperationKinds
     {
         OperationKindRegistry.Register(AddRefSlots);
         OperationKindRegistry.Register(RemoveRefSlots);
-        OperationHandlerRegistry.Register(AddRefSlots, LexEntryInflTypeSlotsAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefSlots, LexEntryInflTypeSlotsRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefSlots, LexEntryInflTypeSlotsAddRefHandler.Instance,
+            new FieldWriteCapability("LexEntryInflType", "Slots", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefSlots, LexEntryInflTypeSlotsRemoveRefHandler.Instance,
+            new FieldWriteCapability("LexEntryInflType", "Slots", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefSlots, SnapshotFields.LexEntryInflTypeSlots);
         OperationSlotRegistry.RegisterMember(RemoveRefSlots, SnapshotFields.LexEntryInflTypeSlots);
     }

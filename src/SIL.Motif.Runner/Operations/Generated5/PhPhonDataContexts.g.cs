@@ -22,7 +22,7 @@ public static class PhPhonDataContextsOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonDataContexts, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonData>(
+        var handler = new OwningCreateHandler<IPhPhonData>(
             Create, SnapshotFields.PhPhonDataContexts, owner => owner.ContextsOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -36,6 +36,7 @@ public static class PhPhonDataContextsOperationKinds
                             _ => throw new InvalidOperationException("Rule context must be a supported simple, sequence or iteration context."),
                         };
                         owner.ContextsOS.Insert(index, child);
-            }, true, false, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext", "PhIterationContext" }, "PhContextOrVar", false));
+            }, true, false, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext", "PhIterationContext" }, "PhContextOrVar", false);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhPhonData", "Contexts"));
     }
 }

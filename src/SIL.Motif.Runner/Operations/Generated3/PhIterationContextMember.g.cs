@@ -30,8 +30,10 @@ public static class PhIterationContextMemberOperationKinds
     {
         OperationKindRegistry.Register(SetMember);
         OperationKindRegistry.Register(ClearMember);
-        OperationHandlerRegistry.Register(SetMember, PhIterationContextMemberSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearMember, PhIterationContextMemberClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetMember, PhIterationContextMemberSetHandler.Instance,
+            new FieldWriteCapability("PhIterationContext", "Member", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearMember, PhIterationContextMemberClearHandler.Instance,
+            new FieldWriteCapability("PhIterationContext", "Member", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetMember, SnapshotFields.PhIterationContextMember);
         OperationSlotRegistry.RegisterScalar(ClearMember, SnapshotFields.PhIterationContextMember);
     }

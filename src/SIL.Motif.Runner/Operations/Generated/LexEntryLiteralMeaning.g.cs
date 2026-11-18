@@ -30,8 +30,10 @@ public static class LexEntryLiteralMeaningOperationKinds
     {
         OperationKindRegistry.Register(SetLiteralMeaning);
         OperationKindRegistry.Register(ClearLiteralMeaning);
-        OperationHandlerRegistry.Register(SetLiteralMeaning, LexEntryLiteralMeaningSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearLiteralMeaning, LexEntryLiteralMeaningClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetLiteralMeaning, LexEntryLiteralMeaningSetHandler.Instance,
+            new FieldWriteCapability("LexEntry", "LiteralMeaning", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearLiteralMeaning, LexEntryLiteralMeaningClearHandler.Instance,
+            new FieldWriteCapability("LexEntry", "LiteralMeaning", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetLiteralMeaning, SnapshotFields.LexEntryLiteralMeaning);
         OperationSlotRegistry.RegisterAlternative(ClearLiteralMeaning, SnapshotFields.LexEntryLiteralMeaning);
     }

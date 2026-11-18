@@ -1,0 +1,1890 @@
+# Runner catalog coverage for record files
+# Generated in RecordCatalogCoverageTests from the lexicon entry, notebook record and list item schemas.
+# ExampleNumber and ExampleNote exercise project-local custom fields.
+# One row per reachable concrete schema class, record field key and verb.
+# Covered rows are subject to the placement, owner, child and shape in the Runner declarations.
+# Non-authorable fields cite their classification in manifest/liblcm-inventory.tsv.
+# LexiconEditReferenceSets require a Lexicon Edit detail slice in manifest/fieldworks-labels.tsv.
+# Group	Class	Field key	LibLCM field	Verb	Runner kind	Uncovered reason	Manifest classification
+Covered	ChkTerm	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	ChkTerm	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	ChkTerm	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	ChkTerm	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	ChkTerm	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	ChkTerm	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	ChkTerm	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	ChkTerm	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	ChkTerm	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmAnnotationDefn	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	CmAnnotationDefn	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	CmAnnotationDefn	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	CmAnnotationDefn	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	CmAnnotationDefn	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	CmAnnotationDefn	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	CmAnnotationDefn	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	CmAnnotationDefn	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	CmAnnotationDefn	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmAnthroItem	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	CmAnthroItem	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	CmAnthroItem	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	CmAnthroItem	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	CmAnthroItem	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	CmAnthroItem	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	CmAnthroItem	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	CmAnthroItem	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	CmAnthroItem	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmCustomItem	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	CmCustomItem	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	CmCustomItem	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	CmCustomItem	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	CmCustomItem	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	CmCustomItem	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	CmCustomItem	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	CmCustomItem	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	CmCustomItem	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmLocation	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	CmLocation	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	CmLocation	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	CmLocation	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	CmLocation	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	CmLocation	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	CmLocation	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	CmLocation	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	CmLocation	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmMedia	label	CmMedia.Label	SetPlainRich	text/setRichString	-	-
+Covered	CmMedia	label	CmMedia.Label	SetRich	text/setRichString	-	-
+Covered	CmMedia	label	CmMedia.Label	ClearRich	text/setRichString	-	-
+Covered	CmPerson	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	CmPerson	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	CmPerson	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	CmPerson	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	CmPerson	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	CmPerson	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	CmPerson	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	CmPerson	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	CmPerson	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmPicture	caption	CmPicture.Caption	SetPlainRich	text/setRichString	-	-
+Covered	CmPicture	caption	CmPicture.Caption	SetRich	text/setRichString	-	-
+Covered	CmPicture	caption	CmPicture.Caption	ClearRich	text/setRichString	-	-
+Covered	CmPicture	description	CmPicture.Description	SetPlainRich	text/setRichString	-	-
+Covered	CmPicture	description	CmPicture.Description	SetRich	text/setRichString	-	-
+Covered	CmPicture	description	CmPicture.Description	ClearRich	text/setRichString	-	-
+Covered	CmPossibility	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	CmPossibility	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	CmPossibility	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	CmPossibility	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	CmPossibility	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	CmPossibility	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	CmPossibility	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	CmPossibility	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	CmPossibility	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmSemanticDomain	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	CmSemanticDomain	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	CmSemanticDomain	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	CmSemanticDomain	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	CmSemanticDomain	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	CmSemanticDomain	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	CmSemanticDomain	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	CmSemanticDomain	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	CmSemanticDomain	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmTranslation	translation	CmTranslation.Translation	SetPlainRich	text/setRichString	-	-
+Covered	CmTranslation	translation	CmTranslation.Translation	SetRich	text/setRichString	-	-
+Covered	CmTranslation	translation	CmTranslation.Translation	ClearRich	text/setRichString	-	-
+Covered	FsClosedValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
+Covered	FsClosedValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatureSpecification/clearFeature	-	-
+Covered	FsClosedValue	value	FsClosedValue.Value	Set	grammar/fsClosedValue/setValue	-	-
+Covered	FsClosedValue	value	FsClosedValue.Value	Clear	grammar/fsClosedValue/clearValue	-	-
+Covered	FsComplexValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
+Covered	FsComplexValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatureSpecification/clearFeature	-	-
+Covered	FsDisjunctiveValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
+Covered	FsDisjunctiveValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatureSpecification/clearFeature	-	-
+Covered	FsFeatStruc	feature-specs	FsFeatStruc.FeatureSpecs	AddObject	grammar/fsFeatStruc/createFeatureSpecs	-	-
+Covered	FsFeatStruc	feature-specs	FsFeatStruc.FeatureSpecs	RemoveObject	grammar/fsFeatStruc/deleteFeatureSpecs	-	-
+Covered	FsNegatedValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
+Covered	FsNegatedValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatureSpecification/clearFeature	-	-
+Covered	FsOpenValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
+Covered	FsOpenValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatureSpecification/clearFeature	-	-
+Covered	FsSharedValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
+Covered	FsSharedValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatureSpecification/clearFeature	-	-
+Covered	LexEntry	allomorphs	LexEntry.AlternateForms	AddObject	lexical/lexEntry/createAlternateForms	-	-
+Covered	LexEntry	allomorphs	LexEntry.AlternateForms	RemoveObject	lexical/lexEntry/removeAlternateForm	-	-
+Covered	LexEntry	allomorphs	LexEntry.AlternateForms	MoveObject	lexical/lexEntry/moveAlternateForms	-	-
+Covered	LexEntry	bibliography	LexEntry.Bibliography	SetPlainRich	lexical/lexEntry/setBibliography	-	-
+Covered	LexEntry	bibliography	LexEntry.Bibliography	SetRich	text/setRichString	-	-
+Covered	LexEntry	bibliography	LexEntry.Bibliography	ClearRich	text/setRichString	-	-
+Covered	LexEntry	citation-form	LexEntry.CitationForm	SetAlternative	lexical/lexEntry/setCitationForm	-	-
+Covered	LexEntry	citation-form	LexEntry.CitationForm	ClearAlternative	lexical/lexEntry/clearCitationForm	-	-
+Covered	LexEntry	comment	LexEntry.Comment	SetPlainRich	lexical/lexEntry/setComment	-	-
+Covered	LexEntry	comment	LexEntry.Comment	SetRich	text/setRichString	-	-
+Covered	LexEntry	comment	LexEntry.Comment	ClearRich	text/setRichString	-	-
+Covered	LexEntry	dialect-labels	LexEntry.DialectLabels	AddReference	lexical/lexEntry/addRefDialectLabels	-	-
+Covered	LexEntry	dialect-labels	LexEntry.DialectLabels	RemoveReference	lexical/lexEntry/removeRefDialectLabels	-	-
+Covered	LexEntry	do-not-publish-in	LexEntry.DoNotPublishIn	AddReference	lexical/lexEntry/addRefDoNotPublishIn	-	-
+Covered	LexEntry	do-not-publish-in	LexEntry.DoNotPublishIn	RemoveReference	lexical/lexEntry/removeRefDoNotPublishIn	-	-
+Covered	LexEntry	do-not-show-main-entry-in	LexEntry.DoNotShowMainEntryIn	AddReference	lexical/lexEntry/addRefDoNotShowMainEntryIn	-	-
+Covered	LexEntry	do-not-show-main-entry-in	LexEntry.DoNotShowMainEntryIn	RemoveReference	lexical/lexEntry/removeRefDoNotShowMainEntryIn	-	-
+Covered	LexEntry	do-not-use-for-parsing	LexEntry.DoNotUseForParsing	Set	lexical/lexEntry/setDoNotUseForParsing	-	-
+Covered	LexEntry	do-not-use-for-parsing	LexEntry.DoNotUseForParsing	Clear	lexical/lexEntry/clearDoNotUseForParsing	-	-
+Covered	LexEntry	entry-refs	LexEntry.EntryRefs	AddObject	lexical/lexEntry/createVariantRef	-	-
+Covered	LexEntry	lexeme-form	LexEntry.LexemeForm	AddObject	lexical/lexEntry/createLexemeForm	-	-
+Covered	LexEntry	lexeme-form	LexEntry.LexemeForm	RemoveObject	lexical/lexEntry/deleteLexemeForm	-	-
+Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	SetPlainRich	lexical/lexEntry/setLiteralMeaning	-	-
+Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	SetRich	text/setRichString	-	-
+Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	ClearRich	text/setRichString	-	-
+Covered	LexEntry	morpho-syntax-analyses	LexEntry.MorphoSyntaxAnalyses	AddObject	lexical/lexEntry/createMorphoSyntaxAnalyses	-	-
+Covered	LexEntry	morpho-syntax-analyses	LexEntry.MorphoSyntaxAnalyses	RemoveObject	lexical/lexEntry/deleteMorphoSyntaxAnalyses	-	-
+Covered	LexEntry	restrictions	LexEntry.Restrictions	SetPlainRich	lexical/lexEntry/setRestrictions	-	-
+Covered	LexEntry	restrictions	LexEntry.Restrictions	SetRich	text/setRichString	-	-
+Covered	LexEntry	restrictions	LexEntry.Restrictions	ClearRich	text/setRichString	-	-
+Covered	LexEntry	senses	LexEntry.Senses	AddObject	lexical/lexEntry/createSenses	-	-
+Covered	LexEntry	senses	LexEntry.Senses	RemoveObject	lexical/lexSense/remove	-	-
+Covered	LexEntry	summary-definition	LexEntry.SummaryDefinition	SetPlainRich	lexical/lexEntry/setSummaryDefinition	-	-
+Covered	LexEntry	summary-definition	LexEntry.SummaryDefinition	SetRich	text/setRichString	-	-
+Covered	LexEntry	summary-definition	LexEntry.SummaryDefinition	ClearRich	text/setRichString	-	-
+Covered	LexEntryInflType	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	LexEntryInflType	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	LexEntryInflType	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	LexEntryInflType	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	LexEntryInflType	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	LexEntryInflType	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	LexEntryInflType	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	LexEntryInflType	gloss-append	LexEntryInflType.GlossAppend	SetAlternative	lexical/lexEntryInflType/setGlossAppend	-	-
+Covered	LexEntryInflType	gloss-append	LexEntryInflType.GlossAppend	ClearAlternative	lexical/lexEntryInflType/clearGlossAppend	-	-
+Covered	LexEntryInflType	gloss-prepend	LexEntryInflType.GlossPrepend	SetAlternative	lexical/lexEntryInflType/setGlossPrepend	-	-
+Covered	LexEntryInflType	gloss-prepend	LexEntryInflType.GlossPrepend	ClearAlternative	lexical/lexEntryInflType/clearGlossPrepend	-	-
+Covered	LexEntryInflType	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	LexEntryInflType	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	LexEntryInflType	slots	LexEntryInflType.Slots	AddReference	lexical/lexEntryInflType/addRefSlots	-	-
+Covered	LexEntryInflType	slots	LexEntryInflType.Slots	RemoveReference	lexical/lexEntryInflType/removeRefSlots	-	-
+Covered	LexEntryRef	component-lexemes	LexEntryRef.ComponentLexemes	AddReference	lexical/lexEntryRef/addRefComponentLexemes	-	-
+Covered	LexEntryRef	component-lexemes	LexEntryRef.ComponentLexemes	RemoveReference	lexical/lexEntryRef/removeRefComponentLexemes	-	-
+Covered	LexEntryRef	summary	LexEntryRef.Summary	SetPlainRich	text/setRichString	-	-
+Covered	LexEntryRef	summary	LexEntryRef.Summary	SetRich	text/setRichString	-	-
+Covered	LexEntryRef	summary	LexEntryRef.Summary	ClearRich	text/setRichString	-	-
+Covered	LexEntryRef	variant-entry-types	LexEntryRef.VariantEntryTypes	AddReference	lexical/lexEntryRef/addRefVariantEntryTypes	-	-
+Covered	LexEntryRef	variant-entry-types	LexEntryRef.VariantEntryTypes	RemoveReference	lexical/lexEntryRef/removeRefVariantEntryTypes	-	-
+Covered	LexEntryType	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	LexEntryType	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	LexEntryType	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	LexEntryType	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	LexEntryType	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	LexEntryType	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	LexEntryType	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	LexEntryType	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	LexEntryType	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	LexEtymology	bibliography	LexEtymology.Bibliography	SetPlainRich	text/setRichString	-	-
+Covered	LexEtymology	bibliography	LexEtymology.Bibliography	SetRich	text/setRichString	-	-
+Covered	LexEtymology	bibliography	LexEtymology.Bibliography	ClearRich	text/setRichString	-	-
+Covered	LexEtymology	comment	LexEtymology.Comment	SetPlainRich	text/setRichString	-	-
+Covered	LexEtymology	comment	LexEtymology.Comment	SetRich	text/setRichString	-	-
+Covered	LexEtymology	comment	LexEtymology.Comment	ClearRich	text/setRichString	-	-
+Covered	LexEtymology	form	LexEtymology.Form	SetPlainRich	lexical/lexEtymology/setForm	-	-
+Covered	LexEtymology	form	LexEtymology.Form	ClearRich	lexical/lexEtymology/clearForm	-	-
+Covered	LexEtymology	gloss	LexEtymology.Gloss	SetPlainRich	lexical/lexEtymology/setGloss	-	-
+Covered	LexEtymology	gloss	LexEtymology.Gloss	ClearRich	lexical/lexEtymology/clearGloss	-	-
+Covered	LexEtymology	language-notes	LexEtymology.LanguageNotes	SetPlainRich	text/setRichString	-	-
+Covered	LexEtymology	language-notes	LexEtymology.LanguageNotes	SetRich	text/setRichString	-	-
+Covered	LexEtymology	language-notes	LexEtymology.LanguageNotes	ClearRich	text/setRichString	-	-
+Covered	LexEtymology	note	LexEtymology.Note	SetPlainRich	text/setRichString	-	-
+Covered	LexEtymology	note	LexEtymology.Note	SetRich	text/setRichString	-	-
+Covered	LexEtymology	note	LexEtymology.Note	ClearRich	text/setRichString	-	-
+Covered	LexEtymology	prec-comment	LexEtymology.PrecComment	SetPlainRich	text/setRichString	-	-
+Covered	LexEtymology	prec-comment	LexEtymology.PrecComment	SetRich	text/setRichString	-	-
+Covered	LexEtymology	prec-comment	LexEtymology.PrecComment	ClearRich	text/setRichString	-	-
+Covered	LexExampleSentence	example	LexExampleSentence.Example	SetPlainRich	text/setRichString	-	-
+Covered	LexExampleSentence	example	LexExampleSentence.Example	SetRich	text/setRichString	-	-
+Covered	LexExampleSentence	example	LexExampleSentence.Example	ClearRich	text/setRichString	-	-
+Covered	LexExampleSentence	reference	LexExampleSentence.Reference	SetPlainRich	text/setRichString	-	-
+Covered	LexExampleSentence	reference	LexExampleSentence.Reference	SetRich	text/setRichString	-	-
+Covered	LexExampleSentence	reference	LexExampleSentence.Reference	ClearRich	text/setRichString	-	-
+Covered	LexExtendedNote	discussion	LexExtendedNote.Discussion	SetPlainRich	text/setRichString	-	-
+Covered	LexExtendedNote	discussion	LexExtendedNote.Discussion	SetRich	text/setRichString	-	-
+Covered	LexExtendedNote	discussion	LexExtendedNote.Discussion	ClearRich	text/setRichString	-	-
+Covered	LexPronunciation	cv-pattern	LexPronunciation.CVPattern	SetPlainRich	text/setRichString	-	-
+Covered	LexPronunciation	cv-pattern	LexPronunciation.CVPattern	SetRich	text/setRichString	-	-
+Covered	LexPronunciation	cv-pattern	LexPronunciation.CVPattern	ClearRich	text/setRichString	-	-
+Covered	LexPronunciation	form	LexPronunciation.Form	SetAlternative	lexical/lexPronunciation/setForm	-	-
+Covered	LexPronunciation	form	LexPronunciation.Form	ClearAlternative	lexical/lexPronunciation/clearForm	-	-
+Covered	LexPronunciation	tone	LexPronunciation.Tone	SetPlainRich	text/setRichString	-	-
+Covered	LexPronunciation	tone	LexPronunciation.Tone	SetRich	text/setRichString	-	-
+Covered	LexPronunciation	tone	LexPronunciation.Tone	ClearRich	text/setRichString	-	-
+Covered	LexRefType	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	LexRefType	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	LexRefType	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	LexRefType	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	LexRefType	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	LexRefType	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	LexRefType	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	LexRefType	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	LexRefType	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	LexReference	comment	LexReference.Comment	SetPlainRich	text/setRichString	-	-
+Covered	LexReference	comment	LexReference.Comment	SetRich	text/setRichString	-	-
+Covered	LexReference	comment	LexReference.Comment	ClearRich	text/setRichString	-	-
+Covered	LexSense	anthro-note	LexSense.AnthroNote	SetPlainRich	lexical/lexSense/setAnthroNote	-	-
+Covered	LexSense	anthro-note	LexSense.AnthroNote	SetRich	text/setRichString	-	-
+Covered	LexSense	anthro-note	LexSense.AnthroNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	bibliography	LexSense.Bibliography	SetPlainRich	text/setRichString	-	-
+Covered	LexSense	bibliography	LexSense.Bibliography	SetRich	text/setRichString	-	-
+Covered	LexSense	bibliography	LexSense.Bibliography	ClearRich	text/setRichString	-	-
+Covered	LexSense	definition	LexSense.Definition	SetPlainRich	lexical/lexSense/setDefinition	-	-
+Covered	LexSense	definition	LexSense.Definition	SetRich	text/setRichString	-	-
+Covered	LexSense	definition	LexSense.Definition	ClearRich	text/setRichString	-	-
+Covered	LexSense	discourse-note	LexSense.DiscourseNote	SetPlainRich	lexical/lexSense/setDiscourseNote	-	-
+Covered	LexSense	discourse-note	LexSense.DiscourseNote	SetRich	text/setRichString	-	-
+Covered	LexSense	discourse-note	LexSense.DiscourseNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	encyclopedic-info	LexSense.EncyclopedicInfo	SetPlainRich	text/setRichString	-	-
+Covered	LexSense	encyclopedic-info	LexSense.EncyclopedicInfo	SetRich	text/setRichString	-	-
+Covered	LexSense	encyclopedic-info	LexSense.EncyclopedicInfo	ClearRich	text/setRichString	-	-
+Covered	LexSense	examples	LexSense.Examples	AddObject	lexical/lexSense/createExamples	-	-
+Covered	LexSense	exemplar	LexSense.Exemplar	SetPlainRich	text/setRichString	-	-
+Covered	LexSense	exemplar	LexSense.Exemplar	SetRich	text/setRichString	-	-
+Covered	LexSense	exemplar	LexSense.Exemplar	ClearRich	text/setRichString	-	-
+Covered	LexSense	general-note	LexSense.GeneralNote	SetPlainRich	lexical/lexSense/setGeneralNote	-	-
+Covered	LexSense	general-note	LexSense.GeneralNote	SetRich	text/setRichString	-	-
+Covered	LexSense	general-note	LexSense.GeneralNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	gloss	LexSense.Gloss	SetAlternative	lexical/lexSense/setGloss	-	-
+Covered	LexSense	gloss	LexSense.Gloss	ClearAlternative	lexical/lexSense/clearGloss	-	-
+Covered	LexSense	grammar-note	LexSense.GrammarNote	SetPlainRich	lexical/lexSense/setGrammarNote	-	-
+Covered	LexSense	grammar-note	LexSense.GrammarNote	SetRich	text/setRichString	-	-
+Covered	LexSense	grammar-note	LexSense.GrammarNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	morpho-syntax-analysis	LexSense.MorphoSyntaxAnalysis	Set	lexical/lexSense/setMorphoSyntaxAnalysis	-	-
+Covered	LexSense	morpho-syntax-analysis	LexSense.MorphoSyntaxAnalysis	Clear	lexical/lexSense/clearMorphoSyntaxAnalysis	-	-
+Covered	LexSense	phonology-note	LexSense.PhonologyNote	SetPlainRich	lexical/lexSense/setPhonologyNote	-	-
+Covered	LexSense	phonology-note	LexSense.PhonologyNote	SetRich	text/setRichString	-	-
+Covered	LexSense	phonology-note	LexSense.PhonologyNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	restrictions	LexSense.Restrictions	SetPlainRich	text/setRichString	-	-
+Covered	LexSense	restrictions	LexSense.Restrictions	SetRich	text/setRichString	-	-
+Covered	LexSense	restrictions	LexSense.Restrictions	ClearRich	text/setRichString	-	-
+Covered	LexSense	scientific-name	LexSense.ScientificName	SetPlainRich	text/setRichString	-	-
+Covered	LexSense	scientific-name	LexSense.ScientificName	SetRich	text/setRichString	-	-
+Covered	LexSense	scientific-name	LexSense.ScientificName	ClearRich	text/setRichString	-	-
+Covered	LexSense	semantics-note	LexSense.SemanticsNote	SetPlainRich	lexical/lexSense/setSemanticsNote	-	-
+Covered	LexSense	semantics-note	LexSense.SemanticsNote	SetRich	text/setRichString	-	-
+Covered	LexSense	semantics-note	LexSense.SemanticsNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	senses	LexSense.Senses	RemoveObject	lexical/lexSense/remove	-	-
+Covered	LexSense	socio-linguistics-note	LexSense.SocioLinguisticsNote	SetPlainRich	lexical/lexSense/setSocioLinguisticsNote	-	-
+Covered	LexSense	socio-linguistics-note	LexSense.SocioLinguisticsNote	SetRich	text/setRichString	-	-
+Covered	LexSense	socio-linguistics-note	LexSense.SocioLinguisticsNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	source	LexSense.Source	SetPlainRich	text/setRichString	-	-
+Covered	LexSense	source	LexSense.Source	SetRich	text/setRichString	-	-
+Covered	LexSense	source	LexSense.Source	ClearRich	text/setRichString	-	-
+Covered	LexSense	usage-note	LexSense.UsageNote	SetPlainRich	text/setRichString	-	-
+Covered	LexSense	usage-note	LexSense.UsageNote	SetRich	text/setRichString	-	-
+Covered	LexSense	usage-note	LexSense.UsageNote	ClearRich	text/setRichString	-	-
+Covered	MoAffixAllomorph	form	MoForm.Form	SetAlternative	grammar/moForm/setForm	-	-
+Covered	MoAffixAllomorph	form	MoForm.Form	ClearAlternative	grammar/moForm/clearForm	-	-
+Covered	MoAffixAllomorph	inflection-classes	MoAffixForm.InflectionClasses	AddReference	grammar/moAffixForm/addRefInflectionClasses	-	-
+Covered	MoAffixAllomorph	inflection-classes	MoAffixForm.InflectionClasses	RemoveReference	grammar/moAffixForm/removeRefInflectionClasses	-	-
+Covered	MoAffixAllomorph	is-abstract	MoForm.IsAbstract	Set	grammar/moForm/setIsAbstract	-	-
+Covered	MoAffixAllomorph	is-abstract	MoForm.IsAbstract	Clear	grammar/moForm/clearIsAbstract	-	-
+Covered	MoAffixAllomorph	morph-type	MoForm.MorphType	Set	grammar/moForm/setMorphType	-	-
+Covered	MoAffixAllomorph	morph-type	MoForm.MorphType	Clear	grammar/moForm/clearMorphType	-	-
+Covered	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	AddObject	grammar/moAffixAllomorph/createMsEnvFeatures	-	-
+Covered	MoAffixAllomorph	phone-env	MoAffixAllomorph.PhoneEnv	AddReference	grammar/moAffixAllomorph/addRefPhoneEnv	-	-
+Covered	MoAffixAllomorph	phone-env	MoAffixAllomorph.PhoneEnv	RemoveReference	grammar/moAffixAllomorph/removeRefPhoneEnv	-	-
+Covered	MoAffixAllomorph	position	MoAffixAllomorph.Position	AddReference	grammar/moAffixAllomorph/addRefPosition	-	-
+Covered	MoAffixAllomorph	position	MoAffixAllomorph.Position	InsertReference	grammar/moAffixAllomorph/addRefPosition	-	-
+Covered	MoAffixAllomorph	position	MoAffixAllomorph.Position	RemoveReference	grammar/moAffixAllomorph/removeRefPosition	-	-
+Covered	MoAffixAllomorph	position	MoAffixAllomorph.Position	MoveReference	grammar/moAffixAllomorph/movePosition	-	-
+Covered	MoAffixProcess	form	MoForm.Form	SetAlternative	grammar/moForm/setForm	-	-
+Covered	MoAffixProcess	form	MoForm.Form	ClearAlternative	grammar/moForm/clearForm	-	-
+Covered	MoAffixProcess	inflection-classes	MoAffixForm.InflectionClasses	AddReference	grammar/moAffixForm/addRefInflectionClasses	-	-
+Covered	MoAffixProcess	inflection-classes	MoAffixForm.InflectionClasses	RemoveReference	grammar/moAffixForm/removeRefInflectionClasses	-	-
+Covered	MoAffixProcess	input	MoAffixProcess.Input	AddObject	grammar/moAffixProcess/createInput	-	-
+Covered	MoAffixProcess	is-abstract	MoForm.IsAbstract	Set	grammar/moForm/setIsAbstract	-	-
+Covered	MoAffixProcess	is-abstract	MoForm.IsAbstract	Clear	grammar/moForm/clearIsAbstract	-	-
+Covered	MoAffixProcess	morph-type	MoForm.MorphType	Set	grammar/moForm/setMorphType	-	-
+Covered	MoAffixProcess	morph-type	MoForm.MorphType	Clear	grammar/moForm/clearMorphType	-	-
+Covered	MoAffixProcess	output	MoAffixProcess.Output	AddObject	grammar/moAffixProcess/createOutput	-	-
+Covered	MoCopyFromInput	content	MoCopyFromInput.Content	Set	grammar/moCopyFromInput/setContent	-	-
+Covered	MoCopyFromInput	content	MoCopyFromInput.Content	Clear	grammar/moCopyFromInput/clearContent	-	-
+Covered	MoDerivAffMsa	from-inflection-class	MoDerivAffMsa.FromInflectionClass	Set	grammar/moDerivAffMsa/setFromInflectionClass	-	-
+Covered	MoDerivAffMsa	from-inflection-class	MoDerivAffMsa.FromInflectionClass	Clear	grammar/moDerivAffMsa/clearFromInflectionClass	-	-
+Covered	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	AddObject	grammar/moDerivAffMsa/createFromMsFeatures	-	-
+Covered	MoDerivAffMsa	from-part-of-speech	MoDerivAffMsa.FromPartOfSpeech	Set	grammar/moDerivAffMsa/setFromPartOfSpeech	-	-
+Covered	MoDerivAffMsa	from-part-of-speech	MoDerivAffMsa.FromPartOfSpeech	Clear	grammar/moDerivAffMsa/clearFromPartOfSpeech	-	-
+Covered	MoDerivAffMsa	from-prod-restrict	MoDerivAffMsa.FromProdRestrict	AddReference	grammar/moDerivAffMsa/addRefFromProdRestrict	-	-
+Covered	MoDerivAffMsa	from-prod-restrict	MoDerivAffMsa.FromProdRestrict	RemoveReference	grammar/moDerivAffMsa/removeRefFromProdRestrict	-	-
+Covered	MoDerivAffMsa	from-stem-name	MoDerivAffMsa.FromStemName	Set	grammar/moDerivAffMsa/setFromStemName	-	-
+Covered	MoDerivAffMsa	from-stem-name	MoDerivAffMsa.FromStemName	Clear	grammar/moDerivAffMsa/clearFromStemName	-	-
+Covered	MoDerivAffMsa	to-inflection-class	MoDerivAffMsa.ToInflectionClass	Set	grammar/moDerivAffMsa/setToInflectionClass	-	-
+Covered	MoDerivAffMsa	to-inflection-class	MoDerivAffMsa.ToInflectionClass	Clear	grammar/moDerivAffMsa/clearToInflectionClass	-	-
+Covered	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	AddObject	grammar/moDerivAffMsa/createToMsFeatures	-	-
+Covered	MoDerivAffMsa	to-part-of-speech	MoDerivAffMsa.ToPartOfSpeech	Set	grammar/moDerivAffMsa/setToPartOfSpeech	-	-
+Covered	MoDerivAffMsa	to-part-of-speech	MoDerivAffMsa.ToPartOfSpeech	Clear	grammar/moDerivAffMsa/clearToPartOfSpeech	-	-
+Covered	MoDerivAffMsa	to-prod-restrict	MoDerivAffMsa.ToProdRestrict	AddReference	grammar/moDerivAffMsa/addRefToProdRestrict	-	-
+Covered	MoDerivAffMsa	to-prod-restrict	MoDerivAffMsa.ToProdRestrict	RemoveReference	grammar/moDerivAffMsa/removeRefToProdRestrict	-	-
+Covered	MoInflAffMsa	from-prod-restrict	MoInflAffMsa.FromProdRestrict	AddReference	grammar/moInflAffMsa/addRefFromProdRestrict	-	-
+Covered	MoInflAffMsa	from-prod-restrict	MoInflAffMsa.FromProdRestrict	RemoveReference	grammar/moInflAffMsa/removeRefFromProdRestrict	-	-
+Covered	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	AddObject	grammar/moInflAffMsa/createInflFeats	-	-
+Covered	MoInflAffMsa	part-of-speech	MoInflAffMsa.PartOfSpeech	Set	grammar/moInflAffMsa/setPartOfSpeech	-	-
+Covered	MoInflAffMsa	part-of-speech	MoInflAffMsa.PartOfSpeech	Clear	grammar/moInflAffMsa/clearPartOfSpeech	-	-
+Covered	MoInflAffMsa	slots	MoInflAffMsa.Slots	AddReference	grammar/moInflAffMsa/addRefSlots	-	-
+Covered	MoInflAffMsa	slots	MoInflAffMsa.Slots	RemoveReference	grammar/moInflAffMsa/removeRefSlots	-	-
+Covered	MoInflAffixSlot	description	MoInflAffixSlot.Description	SetPlainRich	text/setRichString	-	-
+Covered	MoInflAffixSlot	description	MoInflAffixSlot.Description	SetRich	text/setRichString	-	-
+Covered	MoInflAffixSlot	description	MoInflAffixSlot.Description	ClearRich	text/setRichString	-	-
+Covered	MoInflAffixSlot	name	MoInflAffixSlot.Name	SetAlternative	grammar/moInflAffixSlot/setName	-	-
+Covered	MoInflAffixSlot	name	MoInflAffixSlot.Name	ClearAlternative	grammar/moInflAffixSlot/clearName	-	-
+Covered	MoInflAffixSlot	optional	MoInflAffixSlot.Optional	Set	grammar/moInflAffixSlot/setOptional	-	-
+Covered	MoInflAffixSlot	optional	MoInflAffixSlot.Optional	Clear	grammar/moInflAffixSlot/clearOptional	-	-
+Covered	MoInflAffixTemplate	description	MoInflAffixTemplate.Description	SetPlainRich	text/setRichString	-	-
+Covered	MoInflAffixTemplate	description	MoInflAffixTemplate.Description	SetRich	text/setRichString	-	-
+Covered	MoInflAffixTemplate	description	MoInflAffixTemplate.Description	ClearRich	text/setRichString	-	-
+Covered	MoInflAffixTemplate	disabled	MoInflAffixTemplate.Disabled	Set	grammar/moInflAffixTemplate/setDisabled	-	-
+Covered	MoInflAffixTemplate	disabled	MoInflAffixTemplate.Disabled	Clear	grammar/moInflAffixTemplate/clearDisabled	-	-
+Covered	MoInflAffixTemplate	final	MoInflAffixTemplate.Final	Set	grammar/moInflAffixTemplate/setFinal	-	-
+Covered	MoInflAffixTemplate	final	MoInflAffixTemplate.Final	Clear	grammar/moInflAffixTemplate/clearFinal	-	-
+Covered	MoInflAffixTemplate	name	MoInflAffixTemplate.Name	SetAlternative	grammar/moInflAffixTemplate/setName	-	-
+Covered	MoInflAffixTemplate	name	MoInflAffixTemplate.Name	ClearAlternative	grammar/moInflAffixTemplate/clearName	-	-
+Covered	MoInflAffixTemplate	prefix-slots	MoInflAffixTemplate.PrefixSlots	AddReference	grammar/moInflAffixTemplate/addRefPrefixSlots	-	-
+Covered	MoInflAffixTemplate	prefix-slots	MoInflAffixTemplate.PrefixSlots	InsertReference	grammar/moInflAffixTemplate/addRefPrefixSlots	-	-
+Covered	MoInflAffixTemplate	prefix-slots	MoInflAffixTemplate.PrefixSlots	RemoveReference	grammar/moInflAffixTemplate/removeRefPrefixSlots	-	-
+Covered	MoInflAffixTemplate	prefix-slots	MoInflAffixTemplate.PrefixSlots	MoveReference	grammar/moInflAffixTemplate/movePrefixSlots	-	-
+Covered	MoInflAffixTemplate	suffix-slots	MoInflAffixTemplate.SuffixSlots	AddReference	grammar/moInflAffixTemplate/addRefSuffixSlots	-	-
+Covered	MoInflAffixTemplate	suffix-slots	MoInflAffixTemplate.SuffixSlots	InsertReference	grammar/moInflAffixTemplate/addRefSuffixSlots	-	-
+Covered	MoInflAffixTemplate	suffix-slots	MoInflAffixTemplate.SuffixSlots	RemoveReference	grammar/moInflAffixTemplate/removeRefSuffixSlots	-	-
+Covered	MoInflAffixTemplate	suffix-slots	MoInflAffixTemplate.SuffixSlots	MoveReference	grammar/moInflAffixTemplate/moveSuffixSlots	-	-
+Covered	MoInflClass	abbreviation	MoInflClass.Abbreviation	SetAlternative	grammar/moInflClass/setAbbreviation	-	-
+Covered	MoInflClass	abbreviation	MoInflClass.Abbreviation	ClearAlternative	grammar/moInflClass/clearAbbreviation	-	-
+Covered	MoInflClass	description	MoInflClass.Description	SetPlainRich	text/setRichString	-	-
+Covered	MoInflClass	description	MoInflClass.Description	SetRich	text/setRichString	-	-
+Covered	MoInflClass	description	MoInflClass.Description	ClearRich	text/setRichString	-	-
+Covered	MoInflClass	name	MoInflClass.Name	SetAlternative	grammar/moInflClass/setName	-	-
+Covered	MoInflClass	name	MoInflClass.Name	ClearAlternative	grammar/moInflClass/clearName	-	-
+Covered	MoInflClass	subclasses	MoInflClass.Subclasses	AddObject	grammar/moInflClass/createSubclasses	-	-
+Covered	MoInsertNC	content	MoInsertNC.Content	Set	grammar/moInsertNC/setContent	-	-
+Covered	MoInsertNC	content	MoInsertNC.Content	Clear	grammar/moInsertNC/clearContent	-	-
+Covered	MoInsertPhones	content	MoInsertPhones.Content	AddReference	grammar/moInsertPhones/addRefContent	-	-
+Covered	MoInsertPhones	content	MoInsertPhones.Content	RemoveReference	grammar/moInsertPhones/removeRefContent	-	-
+Covered	MoModifyFromInput	content	MoModifyFromInput.Content	Set	grammar/moModifyFromInput/setContent	-	-
+Covered	MoModifyFromInput	content	MoModifyFromInput.Content	Clear	grammar/moModifyFromInput/clearContent	-	-
+Covered	MoModifyFromInput	modification	MoModifyFromInput.Modification	Set	grammar/moModifyFromInput/setModification	-	-
+Covered	MoModifyFromInput	modification	MoModifyFromInput.Modification	Clear	grammar/moModifyFromInput/clearModification	-	-
+Covered	MoMorphType	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	MoMorphType	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	MoMorphType	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	MoMorphType	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	MoMorphType	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	MoMorphType	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	MoMorphType	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	MoMorphType	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	MoMorphType	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	MoReferralRule	description	MoReferralRule.Description	SetPlainRich	text/setRichString	-	-
+Covered	MoReferralRule	description	MoReferralRule.Description	SetRich	text/setRichString	-	-
+Covered	MoReferralRule	description	MoReferralRule.Description	ClearRich	text/setRichString	-	-
+Covered	MoStemAllomorph	form	MoForm.Form	SetAlternative	grammar/moForm/setForm	-	-
+Covered	MoStemAllomorph	form	MoForm.Form	ClearAlternative	grammar/moForm/clearForm	-	-
+Covered	MoStemAllomorph	is-abstract	MoForm.IsAbstract	Set	grammar/moForm/setIsAbstract	-	-
+Covered	MoStemAllomorph	is-abstract	MoForm.IsAbstract	Clear	grammar/moForm/clearIsAbstract	-	-
+Covered	MoStemAllomorph	morph-type	MoForm.MorphType	Set	grammar/moForm/setMorphType	-	-
+Covered	MoStemAllomorph	morph-type	MoForm.MorphType	Clear	grammar/moForm/clearMorphType	-	-
+Covered	MoStemAllomorph	phone-env	MoStemAllomorph.PhoneEnv	AddReference	grammar/moStemAllomorph/addRefPhoneEnv	-	-
+Covered	MoStemAllomorph	phone-env	MoStemAllomorph.PhoneEnv	RemoveReference	grammar/moStemAllomorph/removeRefPhoneEnv	-	-
+Covered	MoStemAllomorph	stem-name	MoStemAllomorph.StemName	Set	grammar/moStemAllomorph/setStemName	-	-
+Covered	MoStemAllomorph	stem-name	MoStemAllomorph.StemName	Clear	grammar/moStemAllomorph/clearStemName	-	-
+Covered	MoStemMsa	from-parts-of-speech	MoStemMsa.FromPartsOfSpeech	AddReference	grammar/moStemMsa/addRefFromPartsOfSpeech	-	-
+Covered	MoStemMsa	from-parts-of-speech	MoStemMsa.FromPartsOfSpeech	RemoveReference	grammar/moStemMsa/removeRefFromPartsOfSpeech	-	-
+Covered	MoStemMsa	inflection-class	MoStemMsa.InflectionClass	Set	grammar/moStemMsa/setInflectionClass	-	-
+Covered	MoStemMsa	inflection-class	MoStemMsa.InflectionClass	Clear	grammar/moStemMsa/clearInflectionClass	-	-
+Covered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	AddObject	grammar/moStemMsa/createMsFeatures	-	-
+Covered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	RemoveObject	grammar/moStemMsa/deleteMsFeatures	-	-
+Covered	MoStemMsa	part-of-speech	MoStemMsa.PartOfSpeech	Set	grammar/moStemMsa/setPartOfSpeech	-	-
+Covered	MoStemMsa	part-of-speech	MoStemMsa.PartOfSpeech	Clear	grammar/moStemMsa/clearPartOfSpeech	-	-
+Covered	MoStemMsa	prod-restrict	MoStemMsa.ProdRestrict	AddReference	grammar/moStemMsa/addRefProdRestrict	-	-
+Covered	MoStemMsa	prod-restrict	MoStemMsa.ProdRestrict	RemoveReference	grammar/moStemMsa/removeRefProdRestrict	-	-
+Covered	MoStemMsa	slots	MoStemMsa.Slots	AddReference	grammar/moStemMsa/addRefSlots	-	-
+Covered	MoStemMsa	slots	MoStemMsa.Slots	RemoveReference	grammar/moStemMsa/removeRefSlots	-	-
+Covered	MoStemName	abbreviation	MoStemName.Abbreviation	SetAlternative	grammar/moStemName/setAbbreviation	-	-
+Covered	MoStemName	abbreviation	MoStemName.Abbreviation	ClearAlternative	grammar/moStemName/clearAbbreviation	-	-
+Covered	MoStemName	description	MoStemName.Description	SetPlainRich	text/setRichString	-	-
+Covered	MoStemName	description	MoStemName.Description	SetRich	text/setRichString	-	-
+Covered	MoStemName	description	MoStemName.Description	ClearRich	text/setRichString	-	-
+Covered	MoStemName	name	MoStemName.Name	SetAlternative	grammar/moStemName/setName	-	-
+Covered	MoStemName	name	MoStemName.Name	ClearAlternative	grammar/moStemName/clearName	-	-
+Covered	MoStemName	regions	MoStemName.Regions	AddObject	grammar/moStemName/createRegions	-	-
+Covered	MoUnclassifiedAffixMsa	part-of-speech	MoUnclassifiedAffixMsa.PartOfSpeech	Set	grammar/moUnclassifiedAffixMsa/setPartOfSpeech	-	-
+Covered	MoUnclassifiedAffixMsa	part-of-speech	MoUnclassifiedAffixMsa.PartOfSpeech	Clear	grammar/moUnclassifiedAffixMsa/clearPartOfSpeech	-	-
+Covered	PartOfSpeech	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	PartOfSpeech	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	PartOfSpeech	affix-slots	PartOfSpeech.AffixSlots	AddObject	grammar/partOfSpeech/createAffixSlots	-	-
+Covered	PartOfSpeech	affix-slots	PartOfSpeech.AffixSlots	RemoveObject	grammar/partOfSpeech/deleteAffixSlots	-	-
+Covered	PartOfSpeech	affix-templates	PartOfSpeech.AffixTemplates	AddObject	grammar/partOfSpeech/createAffixTemplates	-	-
+Covered	PartOfSpeech	affix-templates	PartOfSpeech.AffixTemplates	MoveObject	grammar/partOfSpeech/moveAffixTemplates	-	-
+Covered	PartOfSpeech	default-inflection-class	PartOfSpeech.DefaultInflectionClass	Set	grammar/partOfSpeech/setDefaultInflectionClass	-	-
+Covered	PartOfSpeech	default-inflection-class	PartOfSpeech.DefaultInflectionClass	Clear	grammar/partOfSpeech/clearDefaultInflectionClass	-	-
+Covered	PartOfSpeech	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	PartOfSpeech	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	PartOfSpeech	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	PartOfSpeech	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	PartOfSpeech	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	PartOfSpeech	inflection-classes	PartOfSpeech.InflectionClasses	AddObject	grammar/partOfSpeech/createInflectionClasses	-	-
+Covered	PartOfSpeech	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	PartOfSpeech	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	PartOfSpeech	stem-names	PartOfSpeech.StemNames	AddObject	grammar/partOfSpeech/createStemNames	-	-
+Covered	PartOfSpeech	sub-possibilities	CmPossibility.SubPossibilities	AddObject	lists/cmPossibility/createSubPossibilities	-	-
+Covered	PhIterationContext	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
+Covered	PhIterationContext	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
+Covered	PhIterationContext	member	PhIterationContext.Member	Set	grammar/phIterationContext/setMember	-	-
+Covered	PhIterationContext	member	PhIterationContext.Member	Clear	grammar/phIterationContext/clearMember	-	-
+Covered	PhPhonRuleFeat	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
+Covered	PhPhonRuleFeat	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
+Covered	PhPhonRuleFeat	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
+Covered	PhPhonRuleFeat	description	CmPossibility.Description	SetRich	text/setRichString	-	-
+Covered	PhPhonRuleFeat	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
+Covered	PhPhonRuleFeat	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
+Covered	PhPhonRuleFeat	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	PhPhonRuleFeat	item	PhPhonRuleFeat.Item	Set	grammar/phPhonRuleFeat/setItem	-	-
+Covered	PhPhonRuleFeat	item	PhPhonRuleFeat.Item	Clear	grammar/phPhonRuleFeat/clearItem	-	-
+Covered	PhPhonRuleFeat	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
+Covered	PhPhonRuleFeat	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	PhSequenceContext	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
+Covered	PhSequenceContext	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
+Covered	PhSequenceContext	members	PhSequenceContext.Members	AddReference	grammar/phSequenceContext/addRefMembers	-	-
+Covered	PhSequenceContext	members	PhSequenceContext.Members	InsertReference	grammar/phSequenceContext/addRefMembers	-	-
+Covered	PhSequenceContext	members	PhSequenceContext.Members	RemoveReference	grammar/phSequenceContext/removeRefMembers	-	-
+Covered	PhSequenceContext	members	PhSequenceContext.Members	MoveReference	grammar/phSequenceContext/moveMembers	-	-
+Covered	PhSimpleContextBdry	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
+Covered	PhSimpleContextBdry	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
+Covered	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Set	grammar/phSimpleContextBdry/setFeatureStructure	-	-
+Covered	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Clear	grammar/phSimpleContextBdry/clearFeatureStructure	-	-
+Covered	PhSimpleContextNC	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
+Covered	PhSimpleContextNC	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
+Covered	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Set	grammar/phSimpleContextNC/setFeatureStructure	-	-
+Covered	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Clear	grammar/phSimpleContextNC/clearFeatureStructure	-	-
+Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	AddReference	grammar/phSimpleContextNC/addRefMinusConstr	-	-
+Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefMinusConstr	-	-
+Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	AddReference	grammar/phSimpleContextNC/addRefPlusConstr	-	-
+Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefPlusConstr	-	-
+Covered	PhSimpleContextSeg	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
+Covered	PhSimpleContextSeg	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
+Covered	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Set	grammar/phSimpleContextSeg/setFeatureStructure	-	-
+Covered	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Clear	grammar/phSimpleContextSeg/clearFeatureStructure	-	-
+Covered	RnGenericRec	description	RnGenericRec.Description	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	description	RnGenericRec.Description	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	title	RnGenericRec.Title	SetPlainRich	system/rnGenericRec/setTitle	-	-
+Covered	RnGenericRec	title	RnGenericRec.Title	ClearRich	system/rnGenericRec/clearTitle	-	-
+Covered	RnGenericRec	type	RnGenericRec.Type	Set	system/rnGenericRec/setType	-	-
+Covered	RnGenericRec	type	RnGenericRec.Type	Clear	system/rnGenericRec/clearType	-	-
+CustomFields	LexEntry	custom-LexEntry-ExampleNumber	LexEntry.ExampleNumber	Set	none	CustomField	-
+CustomFields	LexEntry	custom-LexEntry-ExampleNumber	LexEntry.ExampleNumber	Clear	none	CustomField	-
+CustomFields	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	SetPlainRich	none	CustomField	-
+CustomFields	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	SetRich	none	CustomField	-
+CustomFields	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	ClearRich	none	CustomField	-
+LexiconEditReferenceSets	LexEntry	dialect-labels	LexEntry.DialectLabels	InsertReference	none	UnsupportedPlacement	-
+LexiconEditReferenceSets	LexEntry	dialect-labels	LexEntry.DialectLabels	MoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	AddReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	InsertReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	RemoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	MoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	component-lexemes	LexEntryRef.ComponentLexemes	InsertReference	none	UnsupportedPlacement	-
+LexiconEditReferenceSets	LexEntryRef	component-lexemes	LexEntryRef.ComponentLexemes	MoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	AddReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	InsertReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	RemoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	MoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntryRef	variant-entry-types	LexEntryRef.VariantEntryTypes	InsertReference	none	UnsupportedPlacement	-
+LexiconEditReferenceSets	LexEntryRef	variant-entry-types	LexEntryRef.VariantEntryTypes	MoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	AddReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	InsertReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	RemoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	MoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	anthro-codes	LexSense.AnthroCodes	AddReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	anthro-codes	LexSense.AnthroCodes	RemoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	AddReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	InsertReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	RemoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	MoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	domain-types	LexSense.DomainTypes	AddReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	domain-types	LexSense.DomainTypes	RemoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	semantic-domains	LexSense.SemanticDomains	AddReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	semantic-domains	LexSense.SemanticDomains	RemoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	usage-types	LexSense.UsageTypes	AddReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	usage-types	LexSense.UsageTypes	RemoveReference	none	NoOperationKind	-
+OtherFields	ChkRef	key-word	ChkRef.KeyWord	SetPlainRich	none	NoOperationKind	-
+OtherFields	ChkRef	key-word	ChkRef.KeyWord	SetRich	none	NoOperationKind	-
+OtherFields	ChkRef	key-word	ChkRef.KeyWord	ClearRich	none	NoOperationKind	-
+OtherFields	ChkRef	location	ChkRef.Location	Set	none	NoOperationKind	-
+OtherFields	ChkRef	location	ChkRef.Location	Clear	none	NoOperationKind	-
+OtherFields	ChkRef	ref	ChkRef.Ref	Set	none	NoOperationKind	-
+OtherFields	ChkRef	ref	ChkRef.Ref	Clear	none	NoOperationKind	-
+OtherFields	ChkRef	rendering	ChkRef.Rendering	Set	none	NoOperationKind	-
+OtherFields	ChkRef	rendering	ChkRef.Rendering	Clear	none	NoOperationKind	-
+OtherFields	ChkRef	status	ChkRef.Status	Set	none	NoOperationKind	-
+OtherFields	ChkRef	status	ChkRef.Status	Clear	none	NoOperationKind	-
+OtherFields	ChkRendering	explanation	ChkRendering.Explanation	SetAlternative	none	NoOperationKind	-
+OtherFields	ChkRendering	explanation	ChkRendering.Explanation	ClearAlternative	none	NoOperationKind	-
+OtherFields	ChkRendering	meaning	ChkRendering.Meaning	Set	none	NoOperationKind	-
+OtherFields	ChkRendering	meaning	ChkRendering.Meaning	Clear	none	NoOperationKind	-
+OtherFields	ChkRendering	surface-form	ChkRendering.SurfaceForm	Set	none	NoOperationKind	-
+OtherFields	ChkRendering	surface-form	ChkRendering.SurfaceForm	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	occurrences	ChkTerm.Occurrences	AddObject	none	NoOperationKind	-
+OtherFields	ChkTerm	occurrences	ChkTerm.Occurrences	RemoveObject	none	NoOperationKind	-
+OtherFields	ChkTerm	occurrences	ChkTerm.Occurrences	MoveObject	none	NoOperationKind	-
+OtherFields	ChkTerm	renderings	ChkTerm.Renderings	AddObject	none	NoOperationKind	-
+OtherFields	ChkTerm	renderings	ChkTerm.Renderings	RemoveObject	none	NoOperationKind	-
+OtherFields	ChkTerm	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	ChkTerm	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	ChkTerm	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	ChkTerm	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	ChkTerm	see-also	ChkTerm.SeeAlso	SetAlternative	none	NoOperationKind	-
+OtherFields	ChkTerm	see-also	ChkTerm.SeeAlso	ClearAlternative	none	NoOperationKind	-
+OtherFields	ChkTerm	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	ChkTerm	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	ChkTerm	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	ChkTerm	term-id	ChkTerm.TermId	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	term-id	ChkTerm.TermId	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	ChkTerm	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	ChkTerm	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	allows-comment	CmAnnotationDefn.AllowsComment	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	allows-comment	CmAnnotationDefn.AllowsComment	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	allows-feature-structure	CmAnnotationDefn.AllowsFeatureStructure	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	allows-feature-structure	CmAnnotationDefn.AllowsFeatureStructure	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	allows-instance-of	CmAnnotationDefn.AllowsInstanceOf	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	allows-instance-of	CmAnnotationDefn.AllowsInstanceOf	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	can-create-orphan	CmAnnotationDefn.CanCreateOrphan	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	can-create-orphan	CmAnnotationDefn.CanCreateOrphan	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	copy-cut-pastable	CmAnnotationDefn.CopyCutPastable	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	copy-cut-pastable	CmAnnotationDefn.CopyCutPastable	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	instance-of-signature	CmAnnotationDefn.InstanceOfSignature	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	instance-of-signature	CmAnnotationDefn.InstanceOfSignature	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	max-dup-occur	CmAnnotationDefn.MaxDupOccur	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	max-dup-occur	CmAnnotationDefn.MaxDupOccur	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	multi	CmAnnotationDefn.Multi	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	multi	CmAnnotationDefn.Multi	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	prompt-user	CmAnnotationDefn.PromptUser	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	prompt-user	CmAnnotationDefn.PromptUser	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	severity	CmAnnotationDefn.Severity	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	severity	CmAnnotationDefn.Severity	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	CmAnnotationDefn	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	user-can-create	CmAnnotationDefn.UserCanCreate	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	user-can-create	CmAnnotationDefn.UserCanCreate	Clear	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	zero-width	CmAnnotationDefn.ZeroWidth	Set	none	NoOperationKind	-
+OtherFields	CmAnnotationDefn	zero-width	CmAnnotationDefn.ZeroWidth	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	CmAnthroItem	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	CmAnthroItem	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	CmAnthroItem	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	CmAnthroItem	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	CmAnthroItem	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	CmAnthroItem	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	CmAnthroItem	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	CmAnthroItem	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	CmAnthroItem	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	CmCustomItem	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	CmCustomItem	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	CmCustomItem	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	CmCustomItem	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	CmCustomItem	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	CmCustomItem	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	CmCustomItem	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	CmCustomItem	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	CmCustomItem	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetPlainRich	none	NoOperationKind	-
+OtherFields	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetRich	none	NoOperationKind	-
+OtherFields	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	ClearRich	none	NoOperationKind	-
+OtherFields	CmDomainQ	example-words	CmDomainQ.ExampleWords	SetAlternative	none	NoOperationKind	-
+OtherFields	CmDomainQ	example-words	CmDomainQ.ExampleWords	ClearAlternative	none	NoOperationKind	-
+OtherFields	CmDomainQ	question	CmDomainQ.Question	SetAlternative	none	NoOperationKind	-
+OtherFields	CmDomainQ	question	CmDomainQ.Question	ClearAlternative	none	NoOperationKind	-
+OtherFields	CmLocation	alias	CmLocation.Alias	SetAlternative	none	NoOperationKind	-
+OtherFields	CmLocation	alias	CmLocation.Alias	ClearAlternative	none	NoOperationKind	-
+OtherFields	CmLocation	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	CmLocation	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	CmLocation	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	CmLocation	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	CmLocation	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	CmLocation	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	CmLocation	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	CmLocation	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	CmLocation	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	CmLocation	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	CmLocation	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	CmLocation	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	CmLocation	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	CmLocation	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	CmLocation	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	CmLocation	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	CmLocation	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	CmLocation	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	CmLocation	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	CmLocation	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	CmLocation	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	CmLocation	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	CmLocation	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	CmLocation	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	CmLocation	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	CmLocation	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	CmLocation	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	CmMedia	media-file	CmMedia.MediaFile	Set	none	NoOperationKind	-
+OtherFields	CmMedia	media-file	CmMedia.MediaFile	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	alias	CmPerson.Alias	SetAlternative	none	NoOperationKind	-
+OtherFields	CmPerson	alias	CmPerson.Alias	ClearAlternative	none	NoOperationKind	-
+OtherFields	CmPerson	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	CmPerson	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	CmPerson	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	education	CmPerson.Education	Set	none	NoOperationKind	-
+OtherFields	CmPerson	education	CmPerson.Education	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	CmPerson	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	gender	CmPerson.Gender	Set	none	NoOperationKind	-
+OtherFields	CmPerson	gender	CmPerson.Gender	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	CmPerson	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	CmPerson	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	CmPerson	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	is-researcher	CmPerson.IsResearcher	Set	none	NoOperationKind	-
+OtherFields	CmPerson	is-researcher	CmPerson.IsResearcher	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	place-of-birth	CmPerson.PlaceOfBirth	Set	none	NoOperationKind	-
+OtherFields	CmPerson	place-of-birth	CmPerson.PlaceOfBirth	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	places-of-residence	CmPerson.PlacesOfResidence	AddReference	none	NoOperationKind	-
+OtherFields	CmPerson	places-of-residence	CmPerson.PlacesOfResidence	RemoveReference	none	NoOperationKind	-
+OtherFields	CmPerson	positions	CmPerson.Positions	AddReference	none	NoOperationKind	-
+OtherFields	CmPerson	positions	CmPerson.Positions	RemoveReference	none	NoOperationKind	-
+OtherFields	CmPerson	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	CmPerson	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	CmPerson	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	CmPerson	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	CmPerson	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	CmPerson	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	CmPerson	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	CmPerson	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	CmPerson	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	CmPerson	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	CmPerson	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	CmPerson	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	CmPerson	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	CmPicture	do-not-publish-in	CmPicture.DoNotPublishIn	AddReference	none	NoOperationKind	-
+OtherFields	CmPicture	do-not-publish-in	CmPicture.DoNotPublishIn	RemoveReference	none	NoOperationKind	-
+OtherFields	CmPicture	layout-pos	CmPicture.LayoutPos	Set	none	NoOperationKind	-
+OtherFields	CmPicture	layout-pos	CmPicture.LayoutPos	Clear	none	NoOperationKind	-
+OtherFields	CmPicture	location-max	CmPicture.LocationMax	Set	none	NoOperationKind	-
+OtherFields	CmPicture	location-max	CmPicture.LocationMax	Clear	none	NoOperationKind	-
+OtherFields	CmPicture	location-min	CmPicture.LocationMin	Set	none	NoOperationKind	-
+OtherFields	CmPicture	location-min	CmPicture.LocationMin	Clear	none	NoOperationKind	-
+OtherFields	CmPicture	location-range-type	CmPicture.LocationRangeType	Set	none	NoOperationKind	-
+OtherFields	CmPicture	location-range-type	CmPicture.LocationRangeType	Clear	none	NoOperationKind	-
+OtherFields	CmPicture	picture-file	CmPicture.PictureFile	Set	none	NoOperationKind	-
+OtherFields	CmPicture	picture-file	CmPicture.PictureFile	Clear	none	NoOperationKind	-
+OtherFields	CmPicture	scale-factor	CmPicture.ScaleFactor	Set	none	NoOperationKind	-
+OtherFields	CmPicture	scale-factor	CmPicture.ScaleFactor	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	CmPossibility	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	CmPossibility	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	CmPossibility	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	CmPossibility	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	CmPossibility	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	CmPossibility	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	CmPossibility	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	CmPossibility	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	CmPossibility	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	louw-nida-codes	CmSemanticDomain.LouwNidaCodes	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	louw-nida-codes	CmSemanticDomain.LouwNidaCodes	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	ocm-codes	CmSemanticDomain.OcmCodes	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	ocm-codes	CmSemanticDomain.OcmCodes	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	ocm-refs	CmSemanticDomain.OcmRefs	AddReference	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	ocm-refs	CmSemanticDomain.OcmRefs	RemoveReference	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	questions	CmSemanticDomain.Questions	AddObject	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	questions	CmSemanticDomain.Questions	RemoveObject	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	questions	CmSemanticDomain.Questions	MoveObject	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	related-domains	CmSemanticDomain.RelatedDomains	AddReference	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	related-domains	CmSemanticDomain.RelatedDomains	RemoveReference	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	CmSemanticDomain	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	CmSemanticDomain	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	CmTranslation	status	CmTranslation.Status	SetAlternative	none	NoOperationKind	-
+OtherFields	CmTranslation	status	CmTranslation.Status	ClearAlternative	none	NoOperationKind	-
+OtherFields	CmTranslation	type	CmTranslation.Type	Set	none	NoOperationKind	-
+OtherFields	CmTranslation	type	CmTranslation.Type	Clear	none	NoOperationKind	-
+OtherFields	FsComplexValue	value	FsComplexValue.Value	AddObject	none	NoOperationKind	-
+OtherFields	FsComplexValue	value	FsComplexValue.Value	RemoveObject	none	NoOperationKind	-
+OtherFields	FsDisjunctiveValue	value	FsDisjunctiveValue.Value	AddReference	none	NoOperationKind	-
+OtherFields	FsDisjunctiveValue	value	FsDisjunctiveValue.Value	RemoveReference	none	NoOperationKind	-
+OtherFields	FsFeatStruc	feature-disjunctions	FsFeatStruc.FeatureDisjunctions	AddObject	none	NoOperationKind	-
+OtherFields	FsFeatStruc	feature-disjunctions	FsFeatStruc.FeatureDisjunctions	RemoveObject	none	NoOperationKind	-
+OtherFields	FsFeatStruc	type	FsFeatStruc.Type	Set	none	NoOperationKind	-
+OtherFields	FsFeatStruc	type	FsFeatStruc.Type	Clear	none	NoOperationKind	-
+OtherFields	FsFeatStrucDisj	contents	FsFeatStrucDisj.Contents	AddObject	none	NoOperationKind	-
+OtherFields	FsFeatStrucDisj	contents	FsFeatStrucDisj.Contents	RemoveObject	none	NoOperationKind	-
+OtherFields	FsNegatedValue	value	FsNegatedValue.Value	Set	none	NoOperationKind	-
+OtherFields	FsNegatedValue	value	FsNegatedValue.Value	Clear	none	NoOperationKind	-
+OtherFields	FsOpenValue	value	FsOpenValue.Value	SetAlternative	none	NoOperationKind	-
+OtherFields	FsOpenValue	value	FsOpenValue.Value	ClearAlternative	none	NoOperationKind	-
+OtherFields	FsSharedValue	value	FsSharedValue.Value	Set	none	NoOperationKind	-
+OtherFields	FsSharedValue	value	FsSharedValue.Value	Clear	none	NoOperationKind	-
+OtherFields	LexEntry	entry-refs	LexEntry.EntryRefs	RemoveObject	none	NoOperationKind	-
+OtherFields	LexEntry	entry-refs	LexEntry.EntryRefs	MoveObject	none	NoOperationKind	-
+OtherFields	LexEntry	etymology	LexEntry.Etymology	AddObject	none	NoOperationKind	-
+OtherFields	LexEntry	etymology	LexEntry.Etymology	RemoveObject	none	NoOperationKind	-
+OtherFields	LexEntry	etymology	LexEntry.Etymology	MoveObject	none	NoOperationKind	-
+OtherFields	LexEntry	pronunciations	LexEntry.Pronunciations	AddObject	none	NoOperationKind	-
+OtherFields	LexEntry	pronunciations	LexEntry.Pronunciations	RemoveObject	none	NoOperationKind	-
+OtherFields	LexEntry	pronunciations	LexEntry.Pronunciations	MoveObject	none	NoOperationKind	-
+OtherFields	LexEntry	senses	LexEntry.Senses	MoveObject	none	NoOperationKind	-
+OtherFields	LexEntryInflType	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	LexEntryInflType	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	LexEntryInflType	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	LexEntryInflType	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	LexEntryInflType	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	LexEntryInflType	infl-feats	LexEntryInflType.InflFeats	AddObject	none	NoOperationKind	-
+OtherFields	LexEntryInflType	infl-feats	LexEntryInflType.InflFeats	RemoveObject	none	NoOperationKind	-
+OtherFields	LexEntryInflType	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	LexEntryInflType	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	LexEntryInflType	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	LexEntryInflType	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	LexEntryInflType	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	LexEntryInflType	reverse-abbr	LexEntryType.ReverseAbbr	SetAlternative	none	NoOperationKind	-
+OtherFields	LexEntryInflType	reverse-abbr	LexEntryType.ReverseAbbr	ClearAlternative	none	NoOperationKind	-
+OtherFields	LexEntryInflType	reverse-name	LexEntryType.ReverseName	SetAlternative	none	NoOperationKind	-
+OtherFields	LexEntryInflType	reverse-name	LexEntryType.ReverseName	ClearAlternative	none	NoOperationKind	-
+OtherFields	LexEntryInflType	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	LexEntryInflType	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	LexEntryInflType	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	LexEntryInflType	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	LexEntryInflType	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	LexEntryInflType	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	LexEntryInflType	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	LexEntryInflType	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	LexEntryRef	hide-minor-entry	LexEntryRef.HideMinorEntry	Set	none	NoOperationKind	-
+OtherFields	LexEntryRef	hide-minor-entry	LexEntryRef.HideMinorEntry	Clear	none	NoOperationKind	-
+OtherFields	LexEntryRef	ref-type	LexEntryRef.RefType	Set	none	NoOperationKind	-
+OtherFields	LexEntryRef	ref-type	LexEntryRef.RefType	Clear	none	NoOperationKind	-
+OtherFields	LexEntryRef	show-complex-forms-in	LexEntryRef.ShowComplexFormsIn	AddReference	none	NoOperationKind	-
+OtherFields	LexEntryRef	show-complex-forms-in	LexEntryRef.ShowComplexFormsIn	InsertReference	none	NoOperationKind	-
+OtherFields	LexEntryRef	show-complex-forms-in	LexEntryRef.ShowComplexFormsIn	RemoveReference	none	NoOperationKind	-
+OtherFields	LexEntryRef	show-complex-forms-in	LexEntryRef.ShowComplexFormsIn	MoveReference	none	NoOperationKind	-
+OtherFields	LexEntryType	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	LexEntryType	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	LexEntryType	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	LexEntryType	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	LexEntryType	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	LexEntryType	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	LexEntryType	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	LexEntryType	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	LexEntryType	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	LexEntryType	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	LexEntryType	reverse-abbr	LexEntryType.ReverseAbbr	SetAlternative	none	NoOperationKind	-
+OtherFields	LexEntryType	reverse-abbr	LexEntryType.ReverseAbbr	ClearAlternative	none	NoOperationKind	-
+OtherFields	LexEntryType	reverse-name	LexEntryType.ReverseName	SetAlternative	none	NoOperationKind	-
+OtherFields	LexEntryType	reverse-name	LexEntryType.ReverseName	ClearAlternative	none	NoOperationKind	-
+OtherFields	LexEntryType	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	LexEntryType	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	LexEntryType	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	LexEntryType	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	LexEntryType	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	LexEntryType	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	LexEntryType	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	LexEntryType	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	LexEtymology	form	LexEtymology.Form	SetRich	none	NoOperationKind	-
+OtherFields	LexEtymology	gloss	LexEtymology.Gloss	SetRich	none	NoOperationKind	-
+OtherFields	LexExampleSentence	do-not-publish-in	LexExampleSentence.DoNotPublishIn	AddReference	none	NoOperationKind	-
+OtherFields	LexExampleSentence	do-not-publish-in	LexExampleSentence.DoNotPublishIn	RemoveReference	none	NoOperationKind	-
+OtherFields	LexExampleSentence	translations	LexExampleSentence.Translations	AddObject	none	NoOperationKind	-
+OtherFields	LexExampleSentence	translations	LexExampleSentence.Translations	RemoveObject	none	NoOperationKind	-
+OtherFields	LexExtendedNote	examples	LexExtendedNote.Examples	AddObject	none	NoOperationKind	-
+OtherFields	LexExtendedNote	examples	LexExtendedNote.Examples	RemoveObject	none	NoOperationKind	-
+OtherFields	LexExtendedNote	examples	LexExtendedNote.Examples	MoveObject	none	NoOperationKind	-
+OtherFields	LexExtendedNote	extended-note-type	LexExtendedNote.ExtendedNoteType	Set	none	NoOperationKind	-
+OtherFields	LexExtendedNote	extended-note-type	LexExtendedNote.ExtendedNoteType	Clear	none	NoOperationKind	-
+OtherFields	LexPronunciation	do-not-publish-in	LexPronunciation.DoNotPublishIn	AddReference	none	NoOperationKind	-
+OtherFields	LexPronunciation	do-not-publish-in	LexPronunciation.DoNotPublishIn	RemoveReference	none	NoOperationKind	-
+OtherFields	LexPronunciation	location	LexPronunciation.Location	Set	none	NoOperationKind	-
+OtherFields	LexPronunciation	location	LexPronunciation.Location	Clear	none	NoOperationKind	-
+OtherFields	LexPronunciation	media-files	LexPronunciation.MediaFiles	AddObject	none	NoOperationKind	-
+OtherFields	LexPronunciation	media-files	LexPronunciation.MediaFiles	RemoveObject	none	NoOperationKind	-
+OtherFields	LexPronunciation	media-files	LexPronunciation.MediaFiles	MoveObject	none	NoOperationKind	-
+OtherFields	LexRefType	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	LexRefType	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	LexRefType	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	LexRefType	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	LexRefType	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	LexRefType	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	LexRefType	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	mapping-type	LexRefType.MappingType	Set	none	NoOperationKind	-
+OtherFields	LexRefType	mapping-type	LexRefType.MappingType	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	members	LexRefType.Members	AddObject	none	NoOperationKind	-
+OtherFields	LexRefType	members	LexRefType.Members	RemoveObject	none	NoOperationKind	-
+OtherFields	LexRefType	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	LexRefType	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	LexRefType	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	LexRefType	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	LexRefType	reverse-abbreviation	LexRefType.ReverseAbbreviation	SetAlternative	none	NoOperationKind	-
+OtherFields	LexRefType	reverse-abbreviation	LexRefType.ReverseAbbreviation	ClearAlternative	none	NoOperationKind	-
+OtherFields	LexRefType	reverse-name	LexRefType.ReverseName	SetAlternative	none	NoOperationKind	-
+OtherFields	LexRefType	reverse-name	LexRefType.ReverseName	ClearAlternative	none	NoOperationKind	-
+OtherFields	LexRefType	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	LexRefType	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	LexRefType	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	LexRefType	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	LexRefType	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	LexRefType	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	LexRefType	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	LexRefType	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	LexRefType	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	LexReference	name	LexReference.Name	SetAlternative	none	NoOperationKind	-
+OtherFields	LexReference	name	LexReference.Name	ClearAlternative	none	NoOperationKind	-
+OtherFields	LexReference	targets	LexReference.Targets	AddReference	none	NoOperationKind	-
+OtherFields	LexReference	targets	LexReference.Targets	InsertReference	none	NoOperationKind	-
+OtherFields	LexReference	targets	LexReference.Targets	RemoveReference	none	NoOperationKind	-
+OtherFields	LexReference	targets	LexReference.Targets	MoveReference	none	NoOperationKind	-
+OtherFields	LexSense	appendixes	LexSense.Appendixes	AddReference	none	NoOperationKind	-
+OtherFields	LexSense	appendixes	LexSense.Appendixes	RemoveReference	none	NoOperationKind	-
+OtherFields	LexSense	do-not-publish-in	LexSense.DoNotPublishIn	AddReference	none	NoOperationKind	-
+OtherFields	LexSense	do-not-publish-in	LexSense.DoNotPublishIn	RemoveReference	none	NoOperationKind	-
+OtherFields	LexSense	examples	LexSense.Examples	RemoveObject	none	NoOperationKind	-
+OtherFields	LexSense	examples	LexSense.Examples	MoveObject	none	NoOperationKind	-
+OtherFields	LexSense	extended-note	LexSense.ExtendedNote	AddObject	none	NoOperationKind	-
+OtherFields	LexSense	extended-note	LexSense.ExtendedNote	RemoveObject	none	NoOperationKind	-
+OtherFields	LexSense	extended-note	LexSense.ExtendedNote	MoveObject	none	NoOperationKind	-
+OtherFields	LexSense	pictures	LexSense.Pictures	AddObject	none	NoOperationKind	-
+OtherFields	LexSense	pictures	LexSense.Pictures	RemoveObject	none	NoOperationKind	-
+OtherFields	LexSense	pictures	LexSense.Pictures	MoveObject	none	NoOperationKind	-
+OtherFields	LexSense	sense-type	LexSense.SenseType	Set	none	NoOperationKind	-
+OtherFields	LexSense	sense-type	LexSense.SenseType	Clear	none	NoOperationKind	-
+OtherFields	LexSense	senses	LexSense.Senses	AddObject	none	NoOperationKind	-
+OtherFields	LexSense	senses	LexSense.Senses	MoveObject	none	NoOperationKind	-
+OtherFields	LexSense	status	LexSense.Status	Set	none	NoOperationKind	-
+OtherFields	LexSense	status	LexSense.Status	Clear	none	NoOperationKind	-
+OtherFields	LexSense	thesaurus-items	LexSense.ThesaurusItems	AddReference	none	NoOperationKind	-
+OtherFields	LexSense	thesaurus-items	LexSense.ThesaurusItems	RemoveReference	none	NoOperationKind	-
+OtherFields	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoAffixAllomorph	ms-env-part-of-speech	MoAffixAllomorph.MsEnvPartOfSpeech	Set	none	NoOperationKind	-
+OtherFields	MoAffixAllomorph	ms-env-part-of-speech	MoAffixAllomorph.MsEnvPartOfSpeech	Clear	none	NoOperationKind	-
+OtherFields	MoAffixProcess	input	MoAffixProcess.Input	RemoveObject	none	NoOperationKind	-
+OtherFields	MoAffixProcess	input	MoAffixProcess.Input	MoveObject	none	NoOperationKind	-
+OtherFields	MoAffixProcess	output	MoAffixProcess.Output	RemoveObject	none	NoOperationKind	-
+OtherFields	MoAffixProcess	output	MoAffixProcess.Output	MoveObject	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	affix-category	MoDerivAffMsa.AffixCategory	Set	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	affix-category	MoDerivAffMsa.AffixCategory	Clear	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	AddReference	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	InsertReference	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	RemoveReference	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	MoveReference	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	AddReference	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	InsertReference	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	RemoveReference	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	MoveReference	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	stratum	MoDerivAffMsa.Stratum	Set	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	stratum	MoDerivAffMsa.Stratum	Clear	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	AddReference	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	InsertReference	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	RemoveReference	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	MoveReference	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	AddReference	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	InsertReference	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	RemoveReference	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	MoveReference	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	infl-feats	MoDerivStepMsa.InflFeats	AddObject	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	infl-feats	MoDerivStepMsa.InflFeats	RemoveObject	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	inflection-class	MoDerivStepMsa.InflectionClass	Set	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	inflection-class	MoDerivStepMsa.InflectionClass	Clear	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	ms-features	MoDerivStepMsa.MsFeatures	AddObject	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	ms-features	MoDerivStepMsa.MsFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	part-of-speech	MoDerivStepMsa.PartOfSpeech	Set	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	part-of-speech	MoDerivStepMsa.PartOfSpeech	Clear	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	prod-restrict	MoDerivStepMsa.ProdRestrict	AddReference	none	NoOperationKind	-
+OtherFields	MoDerivStepMsa	prod-restrict	MoDerivStepMsa.ProdRestrict	RemoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	affix-category	MoInflAffMsa.AffixCategory	Set	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	affix-category	MoInflAffMsa.AffixCategory	Clear	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	components	MoMorphSynAnalysis.Components	AddReference	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	components	MoMorphSynAnalysis.Components	InsertReference	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	components	MoMorphSynAnalysis.Components	RemoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	components	MoMorphSynAnalysis.Components	MoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	AddReference	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	InsertReference	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	RemoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	MoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	RemoveObject	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	AddReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	InsertReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	RemoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	MoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	proclitic-slots	MoInflAffixTemplate.ProcliticSlots	AddReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	proclitic-slots	MoInflAffixTemplate.ProcliticSlots	InsertReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	proclitic-slots	MoInflAffixTemplate.ProcliticSlots	RemoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	proclitic-slots	MoInflAffixTemplate.ProcliticSlots	MoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	region	MoInflAffixTemplate.Region	AddObject	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	region	MoInflAffixTemplate.Region	RemoveObject	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	slots	MoInflAffixTemplate.Slots	AddReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	slots	MoInflAffixTemplate.Slots	InsertReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	slots	MoInflAffixTemplate.Slots	RemoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	slots	MoInflAffixTemplate.Slots	MoveReference	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	stratum	MoInflAffixTemplate.Stratum	Set	none	NoOperationKind	-
+OtherFields	MoInflAffixTemplate	stratum	MoInflAffixTemplate.Stratum	Clear	none	NoOperationKind	-
+OtherFields	MoInflClass	reference-forms	MoInflClass.ReferenceForms	AddObject	none	NoOperationKind	-
+OtherFields	MoInflClass	reference-forms	MoInflClass.ReferenceForms	RemoveObject	none	NoOperationKind	-
+OtherFields	MoInflClass	rules-of-referral	MoInflClass.RulesOfReferral	AddObject	none	NoOperationKind	-
+OtherFields	MoInflClass	rules-of-referral	MoInflClass.RulesOfReferral	RemoveObject	none	NoOperationKind	-
+OtherFields	MoInflClass	rules-of-referral	MoInflClass.RulesOfReferral	MoveObject	none	NoOperationKind	-
+OtherFields	MoInflClass	stem-names	MoInflClass.StemNames	AddObject	none	NoOperationKind	-
+OtherFields	MoInflClass	stem-names	MoInflClass.StemNames	RemoveObject	none	NoOperationKind	-
+OtherFields	MoInflClass	subclasses	MoInflClass.Subclasses	RemoveObject	none	NoOperationKind	-
+OtherFields	MoInsertPhones	content	MoInsertPhones.Content	InsertReference	none	UnsupportedPlacement	-
+OtherFields	MoInsertPhones	content	MoInsertPhones.Content	MoveReference	none	NoOperationKind	-
+OtherFields	MoMorphType	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	postfix	MoMorphType.Postfix	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	postfix	MoMorphType.Postfix	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	prefix	MoMorphType.Prefix	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	prefix	MoMorphType.Prefix	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	MoMorphType	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	MoMorphType	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	MoMorphType	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	MoMorphType	secondary-order	MoMorphType.SecondaryOrder	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	secondary-order	MoMorphType.SecondaryOrder	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	MoMorphType	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	MoMorphType	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	MoMorphType	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	MoMorphType	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	MoMorphType	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	MoReferralRule	input	MoReferralRule.Input	AddObject	none	NoOperationKind	-
+OtherFields	MoReferralRule	input	MoReferralRule.Input	RemoveObject	none	NoOperationKind	-
+OtherFields	MoReferralRule	name	MoReferralRule.Name	SetAlternative	none	NoOperationKind	-
+OtherFields	MoReferralRule	name	MoReferralRule.Name	ClearAlternative	none	NoOperationKind	-
+OtherFields	MoReferralRule	output	MoReferralRule.Output	AddObject	none	NoOperationKind	-
+OtherFields	MoReferralRule	output	MoReferralRule.Output	RemoveObject	none	NoOperationKind	-
+OtherFields	MoStemMsa	components	MoMorphSynAnalysis.Components	AddReference	none	NoOperationKind	-
+OtherFields	MoStemMsa	components	MoMorphSynAnalysis.Components	InsertReference	none	NoOperationKind	-
+OtherFields	MoStemMsa	components	MoMorphSynAnalysis.Components	RemoveReference	none	NoOperationKind	-
+OtherFields	MoStemMsa	components	MoMorphSynAnalysis.Components	MoveReference	none	NoOperationKind	-
+OtherFields	MoStemMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	AddReference	none	NoOperationKind	-
+OtherFields	MoStemMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	InsertReference	none	NoOperationKind	-
+OtherFields	MoStemMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	RemoveReference	none	NoOperationKind	-
+OtherFields	MoStemMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	MoveReference	none	NoOperationKind	-
+OtherFields	MoStemMsa	stratum	MoStemMsa.Stratum	Set	none	NoOperationKind	-
+OtherFields	MoStemMsa	stratum	MoStemMsa.Stratum	Clear	none	NoOperationKind	-
+OtherFields	MoStemName	default-affix	MoStemName.DefaultAffix	Set	none	NoOperationKind	-
+OtherFields	MoStemName	default-affix	MoStemName.DefaultAffix	Clear	none	NoOperationKind	-
+OtherFields	MoStemName	default-stem	MoStemName.DefaultStem	Set	none	NoOperationKind	-
+OtherFields	MoStemName	default-stem	MoStemName.DefaultStem	Clear	none	NoOperationKind	-
+OtherFields	MoStemName	regions	MoStemName.Regions	RemoveObject	none	NoOperationKind	-
+OtherFields	MoUnclassifiedAffixMsa	components	MoMorphSynAnalysis.Components	AddReference	none	NoOperationKind	-
+OtherFields	MoUnclassifiedAffixMsa	components	MoMorphSynAnalysis.Components	InsertReference	none	NoOperationKind	-
+OtherFields	MoUnclassifiedAffixMsa	components	MoMorphSynAnalysis.Components	RemoveReference	none	NoOperationKind	-
+OtherFields	MoUnclassifiedAffixMsa	components	MoMorphSynAnalysis.Components	MoveReference	none	NoOperationKind	-
+OtherFields	MoUnclassifiedAffixMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	AddReference	none	NoOperationKind	-
+OtherFields	MoUnclassifiedAffixMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	InsertReference	none	NoOperationKind	-
+OtherFields	MoUnclassifiedAffixMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	RemoveReference	none	NoOperationKind	-
+OtherFields	MoUnclassifiedAffixMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	MoveReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	affix-templates	PartOfSpeech.AffixTemplates	RemoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	bearable-features	PartOfSpeech.BearableFeatures	AddReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	bearable-features	PartOfSpeech.BearableFeatures	RemoveReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	catalog-source-id	PartOfSpeech.CatalogSourceId	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	catalog-source-id	PartOfSpeech.CatalogSourceId	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	default-features	PartOfSpeech.DefaultFeatures	AddObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	default-features	PartOfSpeech.DefaultFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	empty-paradigm-cells	PartOfSpeech.EmptyParadigmCells	AddObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	empty-paradigm-cells	PartOfSpeech.EmptyParadigmCells	RemoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	inflectable-feats	PartOfSpeech.InflectableFeats	AddReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	inflectable-feats	PartOfSpeech.InflectableFeats	RemoveReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	inflection-classes	PartOfSpeech.InflectionClasses	RemoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	inher-feat-val	PartOfSpeech.InherFeatVal	AddObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	inher-feat-val	PartOfSpeech.InherFeatVal	RemoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	reference-forms	PartOfSpeech.ReferenceForms	AddObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	reference-forms	PartOfSpeech.ReferenceForms	RemoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	rules-of-referral	PartOfSpeech.RulesOfReferral	AddObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	rules-of-referral	PartOfSpeech.RulesOfReferral	RemoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	rules-of-referral	PartOfSpeech.RulesOfReferral	MoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	stem-names	PartOfSpeech.StemNames	RemoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	PartOfSpeech	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	PartOfSpeech	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	PhIterationContext	maximum	PhIterationContext.Maximum	Set	none	NoOperationKind	-
+OtherFields	PhIterationContext	maximum	PhIterationContext.Maximum	Clear	none	NoOperationKind	-
+OtherFields	PhIterationContext	minimum	PhIterationContext.Minimum	Set	none	NoOperationKind	-
+OtherFields	PhIterationContext	minimum	PhIterationContext.Minimum	Clear	none	NoOperationKind	-
+OtherFields	PhIterationContext	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
+OtherFields	PhIterationContext	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	confidence	CmPossibility.Confidence	Clear	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	fore-color	CmPossibility.ForeColor	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	fore-color	CmPossibility.ForeColor	Clear	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	is-protected	CmPossibility.IsProtected	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	is-protected	CmPossibility.IsProtected	Clear	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	researchers	CmPossibility.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	researchers	CmPossibility.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	restrictions	CmPossibility.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	restrictions	CmPossibility.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	sort-spec	CmPossibility.SortSpec	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	sort-spec	CmPossibility.SortSpec	Clear	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	status	CmPossibility.Status	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	status	CmPossibility.Status	Clear	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	sub-possibilities	CmPossibility.SubPossibilities	AddObject	none	UnsupportedOwnerClass	-
+OtherFields	PhPhonRuleFeat	sub-possibilities	CmPossibility.SubPossibilities	RemoveObject	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	sub-possibilities	CmPossibility.SubPossibilities	MoveObject	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	under-color	CmPossibility.UnderColor	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
+OtherFields	PhPhonRuleFeat	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	PhSequenceContext	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
+OtherFields	PhSequenceContext	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
+OtherFields	PhSimpleContextBdry	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
+OtherFields	PhSimpleContextBdry	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
+OtherFields	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	InsertReference	none	UnsupportedPlacement	-
+OtherFields	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	MoveReference	none	NoOperationKind	-
+OtherFields	PhSimpleContextNC	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
+OtherFields	PhSimpleContextNC	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
+OtherFields	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	InsertReference	none	UnsupportedPlacement	-
+OtherFields	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	MoveReference	none	NoOperationKind	-
+OtherFields	PhSimpleContextSeg	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
+OtherFields	PhSimpleContextSeg	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
+OtherFields	RnGenericRec	anthro-codes	RnGenericRec.AnthroCodes	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	anthro-codes	RnGenericRec.AnthroCodes	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	conclusions	RnGenericRec.Conclusions	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	conclusions	RnGenericRec.Conclusions	ClearRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	confidence	RnGenericRec.Confidence	Set	none	NoOperationKind	-
+OtherFields	RnGenericRec	confidence	RnGenericRec.Confidence	Clear	none	NoOperationKind	-
+OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	InsertReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	MoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	cross-references	RnGenericRec.CrossReferences	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	cross-references	RnGenericRec.CrossReferences	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	discussion	RnGenericRec.Discussion	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	discussion	RnGenericRec.Discussion	ClearRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	ClearRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	ClearRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	ClearRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	locations	RnGenericRec.Locations	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	locations	RnGenericRec.Locations	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	participants	RnGenericRec.Participants	AddObject	none	NoOperationKind	-
+OtherFields	RnGenericRec	participants	RnGenericRec.Participants	RemoveObject	none	NoOperationKind	-
+OtherFields	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	ClearRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	phrase-tags	RnGenericRec.PhraseTags	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	phrase-tags	RnGenericRec.PhraseTags	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	reminders	RnGenericRec.Reminders	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	reminders	RnGenericRec.Reminders	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	ClearRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	researchers	RnGenericRec.Researchers	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	researchers	RnGenericRec.Researchers	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	restrictions	RnGenericRec.Restrictions	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	restrictions	RnGenericRec.Restrictions	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	see-also	RnGenericRec.SeeAlso	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	see-also	RnGenericRec.SeeAlso	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	sources	RnGenericRec.Sources	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	sources	RnGenericRec.Sources	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	status	RnGenericRec.Status	Set	none	NoOperationKind	-
+OtherFields	RnGenericRec	status	RnGenericRec.Status	Clear	none	NoOperationKind	-
+OtherFields	RnGenericRec	sub-records	RnGenericRec.SubRecords	AddObject	none	NoOperationKind	-
+OtherFields	RnGenericRec	sub-records	RnGenericRec.SubRecords	RemoveObject	none	NoOperationKind	-
+OtherFields	RnGenericRec	sub-records	RnGenericRec.SubRecords	MoveObject	none	NoOperationKind	-
+OtherFields	RnGenericRec	superseded-by	RnGenericRec.SupersededBy	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	superseded-by	RnGenericRec.SupersededBy	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	supporting-evidence	RnGenericRec.SupportingEvidence	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	supporting-evidence	RnGenericRec.SupportingEvidence	InsertReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	supporting-evidence	RnGenericRec.SupportingEvidence	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	supporting-evidence	RnGenericRec.SupportingEvidence	MoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	text	RnGenericRec.Text	Set	none	NoOperationKind	-
+OtherFields	RnGenericRec	text	RnGenericRec.Text	Clear	none	NoOperationKind	-
+OtherFields	RnGenericRec	time-of-event	RnGenericRec.TimeOfEvent	AddReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	time-of-event	RnGenericRec.TimeOfEvent	RemoveReference	none	NoOperationKind	-
+OtherFields	RnGenericRec	title	RnGenericRec.Title	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	version-history	RnGenericRec.VersionHistory	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	version-history	RnGenericRec.VersionHistory	ClearRich	none	NoOperationKind	-
+OtherFields	RnRoledPartic	participants	RnRoledPartic.Participants	AddReference	none	NoOperationKind	-
+OtherFields	RnRoledPartic	participants	RnRoledPartic.Participants	RemoveReference	none	NoOperationKind	-
+OtherFields	RnRoledPartic	role	RnRoledPartic.Role	Set	none	NoOperationKind	-
+OtherFields	RnRoledPartic	role	RnRoledPartic.Role	Clear	none	NoOperationKind	-
+NotUserEditable	FsClosedValue	ref-number	FsFeatureSpecification.RefNumber	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsClosedValue	ref-number	FsFeatureSpecification.RefNumber	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsClosedValue	value-state	FsFeatureSpecification.ValueState	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsClosedValue	value-state	FsFeatureSpecification.ValueState	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsComplexValue	ref-number	FsFeatureSpecification.RefNumber	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsComplexValue	ref-number	FsFeatureSpecification.RefNumber	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsComplexValue	value-state	FsFeatureSpecification.ValueState	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsComplexValue	value-state	FsFeatureSpecification.ValueState	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsDisjunctiveValue	ref-number	FsFeatureSpecification.RefNumber	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsDisjunctiveValue	ref-number	FsFeatureSpecification.RefNumber	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsDisjunctiveValue	value-state	FsFeatureSpecification.ValueState	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsDisjunctiveValue	value-state	FsFeatureSpecification.ValueState	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsNegatedValue	ref-number	FsFeatureSpecification.RefNumber	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsNegatedValue	ref-number	FsFeatureSpecification.RefNumber	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsNegatedValue	value-state	FsFeatureSpecification.ValueState	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsNegatedValue	value-state	FsFeatureSpecification.ValueState	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsOpenValue	ref-number	FsFeatureSpecification.RefNumber	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsOpenValue	ref-number	FsFeatureSpecification.RefNumber	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsOpenValue	value-state	FsFeatureSpecification.ValueState	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsOpenValue	value-state	FsFeatureSpecification.ValueState	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsSharedValue	ref-number	FsFeatureSpecification.RefNumber	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsSharedValue	ref-number	FsFeatureSpecification.RefNumber	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	FsSharedValue	value-state	FsFeatureSpecification.ValueState	Set	none	not-user-editable	derived-read-only
+NotUserEditable	FsSharedValue	value-state	FsFeatureSpecification.ValueState	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	LexEntry	homograph-number	LexEntry.HomographNumber	Set	none	not-user-editable	derived-read-only
+NotUserEditable	LexEntry	homograph-number	LexEntry.HomographNumber	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	LexEntry	import-residue	LexEntry.ImportResidue	SetPlainRich	none	not-user-editable	internal
+NotUserEditable	LexEntry	import-residue	LexEntry.ImportResidue	SetRich	none	not-user-editable	internal
+NotUserEditable	LexEntry	import-residue	LexEntry.ImportResidue	ClearRich	none	not-user-editable	internal
+NotUserEditable	LexEntry	lift-residue	LexEntry.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	LexEntry	lift-residue	LexEntry.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	LexEntry	main-entries-or-senses	LexEntry.MainEntriesOrSenses	AddReference	none	not-user-editable	derived-read-only
+NotUserEditable	LexEntry	main-entries-or-senses	LexEntry.MainEntriesOrSenses	InsertReference	none	not-user-editable	derived-read-only
+NotUserEditable	LexEntry	main-entries-or-senses	LexEntry.MainEntriesOrSenses	RemoveReference	none	not-user-editable	derived-read-only
+NotUserEditable	LexEntry	main-entries-or-senses	LexEntry.MainEntriesOrSenses	MoveReference	none	not-user-editable	derived-read-only
+NotUserEditable	LexEntryRef	lift-residue	LexEntryRef.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	LexEntryRef	lift-residue	LexEntryRef.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	LexEtymology	lift-residue	LexEtymology.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	LexEtymology	lift-residue	LexEtymology.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	LexExampleSentence	lift-residue	LexExampleSentence.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	LexExampleSentence	lift-residue	LexExampleSentence.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	LexPronunciation	lift-residue	LexPronunciation.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	LexPronunciation	lift-residue	LexPronunciation.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	LexReference	lift-residue	LexReference.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	LexReference	lift-residue	LexReference.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	LexSense	import-residue	LexSense.ImportResidue	SetPlainRich	none	not-user-editable	internal
+NotUserEditable	LexSense	import-residue	LexSense.ImportResidue	SetRich	none	not-user-editable	internal
+NotUserEditable	LexSense	import-residue	LexSense.ImportResidue	ClearRich	none	not-user-editable	internal
+NotUserEditable	LexSense	lift-residue	LexSense.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	LexSense	lift-residue	LexSense.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	MoAffixAllomorph	lift-residue	MoForm.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	MoAffixAllomorph	lift-residue	MoForm.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	MoAffixProcess	lift-residue	MoForm.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	MoAffixProcess	lift-residue	MoForm.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	MoDerivAffMsa	gloss-string	MoMorphSynAnalysis.GlossString	Set	none	not-user-editable	derived-read-only
+NotUserEditable	MoDerivAffMsa	gloss-string	MoMorphSynAnalysis.GlossString	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	MoDerivAffMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	MoDerivAffMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	MoDerivStepMsa	gloss-string	MoMorphSynAnalysis.GlossString	Set	none	not-user-editable	derived-read-only
+NotUserEditable	MoDerivStepMsa	gloss-string	MoMorphSynAnalysis.GlossString	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	MoDerivStepMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	MoDerivStepMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	MoInflAffMsa	gloss-string	MoMorphSynAnalysis.GlossString	Set	none	not-user-editable	derived-read-only
+NotUserEditable	MoInflAffMsa	gloss-string	MoMorphSynAnalysis.GlossString	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	MoInflAffMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	MoInflAffMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	MoStemAllomorph	lift-residue	MoForm.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	MoStemAllomorph	lift-residue	MoForm.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	MoStemMsa	gloss-string	MoMorphSynAnalysis.GlossString	Set	none	not-user-editable	derived-read-only
+NotUserEditable	MoStemMsa	gloss-string	MoMorphSynAnalysis.GlossString	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	MoStemMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	MoStemMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Clear	none	not-user-editable	internal
+NotUserEditable	MoUnclassifiedAffixMsa	gloss-string	MoMorphSynAnalysis.GlossString	Set	none	not-user-editable	derived-read-only
+NotUserEditable	MoUnclassifiedAffixMsa	gloss-string	MoMorphSynAnalysis.GlossString	Clear	none	not-user-editable	derived-read-only
+NotUserEditable	MoUnclassifiedAffixMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Set	none	not-user-editable	internal
+NotUserEditable	MoUnclassifiedAffixMsa	lift-residue	MoMorphSynAnalysis.LiftResidue	Clear	none	not-user-editable	internal
+ComputedFields	LexEntry	head-word	LexEntry.HeadWord	SetPlainRich	none	ComputedField	-
+ComputedFields	LexEntry	head-word	LexEntry.HeadWord	SetRich	none	ComputedField	-
+ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField	-
+# Parser-only kinds: lexical/entry/create, sequence/move
+# Runner declarations	Kind	Declaring class	Field	Verb	Placement	Owner restriction	Child classes	Shape	Fallback
+# Handler	analysis/decisionEvidence/record	(no direct field edit)
+# Handler	analysis/langProject/createWordforms	(no direct field edit)
+# Handler	analysis/stTxtPara/clearContents	StTxtPara	Contents	ClearRich	Forbidden	-		Unspecified	False
+# Handler	analysis/stTxtPara/setContents	StTxtPara	Contents	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	analysis/wfiAnalysis/addAgentEvaluations	(no direct field edit)
+# Handler	analysis/wfiAnalysis/addRefEvaluations	(no direct field edit)
+# Handler	analysis/wfiAnalysis/delete	WfiWordform	Analyses	RemoveObject	Forbidden	-	WfiAnalysis	Unspecified	False
+# Handler	analysis/wfiAnalysis/removeRefEvaluations	(no direct field edit)
+# Handler	analysis/wfiMorphBundle/setMorph	WfiMorphBundle	Morph	Set	Forbidden	-		Unspecified	False
+# Handler	analysis/wfiMorphBundle/setMsa	WfiMorphBundle	Msa	Set	Forbidden	-		Unspecified	False
+# Handler	analysis/wfiWordform/clearSpellingStatus	WfiWordform	SpellingStatus	Clear	Forbidden	-		Unspecified	False
+# Handler	analysis/wfiWordform/createAnalyses	WfiWordform	Analyses	AddObject	Forbidden	-	WfiAnalysis	Unspecified	False
+# Handler	analysis/wfiWordform/setSpellingStatus	WfiWordform	SpellingStatus	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/fsClosedFeature/createValues	FsClosedFeature	Values	AddObject	Forbidden	-	FsSymFeatVal	Unspecified	False
+# Handler	grammar/fsClosedValue/clearValue	FsClosedValue	Value	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/fsClosedValue/setValue	FsClosedValue	Value	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatDefn/clearAbbreviation	FsFeatDefn	Abbreviation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatDefn/clearName	FsFeatDefn	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatDefn/setAbbreviation	FsFeatDefn	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatDefn/setName	FsFeatDefn	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatStruc/createFeatureSpecs	FsFeatStruc	FeatureSpecs	AddObject	Forbidden	-	FsClosedValue	Unspecified	False
+# Handler	grammar/fsFeatStruc/deleteFeatureSpecs	FsFeatStruc	FeatureSpecs	RemoveObject	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatStrucType/addRefFeatures	FsFeatStrucType	Features	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatStrucType/clearAbbreviation	FsFeatStrucType	Abbreviation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatStrucType/removeRefFeatures	FsFeatStrucType	Features	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatStrucType/setAbbreviation	FsFeatStrucType	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatureSpecification/clearFeature	FsFeatureSpecification	Feature	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatureSpecification/setFeature	FsFeatureSpecification	Feature	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/fsFeatureSystem/createFeatures	FsFeatureSystem	Features	AddObject	Forbidden	-	FsClosedFeature	Unspecified	False
+# Handler	grammar/fsSymFeatVal/clearAbbreviation	FsSymFeatVal	Abbreviation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/fsSymFeatVal/clearName	FsSymFeatVal	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/fsSymFeatVal/setAbbreviation	FsSymFeatVal	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/fsSymFeatVal/setName	FsSymFeatVal	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moAdhocProhib/clearDisabled	MoAdhocProhib	Disabled	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moAdhocProhib/delete	(no direct field edit)
+# Handler	grammar/moAdhocProhib/retargetReferences	(no direct field edit)
+# Handler	grammar/moAdhocProhib/setDisabled	MoAdhocProhib	Disabled	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moAffixAllomorph/addRefPhoneEnv	MoAffixAllomorph	PhoneEnv	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moAffixAllomorph/addRefPosition	MoAffixAllomorph	Position	AddReference	RequiredWhenNonempty	-		Unspecified	False
+# Handler	grammar/moAffixAllomorph/createMsEnvFeatures	MoAffixAllomorph	MsEnvFeatures	AddObject	Forbidden	-	FsFeatStruc	Unspecified	False
+# Handler	grammar/moAffixAllomorph/movePosition	MoAffixAllomorph	Position	MoveReference	Required	-		Unspecified	False
+# Handler	grammar/moAffixAllomorph/removeRefPhoneEnv	MoAffixAllomorph	PhoneEnv	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moAffixAllomorph/removeRefPosition	MoAffixAllomorph	Position	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moAffixForm/addRefInflectionClasses	MoAffixForm	InflectionClasses	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moAffixForm/removeRefInflectionClasses	MoAffixForm	InflectionClasses	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moAffixProcess/createInput	MoAffixProcess	Input	AddObject	RequiredWhenNonempty	-	PhSimpleContextNC,PhSimpleContextSeg,PhVariable	Unspecified	False
+# Handler	grammar/moAffixProcess/createOutput	MoAffixProcess	Output	AddObject	RequiredWhenNonempty	-	MoCopyFromInput,MoInsertNC,MoInsertPhones,MoModifyFromInput	Unspecified	False
+# Handler	grammar/moAlloAdhocProhib/addRefAllomorphs	MoAlloAdhocProhib	Allomorphs	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moAlloAdhocProhib/addRefRestOfAllos	MoAlloAdhocProhib	RestOfAllos	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moAlloAdhocProhib/clearFirstAllomorph	MoAlloAdhocProhib	FirstAllomorph	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moAlloAdhocProhib/removeRefAllomorphs	MoAlloAdhocProhib	Allomorphs	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moAlloAdhocProhib/removeRefRestOfAllos	MoAlloAdhocProhib	RestOfAllos	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moAlloAdhocProhib/retargetReferences	(no direct field edit)
+# Handler	grammar/moAlloAdhocProhib/setFirstAllomorph	MoAlloAdhocProhib	FirstAllomorph	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moCompoundRule/addRefToProdRestrict	MoCompoundRule	ToProdRestrict	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moCompoundRule/clearDisabled	MoCompoundRule	Disabled	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moCompoundRule/removeRefToProdRestrict	MoCompoundRule	ToProdRestrict	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moCompoundRule/setDisabled	MoCompoundRule	Disabled	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moCopyFromInput/clearContent	MoCopyFromInput	Content	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moCopyFromInput/setContent	MoCopyFromInput	Content	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/addRefFromProdRestrict	MoDerivAffMsa	FromProdRestrict	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/addRefToProdRestrict	MoDerivAffMsa	ToProdRestrict	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/clearFromInflectionClass	MoDerivAffMsa	FromInflectionClass	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/clearFromPartOfSpeech	MoDerivAffMsa	FromPartOfSpeech	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/clearFromStemName	MoDerivAffMsa	FromStemName	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/clearToInflectionClass	MoDerivAffMsa	ToInflectionClass	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/clearToPartOfSpeech	MoDerivAffMsa	ToPartOfSpeech	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/createFromMsFeatures	MoDerivAffMsa	FromMsFeatures	AddObject	Forbidden	-	FsFeatStruc	Unspecified	False
+# Handler	grammar/moDerivAffMsa/createToMsFeatures	MoDerivAffMsa	ToMsFeatures	AddObject	Forbidden	-	FsFeatStruc	Unspecified	False
+# Handler	grammar/moDerivAffMsa/removeRefFromProdRestrict	MoDerivAffMsa	FromProdRestrict	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/removeRefToProdRestrict	MoDerivAffMsa	ToProdRestrict	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/setFromInflectionClass	MoDerivAffMsa	FromInflectionClass	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/setFromPartOfSpeech	MoDerivAffMsa	FromPartOfSpeech	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/setFromStemName	MoDerivAffMsa	FromStemName	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/setToInflectionClass	MoDerivAffMsa	ToInflectionClass	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moDerivAffMsa/setToPartOfSpeech	MoDerivAffMsa	ToPartOfSpeech	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moEndoCompound/clearHeadLast	MoEndoCompound	HeadLast	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moEndoCompound/setHeadLast	MoEndoCompound	HeadLast	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moForm/clearForm	MoForm	Form	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moForm/clearIsAbstract	MoForm	IsAbstract	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moForm/clearMorphType	MoForm	MorphType	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moForm/editMorphType	(no direct field edit)
+# Handler	grammar/moForm/setForm	MoForm	Form	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moForm/setIsAbstract	MoForm	IsAbstract	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moForm/setMorphType	MoForm	MorphType	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffMsa/addRefFromProdRestrict	MoInflAffMsa	FromProdRestrict	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffMsa/addRefSlots	MoInflAffMsa	Slots	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffMsa/clearPartOfSpeech	MoInflAffMsa	PartOfSpeech	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffMsa/createInflFeats	MoInflAffMsa	InflFeats	AddObject	Forbidden	-	FsFeatStruc	Unspecified	False
+# Handler	grammar/moInflAffMsa/removeRefFromProdRestrict	MoInflAffMsa	FromProdRestrict	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffMsa/removeRefSlots	MoInflAffMsa	Slots	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffMsa/setPartOfSpeech	MoInflAffMsa	PartOfSpeech	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixSlot/clearName	MoInflAffixSlot	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixSlot/clearOptional	MoInflAffixSlot	Optional	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixSlot/setName	MoInflAffixSlot	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixSlot/setOptional	MoInflAffixSlot	Optional	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/addRefPrefixSlots	MoInflAffixTemplate	PrefixSlots	AddReference	RequiredWhenNonempty	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/addRefSuffixSlots	MoInflAffixTemplate	SuffixSlots	AddReference	RequiredWhenNonempty	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/clearDisabled	MoInflAffixTemplate	Disabled	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/clearFinal	MoInflAffixTemplate	Final	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/clearName	MoInflAffixTemplate	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/movePrefixSlots	MoInflAffixTemplate	PrefixSlots	MoveReference	Required	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/moveSuffixSlots	MoInflAffixTemplate	SuffixSlots	MoveReference	Required	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/removeRefPrefixSlots	MoInflAffixTemplate	PrefixSlots	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/removeRefSuffixSlots	MoInflAffixTemplate	SuffixSlots	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/setDisabled	MoInflAffixTemplate	Disabled	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/setFinal	MoInflAffixTemplate	Final	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflAffixTemplate/setName	MoInflAffixTemplate	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflClass/clearAbbreviation	MoInflClass	Abbreviation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflClass/clearName	MoInflClass	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflClass/createSubclasses	MoInflClass	Subclasses	AddObject	Forbidden	-	MoInflClass	Unspecified	False
+# Handler	grammar/moInflClass/setAbbreviation	MoInflClass	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moInflClass/setName	MoInflClass	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moInsertNC/clearContent	MoInsertNC	Content	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moInsertNC/setContent	MoInsertNC	Content	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moInsertPhones/addRefContent	MoInsertPhones	Content	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moInsertPhones/removeRefContent	MoInsertPhones	Content	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moModifyFromInput/clearContent	MoModifyFromInput	Content	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moModifyFromInput/clearModification	MoModifyFromInput	Modification	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moModifyFromInput/setContent	MoModifyFromInput	Content	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moModifyFromInput/setModification	MoModifyFromInput	Modification	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moMorphAdhocProhib/addRefRestOfMorphs	MoMorphAdhocProhib	RestOfMorphs	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moMorphAdhocProhib/clearFirstMorpheme	MoMorphAdhocProhib	FirstMorpheme	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moMorphAdhocProhib/removeRefRestOfMorphs	MoMorphAdhocProhib	RestOfMorphs	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moMorphAdhocProhib/retargetMorphemes	(no direct field edit)
+# Handler	grammar/moMorphAdhocProhib/setFirstMorpheme	MoMorphAdhocProhib	FirstMorpheme	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moMorphData/createAdhocProhibition	(no direct field edit)
+# Handler	grammar/moMorphData/setNoDefaultCompounding	MoMorphData	NoDefaultCompounding	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moMorphData/setNotOnClitics	MoMorphData	NotOnClitics	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemAllomorph/addRefPhoneEnv	MoStemAllomorph	PhoneEnv	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemAllomorph/clearStemName	MoStemAllomorph	StemName	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemAllomorph/removeRefPhoneEnv	MoStemAllomorph	PhoneEnv	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemAllomorph/setStemName	MoStemAllomorph	StemName	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/addRefFromPartsOfSpeech	MoStemMsa	FromPartsOfSpeech	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/addRefProdRestrict	MoStemMsa	ProdRestrict	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/addRefSlots	MoStemMsa	Slots	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/clearInflectionClass	MoStemMsa	InflectionClass	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/clearPartOfSpeech	MoStemMsa	PartOfSpeech	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/createMsFeatures	MoStemMsa	MsFeatures	AddObject	Forbidden	-	FsFeatStruc	Unspecified	False
+# Handler	grammar/moStemMsa/deleteMsFeatures	MoStemMsa	MsFeatures	RemoveObject	Forbidden	-	FsFeatStruc	Unspecified	False
+# Handler	grammar/moStemMsa/editFromPartsOfSpeech	(no direct field edit)
+# Handler	grammar/moStemMsa/removeRefFromPartsOfSpeech	MoStemMsa	FromPartsOfSpeech	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/removeRefProdRestrict	MoStemMsa	ProdRestrict	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/removeRefSlots	MoStemMsa	Slots	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/setInflectionClass	MoStemMsa	InflectionClass	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemMsa/setPartOfSpeech	MoStemMsa	PartOfSpeech	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemName/clearAbbreviation	MoStemName	Abbreviation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemName/clearName	MoStemName	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemName/createRegions	MoStemName	Regions	AddObject	Forbidden	-	FsFeatStruc	Unspecified	False
+# Handler	grammar/moStemName/setAbbreviation	MoStemName	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moStemName/setName	MoStemName	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moStratum/clearAbbreviation	MoStratum	Abbreviation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moStratum/setAbbreviation	MoStratum	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/moUnclassifiedAffixMsa/clearPartOfSpeech	MoUnclassifiedAffixMsa	PartOfSpeech	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/moUnclassifiedAffixMsa/setPartOfSpeech	MoUnclassifiedAffixMsa	PartOfSpeech	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/partOfSpeech/clearDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/partOfSpeech/createAffixSlots	PartOfSpeech	AffixSlots	AddObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
+# Handler	grammar/partOfSpeech/createAffixTemplates	PartOfSpeech	AffixTemplates	AddObject	RequiredWhenNonempty	-	MoInflAffixTemplate	Unspecified	False
+# Handler	grammar/partOfSpeech/createInflectionClasses	PartOfSpeech	InflectionClasses	AddObject	Forbidden	-	MoInflClass	Unspecified	False
+# Handler	grammar/partOfSpeech/createStemNames	PartOfSpeech	StemNames	AddObject	Forbidden	-	MoStemName	Unspecified	False
+# Handler	grammar/partOfSpeech/deleteAffixSlots	PartOfSpeech	AffixSlots	RemoveObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
+# Handler	grammar/partOfSpeech/moveAffixTemplates	PartOfSpeech	AffixTemplates	MoveObject	Required	-		Unspecified	False
+# Handler	grammar/partOfSpeech/setDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/phCode/clearRepresentation	PhCode	Representation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phCode/setRepresentation	PhCode	Representation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phEnvironment/clearName	PhEnvironment	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phEnvironment/clearStringRepresentation	PhEnvironment	StringRepresentation	ClearRich	Forbidden	-		Unspecified	False
+# Handler	grammar/phEnvironment/setName	PhEnvironment	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phEnvironment/setStringRepresentation	PhEnvironment	StringRepresentation	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	grammar/phFeatureConstraint/clearFeature	PhFeatureConstraint	Feature	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/phFeatureConstraint/setFeature	PhFeatureConstraint	Feature	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/phIterationContext/clearMember	PhIterationContext	Member	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/phIterationContext/setBounds	(no direct field edit)
+# Handler	grammar/phIterationContext/setMember	PhIterationContext	Member	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/phMetathesisRule/setStrucChange	PhMetathesisRule	StrucChange	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	grammar/phNCFeatures/createFeatures	PhNCFeatures	Features	AddObject	Forbidden	-	FsFeatStruc	Unspecified	False
+# Handler	grammar/phNCSegments/addRefSegments	PhNCSegments	Segments	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phNCSegments/removeRefSegments	PhNCSegments	Segments	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phNaturalClass/clearAbbreviation	PhNaturalClass	Abbreviation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phNaturalClass/clearName	PhNaturalClass	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phNaturalClass/setAbbreviation	PhNaturalClass	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phNaturalClass/setName	PhNaturalClass	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phPhonData/createContexts	PhPhonData	Contexts	AddObject	Forbidden	-	PhIterationContext,PhSequenceContext,PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg	Unspecified	False
+# Handler	grammar/phPhonData/createEnvironments	PhPhonData	Environments	AddObject	RequiredWhenNonempty	-	PhEnvironment	Unspecified	False
+# Handler	grammar/phPhonData/createFeatConstraints	PhPhonData	FeatConstraints	AddObject	Forbidden	-	PhFeatureConstraint	Unspecified	False
+# Handler	grammar/phPhonData/createNaturalClasses	PhPhonData	NaturalClasses	AddObject	RequiredWhenNonempty	-	PhNCFeatures,PhNCSegments	Unspecified	False
+# Handler	grammar/phPhonData/createPhonRules	PhPhonData	PhonRules	AddObject	RequiredWhenNonempty	-	PhMetathesisRule,PhRegularRule	Unspecified	False
+# Handler	grammar/phPhonData/createPhonemeSets	PhPhonData	PhonemeSets	AddObject	RequiredWhenNonempty	-	PhPhonemeSet	Unspecified	False
+# Handler	grammar/phPhonData/deleteEnvironments	(no direct field edit)
+# Handler	grammar/phPhonData/deleteNaturalClasses	(no direct field edit)
+# Handler	grammar/phPhonData/deletePhonRules	PhPhonData	PhonRules	RemoveObject	Forbidden	-		Unspecified	False
+# Handler	grammar/phPhonData/movePhonRules	PhPhonData	PhonRules	MoveObject	Required	-		Unspecified	False
+# Handler	grammar/phPhonRuleFeat/clearItem	PhPhonRuleFeat	Item	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/phPhonRuleFeat/setItem	PhPhonRuleFeat	Item	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/phPhoneme/createFeatures	PhPhoneme	Features	AddObject	Forbidden	-	FsFeatStruc	Unspecified	False
+# Handler	grammar/phPhonemeSet/createBoundaryMarkers	PhPhonemeSet	BoundaryMarkers	AddObject	Forbidden	-	PhBdryMarker	Unspecified	False
+# Handler	grammar/phPhonemeSet/createPhonemes	PhPhonemeSet	Phonemes	AddObject	Forbidden	-	PhPhoneme	Unspecified	False
+# Handler	grammar/phPhonemeSet/deleteBoundaryMarkers	PhPhonemeSet	BoundaryMarkers	RemoveObject	Forbidden	-	PhBdryMarker	Unspecified	False
+# Handler	grammar/phPhonemeSet/deletePhonemes	PhPhonemeSet	Phonemes	RemoveObject	Forbidden	-	PhPhoneme	Unspecified	False
+# Handler	grammar/phRegularRule/collectUnusedFeatConstraints	(no direct field edit)
+# Handler	grammar/phRegularRule/createRightHandSides	PhRegularRule	RightHandSides	AddObject	RequiredWhenNonempty	-	PhSegRuleRHS	Unspecified	False
+# Handler	grammar/phRegularRule/deleteRightHandSides	PhRegularRule	RightHandSides	RemoveObject	Forbidden	-	PhSegRuleRHS	Unspecified	False
+# Handler	grammar/phSegRuleRHS/addRefExclRuleFeats	PhSegRuleRHS	ExclRuleFeats	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegRuleRHS/addRefInputPOSes	PhSegRuleRHS	InputPOSes	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegRuleRHS/addRefReqRuleFeats	PhSegRuleRHS	ReqRuleFeats	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegRuleRHS/createLeftContext	PhSegRuleRHS	LeftContext	AddObject	Forbidden	-	PhIterationContext,PhSequenceContext,PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg	Unspecified	False
+# Handler	grammar/phSegRuleRHS/createRightContext	PhSegRuleRHS	RightContext	AddObject	Forbidden	-	PhIterationContext,PhSequenceContext,PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg	Unspecified	False
+# Handler	grammar/phSegRuleRHS/createStrucChange	PhSegRuleRHS	StrucChange	AddObject	RequiredWhenNonempty	-	PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg	Unspecified	False
+# Handler	grammar/phSegRuleRHS/removeRefExclRuleFeats	PhSegRuleRHS	ExclRuleFeats	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegRuleRHS/removeRefInputPOSes	PhSegRuleRHS	InputPOSes	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegRuleRHS/removeRefReqRuleFeats	PhSegRuleRHS	ReqRuleFeats	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegmentRule/clearDirection	PhSegmentRule	Direction	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegmentRule/clearDisabled	PhSegmentRule	Disabled	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegmentRule/clearName	PhSegmentRule	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegmentRule/createStrucDesc	PhSegmentRule	StrucDesc	AddObject	RequiredWhenNonempty	-	PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg	Unspecified	False
+# Handler	grammar/phSegmentRule/deleteContexts	(no direct field edit)
+# Handler	grammar/phSegmentRule/setDirection	PhSegmentRule	Direction	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegmentRule/setDisabled	PhSegmentRule	Disabled	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/phSegmentRule/setName	PhSegmentRule	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phSequenceContext/addRefMembers	PhSequenceContext	Members	AddReference	RequiredWhenNonempty	-		Unspecified	False
+# Handler	grammar/phSequenceContext/moveMembers	PhSequenceContext	Members	MoveReference	Required	-		Unspecified	False
+# Handler	grammar/phSequenceContext/removeRefMembers	PhSequenceContext	Members	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextBdry/clearFeatureStructure	PhSimpleContextBdry	FeatureStructure	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextBdry/setFeatureStructure	PhSimpleContextBdry	FeatureStructure	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextNC/addRefMinusConstr	PhSimpleContextNC	MinusConstr	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextNC/addRefPlusConstr	PhSimpleContextNC	PlusConstr	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextNC/clearFeatureStructure	PhSimpleContextNC	FeatureStructure	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextNC/removeRefMinusConstr	PhSimpleContextNC	MinusConstr	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextNC/removeRefPlusConstr	PhSimpleContextNC	PlusConstr	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextNC/setFeatureStructure	PhSimpleContextNC	FeatureStructure	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextSeg/clearFeatureStructure	PhSimpleContextSeg	FeatureStructure	Clear	Forbidden	-		Unspecified	False
+# Handler	grammar/phSimpleContextSeg/setFeatureStructure	PhSimpleContextSeg	FeatureStructure	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/phTerminalUnit/clearName	PhTerminalUnit	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	grammar/phTerminalUnit/createCodes	PhTerminalUnit	Codes	AddObject	RequiredWhenNonempty	-	PhCode	Unspecified	False
+# Handler	grammar/phTerminalUnit/deleteCodes	PhTerminalUnit	Codes	RemoveObject	Forbidden	PhPhoneme	PhCode	Unspecified	False
+# Handler	grammar/phTerminalUnit/setName	PhTerminalUnit	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexDb/createEntries	(no direct field edit)
+# Handler	lexical/lexEntry/addRefDialectLabels	LexEntry	DialectLabels	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/addRefDoNotPublishIn	LexEntry	DoNotPublishIn	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/addRefDoNotShowMainEntryIn	LexEntry	DoNotShowMainEntryIn	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/appendBibliography	(no direct field edit)
+# Handler	lexical/lexEntry/clearBibliography	LexEntry	Bibliography	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexEntry/clearCitationForm	LexEntry	CitationForm	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/clearComment	LexEntry	Comment	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexEntry/clearDoNotUseForParsing	LexEntry	DoNotUseForParsing	Clear	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/clearLiteralMeaning	LexEntry	LiteralMeaning	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexEntry/clearRestrictions	LexEntry	Restrictions	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexEntry/clearSummaryDefinition	LexEntry	SummaryDefinition	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexEntry/createAlternateForms	LexEntry	AlternateForms	AddObject	RequiredWhenNonempty	-	MoAffixAllomorph,MoAffixProcess,MoStemAllomorph	Unspecified	False
+# Handler	lexical/lexEntry/createLexemeForm	LexEntry	LexemeForm	AddObject	Forbidden	-	MoAffixAllomorph,MoAffixProcess,MoStemAllomorph	Unspecified	False
+# Handler	lexical/lexEntry/createMorphoSyntaxAnalyses	LexEntry	MorphoSyntaxAnalyses	AddObject	Forbidden	-	MoDerivAffMsa,MoInflAffMsa,MoStemMsa,MoUnclassifiedAffixMsa	Unspecified	False
+# Handler	lexical/lexEntry/createSenses	LexEntry	Senses	AddObject	RequiredWhenNonempty	-	LexSense	Unspecified	False
+# Handler	lexical/lexEntry/createVariantRef	LexEntry	EntryRefs	AddObject	Forbidden	-	LexEntryRef	VariantReference	False
+# Handler	lexical/lexEntry/deleteAlternateForm	(no direct field edit)
+# Handler	lexical/lexEntry/deleteLexemeForm	LexEntry	LexemeForm	RemoveObject	Forbidden	-	MoAffixAllomorph,MoStemAllomorph	Unspecified	False
+# Handler	lexical/lexEntry/deleteMorphoSyntaxAnalyses	LexEntry	MorphoSyntaxAnalyses	RemoveObject	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/deleteRedundantZeroAffixGraph	(no direct field edit)
+# Handler	lexical/lexEntry/merge	(no direct field edit)
+# Handler	lexical/lexEntry/moveAlternateForms	LexEntry	AlternateForms	MoveObject	Required	-		Unspecified	False
+# Handler	lexical/lexEntry/remove	(no direct field edit)
+# Handler	lexical/lexEntry/removeAlternateForm	LexEntry	AlternateForms	RemoveObject	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/removeRefDialectLabels	LexEntry	DialectLabels	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/removeRefDoNotPublishIn	LexEntry	DoNotPublishIn	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/removeRefDoNotShowMainEntryIn	LexEntry	DoNotShowMainEntryIn	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/setBibliography	LexEntry	Bibliography	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/setCitationForm	LexEntry	CitationForm	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/setComment	LexEntry	Comment	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/setDoNotUseForParsing	LexEntry	DoNotUseForParsing	Set	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/setLiteralMeaning	LexEntry	LiteralMeaning	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/setRestrictions	LexEntry	Restrictions	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntry/setSummaryDefinition	LexEntry	SummaryDefinition	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryInflType/addRefSlots	LexEntryInflType	Slots	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryInflType/clearGlossAppend	LexEntryInflType	GlossAppend	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryInflType/clearGlossPrepend	LexEntryInflType	GlossPrepend	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryInflType/removeRefSlots	LexEntryInflType	Slots	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryInflType/setGlossAppend	LexEntryInflType	GlossAppend	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryInflType/setGlossPrepend	LexEntryInflType	GlossPrepend	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryRef/addRefComponentLexemes	LexEntryRef	ComponentLexemes	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryRef/addRefVariantEntryTypes	LexEntryRef	VariantEntryTypes	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryRef/removeRefComponentLexemes	LexEntryRef	ComponentLexemes	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryRef/removeRefVariantEntryTypes	LexEntryRef	VariantEntryTypes	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEntryRef/setVariantLink	(no direct field edit)
+# Handler	lexical/lexEtymology/clearForm	LexEtymology	Form	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexEtymology/clearGloss	LexEtymology	Gloss	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexEtymology/setForm	LexEtymology	Form	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexEtymology/setGloss	LexEtymology	Gloss	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexExampleSentence/moveToSense	(no direct field edit)
+# Handler	lexical/lexPronunciation/clearForm	LexPronunciation	Form	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexPronunciation/setForm	LexPronunciation	Form	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/clearAnthroNote	LexSense	AnthroNote	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/clearDefinition	LexSense	Definition	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/clearDiscourseNote	LexSense	DiscourseNote	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/clearGeneralNote	LexSense	GeneralNote	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/clearGloss	LexSense	Gloss	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/clearGrammarNote	LexSense	GrammarNote	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/clearMorphoSyntaxAnalysis	LexSense	MorphoSyntaxAnalysis	Clear	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/clearPhonologyNote	LexSense	PhonologyNote	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/clearSemanticsNote	LexSense	SemanticsNote	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/clearSocioLinguisticsNote	LexSense	SocioLinguisticsNote	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/createExamples	LexSense	Examples	AddObject	RequiredWhenNonempty	-	LexExampleSentence	Unspecified	False
+# Handler	lexical/lexSense/delete	(no direct field edit)
+# Handler	lexical/lexSense/moveToEntry	(no direct field edit)
+# Handler	lexical/lexSense/remove	LexEntry	Senses	RemoveObject	Forbidden	-	LexSense	Unspecified	False
+# Handler	lexical/lexSense/remove	LexSense	Senses	RemoveObject	Forbidden	-	LexSense	Unspecified	False
+# Handler	lexical/lexSense/setAnthroNote	LexSense	AnthroNote	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setDefinition	LexSense	Definition	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setDiscourseNote	LexSense	DiscourseNote	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setGeneralNote	LexSense	GeneralNote	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setGloss	LexSense	Gloss	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setGrammarNote	LexSense	GrammarNote	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setMorphoSyntaxAnalysis	LexSense	MorphoSyntaxAnalysis	Set	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setPhonologyNote	LexSense	PhonologyNote	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setSemanticsNote	LexSense	SemanticsNote	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setSocioLinguisticsNote	LexSense	SocioLinguisticsNote	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/moAffixProcess/deleteGraph	(no direct field edit)
+# Handler	lexical/reversalIndexEntry/addRefSenses	ReversalIndexEntry	Senses	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/reversalIndexEntry/clearPartOfSpeech	ReversalIndexEntry	PartOfSpeech	Clear	Forbidden	-		Unspecified	False
+# Handler	lexical/reversalIndexEntry/removeRefSenses	ReversalIndexEntry	Senses	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/reversalIndexEntry/setPartOfSpeech	ReversalIndexEntry	PartOfSpeech	Set	Forbidden	-		Unspecified	False
+# Handler	lists/cmPossibility/clearAbbreviation	CmPossibility	Abbreviation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	lists/cmPossibility/clearName	CmPossibility	Name	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	lists/cmPossibility/createSubPossibilities	CmPossibility	SubPossibilities	AddObject	Forbidden	PartOfSpeech	PartOfSpeech	Unspecified	False
+# Handler	lists/cmPossibility/setAbbreviation	CmPossibility	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	lists/cmPossibility/setName	CmPossibility	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	lists/cmPossibilityList/clearAbbreviation	CmPossibilityList	Abbreviation	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	lists/cmPossibilityList/createPossibilities	CmPossibilityList	Possibilities	AddObject	Forbidden	-	CmPossibility,PartOfSpeech,PhPhonRuleFeat	Unspecified	False
+# Handler	lists/cmPossibilityList/deletePossibilities	(no direct field edit)
+# Handler	lists/cmPossibilityList/setAbbreviation	CmPossibilityList	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	project/langProject/appendDescription	(no direct field edit)
+# Handler	scripture/source/approveOccurrence	(no direct field edit)
+# Handler	scripture/source/clearOccurrence	(no direct field edit)
+# Handler	scripture/source/create	(no direct field edit)
+# Handler	scripture/source/setContext	(no direct field edit)
+# Handler	scripture/source/setName	(no direct field edit)
+# Handler	scripture/source/setStatus	(no direct field edit)
+# Handler	scripture/source/setVersification	(no direct field edit)
+# Handler	system/rnGenericRec/clearTitle	RnGenericRec	Title	ClearRich	Forbidden	-		Unspecified	False
+# Handler	system/rnGenericRec/clearType	RnGenericRec	Type	Clear	Forbidden	-		Unspecified	False
+# Handler	system/rnGenericRec/createDescription	RnGenericRec	Description	AddObject	Forbidden	-	StText	Unspecified	False
+# Handler	system/rnGenericRec/setMotifHumanJudgment	(no direct field edit)
+# Handler	system/rnGenericRec/setTitle	RnGenericRec	Title	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	system/rnGenericRec/setType	RnGenericRec	Type	Set	Forbidden	-		Unspecified	False
+# Handler	system/rnResearchNbk/createRecords	RnResearchNbk	Records	AddObject	Forbidden	-	RnGenericRec	Unspecified	False
+# Handler	system/stText/clearRightToLeft	StText	RightToLeft	Clear	Forbidden	-		Unspecified	False
+# Handler	system/stText/createParagraphs	StText	Paragraphs	AddObject	RequiredWhenNonempty	-	StTxtPara	Unspecified	False
+# Handler	system/stText/setRightToLeft	StText	RightToLeft	Set	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	CmPossibility	Discussion	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	CmPossibility	Discussion	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	LexAppendix	Contents	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	LexAppendix	Contents	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	LexDb	Introduction	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	LexDb	Introduction	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	PhPhonContext	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	PhPhonContext	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmMedia	Label	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmMedia	Label	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	CmMedia	Label	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmPicture	Caption	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmPicture	Caption	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	CmPicture	Caption	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmPicture	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmPicture	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	CmPicture	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmPossibility	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmPossibility	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	CmPossibility	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmTranslation	Translation	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmTranslation	Translation	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	CmTranslation	Translation	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	FsFeatDefn	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	FsFeatDefn	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	FsFeatDefn	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	FsFeatStrucType	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	FsFeatStrucType	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	FsFeatStrucType	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	FsSymFeatVal	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	FsSymFeatVal	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	FsSymFeatVal	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	Bibliography	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	Bibliography	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEntry	Bibliography	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	Comment	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	Comment	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEntry	Comment	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	LiteralMeaning	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	LiteralMeaning	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEntry	LiteralMeaning	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	Restrictions	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	Restrictions	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEntry	Restrictions	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	SummaryDefinition	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntry	SummaryDefinition	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEntry	SummaryDefinition	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntryRef	Summary	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEntryRef	Summary	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEntryRef	Summary	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	Bibliography	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	Bibliography	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEtymology	Bibliography	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	Comment	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	Comment	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEtymology	Comment	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	LanguageNotes	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	LanguageNotes	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEtymology	LanguageNotes	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	Note	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	Note	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEtymology	Note	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	PrecComment	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexEtymology	PrecComment	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexEtymology	PrecComment	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexExampleSentence	Example	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexExampleSentence	Example	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexExampleSentence	Example	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexExampleSentence	Reference	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexExampleSentence	Reference	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexExampleSentence	Reference	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexExtendedNote	Discussion	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexExtendedNote	Discussion	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexExtendedNote	Discussion	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexPronunciation	CVPattern	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexPronunciation	CVPattern	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexPronunciation	CVPattern	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexPronunciation	Tone	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexPronunciation	Tone	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexPronunciation	Tone	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexReference	Comment	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexReference	Comment	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexReference	Comment	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	AnthroNote	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	AnthroNote	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	AnthroNote	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Bibliography	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Bibliography	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	Bibliography	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Definition	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Definition	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	Definition	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	DiscourseNote	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	DiscourseNote	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	DiscourseNote	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	EncyclopedicInfo	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	EncyclopedicInfo	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	EncyclopedicInfo	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Exemplar	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Exemplar	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	Exemplar	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	GeneralNote	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	GeneralNote	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	GeneralNote	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	GrammarNote	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	GrammarNote	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	GrammarNote	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	PhonologyNote	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	PhonologyNote	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	PhonologyNote	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Restrictions	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Restrictions	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	Restrictions	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	ScientificName	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	ScientificName	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	ScientificName	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	SemanticsNote	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	SemanticsNote	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	SemanticsNote	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	SocioLinguisticsNote	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	SocioLinguisticsNote	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	SocioLinguisticsNote	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Source	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	Source	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	Source	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	UsageNote	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	LexSense	UsageNote	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	LexSense	UsageNote	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoCompoundRule	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoCompoundRule	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	MoCompoundRule	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoInflAffixSlot	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoInflAffixSlot	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	MoInflAffixSlot	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoInflAffixTemplate	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoInflAffixTemplate	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	MoInflAffixTemplate	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoInflClass	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoInflClass	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	MoInflClass	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoReferralRule	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoReferralRule	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	MoReferralRule	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoStemName	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoStemName	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	MoStemName	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoStratum	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	MoStratum	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	MoStratum	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhEnvironment	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhEnvironment	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	PhEnvironment	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhNaturalClass	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhNaturalClass	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	PhNaturalClass	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhPhoneme	BasicIPASymbol	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhPhoneme	BasicIPASymbol	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	PhPhoneme	BasicIPASymbol	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhPhonemeSet	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhPhonemeSet	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	PhPhonemeSet	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhSegmentRule	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhSegmentRule	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	PhSegmentRule	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhTerminalUnit	Description	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	PhTerminalUnit	Description	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	PhTerminalUnit	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	texts/langProject/createTexts	(no direct field edit)
+# Handler	texts/segment/deleteNotes	(no direct field edit)
+# Handler	texts/segment/setNotes	(no direct field edit)
+# Handler	writingSystems/langProject/setCharacterClass	(no direct field edit)

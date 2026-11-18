@@ -22,16 +22,18 @@ public static class ReferenceCollectionFieldEmitter
             : "ReferenceCollectionFieldSnapshotting.ReadAlternatives";
 
         return Template
-            .Replace("__ADDREFLOWERINGBLOCK__", spec.MoveKind is null
+            .Replace("__ADDREFLOWERINGBLOCK__", !spec.SupportsPlacement
                 ? LegacyAddRefLoweringBlock
                 : PlacementAddRefLoweringBlock)
             .Replace("__MOVE_BLOCK__", spec.MoveKind is null ? string.Empty : "\n\n" + MoveBlock)
+            .Replace("__MOVE_REGISTRATION__", spec.MoveKind is null ? string.Empty : MoveRegistration + "\n")
             .Replace("__PREFIX__", prefix)
             .Replace("__DECLARINGCLASS__", spec.DeclaringClass)
             .Replace("__FIELDNAME__", spec.FieldName)
             .Replace("__SIG__", spec.Sig)
             .Replace("__CARD__", spec.Card.ToString().ToLowerInvariant())
-            .Replace("__NULLABLE_DIRECTIVE__", spec.MoveKind is null ? string.Empty : "#nullable enable\n")
+            .Replace("__ADD_PLACEMENT__", spec.SupportsPlacement ? "RequiredWhenNonempty" : "Forbidden")
+            .Replace("__NULLABLE_DIRECTIVE__", !spec.SupportsPlacement && spec.MoveKind is null ? string.Empty : "#nullable enable\n")
             .Replace("__ADDKIND__", spec.AddRefKind)
             .Replace("__REMOVEKIND__", spec.RemoveRefKind)
             .Replace("__TARGETIFACE__", spec.TargetInterface)
@@ -49,16 +51,21 @@ public static class ReferenceCollectionFieldEmitter
             .Replace("__MOVE_KIND_BLOCK__", spec.MoveKind is null
                 ? "\n    "
                 : $"    public const string Move{spec.FieldName} = \"{spec.MoveKind}\";\n\n    ")
-            .Replace("__MOVE_REGISTRATION__", spec.MoveKind is null
-                ? string.Empty
-                : $"        OperationKindRegistry.Register(Move{spec.FieldName});\n        OperationHandlerRegistry.Register(Move{spec.FieldName}, {prefix}MoveHandler.Instance);\n        OperationSlotRegistry.RegisterMember(Move{spec.FieldName}, SnapshotFields.{prefix});\n")
             .Replace("__REMOVE_PLACEMENT_CHECK__", spec.MoveKind is null
                 ? "\n"
                 : $"        if (operation.Placement is not null)\n            throw new InvalidOperationException($\"Operation '{{operation.OperationId.Value}}' of kind '{{{prefix}OperationKinds.RemoveRef{spec.FieldName}}}' cannot carry placement; use its move kind.\");\n\n")
-            .Replace("__ADDREFCALL__", spec.MoveKind is null
+            .Replace("__ADDREFCALL__", !spec.SupportsPlacement
                 ? $"{prefix}AddRefLowering.Apply(cache, {varName}, memberId);"
                 : $"{prefix}AddRefLowering.Apply(cache, {varName}, memberId, operation.Placement);");
     }
+
+    private const string MoveRegistration = """
+                OperationKindRegistry.Register(Move__FIELDNAME__);
+                OperationHandlerRegistry.Register(Move__FIELDNAME__, __PREFIX__MoveHandler.Instance,
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.MoveReference,
+                        FieldWritePlacement.Required));
+                OperationSlotRegistry.RegisterMember(Move__FIELDNAME__, SnapshotFields.__PREFIX__);
+        """;
 
     private const string LegacyAddRefLoweringBlock = """
         /// <summary>Lowers <see cref="__PREFIX__OperationKinds.AddRef__FIELDNAME__"/>: resolves the
@@ -161,8 +168,11 @@ public static class ReferenceCollectionFieldEmitter
             {
                 OperationKindRegistry.Register(AddRef__FIELDNAME__);
                 OperationKindRegistry.Register(RemoveRef__FIELDNAME__);
-                OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance);
-                OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance);
+                OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance,
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.AddReference,
+                        FieldWritePlacement.__ADD_PLACEMENT__));
+                OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance,
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.RemoveReference));
                 OperationSlotRegistry.RegisterMember(AddRef__FIELDNAME__, __SNAPSHOTFIELD__);
                 OperationSlotRegistry.RegisterMember(RemoveRef__FIELDNAME__, __SNAPSHOTFIELD__);
         __MOVE_REGISTRATION__    }

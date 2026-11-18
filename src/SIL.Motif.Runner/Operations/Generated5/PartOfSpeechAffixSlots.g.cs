@@ -22,12 +22,13 @@ public static class PartOfSpeechAffixSlotsOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PartOfSpeechAffixSlots, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPartOfSpeech>(
+        var handler = new OwningCreateHandler<IPartOfSpeech>(
             Create, SnapshotFields.PartOfSpeechAffixSlots, owner => owner.AffixSlotsOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IMoInflAffixSlotFactory>().Create(guid);
                         owner.AffixSlotsOC.Add(child);
-            }, false, false, Array.Empty<string>(), "MoInflAffixSlot", true));
+            }, false, false, Array.Empty<string>(), "MoInflAffixSlot", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PartOfSpeech", "AffixSlots"));
     }
 }

@@ -30,8 +30,10 @@ public static class PhEnvironmentNameOperationKinds
     {
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
-        OperationHandlerRegistry.Register(SetName, PhEnvironmentNameSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearName, PhEnvironmentNameClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetName, PhEnvironmentNameSetHandler.Instance,
+            new FieldWriteCapability("PhEnvironment", "Name", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearName, PhEnvironmentNameClearHandler.Instance,
+            new FieldWriteCapability("PhEnvironment", "Name", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.PhEnvironmentName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.PhEnvironmentName);
     }

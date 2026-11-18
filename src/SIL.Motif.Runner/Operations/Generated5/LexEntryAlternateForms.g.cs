@@ -20,7 +20,8 @@ public static class LexEntryAlternateFormsOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(MoveAlternateForms);
-        OperationHandlerRegistry.Register(MoveAlternateForms, LexEntryAlternateFormsMoveHandler.Instance);
+        OperationHandlerRegistry.Register(MoveAlternateForms, LexEntryAlternateFormsMoveHandler.Instance,
+            new FieldWriteCapability("LexEntry", "AlternateForms", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));
         OperationSlotRegistry.RegisterMember(MoveAlternateForms, SnapshotFields.LexEntryAlternateForms);
     }
 }

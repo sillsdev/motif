@@ -30,8 +30,10 @@ public static class PhSegmentRuleNameOperationKinds
     {
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
-        OperationHandlerRegistry.Register(SetName, PhSegmentRuleNameSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearName, PhSegmentRuleNameClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetName, PhSegmentRuleNameSetHandler.Instance,
+            new FieldWriteCapability("PhSegmentRule", "Name", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearName, PhSegmentRuleNameClearHandler.Instance,
+            new FieldWriteCapability("PhSegmentRule", "Name", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.PhSegmentRuleName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.PhSegmentRuleName);
     }

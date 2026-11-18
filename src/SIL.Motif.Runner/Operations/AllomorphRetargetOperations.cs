@@ -25,7 +25,8 @@ public static class AllomorphRetargetOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(SetBundleMorph);
-        OperationHandlerRegistry.Register(SetBundleMorph, BundleMorphHandler.Instance);
+        OperationHandlerRegistry.Register(SetBundleMorph, BundleMorphHandler.Instance,
+            new FieldWriteCapability("WfiMorphBundle", "Morph", RecordWriteVerb.Set));
         OperationKindRegistry.Register(RetargetAdhocReferences);
         OperationHandlerRegistry.Register(RetargetAdhocReferences, AdhocReferencesHandler.Instance);
         OperationSlotRegistry.RegisterMany(SetBundleMorph, CompoundOperationSlots.RetargetBundle);

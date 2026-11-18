@@ -31,8 +31,11 @@ public static class LexEntryDoNotShowMainEntryInOperationKinds
     {
         OperationKindRegistry.Register(AddRefDoNotShowMainEntryIn);
         OperationKindRegistry.Register(RemoveRefDoNotShowMainEntryIn);
-        OperationHandlerRegistry.Register(AddRefDoNotShowMainEntryIn, LexEntryDoNotShowMainEntryInAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefDoNotShowMainEntryIn, LexEntryDoNotShowMainEntryInRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefDoNotShowMainEntryIn, LexEntryDoNotShowMainEntryInAddRefHandler.Instance,
+            new FieldWriteCapability("LexEntry", "DoNotShowMainEntryIn", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefDoNotShowMainEntryIn, LexEntryDoNotShowMainEntryInRemoveRefHandler.Instance,
+            new FieldWriteCapability("LexEntry", "DoNotShowMainEntryIn", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefDoNotShowMainEntryIn, SnapshotFields.LexEntryDoNotShowMainEntryIn);
         OperationSlotRegistry.RegisterMember(RemoveRefDoNotShowMainEntryIn, SnapshotFields.LexEntryDoNotShowMainEntryIn);
     }

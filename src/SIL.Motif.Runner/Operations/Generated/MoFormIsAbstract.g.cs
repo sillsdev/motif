@@ -30,8 +30,10 @@ public static class MoFormIsAbstractOperationKinds
     {
         OperationKindRegistry.Register(SetIsAbstract);
         OperationKindRegistry.Register(ClearIsAbstract);
-        OperationHandlerRegistry.Register(SetIsAbstract, MoFormIsAbstractSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearIsAbstract, MoFormIsAbstractClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetIsAbstract, MoFormIsAbstractSetHandler.Instance,
+            new FieldWriteCapability("MoForm", "IsAbstract", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearIsAbstract, MoFormIsAbstractClearHandler.Instance,
+            new FieldWriteCapability("MoForm", "IsAbstract", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetIsAbstract, SnapshotFields.MoFormIsAbstract);
         OperationSlotRegistry.RegisterScalar(ClearIsAbstract, SnapshotFields.MoFormIsAbstract);
     }

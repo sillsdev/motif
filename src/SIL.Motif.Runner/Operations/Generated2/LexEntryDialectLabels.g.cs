@@ -31,8 +31,11 @@ public static class LexEntryDialectLabelsOperationKinds
     {
         OperationKindRegistry.Register(AddRefDialectLabels);
         OperationKindRegistry.Register(RemoveRefDialectLabels);
-        OperationHandlerRegistry.Register(AddRefDialectLabels, LexEntryDialectLabelsAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefDialectLabels, LexEntryDialectLabelsRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefDialectLabels, LexEntryDialectLabelsAddRefHandler.Instance,
+            new FieldWriteCapability("LexEntry", "DialectLabels", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefDialectLabels, LexEntryDialectLabelsRemoveRefHandler.Instance,
+            new FieldWriteCapability("LexEntry", "DialectLabels", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefDialectLabels, SnapshotFields.LexEntryDialectLabels);
         OperationSlotRegistry.RegisterMember(RemoveRefDialectLabels, SnapshotFields.LexEntryDialectLabels);
     }

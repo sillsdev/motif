@@ -34,6 +34,10 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\manifest\liblcm-inventory.tsv" LogicalName="liblcm-inventory.tsv" />
+  </ItemGroup>
+
   <!-- The pasted-header template (ADR 0009 decision 13): the only Handoff asset left once reference/ is gone. -->
   <ItemGroup>
     <EmbeddedResource Include="Handoff\Assets\starter-prompt.md">

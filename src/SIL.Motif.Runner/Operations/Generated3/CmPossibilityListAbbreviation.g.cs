@@ -30,8 +30,10 @@ public static class CmPossibilityListAbbreviationOperationKinds
     {
         OperationKindRegistry.Register(SetAbbreviation);
         OperationKindRegistry.Register(ClearAbbreviation);
-        OperationHandlerRegistry.Register(SetAbbreviation, CmPossibilityListAbbreviationSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearAbbreviation, CmPossibilityListAbbreviationClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetAbbreviation, CmPossibilityListAbbreviationSetHandler.Instance,
+            new FieldWriteCapability("CmPossibilityList", "Abbreviation", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearAbbreviation, CmPossibilityListAbbreviationClearHandler.Instance,
+            new FieldWriteCapability("CmPossibilityList", "Abbreviation", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.CmPossibilityListAbbreviation);
         OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.CmPossibilityListAbbreviation);
     }

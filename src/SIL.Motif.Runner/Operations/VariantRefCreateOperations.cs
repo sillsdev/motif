@@ -21,7 +21,9 @@ public static class VariantRefCreateOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
-        OperationHandlerRegistry.Register(Create, VariantRefCreateHandler.Instance);
+        OperationHandlerRegistry.Register(Create, VariantRefCreateHandler.Instance,
+            new FieldWriteCapability("LexEntry", "EntryRefs", RecordWriteVerb.AddObject, Shape: FieldWriteShape.VariantReference)
+            { ChildClasses = ["LexEntryRef"] });
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LexEntryEntryRefs, false);
     }
 #pragma warning restore CA2255

@@ -30,8 +30,10 @@ public static class PhPhonRuleFeatItemOperationKinds
     {
         OperationKindRegistry.Register(SetItem);
         OperationKindRegistry.Register(ClearItem);
-        OperationHandlerRegistry.Register(SetItem, PhPhonRuleFeatItemSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearItem, PhPhonRuleFeatItemClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetItem, PhPhonRuleFeatItemSetHandler.Instance,
+            new FieldWriteCapability("PhPhonRuleFeat", "Item", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearItem, PhPhonRuleFeatItemClearHandler.Instance,
+            new FieldWriteCapability("PhPhonRuleFeat", "Item", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetItem, SnapshotFields.PhPhonRuleFeatItem);
         OperationSlotRegistry.RegisterScalar(ClearItem, SnapshotFields.PhPhonRuleFeatItem);
     }

@@ -22,12 +22,13 @@ public static class PhTerminalUnitCodesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhTerminalUnitCodes, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhTerminalUnit>(
+        var handler = new OwningCreateHandler<IPhTerminalUnit>(
             Create, SnapshotFields.PhTerminalUnitCodes, owner => owner.CodesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IPhCodeFactory>().Create(guid);
                         owner.CodesOS.Insert(index, child);
-            }, true, false, Array.Empty<string>(), "PhCode", true));
+            }, true, false, Array.Empty<string>(), "PhCode", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhTerminalUnit", "Codes"));
     }
 }

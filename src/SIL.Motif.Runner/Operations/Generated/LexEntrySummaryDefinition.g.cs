@@ -30,8 +30,10 @@ public static class LexEntrySummaryDefinitionOperationKinds
     {
         OperationKindRegistry.Register(SetSummaryDefinition);
         OperationKindRegistry.Register(ClearSummaryDefinition);
-        OperationHandlerRegistry.Register(SetSummaryDefinition, LexEntrySummaryDefinitionSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearSummaryDefinition, LexEntrySummaryDefinitionClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetSummaryDefinition, LexEntrySummaryDefinitionSetHandler.Instance,
+            new FieldWriteCapability("LexEntry", "SummaryDefinition", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearSummaryDefinition, LexEntrySummaryDefinitionClearHandler.Instance,
+            new FieldWriteCapability("LexEntry", "SummaryDefinition", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetSummaryDefinition, SnapshotFields.LexEntrySummaryDefinition);
         OperationSlotRegistry.RegisterAlternative(ClearSummaryDefinition, SnapshotFields.LexEntrySummaryDefinition);
     }

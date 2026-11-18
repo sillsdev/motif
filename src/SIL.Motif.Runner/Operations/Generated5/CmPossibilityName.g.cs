@@ -30,8 +30,10 @@ public static class CmPossibilityNameOperationKinds
     {
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
-        OperationHandlerRegistry.Register(SetName, CmPossibilityNameSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearName, CmPossibilityNameClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetName, CmPossibilityNameSetHandler.Instance,
+            new FieldWriteCapability("CmPossibility", "Name", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearName, CmPossibilityNameClearHandler.Instance,
+            new FieldWriteCapability("CmPossibility", "Name", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.CmPossibilityName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.CmPossibilityName);
     }

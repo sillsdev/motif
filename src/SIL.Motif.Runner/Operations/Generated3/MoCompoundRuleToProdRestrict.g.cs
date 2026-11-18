@@ -31,8 +31,11 @@ public static class MoCompoundRuleToProdRestrictOperationKinds
     {
         OperationKindRegistry.Register(AddRefToProdRestrict);
         OperationKindRegistry.Register(RemoveRefToProdRestrict);
-        OperationHandlerRegistry.Register(AddRefToProdRestrict, MoCompoundRuleToProdRestrictAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefToProdRestrict, MoCompoundRuleToProdRestrictRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefToProdRestrict, MoCompoundRuleToProdRestrictAddRefHandler.Instance,
+            new FieldWriteCapability("MoCompoundRule", "ToProdRestrict", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefToProdRestrict, MoCompoundRuleToProdRestrictRemoveRefHandler.Instance,
+            new FieldWriteCapability("MoCompoundRule", "ToProdRestrict", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefToProdRestrict, SnapshotFields.MoCompoundRuleToProdRestrict);
         OperationSlotRegistry.RegisterMember(RemoveRefToProdRestrict, SnapshotFields.MoCompoundRuleToProdRestrict);
     }

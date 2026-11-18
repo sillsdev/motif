@@ -30,8 +30,10 @@ public static class MoStemMsaPartOfSpeechOperationKinds
     {
         OperationKindRegistry.Register(SetPartOfSpeech);
         OperationKindRegistry.Register(ClearPartOfSpeech);
-        OperationHandlerRegistry.Register(SetPartOfSpeech, MoStemMsaPartOfSpeechSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearPartOfSpeech, MoStemMsaPartOfSpeechClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetPartOfSpeech, MoStemMsaPartOfSpeechSetHandler.Instance,
+            new FieldWriteCapability("MoStemMsa", "PartOfSpeech", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearPartOfSpeech, MoStemMsaPartOfSpeechClearHandler.Instance,
+            new FieldWriteCapability("MoStemMsa", "PartOfSpeech", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetPartOfSpeech, SnapshotFields.MoStemMsaPartOfSpeech);
         OperationSlotRegistry.RegisterScalar(ClearPartOfSpeech, SnapshotFields.MoStemMsaPartOfSpeech);
     }

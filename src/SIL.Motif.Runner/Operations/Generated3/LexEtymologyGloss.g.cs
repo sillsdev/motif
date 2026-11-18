@@ -30,8 +30,10 @@ public static class LexEtymologyGlossOperationKinds
     {
         OperationKindRegistry.Register(SetGloss);
         OperationKindRegistry.Register(ClearGloss);
-        OperationHandlerRegistry.Register(SetGloss, LexEtymologyGlossSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearGloss, LexEtymologyGlossClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetGloss, LexEtymologyGlossSetHandler.Instance,
+            new FieldWriteCapability("LexEtymology", "Gloss", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearGloss, LexEtymologyGlossClearHandler.Instance,
+            new FieldWriteCapability("LexEtymology", "Gloss", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetGloss, SnapshotFields.LexEtymologyGloss);
         OperationSlotRegistry.RegisterAlternative(ClearGloss, SnapshotFields.LexEtymologyGloss);
     }

@@ -23,7 +23,8 @@ public static class MoMorphDataNoDefaultCompoundingOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Set);
-        OperationHandlerRegistry.Register(Set, MoMorphDataNoDefaultCompoundingHandler.Instance);
+        OperationHandlerRegistry.Register(Set, MoMorphDataNoDefaultCompoundingHandler.Instance,
+            new FieldWriteCapability("MoMorphData", "NoDefaultCompounding", RecordWriteVerb.Set));
         OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.MoMorphDataNoDefaultCompounding);
     }
 #pragma warning restore CA2255

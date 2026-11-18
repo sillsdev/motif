@@ -22,12 +22,13 @@ public static class MoStemNameRegionsOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.MoStemNameRegions, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IMoStemName>(
+        var handler = new OwningCreateHandler<IMoStemName>(
             Create, SnapshotFields.MoStemNameRegions, owner => owner.RegionsOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create(guid);
                         owner.RegionsOC.Add(child);
-            }, false, false, Array.Empty<string>(), "FsFeatStruc", true));
+            }, false, false, Array.Empty<string>(), "FsFeatStruc", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("MoStemName", "Regions"));
     }
 }

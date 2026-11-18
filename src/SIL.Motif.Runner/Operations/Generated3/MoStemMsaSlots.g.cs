@@ -31,8 +31,11 @@ public static class MoStemMsaSlotsOperationKinds
     {
         OperationKindRegistry.Register(AddRefSlots);
         OperationKindRegistry.Register(RemoveRefSlots);
-        OperationHandlerRegistry.Register(AddRefSlots, MoStemMsaSlotsAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefSlots, MoStemMsaSlotsRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefSlots, MoStemMsaSlotsAddRefHandler.Instance,
+            new FieldWriteCapability("MoStemMsa", "Slots", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefSlots, MoStemMsaSlotsRemoveRefHandler.Instance,
+            new FieldWriteCapability("MoStemMsa", "Slots", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefSlots, SnapshotFields.MoStemMsaSlots);
         OperationSlotRegistry.RegisterMember(RemoveRefSlots, SnapshotFields.MoStemMsaSlots);
     }

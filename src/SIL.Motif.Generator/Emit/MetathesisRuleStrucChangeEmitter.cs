@@ -30,7 +30,8 @@ public static class MetathesisRuleStrucChangeEmitter
             internal static void Register()
             {
                 OperationKindRegistry.Register(Set);
-                OperationHandlerRegistry.Register(Set, new MetathesisStrucChangeHandler());
+                OperationHandlerRegistry.Register(Set, new MetathesisStrucChangeHandler(),
+                    new FieldWriteCapability("PhMetathesisRule", "StrucChange", RecordWriteVerb.SetPlainRich));
                 OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.PhMetathesisRuleStrucChange);
             }
         }

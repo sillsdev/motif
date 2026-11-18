@@ -30,8 +30,12 @@ public static class MoDerivAffMsaMsFeaturesOperationKinds
     {
         OperationKindRegistry.Register(CreateFromMsFeatures);
         OperationKindRegistry.Register(CreateToMsFeatures);
-        OperationHandlerRegistry.Register(CreateFromMsFeatures, new MoDerivAffMsaMsFeaturesCreateHandler(CreateFromMsFeatures, false));
-        OperationHandlerRegistry.Register(CreateToMsFeatures, new MoDerivAffMsaMsFeaturesCreateHandler(CreateToMsFeatures, true));
+        OperationHandlerRegistry.Register(CreateFromMsFeatures, new MoDerivAffMsaMsFeaturesCreateHandler(CreateFromMsFeatures, false),
+            new FieldWriteCapability("MoDerivAffMsa", "FromMsFeatures", RecordWriteVerb.AddObject)
+            { ChildClasses = ["FsFeatStruc"] });
+        OperationHandlerRegistry.Register(CreateToMsFeatures, new MoDerivAffMsaMsFeaturesCreateHandler(CreateToMsFeatures, true),
+            new FieldWriteCapability("MoDerivAffMsa", "ToMsFeatures", RecordWriteVerb.AddObject)
+            { ChildClasses = ["FsFeatStruc"] });
         OperationSlotRegistry.RegisterOwningCreate(CreateFromMsFeatures, SnapshotFields.MoDerivAffMsaFromMsFeatures, true);
         OperationSlotRegistry.RegisterOwningCreate(CreateToMsFeatures, SnapshotFields.MoDerivAffMsaToMsFeatures, true);
     }

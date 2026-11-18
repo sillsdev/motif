@@ -22,12 +22,13 @@ public static class FsClosedFeatureValuesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.FsClosedFeatureValues, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IFsClosedFeature>(
+        var handler = new OwningCreateHandler<IFsClosedFeature>(
             Create, SnapshotFields.FsClosedFeatureValues, owner => owner.ValuesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IFsSymFeatValFactory>().Create(guid);
                         owner.ValuesOC.Add(child);
-            }, false, false, Array.Empty<string>(), "FsSymFeatVal", true));
+            }, false, false, Array.Empty<string>(), "FsSymFeatVal", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("FsClosedFeature", "Values"));
     }
 }

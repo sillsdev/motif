@@ -22,7 +22,9 @@ public static class AffixSlotDeleteOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(DeleteAffixSlots);
-        OperationHandlerRegistry.Register(DeleteAffixSlots, new AffixSlotDeleteHandler());
+        OperationHandlerRegistry.Register(DeleteAffixSlots, new AffixSlotDeleteHandler(),
+            new FieldWriteCapability("PartOfSpeech", "AffixSlots", RecordWriteVerb.RemoveObject)
+            { ChildClasses = ["MoInflAffixSlot"] });
         OperationSlotRegistry.RegisterEntityDeletion(DeleteAffixSlots);
     }
 #pragma warning restore CA2255

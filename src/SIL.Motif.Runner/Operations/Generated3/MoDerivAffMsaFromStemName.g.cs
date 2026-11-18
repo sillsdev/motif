@@ -30,8 +30,10 @@ public static class MoDerivAffMsaFromStemNameOperationKinds
     {
         OperationKindRegistry.Register(SetFromStemName);
         OperationKindRegistry.Register(ClearFromStemName);
-        OperationHandlerRegistry.Register(SetFromStemName, MoDerivAffMsaFromStemNameSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearFromStemName, MoDerivAffMsaFromStemNameClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetFromStemName, MoDerivAffMsaFromStemNameSetHandler.Instance,
+            new FieldWriteCapability("MoDerivAffMsa", "FromStemName", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearFromStemName, MoDerivAffMsaFromStemNameClearHandler.Instance,
+            new FieldWriteCapability("MoDerivAffMsa", "FromStemName", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetFromStemName, SnapshotFields.MoDerivAffMsaFromStemName);
         OperationSlotRegistry.RegisterScalar(ClearFromStemName, SnapshotFields.MoDerivAffMsaFromStemName);
     }

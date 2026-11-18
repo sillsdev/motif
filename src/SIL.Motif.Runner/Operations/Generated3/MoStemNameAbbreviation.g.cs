@@ -30,8 +30,10 @@ public static class MoStemNameAbbreviationOperationKinds
     {
         OperationKindRegistry.Register(SetAbbreviation);
         OperationKindRegistry.Register(ClearAbbreviation);
-        OperationHandlerRegistry.Register(SetAbbreviation, MoStemNameAbbreviationSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearAbbreviation, MoStemNameAbbreviationClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetAbbreviation, MoStemNameAbbreviationSetHandler.Instance,
+            new FieldWriteCapability("MoStemName", "Abbreviation", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearAbbreviation, MoStemNameAbbreviationClearHandler.Instance,
+            new FieldWriteCapability("MoStemName", "Abbreviation", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.MoStemNameAbbreviation);
         OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.MoStemNameAbbreviation);
     }

@@ -22,12 +22,13 @@ public static class RnResearchNbkRecordsOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.RnResearchNbkRecords, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IRnResearchNbk>(
+        var handler = new OwningCreateHandler<IRnResearchNbk>(
             Create, SnapshotFields.RnResearchNbkRecords, owner => owner.RecordsOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IRnGenericRecFactory>().Create(guid);
                         owner.RecordsOC.Add(child);
-            }, false, false, Array.Empty<string>(), "RnGenericRec", true));
+            }, false, false, Array.Empty<string>(), "RnGenericRec", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("RnResearchNbk", "Records"));
     }
 }

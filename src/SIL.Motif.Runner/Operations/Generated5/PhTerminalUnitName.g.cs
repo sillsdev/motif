@@ -30,8 +30,10 @@ public static class PhTerminalUnitNameOperationKinds
     {
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
-        OperationHandlerRegistry.Register(SetName, PhTerminalUnitNameSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearName, PhTerminalUnitNameClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetName, PhTerminalUnitNameSetHandler.Instance,
+            new FieldWriteCapability("PhTerminalUnit", "Name", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearName, PhTerminalUnitNameClearHandler.Instance,
+            new FieldWriteCapability("PhTerminalUnit", "Name", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.PhTerminalUnitName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.PhTerminalUnitName);
     }

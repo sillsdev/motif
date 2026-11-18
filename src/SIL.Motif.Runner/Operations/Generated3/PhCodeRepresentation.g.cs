@@ -30,8 +30,10 @@ public static class PhCodeRepresentationOperationKinds
     {
         OperationKindRegistry.Register(SetRepresentation);
         OperationKindRegistry.Register(ClearRepresentation);
-        OperationHandlerRegistry.Register(SetRepresentation, PhCodeRepresentationSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearRepresentation, PhCodeRepresentationClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetRepresentation, PhCodeRepresentationSetHandler.Instance,
+            new FieldWriteCapability("PhCode", "Representation", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearRepresentation, PhCodeRepresentationClearHandler.Instance,
+            new FieldWriteCapability("PhCode", "Representation", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetRepresentation, SnapshotFields.PhCodeRepresentation);
         OperationSlotRegistry.RegisterAlternative(ClearRepresentation, SnapshotFields.PhCodeRepresentation);
     }

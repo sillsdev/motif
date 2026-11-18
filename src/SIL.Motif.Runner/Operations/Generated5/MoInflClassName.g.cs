@@ -30,8 +30,10 @@ public static class MoInflClassNameOperationKinds
     {
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
-        OperationHandlerRegistry.Register(SetName, MoInflClassNameSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearName, MoInflClassNameClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetName, MoInflClassNameSetHandler.Instance,
+            new FieldWriteCapability("MoInflClass", "Name", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearName, MoInflClassNameClearHandler.Instance,
+            new FieldWriteCapability("MoInflClass", "Name", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.MoInflClassName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.MoInflClassName);
     }

@@ -30,8 +30,10 @@ public static class LexSenseAnthroNoteOperationKinds
     {
         OperationKindRegistry.Register(SetAnthroNote);
         OperationKindRegistry.Register(ClearAnthroNote);
-        OperationHandlerRegistry.Register(SetAnthroNote, LexSenseAnthroNoteSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearAnthroNote, LexSenseAnthroNoteClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetAnthroNote, LexSenseAnthroNoteSetHandler.Instance,
+            new FieldWriteCapability("LexSense", "AnthroNote", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearAnthroNote, LexSenseAnthroNoteClearHandler.Instance,
+            new FieldWriteCapability("LexSense", "AnthroNote", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetAnthroNote, SnapshotFields.LexSenseAnthroNote);
         OperationSlotRegistry.RegisterAlternative(ClearAnthroNote, SnapshotFields.LexSenseAnthroNote);
     }

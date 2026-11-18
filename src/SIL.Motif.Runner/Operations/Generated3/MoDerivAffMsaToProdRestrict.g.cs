@@ -31,8 +31,11 @@ public static class MoDerivAffMsaToProdRestrictOperationKinds
     {
         OperationKindRegistry.Register(AddRefToProdRestrict);
         OperationKindRegistry.Register(RemoveRefToProdRestrict);
-        OperationHandlerRegistry.Register(AddRefToProdRestrict, MoDerivAffMsaToProdRestrictAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefToProdRestrict, MoDerivAffMsaToProdRestrictRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefToProdRestrict, MoDerivAffMsaToProdRestrictAddRefHandler.Instance,
+            new FieldWriteCapability("MoDerivAffMsa", "ToProdRestrict", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefToProdRestrict, MoDerivAffMsaToProdRestrictRemoveRefHandler.Instance,
+            new FieldWriteCapability("MoDerivAffMsa", "ToProdRestrict", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefToProdRestrict, SnapshotFields.MoDerivAffMsaToProdRestrict);
         OperationSlotRegistry.RegisterMember(RemoveRefToProdRestrict, SnapshotFields.MoDerivAffMsaToProdRestrict);
     }

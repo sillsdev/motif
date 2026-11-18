@@ -30,8 +30,10 @@ public static class MoDerivAffMsaToPartOfSpeechOperationKinds
     {
         OperationKindRegistry.Register(SetToPartOfSpeech);
         OperationKindRegistry.Register(ClearToPartOfSpeech);
-        OperationHandlerRegistry.Register(SetToPartOfSpeech, MoDerivAffMsaToPartOfSpeechSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearToPartOfSpeech, MoDerivAffMsaToPartOfSpeechClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetToPartOfSpeech, MoDerivAffMsaToPartOfSpeechSetHandler.Instance,
+            new FieldWriteCapability("MoDerivAffMsa", "ToPartOfSpeech", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearToPartOfSpeech, MoDerivAffMsaToPartOfSpeechClearHandler.Instance,
+            new FieldWriteCapability("MoDerivAffMsa", "ToPartOfSpeech", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetToPartOfSpeech, SnapshotFields.MoDerivAffMsaToPartOfSpeech);
         OperationSlotRegistry.RegisterScalar(ClearToPartOfSpeech, SnapshotFields.MoDerivAffMsaToPartOfSpeech);
     }

@@ -30,8 +30,10 @@ public static class FsClosedValueValueOperationKinds
     {
         OperationKindRegistry.Register(SetValue);
         OperationKindRegistry.Register(ClearValue);
-        OperationHandlerRegistry.Register(SetValue, FsClosedValueValueSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearValue, FsClosedValueValueClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetValue, FsClosedValueValueSetHandler.Instance,
+            new FieldWriteCapability("FsClosedValue", "Value", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearValue, FsClosedValueValueClearHandler.Instance,
+            new FieldWriteCapability("FsClosedValue", "Value", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetValue, SnapshotFields.FsClosedValueValue);
         OperationSlotRegistry.RegisterScalar(ClearValue, SnapshotFields.FsClosedValueValue);
     }

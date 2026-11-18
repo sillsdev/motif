@@ -22,7 +22,7 @@ public static class MoAffixProcessInputOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.MoAffixProcessInput, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IMoAffixProcess>(
+        var handler = new OwningCreateHandler<IMoAffixProcess>(
             Create, SnapshotFields.MoAffixProcessInput, owner => owner.InputOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -34,6 +34,7 @@ public static class MoAffixProcessInputOperationKinds
                             _ => throw new InvalidOperationException("Unsupported affix input class."),
                         };
                         owner.InputOS.Insert(index, child);
-            }, true, false, new[] { "PhVariable", "PhSimpleContextSeg", "PhSimpleContextNC" }, "PhContextOrVar", true));
+            }, true, false, new[] { "PhVariable", "PhSimpleContextSeg", "PhSimpleContextNC" }, "PhContextOrVar", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("MoAffixProcess", "Input"));
     }
 }

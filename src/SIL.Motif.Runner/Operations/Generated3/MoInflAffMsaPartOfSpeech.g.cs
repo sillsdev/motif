@@ -30,8 +30,10 @@ public static class MoInflAffMsaPartOfSpeechOperationKinds
     {
         OperationKindRegistry.Register(SetPartOfSpeech);
         OperationKindRegistry.Register(ClearPartOfSpeech);
-        OperationHandlerRegistry.Register(SetPartOfSpeech, MoInflAffMsaPartOfSpeechSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearPartOfSpeech, MoInflAffMsaPartOfSpeechClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetPartOfSpeech, MoInflAffMsaPartOfSpeechSetHandler.Instance,
+            new FieldWriteCapability("MoInflAffMsa", "PartOfSpeech", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearPartOfSpeech, MoInflAffMsaPartOfSpeechClearHandler.Instance,
+            new FieldWriteCapability("MoInflAffMsa", "PartOfSpeech", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetPartOfSpeech, SnapshotFields.MoInflAffMsaPartOfSpeech);
         OperationSlotRegistry.RegisterScalar(ClearPartOfSpeech, SnapshotFields.MoInflAffMsaPartOfSpeech);
     }

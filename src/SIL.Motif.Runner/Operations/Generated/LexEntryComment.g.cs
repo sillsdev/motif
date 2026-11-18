@@ -30,8 +30,10 @@ public static class LexEntryCommentOperationKinds
     {
         OperationKindRegistry.Register(SetComment);
         OperationKindRegistry.Register(ClearComment);
-        OperationHandlerRegistry.Register(SetComment, LexEntryCommentSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearComment, LexEntryCommentClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetComment, LexEntryCommentSetHandler.Instance,
+            new FieldWriteCapability("LexEntry", "Comment", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearComment, LexEntryCommentClearHandler.Instance,
+            new FieldWriteCapability("LexEntry", "Comment", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetComment, SnapshotFields.LexEntryComment);
         OperationSlotRegistry.RegisterAlternative(ClearComment, SnapshotFields.LexEntryComment);
     }

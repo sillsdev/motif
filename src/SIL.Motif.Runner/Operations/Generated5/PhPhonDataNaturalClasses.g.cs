@@ -22,7 +22,7 @@ public static class PhPhonDataNaturalClassesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonDataNaturalClasses, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonData>(
+        var handler = new OwningCreateHandler<IPhPhonData>(
             Create, SnapshotFields.PhPhonDataNaturalClasses, owner => owner.NaturalClassesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -33,6 +33,7 @@ public static class PhPhonDataNaturalClassesOperationKinds
                             _ => throw new InvalidOperationException("Natural class must be PhNCSegments or PhNCFeatures."),
                         };
                         owner.NaturalClassesOS.Insert(index, child);
-            }, true, false, new[] { "PhNCSegments", "PhNCFeatures" }, "PhNaturalClass", true));
+            }, true, false, new[] { "PhNCSegments", "PhNCFeatures" }, "PhNaturalClass", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhPhonData", "NaturalClasses"));
     }
 }

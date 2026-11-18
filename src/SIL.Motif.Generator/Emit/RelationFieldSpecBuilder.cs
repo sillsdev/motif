@@ -64,7 +64,8 @@ public static class RelationFieldSpecBuilder
             RefInterface: "I" + row.Sig,
             AccessorPropertyName: row.FieldName + accessorSuffix,
             SnapshotFieldConstant: row.DeclaringClass + row.FieldName,
-            MoveKind: supportsPlacement ? KindNameDerivation.DeriveOne(group, construct, "move", row.FieldName) : null);
+            MoveKind: supportsPlacement ? KindNameDerivation.DeriveOne(group, construct, "move", row.FieldName) : null,
+            SupportsPlacement: supportsPlacement);
     }
 
     public static IReadOnlyList<ReferenceAtomicFieldSpec> BuildAllAtomic(IReadOnlyList<JoinedRow> rows) =>

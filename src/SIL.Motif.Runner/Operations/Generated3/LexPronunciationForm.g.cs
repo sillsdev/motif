@@ -30,8 +30,10 @@ public static class LexPronunciationFormOperationKinds
     {
         OperationKindRegistry.Register(SetForm);
         OperationKindRegistry.Register(ClearForm);
-        OperationHandlerRegistry.Register(SetForm, LexPronunciationFormSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearForm, LexPronunciationFormClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetForm, LexPronunciationFormSetHandler.Instance,
+            new FieldWriteCapability("LexPronunciation", "Form", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearForm, LexPronunciationFormClearHandler.Instance,
+            new FieldWriteCapability("LexPronunciation", "Form", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetForm, SnapshotFields.LexPronunciationForm);
         OperationSlotRegistry.RegisterAlternative(ClearForm, SnapshotFields.LexPronunciationForm);
     }

@@ -22,12 +22,13 @@ public static class PartOfSpeechInflectionClassesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PartOfSpeechInflectionClasses, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPartOfSpeech>(
+        var handler = new OwningCreateHandler<IPartOfSpeech>(
             Create, SnapshotFields.PartOfSpeechInflectionClasses, owner => owner.InflectionClassesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IMoInflClassFactory>().Create(guid);
                         owner.InflectionClassesOC.Add(child);
-            }, false, false, Array.Empty<string>(), "MoInflClass", true));
+            }, false, false, Array.Empty<string>(), "MoInflClass", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PartOfSpeech", "InflectionClasses"));
     }
 }

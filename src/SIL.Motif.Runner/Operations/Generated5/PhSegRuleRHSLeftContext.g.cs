@@ -22,7 +22,7 @@ public static class PhSegRuleRHSLeftContextOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhSegRuleRHSLeftContext, true);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhSegRuleRHS>(
+        var handler = new OwningCreateHandler<IPhSegRuleRHS>(
             Create, SnapshotFields.PhSegRuleRHSLeftContext, owner => owner.LeftContextOA is { } child ? new ICmObject[] { child } : Array.Empty<ICmObject>(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -36,6 +36,7 @@ public static class PhSegRuleRHSLeftContextOperationKinds
                             _ => throw new InvalidOperationException("Left context must be a supported simple, sequence or iteration context."),
                         };
                         owner.LeftContextOA = child;
-            }, false, true, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext", "PhIterationContext" }, "PhPhonContext", true));
+            }, false, true, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext", "PhIterationContext" }, "PhPhonContext", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhSegRuleRHS", "LeftContext"));
     }
 }

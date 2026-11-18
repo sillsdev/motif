@@ -22,7 +22,7 @@ public static class CmPossibilityListPossibilitiesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.CmPossibilityListPossibilities, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<ICmPossibilityList>(
+        var handler = new OwningCreateHandler<ICmPossibilityList>(
             Create, SnapshotFields.CmPossibilityListPossibilities, owner => owner.PossibilitiesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -44,6 +44,7 @@ public static class CmPossibilityListPossibilitiesOperationKinds
                                 throw new InvalidOperationException("Only the phonological rule features list accepts a PhPhonRuleFeat item.");
                             owner.PossibilitiesOS.Add(cache.ServiceLocator.GetInstance<IPhPhonRuleFeatFactory>().Create(guid));
                         }
-            }, true, false, new[] { "PartOfSpeech", "CmPossibility", "PhPhonRuleFeat" }, "CmPossibility", false));
+            }, true, false, new[] { "PartOfSpeech", "CmPossibility", "PhPhonRuleFeat" }, "CmPossibility", false);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("CmPossibilityList", "Possibilities"));
     }
 }

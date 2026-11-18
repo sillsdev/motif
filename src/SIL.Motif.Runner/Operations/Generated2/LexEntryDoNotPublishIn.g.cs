@@ -31,8 +31,11 @@ public static class LexEntryDoNotPublishInOperationKinds
     {
         OperationKindRegistry.Register(AddRefDoNotPublishIn);
         OperationKindRegistry.Register(RemoveRefDoNotPublishIn);
-        OperationHandlerRegistry.Register(AddRefDoNotPublishIn, LexEntryDoNotPublishInAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefDoNotPublishIn, LexEntryDoNotPublishInRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefDoNotPublishIn, LexEntryDoNotPublishInAddRefHandler.Instance,
+            new FieldWriteCapability("LexEntry", "DoNotPublishIn", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefDoNotPublishIn, LexEntryDoNotPublishInRemoveRefHandler.Instance,
+            new FieldWriteCapability("LexEntry", "DoNotPublishIn", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefDoNotPublishIn, SnapshotFields.LexEntryDoNotPublishIn);
         OperationSlotRegistry.RegisterMember(RemoveRefDoNotPublishIn, SnapshotFields.LexEntryDoNotPublishIn);
     }

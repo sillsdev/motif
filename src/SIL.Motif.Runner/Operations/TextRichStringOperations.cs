@@ -40,7 +40,13 @@ public static class TextRichStringOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Set);
-        OperationHandlerRegistry.Register(Set, TextRichStringHandler.Instance);
+        OperationHandlerRegistry.Register(Set, TextRichStringHandler.Instance, TextRichStringFields.Names
+            .SelectMany(field => new[]
+            {
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetPlainRich, fallback: true),
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetRich),
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.ClearRich),
+            }).ToArray());
         OperationSlotRegistry.Register(Set, operation =>
         {
             var (field, ws) = TextRichStringPayload.AddressOf(OperationSlotRegistry.After(operation));

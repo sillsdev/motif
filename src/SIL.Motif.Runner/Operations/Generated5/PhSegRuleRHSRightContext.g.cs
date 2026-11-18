@@ -22,7 +22,7 @@ public static class PhSegRuleRHSRightContextOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhSegRuleRHSRightContext, true);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhSegRuleRHS>(
+        var handler = new OwningCreateHandler<IPhSegRuleRHS>(
             Create, SnapshotFields.PhSegRuleRHSRightContext, owner => owner.RightContextOA is { } child ? new ICmObject[] { child } : Array.Empty<ICmObject>(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -36,6 +36,7 @@ public static class PhSegRuleRHSRightContextOperationKinds
                             _ => throw new InvalidOperationException("Right context must be a supported simple, sequence or iteration context."),
                         };
                         owner.RightContextOA = child;
-            }, false, true, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext", "PhIterationContext" }, "PhPhonContext", true));
+            }, false, true, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext", "PhIterationContext" }, "PhPhonContext", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhSegRuleRHS", "RightContext"));
     }
 }

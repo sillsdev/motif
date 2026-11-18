@@ -31,8 +31,11 @@ public static class LexEntryRefComponentLexemesOperationKinds
     {
         OperationKindRegistry.Register(AddRefComponentLexemes);
         OperationKindRegistry.Register(RemoveRefComponentLexemes);
-        OperationHandlerRegistry.Register(AddRefComponentLexemes, LexEntryRefComponentLexemesAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefComponentLexemes, LexEntryRefComponentLexemesRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefComponentLexemes, LexEntryRefComponentLexemesAddRefHandler.Instance,
+            new FieldWriteCapability("LexEntryRef", "ComponentLexemes", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefComponentLexemes, LexEntryRefComponentLexemesRemoveRefHandler.Instance,
+            new FieldWriteCapability("LexEntryRef", "ComponentLexemes", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefComponentLexemes, SnapshotFields.LexEntryRefComponentLexemes);
         OperationSlotRegistry.RegisterMember(RemoveRefComponentLexemes, SnapshotFields.LexEntryRefComponentLexemes);
     }

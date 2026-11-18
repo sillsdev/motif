@@ -30,8 +30,10 @@ public static class MoMorphAdhocProhibFirstMorphemeOperationKinds
     {
         OperationKindRegistry.Register(SetFirstMorpheme);
         OperationKindRegistry.Register(ClearFirstMorpheme);
-        OperationHandlerRegistry.Register(SetFirstMorpheme, MoMorphAdhocProhibFirstMorphemeSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearFirstMorpheme, MoMorphAdhocProhibFirstMorphemeClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetFirstMorpheme, MoMorphAdhocProhibFirstMorphemeSetHandler.Instance,
+            new FieldWriteCapability("MoMorphAdhocProhib", "FirstMorpheme", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearFirstMorpheme, MoMorphAdhocProhibFirstMorphemeClearHandler.Instance,
+            new FieldWriteCapability("MoMorphAdhocProhib", "FirstMorpheme", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetFirstMorpheme, SnapshotFields.MoMorphAdhocProhibFirstMorpheme);
         OperationSlotRegistry.RegisterScalar(ClearFirstMorpheme, SnapshotFields.MoMorphAdhocProhibFirstMorpheme);
     }

@@ -22,7 +22,7 @@ public static class FsFeatureSystemFeaturesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.FsFeatureSystemFeatures, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IFsFeatureSystem>(
+        var handler = new OwningCreateHandler<IFsFeatureSystem>(
             Create, SnapshotFields.FsFeatureSystemFeatures, owner => owner.FeaturesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -32,6 +32,7 @@ public static class FsFeatureSystemFeaturesOperationKinds
                             _ => throw new InvalidOperationException("Feature must be FsClosedFeature."),
                         };
                         owner.FeaturesOC.Add(child);
-            }, false, false, new[] { "FsClosedFeature" }, "FsFeatDefn", true));
+            }, false, false, new[] { "FsClosedFeature" }, "FsFeatDefn", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("FsFeatureSystem", "Features"));
     }
 }

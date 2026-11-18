@@ -31,8 +31,11 @@ public static class MoInflAffMsaFromProdRestrictOperationKinds
     {
         OperationKindRegistry.Register(AddRefFromProdRestrict);
         OperationKindRegistry.Register(RemoveRefFromProdRestrict);
-        OperationHandlerRegistry.Register(AddRefFromProdRestrict, MoInflAffMsaFromProdRestrictAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefFromProdRestrict, MoInflAffMsaFromProdRestrictRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefFromProdRestrict, MoInflAffMsaFromProdRestrictAddRefHandler.Instance,
+            new FieldWriteCapability("MoInflAffMsa", "FromProdRestrict", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefFromProdRestrict, MoInflAffMsaFromProdRestrictRemoveRefHandler.Instance,
+            new FieldWriteCapability("MoInflAffMsa", "FromProdRestrict", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefFromProdRestrict, SnapshotFields.MoInflAffMsaFromProdRestrict);
         OperationSlotRegistry.RegisterMember(RemoveRefFromProdRestrict, SnapshotFields.MoInflAffMsaFromProdRestrict);
     }

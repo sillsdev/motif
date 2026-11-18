@@ -22,7 +22,7 @@ public static class PhSegmentRuleStrucDescOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhSegmentRuleStrucDesc, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhSegmentRule>(
+        var handler = new OwningCreateHandler<IPhSegmentRule>(
             Create, SnapshotFields.PhSegmentRuleStrucDesc, owner => owner.StrucDescOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -34,6 +34,7 @@ public static class PhSegmentRuleStrucDescOperationKinds
                             _ => throw new InvalidOperationException("Structural description must be a supported simple context."),
                         };
                         owner.StrucDescOS.Insert(index, child);
-            }, true, false, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry" }, "PhSimpleContext", true));
+            }, true, false, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry" }, "PhSimpleContext", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhSegmentRule", "StrucDesc"));
     }
 }

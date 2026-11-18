@@ -30,8 +30,10 @@ public static class PhNaturalClassNameOperationKinds
     {
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
-        OperationHandlerRegistry.Register(SetName, PhNaturalClassNameSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearName, PhNaturalClassNameClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetName, PhNaturalClassNameSetHandler.Instance,
+            new FieldWriteCapability("PhNaturalClass", "Name", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearName, PhNaturalClassNameClearHandler.Instance,
+            new FieldWriteCapability("PhNaturalClass", "Name", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.PhNaturalClassName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.PhNaturalClassName);
     }

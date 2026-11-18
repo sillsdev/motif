@@ -31,8 +31,10 @@ public static class EnvironmentStringEmitter
             {
                 OperationKindRegistry.Register(Set);
                 OperationKindRegistry.Register(Clear);
-                OperationHandlerRegistry.Register(Set, new EnvironmentStringHandler(false));
-                OperationHandlerRegistry.Register(Clear, new EnvironmentStringHandler(true));
+                OperationHandlerRegistry.Register(Set, new EnvironmentStringHandler(false),
+                    new FieldWriteCapability("PhEnvironment", "StringRepresentation", RecordWriteVerb.SetPlainRich));
+                OperationHandlerRegistry.Register(Clear, new EnvironmentStringHandler(true),
+                    new FieldWriteCapability("PhEnvironment", "StringRepresentation", RecordWriteVerb.ClearRich));
                 OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.PhEnvironmentStringRepresentation);
                 OperationSlotRegistry.RegisterScalar(Clear, SnapshotFields.PhEnvironmentStringRepresentation);
             }

@@ -30,8 +30,10 @@ public static class FsFeatureSpecificationFeatureOperationKinds
     {
         OperationKindRegistry.Register(SetFeature);
         OperationKindRegistry.Register(ClearFeature);
-        OperationHandlerRegistry.Register(SetFeature, FsFeatureSpecificationFeatureSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearFeature, FsFeatureSpecificationFeatureClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetFeature, FsFeatureSpecificationFeatureSetHandler.Instance,
+            new FieldWriteCapability("FsFeatureSpecification", "Feature", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearFeature, FsFeatureSpecificationFeatureClearHandler.Instance,
+            new FieldWriteCapability("FsFeatureSpecification", "Feature", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetFeature, SnapshotFields.FsFeatureSpecificationFeature);
         OperationSlotRegistry.RegisterScalar(ClearFeature, SnapshotFields.FsFeatureSpecificationFeature);
     }

@@ -30,8 +30,10 @@ public static class MoStemAllomorphStemNameOperationKinds
     {
         OperationKindRegistry.Register(SetStemName);
         OperationKindRegistry.Register(ClearStemName);
-        OperationHandlerRegistry.Register(SetStemName, MoStemAllomorphStemNameSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearStemName, MoStemAllomorphStemNameClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetStemName, MoStemAllomorphStemNameSetHandler.Instance,
+            new FieldWriteCapability("MoStemAllomorph", "StemName", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearStemName, MoStemAllomorphStemNameClearHandler.Instance,
+            new FieldWriteCapability("MoStemAllomorph", "StemName", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetStemName, SnapshotFields.MoStemAllomorphStemName);
         OperationSlotRegistry.RegisterScalar(ClearStemName, SnapshotFields.MoStemAllomorphStemName);
     }

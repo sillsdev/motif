@@ -31,8 +31,11 @@ public static class MoStemAllomorphPhoneEnvOperationKinds
     {
         OperationKindRegistry.Register(AddRefPhoneEnv);
         OperationKindRegistry.Register(RemoveRefPhoneEnv);
-        OperationHandlerRegistry.Register(AddRefPhoneEnv, MoStemAllomorphPhoneEnvAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefPhoneEnv, MoStemAllomorphPhoneEnvRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefPhoneEnv, MoStemAllomorphPhoneEnvAddRefHandler.Instance,
+            new FieldWriteCapability("MoStemAllomorph", "PhoneEnv", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefPhoneEnv, MoStemAllomorphPhoneEnvRemoveRefHandler.Instance,
+            new FieldWriteCapability("MoStemAllomorph", "PhoneEnv", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefPhoneEnv, SnapshotFields.MoStemAllomorphPhoneEnv);
         OperationSlotRegistry.RegisterMember(RemoveRefPhoneEnv, SnapshotFields.MoStemAllomorphPhoneEnv);
     }

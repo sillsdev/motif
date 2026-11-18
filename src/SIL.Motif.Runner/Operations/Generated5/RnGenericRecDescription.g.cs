@@ -22,12 +22,13 @@ public static class RnGenericRecDescriptionOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.RnGenericRecDescription, true);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IRnGenericRec>(
+        var handler = new OwningCreateHandler<IRnGenericRec>(
             Create, SnapshotFields.RnGenericRecDescription, owner => owner.DescriptionOA is { } child ? new ICmObject[] { child } : Array.Empty<ICmObject>(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IStTextFactory>().Create(guid);
                         owner.DescriptionOA = child;
-            }, false, true, Array.Empty<string>(), "StText", true));
+            }, false, true, Array.Empty<string>(), "StText", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("RnGenericRec", "Description"));
     }
 }

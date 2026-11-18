@@ -22,12 +22,13 @@ public static class MoInflClassSubclassesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.MoInflClassSubclasses, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IMoInflClass>(
+        var handler = new OwningCreateHandler<IMoInflClass>(
             Create, SnapshotFields.MoInflClassSubclasses, owner => owner.SubclassesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IMoInflClassFactory>().Create(guid);
                         owner.SubclassesOC.Add(child);
-            }, false, false, Array.Empty<string>(), "MoInflClass", true));
+            }, false, false, Array.Empty<string>(), "MoInflClass", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("MoInflClass", "Subclasses"));
     }
 }

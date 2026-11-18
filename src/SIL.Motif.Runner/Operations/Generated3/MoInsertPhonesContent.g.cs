@@ -31,8 +31,11 @@ public static class MoInsertPhonesContentOperationKinds
     {
         OperationKindRegistry.Register(AddRefContent);
         OperationKindRegistry.Register(RemoveRefContent);
-        OperationHandlerRegistry.Register(AddRefContent, MoInsertPhonesContentAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefContent, MoInsertPhonesContentRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefContent, MoInsertPhonesContentAddRefHandler.Instance,
+            new FieldWriteCapability("MoInsertPhones", "Content", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefContent, MoInsertPhonesContentRemoveRefHandler.Instance,
+            new FieldWriteCapability("MoInsertPhones", "Content", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefContent, SnapshotFields.MoInsertPhonesContent);
         OperationSlotRegistry.RegisterMember(RemoveRefContent, SnapshotFields.MoInsertPhonesContent);
     }

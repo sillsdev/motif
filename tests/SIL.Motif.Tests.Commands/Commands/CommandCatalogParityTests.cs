@@ -234,7 +234,7 @@ public sealed class CommandCatalogParityTests
     // A filename is shaped like a refusal code, so the scan below would report "instructions.md" as one.
     private static readonly HashSet<string> FileExtensions = new(StringComparer.Ordinal)
     {
-        "bak", "db", "fwdata", "json", "jsonl", "ldml", "lock", "md", "py", "sqlite", "txt", "xml", "zip",
+        "bak", "db", "fwdata", "json", "jsonl", "ldml", "lock", "md", "py", "sqlite", "tsv", "txt", "xml", "zip",
     };
 
     // Dotted command codes and the reserved initialization codes in a project's source, or one file under src.

@@ -30,8 +30,10 @@ public static class LexEntryCitationFormOperationKinds
     {
         OperationKindRegistry.Register(SetCitationForm);
         OperationKindRegistry.Register(ClearCitationForm);
-        OperationHandlerRegistry.Register(SetCitationForm, LexEntryCitationFormSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearCitationForm, LexEntryCitationFormClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetCitationForm, LexEntryCitationFormSetHandler.Instance,
+            new FieldWriteCapability("LexEntry", "CitationForm", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearCitationForm, LexEntryCitationFormClearHandler.Instance,
+            new FieldWriteCapability("LexEntry", "CitationForm", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetCitationForm, SnapshotFields.LexEntryCitationForm);
         OperationSlotRegistry.RegisterAlternative(ClearCitationForm, SnapshotFields.LexEntryCitationForm);
     }

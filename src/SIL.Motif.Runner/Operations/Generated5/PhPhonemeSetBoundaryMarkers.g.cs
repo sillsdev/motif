@@ -22,13 +22,14 @@ public static class PhPhonemeSetBoundaryMarkersOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonemeSetBoundaryMarkers, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonemeSet>(
+        var handler = new OwningCreateHandler<IPhPhonemeSet>(
             Create, SnapshotFields.PhPhonemeSetBoundaryMarkers, owner => owner.BoundaryMarkersOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IPhBdryMarkerFactory>().Create(guid);
                         owner.BoundaryMarkersOC.Add(child);
                         foreach (var code in child.CodesOS.ToArray()) child.CodesOS.Remove(code);
-            }, false, false, Array.Empty<string>(), "PhBdryMarker", true));
+            }, false, false, Array.Empty<string>(), "PhBdryMarker", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhPhonemeSet", "BoundaryMarkers"));
     }
 }

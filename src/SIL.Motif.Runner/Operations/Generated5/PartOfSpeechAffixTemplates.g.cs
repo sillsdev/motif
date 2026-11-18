@@ -24,15 +24,17 @@ public static class PartOfSpeechAffixTemplatesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PartOfSpeechAffixTemplates, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPartOfSpeech>(
+        var handler = new OwningCreateHandler<IPartOfSpeech>(
             Create, SnapshotFields.PartOfSpeechAffixTemplates, owner => owner.AffixTemplatesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create(guid);
                         owner.AffixTemplatesOS.Insert(index, child);
-            }, true, false, Array.Empty<string>(), "MoInflAffixTemplate", true));
+            }, true, false, Array.Empty<string>(), "MoInflAffixTemplate", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PartOfSpeech", "AffixTemplates"));
         OperationKindRegistry.Register(MoveAffixTemplates);
-        OperationHandlerRegistry.Register(MoveAffixTemplates, PartOfSpeechAffixTemplatesMoveHandler.Instance);
+        OperationHandlerRegistry.Register(MoveAffixTemplates, PartOfSpeechAffixTemplatesMoveHandler.Instance,
+            new FieldWriteCapability("PartOfSpeech", "AffixTemplates", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));
         OperationSlotRegistry.RegisterMember(MoveAffixTemplates, SnapshotFields.PartOfSpeechAffixTemplates);
     }
 }

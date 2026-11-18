@@ -30,8 +30,10 @@ public static class MoUnclassifiedAffixMsaPartOfSpeechOperationKinds
     {
         OperationKindRegistry.Register(SetPartOfSpeech);
         OperationKindRegistry.Register(ClearPartOfSpeech);
-        OperationHandlerRegistry.Register(SetPartOfSpeech, MoUnclassifiedAffixMsaPartOfSpeechSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearPartOfSpeech, MoUnclassifiedAffixMsaPartOfSpeechClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetPartOfSpeech, MoUnclassifiedAffixMsaPartOfSpeechSetHandler.Instance,
+            new FieldWriteCapability("MoUnclassifiedAffixMsa", "PartOfSpeech", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearPartOfSpeech, MoUnclassifiedAffixMsaPartOfSpeechClearHandler.Instance,
+            new FieldWriteCapability("MoUnclassifiedAffixMsa", "PartOfSpeech", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetPartOfSpeech, SnapshotFields.MoUnclassifiedAffixMsaPartOfSpeech);
         OperationSlotRegistry.RegisterScalar(ClearPartOfSpeech, SnapshotFields.MoUnclassifiedAffixMsaPartOfSpeech);
     }

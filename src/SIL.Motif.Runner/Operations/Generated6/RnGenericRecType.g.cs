@@ -30,8 +30,10 @@ public static class RnGenericRecTypeOperationKinds
     {
         OperationKindRegistry.Register(SetType);
         OperationKindRegistry.Register(ClearType);
-        OperationHandlerRegistry.Register(SetType, RnGenericRecTypeSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearType, RnGenericRecTypeClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetType, RnGenericRecTypeSetHandler.Instance,
+            new FieldWriteCapability("RnGenericRec", "Type", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearType, RnGenericRecTypeClearHandler.Instance,
+            new FieldWriteCapability("RnGenericRec", "Type", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetType, SnapshotFields.RnGenericRecType);
         OperationSlotRegistry.RegisterScalar(ClearType, SnapshotFields.RnGenericRecType);
     }

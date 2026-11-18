@@ -98,6 +98,23 @@ public class Slice2CatalogWriterTests
         }
     }
 
+    [Fact]
+    public void ReferenceAddDeclaresPlacementEvenWithoutAMoveKind()
+    {
+        var row = MotifModelLoader.Load().Rows.Single(row =>
+            row.DeclaringClass == "LexEntryRef" && row.FieldName == "ComponentLexemes");
+        var append = RelationFieldSpecBuilder.BuildCollection(row);
+        var positioned = append with { SupportsPlacement = true };
+
+        var appendSource = ReferenceCollectionFieldEmitter.Render(append);
+        var positionedSource = ReferenceCollectionFieldEmitter.Render(positioned);
+
+        Assert.Contains("FieldWritePlacement.Forbidden", appendSource);
+        Assert.Contains("FieldWritePlacement.RequiredWhenNonempty", positionedSource);
+        Assert.Contains("memberId, operation.Placement", positionedSource);
+        Assert.DoesNotContain("MoveComponentLexemes", positionedSource);
+    }
+
     private static string Read(string tempRoot, IReadOnlyList<GeneratedCatalogWriter.WrittenFile> written, string fileNameSuffix)
     {
         var match = written.Single(f => f.RelativePath.EndsWith("/" + fileNameSuffix, StringComparison.Ordinal));

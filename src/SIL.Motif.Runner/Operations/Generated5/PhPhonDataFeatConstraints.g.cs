@@ -22,12 +22,13 @@ public static class PhPhonDataFeatConstraintsOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonDataFeatConstraints, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonData>(
+        var handler = new OwningCreateHandler<IPhPhonData>(
             Create, SnapshotFields.PhPhonDataFeatConstraints, owner => owner.FeatConstraintsOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IPhFeatureConstraintFactory>().Create(guid);
                         owner.FeatConstraintsOS.Insert(index, child);
-            }, true, false, Array.Empty<string>(), "PhFeatureConstraint", false));
+            }, true, false, Array.Empty<string>(), "PhFeatureConstraint", false);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhPhonData", "FeatConstraints"));
     }
 }

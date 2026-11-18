@@ -31,8 +31,10 @@ public static class PhSegmentRuleDirectionOperationKinds
     {
         OperationKindRegistry.Register(SetDirection);
         OperationKindRegistry.Register(ClearDirection);
-        OperationHandlerRegistry.Register(SetDirection, PhSegmentRuleDirectionSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearDirection, PhSegmentRuleDirectionClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetDirection, PhSegmentRuleDirectionSetHandler.Instance,
+            new FieldWriteCapability("PhSegmentRule", "Direction", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearDirection, PhSegmentRuleDirectionClearHandler.Instance,
+            new FieldWriteCapability("PhSegmentRule", "Direction", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetDirection, SnapshotFields.PhSegmentRuleDirection);
         OperationSlotRegistry.RegisterScalar(ClearDirection, SnapshotFields.PhSegmentRuleDirection);
     }

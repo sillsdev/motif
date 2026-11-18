@@ -22,7 +22,9 @@ public static class LexSenseRemoveOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Remove);
-        OperationHandlerRegistry.Register(Remove, LexSenseRemoveHandler.Instance);
+        OperationHandlerRegistry.Register(Remove, LexSenseRemoveHandler.Instance,
+            new FieldWriteCapability("LexEntry", "Senses", RecordWriteVerb.RemoveObject) { ChildClasses = ["LexSense"] },
+            new FieldWriteCapability("LexSense", "Senses", RecordWriteVerb.RemoveObject) { ChildClasses = ["LexSense"] });
         OperationSlotRegistry.RegisterMany(Remove, operation =>
         {
             var sense = OperationSlotRegistry.Target(operation);

@@ -18,6 +18,14 @@ internal sealed class OwningCreateHandler<TOwner>(
     Action<LcmCache, TOwner, Guid, int, string?> create,
     bool sequence, bool atomic, string[] concreteClasses, string expectedClass, bool positionMatters = true) : IOperationHandler where TOwner : class, ICmObject
 {
+    internal FieldWriteCapability FieldWrite(string declaringClass, string modelField, string? ownerClass = null) =>
+        new(declaringClass, modelField, RecordWriteVerb.AddObject,
+            sequence && positionMatters ? FieldWritePlacement.RequiredWhenNonempty : FieldWritePlacement.Forbidden,
+            OwnerClass: ownerClass)
+        {
+            ChildClasses = concreteClasses.Length == 0 ? [expectedClass] : concreteClasses,
+        };
+
     public ExpectedEffect ApplyAndCaptureEffect(LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets)
     {
         if (operation.StorageIdOverride is not null)

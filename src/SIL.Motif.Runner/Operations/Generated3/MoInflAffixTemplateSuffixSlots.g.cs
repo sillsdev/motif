@@ -33,12 +33,17 @@ public static class MoInflAffixTemplateSuffixSlotsOperationKinds
     {
         OperationKindRegistry.Register(AddRefSuffixSlots);
         OperationKindRegistry.Register(RemoveRefSuffixSlots);
-        OperationHandlerRegistry.Register(AddRefSuffixSlots, MoInflAffixTemplateSuffixSlotsAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefSuffixSlots, MoInflAffixTemplateSuffixSlotsRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefSuffixSlots, MoInflAffixTemplateSuffixSlotsAddRefHandler.Instance,
+            new FieldWriteCapability("MoInflAffixTemplate", "SuffixSlots", RecordWriteVerb.AddReference,
+                FieldWritePlacement.RequiredWhenNonempty));
+        OperationHandlerRegistry.Register(RemoveRefSuffixSlots, MoInflAffixTemplateSuffixSlotsRemoveRefHandler.Instance,
+            new FieldWriteCapability("MoInflAffixTemplate", "SuffixSlots", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefSuffixSlots, SnapshotFields.MoInflAffixTemplateSuffixSlots);
         OperationSlotRegistry.RegisterMember(RemoveRefSuffixSlots, SnapshotFields.MoInflAffixTemplateSuffixSlots);
         OperationKindRegistry.Register(MoveSuffixSlots);
-        OperationHandlerRegistry.Register(MoveSuffixSlots, MoInflAffixTemplateSuffixSlotsMoveHandler.Instance);
+        OperationHandlerRegistry.Register(MoveSuffixSlots, MoInflAffixTemplateSuffixSlotsMoveHandler.Instance,
+            new FieldWriteCapability("MoInflAffixTemplate", "SuffixSlots", RecordWriteVerb.MoveReference,
+                FieldWritePlacement.Required));
         OperationSlotRegistry.RegisterMember(MoveSuffixSlots, SnapshotFields.MoInflAffixTemplateSuffixSlots);
     }
 }

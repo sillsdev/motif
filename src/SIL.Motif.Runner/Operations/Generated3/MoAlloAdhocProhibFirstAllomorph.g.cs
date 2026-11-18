@@ -30,8 +30,10 @@ public static class MoAlloAdhocProhibFirstAllomorphOperationKinds
     {
         OperationKindRegistry.Register(SetFirstAllomorph);
         OperationKindRegistry.Register(ClearFirstAllomorph);
-        OperationHandlerRegistry.Register(SetFirstAllomorph, MoAlloAdhocProhibFirstAllomorphSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearFirstAllomorph, MoAlloAdhocProhibFirstAllomorphClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetFirstAllomorph, MoAlloAdhocProhibFirstAllomorphSetHandler.Instance,
+            new FieldWriteCapability("MoAlloAdhocProhib", "FirstAllomorph", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearFirstAllomorph, MoAlloAdhocProhibFirstAllomorphClearHandler.Instance,
+            new FieldWriteCapability("MoAlloAdhocProhib", "FirstAllomorph", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetFirstAllomorph, SnapshotFields.MoAlloAdhocProhibFirstAllomorph);
         OperationSlotRegistry.RegisterScalar(ClearFirstAllomorph, SnapshotFields.MoAlloAdhocProhibFirstAllomorph);
     }

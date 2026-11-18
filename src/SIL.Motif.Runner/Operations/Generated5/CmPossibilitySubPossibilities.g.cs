@@ -22,13 +22,14 @@ public static class CmPossibilitySubPossibilitiesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.CmPossibilitySubPossibilities, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<ICmPossibility>(
+        var handler = new OwningCreateHandler<ICmPossibility>(
             Create, SnapshotFields.CmPossibilitySubPossibilities, owner => owner.SubPossibilitiesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 if (owner is not IPartOfSpeech parent)
                             throw new InvalidOperationException("Only a part of speech accepts a PartOfSpeech subcategory.");
                         cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create(guid, parent);
-            }, true, false, new[] { "PartOfSpeech" }, "CmPossibility", false));
+            }, true, false, new[] { "PartOfSpeech" }, "CmPossibility", false);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("CmPossibility", "SubPossibilities", "PartOfSpeech"));
     }
 }

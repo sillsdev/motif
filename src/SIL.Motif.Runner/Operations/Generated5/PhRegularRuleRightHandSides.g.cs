@@ -22,12 +22,13 @@ public static class PhRegularRuleRightHandSidesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhRegularRuleRightHandSides, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhRegularRule>(
+        var handler = new OwningCreateHandler<IPhRegularRule>(
             Create, SnapshotFields.PhRegularRuleRightHandSides, owner => owner.RightHandSidesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IPhSegRuleRHSFactory>().Create(guid);
                         owner.RightHandSidesOS.Insert(index, child);
-            }, true, false, Array.Empty<string>(), "PhSegRuleRHS", true));
+            }, true, false, Array.Empty<string>(), "PhSegRuleRHS", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhRegularRule", "RightHandSides"));
     }
 }

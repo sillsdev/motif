@@ -30,8 +30,10 @@ public static class MoCopyFromInputContentOperationKinds
     {
         OperationKindRegistry.Register(SetContent);
         OperationKindRegistry.Register(ClearContent);
-        OperationHandlerRegistry.Register(SetContent, MoCopyFromInputContentSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearContent, MoCopyFromInputContentClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetContent, MoCopyFromInputContentSetHandler.Instance,
+            new FieldWriteCapability("MoCopyFromInput", "Content", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearContent, MoCopyFromInputContentClearHandler.Instance,
+            new FieldWriteCapability("MoCopyFromInput", "Content", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetContent, SnapshotFields.MoCopyFromInputContent);
         OperationSlotRegistry.RegisterScalar(ClearContent, SnapshotFields.MoCopyFromInputContent);
     }

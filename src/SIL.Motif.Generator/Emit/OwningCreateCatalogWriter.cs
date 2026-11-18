@@ -13,7 +13,7 @@ public static class OwningCreateCatalogWriter
 {
     private sealed record Creation(
         string Owner, string Field, string Sig, FieldCard Card, string Factory, bool PositionMatters = true,
-        bool SupportsMove = false);
+        bool SupportsMove = false, string? ConcreteOwner = null);
 
     private static readonly Creation[] Creations =
     [
@@ -159,7 +159,8 @@ public static class OwningCreateCatalogWriter
         new("CmPossibility", "SubPossibilities", "CmPossibility", FieldCard.Seq,
             "if (owner is not IPartOfSpeech parent)\n" +
             "    throw new InvalidOperationException(\"Only a part of speech accepts a PartOfSpeech subcategory.\");\n" +
-            "cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create(guid, parent);", PositionMatters: false),
+            "cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create(guid, parent);",
+            PositionMatters: false, ConcreteOwner: "PartOfSpeech"),
         new("LexEntry", "Senses", "LexSense", FieldCard.Seq,
             "var child = cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create(guid);\n" +
             "owner.SensesOS.Insert(index, child);"),
@@ -250,6 +251,8 @@ public static class OwningCreateCatalogWriter
             var createKind = KindNameDerivation.DeriveOne(group, segment, "create", creation.Field);
             var code = Template.Replace("__PREFIX__", prefix).Replace("__OWNER__", creation.Owner)
                 .Replace("__KIND__", createKind)
+                .Replace("__FIELD__", creation.Field)
+                .Replace("__OWNER_RESTRICTION__", creation.ConcreteOwner is { } concreteOwner ? $", \"{concreteOwner}\"" : "")
                 .Replace("__SIG__", creation.Sig).Replace("__MEMBERS__", members).Replace("__FACTORY__", creation.Factory.Replace("\n", "\n                        "))
                 .Replace("__SEQ__", creation.Card == FieldCard.Seq ? "true" : "false")
                 .Replace("__ATOMIC__", creation.Card == FieldCard.Atomic ? "true" : "false")
@@ -293,6 +296,7 @@ public static class OwningCreateCatalogWriter
             var moveKind = KindNameDerivation.DeriveOne(group, segment, "move", field);
             var code = MoveOnlyTemplate.Replace("__PREFIX__", prefix)
                 .Replace("__FIELD__", field)
+                .Replace("__OWNER__", owner)
                 .Replace("__KIND__", moveKind);
             code = code.TrimEnd() + "\n\n" + RenderMoveHandler(prefix, owner, field).Trim() + "\n";
             Write($"src/SIL.Motif.Runner/Operations/Generated5/{prefix}.g.cs", code);
@@ -431,7 +435,8 @@ public static class OwningCreateCatalogWriter
             throw new GeneratorException($"Could not locate the registration body for {owner}.{field}.");
         code = code.Insert(registrationEndIndex,
             $"\n        OperationKindRegistry.Register(Move{field});\n" +
-            $"        OperationHandlerRegistry.Register(Move{field}, {prefix}MoveHandler.Instance);\n" +
+            $"        OperationHandlerRegistry.Register(Move{field}, {prefix}MoveHandler.Instance,\n" +
+            $"            new FieldWriteCapability(\"{owner}\", \"{field}\", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));\n" +
             $"        OperationSlotRegistry.RegisterMember(Move{field}, SnapshotFields.{prefix});");
         return code.TrimEnd() + "\n\n" + RenderMoveHandler(prefix, owner, field).Trim() + "\n";
     }
@@ -461,12 +466,13 @@ public static class OwningCreateCatalogWriter
             {
                 OperationKindRegistry.Register(Create);
                 OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.__PREFIX__, __ATOMIC__);
-                OperationHandlerRegistry.Register(Create, new OwningCreateHandler<I__OWNER__>(
+                var handler = new OwningCreateHandler<I__OWNER__>(
                     Create, SnapshotFields.__PREFIX__, owner => __MEMBERS__,
                     (cache, owner, guid, index, concreteClass) =>
                     {
                         __FACTORY__
-                    }, __SEQ__, __ATOMIC__, __CLASSES__, "__SIG__", __POSITION_MATTERS__));
+                    }, __SEQ__, __ATOMIC__, __CLASSES__, "__SIG__", __POSITION_MATTERS__);
+                OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("__OWNER__", "__FIELD__"__OWNER_RESTRICTION__));
             }
         }
 
@@ -495,7 +501,8 @@ public static class OwningCreateCatalogWriter
             internal static void Register()
             {
                 OperationKindRegistry.Register(Move__FIELD__);
-                OperationHandlerRegistry.Register(Move__FIELD__, __PREFIX__MoveHandler.Instance);
+                OperationHandlerRegistry.Register(Move__FIELD__, __PREFIX__MoveHandler.Instance,
+                    new FieldWriteCapability("__OWNER__", "__FIELD__", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));
                 OperationSlotRegistry.RegisterMember(Move__FIELD__, SnapshotFields.__PREFIX__);
             }
         }

@@ -30,8 +30,10 @@ public static class MoInsertNCContentOperationKinds
     {
         OperationKindRegistry.Register(SetContent);
         OperationKindRegistry.Register(ClearContent);
-        OperationHandlerRegistry.Register(SetContent, MoInsertNCContentSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearContent, MoInsertNCContentClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetContent, MoInsertNCContentSetHandler.Instance,
+            new FieldWriteCapability("MoInsertNC", "Content", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearContent, MoInsertNCContentClearHandler.Instance,
+            new FieldWriteCapability("MoInsertNC", "Content", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetContent, SnapshotFields.MoInsertNCContent);
         OperationSlotRegistry.RegisterScalar(ClearContent, SnapshotFields.MoInsertNCContent);
     }

@@ -30,8 +30,10 @@ public static class MoDerivAffMsaFromInflectionClassOperationKinds
     {
         OperationKindRegistry.Register(SetFromInflectionClass);
         OperationKindRegistry.Register(ClearFromInflectionClass);
-        OperationHandlerRegistry.Register(SetFromInflectionClass, MoDerivAffMsaFromInflectionClassSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearFromInflectionClass, MoDerivAffMsaFromInflectionClassClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetFromInflectionClass, MoDerivAffMsaFromInflectionClassSetHandler.Instance,
+            new FieldWriteCapability("MoDerivAffMsa", "FromInflectionClass", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearFromInflectionClass, MoDerivAffMsaFromInflectionClassClearHandler.Instance,
+            new FieldWriteCapability("MoDerivAffMsa", "FromInflectionClass", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetFromInflectionClass, SnapshotFields.MoDerivAffMsaFromInflectionClass);
         OperationSlotRegistry.RegisterScalar(ClearFromInflectionClass, SnapshotFields.MoDerivAffMsaFromInflectionClass);
     }

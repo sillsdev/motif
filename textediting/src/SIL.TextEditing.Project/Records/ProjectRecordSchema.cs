@@ -143,7 +143,7 @@ namespace SIL.TextEditing.Project
             var schema = builder.Build();
             CheckReachability(schema, classes, metadata);
             return new ProjectRecordSchemaResult(schema, omitted.Values.OrderBy(o => o.Class, StringComparer.Ordinal)
-                .ThenBy(o => o.Field, StringComparer.Ordinal).ToArray(), bindings);
+                .ThenBy(o => o.Field, StringComparer.Ordinal).ToArray(), bindings, managed);
         }
 
         static string SchemaId(string id, IFwMetaDataCache metadata, IFwMetaDataCacheManaged managed)

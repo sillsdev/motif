@@ -31,8 +31,11 @@ public static class LexEntryRefVariantEntryTypesOperationKinds
     {
         OperationKindRegistry.Register(AddRefVariantEntryTypes);
         OperationKindRegistry.Register(RemoveRefVariantEntryTypes);
-        OperationHandlerRegistry.Register(AddRefVariantEntryTypes, LexEntryRefVariantEntryTypesAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefVariantEntryTypes, LexEntryRefVariantEntryTypesRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefVariantEntryTypes, LexEntryRefVariantEntryTypesAddRefHandler.Instance,
+            new FieldWriteCapability("LexEntryRef", "VariantEntryTypes", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefVariantEntryTypes, LexEntryRefVariantEntryTypesRemoveRefHandler.Instance,
+            new FieldWriteCapability("LexEntryRef", "VariantEntryTypes", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefVariantEntryTypes, SnapshotFields.LexEntryRefVariantEntryTypes);
         OperationSlotRegistry.RegisterMember(RemoveRefVariantEntryTypes, SnapshotFields.LexEntryRefVariantEntryTypes);
     }

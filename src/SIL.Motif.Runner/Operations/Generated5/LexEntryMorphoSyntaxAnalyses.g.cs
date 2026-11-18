@@ -22,7 +22,7 @@ public static class LexEntryMorphoSyntaxAnalysesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LexEntryMorphoSyntaxAnalyses, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<ILexEntry>(
+        var handler = new OwningCreateHandler<ILexEntry>(
             Create, SnapshotFields.LexEntryMorphoSyntaxAnalyses, owner => owner.MorphoSyntaxAnalysesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -35,6 +35,7 @@ public static class LexEntryMorphoSyntaxAnalysesOperationKinds
                             _ => throw new InvalidOperationException("Grammatical info must be a supported MSA class."),
                         };
                         owner.MorphoSyntaxAnalysesOC.Add(child);
-            }, false, false, new[] { "MoStemMsa", "MoInflAffMsa", "MoDerivAffMsa", "MoUnclassifiedAffixMsa" }, "MoMorphSynAnalysis", true));
+            }, false, false, new[] { "MoStemMsa", "MoInflAffMsa", "MoDerivAffMsa", "MoUnclassifiedAffixMsa" }, "MoMorphSynAnalysis", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("LexEntry", "MorphoSyntaxAnalyses"));
     }
 }

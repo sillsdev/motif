@@ -56,4 +56,5 @@ public sealed record ReferenceCollectionFieldSpec(
     string RefInterface,
     string AccessorPropertyName,
     string SnapshotFieldConstant,
-    string? MoveKind);
+    string? MoveKind,
+    bool SupportsPlacement);

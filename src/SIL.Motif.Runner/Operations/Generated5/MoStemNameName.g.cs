@@ -30,8 +30,10 @@ public static class MoStemNameNameOperationKinds
     {
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
-        OperationHandlerRegistry.Register(SetName, MoStemNameNameSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearName, MoStemNameNameClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetName, MoStemNameNameSetHandler.Instance,
+            new FieldWriteCapability("MoStemName", "Name", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearName, MoStemNameNameClearHandler.Instance,
+            new FieldWriteCapability("MoStemName", "Name", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.MoStemNameName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.MoStemNameName);
     }

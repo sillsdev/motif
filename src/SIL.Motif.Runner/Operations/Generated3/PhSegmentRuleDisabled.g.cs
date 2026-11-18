@@ -30,8 +30,10 @@ public static class PhSegmentRuleDisabledOperationKinds
     {
         OperationKindRegistry.Register(SetDisabled);
         OperationKindRegistry.Register(ClearDisabled);
-        OperationHandlerRegistry.Register(SetDisabled, PhSegmentRuleDisabledSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearDisabled, PhSegmentRuleDisabledClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetDisabled, PhSegmentRuleDisabledSetHandler.Instance,
+            new FieldWriteCapability("PhSegmentRule", "Disabled", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearDisabled, PhSegmentRuleDisabledClearHandler.Instance,
+            new FieldWriteCapability("PhSegmentRule", "Disabled", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetDisabled, SnapshotFields.PhSegmentRuleDisabled);
         OperationSlotRegistry.RegisterScalar(ClearDisabled, SnapshotFields.PhSegmentRuleDisabled);
     }

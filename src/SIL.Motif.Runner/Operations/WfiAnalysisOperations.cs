@@ -26,8 +26,12 @@ public static class WfiAnalysisOperationKinds
             OperationKindRegistry.Register(kind);
         OperationHandlerRegistry.Register(AddRefEvaluations, new HumanEvaluationHandler(true));
         OperationHandlerRegistry.Register(RemoveRefEvaluations, new HumanEvaluationHandler(false));
-        OperationHandlerRegistry.Register(DeleteAnalysis, new DeleteAnalysisHandler());
-        OperationHandlerRegistry.Register(CreateAnalysis, new CreateAnalysisHandler());
+        OperationHandlerRegistry.Register(DeleteAnalysis, new DeleteAnalysisHandler(),
+            new FieldWriteCapability("WfiWordform", "Analyses", RecordWriteVerb.RemoveObject)
+            { ChildClasses = ["WfiAnalysis"] });
+        OperationHandlerRegistry.Register(CreateAnalysis, new CreateAnalysisHandler(),
+            new FieldWriteCapability("WfiWordform", "Analyses", RecordWriteVerb.AddObject)
+            { ChildClasses = ["WfiAnalysis"] });
         OperationSlotRegistry.RegisterScalar(AddRefEvaluations, SnapshotFields.WfiAnalysisEvaluations);
         OperationSlotRegistry.RegisterScalar(RemoveRefEvaluations, SnapshotFields.WfiAnalysisEvaluations);
         OperationSlotRegistry.RegisterEntityDeletion(DeleteAnalysis);

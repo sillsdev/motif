@@ -30,8 +30,10 @@ public static class LexEntryDoNotUseForParsingOperationKinds
     {
         OperationKindRegistry.Register(SetDoNotUseForParsing);
         OperationKindRegistry.Register(ClearDoNotUseForParsing);
-        OperationHandlerRegistry.Register(SetDoNotUseForParsing, LexEntryDoNotUseForParsingSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearDoNotUseForParsing, LexEntryDoNotUseForParsingClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetDoNotUseForParsing, LexEntryDoNotUseForParsingSetHandler.Instance,
+            new FieldWriteCapability("LexEntry", "DoNotUseForParsing", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearDoNotUseForParsing, LexEntryDoNotUseForParsingClearHandler.Instance,
+            new FieldWriteCapability("LexEntry", "DoNotUseForParsing", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetDoNotUseForParsing, SnapshotFields.LexEntryDoNotUseForParsing);
         OperationSlotRegistry.RegisterScalar(ClearDoNotUseForParsing, SnapshotFields.LexEntryDoNotUseForParsing);
     }

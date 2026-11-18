@@ -31,8 +31,11 @@ public static class PhNCSegmentsSegmentsOperationKinds
     {
         OperationKindRegistry.Register(AddRefSegments);
         OperationKindRegistry.Register(RemoveRefSegments);
-        OperationHandlerRegistry.Register(AddRefSegments, PhNCSegmentsSegmentsAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefSegments, PhNCSegmentsSegmentsRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefSegments, PhNCSegmentsSegmentsAddRefHandler.Instance,
+            new FieldWriteCapability("PhNCSegments", "Segments", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefSegments, PhNCSegmentsSegmentsRemoveRefHandler.Instance,
+            new FieldWriteCapability("PhNCSegments", "Segments", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefSegments, SnapshotFields.PhNCSegmentsSegments);
         OperationSlotRegistry.RegisterMember(RemoveRefSegments, SnapshotFields.PhNCSegmentsSegments);
     }

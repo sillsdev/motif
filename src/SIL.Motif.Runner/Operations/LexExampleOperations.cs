@@ -27,7 +27,9 @@ public static class LexExampleOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
-        OperationHandlerRegistry.Register(Create, LexExampleCreateHandler.Instance);
+        OperationHandlerRegistry.Register(Create, LexExampleCreateHandler.Instance,
+            new FieldWriteCapability("LexSense", "Examples", RecordWriteVerb.AddObject, FieldWritePlacement.RequiredWhenNonempty)
+            { ChildClasses = ["LexExampleSentence"] });
         OperationSlotRegistry.RegisterMany(Create, operation =>
         {
             var example = operation.EntityId ?? throw new ContractParseException($"'{Create}' requires 'entityId'.");

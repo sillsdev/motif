@@ -30,8 +30,10 @@ public static class LexEntryInflTypeGlossPrependOperationKinds
     {
         OperationKindRegistry.Register(SetGlossPrepend);
         OperationKindRegistry.Register(ClearGlossPrepend);
-        OperationHandlerRegistry.Register(SetGlossPrepend, LexEntryInflTypeGlossPrependSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearGlossPrepend, LexEntryInflTypeGlossPrependClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetGlossPrepend, LexEntryInflTypeGlossPrependSetHandler.Instance,
+            new FieldWriteCapability("LexEntryInflType", "GlossPrepend", RecordWriteVerb.SetAlternative));
+        OperationHandlerRegistry.Register(ClearGlossPrepend, LexEntryInflTypeGlossPrependClearHandler.Instance,
+            new FieldWriteCapability("LexEntryInflType", "GlossPrepend", RecordWriteVerb.ClearAlternative));
         OperationSlotRegistry.RegisterAlternative(SetGlossPrepend, SnapshotFields.LexEntryInflTypeGlossPrepend);
         OperationSlotRegistry.RegisterAlternative(ClearGlossPrepend, SnapshotFields.LexEntryInflTypeGlossPrepend);
     }

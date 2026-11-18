@@ -22,7 +22,7 @@ public static class StTextParagraphsOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.StTextParagraphs, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IStText>(
+        var handler = new OwningCreateHandler<IStText>(
             Create, SnapshotFields.StTextParagraphs, owner => owner.ParagraphsOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -32,6 +32,7 @@ public static class StTextParagraphsOperationKinds
                             _ => throw new InvalidOperationException("Paragraph must be StTxtPara."),
                         };
                         owner.ParagraphsOS.Insert(index, child);
-            }, true, false, new[] { "StTxtPara" }, "StPara", true));
+            }, true, false, new[] { "StTxtPara" }, "StPara", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("StText", "Paragraphs"));
     }
 }

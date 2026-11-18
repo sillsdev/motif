@@ -31,7 +31,12 @@ public static class TextParagraphsOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Set);
-        OperationHandlerRegistry.Register(Set, TextParagraphsHandler.Instance);
+        OperationHandlerRegistry.Register(Set, TextParagraphsHandler.Instance, TextParagraphFields.Names
+            .SelectMany(field => new[]
+            {
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetRich),
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.ClearRich),
+            }).ToArray());
         OperationSlotRegistry.Register(Set, operation => new OperationSlot(OperationSlotRegistry.Target(operation),
             FieldPrefix + TextParagraphsPayload.FieldOf(OperationSlotRegistry.After(operation))));
     }

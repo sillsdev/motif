@@ -30,8 +30,10 @@ public static class PhSimpleContextNCFeatureStructureOperationKinds
     {
         OperationKindRegistry.Register(SetFeatureStructure);
         OperationKindRegistry.Register(ClearFeatureStructure);
-        OperationHandlerRegistry.Register(SetFeatureStructure, PhSimpleContextNCFeatureStructureSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearFeatureStructure, PhSimpleContextNCFeatureStructureClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetFeatureStructure, PhSimpleContextNCFeatureStructureSetHandler.Instance,
+            new FieldWriteCapability("PhSimpleContextNC", "FeatureStructure", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearFeatureStructure, PhSimpleContextNCFeatureStructureClearHandler.Instance,
+            new FieldWriteCapability("PhSimpleContextNC", "FeatureStructure", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetFeatureStructure, SnapshotFields.PhSimpleContextNCFeatureStructure);
         OperationSlotRegistry.RegisterScalar(ClearFeatureStructure, SnapshotFields.PhSimpleContextNCFeatureStructure);
     }

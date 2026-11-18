@@ -30,8 +30,10 @@ public static class LexSenseSocioLinguisticsNoteOperationKinds
     {
         OperationKindRegistry.Register(SetSocioLinguisticsNote);
         OperationKindRegistry.Register(ClearSocioLinguisticsNote);
-        OperationHandlerRegistry.Register(SetSocioLinguisticsNote, LexSenseSocioLinguisticsNoteSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearSocioLinguisticsNote, LexSenseSocioLinguisticsNoteClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetSocioLinguisticsNote, LexSenseSocioLinguisticsNoteSetHandler.Instance,
+            new FieldWriteCapability("LexSense", "SocioLinguisticsNote", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearSocioLinguisticsNote, LexSenseSocioLinguisticsNoteClearHandler.Instance,
+            new FieldWriteCapability("LexSense", "SocioLinguisticsNote", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetSocioLinguisticsNote, SnapshotFields.LexSenseSocioLinguisticsNote);
         OperationSlotRegistry.RegisterAlternative(ClearSocioLinguisticsNote, SnapshotFields.LexSenseSocioLinguisticsNote);
     }

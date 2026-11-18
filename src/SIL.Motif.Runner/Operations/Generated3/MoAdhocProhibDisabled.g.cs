@@ -30,8 +30,10 @@ public static class MoAdhocProhibDisabledOperationKinds
     {
         OperationKindRegistry.Register(SetDisabled);
         OperationKindRegistry.Register(ClearDisabled);
-        OperationHandlerRegistry.Register(SetDisabled, MoAdhocProhibDisabledSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearDisabled, MoAdhocProhibDisabledClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetDisabled, MoAdhocProhibDisabledSetHandler.Instance,
+            new FieldWriteCapability("MoAdhocProhib", "Disabled", RecordWriteVerb.Set));
+        OperationHandlerRegistry.Register(ClearDisabled, MoAdhocProhibDisabledClearHandler.Instance,
+            new FieldWriteCapability("MoAdhocProhib", "Disabled", RecordWriteVerb.Clear));
         OperationSlotRegistry.RegisterScalar(SetDisabled, SnapshotFields.MoAdhocProhibDisabled);
         OperationSlotRegistry.RegisterScalar(ClearDisabled, SnapshotFields.MoAdhocProhibDisabled);
     }

@@ -24,8 +24,10 @@ public static class StTxtParaContentsOperationKinds
     {
         OperationKindRegistry.Register(Set);
         OperationKindRegistry.Register(Clear);
-        OperationHandlerRegistry.Register(Set, new StTxtParaContentsHandler(false));
-        OperationHandlerRegistry.Register(Clear, new StTxtParaContentsHandler(true));
+        OperationHandlerRegistry.Register(Set, new StTxtParaContentsHandler(false),
+            new FieldWriteCapability("StTxtPara", "Contents", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(Clear, new StTxtParaContentsHandler(true),
+            new FieldWriteCapability("StTxtPara", "Contents", RecordWriteVerb.ClearRich));
         OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.StTxtParaContents);
         OperationSlotRegistry.RegisterScalar(Clear, SnapshotFields.StTxtParaContents);
     }

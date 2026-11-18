@@ -22,12 +22,13 @@ public static class PhNCFeaturesFeaturesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhNCFeaturesFeatures, true);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhNCFeatures>(
+        var handler = new OwningCreateHandler<IPhNCFeatures>(
             Create, SnapshotFields.PhNCFeaturesFeatures, owner => owner.FeaturesOA is { } child ? new ICmObject[] { child } : Array.Empty<ICmObject>(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create(guid);
                         owner.FeaturesOA = child;
-            }, false, true, Array.Empty<string>(), "FsFeatStruc", true));
+            }, false, true, Array.Empty<string>(), "FsFeatStruc", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhNCFeatures", "Features"));
     }
 }

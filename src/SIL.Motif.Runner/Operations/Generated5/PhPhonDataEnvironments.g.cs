@@ -22,12 +22,13 @@ public static class PhPhonDataEnvironmentsOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonDataEnvironments, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonData>(
+        var handler = new OwningCreateHandler<IPhPhonData>(
             Create, SnapshotFields.PhPhonDataEnvironments, owner => owner.EnvironmentsOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create(guid);
                         owner.EnvironmentsOS.Insert(index, child);
-            }, true, false, Array.Empty<string>(), "PhEnvironment", true));
+            }, true, false, Array.Empty<string>(), "PhEnvironment", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhPhonData", "Environments"));
     }
 }

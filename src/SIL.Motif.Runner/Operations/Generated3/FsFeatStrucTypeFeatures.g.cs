@@ -31,8 +31,11 @@ public static class FsFeatStrucTypeFeaturesOperationKinds
     {
         OperationKindRegistry.Register(AddRefFeatures);
         OperationKindRegistry.Register(RemoveRefFeatures);
-        OperationHandlerRegistry.Register(AddRefFeatures, FsFeatStrucTypeFeaturesAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefFeatures, FsFeatStrucTypeFeaturesRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefFeatures, FsFeatStrucTypeFeaturesAddRefHandler.Instance,
+            new FieldWriteCapability("FsFeatStrucType", "Features", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefFeatures, FsFeatStrucTypeFeaturesRemoveRefHandler.Instance,
+            new FieldWriteCapability("FsFeatStrucType", "Features", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefFeatures, SnapshotFields.FsFeatStrucTypeFeatures);
         OperationSlotRegistry.RegisterMember(RemoveRefFeatures, SnapshotFields.FsFeatStrucTypeFeatures);
     }

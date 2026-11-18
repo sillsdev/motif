@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using SIL.LCModel.Infrastructure;
 using SIL.TextEditing.Markdown.Records;
 
 namespace SIL.TextEditing.Project
@@ -6,11 +9,17 @@ namespace SIL.TextEditing.Project
     /// <summary>A generated schema and custom fields that it cannot or should not represent.</summary>
     public sealed class ProjectRecordSchemaResult
     {
-        internal ProjectRecordSchemaResult(RecordSchema schema, OmittedCustomField[] omitted, SchemaBindings bindings)
+        readonly Dictionary<string, Dictionary<string, (string DeclaringClass, string Field, bool IsCustom)>> _fieldNames;
+
+        internal ProjectRecordSchemaResult(RecordSchema schema, OmittedCustomField[] omitted, SchemaBindings bindings,
+            IFwMetaDataCacheManaged metadata)
         {
             Schema = schema;
             Bindings = bindings;
             OmittedCustomFields = System.Array.AsReadOnly(omitted);
+            _fieldNames = bindings.Keys.ToDictionary(type => type.Key, type => type.Value.ToDictionary(field => field.Key,
+                field => (metadata.GetOwnClsName(field.Value), metadata.GetFieldName(field.Value), metadata.IsCustom(field.Value)),
+                StringComparer.Ordinal), StringComparer.Ordinal);
         }
 
         /// <summary>Which metadata field each schema key of each object type reads, and the fields the type leaves out (for export).</summary>
@@ -18,6 +27,11 @@ namespace SIL.TextEditing.Project
 
         /// <summary>The detached schema built from the overlay and supported custom fields.</summary>
         public RecordSchema Schema { get; }
+
+        /// <summary>The stable model names for a schema key, including the declaring class of an inherited field.
+        /// The binding stays available after the project closes. A key outside the schema has no binding.</summary>
+        public (string DeclaringClass, string Field, bool IsCustom)? FieldBinding(string objectType, string key)
+            => _fieldNames.TryGetValue(objectType, out var fields) && fields.TryGetValue(key, out var binding) ? binding : null;
 
         /// <summary>Each omitted custom field, once per declaring class and field name.</summary>
         public IReadOnlyList<OmittedCustomField> OmittedCustomFields { get; }

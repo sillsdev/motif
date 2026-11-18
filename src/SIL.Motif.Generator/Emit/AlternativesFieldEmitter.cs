@@ -16,6 +16,9 @@ public static class AlternativesFieldEmitter
 
         return Template
             .Replace("__PREFIX__", prefix)
+            .Replace("__SET_RECORD_VERB__", spec.Sig == "MultiString" ? "SetPlainRich" : "SetAlternative")
+            .Replace("__CLEAR_RECORD_VERB__", spec.Sig == "MultiString" ? "ClearRich" : "ClearAlternative")
+            .Replace("__CLEAR_CAPABILITY_OPTIONS__", spec.Sig == "MultiString" ? ", Fallback: true" : "")
             .Replace("__DECLARINGCLASS__", spec.DeclaringClass)
             .Replace("__FIELDNAME__", spec.FieldName)
             .Replace("__SIG__", spec.Sig)
@@ -60,8 +63,10 @@ public static class AlternativesFieldEmitter
             {
                 OperationKindRegistry.Register(Set__FIELDNAME__);
                 OperationKindRegistry.Register(Clear__FIELDNAME__);
-                OperationHandlerRegistry.Register(Set__FIELDNAME__, __PREFIX__SetHandler.Instance);
-                OperationHandlerRegistry.Register(Clear__FIELDNAME__, __PREFIX__ClearHandler.Instance);
+                OperationHandlerRegistry.Register(Set__FIELDNAME__, __PREFIX__SetHandler.Instance,
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.__SET_RECORD_VERB__));
+                OperationHandlerRegistry.Register(Clear__FIELDNAME__, __PREFIX__ClearHandler.Instance,
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.__CLEAR_RECORD_VERB____CLEAR_CAPABILITY_OPTIONS__));
                 OperationSlotRegistry.RegisterAlternative(Set__FIELDNAME__, __SNAPSHOTFIELD__);
                 OperationSlotRegistry.RegisterAlternative(Clear__FIELDNAME__, __SNAPSHOTFIELD__);
             }

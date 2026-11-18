@@ -22,12 +22,13 @@ public static class LexEntrySensesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LexEntrySenses, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<ILexEntry>(
+        var handler = new OwningCreateHandler<ILexEntry>(
             Create, SnapshotFields.LexEntrySenses, owner => owner.SensesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create(guid);
                         owner.SensesOS.Insert(index, child);
-            }, true, false, Array.Empty<string>(), "LexSense", true));
+            }, true, false, Array.Empty<string>(), "LexSense", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("LexEntry", "Senses"));
     }
 }

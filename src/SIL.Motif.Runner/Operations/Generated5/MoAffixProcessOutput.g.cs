@@ -22,7 +22,7 @@ public static class MoAffixProcessOutputOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.MoAffixProcessOutput, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IMoAffixProcess>(
+        var handler = new OwningCreateHandler<IMoAffixProcess>(
             Create, SnapshotFields.MoAffixProcessOutput, owner => owner.OutputOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -35,6 +35,7 @@ public static class MoAffixProcessOutputOperationKinds
                             _ => throw new InvalidOperationException("Unsupported affix output class."),
                         };
                         owner.OutputOS.Insert(index, child);
-            }, true, false, new[] { "MoCopyFromInput", "MoInsertPhones", "MoInsertNC", "MoModifyFromInput" }, "MoRuleMapping", true));
+            }, true, false, new[] { "MoCopyFromInput", "MoInsertPhones", "MoInsertNC", "MoModifyFromInput" }, "MoRuleMapping", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("MoAffixProcess", "Output"));
     }
 }

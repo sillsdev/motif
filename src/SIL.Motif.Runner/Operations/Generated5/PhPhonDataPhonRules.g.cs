@@ -24,7 +24,7 @@ public static class PhPhonDataPhonRulesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonDataPhonRules, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonData>(
+        var handler = new OwningCreateHandler<IPhPhonData>(
             Create, SnapshotFields.PhPhonDataPhonRules, owner => owner.PhonRulesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -36,9 +36,11 @@ public static class PhPhonDataPhonRulesOperationKinds
                         };
                         child.Disabled = true;
                         owner.PhonRulesOS.Insert(index, child);
-            }, true, false, new[] { "PhRegularRule", "PhMetathesisRule" }, "PhSegmentRule", true));
+            }, true, false, new[] { "PhRegularRule", "PhMetathesisRule" }, "PhSegmentRule", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhPhonData", "PhonRules"));
         OperationKindRegistry.Register(MovePhonRules);
-        OperationHandlerRegistry.Register(MovePhonRules, PhPhonDataPhonRulesMoveHandler.Instance);
+        OperationHandlerRegistry.Register(MovePhonRules, PhPhonDataPhonRulesMoveHandler.Instance,
+            new FieldWriteCapability("PhPhonData", "PhonRules", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));
         OperationSlotRegistry.RegisterMember(MovePhonRules, SnapshotFields.PhPhonDataPhonRules);
     }
 }

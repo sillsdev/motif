@@ -30,8 +30,10 @@ public static class LexSensePhonologyNoteOperationKinds
     {
         OperationKindRegistry.Register(SetPhonologyNote);
         OperationKindRegistry.Register(ClearPhonologyNote);
-        OperationHandlerRegistry.Register(SetPhonologyNote, LexSensePhonologyNoteSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearPhonologyNote, LexSensePhonologyNoteClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetPhonologyNote, LexSensePhonologyNoteSetHandler.Instance,
+            new FieldWriteCapability("LexSense", "PhonologyNote", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearPhonologyNote, LexSensePhonologyNoteClearHandler.Instance,
+            new FieldWriteCapability("LexSense", "PhonologyNote", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetPhonologyNote, SnapshotFields.LexSensePhonologyNote);
         OperationSlotRegistry.RegisterAlternative(ClearPhonologyNote, SnapshotFields.LexSensePhonologyNote);
     }

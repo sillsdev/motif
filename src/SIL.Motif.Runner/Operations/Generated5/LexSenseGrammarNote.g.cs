@@ -30,8 +30,10 @@ public static class LexSenseGrammarNoteOperationKinds
     {
         OperationKindRegistry.Register(SetGrammarNote);
         OperationKindRegistry.Register(ClearGrammarNote);
-        OperationHandlerRegistry.Register(SetGrammarNote, LexSenseGrammarNoteSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearGrammarNote, LexSenseGrammarNoteClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetGrammarNote, LexSenseGrammarNoteSetHandler.Instance,
+            new FieldWriteCapability("LexSense", "GrammarNote", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearGrammarNote, LexSenseGrammarNoteClearHandler.Instance,
+            new FieldWriteCapability("LexSense", "GrammarNote", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetGrammarNote, SnapshotFields.LexSenseGrammarNote);
         OperationSlotRegistry.RegisterAlternative(ClearGrammarNote, SnapshotFields.LexSenseGrammarNote);
     }

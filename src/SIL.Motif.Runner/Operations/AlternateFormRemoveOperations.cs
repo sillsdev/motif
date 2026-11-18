@@ -21,7 +21,8 @@ public static class AlternateFormRemoveOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Remove);
-        OperationHandlerRegistry.Register(Remove, AlternateFormRemoveHandler.Instance);
+        OperationHandlerRegistry.Register(Remove, AlternateFormRemoveHandler.Instance,
+            new FieldWriteCapability("LexEntry", "AlternateForms", RecordWriteVerb.RemoveObject));
         OperationSlotRegistry.RegisterMany(Remove, operation =>
         {
             var form = AlternateFormRemovePayload.Parse(OperationSlotRegistry.After(operation)).Form;

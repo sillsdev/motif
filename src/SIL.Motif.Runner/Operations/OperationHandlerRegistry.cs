@@ -15,18 +15,24 @@ namespace SIL.Motif.Runner.Operations;
 /// </summary>
 public static class OperationHandlerRegistry
 {
-    private static readonly Dictionary<string, IOperationHandler> Handlers = new(StringComparer.Ordinal);
+    private sealed record Registration(IOperationHandler Handler, IReadOnlyList<FieldWriteCapability> FieldWrites);
+
+    private static readonly Dictionary<string, Registration> Handlers = new(StringComparer.Ordinal);
 
     /// <summary>Registers <paramref name="handler"/> for <paramref name="kind"/>. Throws if
     /// <paramref name="kind"/> is already registered — every generated kind file registers exactly
     /// once, via its own <c>[ModuleInitializer]</c>, so a duplicate means a real bug (a name
     /// collision between two generated fields), not a legitimate re-registration.</summary>
-    public static void Register(string kind, IOperationHandler handler)
+    /// <param name="kind">The same kind the parser registers.</param>
+    /// <param name="handler">The executable handler.</param>
+    /// <param name="fieldWrites">Direct field edits a record importer can request through this handler.
+    /// Omit them for kinds that require a different semantic intent.</param>
+    public static void Register(string kind, IOperationHandler handler, params FieldWriteCapability[] fieldWrites)
     {
         if (string.IsNullOrEmpty(kind))
             throw new ArgumentException("Operation kind must not be empty.", nameof(kind));
-        if (handler is null)
-            throw new ArgumentNullException(nameof(handler));
+        ArgumentNullException.ThrowIfNull(handler);
+        ArgumentNullException.ThrowIfNull(fieldWrites);
 
         if (Handlers.ContainsKey(kind))
         {
@@ -35,7 +41,10 @@ public static class OperationHandlerRegistry
                 "register exactly one handler.");
         }
 
-        Handlers[kind] = handler;
+        Handlers[kind] = new(handler, Array.AsReadOnly(fieldWrites.Select(write => write with
+        {
+            ChildClasses = Array.AsReadOnly(write.ChildClasses.ToArray()),
+        }).ToArray()));
     }
 
     /// <summary>
@@ -46,13 +55,15 @@ public static class OperationHandlerRegistry
     /// </summary>
     public static IOperationHandler Resolve(string kind, string context)
     {
-        if (Handlers.TryGetValue(kind, out var handler))
-            return handler;
+        if (Handlers.TryGetValue(kind, out var registration))
+            return registration.Handler;
 
         throw new NotSupportedException($"{context} does not support operation kind '{kind}'.");
     }
 
-    /// <summary>Every currently registered kind. Exposed for tests; production code should use
-    /// <see cref="Resolve"/> rather than checking membership first.</summary>
+    /// <summary>The registered handler's declared direct field edits, empty for a semantic operation without one.</summary>
+    public static IReadOnlyList<FieldWriteCapability> FieldWrites(string kind) => Handlers[kind].FieldWrites;
+
+    /// <summary>Every currently registered kind, for catalog enumeration and parity checks.</summary>
     public static IReadOnlyCollection<string> RegisteredKinds => Handlers.Keys;
 }

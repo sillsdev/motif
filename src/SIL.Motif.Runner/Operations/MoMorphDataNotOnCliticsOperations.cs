@@ -23,7 +23,8 @@ public static class MoMorphDataNotOnCliticsOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Set);
-        OperationHandlerRegistry.Register(Set, MoMorphDataNotOnCliticsHandler.Instance);
+        OperationHandlerRegistry.Register(Set, MoMorphDataNotOnCliticsHandler.Instance,
+            new FieldWriteCapability("MoMorphData", "NotOnClitics", RecordWriteVerb.Set));
         OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.MoMorphDataNotOnClitics);
     }
 #pragma warning restore CA2255

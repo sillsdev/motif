@@ -31,8 +31,11 @@ public static class PhSegRuleRHSInputPOSesOperationKinds
     {
         OperationKindRegistry.Register(AddRefInputPOSes);
         OperationKindRegistry.Register(RemoveRefInputPOSes);
-        OperationHandlerRegistry.Register(AddRefInputPOSes, PhSegRuleRHSInputPOSesAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefInputPOSes, PhSegRuleRHSInputPOSesRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefInputPOSes, PhSegRuleRHSInputPOSesAddRefHandler.Instance,
+            new FieldWriteCapability("PhSegRuleRHS", "InputPOSes", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefInputPOSes, PhSegRuleRHSInputPOSesRemoveRefHandler.Instance,
+            new FieldWriteCapability("PhSegRuleRHS", "InputPOSes", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefInputPOSes, SnapshotFields.PhSegRuleRHSInputPOSes);
         OperationSlotRegistry.RegisterMember(RemoveRefInputPOSes, SnapshotFields.PhSegRuleRHSInputPOSes);
     }

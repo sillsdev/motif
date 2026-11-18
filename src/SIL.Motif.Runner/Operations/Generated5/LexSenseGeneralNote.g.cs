@@ -30,8 +30,10 @@ public static class LexSenseGeneralNoteOperationKinds
     {
         OperationKindRegistry.Register(SetGeneralNote);
         OperationKindRegistry.Register(ClearGeneralNote);
-        OperationHandlerRegistry.Register(SetGeneralNote, LexSenseGeneralNoteSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearGeneralNote, LexSenseGeneralNoteClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetGeneralNote, LexSenseGeneralNoteSetHandler.Instance,
+            new FieldWriteCapability("LexSense", "GeneralNote", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearGeneralNote, LexSenseGeneralNoteClearHandler.Instance,
+            new FieldWriteCapability("LexSense", "GeneralNote", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetGeneralNote, SnapshotFields.LexSenseGeneralNote);
         OperationSlotRegistry.RegisterAlternative(ClearGeneralNote, SnapshotFields.LexSenseGeneralNote);
     }

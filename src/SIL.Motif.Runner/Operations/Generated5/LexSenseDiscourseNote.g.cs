@@ -30,8 +30,10 @@ public static class LexSenseDiscourseNoteOperationKinds
     {
         OperationKindRegistry.Register(SetDiscourseNote);
         OperationKindRegistry.Register(ClearDiscourseNote);
-        OperationHandlerRegistry.Register(SetDiscourseNote, LexSenseDiscourseNoteSetHandler.Instance);
-        OperationHandlerRegistry.Register(ClearDiscourseNote, LexSenseDiscourseNoteClearHandler.Instance);
+        OperationHandlerRegistry.Register(SetDiscourseNote, LexSenseDiscourseNoteSetHandler.Instance,
+            new FieldWriteCapability("LexSense", "DiscourseNote", RecordWriteVerb.SetPlainRich));
+        OperationHandlerRegistry.Register(ClearDiscourseNote, LexSenseDiscourseNoteClearHandler.Instance,
+            new FieldWriteCapability("LexSense", "DiscourseNote", RecordWriteVerb.ClearRich, Fallback: true));
         OperationSlotRegistry.RegisterAlternative(SetDiscourseNote, SnapshotFields.LexSenseDiscourseNote);
         OperationSlotRegistry.RegisterAlternative(ClearDiscourseNote, SnapshotFields.LexSenseDiscourseNote);
     }

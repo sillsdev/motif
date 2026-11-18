@@ -22,7 +22,7 @@ public static class PhSegRuleRHSStrucChangeOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhSegRuleRHSStrucChange, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhSegRuleRHS>(
+        var handler = new OwningCreateHandler<IPhSegRuleRHS>(
             Create, SnapshotFields.PhSegRuleRHSStrucChange, owner => owner.StrucChangeOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
@@ -34,6 +34,7 @@ public static class PhSegRuleRHSStrucChangeOperationKinds
                             _ => throw new InvalidOperationException("Structural change must be a supported simple context."),
                         };
                         owner.StrucChangeOS.Insert(index, child);
-            }, true, false, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry" }, "PhSimpleContext", true));
+            }, true, false, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry" }, "PhSimpleContext", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhSegRuleRHS", "StrucChange"));
     }
 }

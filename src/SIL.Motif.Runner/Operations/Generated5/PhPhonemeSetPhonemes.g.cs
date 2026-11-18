@@ -22,13 +22,14 @@ public static class PhPhonemeSetPhonemesOperationKinds
     {
         OperationKindRegistry.Register(Create);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonemeSetPhonemes, false);
-        OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonemeSet>(
+        var handler = new OwningCreateHandler<IPhPhonemeSet>(
             Create, SnapshotFields.PhPhonemeSetPhonemes, owner => owner.PhonemesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
                 var child = cache.ServiceLocator.GetInstance<IPhPhonemeFactory>().Create(guid);
                         owner.PhonemesOC.Add(child);
                         foreach (var code in child.CodesOS.ToArray()) child.CodesOS.Remove(code);
-            }, false, false, Array.Empty<string>(), "PhPhoneme", true));
+            }, false, false, Array.Empty<string>(), "PhPhoneme", true);
+        OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhPhonemeSet", "Phonemes"));
     }
 }

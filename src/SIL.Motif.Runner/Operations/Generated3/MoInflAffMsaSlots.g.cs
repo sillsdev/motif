@@ -31,8 +31,11 @@ public static class MoInflAffMsaSlotsOperationKinds
     {
         OperationKindRegistry.Register(AddRefSlots);
         OperationKindRegistry.Register(RemoveRefSlots);
-        OperationHandlerRegistry.Register(AddRefSlots, MoInflAffMsaSlotsAddRefHandler.Instance);
-        OperationHandlerRegistry.Register(RemoveRefSlots, MoInflAffMsaSlotsRemoveRefHandler.Instance);
+        OperationHandlerRegistry.Register(AddRefSlots, MoInflAffMsaSlotsAddRefHandler.Instance,
+            new FieldWriteCapability("MoInflAffMsa", "Slots", RecordWriteVerb.AddReference,
+                FieldWritePlacement.Forbidden));
+        OperationHandlerRegistry.Register(RemoveRefSlots, MoInflAffMsaSlotsRemoveRefHandler.Instance,
+            new FieldWriteCapability("MoInflAffMsa", "Slots", RecordWriteVerb.RemoveReference));
         OperationSlotRegistry.RegisterMember(AddRefSlots, SnapshotFields.MoInflAffMsaSlots);
         OperationSlotRegistry.RegisterMember(RemoveRefSlots, SnapshotFields.MoInflAffMsaSlots);
     }
