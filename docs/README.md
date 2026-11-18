@@ -6,7 +6,7 @@ Users start with [Motif's Help](../src/SIL.Motif.Help/Content/en/guide/what-is-m
 
 ## Contracts
 
-- Architecture and API: [architecture](architecture.md), [CLI API](cli-api.md), [model surface](api-surface-layer1.md), [affix processes](affix-process-contract.md), [sound authoring](sound-system-authoring.md), [parser surface](api-surface-hc.md), [custom fields](custom-fields.md), [writing systems](writing-system-display-contract.md).
+- Architecture and API: [architecture](architecture.md), [CLI API](cli-api.md), [generic record store](record-store.md), [model surface](api-surface-layer1.md), [affix processes](affix-process-contract.md), [sound authoring](sound-system-authoring.md), [parser surface](api-surface-hc.md), [custom fields](custom-fields.md), [writing systems](writing-system-display-contract.md).
 - Proposal and Apply: [Proposal contract](proposal-contract.md), [lifecycle](proposal-lifecycle.md), [conflicts and rebase](conflicts-and-rebase.md), [applied log](applied-log.md), [review report](review-report-contract.md), [allomorph retirement](allomorph-retirement-contract.md), [human judgment](human-judgment-contract.md).
 - Parser and grammar: [grammar map](hc-grammar-map.md), [feature coverage](feature-coverage.md), [Parsimony evidence](parsimony-evidence-contract.md), [Try a Word acceptance](try-a-word-acceptance.md), [corpus ingestion](corpus-ingestion.md), [parser help](parser-help/README.md), [handoff formats](handoff/).
 - Testing and release: [changed-file tests](testing-changed-files.md), [slow tests](testing-slow-run.md), [agent plugin release smoke](agent-plugin-release-smoke.md), [release notes](release-notes/), [configuration](configuration.md).
