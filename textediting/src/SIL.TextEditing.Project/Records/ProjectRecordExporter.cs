@@ -723,7 +723,8 @@ namespace SIL.TextEditing.Project
         byte[] BinaryValue(int hvo, int flid)
         {
             int length;
-            // liblcm throws a NullReferenceException for a binary field that was never set on this object.
+            // liblcm's BinaryPropRgb throws a NullReferenceException for a binary field that was never set on this object, and offers no test for that case that is safe for a
+            // value not yet loaded; the catch covers this one call only, and a test pins the never-set case.
             try { _data.BinaryPropRgb(hvo, flid, ArrayPtr.Null, 0, out length); }
             catch (NullReferenceException) { return new byte[0]; }
             if (length == 0) return new byte[0];
