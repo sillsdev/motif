@@ -33,7 +33,7 @@ public sealed class SharedWordListResponsiveTests
                 settings.ZoomPercent = zoom;
                 workspace.CurrentPage = WorkspacePage.Words;
                 var words = workspace.PageModel<WordsPageModel>().Words;
-                await Wait.UntilAsync(() => words.Rows.Count > 0, "The Selection words did not load.",
+                await Wait.UntilAsync(() => !words.IsLoading && words.Rows.Count > 0, "The Selection words did not load.",
                     between: () => PageScreenshots.Settle(window));
                 PageScreenshots.Settle(window);
                 var panel = Assert.Single(window.GetVisualDescendants().OfType<TextWordsPanel>(),
@@ -41,9 +41,14 @@ public sealed class SharedWordListResponsiveTests
                 var rows = panel.FindControl<ListBox>("TextWordsPanelRowsItems")!;
                 Assert.True(rows.ItemCount > 0);
                 Assert.True(rows.Bounds.Width > 0 && rows.Bounds.Width <= panel.Bounds.Width);
-                rows.ScrollIntoView(rows.ItemCount - 1);
-                PageScreenshots.Settle(window);
-                Assert.NotNull(rows.ContainerFromIndex(rows.ItemCount - 1));
+                var lastIndex = rows.ItemCount - 1;
+                rows.ScrollIntoView(lastIndex);
+                await Wait.UntilAsync(() => rows.ContainerFromIndex(lastIndex) is not null,
+                    "The final word row was not realized after scrolling.",
+                    detail: () => $"Index {lastIndex}, items {rows.ItemCount}, loading {words.IsLoading}, " +
+                        $"list {rows.Bounds}, panel {panel.Bounds}, window {window.ClientSize}, zoom {zoom}.",
+                    between: () => PageScreenshots.Settle(window));
+                Assert.NotNull(rows.ContainerFromIndex(lastIndex));
                 LayoutAssertions.AssertCurrent(panel);
             }
             finally
