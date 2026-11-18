@@ -49,21 +49,22 @@ public sealed class ConcurrentWalkthroughTests
                     SeededProject.FirstForm, SeededProject.SecondForm));
                 FakeParser.BehaveBesideExecutable(firstParserPath, new
                 {
-                    startedPath = firstStarted,
-                    holdUntilPath = firstRelease,
+                    subcommands = new Dictionary<string, object>
+                    {
+                        ["batch"] = new { startedPath = firstStarted, holdUntilPath = firstRelease },
+                    },
                 });
                 FakeParser.BehaveBesideExecutable(secondParserPath, new
                 {
-                    startedPath = secondStarted,
-                    holdUntilPath = secondRelease,
+                    subcommands = new Dictionary<string, object>
+                    {
+                        ["batch"] = new { startedPath = secondStarted, holdUntilPath = secondRelease },
+                    },
                 });
 
                 firstWalkthrough.Workspace.Assess.RunCommand.Execute(null);
-                secondWalkthrough.Workspace.Assess.RunCommand.Execute(null);
                 var firstExecution = firstWalkthrough.Workspace.Assess.RunCommand.ExecutionTask;
-                var secondExecution = secondWalkthrough.Workspace.Assess.RunCommand.ExecutionTask;
                 Assert.NotNull(firstExecution);
-                Assert.NotNull(secondExecution);
 
                 try
                 {
@@ -72,6 +73,9 @@ public sealed class ConcurrentWalkthroughTests
                             firstWalkthrough.Workspace.Assess.State == RunState.Running,
                         WalkthroughSteps.Remaining(deadline), "the first fake Assessment did not start");
                     Assert.NotEmpty(PanglossProcesses.Snapshot(firstParserPath));
+                    secondWalkthrough.Workspace.Assess.RunCommand.Execute(null);
+                    var secondExecution = secondWalkthrough.Workspace.Assess.RunCommand.ExecutionTask;
+                    Assert.NotNull(secondExecution);
                     Assert.Empty(PanglossProcesses.Snapshot(secondParserPath));
 
                     File.WriteAllText(firstRelease, string.Empty);
