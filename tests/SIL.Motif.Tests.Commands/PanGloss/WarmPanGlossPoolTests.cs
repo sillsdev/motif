@@ -175,16 +175,56 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     {
         var (grammar, startLog, _) = Project("idle");
         using var pool = Pool(new WarmPanGlossOptions { IdleTimeout = TimeSpan.FromMilliseconds(400) });
-        await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None);
-        var pid = int.Parse(Lines(startLog)[0]);
-        Assert.True(Alive(pid));
+        var first = await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None);
+        Assert.True(first is WarmParseResult.Completed, first.ToString());
+        var pid = int.Parse(Assert.Single(Lines(startLog)));
 
         await Wait.UntilAsync(() => pool.GetState(grammar).Phase == WarmSessionPhase.Idle, "Timed out waiting for idle eviction");
         await Wait.UntilAsync(() => !Alive(pid), "Timed out waiting for the evicted process to exit");
 
-        Assert.IsType<WarmParseResult.Completed>(
-            await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None));
+        var restarted = await pool.TryWordAsync(grammar, "t1", grammar, "second", true, CancellationToken.None);
+        Assert.True(restarted is WarmParseResult.Completed, restarted.ToString());
         Assert.Equal(2, Lines(startLog).Length);
+    }
+
+    [Fact]
+    public async Task ASubmittedWordSurvivesAnIdleSweepBeforeRequestAdmission()
+    {
+        var (grammar, startLog, requestLog) = Project("idle-before-request");
+        var options = new WarmPanGlossOptions();
+        using var pool = Pool(options);
+        var timeout = Wait.Scaled(Wait.Default);
+        Assert.Equal(WarmSessionState.Ready, await pool.Prewarm(grammar, "t1", grammar).WaitAsync(timeout));
+        var pid = int.Parse(Assert.Single(Lines(startLog)));
+
+        var selected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        pool.BeforeRequestAdmission = cancellationToken =>
+        {
+            selected.SetResult();
+            return release.Task.WaitAsync(cancellationToken);
+        };
+
+        var parsing = pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None);
+        try
+        {
+            await selected.Task.WaitAsync(timeout);
+            pool.SweepIdle(DateTime.UtcNow + options.IdleTimeout);
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+
+        var result = await parsing.WaitAsync(timeout);
+        Assert.True(result is WarmParseResult.Completed, result.ToString());
+        Assert.Equal(["motifa"], Lines(requestLog));
+        Assert.Single(Lines(startLog));
+        Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar).Phase);
+
+        pool.SweepIdle(DateTime.UtcNow + options.IdleTimeout);
+        Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar).Phase);
+        Assert.False(Alive(pid));
     }
 
     [Fact]

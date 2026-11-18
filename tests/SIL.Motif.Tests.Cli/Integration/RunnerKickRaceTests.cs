@@ -36,7 +36,7 @@ public sealed class RunnerKickRaceTests : IDisposable
         Assert.True(run.ExitCode == 0, run.Error);
         var jobId = run.Output.Trim();
         Assert.False(string.IsNullOrWhiteSpace(jobId));
-        await WaitForWakeWaiter(occupying);
+        await WaitForWakeWaiter(occupying.OwnerName, run.Error);
         Assert.Equal(JobStatus.Queued, JobProgress.Read(project, jobId).Status);
 
         occupying.Dispose();
@@ -98,21 +98,24 @@ public sealed class RunnerKickRaceTests : IDisposable
         var run = await Cli(project);
 
         Assert.True(run.ExitCode == 0, run.Error);
-        await WaitForWakeWaiter(occupying);
+        var jobId = run.Output.Trim();
+        Assert.Equal(JobStatus.Queued, JobProgress.Read(project, jobId).Status);
         occupying.Dispose();
-        var completed = JobProgress.WaitUntilFinished(project, run.Output.Trim(), "The capturing caller's Baseline refresh");
+        var completed = JobProgress.WaitUntilFinished(project, jobId, "The capturing caller's Baseline refresh");
         Assert.Equal(JobStatus.Completed, completed.Status);
     }
 
-    private static async Task WaitForWakeWaiter(JobRunnerHost occupying)
+    private static Task WaitForWakeWaiter(string ownerName, string stderr)
     {
-        using var waiter = new WorkerMutexOwner(occupying.OwnerName + ".WakeWaiter");
-        await Wait.UntilAsync(() =>
+        var name = ownerName + ".WakeWaiter";
+        return Wait.UntilAsync(() =>
         {
-            if (!waiter.TryAcquire()) return true;
-            waiter.Release();
-            return false;
-        }, "The kicked runner waits beyond its initial ownership retry window");
+            // A fresh namespace lets us observe the waiter without competing for its one acquisition attempt.
+            if (!OperatingSystem.IsWindows()) return File.Exists(WorkerLockPaths.GetLockPath(name, machineWide: false));
+            if (!Mutex.TryOpenExisting(name, out var waiter)) return false;
+            waiter.Dispose();
+            return true;
+        }, "The kicked runner waits beyond its initial ownership retry window", detail: () => stderr);
     }
 
     private async Task<CliRun> Cli(string project)

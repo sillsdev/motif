@@ -71,7 +71,9 @@ public sealed record WarmPanGlossOptions
 {
     /// <summary>The memory ceiling for the life of a session (3 GB, ADR 0019).</summary>
     public ulong MemoryCeilingBytes { get; init; } = 3UL * 1024 * 1024 * 1024;
-    /// <summary>A session unused this long is stopped.</summary>
+    /// <summary>
+    /// A session unused this long is stopped. Submitted words keep it in use while waiting or parsing.
+    /// </summary>
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromMinutes(10);
     /// <summary>A load still not ready after this long becomes Failed.</summary>
     public TimeSpan LoadTimeout { get; init; } = TimeSpan.FromSeconds(120);
@@ -120,11 +122,14 @@ public sealed class WarmPanGlossPool : IDisposable
         _ownsQueue = ownsQueue;
         _options = options ?? new WarmPanGlossOptions();
         var period = TimeSpan.FromMilliseconds(Math.Clamp(_options.IdleTimeout.TotalMilliseconds / 4, 25, 30_000));
-        _sweeper = new Timer(_ => SweepIdle(), null, period, period);
+        _sweeper = new Timer(_ => SweepIdle(DateTime.UtcNow), null, period, period);
     }
 
     /// <summary>Raised off the caller's thread when any project's state changes.</summary>
     public event EventHandler<WarmSessionStateChangedEventArgs>? StateChanged;
+
+    /// <summary>Allows a test to pause a selected word before it enters the session request queue.</summary>
+    internal Func<CancellationToken, Task>? BeforeRequestAdmission { get; set; }
 
     /// <summary>The state of a project's session; <see cref="WarmSessionState.Idle"/> when it has none.</summary>
     public WarmSessionState GetState(string projectKey, ParserWorkLimit? parserWorkLimit = null)
@@ -158,19 +163,25 @@ public sealed class WarmPanGlossPool : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
         ArgumentException.ThrowIfNullOrEmpty(word);
-        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit, retryFailed: false);
-        if (session.CoolingDown(_options.RetryCooldown) is { } cooling) return cooling;
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit, retryFailed: false, reserveWord: true);
         try
         {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling) return cooling;
             var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (state.Phase != WarmSessionPhase.Ready)
                 return new WarmParseResult.Fallback(state.FailureCode ?? "session-unavailable",
                     state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (BeforeRequestAdmission is { } beforeAdmission)
+                await beforeAdmission(cancellationToken).ConfigureAwait(false);
             return await session.ParseAsync(word, traceDetails, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             return new WarmParseResult.Cancelled();
+        }
+        finally
+        {
+            session.ReleaseWord();
         }
     }
 
@@ -246,7 +257,8 @@ public sealed class WarmPanGlossPool : IDisposable
         Normalize(projectKey) + "\n" + (parserWorkLimit is null || parserWorkLimit.Work == ParserDefaultWork
             ? string.Empty : parserWorkLimit.ToArgument());
 
-    private Session Acquire(string projectKey, string token, string grammarPath, ParserWorkLimit? parserWorkLimit, bool retryFailed)
+    private Session Acquire(string projectKey, string token, string grammarPath, ParserWorkLimit? parserWorkLimit,
+        bool retryFailed, bool reserveWord = false)
     {
         var key = SessionKey(projectKey, parserWorkLimit);
         Session? stale = null;
@@ -279,20 +291,30 @@ public sealed class WarmPanGlossPool : IDisposable
                 _sessions[key] = existing;
             }
             session = existing;
+            // Reserve while the pool lock still prevents idle eviction of the selected session.
+            if (reserveWord) session.ReserveWord();
         }
-        stale?.Kill(WarmSessionState.Idle, raise: false);
-        session.StartLoadOnce();
-        return session;
+        try
+        {
+            stale?.Kill(WarmSessionState.Idle, raise: false);
+            session.StartLoadOnce();
+            return session;
+        }
+        catch when (reserveWord)
+        {
+            session.ReleaseWord();
+            throw;
+        }
     }
 
-    private void SweepIdle()
+    internal void SweepIdle(DateTime utcNow)
     {
         List<Session> idle = [];
         lock (_gate)
         {
             if (_disposed) return;
             foreach (var session in _sessions.Values)
-                if (session.IsIdleFor(_options.IdleTimeout)) idle.Add(session);
+                if (session.IsIdleFor(_options.IdleTimeout, utcNow)) idle.Add(session);
             foreach (var session in idle) _sessions.Remove(session.Key);
         }
         foreach (var session in idle) session.Shutdown();
@@ -333,7 +355,7 @@ public sealed class WarmPanGlossPool : IDisposable
         private WarmSessionState _state = WarmSessionState.Loading;
         private DateTime _lastUsedUtc = DateTime.UtcNow;
         private DateTime _failedUtc;
-        private int _busy;
+        private int _pendingWords;
         private bool _started;
         private bool _retired;
 
@@ -352,10 +374,24 @@ public sealed class WarmPanGlossPool : IDisposable
                         { ProbeFailure = _state.ProbeFailure } : null;
         }
 
-        public bool IsIdleFor(TimeSpan idle)
+        public bool IsIdleFor(TimeSpan idle, DateTime utcNow)
         {
             lock (_lock)
-                return _state.Phase == WarmSessionPhase.Ready && _busy == 0 && DateTime.UtcNow - _lastUsedUtc >= idle;
+                return _state.Phase == WarmSessionPhase.Ready && _pendingWords == 0 && utcNow - _lastUsedUtc >= idle;
+        }
+
+        public void ReserveWord()
+        {
+            lock (_lock) _pendingWords++;
+        }
+
+        public void ReleaseWord()
+        {
+            lock (_lock)
+            {
+                _lastUsedUtc = DateTime.UtcNow;
+                _pendingWords--;
+            }
         }
 
         public void StartLoadOnce()
@@ -506,7 +542,6 @@ public sealed class WarmPanGlossPool : IDisposable
         public async Task<WarmParseResult> ParseAsync(string word, bool traceDetails, CancellationToken cancellationToken)
         {
             await _requests.WaitAsync(cancellationToken).ConfigureAwait(false);
-            Interlocked.Increment(ref _busy);
             try
             {
                 return await pool._queue.RunAsync("warm-parse:" + word,
@@ -514,8 +549,6 @@ public sealed class WarmPanGlossPool : IDisposable
             }
             finally
             {
-                lock (_lock) _lastUsedUtc = DateTime.UtcNow;
-                Interlocked.Decrement(ref _busy);
                 _requests.Release();
             }
         }
