@@ -372,10 +372,12 @@ public sealed class StatsCacheStoreTests : IDisposable
         });
         try
         {
-            Assert.True(started.Wait(TimeSpan.FromSeconds(3)));
-            Assert.NotSame(replayTask, await Task.WhenAny(replayTask, Task.Delay(250)));
+            await Wait.UntilAsync(() => started.IsSet, "The statistics replay starts");
+            Assert.False(await Wait.ForAsync(() => replayTask.IsCompleted, TimeSpan.FromMilliseconds(250)),
+                "The statistics replay completed while its invocation lock was held.");
         }
         finally { held.Release(); }
+        await Wait.UntilAsync(() => replayTask.IsCompleted, "The statistics replay finishes after release");
         using var replay = await replayTask;
         Assert.Equal("source", File.ReadAllText(replay.GrammarPath));
     }
