@@ -28,14 +28,15 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         }
 
         [Fact]
-        public void ARawTabInAPlainBlockReportsItsNormalizedValue()
+        public void ARawTabInAPlainBlockIsAnErrorWithoutALossyFix()
         {
             string text = File("record-data:\n  citation-form:\n    ceb: |-\n      a\tb\n");
             var read = RecordFileReader.Read(text, Schema);
             var finding = Assert.Single(read.Diagnostics);
-            Assert.Equal(RecordDiagnosticIds.ScalarStyle, finding.Id);
-            Assert.Equal(MarkdownSeverity.Suggestion, finding.Severity);
-            Assert.Equal("\"a b\"", finding.Replacement);
+            Assert.Equal(RecordDiagnosticIds.TabInPlainBlock, finding.Id);
+            Assert.Equal(MarkdownSeverity.Error, finding.Severity);
+            Assert.Null(finding.Replacement);
+            Assert.Equal("\t", text.Substring(finding.Start, finding.End - finding.Start));
             Assert.Equal("a b", Assert.IsType<RecordScalar>(read.Document!.Find("citation-form.ceb")).Text);
         }
 

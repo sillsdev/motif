@@ -799,10 +799,14 @@ namespace SIL.TextEditing.Markdown.Records
             int[] range = { valueStart, node.End };
             bool block = node.Kind == YamlFrameKind.Scalar && (node.Style == ScalarStyle.Literal || node.Style == ScalarStyle.Folded);
             int spellEnd = block ? TrimLineEnds(node.End) : node.End;
+            var plainBlockTabs = block && node.Style == ScalarStyle.Literal && (field.Kind == RecordFieldKind.Text || field.Kind == RecordFieldKind.Notation)
+                ? LiteralTabOffsets(node) : new List<int>();
+            foreach (int at in plainBlockTabs)
+                Error(RecordDiagnosticIds.TabInPlainBlock, "Reading this raw tab in a plain-text block normalizes it to a space, losing the authored tab.", at, at + 1);
             // A file checked out with CR LF line ends spells a block the same as with LF.
             string written = _text.Substring(valueStart, Math.Max(0, spellEnd - valueStart)).Replace("\r\n", "\n");
             string? value;
-            bool decoded = false, checkSpelling = true;
+            bool decoded = false, checkSpelling = plainBlockTabs.Count == 0;
             switch (field.Kind)
             {
                 case RecordFieldKind.Integer:
@@ -1179,6 +1183,22 @@ namespace SIL.TextEditing.Markdown.Records
             }
             map[value.Length] = value.Length > 0 ? map[value.Length - 1] + 1 : Math.Min(end, _text.Length);
             return map;
+        }
+
+        /// <summary>The raw tabs in a literal block's content, after the indentation YAML removes.</summary>
+        List<int> LiteralTabOffsets(YamlFrameNode node)
+        {
+            var tabs = new List<int>();
+            int indent = BlockIndent(node);
+            int line = NextLine(node.Start);
+            while (line < node.End)
+            {
+                int contentStart = Math.Min(line + indent, LineEnd(line));
+                for (int i = contentStart; i < LineEnd(line); i++)
+                    if (_text[i] == '\t') tabs.Add(i);
+                line = NextLine(line);
+            }
+            return tabs;
         }
 
         int[]? QuotedMap(int at, string value, char quote)
