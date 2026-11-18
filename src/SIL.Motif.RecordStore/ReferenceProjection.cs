@@ -1,3 +1,4 @@
+using SIL.Motif.RecordStore.HandAnalysis;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -27,6 +28,12 @@ internal sealed record VerifiedPoint(StoreState State, Dictionary<Guid, GenericR
     SetDigest Snapshot, IndexDigest IndexDigest)
 {
     public ReplayState? Replay { get; init; }
+    public bool IndexTrusted { get; init; } = true;
+    public Guid? ProjectId { get; init; }
+    public GenericRecord[] Anchors { get; init; } = [];
+    private ReferenceIndexSnapshot? planningIndex;
+    public ReferenceIndexSnapshot GetPlanningIndex(CancellationToken ct = default) =>
+        planningIndex ??= HandAnalysisReferences.WithAnchors(Index, Records, Anchors, ct);
 }
 
 internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRecord[] Records, string[] Limitations)
@@ -36,8 +43,12 @@ internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRec
         var all = input.ToArray();
         var records = all.Where(r => r.Kind == "lcm").ToDictionary(r => r.Id);
         var missing = new HashSet<string>(StringComparer.Ordinal);
-        if (all.Any(r => r.Kind is not ("lcm" or "manifest" or "writing-system" or "resource" or "native-coverage")))
+        if (all.Any(r => r.Kind is not ("lcm" or "manifest" or "writing-system" or "resource" or "native-coverage" or
+            HandAnalysisKinds.Anchor or HandAnalysisKinds.Request)))
             missing.Add("An unknown record namespace may contain references.");
+        foreach (var anchor in all.Where(r => r.Kind == HandAnalysisKinds.Anchor))
+            if (HandAnalysisKinds.AnchorTarget(anchor) is not { } at || !records.ContainsKey(at))
+                missing.Add("A hand-anchor record is malformed or targets an unknown native record.");
         ValidateCoverage(all, records.Values, missing);
         var edges = new List<NativeReference>();
         var project = all.FirstOrDefault(r => r.Kind == "manifest")?.Values.GetValueOrDefault("nativeProject");
@@ -120,12 +131,20 @@ internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRec
         }
     }
 
-    public IndexDigest Accumulate()
+    public IndexDigest Accumulate(CancellationToken ct = default)
     {
         var records = new SetDigest();
-        foreach (var record in Records) records = records.Add(IndexDigest.Item(record));
+        foreach (var record in Records)
+        {
+            ct.ThrowIfCancellationRequested();
+            records = records.Add(IndexDigest.Item(record));
+        }
         var edges = new SetDigest();
-        foreach (var edge in Edges) edges = edges.Add(IndexDigest.Item(edge));
+        foreach (var edge in Edges)
+        {
+            ct.ThrowIfCancellationRequested();
+            edges = edges.Add(IndexDigest.Item(edge));
+        }
         return new IndexDigest(records, edges, Limitations.Order(StringComparer.Ordinal).ToArray());
     }
 

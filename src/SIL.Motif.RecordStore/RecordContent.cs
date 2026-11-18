@@ -14,20 +14,37 @@ internal sealed class RecordContent
 {
     // Rows stay encoded until read: opening a store costs one hash per row, not one decode per row.
     private Dictionary<string, int>? identities;
-    private readonly Dictionary<int, byte[]> encoded = new();
-    private readonly Dictionary<int, JsonElement> values = new();
+    private Dictionary<int, byte[]> encoded = new();
+    private Dictionary<int, JsonElement> values = new();
     private readonly List<ContentRow> pending = [];
     private int next;
-    private readonly SortedDictionary<int, byte[]> hashes = new();
+    private SortedDictionary<int, byte[]> hashes = new();
     /// <summary>Number of rows decoded from storage; proves that opening and hashing do not decode.</summary>
     internal int DecodedCount { get; private set; }
     public IReadOnlyList<ContentRow> Pending => pending;
     public void Saved() => pending.Clear();
 
-    public void Load(IEnumerable<ContentRow> rows)
+    internal void Reload(IEnumerable<ContentRow> rows, string expectedDigest, CancellationToken ct)
+    {
+        var replacement = new RecordContent();
+        replacement.Load(rows, ct);
+        var verifiedDigest = replacement.Digest(ct);
+        if (verifiedDigest != expectedDigest)
+            throw new InvalidDataException("The published immutable content could not be verified.");
+        ct.ThrowIfCancellationRequested();
+        identities = null;
+        encoded = replacement.encoded;
+        values = replacement.values;
+        hashes = replacement.hashes;
+        next = replacement.next;
+        digest = verifiedDigest;
+    }
+
+    public void Load(IEnumerable<ContentRow> rows, CancellationToken ct = default)
     {
         foreach (var row in rows)
         {
+            ct.ThrowIfCancellationRequested();
             if (row.Id <= 0) throw new InvalidDataException("Invalid immutable content identity.");
             Check(row.Data);
             hashes.Add(row.Id, SHA256.HashData(row.Data));
@@ -67,11 +84,17 @@ internal sealed class RecordContent
     // Hashing over a million rows is far too slow to repeat per call; rows are immutable, so only Put changes it.
     private string? digest;
 
-    public string Digest()
+    public string Digest(CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         if (digest is not null) return digest;
         using var output = new BinaryOutput();
-        foreach (var (id, hash) in hashes) { output.Unsigned((ulong)id); output.Bytes(hash); }
+        foreach (var (id, hash) in hashes)
+        {
+            ct.ThrowIfCancellationRequested();
+            output.Unsigned((ulong)id);
+            output.Bytes(hash);
+        }
         return digest = Convert.ToHexStringLower(SHA256.HashData(output.Finish()));
     }
 

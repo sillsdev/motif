@@ -78,7 +78,7 @@ internal static class NativeTextReferences
         }
     }
 
-    private static bool TryRaw(JsonElement value, out string? text)
+    internal static bool TryRaw(JsonElement value, out string? text)
     {
         text = null;
         if (value.ValueKind != JsonValueKind.Object || !value.TryGetProperty("utf16le", out var raw)) return false;

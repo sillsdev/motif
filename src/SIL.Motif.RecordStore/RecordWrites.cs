@@ -11,7 +11,9 @@ public sealed partial class RecordStore
     private readonly string writeLockPath;
 
     // Keep the inode stable so an older handle and a new opener cannot lock different files.
-    private FileStream AcquireWriter() => new(writeLockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+    private FileStream AcquireWriter() => readOnly
+        ? throw new InvalidOperationException("This store handle is read-only.")
+        : new(writeLockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
 
     /// <summary>
     /// Plans a deletion against the current store revision. The first call on a handle verifies the published point
@@ -23,7 +25,7 @@ public sealed partial class RecordStore
     {
         var verified = await PointAsync();
         if (verified.State.Revision != expectedRevision) throw new StaleRevisionException("Deletion warning belongs to another store revision.");
-        var impact = verified.Index.DeletionImpact(target);
+        var impact = verified.GetPlanningIndex().DeletionImpact(target);
         impact.RequireDeletionAllowed(acknowledgedPlanToken);
         return impact;
     }
@@ -88,7 +90,7 @@ public sealed partial class RecordStore
             await transaction.CommitAsync();
             var records = new Dictionary<Guid, GenericRecord>(verified.Records) { [target] = updated };
             point = new VerifiedPoint(published, records, verified.Index.WithEdge(revision, removed, added), snapshot, index)
-            { Replay = extended };
+            { Replay = extended, Anchors = verified.Anchors, ProjectId = verified.ProjectId };
             return revision;
         }
         catch

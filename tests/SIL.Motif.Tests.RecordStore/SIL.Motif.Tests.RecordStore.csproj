@@ -8,5 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/SIL.Motif.RecordStore.Lcm/SIL.Motif.RecordStore.Lcm.csproj" />
     <ProjectReference Include="../SIL.Motif.Tests.Support/SIL.Motif.Tests.Support.csproj" />
+    <None Include="../SIL.Motif.Tests.Contract/HandAnalysis/reading-signature-vectors.json"
+      Link="HandAnalysis/reading-signature-vectors.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
