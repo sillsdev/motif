@@ -228,8 +228,9 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
     [Fact]
     public async Task ReplacingTheParserDuringTheComparisonRefuses()
     {
+        // Windows cannot replace the executable while the baseline parser still maps it.
         var (outcome, _, parserPath) = await RunCandidateAsync((invoker, path) =>
-            new ParserReplacingInvoker(invoker, path));
+            new ParserReplacingInvoker(invoker, path), serialSides: true);
 
         var failed = Assert.IsType<JobOutcome>(outcome);
         Assert.Equal(JobStatus.Failed, failed.Status);
@@ -934,7 +935,6 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         }
     }
 
-    /// <summary>Atomic replacement preserves any running executable inode.</summary>
     private sealed class ParserReplacingInvoker(PanGlossInvoker inner, string parserPath) : IPanGlossInvoker
     {
         private int _factsRuns;
