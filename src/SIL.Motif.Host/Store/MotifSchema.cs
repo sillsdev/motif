@@ -11,11 +11,13 @@ namespace SIL.Motif.Host.Store;
 /// </remarks>
 public static class MotifSchema
 {
+    private static volatile SchemaObject[]? _validatedReadSchema;
+
     /// <summary>SQLite application identifier written to Motif-owned databases.</summary>
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 76;
+    public const int CurrentSchema = 77;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -30,7 +32,7 @@ public static class MotifSchema
         using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
-            command.CommandText = SourceIndexDdl + MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
+            command.CommandText = SourceIndexDdl + MetadataDdl + CorpusDdl + GrammarCoverageDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + ProgressDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
@@ -53,12 +55,33 @@ public static class MotifSchema
         insert.ExecuteNonQuery();
     }
 
+    private sealed record SchemaObject(string Type, string Name, string TableName, string? Sql);
+
+    internal static void ValidateReadSchema(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        var objects = new List<SchemaObject>();
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name;";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+                objects.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2),
+                    reader.IsDBNull(3) ? null : reader.GetString(3)));
+        }
+        // Every shape check depends only on the DDL observed in this read snapshot.
+        if (_validatedReadSchema is { } validated && objects.SequenceEqual(validated)) return;
+        ValidateSchema(connection, transaction);
+        _validatedReadSchema = objects.ToArray();
+    }
+
     /// <summary>Validates that an existing database has exactly the current schema's shape.</summary>
     internal static void ValidateSchema(SqliteConnection connection, SqliteTransaction? transaction = null)
     {
         var expectedTables = new HashSet<string>(StringComparer.Ordinal)
         {
-            "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentWordPayloads", "AssessmentWordSetBindings", "AssessmentInvocations",
+            "MotifMetadata", "Corpora", "CorpusDocuments", "GrammarCoverageSegmentations",
+            "GrammarCoverageMeasurements", "GrammarCoverageNoAnalysisRank", "Assessments", "AssessedWords", "AssessmentWordPayloads", "AssessmentWordSetBindings", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
             "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
@@ -262,6 +285,7 @@ public static class MotifSchema
             "SourceIndexState" or "SourceWordforms" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL" },
             "SourcePassages" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL", "CHECK (TotalPlaces >= 0 AND EligiblePlaces BETWEEN 0 AND TotalPlaces)" },
             "SourceWordPlaces" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL", "CHECK (Ordinal >= 0)", "UNIQUE (SourceId, PassageId, Anchor)" },
+            "GrammarCoverageNoAnalysisRank" => new[] { "WITHOUT ROWID" },
             "PhonologyAssessmentBindings" => new[] { "UNIQUE (AssessmentId, RevisionId)" },
             "PhonologyAssessmentRows" => new[] { "CHECK (Ordinal >= 0)", "PRIMARY KEY (AssessmentId, Ordinal)",
                 "UNIQUE (AssessmentId, ExampleId)", "FOREIGN KEY (AssessmentId, RevisionId)",
@@ -444,6 +468,8 @@ public static class MotifSchema
         "SourceWordPlaces" => [new("SourceWordforms", "SourceId", "SourceId", "NO ACTION", "NO ACTION", "NONE"), new("SourceWordforms", "WordformKey", "WordformKey", "NO ACTION", "NO ACTION", "NONE"),
             new("SourcePassages", "SourceId", "SourceId", "NO ACTION", "NO ACTION", "NONE"), new("SourcePassages", "PassageId", "PassageId", "NO ACTION", "NO ACTION", "NONE")],
         "BeforeAssessmentBinding" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
+        "GrammarCoverageNoAnalysisRank" =>
+            [new("GrammarCoverageMeasurements", "StampId", "StampId", "NO ACTION", "CASCADE", "NONE")],
         "CorpusDocuments" => [new("Corpora", "CorpusId", "CorpusId", "NO ACTION", "NO ACTION", "NONE")],
         "PhonologyAssessmentBindings" => [new("PhonologyExampleSetRevisions", "RevisionId", "RevisionId", "NO ACTION", "NO ACTION", "NONE"),
             new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
@@ -505,6 +531,11 @@ public static class MotifSchema
 
     private static IReadOnlyList<ColumnShape> ColumnsFor(string table) => table switch
     {
+        "GrammarCoverageSegmentations" => [C("Id", "TEXT", true, 1), C("Payload", "TEXT", true)],
+        "GrammarCoverageMeasurements" => [C("StampId", "TEXT", true, 1), C("Payload", "TEXT", true)],
+        "GrammarCoverageNoAnalysisRank" =>
+            [C("StampId", "TEXT", true, 1), C("NegativeWeight", "INTEGER", true, 2), C("WordformId", "TEXT", true, 3),
+                C("WritingSystemId", "TEXT", true), C("FormNfd", "TEXT", true)],
         "SourceIndexState" => [C("SourceId", "TEXT", true, 1), C("Kind", "TEXT", true), C("Generation", "TEXT", true), C("SourceDigest", "TEXT", true), C("IdentityJson", "TEXT", true), C("Status", "TEXT", true), C("TokenizerVersion", "TEXT", true), C("AnchorVersion", "TEXT", true)],
         "SourcePassages" => [C("SourceId", "TEXT", true, 1), C("PassageId", "TEXT", true, 2), C("Locator", "TEXT", true), C("ContentHash", "TEXT", true), C("TotalPlaces", "INTEGER", true), C("EligiblePlaces", "INTEGER", true)],
         "SourceWordforms" => [C("SourceId", "TEXT", true, 1), C("WordformKey", "TEXT", true, 2), C("WritingSystem", "TEXT", true), C("Normalized", "TEXT", true), C("Display", "TEXT", true), C("FieldWorksId", "TEXT", false)],
@@ -562,7 +593,7 @@ public static class MotifSchema
             C("Path", "TEXT", true), C("Sha256", "TEXT", true)],
         "BeforeAssessmentBinding" => [C("Id", "INTEGER", false, 1), C("AssessmentId", "TEXT", true),
             C("SemanticIdentityJson", "TEXT", true)],
-        "AssessmentInvocations" => [C("InvocationId", "TEXT", false, 1), C("EvidenceJson", "TEXT", true)],
+        "AssessmentInvocations" => [C("InvocationId", "TEXT", false, 1), C("EvidenceJson", "TEXT", true), C("InputProfileJson", "TEXT", false)],
         "Assessments" =>
         [C("AssessmentId", "TEXT", false, 1), C("SelectionName", "TEXT"), C("SelectionWordsJson", "TEXT"),
             C("SelectionSha256", "TEXT"), C("SelectionProvenanceJson", "TEXT"), C("OutcomeDigest", "TEXT"),
@@ -845,6 +876,18 @@ public static class MotifSchema
         );
         """;
 
+    private const string GrammarCoverageDdl = """
+        CREATE TABLE GrammarCoverageSegmentations (Id TEXT PRIMARY KEY, Payload TEXT NOT NULL) WITHOUT ROWID;
+        CREATE TABLE GrammarCoverageMeasurements (StampId TEXT PRIMARY KEY, Payload TEXT NOT NULL) WITHOUT ROWID;
+        CREATE TABLE GrammarCoverageNoAnalysisRank (
+            StampId TEXT NOT NULL REFERENCES GrammarCoverageMeasurements(StampId) ON DELETE CASCADE,
+            NegativeWeight INTEGER NOT NULL, WordformId TEXT NOT NULL,
+            WritingSystemId TEXT NOT NULL, FormNfd TEXT NOT NULL,
+            PRIMARY KEY (StampId, NegativeWeight, WordformId)
+        ) WITHOUT ROWID;
+
+        """;
+
     private const string MetadataDdl = """
         CREATE TABLE MotifMetadata (
             Id INTEGER PRIMARY KEY CHECK (Id = 1),
@@ -1008,7 +1051,8 @@ public static class MotifSchema
     private const string AssessmentDdl = """
         CREATE TABLE AssessmentInvocations (
             InvocationId TEXT PRIMARY KEY,
-            EvidenceJson TEXT NOT NULL
+            EvidenceJson TEXT NOT NULL,
+            InputProfileJson TEXT NULL
         );
         CREATE TABLE Assessments (
             AssessmentId TEXT PRIMARY KEY,

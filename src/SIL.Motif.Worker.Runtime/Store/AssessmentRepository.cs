@@ -1073,19 +1073,27 @@ public sealed class AssessmentRepository : IAssessmentRepository
             throw new ArgumentException("An invocation id is required.", nameof(invocation));
         using var find = connection.CreateCommand();
         find.Transaction = transaction;
-        find.CommandText = "SELECT EvidenceJson FROM AssessmentInvocations WHERE InvocationId = $id;";
+        find.CommandText = "SELECT EvidenceJson, InputProfileJson FROM AssessmentInvocations WHERE InvocationId = $id;";
         find.Parameters.AddWithValue("$id", invocation.InvocationId);
-        if (find.ExecuteScalar() is string existing)
+        using (var existing = find.ExecuteReader())
         {
-            if (ReadInvocation(existing) != invocation)
-                throw new InvalidOperationException($"Invocation '{invocation.InvocationId}' already records different evidence.");
-            return;
+            if (existing.Read())
+            {
+                if (ReadInvocation(existing.GetString(0), existing.IsDBNull(1) ? null : existing.GetString(1)) != invocation)
+                    throw new InvalidOperationException($"Invocation '{invocation.InvocationId}' already records different evidence.");
+                return;
+            }
         }
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
-        insert.CommandText = "INSERT INTO AssessmentInvocations (InvocationId, EvidenceJson) VALUES ($id, $evidence);";
+        insert.CommandText = """
+            INSERT INTO AssessmentInvocations (InvocationId, EvidenceJson, InputProfileJson)
+            VALUES ($id, $evidence, $profile);
+            """;
         insert.Parameters.AddWithValue("$id", invocation.InvocationId);
         insert.Parameters.AddWithValue("$evidence", invocationJson);
+        insert.Parameters.AddWithValue("$profile", invocation.InputProfile is { } profile
+            ? JsonSerializer.Serialize(profile, InvocationJsonOptions) : (object)DBNull.Value);
         insert.ExecuteNonQuery();
     }
 
@@ -1222,7 +1230,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                SelectionProvenanceJson, OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint,
                Pipeline, DiagnosticCount, SavedUtc, CachePath, CacheDigest,
                (SELECT EvidenceJson FROM AssessmentInvocations ai WHERE ai.InvocationId = Assessments.InvocationId),
-               ReplacesAssessmentId, SubjectKind, SubjectJson
+               ReplacesAssessmentId, SubjectKind, SubjectJson,
+               (SELECT InputProfileJson FROM AssessmentInvocations ai WHERE ai.InvocationId = Assessments.InvocationId)
         FROM Assessments
         """;
 
@@ -1275,7 +1284,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             Details: subject is AssessmentSubject.Words
                 ? new AssessmentRecordDetails.Unloaded(reader.IsDBNull(21) ? null : reader.GetString(21),
                     reader.IsDBNull(22) ? null : reader.GetString(22),
-                    reader.IsDBNull(23) ? null : ReadInvocation(reader.GetString(23)))
+                    reader.IsDBNull(23) ? null : ReadInvocation(reader.GetString(23), reader.IsDBNull(27) ? null : reader.GetString(27)))
                 : new AssessmentRecordDetails.Unloaded())
         {
             ReplacesAssessmentId = reader.IsDBNull(24) ? null : reader.GetString(24)
@@ -1291,12 +1300,17 @@ public sealed class AssessmentRepository : IAssessmentRepository
             { TimingEvidence = timings.Evidence };
     }
 
-    private static BatchInvocationEvidence ReadInvocation(string json)
+    private static BatchInvocationEvidence ReadInvocation(string json, string? profileJson)
     {
         try
         {
-            return JsonSerializer.Deserialize<BatchInvocationEvidence>(json, InvocationJsonOptions)
+            var evidence = JsonSerializer.Deserialize<BatchInvocationEvidence>(json, InvocationJsonOptions)
                 ?? throw new JsonException("Missing invocation evidence.");
+            return profileJson is null ? evidence : evidence with
+            {
+                InputProfile = JsonSerializer.Deserialize<BatchInputProfile>(profileJson, InvocationJsonOptions)
+                    ?? throw new JsonException("Missing invocation input profile."),
+            };
         }
         catch (JsonException exception)
         {

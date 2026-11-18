@@ -75,6 +75,7 @@ internal static class StoppedWordRetryRunner
                 retry.AnalysesPath is null || retry.AnalysesSha256 is null ||
                 BatchInvocationEvidence.DigestFile(retry.TsvPath) != retry.TsvSha256 ||
                 !BatchInvocationEvidence.TextMatchesDigest(done.Output, retry.TsvSha256) ||
+                !BatchInvocationEvidence.TextMatchesDigest(done.StandardError, retry.StandardErrorSha256) ||
                 !BatchInvocationEvidence.TextMatchesDigest(retryAnalyses, retry.AnalysesSha256))
                 return Failed("the retry run's source, parser or retained files did not match the first pass");
             var retryRows = BatchTsvParser.Parse(done.Output);
@@ -86,6 +87,10 @@ internal static class StoppedWordRetryRunner
             var merged = Merge(tsv, analyses, chosen.Select(row => row.Index).ToArray(), done.Output, retryAnalyses);
             if (merged is null) return Failed("the retry rows could not be merged into the first-pass files");
             var directory = Path.GetDirectoryName(evidence.TsvPath)!;
+            var stderr = Path.Combine(directory, StoppedWordRetry.StandardErrorFileName);
+            File.Copy(retry.StandardErrorPath, stderr, overwrite: true);
+            if (BatchInvocationEvidence.DigestFile(stderr) != retry.StandardErrorSha256)
+                return Failed("the retained retry diagnostics did not match the completed retry");
             File.Copy(evidence.TsvPath, Path.Combine(directory, "first-pass.tsv"), overwrite: true);
             File.Copy(evidence.AnalysesPath, Path.Combine(directory, "first-pass-analyses.jsonl"), overwrite: true);
             File.Copy(retry.TsvPath, Path.Combine(directory, "retry.tsv"), overwrite: true);
@@ -109,7 +114,11 @@ internal static class StoppedWordRetryRunner
             });
             var record = new StoppedWordRetry((int)retryLimit.TotalMilliseconds, stopped.Length, chosen.Length,
                 recovered, chosen.Length - recovered, retry.InvocationId, evidence.TsvSha256,
-                evidence.AnalysesSha256, retry.TsvSha256, retry.AnalysesSha256, string.Join('\n', lines));
+                evidence.AnalysesSha256, retry.TsvSha256, retry.AnalysesSha256, string.Join('\n', lines))
+            {
+                RetryStandardErrorSha256 = retry.StandardErrorSha256,
+                GrammarWarnings = BatchInvocationEvidence.ExtractWarnings(done.StandardError),
+            };
             return new Outcome(merged.Value.Tsv, merged.Value.Analyses, evidence with
             {
                 TsvSha256 = BatchInvocationEvidence.DigestFile(evidence.TsvPath),

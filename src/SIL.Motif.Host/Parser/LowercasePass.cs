@@ -25,8 +25,18 @@ public sealed class LowercasePass
     private static (string Key, LowercasePass Pass)? _lastProject;
 
     private readonly CaseFunctions? _casing;
+    internal string? WritingSystemId { get; }
+    internal string? ProfileProjectPath { get; }
 
-    private LowercasePass(CaseFunctions? casing) => _casing = casing;
+    /// <summary>The ICU locale used for casing, including the writing system's case alias when one is set.</summary>
+    public string? CasingLocale => _casing?.IcuLocale;
+
+    private LowercasePass(CoreWritingSystemDefinition? writingSystem, string? profileProjectPath = null)
+    {
+        _casing = writingSystem is null ? null : new CaseFunctions(writingSystem);
+        WritingSystemId = writingSystem?.Id;
+        ProfileProjectPath = profileProjectPath;
+    }
 
     /// <summary>A pass that never adds a word.</summary>
     public static LowercasePass None { get; } = new(null);
@@ -36,14 +46,14 @@ public sealed class LowercasePass
     {
         ArgumentNullException.ThrowIfNull(writingSystem);
         FwDataProjectLoader.Init();
-        return new LowercasePass(new CaseFunctions(writingSystem));
+        return new LowercasePass(writingSystem);
     }
 
     /// <summary>The pass for an open project's default vernacular writing system, so no second load is needed.</summary>
     public static LowercasePass ForCache(SIL.LCModel.LcmCache cache)
     {
         ArgumentNullException.ThrowIfNull(cache);
-        return For(cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem);
+        return new(cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem, cache.ProjectId.Path);
     }
 
     /// <summary>Uses the exact project writing system, or the default when the case has none.</summary>
@@ -55,7 +65,7 @@ public sealed class LowercasePass
         var writingSystem = handle == 0 ? null : cache.ServiceLocator.WritingSystemManager.Get(handle);
         return writingSystem is null
             ? throw new InvalidOperationException($"Writing system '{writingSystemId}' is not in the captured project.")
-            : For(writingSystem);
+            : new LowercasePass(writingSystem, cache.ProjectId.Path);
     }
 
     /// <summary>
@@ -76,7 +86,7 @@ public sealed class LowercasePass
         try
         {
             using var cache = new FwDataProjectLoader().LoadScratchCache(fwDataPath);
-            pass = new LowercasePass(new CaseFunctions(cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem));
+            pass = new LowercasePass(cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

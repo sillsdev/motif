@@ -791,14 +791,22 @@ public static class ArtifactRetentionCommands
                     "invocation evidence");
                 if (evidenceDocument.RootElement.TryGetProperty("StoppedWordRetry", out var retry) &&
                     retry.ValueKind != JsonValueKind.Null)
+                {
                     RequireAllowedProperties(retry,
                         ["LimitMs", "Stopped", "Retried", "Recovered", "StillStopped", "RetryInvocationId",
                             "FirstPassTsvSha256", "FirstPassAnalysesSha256", "RetryTsvSha256", "RetryAnalysesSha256",
-                            "Words", "NotRetried", "Failure"],
+                            "Words", "NotRetried", "Failure", "RetryStandardErrorSha256", "GrammarWarnings"],
                         ["LimitMs", "Stopped", "Retried", "Recovered", "StillStopped", "RetryInvocationId",
                             "FirstPassTsvSha256", "FirstPassAnalysesSha256", "RetryTsvSha256", "RetryAnalysesSha256",
                             "Words", "NotRetried"],
                         "stopped-word retry evidence");
+                    var hasRetryStderr = retry.TryGetProperty("RetryStandardErrorSha256", out var retryStderr);
+                    if (hasRetryStderr && (retryStderr.ValueKind != JsonValueKind.String || !IsDigest(retryStderr.GetString())) ||
+                        retry.TryGetProperty("GrammarWarnings", out var warnings) &&
+                        (!hasRetryStderr || warnings.ValueKind != JsonValueKind.String ||
+                            string.IsNullOrWhiteSpace(warnings.GetString())))
+                        throw new InvalidDataException("The stopped-word retry diagnostics are malformed.");
+                }
                 var evidence = JsonSerializer.Deserialize<BatchInvocationEvidence>(evidenceJson, JsonOptions);
                 if (evidence is null || evidence.InvocationId != invocationId ||
                     !IsCompleteEvidence(evidence))
@@ -1456,6 +1464,7 @@ public static class ArtifactRetentionCommands
         IsAbsolutePath(evidence.TsvPath) && IsAbsolutePath(evidence.StandardErrorPath) &&
         IsDigest(evidence.SourceBytesSha256) && IsDigest(evidence.WordsSha256) &&
         IsDigest(evidence.TsvSha256) && IsDigest(evidence.StandardErrorSha256) &&
+        (evidence.StoppedWordRetry?.RetryStandardErrorSha256 is null || Path.GetDirectoryName(evidence.TsvPath) is not null) &&
         (evidence.AnalysesPath is null && evidence.AnalysesSha256 is null ||
          IsAbsolutePath(evidence.AnalysesPath) && IsDigest(evidence.AnalysesSha256)) &&
         (evidence.ImportedSnapshotPath is null && evidence.ImportedSnapshotSha256 is null ||
@@ -1467,6 +1476,8 @@ public static class ArtifactRetentionCommands
         yield return Path.GetFullPath(evidence.WordsPath);
         yield return Path.GetFullPath(evidence.TsvPath);
         yield return Path.GetFullPath(evidence.StandardErrorPath);
+        if (evidence.StoppedWordRetry?.RetryStandardErrorSha256 is not null)
+            yield return Path.Combine(Path.GetDirectoryName(evidence.TsvPath)!, StoppedWordRetry.StandardErrorFileName);
         if (evidence.AnalysesPath is not null) yield return Path.GetFullPath(evidence.AnalysesPath);
         if (evidence.ImportedSnapshotPath is not null) yield return Path.GetFullPath(evidence.ImportedSnapshotPath);
     }

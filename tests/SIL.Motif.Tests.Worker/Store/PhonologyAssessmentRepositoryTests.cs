@@ -86,6 +86,45 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void Schema76UpgradeKeepsEveryCarriedAssessmentReadable()
+    {
+        var example = Example("e", new CitationView("Original source", "p. 1"));
+        using (var database = Open())
+        {
+            var revision = new PhonologyExampleSetRepository(database).Save("Set", [example], null, null);
+            var phonology = Record("phonology", revision, [Row(example)]);
+            var repository = new AssessmentRepository(database);
+            repository.Record(phonology);
+            repository.Record(Unavailable("unavailable", revision));
+            repository.Record(phonology with
+            {
+                AssessmentId = "words", Kind = "ParseTime", ScopeJson = "{}",
+                Subject = new AssessmentSubject.Words(SIL.Motif.Host.Corpus.Selection.Create("Words", ["word"]), "none", "1"),
+                Material = new AssessmentRecordMaterial.Words([], null, null, []),
+            });
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                DROP TABLE GrammarCoverageNoAnalysisRank;
+                DROP TABLE GrammarCoverageMeasurements;
+                DROP TABLE GrammarCoverageSegmentations;
+                ALTER TABLE AssessmentInvocations DROP COLUMN InputProfileJson;
+                PRAGMA user_version = 76;
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        using var upgraded = Open();
+        var assessments = new AssessmentRepository(upgraded);
+        foreach (var id in new[] { "words", "phonology", "unavailable" })
+            Assert.Equal(id, assessments.Get(id).AssessmentId);
+        var phonologyResults = new PhonologyAssessmentRepository(upgraded);
+        Assert.Equal(example.Citation, phonologyResults.ReadExample("phonology", "e").Result.Example.Citation);
+        Assert.Single(phonologyResults.ReadDependencies("phonology"));
+        Assert.IsType<PhonologyRowEvidence.Unavailable>(phonologyResults.ReadExample("unavailable", "e").Result.Evidence);
+    }
+
+    [Fact]
     public void ProducerNotStartedIsProducedAndKeepsZeroAllocationsAndFlags()
     {
         using var database = Open();

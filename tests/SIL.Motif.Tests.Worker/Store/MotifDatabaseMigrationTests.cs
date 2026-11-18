@@ -310,7 +310,11 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
             ["CorpusDocuments"] = ["CorpusId|TEXT|1|1|", "DocumentId|TEXT|1|2|", "OrdinalIndex|INTEGER|1|0|",
                 "Title|TEXT|1|0|", "Source|TEXT|1|0|", "Text|TEXT|1|0|", "ContentSha256|TEXT|1|0|",
                 "IngestedUtc|TEXT|1|0|", "Licence|TEXT|0|0|", "CapabilitiesJson|TEXT|0|0|", "AttributesJson|TEXT|0|0|", "FileBacked|INTEGER|1|0|0"],
-            ["AssessmentInvocations"] = ["InvocationId|TEXT|0|1|", "EvidenceJson|TEXT|1|0|"],
+            ["GrammarCoverageSegmentations"] = ["Id|TEXT|1|1|", "Payload|TEXT|1|0|"],
+            ["GrammarCoverageMeasurements"] = ["StampId|TEXT|1|1|", "Payload|TEXT|1|0|"],
+            ["GrammarCoverageNoAnalysisRank"] = ["StampId|TEXT|1|1|", "NegativeWeight|INTEGER|1|2|",
+                "WordformId|TEXT|1|3|", "WritingSystemId|TEXT|1|0|", "FormNfd|TEXT|1|0|"],
+            ["AssessmentInvocations"] = ["InvocationId|TEXT|0|1|", "EvidenceJson|TEXT|1|0|", "InputProfileJson|TEXT|0|0|"],
             ["NamedSelections"] = ["SelectionName|TEXT|0|1|", "TextIdsJson|TEXT|1|0|", "AddedWordsJson|TEXT|1|0|",
                 "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|", "TimeLimitMode|TEXT|1|0|",
                 "ExplicitPerWordLimitMs|INTEGER|0|0|", "PerWordParserWorkLimit|INTEGER|0|0|", "Revision|INTEGER|1|0|",
@@ -385,6 +389,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         var foreignKeys = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["CorpusDocuments"] = ["Corpora|CorpusId|CorpusId|NO ACTION|NO ACTION|NONE"],
+            ["GrammarCoverageNoAnalysisRank"] = ["GrammarCoverageMeasurements|StampId|StampId|NO ACTION|CASCADE|NONE"],
             ["NamedSelections"] = [],
             ["Requests"] = [],
             ["DefaultSelection"] = ["NamedSelections|SelectionName|SelectionName|NO ACTION|NO ACTION|NONE"],
@@ -471,6 +476,20 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
 
         Assert.Throws<InvalidDataException>(() => MotifDatabase.OpenOwned(
             path, Locator("malformed-column-" + mutation + ".fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
+    }
+
+    [Fact]
+    public void ReadExistingRejectsSchemaChangesAfterAValidatedRead()
+    {
+        var project = Locator("read-schema.fwdata");
+        var path = DatabasePath("read-schema.fwdata");
+        using (MotifDatabase.OpenOwned(path, project, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        Assert.True(MotifDatabase.ReadExisting(path, project, (_, _) => true));
+
+        using (var connection = NewConnection(path))
+            Execute(connection, "DROP TABLE GrammarCoverageNoAnalysisRank;");
+
+        Assert.Throws<InvalidDataException>(() => MotifDatabase.ReadExisting(path, project, (_, _) => true));
     }
 
     [Theory]
