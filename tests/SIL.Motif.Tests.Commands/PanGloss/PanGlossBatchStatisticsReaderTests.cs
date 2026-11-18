@@ -4,6 +4,13 @@ using Xunit;
 
 namespace SIL.Motif.Tests.PanGloss;
 
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class PanGlossStatisticsMemoryCollection
+{
+    public const string Name = "PanGloss statistics process heap";
+}
+
+[Collection(PanGlossStatisticsMemoryCollection.Name)]
 public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-pangloss-stats-" + Guid.NewGuid().ToString("N"));
@@ -284,7 +291,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         Assert.Equal(result.DetailWordCount * objects, result.ObjectTimings.Count);
         Assert.Equal(objects, result.Aggregates.Count);
         Assert.All(result.Aggregates, aggregate => Assert.Equal(words, aggregate.WordsTouched));
-        // Relative to a whole read, so load cannot move the bar: 31% of the rows must cost under 60%.
+        // Process-wide heap deltas need an exclusive collection; 31% of the rows must cost under 60%.
         Assert.Equal(words * objects, whole.ObjectTimings.Count);
         Assert.True(growth < wholeGrowth * 0.6, $"kept {growth:N0} bytes against {wholeGrowth:N0} for every row");
         Assert.True(result.ObjectTimings.Select(row => row.Key).Distinct(ReferenceEqualityComparer.Instance).Count() <= objects);
