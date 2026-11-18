@@ -23,7 +23,7 @@ namespace SIL.TextEditing.Project
         Missing,
     }
 
-    /// <summary>What <see cref="ProjectRecordImporter.Plan(string, IWritableFields?)"/> made of a record file: the changes it would make and what it refuses, and whether the file was made from the
+    /// <summary>What <see cref="ProjectRecordImporter.Plan(string, WritableFields?)"/> made of a record file: the changes it would make and what it refuses, and whether the file was made from the
     /// project as it is. It changes nothing in the project.</summary>
     public sealed class ProjectRecordPlan
     {
@@ -83,7 +83,7 @@ namespace SIL.TextEditing.Project
 
         /// <summary>Plans the import of <paramref name="fileText"/> into the project.</summary>
         /// <param name="writable">What the host can write; null skips that check.</param>
-        public static ProjectRecordPlan Plan(LcmCache cache, ProjectRecordSchemaResult schemaResult, string fileText, IWritableFields? writable = null)
+        public static ProjectRecordPlan Plan(LcmCache cache, ProjectRecordSchemaResult schemaResult, string fileText, WritableFields? writable = null)
             => new ProjectRecordImporter(new ProjectRecordExporter(cache, schemaResult)).Plan(fileText, writable);
 
         /// <summary>Tests replace the fresh export to reach paths a healthy project cannot.</summary>
@@ -93,7 +93,7 @@ namespace SIL.TextEditing.Project
 
         /// <summary>Plans the import of <paramref name="fileText"/>. It never throws for a bad file: whatever is wrong with it is a refusal.</summary>
         /// <param name="writable">What the host can write; null skips that check.</param>
-        public ProjectRecordPlan Plan(string fileText, IWritableFields? writable = null)
+        public ProjectRecordPlan Plan(string fileText, WritableFields? writable = null)
         {
             if (fileText == null) throw new ArgumentNullException(nameof(fileText));
             var read = RecordFileReader.Read(fileText, Schema, _exporter.CreateReadOptions());
@@ -273,7 +273,7 @@ namespace SIL.TextEditing.Project
         {
             readonly ProjectRecordImporter _in;
             readonly ProjectRecordExport _export;
-            readonly IWritableFields? _writable;
+            readonly WritableFields? _writable;
             readonly HashSet<Guid> _documentGuids = new HashSet<Guid>();
             readonly HashSet<string> _locked = new HashSet<string>(StringComparer.Ordinal);
             readonly SchemaBindings _bindings;
@@ -281,7 +281,7 @@ namespace SIL.TextEditing.Project
             readonly LcmCache _cache;
             readonly Guid _record;
 
-            public CheckRun(ProjectRecordImporter importer, ProjectRecordExport export, RecordDocument baseDocument, IWritableFields? writable)
+            public CheckRun(ProjectRecordImporter importer, ProjectRecordExport export, RecordDocument baseDocument, WritableFields? writable)
             {
                 _in = importer;
                 _export = export;

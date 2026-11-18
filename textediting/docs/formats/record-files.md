@@ -511,21 +511,22 @@ Refusals the importer adds to the differ's (`RecordRefusalKind`):
 | `StaleBase`, `MissingBase` | The base is not the fresh export's, or is absent. | Whole file |
 | `UnreadableFile` | The text does not read as a record file of the schema (any other reader error, named by id and line). | Whole file |
 | `UnknownRecord` | The file names no record of the project. | Whole file |
-| `UnknownField` | A key the schema does not have for the object, for example `date-modified`, which the export left out. | Whole file |
+| `UnknownField` | A key the schema does not have for the object, for example `date-modified`, which the export left out (whole file); or a change that cannot be mapped to a project field, which is never accepted unchecked (the change). | Either: read `RecordRefusal.WholeFile` |
 | `UnknownWritingSystem`, `UndefinedStyle` | A writing system or style the project lacks (`fwmd.ws.unknown`, `fwmd.style.unknown`). | Whole file |
 | `UnknownReference` | A reference whose GUID is not an object of the project, or a link that names none (or `fwmd.link.not-found`, `fwmd.link.ambiguous`). | The change |
 | `WrongReferenceClass` | A reference to an object whose class the field cannot hold (checked against liblcm's metadata, not against which list the item is in). | The change |
-| `UnexportedValue` | The change touches a field whose project value the export could not hold in full (formatting a plain field cannot spell, an undefined style, an unconvertible value, a structured text with analyses). Writing would lose it. Timestamps never count: liblcm stamps them itself. | The change |
+| `UnexportedValue` | The change touches a field whose project value the export could not hold in full (formatting a plain field cannot spell, an undefined style, an unconvertible value, a structured text with analyses). Writing would lose it. Only liblcm's own `DateCreated` and `DateModified` (by name, never a custom field) are exempt: liblcm stamps them itself. | The change |
 | `ComputedField` | A computed field (head word, homograph number) was edited. | The change |
+| `UnknownDeleteTarget` | The object a removal names has no GUID or is not in the project. | The change |
 | `DeleteHasUnexportedData` | An object left out of a whole file has other unexported data (anything but its own timestamps). | The change |
 | `DeleteHasIncomingReferences` | An object left out of a whole file, or one it owns, is referred to by an object outside it. | The change |
-| `FieldNotWritable`, `CreateNotWritable`, `DeleteNotWritable` | The host's `IWritableFields` says no. Skipped when none is given. | The change |
+| `FieldNotWritable`, `CreateNotWritable`, `DeleteNotWritable` | The host's `WritableFields` says no. Skipped when none is given. | The change |
 | `GuidInUse` | A new object's GUID is already an object of the project. | The change |
 | `DependsOnRefusedChange` | A change is placed after an added object whose change was refused. | The change |
 | `ExportFailed` | The project's record could not be written as a file to compare with. | Whole file |
 
 **Delete by omission** (a whole file leaves out an object; `ByOmission`) is allowed only when the object and everything it owns have no unexported data other than their
-timestamps (those go with the object) and no object outside it refers to it or to anything it owns. A clear by omission of a scalar or an alternative follows the field rule:
+timestamps (those go with the object) and no object outside it refers to it or to anything it owns, whether by a liblcm reference or by a link inside rich text (the project's strings are searched once per plan, only when something is deleted). A clear by omission of a scalar or an alternative follows the field rule:
 allowed unless the field has unexported data. Anything else is a refusal with a reason. A partial file deletes nothing.
 
 ## What the tests hold the format to

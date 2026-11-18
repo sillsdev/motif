@@ -235,11 +235,11 @@ ProjectRecordPlan plan = importer.Plan(File.ReadAllText(path), writableFields /*
 - **`base:`.** The exporter now writes `base: "sha256:..."` (`ProjectRecordExport.Base`), a digest of the file text without that line and of every `Unexported` value. `Plan`
   exports the record again and a different digest is a `StaleBase` refusal of the whole file; no merge. See [Importing a record file](../formats/record-files.md#importing-a-record-file) for
   every refusal kind.
-- **`IWritableFields`.** An optional host interface: `CanWrite(declaringClass, field)` for a set, clear, add, remove or move of a field, `CanCreate(ownerClass, ownerField, class)` and
+- **`WritableFields`.** An optional abstract class a host subclasses (later questions arrive as virtual members, so an implementer never breaks): `CanWrite(declaringClass, field)` for a set, clear, add, remove or move of a field, `CanCreate(ownerClass, ownerField, class)` and
   `CanDelete(ownerClass, ownerField, class)` for owned objects. Names are liblcm's metadata names, and the owner class is the class that declares the field.
 - **Checks need a project.** A reference must name an object that exists and whose class the field's metadata destination accepts (subclasses fit); a rich value's writing systems
   and styles are the project's; a change to a field whose project value the export reported as unexported is refused rather than silently overwritten; deleting by omission needs
-  no unexported data on the object (its own timestamps aside) and no incoming reference (liblcm's `ReferringObjects`, from outside the object and what it owns).
+  no unexported data on the object (its own timestamps aside) and no incoming reference from outside the object and what it owns (liblcm's `ReferringObjects`, and links inside rich text, found by one search of the project's strings when a delete is planned). `RecordRefusal.WholeFile` says whether a refusal is about the whole file.
 - **Read-only.** Tests check that planning leaves the object count, every `DateModified` and the undo state as they were, for all three kinds. Against a real project, set
   `TEXTEDITING_EXPORT_FWDATA` (as for the export): every record exported and planned unedited must give no change and no refusal; only counts are printed.
 

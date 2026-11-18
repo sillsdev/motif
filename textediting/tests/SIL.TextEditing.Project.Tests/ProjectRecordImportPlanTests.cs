@@ -89,7 +89,7 @@ namespace SIL.TextEditing.Project.Tests
             return RecordFileWriter.Write(read.Document!, exporter.Schema);
         }
 
-        static ProjectRecordPlan Plan(ProjectRecordExporter exporter, string text, IWritableFields? writable = null) => new ProjectRecordImporter(exporter).Plan(text, writable);
+        static ProjectRecordPlan Plan(ProjectRecordExporter exporter, string text, WritableFields? writable = null) => new ProjectRecordImporter(exporter).Plan(text, writable);
 
         static RecordObject Obj(RecordValue? v) => (RecordObject)v!;
         static RecordObject SenseAt(RecordDocument d, int index) => (RecordObject)((RecordList)d.Data["senses"]!).Items[index];
@@ -98,15 +98,15 @@ namespace SIL.TextEditing.Project.Tests
         static RecordRefusal Single(ProjectRecordPlan plan, RecordRefusalKind kind)
             => Assert.Single(plan.ChangeSet.Refusals, r => r.Kind == kind);
 
-        sealed class Writable : IWritableFields
+        sealed class Writable : WritableFields
         {
             public Func<string, string, bool> Write = (c, f) => true;
             public Func<string, string, string, bool> Create = (o, f, c) => true;
             public Func<string, string, string, bool> Delete = (o, f, c) => true;
             public readonly List<string> Asked = new List<string>();
-            public bool CanWrite(string className, string fieldName) { Asked.Add("write " + className + "." + fieldName); return Write(className, fieldName); }
-            public bool CanCreate(string ownerClassName, string ownerFieldName, string className) { Asked.Add("create " + ownerClassName + "." + ownerFieldName + " " + className); return Create(ownerClassName, ownerFieldName, className); }
-            public bool CanDelete(string ownerClassName, string ownerFieldName, string className) { Asked.Add("delete " + ownerClassName + "." + ownerFieldName + " " + className); return Delete(ownerClassName, ownerFieldName, className); }
+            public override bool CanWrite(string className, string fieldName) { Asked.Add("write " + className + "." + fieldName); return Write(className, fieldName); }
+            public override bool CanCreate(string ownerClassName, string ownerFieldName, string className) { Asked.Add("create " + ownerClassName + "." + ownerFieldName + " " + className); return Create(ownerClassName, ownerFieldName, className); }
+            public override bool CanDelete(string ownerClassName, string ownerFieldName, string className) { Asked.Add("delete " + ownerClassName + "." + ownerFieldName + " " + className); return Delete(ownerClassName, ownerFieldName, className); }
         }
 
         // ------------------------------------------------------------------ no-op and read-only
