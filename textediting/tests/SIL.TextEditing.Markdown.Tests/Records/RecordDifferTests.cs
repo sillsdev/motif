@@ -129,7 +129,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             Assert.Equal(RecordChangeKind.RemoveObject, c.Kind);
             Assert.Equal(G(1), c.ItemGuid);
             Assert.True(c.ByOmission);
-            Assert.True(set.HasRemovalsByOmission);
+            Assert.True(set.HasOmissions);
         }
 
         [Fact]
@@ -155,8 +155,10 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             Assert.True(removed.ByOmission);
             var other = new RecordObject { Guid = G(31), Class = "etym" }.Set("source", S("Greek"));
             var replaced = Diff(Doc(Entry().Set("etymology", etym)), Doc(Entry().Set("etymology", other)));
-            Assert.Equal(new[] { RecordChangeKind.RemoveObject, RecordChangeKind.AddObject }, replaced.Changes.Select(c => c.Kind).ToArray());
-            Assert.False(replaced.Changes[0].ByOmission);
+            Assert.Empty(replaced.Changes);
+            var r = Assert.Single(replaced.Refusals);
+            Assert.Equal(RecordRefusalKind.IdentityChanged, r.Kind);
+            Assert.Equal("etymology", r.Field);
         }
 
         [Fact]
@@ -194,7 +196,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         {
             var set = Diff(Doc(Senses(1, 2, 3, 4, 5)), Doc(Senses(5, 4, 3, 2, 1)));
             Assert.Equal(4, set.Changes.Count);
-            Assert.Equal(Dump(Apply(Senses(1, 2, 3, 4, 5), set), Schema()), Dump(Senses(5, 4, 3, 2, 1), Schema()));
+            Assert.Equal(Dump(Apply(Senses(1, 2, 3, 4, 5), set, Schema()), Schema()), Dump(Senses(5, 4, 3, 2, 1), Schema()));
         }
 
         [Fact]
@@ -228,7 +230,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
                 set.Changes.Select(c => c.Kind + " " + c.ItemKey).ToArray());
             Assert.Equal(G(2), set.Changes[0].OldTarget);
             Assert.Equal(G(9), set.Changes[2].NewTarget);
-            Assert.Equal(Dump(t, Schema()), Dump(Apply(b, set), Schema()));
+            Assert.Equal(Dump(t, Schema()), Dump(Apply(b, set, Schema()), Schema()));
         }
 
         [Fact]
@@ -239,6 +241,64 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             Assert.Equal(RecordChangeKind.AddItem, c.Kind);
             Assert.Equal("a#3", c.ItemKey);
             Assert.Equal("a#2", c.After);
+        }
+
+        // ---------------------------------------------------------------- omission, duplicates, read-only
+
+        [Fact]
+        public void EveryClearAndRemovalOfAWholeFileIsByOmissionAndNoneOfAPartialFileIs()
+        {
+            RecordObject Whole() => Entry().Set("lexeme", S("a")).Set("citation", Alts(("en", "a"))).Set("note", Alts(("en", "x"))).Set("comment", S("c"))
+                .Set("category", Ref(G(7))).Set("seeAlso", List(Ref(G(1)))).Set("variants", List(S("v"))).Set("senses", List(Sense(1)))
+                .Set("etymology", new RecordObject { Guid = G(30), Class = "etym" });
+            var set = Diff(Doc(Whole()), Doc(Entry()));
+            Assert.Equal(new[] { "Clear", "ClearAlternative", "ClearRich", "ClearRich", "Clear", "RemoveReference", "RemoveItem", "RemoveObject", "RemoveObject" }.OrderBy(x => x),
+                set.Changes.Select(c => c.Kind.ToString()).OrderBy(x => x));
+            Assert.All(set.Changes, c => Assert.True(c.ByOmission, c.ToString()));
+            Assert.True(set.HasOmissions);
+            Assert.False(Diff(Doc(Entry()), Doc(Entry().Set("lexeme", S("a")))).HasOmissions);
+            var partial = Diff(Doc(Entry().Set("senses", List(Sense(1, "g").Set("definition", Alts(("en", "d")))))),
+                Doc(new RecordObject().Set("definition", Alts(("en", ""))), "/lexicon/foo/senses/1"));
+            Assert.Equal(RecordChangeKind.ClearRich, One(partial).Kind);
+            Assert.False(partial.HasOmissions);
+        }
+
+        [Fact]
+        public void ADuplicateGuidIsRefusedAndNoneOfItsCopiesIsCompared()
+        {
+            var b = Entry().Set("senses", List(Sense(1, "a"), Sense(2, "b")));
+            var t = Entry().Set("senses", List(Sense(1, "a"), Sense(2, "B"), Sense(2, "C")));
+            var set = Diff(Doc(b), Doc(t));
+            var r = Assert.Single(set.Refusals);
+            Assert.Equal(RecordRefusalKind.DuplicateGuid, r.Kind);
+            Assert.Equal(G(2), r.ObjectGuid);
+            Assert.Empty(set.Changes);
+            var inBase = Diff(Doc(t), Doc(b));
+            Assert.Equal(RecordRefusalKind.DuplicateGuid, Assert.Single(inBase.Refusals).Kind);
+            Assert.Empty(inBase.Changes);
+        }
+
+        [Fact]
+        public void AGuidOnTheRecordAndAChildIsADuplicate()
+        {
+            var t = Entry().Set("senses", List(new RecordObject { Guid = EntryGuid }));
+            Assert.Contains(Diff(Doc(Entry()), Doc(t)).Refusals, r => r.Kind == RecordRefusalKind.DuplicateGuid);
+        }
+
+        [Fact]
+        public void ChangeSetsCannotBeMutatedAndASubtreeIsACopy()
+        {
+            var b = Entry().Set("senses", List(Sense(1, "a")));
+            var sub = Sense(2, "b");
+            var set = Diff(Doc(b), Doc(Entry().Set("senses", List(Sense(1, "a"), sub)).Set("comment", S("one two")).Set("flag", RecordScalar.Of(true))));
+            Assert.IsNotType<List<RecordChange>>(set.Changes);
+            Assert.IsNotType<List<RecordRefusal>>(set.Refusals);
+            Assert.Throws<NotSupportedException>(() => ((IList<RecordChange>)set.Changes).Add(set.Changes[0]));
+            var add = set.Changes.Single(c => c.Kind == RecordChangeKind.AddObject);
+            Assert.NotSame(sub, add.Subtree);
+            Assert.Equal(Dump(sub, Schema()), Dump(add.Subtree, Schema()));
+            var rich = Diff(Doc(Entry().Set("comment", S("a b"))), Doc(Entry().Set("comment", S("a c")))).Changes.Single();
+            Assert.Throws<NotSupportedException>(() => ((IList<RecordWordSpan>)rich.Words!).Clear());
         }
 
         // ---------------------------------------------------------------- refusals

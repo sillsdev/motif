@@ -44,13 +44,14 @@ namespace SIL.TextEditing.Markdown.Records
             }
 
             var differ = new Differ(partial);
-            differ.IndexOwners(baseWhole, differ.BaseOwners, null, TypeOfRoot(kind, baseDocument.Data, baseDocument.Root == target.Root ? info.Type : null, baseDocument.Root));
+            differ.IndexOwners(baseWhole, differ.BaseOwners, "export", null, TypeOfRoot(kind, baseDocument.Data, baseDocument.Root == target.Root ? info.Type : null, baseDocument.Root));
             var targetRootType = info.Type;
             var rootGuid = targetRootType.HasGuid ? (baseRoot.Guid ?? target.Data.Guid) : null;
-            differ.IndexOwners(target.Data, differ.TargetOwners, rootGuid, targetRootType);
+            differ.IndexOwners(target.Data, differ.TargetOwners, "file", rootGuid, targetRootType);
 
             differ.DiffRoot(baseRoot, target.Data, targetRootType, rootGuid);
-            return new RecordChangeSet(differ.Changes, differ.Refusals, partial);
+            differ.Finish();
+            return new RecordChangeSet(differ.Changes.AsReadOnly(), differ.Refusals.AsReadOnly(), partial);
         }
 
         static RecordObjectType TypeOfRoot(RecordKind kind, RecordObject data, RecordObjectType? known, string? root)
@@ -113,10 +114,14 @@ namespace SIL.TextEditing.Markdown.Records
 
             // ------------------------------------------------------------ who owns which object
 
-            public void IndexOwners(RecordObject obj, Dictionary<Guid, string> map, Guid? guid, RecordObjectType type)
-                => IndexOwners(obj, map, new Addr(guid ?? (type.HasGuid ? obj.Guid : null), string.Empty), type);
+            public void IndexOwners(RecordObject obj, Dictionary<Guid, string> map, string side, Guid? guid, RecordObjectType type)
+            {
+                var rootGuid = guid ?? (type.HasGuid ? obj.Guid : null);
+                if (rootGuid != null) map[rootGuid.Value] = "|";
+                IndexOwners(obj, map, side, new Addr(rootGuid, string.Empty), type);
+            }
 
-            void IndexOwners(RecordObject obj, Dictionary<Guid, string> map, Addr addr, RecordObjectType type)
+            void IndexOwners(RecordObject obj, Dictionary<Guid, string> map, string side, Addr addr, RecordObjectType type)
             {
                 foreach (var field in type.Fields)
                 {
@@ -132,11 +137,61 @@ namespace SIL.TextEditing.Markdown.Records
                         if (childType == null) continue;
                         if (child.Guid != null)
                         {
-                            if (!map.ContainsKey(child.Guid.Value)) map[child.Guid.Value] = OwnerKey(addr, field.Name);
-                            IndexOwners(child, map, new Addr(child.Guid, string.Empty), childType);
+                            if (map.ContainsKey(child.Guid.Value))
+                            {
+                                if (Duplicates.Add(child.Guid.Value))
+                                    Refusals.Add(new RecordRefusal(RecordRefusalKind.DuplicateGuid, "The guid " + child.Guid.Value.ToString("D") + " is on more than one object in the " + side + "; none of them is compared.")
+                                        { ObjectGuid = child.Guid, Field = addr.Prefix + field.Name });
+                            }
+                            else map[child.Guid.Value] = OwnerKey(addr, field.Name);
+                            IndexOwners(child, map, side, new Addr(child.Guid, string.Empty), childType);
                         }
-                        else IndexOwners(child, map, new Addr(addr.Guid, addr.Prefix + field.Name + "/" + (i + 1).ToString(CultureInfo.InvariantCulture) + "/"), childType);
+                        else IndexOwners(child, map, side, new Addr(addr.Guid, addr.Prefix + field.Name + "/" + (i + 1).ToString(CultureInfo.InvariantCulture) + "/"), childType);
                     }
+                }
+            }
+
+            public readonly HashSet<Guid> Duplicates = new HashSet<Guid>();
+
+            /// <summary>Marks every clear or removal of a whole-record target as made by omission.</summary>
+            public void Finish()
+            {
+                if (_partial) return;
+                foreach (var c in Changes)
+                    switch (c.Kind)
+                    {
+                        case RecordChangeKind.Clear: case RecordChangeKind.ClearAlternative: case RecordChangeKind.ClearRich:
+                        case RecordChangeKind.RemoveObject: case RecordChangeKind.RemoveReference: case RecordChangeKind.RemoveItem:
+                            c.ByOmission = true;
+                            break;
+                    }
+            }
+
+            static RecordObject CloneObject(RecordObject o)
+            {
+                var c = new RecordObject { Guid = o.Guid, Class = o.Class };
+                foreach (var f in o.Fields) c.Fields.Add(new KeyValuePair<string, RecordValue>(f.Key, CloneValue(f.Value)));
+                return c;
+            }
+
+            static RecordValue CloneValue(RecordValue v)
+            {
+                switch (v)
+                {
+                    case RecordScalar s: return new RecordScalar(s.Text) { Target = s.Target, Paragraphs = s.Paragraphs };
+                    case RecordAlternatives a:
+                    {
+                        var r = new RecordAlternatives();
+                        foreach (var i in a.Items) r.Add(i.Key, (RecordScalar)CloneValue(i.Value));
+                        return r;
+                    }
+                    case RecordList l:
+                    {
+                        var r = new RecordList();
+                        foreach (var i in l.Items) r.Add(CloneValue(i));
+                        return r;
+                    }
+                    default: return CloneObject((RecordObject)v);
                 }
             }
 
@@ -245,6 +300,7 @@ namespace SIL.TextEditing.Markdown.Records
             {
                 bool hasB = b != null && !b.IsEmpty, hasT = t != null && !t.IsEmpty;
                 if (!hasB && !hasT) return;
+                if ((b?.Guid != null && Duplicates.Contains(b.Guid.Value)) || (t?.Guid != null && Duplicates.Contains(t.Guid.Value))) return;
                 if (!hasT)
                 {
                     EmitRemove(field.Name, field, b!, type, addr, 1, byOmission: !_partial);
@@ -257,8 +313,9 @@ namespace SIL.TextEditing.Markdown.Records
                 }
                 if (b!.Guid != null && t!.Guid != null && b.Guid != t.Guid)
                 {
-                    EmitRemove(field.Name, field, b, type, addr, 1, byOmission: false);
-                    EmitAdd(field.Name, field, t, type, addr, null, null, 1);
+                    Refuse(RecordRefusalKind.IdentityChanged, addr, addr.Prefix + field.Name, null,
+                        "The guid of " + field.Name + " changed from " + b.Guid.Value.ToString("D") + " to " + t.Guid.Value.ToString("D") + "; an object's guid is never edited in place.",
+                        b.Guid.Value.ToString("D"), t.Guid.Value.ToString("D"));
                     return;
                 }
                 DiffPair(field, b, t!, addr, field.Name + "/");
@@ -313,7 +370,7 @@ namespace SIL.TextEditing.Markdown.Records
             {
                 change.ItemGuid = o.Guid;
                 change.ItemKey = o.Guid?.ToString("D") ?? "#" + ordinal.ToString(CultureInfo.InvariantCulture);
-                change.Subtree = o;
+                change.Subtree = CloneObject(o);
             }
 
             // True when the object is under another owner or field on the other side: reported once as a refusal, and no add or remove is emitted for it.
@@ -418,8 +475,9 @@ namespace SIL.TextEditing.Markdown.Records
 
             static string KeyOf(RecordObject o, int ordinal) => o.Guid?.ToString("D") ?? "#" + ordinal.ToString(CultureInfo.InvariantCulture);
 
-            static List<RecordObject> Objects(RecordList? list)
-                => list == null ? new List<RecordObject>() : list.Items.OfType<RecordObject>().ToList();
+            // The objects of a list, leaving out any whose GUID is on more than one object (those were refused).
+            List<RecordObject> Objects(RecordList? list)
+                => list == null ? new List<RecordObject>() : list.Items.OfType<RecordObject>().Where(o => o.Guid == null || !Duplicates.Contains(o.Guid.Value)).ToList();
 
             // Item types without GUIDs: items are matched by position.
             void DiffPositional(RecordField field, RecordField itemField, List<RecordObject> b, List<RecordObject> t, RecordObjectType type, Addr addr, bool ordered)
@@ -559,7 +617,7 @@ namespace SIL.TextEditing.Markdown.Records
                 {
                     spans.Add(new RecordWordSpan(RecordWordSpanKind.Removed, old));
                     spans.Add(new RecordWordSpan(RecordWordSpanKind.Added, @new));
-                    return spans;
+                    return spans.AsReadOnly();
                 }
                 var lcs = new int[a.Count + 1, b.Count + 1];
                 for (int i = a.Count - 1; i >= 0; i--)
@@ -572,7 +630,7 @@ namespace SIL.TextEditing.Markdown.Records
                     else if (x < a.Count && (y == b.Count || lcs[x + 1, y] >= lcs[x, y + 1])) { Append(spans, RecordWordSpanKind.Removed, a[x]); x++; }
                     else { Append(spans, RecordWordSpanKind.Added, b[y]); y++; }
                 }
-                return spans;
+                return spans.AsReadOnly();
             }
 
             static void Append(List<RecordWordSpan> spans, RecordWordSpanKind kind, string text)

@@ -23,8 +23,7 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>Add an owned object; <see cref="RecordChange.Subtree"/> is the whole new object. In a sequence, <see cref="RecordChange.Index"/> and
         /// <see cref="RecordChange.After"/> place it.</summary>
         AddObject,
-        /// <summary>Remove an owned object; <see cref="RecordChange.Subtree"/> is what the base held. <see cref="RecordChange.ByOmission"/> says the target
-        /// simply did not mention it.</summary>
+        /// <summary>Remove an owned object; <see cref="RecordChange.Subtree"/> is what the base held.</summary>
         RemoveObject,
         /// <summary>Move an owned object within its sequence.</summary>
         MoveObject,
@@ -55,6 +54,8 @@ namespace SIL.TextEditing.Markdown.Records
         MovedToOtherOwner,
         /// <summary>The object's class names no type its field allows, so its fields cannot be read.</summary>
         UnknownClass,
+        /// <summary>One GUID is on more than one object in the export or the file. None of those objects is compared, so none of their edits is lost silently.</summary>
+        DuplicateGuid,
     }
 
     /// <summary>Whether a span of a word-level summary is in both values, only the old one or only the new one.</summary>
@@ -115,17 +116,22 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>For an object in a sequence or collection: its GUID, when it has one.</summary>
         public Guid? ItemGuid { get; internal set; }
 
-        /// <summary>For an add or move in a sequence: the 1-based index the item has in the target. Null for a collection.</summary>
+        /// <summary>For an add or move in a sequence: the 1-based index the item has in the target. Null for a collection. For a partial target this counts only the items
+        /// the file holds, not the base's other items; rely on <see cref="After"/> there.</summary>
         public int? Index { get; internal set; }
 
         /// <summary>For an add or move in a sequence: the key of the item that comes just before it in the target; null for first. A change set is applied in
-        /// order: removals first, then adds and moves in ascending target order, each placed right after its <see cref="After"/> item.</summary>
+        /// order: removals first, then adds and moves in ascending target order, each placed right after its <see cref="After"/> item. An <see cref="After"/> of the form <c>#n</c> names either an object with no GUID that an earlier
+        /// change of this set added (its <see cref="ItemKey"/>), or, in a list of types that have no GUIDs, the item at position n.</summary>
         public string? After { get; internal set; }
 
-        /// <summary>For adding or removing an object: the object (the target's for an add, the base's for a remove).</summary>
+        /// <summary>For adding or removing an object: a detached copy of the object (the target's for an add, the base's for a remove). Changing it changes neither document.</summary>
         public RecordObject? Subtree { get; internal set; }
 
-        /// <summary>For removing an object: true when the target is a whole-record file that does not mention it. Phase 2 decides whether that is a delete.</summary>
+        /// <summary>True for every clear and removal (<see cref="RecordChangeKind.Clear"/>, <see cref="RecordChangeKind.ClearAlternative"/>, <see cref="RecordChangeKind.ClearRich"/>,
+        /// <see cref="RecordChangeKind.RemoveObject"/>, <see cref="RecordChangeKind.RemoveReference"/>, <see cref="RecordChangeKind.RemoveItem"/>) of a whole-record target:
+        /// the file holds no empty value, so the value is cleared because the file does not mention it. Whether that is a delete is for the importer to decide. Never set for
+        /// a partial target, where absence is no change.</summary>
         public bool ByOmission { get; internal set; }
 
         /// <summary>For <see cref="RecordChangeKind.SetRich"/> with an old value: a word-level summary, for display only.</summary>
@@ -177,7 +183,7 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>True when there is nothing to apply and nothing refused.</summary>
         public bool IsEmpty => Changes.Count == 0 && Refusals.Count == 0;
 
-        /// <summary>True when an object is removed only because a whole-record target left it out (<see cref="RecordChange.ByOmission"/>).</summary>
-        public bool HasRemovalsByOmission => Changes.Any(c => c.Kind == RecordChangeKind.RemoveObject && c.ByOmission);
+        /// <summary>True when any change exists only because a whole-record target left something out (<see cref="RecordChange.ByOmission"/>).</summary>
+        public bool HasOmissions => Changes.Any(c => c.ByOmission);
     }
 }

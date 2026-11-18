@@ -134,30 +134,55 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             }
         }
 
-        static string KeyOf(RecordValue item, int ordinal, List<RecordValue> list)
+        // ---------------------------------------------------------------- the applier
+        // It works from the documented contract of a change (object GUID, field path, kind, Old/New, ItemGuid, Index, After) and the schema, and it checks Old
+        // against what is there before it writes: a wrong Old fails here, so `expected` is proved, not copied.
+
+        static string TextOf(RecordValue? v) => v is RecordScalar s && !s.IsEmpty ? s.Text : null!;
+
+        static RecordObject? FindByGuid(RecordObject o, Guid guid)
         {
-            if (item is RecordObject o) return o.Guid?.ToString("D") ?? "#" + ordinal.ToString(CultureInfo.InvariantCulture);
-            var s = (RecordScalar)item;
-            string key = s.Target?.ToString("D") ?? s.Text;
-            int seen = list.Take(ordinal - 1).Count(x => x is RecordScalar y && (y.Target?.ToString("D") ?? y.Text) == key);
-            return seen == 0 ? key : key + "#" + (seen + 1).ToString(CultureInfo.InvariantCulture);
+            if (o.Guid == guid) return o;
+            foreach (var f in o.Fields)
+            {
+                if (f.Value is RecordObject c) { var r = FindByGuid(c, guid); if (r != null) return r; }
+                else if (f.Value is RecordList l)
+                    foreach (var i in l.Items.OfType<RecordObject>()) { var r = FindByGuid(i, guid); if (r != null) return r; }
+            }
+            return null;
+        }
+
+        static RecordField FieldOf(RecordSchema schema, RecordChange c)
+        {
+            var type = schema.ObjectType(c.ObjectType!)!;
+            string[] path = c.Field.Split('/');
+            for (int i = 0; ; i++)
+            {
+                var f = type.Field(path[i])!;
+                if (i == path.Length - 1) return f;
+                type = (f.IsList ? f.Item! : f).ObjectTypes[0];
+                if (f.IsList) i++; // the index
+            }
+        }
+
+        static void Expect(string? old, string? actual, RecordChange c)
+        {
+            if (old != actual) throw new InvalidOperationException("Old does not match the value in the base for " + c + ": base has '" + actual + "'.");
         }
 
         /// <summary>Applies a change set, in order, to a copy of the base's data and returns the copy.</summary>
-        public static RecordObject Apply(RecordObject baseData, RecordChangeSet changes)
+        public static RecordObject Apply(RecordObject baseData, RecordChangeSet changes, RecordSchema schema)
         {
             var root = Clone(baseData);
-            var byGuid = new Dictionary<Guid, RecordObject>();
-            Index(root, byGuid);
+            _added.Clear();
             foreach (var c in changes.Changes)
             {
-                var owner = c.ObjectGuid == null ? root : byGuid[c.ObjectGuid.Value];
+                var cur = c.ObjectGuid == null ? root : FindByGuid(root, c.ObjectGuid.Value) ?? throw new InvalidOperationException("No object " + c.ObjectGuid + " for " + c);
                 string[] path = c.Field.Split('/');
-                var cur = owner;
                 for (int i = 0; i < path.Length - 1; i++)
                 {
                     var next = cur[path[i]];
-                    if (next is RecordList l && i + 1 < path.Length - 1) { cur = (RecordObject)l.Items[int.Parse(path[i + 1], CultureInfo.InvariantCulture) - 1]; i++; }
+                    if (next is RecordList l) { cur = (RecordObject)l.Items[int.Parse(path[i + 1], CultureInfo.InvariantCulture) - 1]; i++; }
                     else cur = (RecordObject)next!;
                 }
                 string field = path[path.Length - 1];
@@ -166,103 +191,124 @@ namespace SIL.TextEditing.Markdown.Tests.Records
                     case RecordChangeKind.Set:
                     case RecordChangeKind.SetRich:
                     case RecordChangeKind.SetAlternative:
-                        if (c.WritingSystem == null) cur[field] = new RecordScalar(c.New!) { Target = c.NewTarget };
-                        else
-                        {
-                            var alts = cur[field] as RecordAlternatives ?? new RecordAlternatives();
-                            alts[c.WritingSystem] = S(c.New!);
-                            cur[field] = alts;
-                        }
-                        break;
                     case RecordChangeKind.Clear:
                     case RecordChangeKind.ClearRich:
                     case RecordChangeKind.ClearAlternative:
-                        if (c.WritingSystem == null) cur[field] = null;
-                        else if (cur[field] is RecordAlternatives a) a[c.WritingSystem] = null;
+                    {
+                        bool set = c.Kind == RecordChangeKind.Set || c.Kind == RecordChangeKind.SetRich || c.Kind == RecordChangeKind.SetAlternative;
+                        if (c.WritingSystem == null)
+                        {
+                            Expect(c.Old, TextOf(cur[field]), c);
+                            cur[field] = set ? new RecordScalar(c.New!) { Target = c.NewTarget } : null;
+                        }
+                        else
+                        {
+                            var alts = cur[field] as RecordAlternatives;
+                            Expect(c.Old, TextOf(alts?[c.WritingSystem]), c);
+                            if (set) { alts = alts ?? new RecordAlternatives(); alts[c.WritingSystem] = S(c.New!); cur[field] = alts; }
+                            else if (alts != null) alts[c.WritingSystem] = null;
+                        }
                         break;
+                    }
                     default:
-                        ApplyListChange(cur, field, c, byGuid);
+                        ApplyListChange(cur, field, c, FieldOf(schema, c));
                         break;
                 }
             }
             return root;
         }
 
-        static void Index(RecordObject o, Dictionary<Guid, RecordObject> map)
-        {
-            if (o.Guid != null) map[o.Guid.Value] = o;
-            foreach (var f in o.Fields)
-            {
-                if (f.Value is RecordObject c) Index(c, map);
-                else if (f.Value is RecordList l) foreach (var i in l.Items.OfType<RecordObject>()) Index(i, map);
-            }
-        }
+        // An object with no GUID added by this change set, by its list and key: a later change names it as `After` by that "#n" key.
+        static readonly Dictionary<(RecordObject Owner, string Field, string Key), RecordValue> _added = new Dictionary<(RecordObject, string, string), RecordValue>();
 
-        static void ApplyListChange(RecordObject owner, string field, RecordChange c, Dictionary<Guid, RecordObject> byGuid)
+        static bool SameScalar(RecordValue v, string? text, Guid? target) => v is RecordScalar s && s.Text == text && s.Target == target;
+
+        static void ApplyListChange(RecordObject owner, string field, RecordChange c, RecordField schemaField)
         {
-            if (c.Kind == RecordChangeKind.AddObject && IsSingleField(c))
+            string DumpOf(RecordValue? v) => Dump(v, null!);
+            if (schemaField.Kind == RecordFieldKind.Object)
             {
-                var added = Clone(c.Subtree!);
-                owner[field] = added;
-                Index(added, byGuid);
-                return;
-            }
-            if (c.Kind == RecordChangeKind.RemoveObject && owner[field] is RecordObject)
-            {
-                owner[field] = null;
+                if (c.Kind == RecordChangeKind.AddObject)
+                {
+                    if (owner[field] != null) throw new InvalidOperationException("The field is not empty for " + c);
+                    owner[field] = Clone(c.Subtree!);
+                }
+                else
+                {
+                    if (DumpOf(owner[field]) != DumpOf(c.Subtree)) throw new InvalidOperationException("The object to remove differs from the base for " + c);
+                    owner[field] = null;
+                }
                 return;
             }
             var list = owner[field] as RecordList ?? new RecordList();
             owner[field] = list;
             var items = list.Items;
-            int Find(string key)
+            int FindObject()
             {
-                if (items.Count > 0 && items[0] is RecordObject first && first.Guid == null && key.StartsWith("#", StringComparison.Ordinal)) return int.Parse(key.Substring(1), CultureInfo.InvariantCulture) - 1;
-                for (int i = 0; i < items.Count; i++) if (KeyOf(items[i], i + 1, items) == key) return i;
-                return -1;
+                if (c.ItemGuid != null) return items.FindIndex(i => i is RecordObject o && o.Guid == c.ItemGuid);
+                return int.Parse(c.ItemKey!.Substring(1), CultureInfo.InvariantCulture) - 1; // documented: "#n" is the base position
             }
-            void Insert(RecordValue v)
+            int FindScalar(string? text, Guid? target) => items.FindIndex(i => SameScalar(i, text, target));
+            int Place()
             {
-                int at;
-                if (c.Index == null) at = items.Count;
-                else if (c.After == null) at = 0;
-                else if (c.After.StartsWith("#", StringComparison.Ordinal)) at = Math.Min(c.Index.Value - 1, items.Count);
-                else at = Find(c.After) + 1;
-                items.Insert(at, v);
+                if (c.Index == null) return items.Count;
+                if (c.After == null) return 0;
+                int at = items.FindIndex(i => i is RecordObject o ? o.Guid?.ToString("D") == c.After : i is RecordScalar s && (s.Target?.ToString("D") ?? s.Text) == c.After);
+                if (at >= 0) return at + 1;
+                if (_added.TryGetValue((owner, field, c.After), out var earlier) && items.FindIndex(i => ReferenceEquals(i, earlier)) is int e && e >= 0) return e + 1;
+                // In a list of objects that have no GUIDs, "#n" after a pair means: after the item now at position n.
+                if (c.After.StartsWith("#", StringComparison.Ordinal) && items.OfType<RecordObject>().Any() && int.TryParse(c.After.Substring(1), out int position)) return Math.Min(position, items.Count);
+                // a repeated text: "a#2" is the second "a"
+                int hash = c.After.LastIndexOf('#');
+                string text = c.After.Substring(0, hash);
+                int nth = int.Parse(c.After.Substring(hash + 1), CultureInfo.InvariantCulture);
+                int seen = 0;
+                for (int i = 0; i < items.Count; i++) if (items[i] is RecordScalar s && s.Text == text && ++seen == nth) return i + 1;
+                throw new InvalidOperationException("No predecessor " + c.After + " for " + c);
             }
+            int index;
             switch (c.Kind)
             {
                 case RecordChangeKind.AddObject:
                 {
-                    var o = Clone(c.Subtree!);
-                    Insert(o);
-                    Index(o, byGuid);
+                    var added = Clone(c.Subtree!);
+                    items.Insert(Place(), added);
+                    if (c.ItemGuid == null) _added[(owner, field, c.ItemKey!)] = added;
                     break;
                 }
                 case RecordChangeKind.RemoveObject:
-                case RecordChangeKind.RemoveReference:
-                case RecordChangeKind.RemoveItem:
-                    items.RemoveAt(Find(c.ItemKey!));
+                    index = FindObject();
+                    if (index < 0 || index >= items.Count || DumpOf(items[index]) != DumpOf(c.Subtree)) throw new InvalidOperationException("The object to remove differs from the base for " + c);
+                    items.RemoveAt(index);
+                    break;
+                case RecordChangeKind.MoveObject:
+                    index = FindObject();
+                    var moving = items[index];
+                    items.RemoveAt(index);
+                    items.Insert(Math.Min(Place(), items.Count), moving);
                     break;
                 case RecordChangeKind.AddReference:
                 case RecordChangeKind.AddItem:
-                    Insert(new RecordScalar(c.New!) { Target = c.NewTarget });
+                    items.Insert(Place(), new RecordScalar(c.New!) { Target = c.NewTarget });
                     break;
-                case RecordChangeKind.MoveObject:
+                case RecordChangeKind.RemoveReference:
+                case RecordChangeKind.RemoveItem:
+                    index = FindScalar(c.Old, c.OldTarget);
+                    if (index < 0) throw new InvalidOperationException("Old is not in the base for " + c);
+                    items.RemoveAt(index);
+                    break;
                 case RecordChangeKind.MoveReference:
                 case RecordChangeKind.MoveItem:
                 {
-                    int from = Find(c.ItemKey!);
-                    var v = items[from];
-                    items.RemoveAt(from);
-                    Insert(v);
+                    index = FindScalar(c.Old, c.OldTarget);
+                    if (index < 0) throw new InvalidOperationException("Old is not in the base for " + c);
+                    var v = items[index];
+                    items.RemoveAt(index);
+                    items.Insert(Math.Min(Place(), items.Count), v);
                     break;
                 }
             }
         }
-
-        // An object field that holds one object, not a list: the only such field in the test schema.
-        static bool IsSingleField(RecordChange c) => c.Field.EndsWith("etymology", StringComparison.Ordinal);
 
         /// <summary>Everything about a change set that matters, as text, for determinism checks.</summary>
         public static string Describe(RecordChangeSet set)
