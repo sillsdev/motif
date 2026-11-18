@@ -71,6 +71,37 @@ public sealed class ProjectParseLeaseTests : IDisposable
         Assert.NotNull(next);
     }
 
+    [Fact]
+    public void AStoreOpenedThroughADirectoryAliasKeepsItsLeaseForPublication()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        Directory.CreateDirectory(_root);
+        var target = Path.Combine(_root, "target");
+        Directory.CreateDirectory(target);
+        var alias = Path.Combine(_root, "alias");
+        Directory.CreateSymbolicLink(alias, target);
+        using var database = MotifDatabase.OpenOwned(Path.Combine(alias, "project.motif.db"),
+            new ProjectLocator(Path.Combine(target, "project.fwdata"), "project"),
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        using var lease = ProjectParseLease.TryAcquire(database)!;
+        using var connection = database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        lease.EnsureHeld(connection, transaction);
+        lease.ReleaseInTransaction(connection, transaction);
+        transaction.Commit();
+    }
+
+    [Fact]
+    public void PublicationIntoAnotherStoreIsRefused()
+    {
+        using var first = Open("first");
+        using var second = Open("second");
+        using var lease = ProjectParseLease.TryAcquire(first)!;
+        using var connection = second.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        Assert.Throws<InvalidOperationException>(() => lease.EnsureHeld(connection, transaction));
+    }
+
     private MotifDatabase Open(string name = "project")
     {
         Directory.CreateDirectory(_root);
