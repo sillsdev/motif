@@ -274,7 +274,7 @@ public static class CommandTextRenderer
             sb.AppendLine($"    {kind}: {count}");
         sb.AppendLine($"  effects: {summary.EffectCount}");
         if (summary.Warnings.Count == 0)
-            sb.AppendLine("  warnings: none");
+            sb.AppendLine("  warnings: 0");
         else
         {
             sb.AppendLine($"  warnings: {summary.WarningCount} ({summary.WarningsOmitted} omitted)");
@@ -427,7 +427,7 @@ public static class CommandTextRenderer
             sb.AppendLine($"    {kind}: {count}");
         sb.AppendLine($"  effects: {summary.EffectCount}");
         if (summary.Warnings.Count == 0)
-            sb.AppendLine("  warnings: none");
+            sb.AppendLine("  warnings: 0");
         else
         {
             sb.AppendLine($"  warnings: {summary.WarningCount} ({summary.WarningsOmitted} omitted)");

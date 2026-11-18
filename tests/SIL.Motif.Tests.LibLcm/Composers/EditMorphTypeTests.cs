@@ -135,7 +135,7 @@ public sealed class EditMorphTypeTests : IDisposable
         var proposal = Proposal(EditMorphTypeComposer.Build(_cache, new(Id(form), Id(enclitic))));
         var dry = ScratchDryRun.Of(_cache, proposal);
         var projection = DryRunProjectionBuilder.Build(proposal.ProposalId.Value, dry, proposal);
-        var text = CommandTextRenderer.Render(projection);
+        var text = CommandTextRenderer.Render(projection, includeEffects: true);
         Assert.Contains(Id(form).Value, text, StringComparison.Ordinal);
         Assert.Contains("morph type: Stem -> Enclitic", text, StringComparison.Ordinal);
         using var json = JsonDocument.Parse(ProjectionJson.Serialize(projection));

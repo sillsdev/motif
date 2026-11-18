@@ -30,7 +30,7 @@ public sealed class ApplyEffectSummaryTests
         Assert.Equal(15, projection.EffectsSummary.WarningsOmitted);
         Assert.Equal(10, projection.EffectsSummary.Warnings.Count);
         Assert.Contains("warnings: 25 (15 omitted)", CommandTextRenderer.Render(projection));
-        Assert.DoesNotContain("warnings: none", CommandTextRenderer.Render(projection));
+        Assert.DoesNotContain("warnings: 0", CommandTextRenderer.Render(projection));
         using var json = JsonDocument.Parse(ProjectionJson.Serialize(projection));
         Assert.Equal(25, json.RootElement.GetProperty("effects").GetArrayLength());
         Assert.Equal(warnings[^1], json.RootElement.GetProperty("effects")[24].GetProperty("preview")

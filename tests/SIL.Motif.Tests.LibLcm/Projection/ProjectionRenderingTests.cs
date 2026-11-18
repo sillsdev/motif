@@ -332,7 +332,7 @@ public sealed class ProjectionRenderingTests
             EffectDigest: "sha256:" + new string('2', 64),
             FootprintDigest: "sha256:" + new string('3', 64));
 
-        var text = CommandTextRenderer.Render(projection);
+        var text = CommandTextRenderer.Render(projection, includeEffects: true);
         var json = ProjectionJson.Serialize(projection);
 
         Assert.Contains("\"run quickly\" -> \"move quickly\"", text);
@@ -348,8 +348,8 @@ public sealed class ProjectionRenderingTests
             new[] { new EffectView("agent_id", "field", System.Array.Empty<EffectChange>()) },
             "sha256:" + new string('2', 64), "sha256:" + new string('3', 64));
 
-        var first = CommandTextRenderer.Render(projection);
-        var second = CommandTextRenderer.Render(projection);
+        var first = CommandTextRenderer.Render(projection, includeEffects: true);
+        var second = CommandTextRenderer.Render(projection, includeEffects: true);
 
         Assert.Equal(first, second);
         Assert.Contains("(no observable before/after change)", first);
@@ -368,7 +368,7 @@ public sealed class ProjectionRenderingTests
                 "8f14e45f-ceea-467e-9432-a0eb92c2a92a", "20260101T000000Z", "an-agent",
                 "deadbeef00112233445566778899aabbccddeeff0011223344556677889900"));
 
-        var text = CommandTextRenderer.Render(projection);
+        var text = CommandTextRenderer.Render(projection, includeEffects: true);
         var json = ProjectionJson.Serialize(projection);
 
         Assert.Contains("was already applied", text);
@@ -395,7 +395,7 @@ public sealed class ProjectionRenderingTests
                 "8f14e45f-ceea-467e-9432-a0eb92c2a92a", "20260101T000000Z", "an-agent",
                 "deadbeef00112233445566778899aabbccddeeff0011223344556677889900"));
 
-        var text = CommandTextRenderer.Render(projection);
+        var text = CommandTextRenderer.Render(projection, includeEffects: true);
         var json = ProjectionJson.Serialize(projection);
 
         Assert.Contains("Applied Proposal", text);

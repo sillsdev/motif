@@ -936,7 +936,43 @@
         "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u00223hB_hMIhT3qMKz2srZyPxw\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u00223hB_hMIhT3qMKz2srZyPxw\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022dCLIkmxvR7-z5sxty9t3RA\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaGew4B9RwMFcDo992qbkQ\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaGew3x4yHaM0tc3q4Nupw\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaGew33chEMD0QAOF3jLJA\u0022\n        }\n      }",
         "Citation": null
       }
-    ]
+    ],
+    "EffectsSummary": {
+      "OperationCount": 30,
+      "OperationsByKind": {
+        "analysis/stTxtPara/setContents": 2,
+        "analysis/wfiMorphBundle/setMorph": 2,
+        "grammar/phNCSegments/addRefSegments": 1,
+        "grammar/phNaturalClass/setAbbreviation": 1,
+        "grammar/phNaturalClass/setName": 1,
+        "grammar/phPhonData/createNaturalClasses": 1,
+        "grammar/phPhonData/createPhonRules": 1,
+        "grammar/phRegularRule/createRightHandSides": 1,
+        "grammar/phSegRuleRHS/createLeftContext": 1,
+        "grammar/phSegRuleRHS/createRightContext": 1,
+        "grammar/phSegRuleRHS/createStrucChange": 1,
+        "grammar/phSegmentRule/createStrucDesc": 1,
+        "grammar/phSegmentRule/setDirection": 1,
+        "grammar/phSegmentRule/setDisabled": 1,
+        "grammar/phSegmentRule/setName": 1,
+        "grammar/phSimpleContextNC/setFeatureStructure": 1,
+        "grammar/phSimpleContextSeg/setFeatureStructure": 3,
+        "lexical/lexEntry/deleteAlternateForm": 2,
+        "system/rnGenericRec/createDescription": 1,
+        "system/rnGenericRec/setMotifHumanJudgment": 1,
+        "system/rnGenericRec/setTitle": 1,
+        "system/rnGenericRec/setType": 1,
+        "system/rnResearchNbk/createRecords": 1,
+        "system/stText/createParagraphs": 2
+      },
+      "EffectCount": 32,
+      "Warnings": [],
+      "ProjectHashBefore": null,
+      "ProjectHashAfter": null,
+      "EffectsFile": null,
+      "WarningCount": 0,
+      "WarningsOmitted": 0
+    }
   },
   "Review": {
     "ProposalId": "AaGew4o_qTyaFeVDs6gMlQ",
@@ -1874,7 +1910,43 @@
           "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u00223hB_hMIhT3qMKz2srZyPxw\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u00223hB_hMIhT3qMKz2srZyPxw\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022dCLIkmxvR7-z5sxty9t3RA\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaGew4B9RwMFcDo992qbkQ\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaGew3x4yHaM0tc3q4Nupw\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaGew33chEMD0QAOF3jLJA\u0022\n        }\n      }",
           "Citation": null
         }
-      ]
+      ],
+      "EffectsSummary": {
+        "OperationCount": 30,
+        "OperationsByKind": {
+          "analysis/stTxtPara/setContents": 2,
+          "analysis/wfiMorphBundle/setMorph": 2,
+          "grammar/phNCSegments/addRefSegments": 1,
+          "grammar/phNaturalClass/setAbbreviation": 1,
+          "grammar/phNaturalClass/setName": 1,
+          "grammar/phPhonData/createNaturalClasses": 1,
+          "grammar/phPhonData/createPhonRules": 1,
+          "grammar/phRegularRule/createRightHandSides": 1,
+          "grammar/phSegRuleRHS/createLeftContext": 1,
+          "grammar/phSegRuleRHS/createRightContext": 1,
+          "grammar/phSegRuleRHS/createStrucChange": 1,
+          "grammar/phSegmentRule/createStrucDesc": 1,
+          "grammar/phSegmentRule/setDirection": 1,
+          "grammar/phSegmentRule/setDisabled": 1,
+          "grammar/phSegmentRule/setName": 1,
+          "grammar/phSimpleContextNC/setFeatureStructure": 1,
+          "grammar/phSimpleContextSeg/setFeatureStructure": 3,
+          "lexical/lexEntry/deleteAlternateForm": 2,
+          "system/rnGenericRec/createDescription": 1,
+          "system/rnGenericRec/setMotifHumanJudgment": 1,
+          "system/rnGenericRec/setTitle": 1,
+          "system/rnGenericRec/setType": 1,
+          "system/rnResearchNbk/createRecords": 1,
+          "system/stText/createParagraphs": 2
+        },
+        "EffectCount": 32,
+        "Warnings": [],
+        "ProjectHashBefore": null,
+        "ProjectHashAfter": null,
+        "EffectsFile": null,
+        "WarningCount": 0,
+        "WarningsOmitted": 0
+      }
     },
     "Statistics": {
       "BundlesRepointed": {

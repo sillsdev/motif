@@ -206,7 +206,8 @@ public sealed class EditCliticAttachmentTests : IDisposable
         var dry = ScratchDryRun.Of(_cache, proposal);
         var effect = Assert.Single(dry.ExpectedEffects);
         Assert.Equal("grammar/moStemMsa/fromPartsOfSpeech", effect.Field);
-        var text = CommandTextRenderer.Render(DryRunProjectionBuilder.Build(proposal.ProposalId.Value, dry, proposal));
+        var text = CommandTextRenderer.Render(
+            DryRunProjectionBuilder.Build(proposal.ProposalId.Value, dry, proposal), includeEffects: true);
         Assert.Contains("Attaches to Categories: Noun, Verb -> Noun, Particle", text, StringComparison.Ordinal);
     }
 
@@ -217,7 +218,7 @@ public sealed class EditCliticAttachmentTests : IDisposable
         var noun = Category("Noun");
         var proposal = Proposal(EditCliticAttachmentComposer.Build(_cache, new(Id(msa), [], Ids(noun))));
         var text = CommandTextRenderer.Render(DryRunProjectionBuilder.Build(
-            proposal.ProposalId.Value, ScratchDryRun.Of(_cache, proposal), proposal));
+            proposal.ProposalId.Value, ScratchDryRun.Of(_cache, proposal), proposal), includeEffects: true);
         Assert.Contains("Attaches to Categories: (any) -> Noun", text, StringComparison.Ordinal);
     }
 
