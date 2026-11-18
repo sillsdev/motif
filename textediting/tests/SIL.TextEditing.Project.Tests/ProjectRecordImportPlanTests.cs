@@ -686,6 +686,27 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void ABinaryGuidLinkInsideRichTextBlocksADeleteByOmission()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var cache = fixture.Cache;
+            fixture.Change(() =>
+            {
+                var other = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                var sense = cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
+                other.SensesOS.Add(sense);
+                var b = TsStringUtils.MakeStrBldr();
+                b.Replace(0, 0, "see sell", TsStringUtils.MakeProps("", cache.DefaultAnalWs));
+                // liblcm's own form: one type character, then the GUID's 16 bytes as eight UTF-16 characters.
+                string data = ((char)FwObjDataTypes.kodtOwnNameGuidHot) + System.Text.Encoding.Unicode.GetString(w.Second.Guid.ToByteArray());
+                b.SetStrPropValue(0, 8, (int)FwTextPropType.ktptObjData, data);
+                sense.Definition.set_String(cache.DefaultAnalWs, b.GetString());
+            });
+            Assert.Contains("link", Single(DeleteSecondSense(w, out _), RecordRefusalKind.DeleteHasIncomingReferences).Reason);
+        }
+
+        [Fact]
         public void ASequenceReferenceAndACustomReferenceBlockADeleteButOneInsideTheDeletedSetDoesNot()
         {
             using var fixture = new ProjectFixture();

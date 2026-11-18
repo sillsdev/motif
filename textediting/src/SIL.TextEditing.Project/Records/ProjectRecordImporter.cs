@@ -68,6 +68,9 @@ namespace SIL.TextEditing.Project
     /// The caller owns the cache and serializes access to it.</summary>
     public sealed class ProjectRecordImporter
     {
+        /// <summary>For tests and measurement: how many string fields the last rich-text link scan read, and how long it took.</summary>
+        internal static (long Fields, long Milliseconds) LastRichLinkScan;
+
         readonly ProjectRecordExporter _exporter;
         readonly LcmCache _cache;
         readonly IFwMetaDataCache _metadata;
@@ -545,6 +548,8 @@ namespace SIL.TextEditing.Project
             Dictionary<Guid, HashSet<Guid>> RichLinks()
             {
                 if (_richLinks != null) return _richLinks;
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                long read = 0;
                 var found = new Dictionary<Guid, HashSet<Guid>>();
                 var data = _cache.DomainDataByFlid;
                 var managed = (IFwMetaDataCacheManaged)_metadata;
@@ -565,6 +570,7 @@ namespace SIL.TextEditing.Project
                     }
                     foreach (var (flid, multi) in fields)
                     {
+                        read++;
                         if (!multi) Scan(obj, data.get_StringProp(obj.Hvo, flid), found);
                         else
                         {
@@ -573,6 +579,7 @@ namespace SIL.TextEditing.Project
                         }
                     }
                 }
+                ProjectRecordImporter.LastRichLinkScan = (read, clock.ElapsedMilliseconds);
                 return _richLinks = found;
             }
 
