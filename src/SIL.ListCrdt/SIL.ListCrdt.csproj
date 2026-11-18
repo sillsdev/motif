@@ -12,6 +12,10 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="SIL.Motif.Tests.ListCrdt" />
+    <InternalsVisibleTo Include="SIL.Motif.Tests.ListCrdt.Loro" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Remove="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <None Include="README.md;NOTICE;../../LICENSE" Pack="true" PackagePath="/" />
   </ItemGroup>

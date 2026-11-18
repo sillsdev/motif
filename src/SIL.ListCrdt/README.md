@@ -34,10 +34,22 @@ only, not arbitrary RFC 8785 floating-point values. See NOTICE for paper citatio
 
 Fugue's backward runs may interleave. Loro has a different concurrent move/delete
 policy, and historical raw moves beside abandoned slots may order differently.
-The test projects preserve both characterizations. Visible index lookup is linear;
-this release does not promise sub-millisecond authoring on arbitrary long lists.
-The pending buffer and operation history are retained without compaction. Only
-validated, authenticated operation streams should be fed to this foundation.
+The test projects preserve both characterizations. A chunked order-statistic
+index gives `IndexOf`, `ElementAt` and `ElementsFrom` in time that grows with the
+square root of the list size, and inserts and moves at the tail are measured well
+under a millisecond on a 34,383-item list. Operation history and the pending
+buffer are retained without compaction.
+
+## Bounded ingestion
+
+`ListLimits` (pass to `new ListState(limits)` or `NodeRowEncoding.Restore`) bounds
+remote input: identifier length, pending operations, counter and Lamport values
+(far-future clocks would stall authoring), serialised operation length and batch
+size. Input beyond a limit throws `ListLimitException` naming the limit, before
+any state changes; split oversize batches. A pending insert reusing an item
+identity is refused. Operations with cyclic or never-delivered dependencies stay
+buffered up to the pending limit. Authenticate the stream; the limits bound
+resource use, they do not prove the sender honest.
 
 ## Row storage seam
 

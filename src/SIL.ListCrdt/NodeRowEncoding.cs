@@ -29,22 +29,29 @@ public static class NodeRowEncoding
         return new ListNodeRow(Version, KeyOf(operation.Id), operation.ToJson());
     }
 
-    public static ListOp Decode(ListNodeRow row)
+    public static ListOp Decode(ListNodeRow row, ListLimits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(row);
         if (row.Version != Version) throw new FormatException("Unsupported list row version.");
-        var operation = OpJson.FromJson(row.Json);
+        limits ??= ListLimits.Default;
+        limits.CheckJson(row.Key);
+        var operation = OpJson.FromJson(row.Json, limits);
         operation.Validate();
         if (!string.Equals(row.Key, KeyOf(operation.Id), StringComparison.Ordinal))
             throw new FormatException("The list row key does not match its operation identity.");
         return operation;
     }
 
-    /// <summary>Reconstructs a list from rows in any order, retaining operations with absent dependencies.</summary>
-    public static ListState Restore(IEnumerable<ListNodeRow> rows)
+    /// <summary>
+    /// Reconstructs a list from rows in any order, retaining operations with absent dependencies. Rows are
+    /// streamed one at a time and each is checked against <paramref name="limits"/> before it is applied.
+    /// </summary>
+    public static ListState Restore(IEnumerable<ListNodeRow> rows, ListLimits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(rows);
-        return ListState.Fold(rows.Select(Decode));
+        var state = new ListState(limits);
+        foreach (var row in rows) state.Apply(Decode(row, state.Limits));
+        return state;
     }
 
     public static IEnumerable<ListNodeRow> ExportRows(this ListState state)

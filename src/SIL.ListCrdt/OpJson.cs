@@ -36,23 +36,32 @@ public static class OpJson
         return CanonicalJson.Write(operations.Select(op => (object?)new RawJson(op.ToJson())).ToArray());
     }
 
-    public static ListOp FromJson(string json) => Parse(json, Read);
+    /// <summary>Parses one operation; text longer than <see cref="ListLimits.MaxOperationJsonLength"/> is refused before parsing.</summary>
+    public static ListOp FromJson(string json, ListLimits? limits = null) => Parse(json, limits, false, Read);
 
-    public static ListOp[] ListFromJson(string json) => Parse(json, root =>
+    /// <summary>Parses an operation array; an array longer than the batch limit is refused and must be split.</summary>
+    public static ListOp[] ListFromJson(string json, ListLimits? limits = null) => Parse(json, limits, true, root =>
     {
         if (root.ValueKind != JsonValueKind.Array) throw new FormatException("Operations must be an array.");
+        int max = (limits ?? ListLimits.Default).MaxBatchOperations;
+        if (root.GetArrayLength() > max)
+            throw new ListLimitException(nameof(ListLimits.MaxBatchOperations), max,
+                $"The array holds {root.GetArrayLength()} operations; send batches of at most {max}.");
         return root.EnumerateArray().Select(Read).ToArray();
     });
 
-    static T Parse<T>(string json, Func<JsonElement, T> read)
+    static T Parse<T>(string json, ListLimits? limits, bool batch, Func<JsonElement, T> read)
     {
         ArgumentNullException.ThrowIfNull(json);
+        limits ??= ListLimits.Default;
+        limits.CheckJson(json, batch);
         try
         {
             using var doc = CanonicalJson.Parse(json);
             return read(doc.RootElement);
         }
-        catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException)
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException ||
+            (exception is ArgumentException && exception is not ListLimitException))
         {
             throw new FormatException("Invalid list operation JSON.", exception);
         }

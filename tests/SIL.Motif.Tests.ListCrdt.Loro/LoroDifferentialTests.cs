@@ -15,14 +15,16 @@ public class LoroDifferentialTests(ITestOutputHelper output)
 
     static LoroDoc NewDoc(ulong peer) { var d = new LoroDoc(); d.SetPeerId(peer); return d; }
 
-    [Fact]
-    public void SingleReplicaOperations_AgreeExactlyWithLoroAndAPlainList()
+    [Theory]
+    [InlineData(512)]
+    [InlineData(4)]
+    public void SingleReplicaOperations_AgreeExactlyWithLoroAndAPlainList(int splitThreshold)
     {
         for (int seed = 0; seed < 100; seed++)
         {
             var rng = new Random(seed);
             using var doc = NewDoc(1); var loro = ListOf(doc);
-            var ours = new ListReplica("r1"); var model = new List<string>();
+            var ours = new ListReplica("r1", new ListState(null, splitThreshold)); var model = new List<string>();
             int fresh = 0;
             for (int step = 0; step < 100; step++)
             {
@@ -38,14 +40,23 @@ public class LoroDifferentialTests(ITestOutputHelper output)
                 var l = Values(loro);
                 Assert.True(model.SequenceEqual(l), $"seed {seed} step {step}: Loro differs from the model");
                 Assert.True(model.SequenceEqual(Live(ours)), $"seed {seed} step {step}: ListCrdt differs from the model");
+                // The position index must agree with Loro's list, item by item, in both directions.
+                Assert.Equal(l.Length, ours.State.LiveCount);
+                for (int i = 0; i < l.Length; i++)
+                {
+                    Assert.True(l[i] == ours.State.ElementAt(i), $"seed {seed} step {step}: ElementAt({i}) differs from Loro");
+                    Assert.True(i == ours.State.IndexOf(l[i]), $"seed {seed} step {step}: IndexOf({l[i]}) differs from Loro");
+                }
             }
         }
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ConcurrentRounds_BothConverge_SameMembership_ReportOrderAgreement(bool withMoves)
+    [InlineData(false, 512)]
+    [InlineData(true, 512)]
+    [InlineData(false, 4)]
+    [InlineData(true, 4)]
+    public void ConcurrentRounds_BothConverge_SameMembership_ReportOrderAgreement(bool withMoves, int splitThreshold)
     {
         int rounds = 0, sameOrder = 0, policyRounds = 0, policySetDiffs = 0, orderDiffs = 0;
         for (int seed = 0; seed < 60; seed++)
@@ -54,7 +65,7 @@ public class LoroDifferentialTests(ITestOutputHelper output)
             int peers = rng.Next(2, 4);
             var docs = Enumerable.Range(0, peers).Select(i => NewDoc((ulong)(i + 1))).ToArray();
             var lists = docs.Select(ListOf).ToArray();
-            var reps = Enumerable.Range(0, peers).Select(i => new ListReplica("r" + (i + 1))).ToArray();
+            var reps = Enumerable.Range(0, peers).Select(i => new ListReplica("r" + (i + 1), new ListState(null, splitThreshold))).ToArray();
             int fresh = 0;
             for (int round = 0; round < 8; round++)
             {
@@ -94,6 +105,14 @@ public class LoroDifferentialTests(ITestOutputHelper output)
                 var loroOrders = lists.Select(Values).ToArray();
                 var ourOrders = reps.Select(Live).ToArray();
                 Assert.True(loroOrders.All(o => o.SequenceEqual(loroOrders[0])), $"seed {seed} round {round}: Loro replicas diverged");
+                for (int p = 0; p < peers; p++)
+                {
+                    var tree = reps[p].State.AllElementsInOrder().Where(e => !reps[p].State.IsDeleted(e)).ToArray();
+                    Assert.Equal(tree.Length, reps[p].State.LiveCount);
+                    for (int i = 0; i < tree.Length; i++)
+                        Assert.True(tree[i] == reps[p].State.ElementAt(i) && i == reps[p].State.IndexOf(tree[i]),
+                            $"seed {seed} round {round}: index of {tree[i]} differs from the tree on replica {p}");
+                }
                 Assert.True(ourOrders.All(o => o.SequenceEqual(ourOrders[0])), $"seed {seed} round {round}: ListCrdt replicas diverged");
                 Assert.Equal(ourOrders[0].Length, ourOrders[0].Distinct().Count());
                 Assert.Equal(loroOrders[0].Length, loroOrders[0].Distinct().Count());

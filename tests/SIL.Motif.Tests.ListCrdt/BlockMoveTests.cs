@@ -85,7 +85,7 @@ public class BlockMoveTests
     [InlineData(false)]
     public void UnchangedBlockDoesNotAllocateExhaustedIdsOrTimestamps(bool exhaustedClock)
     {
-        var state = ListState.FromInitial(["first", "second"]);
+        var state = ListState.FromInitial(["first", "second"], new ListLimits { MaxClock = long.MaxValue });
         var pending = ListOp.Delete(new NodeId("writer", exhaustedClock ? 1 : long.MaxValue),
             exhaustedClock ? long.MaxValue : 1, "absent");
         state.Apply(pending);

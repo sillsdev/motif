@@ -52,16 +52,8 @@ public sealed class ListReplica
         RequireLive(element);
         if (afterElement == element) throw new ArgumentException("Cannot move an item after itself.", nameof(afterElement));
         if (afterElement is not null) RequireLive(afterElement);
-        string? previous = null;
-        foreach (var current in State.Elements())
-        {
-            if (current == element)
-            {
-                if (previous == afterElement) return null;
-                break;
-            }
-            previous = current;
-        }
+        int at = State.IndexOf(element);
+        if ((at > 0 ? State.ElementAt(at - 1) : null) == afterElement) return null;
         var (left, right) = State.OriginsAfterElement(afterElement);
         return Record(ListOp.Move(NextId(), NextTime(), element, left, right));
     }
@@ -73,12 +65,7 @@ public sealed class ListReplica
     public ListOp? MoveToIndex(string element, int index)
     {
         RequireLive(element);
-        int currentIndex = 0;
-        foreach (var current in State.Elements())
-        {
-            if (current == element) break;
-            currentIndex++;
-        }
+        int currentIndex = State.IndexOf(element);
         var (left, right) = State.OriginsAtIndex(index, ignore: element);
         if (currentIndex == index) return null;
         return Record(ListOp.Move(NextId(), NextTime(), element, left, right));
@@ -98,10 +85,8 @@ public sealed class ListReplica
         foreach (var element in elements) RequireLive(element);
         if (afterElement is not null) RequireLive(afterElement);
         if (elements.Count == 0) return [];
-        var live = State.Elements();
-        if (afterElement is not null)
-            live = live.SkipWhile(element => element != afterElement).Skip(1);
-        if (live.Take(elements.Count).SequenceEqual(elements, StringComparer.Ordinal)) return [];
+        int start = afterElement is null ? 0 : State.IndexOf(afterElement) + 1;
+        if (State.ElementsFrom(start).Take(elements.Count).SequenceEqual(elements, StringComparer.Ordinal)) return [];
         long time = NextTime();
         var ops = new ListOp[elements.Count];
         var (left, right) = State.OriginsAfterElement(afterElement);
