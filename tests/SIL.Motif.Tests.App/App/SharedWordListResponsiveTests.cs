@@ -43,12 +43,13 @@ public sealed class SharedWordListResponsiveTests
                 Assert.True(rows.Bounds.Width > 0 && rows.Bounds.Width <= panel.Bounds.Width);
                 var lastIndex = rows.ItemCount - 1;
                 rows.ScrollIntoView(lastIndex);
-                await Wait.UntilAsync(() => rows.ContainerFromIndex(lastIndex) is not null,
+                Control? lastContainer = null;
+                await Wait.UntilAsync(() => (lastContainer = rows.ContainerFromIndex(lastIndex)) is not null,
                     "The final word row was not realized after scrolling.",
                     detail: () => $"Index {lastIndex}, items {rows.ItemCount}, loading {words.IsLoading}, " +
                         $"list {rows.Bounds}, panel {panel.Bounds}, window {window.ClientSize}, zoom {zoom}.",
                     between: () => PageScreenshots.Settle(window));
-                Assert.NotNull(rows.ContainerFromIndex(lastIndex));
+                Assert.NotNull(lastContainer);
                 LayoutAssertions.AssertCurrent(panel);
             }
             finally
