@@ -73,7 +73,7 @@ public static class LcmRecordBridge
             imports.Add(new RecordImport(record, new Dictionary<int, int>()));
         }
         await using var store = new RecordStore(storePath);
-        await store.ImportAsync(imports, Guid.NewGuid(), graph.Coverage());
+        await store.ImportNativeAsync(imports, Guid.NewGuid(), graph.Coverage());
     }
 
     private static bool IsStoreArtifact(string path, string storePath)

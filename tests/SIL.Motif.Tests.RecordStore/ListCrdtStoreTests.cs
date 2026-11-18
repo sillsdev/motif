@@ -453,7 +453,7 @@ public sealed class ListCrdtStoreTests : IDisposable
         var decoded = Assert.IsType<ListRecordOp>(codec.Change(bytes));
         Assert.Equal(move.Seen, decoded.Seen);
         var unknown = (byte[])bytes.Clone();
-        unknown[1] = 7;
+        unknown[1] = byte.MaxValue;
         Assert.Contains("Unknown record change kind", Assert.Throws<InvalidDataException>(() => codec.Change(unknown)).Message);
         var edited = Fold(start, [move]);
         var snapshot = codec.Snapshot(edited);

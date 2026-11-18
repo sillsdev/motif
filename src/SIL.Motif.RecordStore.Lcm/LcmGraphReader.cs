@@ -1,5 +1,6 @@
-using System.Globalization;
+using System.Collections.Frozen;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Application;
@@ -15,7 +16,15 @@ public sealed class LcmGraphReader
     private readonly IFwMetaDataCacheManaged metadata;
     private readonly Dictionary<int, ICmObject> objects;
     private readonly Dictionary<int, int[]> layouts;
+    private readonly FrozenDictionary<int, int> fieldTypes;
+    private readonly FrozenDictionary<int, string> fieldKeys;
     private readonly Dictionary<int, NativeProvenance> provenance = new();
+    private static readonly JsonElement NullValue = JsonSerializer.SerializeToElement<object?>(null);
+    private static readonly JsonElement TrueValue = JsonSerializer.SerializeToElement(true);
+    private static readonly JsonElement FalseValue = JsonSerializer.SerializeToElement(false);
+    private static readonly JsonElement ZeroValue = JsonSerializer.SerializeToElement(0);
+    private static readonly JsonElement EmptyVector = JsonSerializer.SerializeToElement(Array.Empty<Guid>());
+    private static readonly JsonElement EmptyAlternatives = JsonSerializer.SerializeToElement(new Dictionary<string, object>());
     public static string TraversalVersion { get; } = "LCModel/" + typeof(LcmCache).Assembly.GetName().Version + "/" +
         typeof(LcmCache).Assembly.ManifestModule.ModuleVersionId.ToString("D") + "/repository-and-vectors/1";
     private readonly Dictionary<int, (int Owner, int Field, int Ordinal)> ownership = new();
@@ -24,6 +33,8 @@ public sealed class LcmGraphReader
     {
         this.cache = cache;
         metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
+        fieldTypes = metadata.GetFieldIds().Where(f => !metadata.get_IsVirtual(f)).ToFrozenDictionary(f => f, metadata.GetFieldType);
+        fieldKeys = fieldTypes.Keys.ToFrozenDictionary(field => field, field => field.ToString(CultureInfo.InvariantCulture));
         layouts = metadata.GetClassIds().ToDictionary(c => c, c => metadata.GetFields(c, true, -1)
             .Where(f => !metadata.get_IsVirtual(f)).Order().ToArray());
         var encountered = cache.ServiceLocator.GetInstance<ICmObjectRepository>().AllInstances().ToArray();
@@ -52,27 +63,36 @@ public sealed class LcmGraphReader
                 positions.Add(name, position++);
             }
         }
+        var data = (ISilDataAccessManaged)cache.DomainDataByFlid;
         for (var ordinal = 0; ordinal < encountered.Length; ordinal++)
         {
             var value = encountered[ordinal];
-            var vectors = Fields(value.ClassID).Where(f => metadata.GetFieldType(f) >= 25)
-                .Select(f => (Field: f, Items: ((ISilDataAccessManaged)cache.DomainDataByFlid).VecProp(value.Hvo, f)
-                    .Select(hvo => objects[hvo].Guid).ToImmutableArray()))
-                .Where(v => !v.Items.IsEmpty).ToImmutableDictionary(v => v.Field, v => v.Items);
-            provenance.Add(value.Hvo, new NativeProvenance(ordinal, TraversalVersion, vectors)
+            var vectors = ImmutableDictionary.CreateBuilder<int, ImmutableArray<Guid>>();
+            foreach (var field in Fields(value.ClassID))
+            {
+                var type = fieldTypes[field];
+                if (type == 23)
+                {
+                    var target = data.get_ObjectProp(value.Hvo, field);
+                    if (target != 0) ownership.Add(target, (value.Hvo, field, 0));
+                }
+                if (type < 25) continue;
+                var targets = data.VecProp(value.Hvo, field);
+                if (targets.Length == 0) continue;
+                var items = ImmutableArray.CreateBuilder<Guid>(targets.Length);
+                for (var index = 0; index < targets.Length; index++)
+                {
+                    var target = targets[index];
+                    items.Add(objects[target].Guid);
+                    if (type is 25 or 27) ownership.Add(target, (value.Hvo, field, type == 27 ? index : 0));
+                }
+                vectors.Add(field, items.MoveToImmutable());
+            }
+            provenance.Add(value.Hvo, new NativeProvenance(ordinal, TraversalVersion, vectors.ToImmutable())
             {
                 RepositoryOrdinals = repositories.TryGetValue(value.Hvo, out var positions)
                     ? positions.ToImmutableDictionary(StringComparer.Ordinal) : ImmutableDictionary<string, long>.Empty
             });
-        }
-        foreach (var parent in objects.Values)
-        foreach (var field in Fields(parent.ClassID).Where(f => metadata.GetFieldType(f) is 23 or 25 or 27))
-        {
-            var type = metadata.GetFieldType(field);
-            var targets = type == 23 ? new[] { cache.DomainDataByFlid.get_ObjectProp(parent.Hvo, field) }
-                : ((ISilDataAccessManaged)cache.DomainDataByFlid).VecProp(parent.Hvo, field);
-            for (var index = 0; index < targets.Length; index++)
-                if (targets[index] != 0) ownership.Add(targets[index], (parent.Hvo, field, type == 27 ? index : 0));
         }
         foreach (var value in objects.Values)
             if ((value.Owner?.Hvo ?? 0) != ownership.GetValueOrDefault(value.Hvo).Owner)
@@ -83,8 +103,7 @@ public sealed class LcmGraphReader
     /// <summary>Throws when the project's built-in metadata is not the metadata behind the static layout table.</summary>
     public void RequirePinnedMetadata() => LcmLayoutTable.Require(metadata);
 
-    public IReadOnlyDictionary<int, int> FieldTypes => metadata.GetFieldIds().Where(f => !metadata.get_IsVirtual(f))
-        .ToDictionary(f => f, metadata.GetFieldType);
+    public IReadOnlyDictionary<int, int> FieldTypes => fieldTypes;
 
     public NativeImportCoverage Coverage() => NativeImportCoverage.Capture(objects.Values.Select(o =>
         new ReferenceRecord(o.Guid, o.ClassID, o.Owner?.Guid, ownership.GetValueOrDefault(o.Hvo).Field)),
@@ -107,14 +126,25 @@ public sealed class LcmGraphReader
         }).ToArray()
     });
 
-    public IReadOnlyList<GenericRecord> Read() => objects.Values.OrderBy(o => o.Guid.ToString("D"), StringComparer.Ordinal)
+    public IReadOnlyList<GenericRecord> Read() => objects.Values.OrderBy(o => o.Guid)
         .Select(o => new GenericRecord
         {
             Provenance = provenance[o.Hvo],
             Id = o.Guid, ClassId = o.ClassID, Owner = o.Owner?.Guid,
             OwningField = ownership.GetValueOrDefault(o.Hvo).Field,
-            Values = Fields(o.ClassID).ToDictionary(f => f.ToString(CultureInfo.InvariantCulture), f => JsonSerializer.SerializeToElement(Value(o, f)))
+            Values = Fields(o.ClassID).ToDictionary(f => fieldKeys[f], f => ReadValue(o, f))
         }).ToArray();
+
+    private JsonElement ReadValue(ICmObject record, int field) => Value(record, field) switch
+    {
+        null => NullValue,
+        true => TrueValue,
+        false => FalseValue,
+        0 => ZeroValue,
+        ImmutableArray<Guid> { IsEmpty: true } => EmptyVector,
+        SortedDictionary<string, object?> { Count: 0 } => EmptyAlternatives,
+        var value => JsonSerializer.SerializeToElement(value)
+    };
 
     public static string Canonical(GenericRecord record) => CanonicalJson.Serialize(new
     {
@@ -122,20 +152,21 @@ public sealed class LcmGraphReader
         owningField = record.OwningField, fields = record.Values
     });
 
-    private string? Link(int hvo) => hvo == 0 ? null : objects[hvo].Guid.ToString("D");
+    private Guid? Link(int hvo) => hvo == 0 ? null : objects[hvo].Guid;
 
     private object? Value(ICmObject value, int field)
     {
         var data = (ISilDataAccessManaged)cache.DomainDataByFlid;
         var hvo = value.Hvo;
-        switch ((CellarPropertyType)metadata.GetFieldType(field))
+        var type = fieldTypes[field];
+        switch ((CellarPropertyType)type)
         {
             case CellarPropertyType.Boolean: return data.get_BooleanProp(hvo, field);
             case CellarPropertyType.Integer:
                 if (field == 104) return ownership.GetValueOrDefault(hvo).Field;
-                if (field == 105 && ownership.TryGetValue(hvo, out var edge) && metadata.GetFieldType(edge.Field) == 27) return edge.Ordinal;
+                if (field == 105 && ownership.TryGetValue(hvo, out var edge) && fieldTypes[edge.Field] == 27) return edge.Ordinal;
                 return data.get_IntProp(hvo, field);
-            case CellarPropertyType.Guid: return data.get_GuidProp(hvo, field).ToString("D");
+            case CellarPropertyType.Guid: return data.get_GuidProp(hvo, field);
             case CellarPropertyType.Time:
                 var time = data.get_DateTime(hvo, field);
                 return new { ticks = time.Ticks.ToString(CultureInfo.InvariantCulture), kind = time.Kind.ToString() };
@@ -165,10 +196,9 @@ public sealed class LcmGraphReader
             case CellarPropertyType.ReferenceCollection:
             case CellarPropertyType.OwningSequence:
             case CellarPropertyType.ReferenceSequence:
-                var links = data.VecProp(hvo, field).Select(Link).ToArray();
-                if (metadata.GetFieldType(field) is 25 or 26) Array.Sort(links, StringComparer.Ordinal);
-                return links;
-            default: throw new NotSupportedException($"Unsupported field type {metadata.GetFieldType(field)} for {value.Guid}/{field}.");
+                var links = provenance[hvo].Vectors.GetValueOrDefault(field, ImmutableArray<Guid>.Empty);
+                return type is 25 or 26 ? links.Sort() : links;
+            default: throw new NotSupportedException($"Unsupported field type {type} for {value.Guid}/{field}.");
         }
     }
 }

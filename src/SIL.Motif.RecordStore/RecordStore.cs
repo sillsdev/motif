@@ -17,6 +17,11 @@ public sealed record RecordCommit(Guid Id, DateTimeOffset UtcTime, long Counter,
 public sealed partial class RecordStore : IAsyncDisposable
 {
     public const int MaximumChangesPerCommit = 500;
+    private const int StoreFormat = 5;
+    private const int LegacyStoreFormat = 4;
+    internal const int CompleteRecordModelVersion = 1;
+    private readonly int format;
+    private int ModelVersion => format == LegacyStoreFormat ? 0 : CompleteRecordModelVersion;
     private readonly ServiceProvider provider;
     private readonly AsyncServiceScope scope;
     private readonly DataModel model;
@@ -38,6 +43,10 @@ public sealed partial class RecordStore : IAsyncDisposable
         using var writer = readOnly ? null : AcquireWriter();
         var services = new ServiceCollection();
         var connection = RecordSqlite.ConnectionString(path, readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate);
+        var storedFormat = File.Exists(path) ? ReadFormat(connection) : 0;
+        if (storedFormat is not (0 or LegacyStoreFormat or StoreFormat))
+            throw new InvalidDataException("Unsupported record store format.");
+        format = storedFormat == LegacyStoreFormat ? LegacyStoreFormat : StoreFormat;
         services.AddSingleton<RecordContent>();
         // Converters close over this store's immutable content cache; their EF model must have the same lifetime.
         services.AddDbContext<RecordDatabase>(options => options.UseSqlite(connection).EnableServiceProviderCaching(false));
@@ -48,7 +57,14 @@ public sealed partial class RecordStore : IAsyncDisposable
             config.ChangeTypeListBuilder.Add<CreateRecord>().Add<SetRecordValue>()
                 .Add<SetRecordAlternative>().Add<InsertRecordItem>().Add<ListRecordOp>();
             config.ModelVersionBuilder.Add(0, "Motif generic records", version => version
-                .Change<CreateRecord>().Change<SetRecordValue>().Change<SetRecordAlternative>().Change<InsertRecordItem>().Change<ListRecordOp>());
+                .Change<CreateRecord>().Change<SetRecordValue>().Change<SetRecordAlternative>()
+                .Change<InsertRecordItem>().Change<ListRecordOp>());
+            if (ModelVersion >= CompleteRecordModelVersion)
+            {
+                config.ChangeTypeListBuilder.Add<CreateImportedRecord>();
+                config.ModelVersionBuilder.Add(CompleteRecordModelVersion, "Motif complete-record import",
+                    version => version.Change<CreateImportedRecord>());
+            }
         });
         services.AddSingleton<TimeProvider>(new MicrosecondTimeProvider(timeProvider ?? TimeProvider.System));
         provider = services.BuildServiceProvider();
@@ -61,14 +77,20 @@ public sealed partial class RecordStore : IAsyncDisposable
             else
                 database.Database.GetDbConnection().StateChange += PublishedHomeConnection.ConfigureWriter;
             var created = !readOnly && database.Database.EnsureCreated();
-            using (var command = database.Database.GetDbConnection().CreateCommand())
+            if (created)
             {
+                using var command = database.Database.GetDbConnection().CreateCommand();
                 database.Database.OpenConnection();
-                command.CommandText = created ? "PRAGMA user_version=4" : "PRAGMA user_version";
-                if (created) command.ExecuteNonQuery();
-                else if (Convert.ToInt32(command.ExecuteScalar()) != 4) throw new InvalidDataException("Unsupported record store format.");
+                command.CommandText = $"PRAGMA user_version={format}";
+                command.ExecuteNonQuery();
                 database.Database.CloseConnection();
             }
+            else if (storedFormat == 0 && File.Exists(path))
+                throw new InvalidDataException("Unsupported record store format.");
+            var unsupported = database.Set<ChangeEntity<IChange>>()
+                .Where(change => change.AuthoredModelVersion < 0 || change.AuthoredModelVersion > ModelVersion)
+                .Select(change => (int?)change.AuthoredModelVersion).FirstOrDefault();
+            if (unsupported is int version) RequireSupportedModelVersion(version, ModelVersion);
             content = scope.ServiceProvider.GetRequiredService<RecordContent>();
             if (!readOnly) content.Load(database.Set<ContentRow>().AsNoTracking().ToArray());
             if (created)
@@ -111,17 +133,37 @@ public sealed partial class RecordStore : IAsyncDisposable
         return (long)command.ExecuteScalar()! == 1;
     }
 
+    private static int ReadFormat(string connectionString)
+    {
+        using var connection = new SqliteConnection(connectionString);
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA user_version";
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    private static void RequireSupportedModelVersion(int authored, int supported)
+    {
+        if (authored < 0 || authored > supported)
+            throw new InvalidDataException($"Unsupported Harmony model version {authored}. This reader supports through version {supported}.");
+    }
+
     public static Guid AuxiliaryId(string kind, string identity)
     {
         var hex = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("motif-record-store/" + kind + "/" + identity)));
         return Guid.ParseExact(hex[..32], "N");
     }
 
-    public async Task ImportAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage? nativeCoverage = null)
+    public Task ImportAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage? nativeCoverage = null) =>
+        ImportAsync(records, clientId, nativeCoverage, packed: false);
+
+    internal Task ImportNativeAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage coverage) =>
+        ImportAsync(records, clientId, coverage, packed: format == StoreFormat);
+
+    private async Task ImportAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage? nativeCoverage, bool packed)
     {
         using var writer = AcquireWriter();
-        point = null;
-        if ((await database.Set<StoreState>().AsNoTracking().SingleAsync()).Published || await database.Set<Commit>().AnyAsync()) throw new InvalidOperationException("Import requires an empty store.");
+        await RequireEmptyImportAsync();
         var imported = records.ToList();
         if (nativeCoverage is not null)
         {
@@ -133,12 +175,43 @@ public sealed partial class RecordStore : IAsyncDisposable
         if (materialized.Select(r => r.Record.Id).Distinct().Count() != materialized.Length)
             throw new InvalidDataException("Duplicate record identity in import.");
         // Layouts are validated for every group before the first change is written, so a refusal leaves no history.
-        var layouts = materialized.GroupBy(r => (r.Record.Kind, r.Record.ClassId, Fields: JsonSerializer.Serialize(r.Record.Values.Keys.Order(StringComparer.Ordinal))))
-            .Select(group => (Group: group, Layout: RecordInitialization.Layout(group))).ToList();
-        var prepared = layouts.SelectMany(entry => entry.Group.Select(r => new RecordImport(RecordInitialization.Prepare(r.Record, entry.Layout), r.FieldTypes)));
-        await model.AddManyChanges(clientId, Changes(prepared), () => null, MaximumChangesPerCommit);
-        database.ChangeTracker.Clear();
-        await PublishIndexAsync(await ReadRecordsAsync(), await CommitRevisionAsync());
+        var layouts = materialized.GroupBy(r => (r.Record.Kind, r.Record.ClassId, Fields: packed && r.Record.Kind == "lcm"
+                ? "" : JsonSerializer.Serialize(r.Record.Values.Keys.Order(StringComparer.Ordinal))))
+            .Select(group => (Group: group, Layout: RecordInitialization.Layout(group, requireDefaults: packed))).ToList();
+        var prepared = layouts.SelectMany(entry => entry.Group.Select(r =>
+            new RecordImport(RecordInitialization.Prepare(r.Record, entry.Layout, reuseValues: packed), r.FieldTypes)));
+        var baseline = packed ? prepared.Select(import => import.Record).ToArray() : null;
+        await using var transaction = await database.Database.BeginTransactionAsync();
+        try
+        {
+            if (baseline is not null)
+            {
+                var clock = scope.ServiceProvider.GetRequiredService<IHybridDateTimeProvider>();
+                await new NativeImportWriter(database, content).WriteAsync(baseline, clientId, clock);
+            }
+            else
+            {
+                // Harmony's AddManyChanges starts its own transaction; AddChanges joins this one.
+                foreach (var batch in Changes(prepared).Chunk(MaximumChangesPerCommit))
+                    await model.AddChanges(clientId, batch);
+                database.ChangeTracker.Clear();
+            }
+            await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync());
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            requiresReopen = true;
+            throw;
+        }
+    }
+
+    private async Task RequireEmptyImportAsync()
+    {
+        if (requiresReopen) throw new InvalidOperationException("A failed write requires reopening this handle.");
+        point = null;
+        if ((await database.Set<StoreState>().AsNoTracking().SingleAsync()).Published || await database.Set<Commit>().AnyAsync())
+            throw new InvalidOperationException("Import requires an empty store.");
     }
 
     internal static IEnumerable<IChange> Changes(IEnumerable<RecordImport> imports)

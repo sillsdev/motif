@@ -6,11 +6,11 @@ that graph and restores fresh `.fwdata` projects through the pinned LCM serializ
 It sits beneath the shared command layer; it does not introduce a second command API.
 
 Each LCM object keeps its FieldWorks GUID, concrete class, owner and owning field.
-Scalar fields, multilingual alternatives and list members are separate changes.
-Import commits have at most 500 changes, including a create that crosses commits.
+Native import stores each complete record as one create change and a live snapshot.
+Import commits have at most 500 changes. The generic importer can split a large create across commits.
 Ordered owning and reference sequences are `SIL.ListCrdt` operations behind `IRecordList`.
-Design: import writes each list's baseline (the initial chain, `ListHistory.Initial`) as one compact
-index-carrying change per item, the same bytes as before; only edits after import are list CRDT operations.
+The native create carries each vector's complete initial value. The first list edit derives
+the initial CRDT chain from that value, preserving the identities assigned to initial items.
 Every edit is a retained list operation (insert, move, delete) with its tombstones,
 abandoned positions and buffered operations. Conflict policy: a list never loses an item to a
 concurrent edit, a delete wins over a concurrent move or insert, a move that loses its position
@@ -83,9 +83,8 @@ in a blank project, maps each stored id to the id the new project assigned, and 
 new ids, so a project whose custom field numbers differ round-trips equal. A stored identity that does not
 match its definition, or a repeated identity, is refused.
 
-Budgets: an oversize create splits at 500 changes and equals the unsplit application of the same changes;
-one guarded scalar edit adds at most 2 KB of row payload. Multilingual (gloss) edits have no write seam in
-this library yet, so no gloss edit growth is claimed.
+The generic importer splits an oversize create at 500 changes and yields the same state as
+applying those changes in one commit. One guarded scalar edit adds at most 2 KB of row payload.
 
 For an existing writing system whose LDML is already on disk, save its definition
 before calling `ImportAsync`. Unsaved edits are refused, so graph fields and LDML
@@ -94,8 +93,11 @@ without a disk file are serialized from the supplied cache.
 
 ## Compact persistence and import provenance
 
-The SQLite development format is version 4 (set-hash digests for snapshots, history and the reference index, and layouts that name the built-in table). Earlier development formats are refused;
-reimport the external project into a fresh store. Harmony remains the stock package.
+The SQLite development format is version 5. It adds the complete-record create encoding
+under Harmony model version 1. Version 4 stores open in place and keep model version 0
+for granular imports and edits. Readers refuse history authored under a newer model version.
+For earlier development formats, reimport the external project into a fresh store.
+Harmony remains the stock package.
 Its change and snapshot columns use bounded, versioned binary converters; GUID
 columns contain 16 network-order bytes. Immutable typed field payloads, initialization
 layouts, writing-system definitions and native vector provenance share one content
@@ -110,11 +112,19 @@ be reopened explicitly. The EF model and content cache belong to
 one store instance; another store cannot resolve its content IDs.
 
 Initialization layouts explicitly carry field types and exact initial values. Empty
-multilingual/vector values and neutral scalar values need no separate changes;
-identity fields 101/102/104/105 reconstruct from the create header. These templates
-compress stored values; they are not inferred linguistic defaults. Other scalar
-values, alternatives and list members remain separate field changes. Large creates
-cross 500-change boundaries and regenerate to the same state.
+multilingual/vector values and neutral scalar values need no payload in the native
+create or snapshot. Identity fields 101/102/104/105 reconstruct from the create header.
+The generic importer uses separate changes for the remaining scalar values, alternatives
+and list members. A packed import refuses a record missing a field that its shared
+initialization layout would supply. Each import publishes its commits, changes, snapshots,
+content, reference index and revision in one SQLite transaction.
+
+The internal JSON bootstrap uses Harmony's ServerCommit shape to carry complete history to
+an empty Home. The sender checks the peer's supported model version, and the receiver checks
+authored versions before decoding typed changes. Resource bytes must be staged by hash first.
+The receiver replays into a temporary store and checks the resources, revision, snapshot and
+index digests before publishing. Replay and content digests verify each local store's physical
+rows, including its local content IDs.
 
 Import captures `ICmObjectRepository.AllInstances` encounter ordinals and native
 `VecProp` member order before canonical collection sorting. `GenericRecord.Provenance`

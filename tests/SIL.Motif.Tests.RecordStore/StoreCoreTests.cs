@@ -1,4 +1,6 @@
+using System.Collections.Immutable;
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.RecordStore;
 using SIL.Motif.RecordStore.Lcm;
 using Xunit;
@@ -59,6 +61,103 @@ public sealed class StoreCoreTests : IDisposable
         await using var reopened = new Store(Database, clock);
         var loaded = await reopened.CommitsAsync();
         Assert.Equal(written.OrderBy(c => c.Id), loaded.OrderBy(c => c.Id));
+    }
+
+    [Fact]
+    public async Task NativeBaselineRollsBackWhenPublicationFailsAndCanBeRetried()
+    {
+        var path = Database;
+        var record = new GenericRecord { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        var initial = Enumerable.Repeat(target, 2501).ToArray();
+        record.Values["1000"] = JsonSerializer.SerializeToElement(initial);
+        var types = ImmutableDictionary<int, int>.Empty.Add(1000, 28);
+        var coverage = NativeImportCoverage.Capture([new(record.Id, record.ClassId, null, 0)],
+            ImmutableDictionary<int, ImmutableDictionary<int, int>>.Empty.Add(record.ClassId, types), "native import fixture");
+        await using (var store = new Store(path))
+        {
+            using var connection = new SqliteConnection(RecordSqlite.ConnectionString(path));
+            connection.Open();
+            using var trigger = connection.CreateCommand();
+            trigger.CommandText = """
+                CREATE TRIGGER refuse_index BEFORE INSERT ON IncomingReferences
+                BEGIN SELECT RAISE(ABORT, 'refuse publication'); END
+                """;
+            trigger.ExecuteNonQuery();
+            await Assert.ThrowsAsync<SqliteException>(() => store.ImportNativeAsync([new(record, types)], Guid.NewGuid(), coverage));
+            Assert.Empty(await store.CommitsAsync());
+            trigger.CommandText = "DROP TRIGGER refuse_index";
+            trigger.ExecuteNonQuery();
+        }
+        await using var reopened = new Store(path);
+        await reopened.ImportNativeAsync([new(record, types)], Guid.NewGuid(), coverage);
+        Assert.Equal(2, Assert.Single(await reopened.CommitsAsync()).ChangeCount);
+        await reopened.RegenerateAsync();
+        var restored = Assert.Single(await reopened.ReadAsync(), r => r.Id == record.Id);
+        Assert.Equal(initial, reopened.Lists.Read(restored, 1000));
+    }
+
+    [Fact]
+    public async Task PackedImportRefusesAMissingVectorBeforePublishing()
+    {
+        var first = new GenericRecord { Id = Guid.NewGuid() };
+        var second = new GenericRecord { Id = Guid.NewGuid() };
+        first.Values["1000"] = JsonSerializer.SerializeToElement(Array.Empty<Guid>());
+        var types = ImmutableDictionary<int, int>.Empty.Add(1000, 28);
+        var coverage = NativeImportCoverage.Capture([new(first.Id, 0, null, 0), new(second.Id, 0, null, 0)],
+            ImmutableDictionary<int, ImmutableDictionary<int, int>>.Empty.Add(0, types), "native import fixture");
+        await using var store = new Store(Database);
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.ImportNativeAsync(
+            [new(first, types), new(second, types)], Guid.NewGuid(), coverage));
+        Assert.Empty(await store.CommitsAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(store.ReadAsync);
+        second.Values["1000"] = first.Values["1000"];
+        await store.ImportNativeAsync([new(first, types), new(second, types)], Guid.NewGuid(), coverage);
+        Assert.Equal(3, (await store.ReadAsync()).Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GranularImportRollsBackWhenPublicationFailsAndCanBeRetried(bool legacy)
+    {
+        var path = Database;
+        var target = new GenericRecord { Id = Guid.NewGuid() };
+        var record = new GenericRecord { Id = Guid.NewGuid() };
+        record.Values["1000"] = JsonSerializer.SerializeToElement(Enumerable.Repeat(target.Id, 501));
+        var types = ImmutableDictionary<int, int>.Empty.Add(1000, 28);
+        var coverage = NativeImportCoverage.Capture([new(record.Id, 0, null, 0), new(target.Id, 0, null, 0)],
+            ImmutableDictionary<int, ImmutableDictionary<int, int>>.Empty.Add(0, types), "native import fixture");
+        var records = new RecordImport[] { new(record, types), new(target, types) };
+        await using (var empty = new Store(path)) { }
+        using var connection = new SqliteConnection(RecordSqlite.ConnectionString(path));
+        connection.Open();
+        using var command = connection.CreateCommand();
+        if (legacy)
+        {
+            command.CommandText = "PRAGMA user_version=4";
+            command.ExecuteNonQuery();
+        }
+        command.CommandText = """
+            CREATE TRIGGER refuse_index BEFORE INSERT ON IncomingReferences
+            BEGIN SELECT RAISE(ABORT, 'refuse publication'); END
+            """;
+        command.ExecuteNonQuery();
+
+        Task Import(Store store) => legacy ? store.ImportNativeAsync(records, Guid.NewGuid(), coverage)
+            : store.ImportAsync(records, Guid.NewGuid(), coverage);
+
+        await using (var store = new Store(path))
+        {
+            await Assert.ThrowsAsync<SqliteException>(() => Import(store));
+            Assert.Empty(await store.CommitsAsync());
+        }
+        command.CommandText = "DROP TRIGGER refuse_index";
+        command.ExecuteNonQuery();
+        await using var reopened = new Store(path);
+        await Import(reopened);
+        Assert.Equal(2, (await reopened.CommitsAsync()).Count);
+        Assert.Equal(501, reopened.Lists.Read(Assert.Single(await reopened.ReadAsync(), r => r.Id == record.Id), 1000).Count);
     }
 
     [Fact]
