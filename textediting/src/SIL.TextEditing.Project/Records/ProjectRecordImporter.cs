@@ -340,8 +340,11 @@ namespace SIL.TextEditing.Project
                 if (_locked.Contains(LockKey(owner, top)))
                     return ForChange(RecordRefusalKind.UnexportedValue, "The project holds more in " + top + " than the file can show (the export lists it as unexported), so writing it would lose that.", c);
 
+                // Fail closed: a change that cannot be mapped to a project field is never accepted unchecked.
                 var leaf = Resolve(c);
-                if (_writable != null && leaf != null)
+                if (leaf == null)
+                    return ForChange(RecordRefusalKind.UnknownField, "The change names a field that could not be resolved to a project field, so it cannot be checked.", c);
+                if (_writable != null)
                 {
                     string declaring = _metadata.GetOwnClsName(leaf.Flid), name = _metadata.GetFieldName(leaf.Flid);
                     if (c.Kind == RecordChangeKind.AddObject)
@@ -417,9 +420,10 @@ namespace SIL.TextEditing.Project
             string? TargetProblem(Guid? target, int flid, out bool wrongClass)
             {
                 wrongClass = false;
+                if (flid < 0) return "The class of a new object holding this reference could not be determined, so the reference cannot be checked.";
                 if (target == null) return "The reference names no object of the project (its link has no guid).";
                 if (!_cache.ServiceLocator.ObjectRepository.TryGetObject(target.Value, out var obj)) return "The project has no object " + target.Value.ToString("D") + ".";
-                if (flid == 0) return null;
+                if (flid == 0) return "The field that holds the reference could not be resolved, so its class cannot be checked.";
                 int wanted = _metadata.GetDstClsId(flid);
                 int have = _metadata.GetClassId(obj.ClassName);
                 for (int at = have; at != 0; at = _metadata.GetBaseClsId(at)) if (at == wanted) return null;
@@ -437,7 +441,8 @@ namespace SIL.TextEditing.Project
                     if (_cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out _))
                         return ForChange(RecordRefusalKind.GuidInUse, "The project already has an object " + guid.ToString("D") + ".", c);
                 var type = leaf == null ? null : TypeOf(subtree, leaf.Field.IsList ? leaf.Field.Item! : leaf.Field);
-                if (type == null) return null;
+                if (type == null)
+                    return ForChange(RecordRefusalKind.UnknownField, "The class of the new object could not be determined, so its fields cannot be checked.", c);
                 foreach (var (target, flid) in References(subtree, type))
                 {
                     string? problem = TargetProblem(target, flid, out bool wrongClass);
@@ -474,6 +479,7 @@ namespace SIL.TextEditing.Project
                     {
                         var childType = TypeOf(child, field);
                         if (childType != null) foreach (var r in References(child, childType)) yield return r;
+                        else yield return (null, -1);
                     }
                     else if (pair.Value is RecordList list && field.Item != null)
                     {
@@ -484,6 +490,7 @@ namespace SIL.TextEditing.Project
                             {
                                 var childType = TypeOf(c, field.Item);
                                 if (childType != null) foreach (var r in References(c, childType)) yield return r;
+                                else yield return (null, -1);
                             }
                         }
                     }
