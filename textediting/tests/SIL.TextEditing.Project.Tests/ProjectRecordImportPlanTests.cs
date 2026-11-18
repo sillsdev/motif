@@ -653,6 +653,113 @@ namespace SIL.TextEditing.Project.Tests
 
         // ------------------------------------------------------------------ homographs, unnamed items, partial files, anchors
 
+        static ProjectRecordPlan DeleteSecondSense(World w, out ProjectRecordExporter exporter)
+        {
+            exporter = LexiconExporter(w.Fixture);
+            var text = Edited(exporter, exporter.Export(w.Entry.Guid), d => ((RecordList)d.Data["senses"]!).Items.RemoveAt(1));
+            return Plan(exporter, text);
+        }
+
+        [Fact]
+        public void ALinkInsideRichTextBlocksADeleteByOmission()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var cache = fixture.Cache;
+            fixture.Change(() =>
+            {
+                var other = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                var sense = cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
+                other.SensesOS.Add(sense);
+                var b = TsStringUtils.MakeStrBldr();
+                b.Replace(0, 0, "see sell", TsStringUtils.MakeProps("", cache.DefaultAnalWs));
+                b.SetStrPropValue(0, 8, (int)FwTextPropType.ktptObjData, "E" + "silfw://localhost/link?database=x&tool=default&guid=" + w.Second.Guid.ToString("D"));
+                sense.Definition.set_String(cache.DefaultAnalWs, b.GetString());
+            });
+            var plan = DeleteSecondSense(w, out _);
+            var refusal = Single(plan, RecordRefusalKind.DeleteHasIncomingReferences);
+            Assert.Contains("link", refusal.Reason);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void ASequenceReferenceAndACustomReferenceBlockADeleteButOneInsideTheDeletedSetDoesNot()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var cache = fixture.Cache;
+            var sensesOnly = DeleteSecondSense(w, out _);
+            Assert.Empty(sensesOnly.ChangeSet.Refusals);
+
+            ILexEntryRef reference = null!;
+            fixture.Change(() =>
+            {
+                var other = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                reference = cache.ServiceLocator.GetInstance<ILexEntryRefFactory>().Create();
+                other.EntryRefsOS.Add(reference);
+                reference.ComponentLexemesRS.Add(w.Second);
+            });
+            Single(DeleteSecondSense(w, out _), RecordRefusalKind.DeleteHasIncomingReferences);
+            fixture.Change(() => reference.ComponentLexemesRS.Clear());
+            Assert.Empty(DeleteSecondSense(w, out _).ChangeSet.Refusals);
+
+            int custom = ((IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor).AddCustomField("LexEntry", "Pointer", CellarPropertyType.ReferenceAtom, cache.MetaDataCacheAccessor.GetClassId("LexSense"));
+            fixture.Change(() => cache.DomainDataByFlid.SetObjProp(w.Entry.Hvo, custom, w.Second.Hvo));
+            var plan = DeleteSecondSense(w, out _);
+            // The entry is not inside the deleted sense, so its custom reference blocks the delete.
+            Single(plan, RecordRefusalKind.DeleteHasIncomingReferences);
+        }
+
+        [Fact]
+        public void AReferrerInsideTheDeletedObjectDoesNotBlockItsDelete()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var cache = fixture.Cache;
+            fixture.Change(() =>
+            {
+                // A sense's own example sentence referring back to the sense through a rich-text link.
+                var example = w.Second.ExamplesOS.Count > 0 ? w.Second.ExamplesOS[0] : cache.ServiceLocator.GetInstance<ILexExampleSentenceFactory>().Create();
+                if (w.Second.ExamplesOS.Count == 0) w.Second.ExamplesOS.Add(example);
+                var b = TsStringUtils.MakeStrBldr();
+                b.Replace(0, 0, "me", TsStringUtils.MakeProps("", cache.DefaultAnalWs));
+                b.SetStrPropValue(0, 2, (int)FwTextPropType.ktptObjData, "E" + "silfw://localhost/link?guid=" + w.Second.Guid.ToString("D"));
+                example.Example.set_String(cache.DefaultAnalWs, b.GetString());
+            });
+            var plan = DeleteSecondSense(w, out _);
+            Assert.Empty(plan.ChangeSet.Refusals);
+            Assert.Single(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void ANewObjectWithAGuidTheProjectAlreadyHasIsRefused()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var text = Edited(exporter, exporter.Export(w.Entry.Guid), d =>
+                ((RecordList)d.Data["senses"]!).Add(new RecordObject { Class = "LexSense", Guid = w.OtherDomain.Guid }.Set("gloss", new RecordAlternatives().Add("en", new RecordScalar("x")))));
+            var plan = Plan(exporter, text);
+            Single(plan, RecordRefusalKind.GuidInUse);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void AnExportThatCouldNotBeWrittenRefusesTheWholeFile()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var export = exporter.Export(w.Entry.Guid);
+            var importer = new ProjectRecordImporter(exporter)
+            {
+                ExportOverride = (k, g) => new ProjectRecordExport(export.Kind, export.Guid, export.Path, null, export.Document, export.Unexported),
+            };
+            var plan = importer.Plan(export.Text!);
+            Single(plan, RecordRefusalKind.ExportFailed);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
         [Fact]
         public void HomographsArePlannedByTheirOwnGuid()
         {

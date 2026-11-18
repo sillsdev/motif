@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.TextEditing.Markdown;
 using SIL.TextEditing.Markdown.Records;
@@ -84,6 +85,9 @@ namespace SIL.TextEditing.Project
         public static ProjectRecordPlan Plan(LcmCache cache, ProjectRecordSchemaResult schemaResult, string fileText, IWritableFields? writable = null)
             => new ProjectRecordImporter(new ProjectRecordExporter(cache, schemaResult)).Plan(fileText, writable);
 
+        /// <summary>Tests replace the fresh export to reach paths a healthy project cannot.</summary>
+        internal Func<string, Guid, ProjectRecordExport>? ExportOverride { get; set; }
+
         RecordSchema Schema => _exporter.Schema;
 
         /// <summary>Plans the import of <paramref name="fileText"/>. It never throws for a bad file: whatever is wrong with it is a refusal.</summary>
@@ -102,7 +106,7 @@ namespace SIL.TextEditing.Project
                 return Whole(file, ProjectRecordBaseVerdict.NotChecked, null, null, read, new[] { Refusal(RecordRefusalKind.UnknownRecord, problem!) });
 
             ProjectRecordExport export;
-            try { export = _exporter.Export(kind.Name, record.Value); }
+            try { export = ExportOverride != null ? ExportOverride(kind.Name, record.Value) : _exporter.Export(kind.Name, record.Value); }
             catch (ArgumentException e)
             {
                 return Whole(file, ProjectRecordBaseVerdict.NotChecked, record, null, read, new[] { Refusal(RecordRefusalKind.UnknownRecord, e.Message, record) });
@@ -520,7 +524,76 @@ namespace SIL.TextEditing.Project
                     foreach (var referrer in o.ReferringObjects)
                         if (!owned.Contains(referrer.Guid))
                             return ForChange(RecordRefusalKind.DeleteHasIncomingReferences, "Another object of the project (" + referrer.ClassName + " " + referrer.Guid.ToString("D") + ") refers to the " + obj.ClassName + " " + obj.Guid.ToString("D") + " (or an object it owns), so deleting it would break that reference.", c);
+                // A link inside rich text is not a liblcm reference; the project's rich text is searched, once per plan and only when something is deleted.
+                var links = RichLinks();
+                foreach (var g in owned)
+                    if (links.TryGetValue(g, out var linkers))
+                        foreach (var linker in linkers)
+                            if (!owned.Contains(linker))
+                                return ForChange(RecordRefusalKind.DeleteHasIncomingReferences, "A link in the text of another object (" + linker.ToString("D") + ") points at the " + obj.ClassName + " " + obj.Guid.ToString("D") + " (or an object it owns), so deleting it would leave that link dangling.", c);
                 return null;
+            }
+
+            Dictionary<Guid, HashSet<Guid>>? _richLinks;
+
+            /// <summary>For every object GUID that a rich-text link (an object-data run property) names: the GUIDs of the objects whose strings hold such a link. Built on first use by one pass over
+            /// every String and MultiString field of every object of the project.</summary>
+            Dictionary<Guid, HashSet<Guid>> RichLinks()
+            {
+                if (_richLinks != null) return _richLinks;
+                var found = new Dictionary<Guid, HashSet<Guid>>();
+                var data = _cache.DomainDataByFlid;
+                var managed = (IFwMetaDataCacheManaged)_metadata;
+                var fieldsByClass = new Dictionary<int, List<(int Flid, bool Multi)>>();
+                foreach (var obj in _cache.ServiceLocator.ObjectRepository.AllInstances())
+                {
+                    if (!fieldsByClass.TryGetValue(obj.ClassID, out var fields))
+                    {
+                        fields = new List<(int, bool)>();
+                        foreach (int flid in managed.GetFields(obj.ClassID, true, -1))
+                        {
+                            if (_metadata.get_IsVirtual(flid)) continue;
+                            var type = (SIL.LCModel.Core.Cellar.CellarPropertyType)_metadata.GetFieldType(flid);
+                            if (type == SIL.LCModel.Core.Cellar.CellarPropertyType.String) fields.Add((flid, false));
+                            else if (type == SIL.LCModel.Core.Cellar.CellarPropertyType.MultiString) fields.Add((flid, true));
+                        }
+                        fieldsByClass[obj.ClassID] = fields;
+                    }
+                    foreach (var (flid, multi) in fields)
+                    {
+                        if (!multi) Scan(obj, data.get_StringProp(obj.Hvo, flid), found);
+                        else
+                        {
+                            var m = data.get_MultiStringProp(obj.Hvo, flid);
+                            for (int i = 0; i < m.StringCount; i++) Scan(obj, m.GetStringFromIndex(i, out _), found);
+                        }
+                    }
+                }
+                return _richLinks = found;
+            }
+
+            static readonly System.Text.RegularExpressions.Regex GuidText = new System.Text.RegularExpressions.Regex(
+                "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+            static void Scan(ICmObject owner, ITsString? s, Dictionary<Guid, HashSet<Guid>> found)
+            {
+                if (s == null || s.Length == 0) return;
+                for (int i = 0; i < s.RunCount; i++)
+                {
+                    string? objData = s.get_Properties(i).GetStrPropValue((int)FwTextPropType.ktptObjData);
+                    if (string.IsNullOrEmpty(objData)) continue;
+                    foreach (System.Text.RegularExpressions.Match m in GuidText.Matches(objData!))
+                        if (Guid.TryParse(m.Value, out var g)) Add(found, g, owner.Guid);
+                    // Hot links to objects keep a type character and the GUID's 16 bytes as eight UTF-16 characters.
+                    if (objData!.Length == 9)
+                        Add(found, new Guid(System.Text.Encoding.Unicode.GetBytes(objData.Substring(1))), owner.Guid);
+                }
+            }
+
+            static void Add(Dictionary<Guid, HashSet<Guid>> found, Guid target, Guid linker)
+            {
+                if (!found.TryGetValue(target, out var set)) found[target] = set = new HashSet<Guid>();
+                set.Add(linker);
             }
 
             /// <summary>A timestamp (the non-custom DateCreated and DateModified, matched by name) is stamped by liblcm when the object is written and goes with the object when it is deleted. It locks no field and is no data a delete loses.</summary>
