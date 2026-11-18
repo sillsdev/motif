@@ -33,7 +33,7 @@ public sealed class PersistenceVersionTests : IDisposable
         {
             command.CommandText = "SELECT Entity FROM Snapshots LIMIT 1";
             var bytes = (byte[])command.ExecuteScalar()!;
-            bytes[0] = 2;
+            bytes[0] = 4;
             command.CommandText = "UPDATE Snapshots SET Entity=$bytes";
             command.Parameters.AddWithValue("$bytes", bytes);
         }

@@ -30,6 +30,8 @@ internal sealed class SetRecordValue(Guid entityId, string field, JsonElement va
     public JsonElement Value { get; } = value.Clone();
     public override ValueTask ApplyChange(GenericRecord entity, IChangeContext context)
     {
+        // A whole-value write would discard list history; list fields change only through list operations.
+        if (int.TryParse(Field, out _) && RecordInitialization.Type(entity, Field) >= 25) return ValueTask.CompletedTask;
         entity.Values[Field] = Value;
         return ValueTask.CompletedTask;
     }
@@ -52,6 +54,7 @@ internal sealed class SetRecordAlternative(Guid entityId, int field, string tag,
     }
 }
 
+/// <summary>The compact encoding of an initial-chain list insert: the item appended at the next position of the import order.</summary>
 internal sealed class InsertRecordItem(Guid entityId, int field, Guid item, int index)
     : EditChange<GenericRecord>(entityId), ISelfNamedType<InsertRecordItem>
 {
@@ -60,7 +63,12 @@ internal sealed class InsertRecordItem(Guid entityId, int field, Guid item, int 
     public int Index { get; } = index;
     public override ValueTask ApplyChange(GenericRecord entity, IChangeContext context)
     {
-        new IndexRecordList().Insert(entity, Field, Item, Index);
+        var history = entity.HistoryFor(Field);
+        if (history.Ops.Count != 0 || Index != history.Initial.Count)
+            throw new InvalidDataException("An initial list insert must append to an unedited list.");
+        // Only import writes these, so a refusal means the stored baseline itself is damaged.
+        if (entity.ApplyListOp(Field, history.NextInitial(Item)) == ListOutcome.Refused)
+            throw new InvalidDataException("An initial list insert was refused.");
         return ValueTask.CompletedTask;
     }
 }

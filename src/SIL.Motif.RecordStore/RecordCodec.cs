@@ -11,11 +11,13 @@ internal sealed class RecordCodec(RecordContent content)
     {
         var record = (GenericRecord)entity;
         using var output = new BinaryOutput();
-        output.Byte(1);
+        var edited = record.Lists.Where(p => p.Value.Ops.Count > 0).OrderBy(p => p.Key).ToArray();
+        var editedKeys = edited.Select(p => p.Key.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToHashSet(StringComparer.Ordinal);
+        output.Byte(edited.Length > 0 ? (byte)3 : (byte)1);
         Header(output, record);
         output.Byte(record.DeletedAt.HasValue ? (byte)1 : (byte)0);
         if (record.DeletedAt.HasValue) output.Integer(record.DeletedAt.Value.UtcTicks);
-        var fields = record.Values.Where(p => !RecordInitialization.IsInitial(record, p.Key, p.Value))
+        var fields = record.Values.Where(p => !editedKeys.Contains(p.Key) && !RecordInitialization.IsInitial(record, p.Key, p.Value))
             .OrderBy(p => p.Key, StringComparer.Ordinal).ToArray();
         output.Unsigned((ulong)fields.Length);
         foreach (var (field, value) in fields)
@@ -35,12 +37,30 @@ internal sealed class RecordCodec(RecordContent content)
             }
             else Value(output, value);
         }
+        if (edited.Length > 0)
+        {
+            output.Unsigned((ulong)edited.Length);
+            foreach (var (field, history) in edited)
+            {
+                Key(output, field.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                output.Unsigned((ulong)history.Initial.Count);
+                foreach (var item in history.Initial) Guid(output, item);
+                output.Unsigned((ulong)history.Ops.Count);
+                foreach (var op in history.Ops)
+                {
+                    Text(output, SIL.ListCrdt.OpJson.ToJson(op));
+                    Seen(output, history.Seen.GetValueOrDefault(op.Id));
+                }
+            }
+        }
         return output.Finish();
     }
 
     public IObjectBase Snapshot(byte[] bytes)
     {
-        var input = Input(bytes);
+        var input = new BinaryInput(bytes);
+        var version = input.Byte();
+        if (version is not (1 or 2 or 3)) throw new InvalidDataException("Unknown record codec version.");
         var record = Header(input);
         var deleted = input.Byte();
         if (deleted > 1) throw new InvalidDataException("Invalid deletion marker.");
@@ -62,6 +82,28 @@ internal sealed class RecordCodec(RecordContent content)
                 record.Values[field] = JsonSerializer.SerializeToElement(items);
             }
             else record.Values[field] = Value(input);
+        }
+        if (version >= 2)
+        {
+            for (var n = input.Count(); n > 0; n--)
+            {
+                var key = Key(input);
+                if (!int.TryParse(key, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var field) ||
+                    RecordInitialization.Type(record, key) < 25 || record.Lists.ContainsKey(field))
+                    throw new InvalidDataException("Invalid list history field.");
+                var history = new ListHistory();
+                for (var count = input.Count(); count > 0; count--) history.Initial.Add(Guid(input));
+                for (var count = input.Count(); count > 0; count--)
+                {
+                    var op = SIL.ListCrdt.OpJson.FromJson(Text(input), StoreListLimits.Default);
+                    var seen = version == 3 ? Seen(input) : new Dictionary<string, long>();
+                    history.Ops.Add(op);
+                    if (seen.Count > 0) history.Seen[op.Id] = seen;
+                }
+                if (history.Ops.Count == 0) throw new InvalidDataException("An empty list history must use the plain encoding.");
+                record.Lists[field] = history;
+                record.Values[key] = JsonSerializer.SerializeToElement(history.Visible(RecordInitialization.Type(record, key) is 25 or 26));
+            }
         }
         input.End();
         return record;
@@ -89,6 +131,11 @@ internal sealed class RecordCodec(RecordContent content)
                 output.Byte(4); Guid(output, item.EntityId); output.Unsigned((ulong)item.Field);
                 Value(output, JsonSerializer.SerializeToElement(item.Item)); output.Unsigned((ulong)item.Index);
                 break;
+            case ListRecordOp list:
+                output.Byte(6); Guid(output, list.EntityId); output.Unsigned((ulong)list.Field);
+                Text(output, SIL.ListCrdt.OpJson.ToJson(list.Operation));
+                Seen(output, list.Seen);
+                break;
             default: throw new InvalidDataException("Unsupported record change.");
         }
         return output.Finish();
@@ -112,12 +159,30 @@ internal sealed class RecordCodec(RecordContent content)
                 2 => new SetRecordValue(id, Key(input), Value(input)),
                 3 => new SetRecordAlternative(id, checked((int)input.Unsigned()), Text(input), Value(input)),
                 4 => new InsertRecordItem(id, checked((int)input.Unsigned()), Value(input).GetGuid(), checked((int)input.Unsigned())),
+                5 => new ListRecordOp(id, checked((int)input.Unsigned()), SIL.ListCrdt.OpJson.FromJson(Text(input), StoreListLimits.Default)),
+                6 => new ListRecordOp(id, checked((int)input.Unsigned()), SIL.ListCrdt.OpJson.FromJson(Text(input), StoreListLimits.Default), SeenOf(input)),
                 _ => throw new InvalidDataException("Unknown record change kind.")
             };
         }
         input.End();
         return change;
     }
+
+    private void Seen(BinaryOutput output, IReadOnlyDictionary<string, long>? seen)
+    {
+        var pairs = (seen ?? new Dictionary<string, long>()).OrderBy(p => p.Key, StringComparer.Ordinal).ToArray();
+        output.Unsigned((ulong)pairs.Length);
+        foreach (var (replica, counter) in pairs) { Text(output, replica); output.Unsigned((ulong)counter); }
+    }
+
+    private Dictionary<string, long> Seen(BinaryInput input)
+    {
+        var seen = new Dictionary<string, long>(StringComparer.Ordinal);
+        for (var count = input.Count(); count > 0; count--) seen.Add(Text(input), checked((long)input.Unsigned()));
+        return seen;
+    }
+
+    private IReadOnlyDictionary<string, long> SeenOf(BinaryInput input) => Seen(input);
 
     private static BinaryInput Input(byte[] bytes)
     {

@@ -19,9 +19,11 @@ public sealed partial class RecordStore : IAsyncDisposable
     private readonly ServiceProvider provider;
     private readonly AsyncServiceScope scope;
     private readonly DataModel model;
+    internal DataModel Model => model;
     private readonly RecordDatabase database;
     private readonly RecordContent content;
-    public IRecordList Lists { get; } = new IndexRecordList();
+    public static SIL.ListCrdt.ListLimits ListLimits => StoreListLimits.Default;
+    public IRecordList Lists { get; } = new CrdtRecordList();
 
     public RecordStore(string path, TimeProvider? timeProvider = null)
     {
@@ -38,9 +40,9 @@ public sealed partial class RecordStore : IAsyncDisposable
             config.EnableProjectedTables = false;
             config.ObjectTypeListBuilder.DefaultAdapter().Add<GenericRecord>();
             config.ChangeTypeListBuilder.Add<CreateRecord>().Add<SetRecordValue>()
-                .Add<SetRecordAlternative>().Add<InsertRecordItem>();
+                .Add<SetRecordAlternative>().Add<InsertRecordItem>().Add<ListRecordOp>();
             config.ModelVersionBuilder.Add(0, "Motif generic records", version => version
-                .Change<CreateRecord>().Change<SetRecordValue>().Change<SetRecordAlternative>().Change<InsertRecordItem>());
+                .Change<CreateRecord>().Change<SetRecordValue>().Change<SetRecordAlternative>().Change<InsertRecordItem>().Change<ListRecordOp>());
         });
         services.AddSingleton<TimeProvider>(new MicrosecondTimeProvider(timeProvider ?? TimeProvider.System));
         provider = services.BuildServiceProvider();
@@ -242,11 +244,22 @@ public sealed partial class RecordStore : IAsyncDisposable
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", hashes.Order(StringComparer.Ordinal)))));
     }
 
-    internal static byte[] SnapshotItem(GenericRecord record) => RecordContent.Canonical(JsonSerializer.SerializeToElement(new
+    internal static byte[] SnapshotItem(GenericRecord record)
     {
-        record.Id, record.Kind, record.ClassId, record.Owner, record.OwningField, record.OwnOrdinal,
-        record.IdentityFields, record.Layout, record.Values, record.Provenance, record.DeletedAt
-    }));
+        var edited = record.Lists.Where(p => p.Value.Ops.Count > 0).OrderBy(p => p.Key).ToArray();
+        // Unedited records keep their earlier digest shape; edited lists add their retained operations.
+        if (edited.Length == 0) return RecordContent.Canonical(JsonSerializer.SerializeToElement(new
+        {
+            record.Id, record.Kind, record.ClassId, record.Owner, record.OwningField, record.OwnOrdinal,
+            record.IdentityFields, record.Layout, record.Values, record.Provenance, record.DeletedAt
+        }));
+        return RecordContent.Canonical(JsonSerializer.SerializeToElement(new
+        {
+            record.Id, record.Kind, record.ClassId, record.Owner, record.OwningField, record.OwnOrdinal,
+            record.IdentityFields, record.Layout, record.Values, record.Provenance, record.DeletedAt,
+            Lists = edited.Select(p => new { Field = p.Key, p.Value.Initial, Operations = p.Value.Ops.Select(op => new { Json = SIL.ListCrdt.OpJson.ToJson(op), Seen = p.Value.Seen.TryGetValue(op.Id, out var view) && view.Count > 0 ? view.OrderBy(x => x.Key, StringComparer.Ordinal).Select(x => new object[] { x.Key, x.Value }) : null }) })
+        }));
+    }
 
     private static SetDigest SnapshotDigest(IEnumerable<GenericRecord> records)
     {

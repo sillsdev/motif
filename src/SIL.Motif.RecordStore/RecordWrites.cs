@@ -53,6 +53,7 @@ public sealed partial class RecordStore
                 throw new InvalidOperationException("Identity, ownership and unknown fields cannot be written through this seam.");
             if (!JsonElement.DeepEquals(prior, expectedValue)) throw new StalePriorValueException("The expected field value is stale.");
             var type = RecordInitialization.Type(record, key);
+            if (type >= 25) throw new ListFieldWriteException("A list field cannot be written as a whole value; use list operations.");
             ValidateField(type, field, value, verified.Records, verified.Index.UsageSchema);
             if (!verified.Index.Incoming([target]).NativeComplete)
                 throw new InvalidOperationException("A field write requires complete native reference closure.");

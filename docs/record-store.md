@@ -8,8 +8,22 @@ It sits beneath the shared command layer; it does not introduce a second command
 Each LCM object keeps its FieldWorks GUID, concrete class, owner and owning field.
 Scalar fields, multilingual alternatives and list members are separate changes.
 Import commits have at most 500 changes, including a create that crosses commits.
-Lists currently use integer positions behind `IRecordList`. They do not provide
-concurrent list editing semantics. Commit times are UTC, floored to whole microseconds
+Ordered owning and reference sequences are `SIL.ListCrdt` operations behind `IRecordList`.
+Design: import writes each list's baseline (the initial chain, `ListHistory.Initial`) as one compact
+index-carrying change per item, the same bytes as before; only edits after import are list CRDT operations.
+Every edit is a retained list operation (insert, move, delete) with its tombstones,
+abandoned positions and buffered operations. Conflict policy: a list never loses an item to a
+concurrent edit, a delete wins over a concurrent move or insert, a move that loses its position
+register is kept, and `IRecordList.Conflicts` reports it only when the winning move's author had not
+received it (each move records the author's view: per replica, the longest fully applied counter prefix), never a sequential supersession. Collections show a target once.
+A whole-value write to a list field is refused (`ListFieldWriteException`) and never discards history.
+Operations are checked when committed (`ListOperationRefusedException`, nothing stored); a refused stored
+operation is skipped, so replay never throws. Snapshot copies share the folded list state. `IRecordList.CheckpointRows` returns the `node`, `pending`
+and `conflict` rows a checkpoint needs; the builder is separate. The store passes
+`RecordStore.ListLimits` (identities up to 128 characters, 262,144 pending operations, 64 KiB
+per operation), which cover the largest M1 list (34,383 items) with seven times the pending headroom.
+A list with edits stores its operations and move views in the snapshot (codec byte 3; change kind 6; older bytes 2 and 5 remain readable and carry no view); an unedited list keeps the
+earlier encoding. There is no public list edit command yet. Commit times are UTC, floored to whole microseconds
 before Harmony compares them and advances its logical counter.
 
 Writing systems are independent records with stable identity derived from their tag,
@@ -77,9 +91,6 @@ For an existing writing system whose LDML is already on disk, save its definitio
 before calling `ImportAsync`. Unsaved edits are refused, so graph fields and LDML
 cannot silently describe different project states. New writing-system definitions
 without a disk file are serialized from the supplied cache.
-
-Replacing positional lists with M2 also requires replacing the replay implementation
-used by `InsertRecordItem`, as well as the `RecordStore.Lists` reader.
 
 ## Compact persistence and import provenance
 
