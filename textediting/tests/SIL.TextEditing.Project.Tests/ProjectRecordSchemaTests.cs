@@ -15,7 +15,7 @@ namespace SIL.TextEditing.Project.Tests
         public void LexiconSchemaRoundTripsAndDerivesFieldShapes()
         {
             using var fixture = new ProjectFixture();
-            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay);
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).Schema;
             Assert.Equal(schema.ToJson(), RecordSchema.FromJson(schema.ToJson()).ToJson());
             var entry = schema.Kind("lexicon/entry")!.Root;
             Assert.Equal(2, schema.Kind("lexicon/entry")!.PathSegments);
@@ -41,7 +41,7 @@ namespace SIL.TextEditing.Project.Tests
         public void NotebookSchemaIncludesSubrecordsAndParticipants()
         {
             using var fixture = new ProjectFixture();
-            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.NotebookRecordOverlay);
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema;
             var kind = schema.Kind("notebook/record")!;
             Assert.Equal(2, kind.PathSegments);
             Assert.Equal("description", kind.BodyField!.Name);
@@ -57,7 +57,7 @@ namespace SIL.TextEditing.Project.Tests
         public void ListItemSchemaSelectsConcreteRootsAndKeepsTheOutline()
         {
             using var fixture = new ProjectFixture();
-            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.ListItemOverlay);
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.ListItemOverlay).Schema;
             var kind = schema.Kind("lists/item")!;
             Assert.Equal(3, kind.PathSegments);
             Assert.Contains(kind.Roots, t => t.Name == "CmSemanticDomain");
@@ -82,32 +82,37 @@ namespace SIL.TextEditing.Project.Tests
         public void WritingSystemOverrideIsValidatedAndUsed()
         {
             using var fixture = new ProjectFixture();
-            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay);
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).Schema;
             Assert.Equal(RecordWritingSystem.Vernacular, schema.ObjectType("LexPronunciation")!.Field("tone")!.WritingSystem);
             Assert.Equal(RecordWritingSystem.Analysis, schema.Kind("lexicon/entry")!.Root.Field("lift-residue")!.WritingSystem);
             string invalid = ChangeOverlay(root => Field(root, "LexEntry", "HomographNumber").SetAttributeValue("ws", "vernacular"));
-            Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, invalid));
+            Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, invalid).Schema);
             invalid = ChangeOverlay(root => Field(root, "LexEntry", "LiftResidue").SetAttributeValue("ws", "unknown"));
-            Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, invalid));
+            Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, invalid).Schema);
         }
 
         [Fact]
-        public void OverlayCannotUseReservedCustomKeyOrExcludeCustomFields()
+        public void OverlayCannotUseReservedCustomKeyAndReportsCustomExclusions()
         {
             using var fixture = new ProjectFixture();
             string collision = ChangeOverlay(root => Field(root, "LexEntry", "LiftResidue").SetAttributeValue("key", "custom-0041"));
-            Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, collision));
+            Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, collision).Schema);
             var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
             metadata.AddCustomField("LexEntry", "Added", CellarPropertyType.Integer, 0);
             string excluded = ChangeOverlay(root => Class(root, "LexEntry").Add(new XElement("exclude", new XAttribute("name", "Added"))));
-            Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, excluded));
+            var result = ProjectRecordSchema.Generate(fixture.Cache, excluded);
+            var omission = Assert.Single(result.OmittedCustomFields);
+            Assert.Equal("LexEntry", omission.Class);
+            Assert.Equal("Added", omission.Field);
+            Assert.Contains("overlay", omission.Reason);
+            Assert.Null(result.Schema.Kind("lexicon/entry")!.Root.Field("custom-LexEntry-Added"));
         }
 
         [Fact]
         public void GeneratedSchemaWritesAndReadsARecord()
         {
             using var fixture = new ProjectFixture();
-            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay);
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).Schema;
             var record = new RecordDocument("lexicon/entry");
             record.Data.Set("citation-form", new RecordAlternatives().Add("en", new RecordScalar("example")));
             record.Data.Set("lexeme-form", new RecordObject { Class = "MoStemAllomorph" }
@@ -126,7 +131,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Field(root, "LexEntry", "CitationForm").Remove());
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("LexEntry.CitationForm", error.Message);
         }
 
@@ -137,7 +142,7 @@ namespace SIL.TextEditing.Project.Tests
             var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
             metadata.AddCustomField("MoForm", "AddedField", CellarPropertyType.Unicode, 0);
             metadata.AddCustomField("MoStemAllomorph", "SecondField", CellarPropertyType.Integer, 0);
-            var type = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).ObjectType("MoStemAllomorph")!;
+            var type = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).Schema.ObjectType("MoStemAllomorph")!;
             Assert.Equal(new[] { "custom-MoStemAllomorph-SecondField", "custom-MoForm-AddedField" },
                 type.Fields.Skip(type.Fields.Count - 2).Select(f => f.Name));
             Assert.Equal(RecordFieldKind.Text, type.Field("custom-MoForm-AddedField")!.Kind);
@@ -149,7 +154,7 @@ namespace SIL.TextEditing.Project.Tests
             using var fixture = new ProjectFixture();
             var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
             metadata.AddCustomField("RnGenericRec", "A ./%#é\u00a0\ufeff\ufffe\uffff", CellarPropertyType.Unicode, 0);
-            var root = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.NotebookRecordOverlay).Kind("notebook/record")!.Root;
+            var root = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Kind("notebook/record")!.Root;
             Assert.NotNull(root.Field("custom-RnGenericRec-A%20%2E%2F%25%23é%C2%A0%EF%BB%BF%EF%BF%BE%EF%BF%BF"));
         }
 
@@ -158,7 +163,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => root.Add(new XElement("class", new XAttribute("name", "AbsentClass"))));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Unknown metadata class AbsentClass", error.Message);
         }
 
@@ -167,7 +172,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Class(root, "LexEntry").Add(new XElement("exclude", new XAttribute("name", "AbsentField"))));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Unknown declared field LexEntry.AbsentField", error.Message);
         }
 
@@ -176,7 +181,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Class(root, "MoStemAllomorph").Add(new XElement("exclude", new XAttribute("name", "Form"))));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Unknown declared field MoStemAllomorph.Form", error.Message);
         }
 
@@ -185,7 +190,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Class(root, "LexEntry").Add(new XElement("exclude", new XAttribute("name", "CitationForm"))));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Duplicate field decision LexEntry.CitationForm", error.Message);
         }
 
@@ -194,7 +199,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Field(root, "PhPhonContext", "Description").SetAttributeValue("blocks", "tables,unknown"));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Unknown block kind unknown", error.Message);
         }
 
@@ -203,7 +208,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Field(root, "LexEntry", "HomographNumber").SetAttributeValue("notation", "environment"));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Notation requires a string field: homograph-number", error.Message);
         }
 
@@ -212,7 +217,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Field(root, "LexEntry", "LiftResidue").SetAttributeValue("notation", "Bad Notation"));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("notation name is lowercase", error.Message);
         }
 
@@ -221,7 +226,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Field(root, "LexEntry", "CitationForm").SetAttributeValue("blocks", "lists"));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Blocks require a paragraph field: citation-form", error.Message);
         }
 
@@ -230,7 +235,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => root.Element("kind")!.SetAttributeValue("root", "AbsentRoot"));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Unknown kind root AbsentRoot", error.Message);
         }
 
@@ -239,7 +244,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => root.Element("kind")!.SetAttributeValue("root", "CmTranslation"));
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Unreachable overlay class", error.Message);
         }
 
@@ -248,7 +253,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Class(root, "MoStemAllomorph").Remove());
-            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay));
+            var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Missing concrete overlay class for allomorphs", error.Message);
         }
 
@@ -258,7 +263,7 @@ namespace SIL.TextEditing.Project.Tests
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => root.Add(new XElement("kind", new XAttribute("name", "example/translation"),
                 new XAttribute("root", "CmTranslation"), new XAttribute("pathSegments", "1"))));
-            var schema = ProjectRecordSchema.Generate(fixture.Cache, overlay);
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema;
             Assert.NotNull(schema.Kind("lexicon/entry"));
             Assert.NotNull(schema.Kind("example/translation"));
         }
@@ -268,7 +273,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             var metadata = (IFwMetaDataCache)fixture.Cache.MetaDataCacheAccessor;
-            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay);
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).Schema;
             var alternatives = schema.ObjectTypes.SelectMany(t => t.Fields)
                 .Select(f => f.IsList ? f.Item! : f)
                 .Where(f => f.Kind == RecordFieldKind.Object).SelectMany(f => f.ObjectTypeNames).Distinct().ToArray();
@@ -283,30 +288,58 @@ namespace SIL.TextEditing.Project.Tests
             using var fixture = new ProjectFixture();
             var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
             metadata.AddCustomField("LexEntry", "VernacularField", CellarPropertyType.Unicode, 0, "", -2, Guid.Empty);
-            var field = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).Kind("lexicon/entry")!.Root.Fields.Last();
+            var field = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay).Schema.Kind("lexicon/entry")!.Root.Fields.Last();
             Assert.Equal(RecordWritingSystem.Vernacular, field.WritingSystem);
         }
 
         [Theory]
         [InlineData(-5)]
         [InlineData(-6)]
-        public void MixedWritingSystemHintsAreRejectedWithoutLosingTheirOrder(int hint)
+        public void MixedWritingSystemHintsAreReportedWithoutLosingTheirOrder(int hint)
         {
             using var fixture = new ProjectFixture();
             var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
             metadata.AddCustomField("LexEntry", "MixedField", CellarPropertyType.Unicode, 0, "", hint, Guid.Empty);
-            var error = Assert.Throws<NotSupportedException>(() => ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay));
-            Assert.Contains("writing-system hint " + hint, error.Message);
+            var result = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay);
+            var omitted = Assert.Single(result.OmittedCustomFields);
+            Assert.Equal("MixedField", omitted.Field);
+            Assert.Contains("writing-system hint " + hint, omitted.Reason);
         }
 
         [Fact]
-        public void GeneralDatesMustBeExcludedUntilTheRecordFormatRepresentsThem()
+        public void UnsupportedCustomDatesAreOmittedAndReported()
         {
             using var fixture = new ProjectFixture();
             var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
             metadata.AddCustomField("LexEntry", "DateField", CellarPropertyType.GenDate, 0);
-            var error = Assert.Throws<NotSupportedException>(() => ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay));
-            Assert.Contains("GenDate", error.Message);
+            var result = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.LexiconEntryOverlay);
+            var omitted = Assert.Single(result.OmittedCustomFields);
+            Assert.Equal("LexEntry", omitted.Class);
+            Assert.Equal("DateField", omitted.Field);
+            Assert.Contains("GenDate", omitted.Reason);
+            Assert.Null(result.Schema.Kind("lexicon/entry")!.Root.Field("custom-LexEntry-DateField"));
+        }
+
+        [Fact]
+        public void NotebookCustomFieldsRoundTripAndUnsupportedOwnershipIsReported()
+        {
+            using var fixture = new ProjectFixture();
+            var metadata = (IFwMetaDataCacheManaged)fixture.Cache.MetaDataCacheAccessor;
+            var cache = (IFwMetaDataCache)metadata;
+            metadata.AddCustomField("RnGenericRec", "Note", CellarPropertyType.Unicode, 0);
+            metadata.AddCustomField("RnGenericRec", "Contact", CellarPropertyType.ReferenceAtom, cache.GetClassId("CmPerson"));
+            metadata.AddCustomField("RnGenericRec", "ExtraPerson", CellarPropertyType.OwningAtomic, cache.GetClassId("CmPerson"));
+            var result = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.NotebookRecordOverlay);
+            var omitted = Assert.Single(result.OmittedCustomFields);
+            Assert.Equal("ExtraPerson", omitted.Field);
+            Assert.Contains("owned object classes", omitted.Reason);
+            var schema = result.Schema;
+            Assert.Equal(RecordFieldKind.Reference, schema.Kind("notebook/record")!.Root.Field("custom-RnGenericRec-Contact")!.Kind);
+            var record = new RecordDocument("notebook/record");
+            record.Data.Set("custom-RnGenericRec-Note", new RecordScalar("hello"));
+            var read = RecordFileReader.Read(RecordFileWriter.Write(record, schema), schema);
+            Assert.False(read.HasErrors, string.Join("\n", read.Diagnostics));
+            Assert.Equal("hello", ((RecordScalar)read.Document!.Data["custom-RnGenericRec-Note"]!).Text);
         }
 
         [Fact]
@@ -314,7 +347,7 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             string overlay = ProjectRecordSchema.LexiconEntryOverlay.Replace("<exclude name=\"Guid\" />", "<field name=\"Guid\" key=\"identity\" />");
-            Assert.Equal(RecordFieldKind.Guid, ProjectRecordSchema.Generate(fixture.Cache, overlay).Kind("lexicon/entry")!.Root.Field("identity")!.Kind);
+            Assert.Equal(RecordFieldKind.Guid, ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema.Kind("lexicon/entry")!.Root.Field("identity")!.Kind);
         }
 
         [Fact]
@@ -328,7 +361,7 @@ namespace SIL.TextEditing.Project.Tests
             string section = original.Substring(start, end - start).Replace("key=\"description\" />", "key=\"description\" blocks=\"lists\" />");
             string overlay = original.Substring(0, start) + section + original.Substring(end);
             overlay = overlay.Replace("<field name=\"LiftResidue\" key=\"lift-residue\" />", "<field name=\"LiftResidue\" key=\"lift-residue\" notation=\"environment\" />");
-            var schema = ProjectRecordSchema.Generate(fixture.Cache, overlay);
+            var schema = ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema;
             Assert.Equal("environment", schema.Kind("lexicon/entry")!.Root.Field("lift-residue")!.Notation);
             Assert.Equal(BlockFeatures.Lists, schema.ObjectType("PhPhonContext")!.Field("description")!.BlockFeatures);
         }

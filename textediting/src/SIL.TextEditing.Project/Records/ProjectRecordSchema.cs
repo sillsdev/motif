@@ -39,14 +39,14 @@ namespace SIL.TextEditing.Project
         /// an empty blocks attribute allows no blocks. Each <c>kind</c> gives <c>name</c>, <c>root</c>,
         /// <c>pathSegments</c> and optional <c>body</c>; <c>subclasses="true"</c> allows every concrete root subclass.
         /// Every model field of each declared class must be accounted for. Custom fields are included after overlay fields,
-        /// with keys reserved to the generator. Each class must be reachable from a root or be a base of a reachable class.
+        /// with keys reserved to the generator; excluded or unsupported custom fields are reported in the result. Each class must be reachable from a root or be a base of a reachable class.
         /// An optional <c>ws="analysis"</c> or <c>ws="vernacular"</c> overrides a single text field's writing system.
         /// Otherwise the metadata's analysis/vernacular hint determines it; an absent hint uses analysis.
         /// Ordered analysis-vernacular and vernacular-analysis hints cannot be represented and are rejected.
         /// Timestamps, binary and general dates have no record-schema representation and must be excluded.</summary>
         /// <exception cref="ArgumentException">An overlay declaration is invalid or leaves a metadata field unmentioned.</exception>
         /// <exception cref="NotSupportedException">An included metadata type or writing-system hint cannot be represented.</exception>
-        public static RecordSchema Generate(LcmCache cache, string overlayXml)
+        public static ProjectRecordSchemaResult Generate(LcmCache cache, string overlayXml)
         {
             if (cache == null) throw new ArgumentNullException(nameof(cache));
             if (overlayXml == null) throw new ArgumentNullException(nameof(overlayXml));
@@ -66,6 +66,7 @@ namespace SIL.TextEditing.Project
                 if (rootName == "CmObject" || !classes.ContainsKey(rootName))
                     throw new ArgumentException("Unknown kind root " + rootName + ".");
             }
+            var omitted = new Dictionary<int, OmittedCustomField>();
             var builder = new RecordSchemaBuilder(Required(root, "id"));
             foreach (var pair in classes)
             {
@@ -92,17 +93,28 @@ namespace SIL.TextEditing.Project
                         if (!managed.FieldExists(ancestor, fieldName, false)) throw new ArgumentException("Unknown declared field " + className + "." + fieldName + ".");
                         int field = metadata.GetFieldId2(ancestor, fieldName, false);
                         if (field == 0 || metadata.GetOwnClsId(field) != ancestor) throw new ArgumentException("Unknown declared field " + className + "." + fieldName + ".");
-                        if (managed.IsCustom(field)) throw new ArgumentException("Custom fields are included automatically: " + className + "." + fieldName + ".");
+                        if (managed.IsCustom(field) && entry.Name != "exclude") throw new ArgumentException("Custom fields may only be excluded: " + className + "." + fieldName + ".");
                         if (!decisions.Add(field)) throw new ArgumentException("Duplicate field decision " + className + "." + fieldName + ".");
                         if (entry.Name == "field") Add(type, entry, field, metadata, managed, classes);
+                        else if (managed.IsCustom(field)) omitted[field] = new OmittedCustomField(className, fieldName, "Excluded by overlay.");
                     }
                 }
                 foreach (int field in managed.GetFields(id, true, -1))
                 {
                     if (decisions.Contains(field)) continue;
                     if (!managed.IsCustom(field)) throw new ArgumentException("Unmentioned metadata field " + metadata.GetOwnClsName(field) + "." + metadata.GetFieldName(field) + " on " + pair.Key + ".");
-                    string key = CustomKey(metadata.GetOwnClsName(field), metadata.GetFieldName(field));
-                    Add(type, new XElement("field", new XAttribute("key", key)), field, metadata, managed, classes);
+                    string owner = metadata.GetOwnClsName(field), name = metadata.GetFieldName(field);
+                    try
+                    {
+                        string? reason = UnsupportedCustomOwnership(field, metadata, managed, classes);
+                        if (reason != null) throw new NotSupportedException(reason);
+                        string key = CustomKey(owner, name);
+                        Add(type, new XElement("field", new XAttribute("key", key)), field, metadata, managed, classes);
+                    }
+                    catch (NotSupportedException error)
+                    {
+                        omitted[field] = new OmittedCustomField(owner, name, error.Message);
+                    }
                 }
             }
             foreach (var kind in root.Elements("kind"))
@@ -117,7 +129,20 @@ namespace SIL.TextEditing.Project
             }
             var schema = builder.Build();
             CheckReachability(schema, classes, metadata);
-            return schema;
+            return new ProjectRecordSchemaResult(schema, omitted.Values.OrderBy(o => o.Class, StringComparer.Ordinal)
+                .ThenBy(o => o.Field, StringComparer.Ordinal).ToArray());
+        }
+
+        static string? UnsupportedCustomOwnership(int field, IFwMetaDataCache m, IFwMetaDataCacheManaged managed,
+            Dictionary<string, XElement> classes)
+        {
+            var type = (CellarPropertyType)m.GetFieldType(field);
+            if (type != CellarPropertyType.OwningAtomic && type != CellarPropertyType.OwningSequence && type != CellarPropertyType.OwningCollection) return null;
+            if (type == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "StText") return null;
+            int dest = m.GetDstClsId(field);
+            var concrete = new[] { dest }.Concat(managed.GetAllSubclasses(dest)).Distinct().Where(i => !m.GetAbstract(i)).Select(m.GetClassName).ToArray();
+            return concrete.Length == 0 || concrete.Any(n => !classes.ContainsKey(n))
+                ? "The owned object classes are not all declared in the overlay." : null;
         }
 
         static void CheckReachability(RecordSchema schema, Dictionary<string, XElement> classes, IFwMetaDataCache metadata)

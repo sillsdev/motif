@@ -144,7 +144,7 @@ Windows with the .NET 10 SDK and the .NET Framework 4.8 targeting pack. net48 bu
 
 ## Record schema overlays
 
-`ProjectRecordSchema.Generate(cache, overlay)` builds a detached record schema from an open `LcmCache`.
+`ProjectRecordSchema.Generate(cache, overlay)` returns a detached record schema and a list of omitted custom fields from an open `LcmCache`.
 The caller owns the cache and serializes access. The embedded `LexiconEntryOverlay`, `NotebookRecordOverlay`
 and `ListItemOverlay` supply separate schemas. `lexicon/entry` and `notebook/record` have two path segments;
 `lists/item` has three, `/lists/<list-name>/<item-guid>`. A list record contains its ordered sub-items, so
@@ -164,5 +164,6 @@ have no schema kind and must be excluded.
 Custom fields on included classes are appended after all overlay fields, in metadata order, including inherited
 custom fields. Their keys use `custom-<declaring-class>-<field-name>`, percent-encoding UTF-8 bytes for `%`, whitespace, control
 characters and characters forbidden in field paths or file names. The encoding is reversible and separates custom
-names from overlay keys; overlays cannot declare custom fields or use the `custom-` prefix. Unsupported
-custom field types fail generation instead of being silently omitted.
+names from overlay keys; overlays cannot include custom fields by name or use the `custom-` prefix. An overlay may
+exclude a custom field by name. Excluded and unsupported custom fields are listed once in `OmittedCustomFields`,
+with their declaring class, name and reason, so the host can report data the schema does not represent.
