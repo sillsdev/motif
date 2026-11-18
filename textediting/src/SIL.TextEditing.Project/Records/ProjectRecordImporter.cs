@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
+using SIL.LCModel.Infrastructure;
 using SIL.TextEditing.Markdown;
 using SIL.TextEditing.Markdown.Records;
 
@@ -515,12 +516,14 @@ namespace SIL.TextEditing.Project
                 return null;
             }
 
-            /// <summary>A timestamp (DateCreated, DateModified) is stamped by liblcm when the object is written and goes with the object when it is deleted. It locks no field and is no data a delete loses.</summary>
+            /// <summary>A timestamp (the non-custom DateCreated and DateModified, matched by name) is stamped by liblcm when the object is written and goes with the object when it is deleted. It locks no field and is no data a delete loses.</summary>
             bool IsTimestamp(UnexportedValue u)
             {
-                if (u.Field == "(record)") return false;
+                // Only liblcm's own two stamps, by name: a custom field, or any other Time field, may hold a user's data.
+                if (u.Field != "DateCreated" && u.Field != "DateModified") return false;
                 int flid = FieldId(u.Class, u.Field);
-                return flid != 0 && (SIL.LCModel.Core.Cellar.CellarPropertyType)_metadata.GetFieldType(flid) == SIL.LCModel.Core.Cellar.CellarPropertyType.Time;
+                return flid != 0 && !((IFwMetaDataCacheManaged)_metadata).IsCustom(flid)
+                    && (SIL.LCModel.Core.Cellar.CellarPropertyType)_metadata.GetFieldType(flid) == SIL.LCModel.Core.Cellar.CellarPropertyType.Time;
             }
         }
     }

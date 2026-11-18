@@ -603,6 +603,22 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void ACustomTimeFieldIsDataAndBlocksADeleteWhileLibLcmsOwnStampsDoNot()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var cache = fixture.Cache;
+            int when = AddCustom(cache, "LexSense", "Visited", CellarPropertyType.Time);
+            fixture.Change(() => cache.DomainDataByFlid.SetTime(w.Second.Hvo, when, SIL.LCModel.Core.Cellar.SilTime.ConvertToSilTime(new DateTime(2025, 1, 2, 3, 4, 5, DateTimeKind.Utc))));
+            var exporter = LexiconExporter(fixture);
+            var export = exporter.Export(w.Entry.Guid);
+            Assert.Contains(export.Unexported, u => u.Object == w.Second.Guid && u.Field == "Visited");
+            var text = Edited(exporter, export, d => ((RecordList)d.Data["senses"]!).Items.RemoveAt(1));
+            var plan = Plan(exporter, text);
+            Assert.Contains("Visited", Single(plan, RecordRefusalKind.DeleteHasUnexportedData).Reason);
+        }
+
+        [Fact]
         public void ADeleteByOmissionIsRefusedWhenAnotherObjectRefersToTheObject()
         {
             using var fixture = new ProjectFixture();
