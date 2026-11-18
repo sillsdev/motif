@@ -82,7 +82,7 @@ L10NSharp's netstandard2.0 asset instead of the Framework-only transitive versio
 These pins come from `SilVersions.props`. There is no Avalonia reference, and the project is not trimmable or
 AOT-compatible. It is intentionally excluded from `tests/AotCheck`.
 
-Project paths, metadata-derived record schemas, record export/import and project language services remain planned.
+Project paths, metadata-derived record schemas and record export are described below; record import and project language services remain planned.
 
 ## Tools
 
@@ -172,3 +172,44 @@ The schema id stays the overlay id when the project has no custom fields. Otherw
 first 24 lowercase hexadecimal digits of SHA-256 over the sorted, length-prefixed custom-field signatures in the
 whole project. Each signature names the declaring class, field name, metadata type, destination class, writing-system
 hint and list-root GUID. The suffix goes before a trailing `.json`, so `x-v1.json` becomes `x-v1-custom-<hex>.json`. Excluded and unsupported fields participate. Cache-local field IDs and display labels do not.
+
+## Record export
+
+`ProjectRecordExporter` writes record files from an open `LcmCache` and changes nothing in the project (Motif ADR 0003: Motif writes only what FieldWorks can create, and
+this phase only reads). Build it from the result of `ProjectRecordSchema.Generate`, so the files are written against that schema and the custom fields it carries:
+
+```csharp
+var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+var exporter = new ProjectRecordExporter(cache, schema);
+ProjectRecordExport one = exporter.Export(entryGuid);              // the kind is the first whose root classes include the object's class
+IReadOnlyList<ProjectRecordExport> all = exporter.ExportAll("lexicon/entry");  // every root, ordered by path and then GUID
+```
+
+Each `ProjectRecordExport` has the record file `Text` in the canonical spelling of `RecordFileWriter`, the `Document` it was written from, the project `Path` that names the record,
+and `Unexported`, the list of values the file does not hold. The same cache and schema give the same bytes. `exporter.CreateReadOptions()` gives the options that read a file back
+against the same project; every exported file reads back with no error finding and an equal document.
+
+- **Paths.** The record's own file keeps no `root:` (absent means the whole record); `Path` is for the host to choose a file. `lexicon/entry` is `/lexicon/palit(2)` (the
+  project path resolver's spelling, with the homograph number), or `/lexicon/<guid>` for an entry with no name. `notebook/record` is `/notebook/<title>(<first 8 hex digits of the GUID>)`,
+  or `/notebook/<guid>` for an untitled record. `lists/item` is `/lists/<list name>/<item guid>`, so renumbering an outline never moves a file. `ExportAll` supports these
+  three kinds; a list item is a root when it is a top-level item of its list (its sub-items are inside its record) and a notebook record when it is not a sub-record.
+- **Values.** Plain text is a double-quoted string; per-writing-system text is its alternatives in writing-system id order; rich text goes through `TsStringConversion` and
+  FieldWorks Markdown (inline for a string, paragraphs for a structured text, a paragraph with no style in the Normal style); integers, Booleans and GUIDs are plain; a
+  reference is one FieldWorks Markdown link with `guid=` (a collection in GUID order, a sequence in stored order); an owned object carries its `guid`, and its `class` where the
+  schema lists several types. Custom fields export under their `custom-<class>-<name>` keys like any other. Fields the schema marks computed (the head word) are exported as read-only data.
+  Integers and Booleans are written even when they hold the default, so absent never means zero.
+- **No-loss policy (report, not skip).** A value the file cannot hold is never dropped silently: it is listed in `Unexported` with the object's GUID and class, the field, the reason and
+  the value as invariant text. The list covers:
+  - fields the overlay excludes that hold data: timestamps (ISO 8601 UTC), general dates (`AD 2024-3-5 Approximate`), binary (base64, with no value over 1,024 bytes), and any
+    other excluded stored field (an object or reference list as GUIDs);
+  - custom fields the generator omitted (unsupported types, undeclared owned classes, overlay exclusions);
+  - what a structured text holds beyond its paragraphs: its own properties (such as its modified time) and a paragraph's analysis segments when they carry analyses, translations or notes;
+  - a character style, or a paragraph style, the project does not define: the text is exported without that style (a paragraph in Normal) and the style name is reported, because a
+    file naming an undefined style would not read back;
+  - a formatted string in a plain-text field: the characters are exported and the formatting reported;
+  - a record the writer refuses: `Text` is null and one `(record)` entry says why.
+
+  Not reported, because the record holds them already or they are derived: an object's own identity and ownership (`Guid`, `Owner`, `OwningFlid`, `OwnOrd`, `ClassID`, `ShortNameTSS`, which
+  the nesting and the `guid:` key give), and excluded virtual (computed) fields.
+- **Not yet.** Import, writing to the project, and resolving a reference beyond its GUID (a link's path and name are for reading; the GUID is the identity).
+
