@@ -26,6 +26,10 @@ public static class MotifStoreUpgrade
         "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
     ];
 
+    // Schema 77 added the coverage publication tables; they are authored pins from then on.
+    private static readonly string[] Schema77Carry =
+        ["GrammarCoverageSegmentations", "GrammarCoverageMeasurements", "GrammarCoverageNoAnalysisRank"];
+
     private static readonly HashSet<string> Derived = new(StringComparer.Ordinal)
     {
         "ActiveParse", "AssessedWords", "AssessmentInvocations", "AssessmentObjectTimings", "AssessmentPins",
@@ -33,6 +37,8 @@ public static class MotifStoreUpgrade
         "BaselineTextWords", "Baselines", "CurrentParsimonyBundles", "GrammarChecks", "Jobs", "ParsedAnalyses",
         "ParserRefusals", "ParsimonyBuildClaims", "ParsimonyBundleReferences", "ParsimonyBundles", "ParsimonyFrozenViews", "ParsimonyReaderLeases",
         "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
+        "IndexedCorpusHeads", "IndexedCorpusGenerations", "IndexedCorpusDocuments", "IndexedCorpusShards",
+        "IndexedCorpusForms", "IndexedCorpusOccurrences", "IndexedCorpusWeights", "IndexedCorpusShardWeights",
         "PendingChangeFits", "ProgressState", "ProgressTexts", "PhonologyAssessmentBindings", "PhonologyAssessmentDependencies", "PhonologyAssessmentRows",
         "ProposalDifferenceBuckets", "ProposalDifferenceCases", "ProposalDifferenceOccurrences",
         "Reports", "RetainedInvocationMembers", "RetainedInvocations",
@@ -146,7 +152,8 @@ public static class MotifStoreUpgrade
             // Summaries written before their current shape cannot be read, so they are dropped like any derived table.
             var carriesSummaries = version >= firstSummarySchema;
             var kept = carriesSummaries ? Kept.Append("ProposalDifferences").ToArray() : Kept;
-            if (version == 76) kept = [.. kept, .. Schema76Carry];
+            if (version is 76 or 77) kept = [.. kept, .. Schema76Carry];
+            if (version == 77) kept = [.. kept, .. Schema77Carry];
             bool IsDerived(string name) => !kept.Contains(name, StringComparer.Ordinal) &&
                 (Derived.Contains(name) || name == "ProposalDifferences");
             var unknown = tables.Except(kept, StringComparer.Ordinal).Where(name => name != "MotifMetadata" && !IsDerived(name)).ToArray();

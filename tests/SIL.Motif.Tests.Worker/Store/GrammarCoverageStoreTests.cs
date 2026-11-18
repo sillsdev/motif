@@ -613,6 +613,9 @@ public sealed class GrammarCoverageStoreTests : IDisposable
 
         using var upgraded = Open();
         Assert.True(File.Exists(CoveragePath + ".schema76.bak"));
+        Assert.Equal(78L, Pragma(upgraded, "PRAGMA user_version;"));
+        Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM GrammarCoverageSegmentations;"));
+        Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM IndexedCorpusGenerations;"));
         Assert.Equal("stale", new SourceIndexRepository(upgraded).ReadState("source")!.Status);
         var store = Store();
         Assert.Throws<InvalidDataException>(() => store.PrepareParatext(upgraded, "project", "source", "old-pin",
@@ -624,6 +627,61 @@ public sealed class GrammarCoverageStoreTests : IDisposable
         Assert.Null(carried.Invocation!.InputProfile);
         var refusal = Assert.Throws<GrammarCoverageReadException>(() => store.Build(upgraded, carried.AssessmentId, basis));
         Assert.Equal(GrammarCoverageReadFailure.Unavailable, refusal.Failure);
+    }
+
+    [Fact]
+    public void Schema77UpgradeKeepsPublishedCoveragePinsInventoriesAndInputs()
+    {
+        var store = Store();
+        string stampId;
+        GrammarCoveragePage before;
+        using (var database = Open())
+        {
+            var segmentation = store.Prepare(database, Manifest());
+            var basis = Save(database, segmentation, "kept-assessment", "parsed");
+            stampId = store.Build(database, "kept-assessment", basis).Stamp.Id;
+            before = store.ReadNoAnalysis(stampId, new());
+            Assert.NotEmpty(before.Page.Items);
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO SourceIndexState VALUES ('source', 'Paratext', 'kept-pin', 'digest', '{}', 'ready',
+                    'fieldworks-word-forming-1.profile-2', 'scripture-1');
+                DROP TABLE IndexedCorpusShardWeights;
+                DROP TABLE IndexedCorpusWeights;
+                DROP TABLE IndexedCorpusOccurrences;
+                DROP TABLE IndexedCorpusForms;
+                DROP TABLE IndexedCorpusDocuments;
+                DROP TABLE IndexedCorpusShards;
+                DROP TABLE IndexedCorpusHeads;
+                DROP TABLE IndexedCorpusGenerations;
+                PRAGMA user_version = 77;
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        using var upgraded = Open();
+        Assert.True(File.Exists(CoveragePath + ".schema77.bak"));
+        Assert.Equal(78L, Pragma(upgraded, "PRAGMA user_version;"));
+        Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM IndexedCorpusGenerations;"));
+        Assert.Equal(1L, Pragma(upgraded, "SELECT COUNT(*) FROM GrammarCoverageMeasurements;"));
+        Assert.Equal("ready", new SourceIndexRepository(upgraded).ReadState("source")!.Status);
+        var after = store.ReadNoAnalysis(stampId, new());
+        Assert.Equal(before.Stamp.Id, after.Stamp.Id);
+        Assert.Equal(before.Stamp.Revision, after.Stamp.Revision);
+        Assert.Equal(before.RankedWordforms, after.RankedWordforms);
+        Assert.Equal(before.Page.Items.Select(item => item.WordformId), after.Page.Items.Select(item => item.WordformId));
+        var carried = new AssessmentRepository(upgraded).Get("kept-assessment");
+        Assert.Equal(new BatchInputProfile("ws", ProfileHash, BatchInputProfile.WholeWordLowercase),
+            carried.Invocation!.InputProfile);
+    }
+
+    private static long Pragma(MotifDatabase database, string sql)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return Convert.ToInt64(command.ExecuteScalar());
     }
 
     [Theory]

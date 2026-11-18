@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 namespace SIL.Motif.Host.Corpus;
 
 /// <summary>
@@ -77,6 +79,11 @@ namespace SIL.Motif.Host.Corpus;
 /// </remarks>
 public sealed class WhitespaceAndPunctuationTokeniser : IWordTokeniser, IWordSpanTokeniser
 {
+    public static WordSpanProfile FixedProfile { get; } = new(null,
+        Convert.ToHexStringLower(SHA256.HashData("whitespace-and-punctuation/1"u8)));
+
+    public WordSpanProfile Profile => FixedProfile;
+
     /// <summary>
     /// Matched against a corpus's declared <see cref="TokenisationRecord.Method"/> by
     /// <see cref="CorpusTokenisation.ToSelection"/>. This exact string is a fixture value in

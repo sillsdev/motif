@@ -1,6 +1,7 @@
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Sources;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Scripture;
 
 namespace SIL.Motif.Worker.Sources;
@@ -40,15 +41,25 @@ internal static class SourceProviders
     public static ISourceProvider Paratext { get; } = new ParatextSourceProvider();
     public static ISourceProvider FieldWorksTexts { get; } = new FieldWorksTextsSourceProvider();
 
-    /// <summary>The provider for a kind; null for a kind that is recorded but not indexed, such as a corpus.</summary>
+    public static CorpusSourceProvider Corpus { get; } = new();
+
+    /// <summary>Resolves a declared Source kind independently of the legacy Passage projection.</summary>
+    public static ISourceProvider? For(SourceKind kind) => kind switch
+    {
+        SourceKind.Paratext => Paratext,
+        SourceKind.Corpus => Corpus,
+        _ => null,
+    };
+
+    /// <summary>Resolves a kind stored in the legacy Passage projection.</summary>
     public static ISourceProvider? For(string kind) =>
         kind == Paratext.Kind ? Paratext : kind == FieldWorksTexts.Kind ? FieldWorksTexts : null;
 
-    /// <summary>The versions a stored row of any kind is compared with; an unindexed kind is bound like Paratext.</summary>
     /// <summary>Whether the id names a Source that exists in every project and only awaits its index.</summary>
     public static bool IsBuiltIn(string sourceId) => new[] { Paratext, FieldWorksTexts }
         .Any(provider => string.Equals(provider.BuiltInSourceId, sourceId, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>The versions a stored legacy Passage row is compared with.</summary>
     public static ISourceProvider Versions(string kind) => For(kind) ?? Paratext;
 }
 
@@ -99,4 +110,32 @@ internal sealed class FieldWorksTextsSourceProvider : ISourceProvider
 
     public string? Folder(string workspaceKey, string sourceId) => null;
     public Refusal? Unavailable(string? folder) => null;
+}
+
+/// <summary>Read-in-place Corpus Documents use an explicit declaration and an immutable index.</summary>
+internal sealed class CorpusSourceProvider : ISourceProvider
+{
+    public const string Version = "corpus-source-2";
+
+    public string Kind => nameof(SourceKind.Corpus);
+    /// <summary>Distinct from the Paratext profile-reuse version, which changes for unrelated reasons.</summary>
+    public const string TokenizationRuleVersion = "corpus-tokenisation-1";
+    public string TokenizerVersion => TokenizationRuleVersion;
+    public string AnchorVersion => Version;
+    public string? BuiltInSourceId => null;
+    public bool MeasuresApprovals => false;
+
+    public CorpusSourceIndex Open(MotifDatabase database) => new(database);
+
+    public bool TryPassageId(string? reference, out string passageId)
+    {
+        passageId = reference ?? "";
+        return !string.IsNullOrWhiteSpace(passageId);
+    }
+
+    public string? Folder(string workspaceKey, string sourceId) => null;
+
+    public Refusal? Unavailable(string? folder) => folder is null
+        ? new Refusal(RefusalCodes.SourceFolderMissing, FailureReason.NotFound, "The Corpus Source requires a local binding.")
+        : null;
 }
