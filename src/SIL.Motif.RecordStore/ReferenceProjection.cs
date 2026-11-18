@@ -73,7 +73,10 @@ internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRec
                 var items = value.EnumerateArray().Select(v => v.GetGuid()).ToArray();
                 if (source.Provenance?.Vectors.TryGetValue(id, out var native) == true)
                 {
-                    if (!items.Order().SequenceEqual(native.Order()) || type is 27 or 28 && !items.SequenceEqual(native))
+                    var matches = type is 27 or 28
+                        ? items.AsSpan().SequenceEqual(native.AsSpan())
+                        : items.Order().SequenceEqual(native.Order());
+                    if (!matches)
                         missing.Add("Native traversal does not match the retained graph.");
                     else items = native.ToArray();
                 }
@@ -121,12 +124,12 @@ internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRec
             !coverage.ClassCounts.OrderBy(p => p.Key).SequenceEqual(materialized.GroupBy(r => r.ClassId)
                 .Select(g => new KeyValuePair<int, int>(g.Key, g.Count())).OrderBy(p => p.Key)))
             missing.Add("Native import membership does not match its source coverage.");
+        var fieldsByClass = coverage.Layouts.Where(p => p.Value is not null).ToDictionary(p => p.Key, p =>
+            p.Value.Select(field => (Key: field.Key.ToString(System.Globalization.CultureInfo.InvariantCulture), Type: field.Value)).ToArray());
         foreach (var record in materialized)
         {
-            if (!coverage.Layouts.TryGetValue(record.ClassId, out var fields) || fields is null ||
-                !record.Values.Keys.Order(StringComparer.Ordinal).SequenceEqual(fields.Keys.Select(f =>
-                    f.ToString(System.Globalization.CultureInfo.InvariantCulture)).Order(StringComparer.Ordinal)) ||
-                fields.Any(f => RecordInitialization.Type(record, f.Key.ToString(System.Globalization.CultureInfo.InvariantCulture)) != f.Value))
+            if (!fieldsByClass.TryGetValue(record.ClassId, out var fields) || record.Values.Count != fields.Length ||
+                fields.Any(field => !record.Values.ContainsKey(field.Key) || RecordInitialization.Type(record, field.Key) != field.Type))
                 missing.Add("Native fields do not match the complete source layout.");
         }
     }

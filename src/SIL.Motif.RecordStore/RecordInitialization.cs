@@ -6,10 +6,11 @@ namespace SIL.Motif.RecordStore;
 internal static class RecordInitialization
 {
     public static readonly JsonElement Empty = JsonSerializer.SerializeToElement(new Dictionary<string, object>());
+    private static readonly JsonElement EmptyVector = JsonSerializer.SerializeToElement(Array.Empty<Guid>());
 
     public static readonly JsonElement EmptyLayout = Layout([]);
 
-    public static JsonElement Layout(IEnumerable<RecordImport> records)
+    public static JsonElement Layout(IEnumerable<RecordImport> records, bool requireDefaults = false)
     {
         var defaults = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         var types = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -23,9 +24,12 @@ internal static class RecordInitialization
             declared[field] = type;
             if (!Tabled(import.Record.Kind, field, type)) types[field] = type;
             if (type is 14 or 16) defaults[field] = Empty;
-            else if (type >= 25) defaults[field] = JsonSerializer.SerializeToElement(Array.Empty<Guid>());
+            else if (type >= 25) defaults[field] = EmptyVector;
             else if (Neutral(value)) defaults.TryAdd(field, value);
         }
+        if (requireDefaults && records.Any(import => import.Record.Values.Count < declared.Count &&
+            defaults.Keys.Any(field => !import.Record.Values.ContainsKey(field))))
+            throw new InvalidDataException("A packed record is missing a field with a shared initialization default.");
         return JsonSerializer.SerializeToElement(new { version = 2, table = BuiltInLayouts.Version, types, defaults });
     }
 
@@ -76,22 +80,37 @@ internal static class RecordInitialization
 
     public static bool IsInitial(GenericRecord record, string field, JsonElement value) =>
         record.Layout.GetProperty("defaults").TryGetProperty(field, out var initial) && JsonElement.DeepEquals(initial, value) ||
-        Identities(record).Any(pair => pair.Key == field && JsonElement.DeepEquals(pair.Value, value));
+        (field switch
+        {
+            "101" when (record.IdentityFields & 1) != 0 => JsonElement.DeepEquals(JsonSerializer.SerializeToElement(record.Id), value),
+            "102" when (record.IdentityFields & 2) != 0 => JsonElement.DeepEquals(JsonSerializer.SerializeToElement(record.ClassId), value),
+            "104" when (record.IdentityFields & 4) != 0 => JsonElement.DeepEquals(JsonSerializer.SerializeToElement(record.OwningField), value),
+            "105" when (record.IdentityFields & 8) != 0 => JsonElement.DeepEquals(JsonSerializer.SerializeToElement(record.OwnOrdinal), value),
+            _ => false
+        });
 
-    public static GenericRecord Prepare(GenericRecord source, JsonElement layout)
+    public static GenericRecord Prepare(GenericRecord source, JsonElement layout, bool reuseValues = false)
     {
         var ordinal = source.Values.TryGetValue("105", out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) ? number : 0;
         byte flags = 0;
-        var identities = new (string Field, JsonElement Value)[]
+        if (source.Kind == "lcm")
         {
-            ("101", JsonSerializer.SerializeToElement(source.Id)), ("102", JsonSerializer.SerializeToElement(source.ClassId)),
-            ("104", JsonSerializer.SerializeToElement(source.OwningField)), ("105", JsonSerializer.SerializeToElement(ordinal))
+            if (source.Values.TryGetValue("101", out var guid) && guid.ValueKind == JsonValueKind.String &&
+                guid.GetString() == source.Id.ToString("D")) flags |= 1;
+            if (MatchesNumber(source.Values, "102", source.ClassId)) flags |= 2;
+            if (MatchesNumber(source.Values, "104", source.OwningField)) flags |= 4;
+            if (MatchesNumber(source.Values, "105", ordinal)) flags |= 8;
+        }
+        return new GenericRecord
+        {
+            Id = source.Id, Kind = source.Kind, ClassId = source.ClassId, Owner = source.Owner,
+            OwningField = source.OwningField, OwnOrdinal = ordinal, IdentityFields = flags,
+            Layout = layout, Provenance = source.Provenance,
+            Values = reuseValues ? source.Values : new(source.Values, StringComparer.Ordinal)
         };
-        for (var index = 0; index < identities.Length; index++)
-            if (source.Kind == "lcm" && source.Values.TryGetValue(identities[index].Field, out var actual) &&
-                JsonElement.DeepEquals(actual, identities[index].Value)) flags |= (byte)(1 << index);
-        var record = Create(source.Id, source.Kind, source.ClassId, source.Owner, source.OwningField, ordinal, flags, layout, source.Provenance);
-        record.Values = new(source.Values, StringComparer.Ordinal);
-        return record;
     }
+
+    private static bool MatchesNumber(Dictionary<string, JsonElement> values, string field, int expected) =>
+        values.TryGetValue(field, out var value) && value.ValueKind == JsonValueKind.Number &&
+        (value.TryGetInt32(out var actual) ? actual == expected : JsonElement.DeepEquals(value, JsonSerializer.SerializeToElement(expected)));
 }

@@ -1,4 +1,6 @@
+using System.Buffers.Binary;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -184,7 +186,9 @@ internal sealed class RecordContent
                 break;
             case JsonValueKind.String:
                 var text = value.GetString()!;
-                if (System.Guid.TryParseExact(text, "D", out var guid) && text == guid.ToString("D"))
+                Span<char> canonical = stackalloc char[36];
+                if (Guid.TryParseExact(text, "D", out var guid) && guid.TryFormat(canonical, out _, "D") &&
+                    text.AsSpan().SequenceEqual(canonical))
                 { writer.Byte(6); writer.Guid(guid); }
                 else { writer.Byte(5); writer.Text(text); }
                 break;
@@ -279,14 +283,22 @@ internal sealed class RecordContent
         var raw = value.GetProperty("utf16le");
         if (raw.ValueKind == JsonValueKind.Null) return text.ValueKind == JsonValueKind.Null;
         if (raw.ValueKind != JsonValueKind.String || text.ValueKind != JsonValueKind.String) return false;
-        try { bytes = Convert.FromBase64String(raw.GetString()!); }
+        var encoded = raw.GetString()!;
+        try { bytes = Convert.FromBase64String(encoded); }
         catch (FormatException) { return false; }
         if (bytes.Length % 2 != 0) return false;
+        if (Convert.ToBase64String(bytes) != encoded) return false;
         var restored = Utf16(bytes);
-        return Convert.ToBase64String(bytes) == raw.GetString() && JsonSerializer.SerializeToElement(restored).GetString() == text.GetString();
+        var display = text.GetString();
+        return restored == display || JsonSerializer.SerializeToElement(restored).GetString() == display;
     }
-    private static string Utf16(byte[] bytes) => new(Enumerable.Range(0, bytes.Length / 2)
-        .Select(i => (char)(bytes[2 * i] | bytes[2 * i + 1] << 8)).ToArray());
+    private static string Utf16(byte[] bytes) => BitConverter.IsLittleEndian
+        ? new string(MemoryMarshal.Cast<byte, char>(bytes.AsSpan()))
+        : string.Create(bytes.Length / 2, bytes, static (characters, source) =>
+        {
+            for (var i = 0; i < characters.Length; i++)
+                characters[i] = (char)BinaryPrimitives.ReadUInt16LittleEndian(source.AsSpan(i * 2));
+        });
 
     private static bool TryText(BinaryOutput output, JsonElement value, int depth)
     {

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.RecordStore;
@@ -92,13 +93,95 @@ public sealed class StorageContractTests : IDisposable
             command.CommandText = "PRAGMA user_version=999";
             command.ExecuteNonQuery();
             Assert.Throws<InvalidDataException>(() => new Store(path));
-            command.CommandText = "PRAGMA user_version=4";
+            command.CommandText = "PRAGMA user_version=5";
             command.ExecuteNonQuery();
             command.CommandText = "UPDATE ChangeEntities SET Change = x'ff'";
             command.ExecuteNonQuery();
         }
         await using var reopened = new Store(path);
         await Assert.ThrowsAsync<InvalidDataException>(() => reopened.RegenerateAsync());
+    }
+
+    [Fact]
+    public async Task PackedHistoryUsesTheNewAuthoredVersionAndFutureHistoryIsRefusedOnOpen()
+    {
+        var path = PathFor("native-version");
+        var record = Record("value");
+        var coverage = NativeImportCoverage.Capture([], ImmutableDictionary<int, ImmutableDictionary<int, int>>.Empty,
+            "native import fixture");
+        await using (var store = new Store(path))
+            await store.ImportNativeAsync([new(record, new Dictionary<int, int>())], Guid.NewGuid(), coverage);
+
+        using var connection = Open(path);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT DISTINCT AuthoredModelVersion FROM ChangeEntities";
+        using (var reader = command.ExecuteReader())
+        {
+            Assert.True(reader.Read());
+            Assert.Equal(1, reader.GetInt32(0));
+            Assert.False(reader.Read());
+        }
+        command.CommandText = "UPDATE ChangeEntities SET AuthoredModelVersion = 2";
+        command.ExecuteNonQuery();
+        var refusal = Assert.Throws<InvalidDataException>(() => new Store(path));
+        Assert.Contains("model version", refusal.Message);
+    }
+
+    [Fact]
+    public async Task VersionFourGranularHistorySurvivesGuardedEditsAndRegenerationInPlace()
+    {
+        const int list = 1000;
+        const int scalar = 1001;
+        var path = PathFor("legacy-writer");
+        await using (var empty = new Store(path)) { }
+        using var connection = Open(path);
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA user_version=4";
+        command.ExecuteNonQuery();
+
+        var record = new GenericRecord { Id = Guid.NewGuid(), ClassId = 1 };
+        var item = new GenericRecord { Id = Guid.NewGuid(), ClassId = 2 };
+        record.Values[list.ToString()] = JsonSerializer.SerializeToElement(new[] { item.Id, item.Id });
+        record.Values[scalar.ToString()] = JsonSerializer.SerializeToElement(1);
+        var types = ImmutableDictionary<int, int>.Empty.Add(list, 28).Add(scalar, 2);
+        var emptyTypes = ImmutableDictionary<int, int>.Empty;
+        var coverage = NativeImportCoverage.Capture([new(record.Id, 1, null, 0), new(item.Id, 2, null, 0)],
+            ImmutableDictionary<int, ImmutableDictionary<int, int>>.Empty.Add(1, types).Add(2, emptyTypes), "legacy import fixture");
+        RecordCommit seed;
+        await using (var writer = new Store(path))
+        {
+            await writer.ImportNativeAsync([new(record, types), new(item, emptyTypes)], Guid.NewGuid(), coverage);
+            seed = Assert.Single(await writer.CommitsAsync());
+            Assert.True(seed.ChangeCount > 3);
+        }
+        command.CommandText = """
+            SELECT group_concat(hex(Change), ':') FROM
+            (SELECT Change FROM ChangeEntities WHERE CommitId=$seed ORDER BY "Index")
+            """;
+        command.Parameters.AddWithValue("$seed", NetworkGuidConverter.Write(seed.Id));
+        var originalChanges = command.ExecuteScalar();
+        Assert.IsType<string>(originalChanges);
+
+        var client = Guid.NewGuid();
+        await using (var upgraded = new Store(path))
+        {
+            var revision = (await upgraded.ReferencesAsync()).Revision;
+            await upgraded.SetFieldAsync(record.Id, scalar, JsonSerializer.SerializeToElement(1),
+                JsonSerializer.SerializeToElement(2), revision, client);
+            var prior = Assert.Single(await upgraded.ReadAsync(), r => r.Id == record.Id);
+            await upgraded.CommitListOperationsAsync([ListAuthoring.Delete(prior, list, client, 1)], client);
+            await upgraded.RegenerateAsync();
+        }
+        await using var reopened = new Store(path);
+        var edited = Assert.Single(await reopened.ReadAsync(), r => r.Id == record.Id);
+        Assert.Equal(2, edited.Values[scalar.ToString()].GetInt32());
+        Assert.Equal([item.Id], reopened.Lists.Read(edited, list));
+        Assert.Contains(seed, await reopened.CommitsAsync());
+        Assert.Equal(originalChanges, command.ExecuteScalar());
+        command.CommandText = "PRAGMA user_version";
+        Assert.Equal(4L, command.ExecuteScalar());
+        command.CommandText = "SELECT max(AuthoredModelVersion) FROM ChangeEntities";
+        Assert.Equal(0L, command.ExecuteScalar());
     }
 
     [Theory]

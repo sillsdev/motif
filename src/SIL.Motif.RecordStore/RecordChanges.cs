@@ -1,6 +1,7 @@
 using SIL.Harmony.Entities;
 using SIL.Harmony.Config;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SIL.Harmony;
 using SIL.Harmony.Changes;
 using SIL.Harmony.Core;
@@ -21,6 +22,34 @@ internal sealed class CreateRecord(Guid entityId, string kind, int classId, Guid
     public NativeProvenance? Provenance { get; } = provenance;
     public override ValueTask<GenericRecord> NewEntity(Commit commit, IChangeContext context) => ValueTask.FromResult(
         RecordInitialization.Create(EntityId, Kind, ClassId, Owner, OwningField, OwnOrdinal, IdentityFields, Layout, Provenance));
+}
+
+internal sealed class CreateImportedRecord : CreateChange<GenericRecord>, ISelfNamedType<CreateImportedRecord>
+{
+    [JsonConstructor]
+    public CreateImportedRecord(Guid entityId, string kind, int classId, Guid? owner, int owningField,
+        int ownOrdinal, byte identityFields, JsonElement layout, NativeProvenance? provenance, Dictionary<string, JsonElement> values)
+        : this(new GenericRecord
+        {
+            Id = entityId, Kind = kind, ClassId = classId, Owner = owner, OwningField = owningField,
+            OwnOrdinal = ownOrdinal, IdentityFields = identityFields, Layout = layout, Provenance = provenance, Values = values
+        }) { }
+
+    internal CreateImportedRecord(GenericRecord record) : base(record.Id) => Record = record;
+
+    internal GenericRecord Record { get; }
+    public string Kind => Record.Kind;
+    public int ClassId => Record.ClassId;
+    public Guid? Owner => Record.Owner;
+    public int OwningField => Record.OwningField;
+    public int OwnOrdinal => Record.OwnOrdinal;
+    public byte IdentityFields => Record.IdentityFields;
+    public JsonElement Layout => Record.Layout;
+    public NativeProvenance? Provenance => Record.Provenance;
+    public Dictionary<string, JsonElement> Values => Record.Values;
+
+    public override ValueTask<GenericRecord> NewEntity(Commit commit, IChangeContext context) =>
+        ValueTask.FromResult((GenericRecord)Record.Copy());
 }
 
 internal sealed class SetRecordValue(Guid entityId, string field, JsonElement value)

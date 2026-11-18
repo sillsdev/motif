@@ -7,6 +7,8 @@ namespace SIL.Motif.RecordStore;
 
 internal sealed class RecordCodec(RecordContent content)
 {
+    private readonly Dictionary<JsonElement, int> layoutIds = [];
+
     public byte[] Snapshot(IObjectBase entity)
     {
         var record = (GenericRecord)entity;
@@ -111,6 +113,7 @@ internal sealed class RecordCodec(RecordContent content)
 
     public byte[] Change(IChange change)
     {
+        if (change is CreateImportedRecord imported) return ImportedChange(Snapshot(imported.Record));
         using var output = new BinaryOutput();
         output.Byte(1);
         switch (change)
@@ -141,12 +144,28 @@ internal sealed class RecordCodec(RecordContent content)
         return output.Finish();
     }
 
+    internal static byte[] ImportedChange(byte[] snapshot)
+    {
+        using var output = new BinaryOutput();
+        output.Byte(1);
+        output.Byte(7);
+        output.Bytes(snapshot);
+        return output.Finish();
+    }
+
     public IChange Change(byte[] bytes)
     {
         var input = Input(bytes);
         var kind = input.Byte();
         IChange change;
-        if (kind == 1)
+        if (kind == 7)
+        {
+            var record = (GenericRecord)Snapshot(input.Bytes());
+            if (record.DeletedAt is not null || record.Lists.Count != 0)
+                throw new InvalidDataException("Unexpected edited state in a native import change.");
+            change = new CreateImportedRecord(record);
+        }
+        else if (kind == 1)
         {
             var r = Header(input);
             change = new CreateRecord(r.Id, r.Kind, r.ClassId, r.Owner, r.OwningField, r.OwnOrdinal, r.IdentityFields, r.Layout, r.Provenance);
@@ -201,7 +220,12 @@ internal sealed class RecordCodec(RecordContent content)
         output.Integer(record.OwningField);
         output.Integer(record.OwnOrdinal);
         output.Byte(record.IdentityFields);
-        Value(output, record.Layout);
+        if (!layoutIds.TryGetValue(record.Layout, out var layout))
+        {
+            layout = content.Put(record.Layout);
+            layoutIds.Add(record.Layout, layout);
+        }
+        output.Unsigned((ulong)layout);
         if (record.Provenance is null) output.Unsigned(0);
         else
         {

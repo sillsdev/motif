@@ -195,6 +195,7 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
         await using (var store = new SIL.Motif.RecordStore.RecordStore(database))
         {
             imported = await store.ReadAsync();
+            Assert.Equal(imported.Count, (await store.CommitsAsync()).Sum(commit => commit.ChangeCount));
             assets.AssertImported(imported, database);
             var acquisition = Stopwatch.StartNew();
             var references = await store.ReferencesAsync();

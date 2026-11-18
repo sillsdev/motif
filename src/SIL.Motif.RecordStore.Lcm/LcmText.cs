@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -13,8 +14,17 @@ internal static class LcmText
     public static object Raw(string? value) => new
     {
         text = value,
-        utf16le = value is null ? null : Convert.ToBase64String(value.SelectMany(c => new[] { (byte)c, (byte)(c >> 8) }).ToArray())
+        utf16le = value is null ? null : Base64Utf16(value)
     };
+
+    private static string Base64Utf16(string value)
+    {
+        if (BitConverter.IsLittleEndian) return Convert.ToBase64String(MemoryMarshal.AsBytes(value.AsSpan()));
+        var bytes = new byte[checked(value.Length * 2)];
+        for (var index = 0; index < value.Length; index++)
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(index * 2), value[index]);
+        return Convert.ToBase64String(bytes);
+    }
 
     public static string? RestoreRaw(JsonElement value)
     {
@@ -82,7 +92,7 @@ internal static class LcmText
         return new
         {
             text = normalized,
-            utf16le = Convert.ToBase64String(normalized.SelectMany(c => new[] { (byte)c, (byte)(c >> 8) }).ToArray()),
+            utf16le = Base64Utf16(normalized),
             writingSystems = positions.OrderBy(p => p.offset).Select(p => new { p.offset, p.tag }).ToArray()
         };
     }
