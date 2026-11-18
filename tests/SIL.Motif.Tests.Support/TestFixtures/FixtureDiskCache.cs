@@ -14,8 +14,9 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// <c>test.ps1</c> sets <see cref="Variable"/> to a folder shared by every test process of a gate. A master lives in
 /// <c>name-key</c>, where the key hashes the assemblies that write the fixture (this project, the LibLCM host
 /// wrapper and LibLCM), so changing any of them builds a fresh master. The first process to need a master takes
-/// a file lock, builds in a private folder and moves it into place; the others wait on the lock and read the
-/// result. A master is never opened again after it is saved, and copies are made from it, as before.
+/// a file lock, builds in a private folder and publishes it by renaming the folder. Other callers reuse the
+/// completed publication. If Windows denies the rename, the builder can still copy from its private master.
+/// A master is never opened again after it is saved.
 /// </para>
 /// <para>
 /// With the variable unset (a bare <c>dotnet test</c>), nothing is shared and the caller builds and deletes its own
@@ -28,6 +29,8 @@ internal static class FixtureDiskCache
     public const string Variable = "MOTIF_TEST_FIXTURE_CACHE";
 
     private const string MarkerName = "ready.json";
+    private const int WindowsAccessDenied = unchecked((int)0x80070005);
+    private const int WindowsSharingViolation = unchecked((int)0x80070020);
     private static readonly TimeSpan LockBound = TimeSpan.FromMinutes(15);
     private static readonly Lazy<string> InputKey = new(ComputeInputKey);
 
@@ -38,7 +41,7 @@ internal static class FixtureDiskCache
     /// Returns the master called <paramref name="name"/>, building it with <paramref name="build"/> (given an empty folder
     /// to build in, returning the metadata to keep beside it) only if no process has yet.
     /// </summary>
-    public static Built<T> GetOrBuild<T>(string name, Func<string, T> build)
+    public static Built<T> GetOrBuild<T>(string name, Func<string, T> build) where T : class
     {
         var cacheRoot = Environment.GetEnvironmentVariable(Variable);
         if (string.IsNullOrWhiteSpace(cacheRoot))
@@ -57,14 +60,47 @@ internal static class FixtureDiskCache
 
         var staging = final + ".building-" + Guid.NewGuid().ToString("N");
         Directory.CreateDirectory(staging);
-        var metadata = build(staging);
-        File.WriteAllText(Path.Combine(staging, MarkerName), JsonSerializer.Serialize(metadata));
-        if (Directory.Exists(final)) Directory.Delete(final, recursive: true); // an unmarked leftover of a killed build
-        Directory.Move(staging, final);
-        return new(final, metadata, true);
+        try { return Publish(staging, final, build(staging)); }
+        catch
+        {
+            DeleteStaging(staging);
+            throw;
+        }
     }
 
-    private static T? TryRead<T>(string folder)
+    /// <summary>Publishes the finished master or returns a reusable master when the rename gets refused.</summary>
+    internal static Built<T> Publish<T>(string staging, string final, T metadata) where T : class
+    {
+        File.WriteAllText(Path.Combine(staging, MarkerName), JsonSerializer.Serialize(metadata));
+        try
+        {
+            Directory.Move(staging, final);
+            return new(final, metadata, true);
+        }
+        catch (IOException exception)
+        {
+            if (TryRead<T>(final) is { } winner)
+            {
+                DeleteStaging(staging);
+                return new(final, winner, true);
+            }
+
+            // An open descendant can deny the rename on Windows even though the fixture is readable.
+            var renameDenied = OperatingSystem.IsWindows() &&
+                exception.HResult is WindowsAccessDenied or WindowsSharingViolation;
+            if (renameDenied || Directory.Exists(final)) return new(staging, metadata, false);
+            throw;
+        }
+    }
+
+    private static void DeleteStaging(string staging)
+    {
+        try { Directory.Delete(staging, recursive: true); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
+    private static T? TryRead<T>(string folder) where T : class
     {
         var marker = Path.Combine(folder, MarkerName);
         return File.Exists(marker) ? JsonSerializer.Deserialize<T>(File.ReadAllText(marker)) : default;
