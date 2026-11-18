@@ -56,6 +56,47 @@ namespace SIL.TextEditing.Markdown.Records
         UnknownClass,
         /// <summary>One GUID is on more than one object in the export or the file. None of those objects is compared, so none of their edits is lost silently.</summary>
         DuplicateGuid,
+
+        // The kinds below are raised by a host that checks a change set against a project (SIL.TextEditing.Project's importer); RecordDiffer never raises them.
+
+        /// <summary>The file's <c>base:</c> is not the digest of a fresh export of the record, so the project changed after the file was made. The whole file is refused.</summary>
+        StaleBase,
+        /// <summary>The file has no <c>base:</c>, so it cannot be shown to match the project. The whole file is refused.</summary>
+        MissingBase,
+        /// <summary>The file does not read as a record file of the project's schema; the reason names the finding. The whole file is refused.</summary>
+        UnreadableFile,
+        /// <summary>The file names a record the project does not have, or one that cannot be told from the file.</summary>
+        UnknownRecord,
+        /// <summary>The file names a key the record schema does not have for that object, for example a value the export left out (a timestamp). The whole file is refused.</summary>
+        UnknownField,
+        /// <summary>A reference names an object the project does not have, or a link that names none.</summary>
+        UnknownReference,
+        /// <summary>A reference names an object whose class the field cannot hold.</summary>
+        WrongReferenceClass,
+        /// <summary>A rich value uses a writing system the project does not have. The whole file is refused.</summary>
+        UnknownWritingSystem,
+        /// <summary>A rich value uses a character or paragraph style the project does not define. The whole file is refused.</summary>
+        UndefinedStyle,
+        /// <summary>The change touches a field whose project value the export could not hold in full (see <c>UnexportedValue</c>), so writing it would lose data.</summary>
+        UnexportedValue,
+        /// <summary>The file leaves out an object that has data the export did not hold (anything but its own timestamps), so deleting it would lose that data.</summary>
+        DeleteHasUnexportedData,
+        /// <summary>The file leaves out an object that other objects of the project refer to.</summary>
+        DeleteHasIncomingReferences,
+        /// <summary>The host says it cannot write this field.</summary>
+        FieldNotWritable,
+        /// <summary>The host says it cannot create an object of this class in this field.</summary>
+        CreateNotWritable,
+        /// <summary>The host says it cannot delete an object of this class from this field.</summary>
+        DeleteNotWritable,
+        /// <summary>A new object's GUID is already the GUID of an object in the project.</summary>
+        GuidInUse,
+        /// <summary>The change is placed after an added object whose own change was refused.</summary>
+        DependsOnRefusedChange,
+        /// <summary>The project's record could not be written as a file, so there is nothing to compare with.</summary>
+        ExportFailed,
+        /// <summary>The object a removal names has no GUID or is not in the project, so the delete rule cannot be checked.</summary>
+        UnknownDeleteTarget,
     }
 
     /// <summary>Whether a span of a word-level summary is in both values, only the old one or only the new one.</summary>
@@ -200,6 +241,10 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>The field path from that object, empty when the refusal is about the object itself.</summary>
         public string Field { get; internal set; } = string.Empty;
 
+        /// <summary>True when the refusal is about the whole file: the change set then has no change at all. A kind does not decide this (<see cref="RecordRefusalKind.UnknownField"/> is
+        /// whole-file when the file names a key the schema lacks and per-change when a change cannot be mapped to a field); read this flag, not the kind.</summary>
+        public bool WholeFile { get; internal set; }
+
         public string? WritingSystem { get; internal set; }
         public string? Old { get; internal set; }
         public string? New { get; internal set; }
@@ -222,6 +267,9 @@ namespace SIL.TextEditing.Markdown.Records
 
         /// <summary>True when the target was a partial file, so what it omits is no change.</summary>
         public bool IsPartial { get; }
+
+        /// <summary>True when a refusal is about the whole file (<see cref="RecordRefusal.WholeFile"/>); there is then no change.</summary>
+        public bool IsRefusedWhole => Refusals.Any(r => r.WholeFile);
 
         /// <summary>True when there is nothing to apply and nothing refused.</summary>
         public bool IsEmpty => Changes.Count == 0 && Refusals.Count == 0;

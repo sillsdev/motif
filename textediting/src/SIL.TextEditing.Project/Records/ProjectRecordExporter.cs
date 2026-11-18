@@ -77,6 +77,10 @@ namespace SIL.TextEditing.Project
         /// <summary>The record file, in the canonical spelling of <see cref="RecordFileWriter"/>; null when the writer refused the document.</summary>
         public string? Text { get; }
 
+        /// <summary>The <c>base:</c> value the file carries (<c>sha256:</c> and hex), a digest of the file text without it and of <see cref="Unexported"/>; null when
+        /// <see cref="Text"/> is. An import compares it with a fresh export of the same record to tell whether the project changed since.</summary>
+        public string? Base => Document.Base;
+
         /// <summary>The record as data. It is what the file reads back as.</summary>
         public RecordDocument Document { get; }
 
@@ -203,10 +207,15 @@ namespace SIL.TextEditing.Project
             string? text = null;
             try
             {
+                // The digest covers the file without its base: line and every unexported value, then the file is written again with it.
+                string bare = RecordFileWriter.Write(document, Schema);
+                var unexported = run.Unexported.ToArray();
+                document.Base = RecordBaseDigest.Compute(bare, unexported);
                 text = RecordFileWriter.Write(document, Schema);
             }
             catch (RecordWriteException e)
             {
+                document.Base = null;
                 run.Unexported.Add(new UnexportedValue(root.Guid, root.ClassName, "(record)", "The record file could not be written: " + e.Message, null));
             }
             return new ProjectRecordExport(kind.Name, root.Guid, PathOf(kind, root), text, document, run.Unexported.ToArray());
@@ -713,7 +722,11 @@ namespace SIL.TextEditing.Project
 
         byte[] BinaryValue(int hvo, int flid)
         {
-            _data.BinaryPropRgb(hvo, flid, ArrayPtr.Null, 0, out int length);
+            int length;
+            // liblcm's BinaryPropRgb throws a NullReferenceException for a binary field that was never set on this object, and offers no test for that case that is safe for a
+            // value not yet loaded; the catch covers this one call only, and a test pins the never-set case.
+            try { _data.BinaryPropRgb(hvo, flid, ArrayPtr.Null, 0, out length); }
+            catch (NullReferenceException) { return new byte[0]; }
             if (length == 0) return new byte[0];
             using (var buffer = MarshalEx.ArrayToNative<byte>(length))
             {

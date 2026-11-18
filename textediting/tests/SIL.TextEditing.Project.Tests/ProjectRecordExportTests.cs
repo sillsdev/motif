@@ -471,6 +471,20 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void ABinaryCustomFieldThatWasNeverSetExportsWithNothingReportedForIt()
+        {
+            using var fixture = new ProjectFixture();
+            var cache = fixture.Cache;
+            ((IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor).AddCustomField("LexEntry", "Unset", CellarPropertyType.Binary, 0);
+            ILexEntry entry = null!;
+            fixture.Change(() => entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create());
+            var (exporter, _) = Exporter(fixture, ProjectRecordSchema.LexiconEntryOverlay);
+            var export = exporter.Export(entry.Guid);
+            Assert.DoesNotContain(export.Unexported, u => u.Field == "Unset");
+            Assert.NotNull(export.Text);
+        }
+
+        [Fact]
         public void HomographsExportUnderDistinctNumberedPaths()
         {
             using var fixture = new ProjectFixture();

@@ -99,7 +99,7 @@ The front matter has these keys, and no others. The writer writes them in this o
 | `record` | The record kind, a kind of the schema: `"lexicon/entry"`. Required. |
 | `schema` | The schema's id, which is also the JSON Schema's `$id`: `"test.schema.json"`. Another id is `fwmd.record.schema-mismatch`. |
 | `root` | What the file holds, as a project path. Absent: the whole record. See [Partial files](#partial-files). |
-| `base` | The export the file was made from, as text (a digest, such as `"sha256:9f2c41d0"`). |
+| `base` | The export the file was made from, as text (a digest). A project exporter writes `sha256:` and 64 lowercase hex digits; see [Importing a record file](#importing-a-record-file). |
 | `analysis`, `vernacular`, `writingSystems` | As in [FieldWorks Markdown](fieldworks-markdown.md#front-matter). They say what unmarked text and `.v` mean in every rich value. |
 | `record-data` | The record's objects and fields. |
 
@@ -488,6 +488,46 @@ the importer's job, not the differ's.
   more than one object in the export or the file (`DuplicateGuid`: none of those objects is compared; for a partial file, only duplicates inside the subtree it names, or of that object's own GUID, count) are listed in `Refusals`, each typed with a
   reason. They are never also changes.
 - **Read-only.** `Changes`, `Refusals` and `Words` are read-only lists, and `Subtree` is a detached copy of the object.
+
+## Importing a record file
+
+`ProjectRecordImporter.Plan` (in `SIL.TextEditing.Project`) turns an edited record file into a `RecordChangeSet` against a real project. It only reads: it writes no
+object and stamps no `DateModified`. A host lowers the changes to its own operations.
+
+- **The base.** An exporter writes `base: "sha256:<64 hex>"`: SHA-256 over the file's text without its `base:` line (UTF-8) and every value the file leaves out
+  (`Unexported`: object GUID, class, field, reason, value), so a change to a timestamp the file cannot show also changes the digest. `Plan` exports the same record
+  again and compares. A file whose `base` differs is **stale** and is refused whole (`StaleBase`, no change at all): the project changed after the file was made, and there
+  is no merge; export the record again and redo the edits. A file with no `base:` is refused whole too (`MissingBase`), because nothing shows it matches the project.
+  The `base:` of a partial file is the whole record's digest, copied from the export it was cut from.
+- **The record.** A whole file names its record by the `guid:` of `record-data`. A partial file's object is looked up and its record found by climbing owners; a partial
+  file that names only a field is found through its `root:` path.
+- **Then** the file is read against the project's writing systems, styles and links, diffed against the fresh export with `RecordDiffer`, and each change checked. A
+  refused change is taken out of `Changes` and listed in `Refusals`; the rest still stand, except where a refusal is about the whole file.
+
+Refusals the importer adds to the differ's (`RecordRefusalKind`):
+
+| Kind | When | Scope |
+|---|---|---|
+| `StaleBase`, `MissingBase` | The base is not the fresh export's, or is absent. | Whole file |
+| `UnreadableFile` | The text does not read as a record file of the schema (any other reader error, named by id and line). | Whole file |
+| `UnknownRecord` | The file names no record of the project. | Whole file |
+| `UnknownField` | A key the schema does not have for the object, for example `date-modified`, which the export left out (whole file); or a change that cannot be mapped to a project field, which is never accepted unchecked (the change). | Either: read `RecordRefusal.WholeFile` |
+| `UnknownWritingSystem`, `UndefinedStyle` | A writing system or style the project lacks (`fwmd.ws.unknown`, `fwmd.style.unknown`). | Whole file |
+| `UnknownReference` | A reference whose GUID is not an object of the project, or a link that names none (or `fwmd.link.not-found`, `fwmd.link.ambiguous`). | The change |
+| `WrongReferenceClass` | A reference to an object whose class the field cannot hold (checked against liblcm's metadata, not against which list the item is in). | The change |
+| `UnexportedValue` | The change touches a field whose project value the export could not hold in full (formatting a plain field cannot spell, an undefined style, an unconvertible value, a structured text with analyses). Writing would lose it. Only liblcm's own `DateCreated` and `DateModified` (by name, never a custom field) are exempt: liblcm stamps them itself. | The change |
+| `ComputedField` | A computed field (head word, homograph number) was edited. | The change |
+| `UnknownDeleteTarget` | The object a removal names has no GUID or is not in the project. | The change |
+| `DeleteHasUnexportedData` | An object left out of a whole file has other unexported data (anything but its own timestamps). | The change |
+| `DeleteHasIncomingReferences` | An object left out of a whole file, or one it owns, is referred to by an object outside it. | The change |
+| `FieldNotWritable`, `CreateNotWritable`, `DeleteNotWritable` | The host's `WritableFields` says no. Skipped when none is given. | The change |
+| `GuidInUse` | A new object's GUID is already an object of the project. | The change |
+| `DependsOnRefusedChange` | A change is placed after an added object whose change was refused. | The change |
+| `ExportFailed` | The project's record could not be written as a file to compare with. | Whole file |
+
+**Delete by omission** (a whole file leaves out an object; `ByOmission`) is allowed only when the object and everything it owns have no unexported data other than their
+timestamps (those go with the object) and no object outside it refers to it or to anything it owns, whether by a liblcm reference or by a link inside rich text (the project's strings are searched once per plan, only when something is deleted). A clear by omission of a scalar or an alternative follows the field rule:
+allowed unless the field has unexported data. Anything else is a refusal with a reason. A partial file deletes nothing.
 
 ## What the tests hold the format to
 

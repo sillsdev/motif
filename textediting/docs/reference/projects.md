@@ -219,3 +219,27 @@ against the same project; every exported file reads back with no error finding a
   the nesting and the `guid:` key give), and excluded virtual (computed) fields.
 - **Not yet.** Import, writing to the project, and resolving a reference beyond its GUID (a link's path and name are for reading; the GUID is the identity).
 
+## Record import plan
+
+`ProjectRecordImporter` (Motif ADR 0003: Motif writes only what FieldWorks can create; this phase only reads) plans the import of an edited record file. It is built from a
+`ProjectRecordExporter` (or call `ProjectRecordImporter.Plan(cache, schemaResult, fileText, writable)`), and `Plan(fileText, writable)` never throws for a bad file: whatever is
+wrong with it is a typed refusal.
+
+```csharp
+var importer = new ProjectRecordImporter(exporter);
+ProjectRecordPlan plan = importer.Plan(File.ReadAllText(path), writableFields /* or null */);
+// plan.ChangeSet: the RecordChangeSet to lower (Changes in apply order) and every refusal; plan.BaseVerdict: Fresh, Stale, Missing or NotChecked
+// plan.RecordGuid, plan.Kind, plan.Export (the fresh export compared with), plan.Diagnostics (the reader's findings)
+```
+
+- **`base:`.** The exporter now writes `base: "sha256:..."` (`ProjectRecordExport.Base`), a digest of the file text without that line and of every `Unexported` value. `Plan`
+  exports the record again and a different digest is a `StaleBase` refusal of the whole file; no merge. See [Importing a record file](../formats/record-files.md#importing-a-record-file) for
+  every refusal kind.
+- **`WritableFields`.** An optional abstract class a host subclasses (later questions arrive as virtual members, so an implementer never breaks): `CanWrite(declaringClass, field)` for a set, clear, add, remove or move of a field, `CanCreate(ownerClass, ownerField, class)` and
+  `CanDelete(ownerClass, ownerField, class)` for owned objects. Names are liblcm's metadata names, and the owner class is the class that declares the field.
+- **Checks need a project.** A reference must name an object that exists and whose class the field's metadata destination accepts (subclasses fit); a rich value's writing systems
+  and styles are the project's; a change to a field whose project value the export reported as unexported is refused rather than silently overwritten; deleting by omission needs
+  no unexported data on the object (its own timestamps aside) and no incoming reference from outside the object and what it owns (liblcm's `ReferringObjects`, and links inside rich text, found by one search of the project's strings when a delete is planned). `RecordRefusal.WholeFile` says whether a refusal is about the whole file.
+- **Read-only.** Tests check that planning leaves the object count, every `DateModified` and the undo state as they were, for all three kinds. Against a real project, set
+  `TEXTEDITING_EXPORT_FWDATA` (as for the export): every record exported and planned unedited must give no change and no refusal; only counts are printed.
+
