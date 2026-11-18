@@ -170,15 +170,19 @@ namespace SIL.TextEditing.Markdown.Tests.Records
                     document.WritingSystems.Add(new KeyValuePair<string, WritingSystemInfo>(Json.Str(w["id"]), new WritingSystemInfo(Json.Str(w["lang"]), Json.Str(w["dir"]), Json.Str(w["font"]))));
             }
             var kind = schema.Kind(document.Kind)!;
-            var type = RootType(kind, document.Root);
-            if (json.TryGetValue("data", out var data) && data != null) document.Data = Object(Json.Obj(data), type);
+            if (json.TryGetValue("data", out var data) && data != null)
+            {
+                var fields = Json.Obj(data);
+                var type = RootType(kind, document.Root, Json.OptStr(fields, "class"));
+                document.Data = Object(fields, type);
+            }
             return document;
         }
 
         /// <summary>The object type a root names (the test walks the path the way the reader does).</summary>
-        static RecordObjectType RootType(RecordKind kind, string? root)
+        static RecordObjectType RootType(RecordKind kind, string? root, string? objectClass)
         {
-            var type = kind.Root;
+            var type = kind.Roots.Count == 1 ? kind.Root : kind.Roots.First(t => t.Name == objectClass);
             if (root == null) return type;
             var path = ProjectPath.Parse(root)!;
             for (int i = kind.PathSegments; i < path.Segments.Count; i++)

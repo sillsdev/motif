@@ -411,4 +411,39 @@
       }
     ]
   }
+,
+  "whole-classes": {
+    "version": 2,
+    "id": "whole-classes.schema.json",
+    "types": [
+      {
+        "name": "note",
+        "fields": [
+          {
+            "name": "text",
+            "kind": "text"
+          }
+        ]
+      },
+      {
+        "name": "tag",
+        "fields": [
+          {
+            "name": "label",
+            "kind": "text"
+          }
+        ]
+      }
+    ],
+    "kinds": [
+      {
+        "name": "records/record",
+        "roots": [
+          "note",
+          "tag"
+        ],
+        "pathSegments": 2
+      }
+    ]
+  }
 }
