@@ -12,11 +12,15 @@ internal sealed class ContentRow
 
 internal sealed class RecordContent
 {
-    private readonly Dictionary<string, int> identities = new(StringComparer.Ordinal);
+    // Rows stay encoded until read: opening a store costs one hash per row, not one decode per row.
+    private Dictionary<string, int>? identities;
+    private readonly Dictionary<int, byte[]> encoded = new();
     private readonly Dictionary<int, JsonElement> values = new();
     private readonly List<ContentRow> pending = [];
     private int next;
     private readonly SortedDictionary<int, byte[]> hashes = new();
+    /// <summary>Number of rows decoded from storage; proves that opening and hashing do not decode.</summary>
+    internal int DecodedCount { get; private set; }
     public IReadOnlyList<ContentRow> Pending => pending;
     public void Saved() => pending.Clear();
 
@@ -25,39 +29,61 @@ internal sealed class RecordContent
         foreach (var row in rows)
         {
             if (row.Id <= 0) throw new InvalidDataException("Invalid immutable content identity.");
-            var hash = SHA256.HashData(row.Data);
-            var value = Decode(row.Data);
-            identities.Add(Convert.ToHexString(SHA256.HashData(Canonical(value))), row.Id);
-            hashes.Add(row.Id, hash);
-            values.Add(row.Id, value);
+            Check(row.Data);
+            hashes.Add(row.Id, SHA256.HashData(row.Data));
+            encoded.Add(row.Id, row.Data);
             next = Math.Max(next, row.Id);
         }
     }
 
+    // The stored hash is the identity: it is fixed by the stored bytes, never by decoding them.
     public int Put(JsonElement value)
     {
         var raw = Canonical(value);
         var key = Convert.ToHexString(SHA256.HashData(raw));
-        if (identities.TryGetValue(key, out var prior)) return prior;
+        var known = Identities();
+        if (known.TryGetValue(key, out var prior)) return prior;
         var bytes = Encode(raw);
         var hash = SHA256.HashData(bytes);
         var id = checked(++next);
-        identities.Add(key, id);
+        known.Add(key, id);
         values.Add(id, value.Clone());
         hashes.Add(id, hash);
         pending.Add(new ContentRow { Id = id, Data = bytes });
+        digest = null;
         return id;
     }
 
-    public string Digest()
+    private Dictionary<string, int> Identities()
     {
-        using var output = new BinaryOutput();
-        foreach (var (id, hash) in hashes) { output.Unsigned((ulong)id); output.Bytes(hash); }
-        return Convert.ToHexStringLower(SHA256.HashData(output.Finish()));
+        if (identities is not null) return identities;
+        var built = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (id, bytes) in encoded)
+            if (!built.TryAdd(Convert.ToHexString(SHA256.HashData(Raw(bytes))), id))
+                throw new InvalidDataException("Duplicate immutable record content.");
+        return identities = built;
     }
 
-    public JsonElement Get(int id) => values.TryGetValue(id, out var value) ? value
-        : throw new InvalidDataException("Missing immutable record content.");
+    // Hashing over a million rows is far too slow to repeat per call; rows are immutable, so only Put changes it.
+    private string? digest;
+
+    public string Digest()
+    {
+        if (digest is not null) return digest;
+        using var output = new BinaryOutput();
+        foreach (var (id, hash) in hashes) { output.Unsigned((ulong)id); output.Bytes(hash); }
+        return digest = Convert.ToHexStringLower(SHA256.HashData(output.Finish()));
+    }
+
+    public JsonElement Get(int id)
+    {
+        if (values.TryGetValue(id, out var value)) return value;
+        if (!encoded.TryGetValue(id, out var bytes)) throw new InvalidDataException("Missing immutable record content.");
+        value = Decode(bytes);
+        DecodedCount++;
+        values.Add(id, value);
+        return value;
+    }
 
     internal static byte[] Canonical(JsonElement value)
     {
@@ -78,25 +104,40 @@ internal sealed class RecordContent
         return output.Length < raw.Length + 1 ? output.ToArray() : [0, ..raw];
     }
 
-    private static JsonElement Decode(byte[] bytes)
+    private static void Check(byte[] bytes)
     {
         if (bytes.Length < 2 || bytes[0] > 1) throw new InvalidDataException("Unknown content envelope.");
-        byte[] raw;
-        if (bytes[0] == 0) raw = bytes[1..];
+        int first;
+        if (bytes[0] == 0) first = bytes[1];
         else
         {
             using var input = new MemoryStream(bytes, 1, bytes.Length - 1);
             using var compression = new BrotliStream(input, CompressionMode.Decompress);
-            using var output = new MemoryStream();
-            var buffer = new byte[8192];
-            int read;
-            while ((read = compression.Read(buffer)) != 0)
-            {
-                if (output.Length + read > 64 * 1024 * 1024) throw new InvalidDataException("Record content is too large.");
-                output.Write(buffer, 0, read);
-            }
-            raw = output.ToArray();
+            first = compression.ReadByte();
         }
+        if (first != 2) throw new InvalidDataException("Unknown content version.");
+    }
+
+    private static byte[] Raw(byte[] bytes)
+    {
+        if (bytes.Length < 2 || bytes[0] > 1) throw new InvalidDataException("Unknown content envelope.");
+        if (bytes[0] == 0) return bytes[1..];
+        using var input = new MemoryStream(bytes, 1, bytes.Length - 1);
+        using var compression = new BrotliStream(input, CompressionMode.Decompress);
+        using var output = new MemoryStream();
+        var buffer = new byte[8192];
+        int read;
+        while ((read = compression.Read(buffer)) != 0)
+        {
+            if (output.Length + read > 64 * 1024 * 1024) throw new InvalidDataException("Record content is too large.");
+            output.Write(buffer, 0, read);
+        }
+        return output.ToArray();
+    }
+
+    private static JsonElement Decode(byte[] bytes)
+    {
+        var raw = Raw(bytes);
         var reader = new BinaryInput(raw);
         if (reader.Byte() != 2) throw new InvalidDataException("Unknown content version.");
         using var json = new MemoryStream();

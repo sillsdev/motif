@@ -92,13 +92,29 @@ public sealed class StorageContractTests : IDisposable
             command.CommandText = "PRAGMA user_version=999";
             command.ExecuteNonQuery();
             Assert.Throws<InvalidDataException>(() => new Store(path));
-            command.CommandText = "PRAGMA user_version=2";
+            command.CommandText = "PRAGMA user_version=3";
             command.ExecuteNonQuery();
             command.CommandText = "UPDATE ChangeEntities SET Change = x'ff'";
             command.ExecuteNonQuery();
         }
         await using var reopened = new Store(path);
         await Assert.ThrowsAsync<InvalidDataException>(() => reopened.RegenerateAsync());
+    }
+
+    [Fact]
+    public async Task FormatTwoStoresAreRefusedWithAClearMessage()
+    {
+        var path = PathFor("format2");
+        await using (var store = new Store(path))
+            await store.ImportAsync([new(Record("value"), new Dictionary<int, int>())], Guid.NewGuid());
+        using (var connection = Open(path))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "PRAGMA user_version=2";
+            command.ExecuteNonQuery();
+        }
+        var error = Assert.Throws<InvalidDataException>(() => new Store(path));
+        Assert.Equal("Unsupported record store format.", error.Message);
     }
 
     [Fact]

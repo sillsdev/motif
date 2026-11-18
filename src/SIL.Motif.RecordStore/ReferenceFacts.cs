@@ -41,6 +41,7 @@ public sealed partial class ReferenceIndexSnapshot
     private readonly ImmutableDictionary<Guid, ImmutableArray<Guid>> children;
     private readonly ImmutableDictionary<Guid, ReferenceRecord> records;
     private readonly ImmutableArray<string> limitations;
+    private readonly string[] nativeLimitations;
     private readonly ImmutableArray<ReferenceWitness> witnesses;
     private readonly bool nativeClosureComplete;
     public string Revision { get; }
@@ -55,7 +56,7 @@ public sealed partial class ReferenceIndexSnapshot
         children = materialized.Where(e => e.Owning).GroupBy(e => e.Source)
             .ToImmutableDictionary(g => g.Key, g => g.Select(e => e.Target).ToImmutableArray());
         this.records = records.ToImmutableDictionary(r => r.Id);
-        var nativeLimitations = limitations.ToArray();
+        nativeLimitations = limitations.ToArray();
         nativeClosureComplete = nativeLimitations.Length == 0;
         var missing = nativeLimitations.ToList();
         if (evidence is not null && evidence.StoreRevision != revision)
@@ -84,6 +85,33 @@ public sealed partial class ReferenceIndexSnapshot
         }
         this.limitations = missing.Distinct(StringComparer.Ordinal).ToImmutableArray();
     }
+
+    private ReferenceIndexSnapshot(ReferenceIndexSnapshot other, string revision,
+        ImmutableDictionary<Guid, ImmutableArray<NativeReference>> incoming)
+    {
+        Revision = revision; this.incoming = incoming; children = other.children; records = other.records;
+        limitations = other.limitations; witnesses = other.witnesses; nativeClosureComplete = other.nativeClosureComplete;
+        nativeLimitations = other.nativeLimitations; usageSchema = other.usageSchema;
+    }
+
+    internal NativeUsageSchema? UsageSchema => usageSchema;
+
+    /// <summary>The same snapshot after one non-owning single-reference edit; ownership and limitations are unchanged.</summary>
+    internal ReferenceIndexSnapshot WithEdge(string revision, NativeReference? removed, NativeReference? added)
+    {
+        var next = incoming;
+        if (removed is not null && next.TryGetValue(removed.Target, out var old))
+        {
+            var rest = old.Remove(removed);
+            next = rest.IsEmpty ? next.Remove(removed.Target) : next.SetItem(removed.Target, rest);
+        }
+        if (added is not null)
+            next = next.SetItem(added.Target, next.TryGetValue(added.Target, out var present) ? present.Add(added) : [added]);
+        return new ReferenceIndexSnapshot(this, revision, next);
+    }
+
+    internal ReferenceIndexSnapshot WithEvidence(ReferenceEvidence evidence) => new(Revision,
+        incoming.Values.SelectMany(x => x), records.Values, nativeLimitations, evidence, usageSchema);
 
     public ReferenceRecord? Record(Guid id) => records.GetValueOrDefault(id);
 

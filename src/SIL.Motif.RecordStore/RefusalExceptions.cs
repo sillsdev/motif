@@ -11,3 +11,6 @@ public sealed class DeletionPlanMismatchException(string message) : InvalidOpera
 
 /// <summary>Deletion usage closure is incomplete, so no deletion can be authorized.</summary>
 public sealed class IncompleteDeletionClosureException(string message) : InvalidOperationException(message);
+
+/// <summary>History holds a commit this handle did not write, so its replay digest cannot be advanced safely.</summary>
+public sealed class ForeignCommitException(string message) : InvalidOperationException(message);

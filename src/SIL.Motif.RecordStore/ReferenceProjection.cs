@@ -13,6 +13,20 @@ internal sealed class StoreState
     public string ContentDigest { get; set; } = "";
     public string IndexDigest { get; set; } = "";
     public string IndexLimitations { get; set; } = "";
+
+    public bool SamePoint(StoreState other) => Published == other.Published && Revision == other.Revision &&
+        ReplayDigest == other.ReplayDigest && SnapshotDigest == other.SnapshotDigest && ContentDigest == other.ContentDigest &&
+        IndexDigest == other.IndexDigest && IndexLimitations == other.IndexLimitations;
+}
+
+/// <summary>
+/// A fully verified published point retained by one handle: the native records, the reference snapshot and the
+/// incrementally updatable digests that bind them to the stored state row. History is scanned lazily, once.
+/// </summary>
+internal sealed record VerifiedPoint(StoreState State, Dictionary<Guid, GenericRecord> Records, ReferenceIndexSnapshot Index,
+    SetDigest Snapshot, IndexDigest IndexDigest)
+{
+    public ReplayState? Replay { get; init; }
 }
 
 internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRecord[] Records, string[] Limitations)
@@ -106,25 +120,51 @@ internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRec
         }
     }
 
-    public string Digest()
+    public IndexDigest Accumulate()
+    {
+        var records = new SetDigest();
+        foreach (var record in Records) records = records.Add(IndexDigest.Item(record));
+        var edges = new SetDigest();
+        foreach (var edge in Edges) edges = edges.Add(IndexDigest.Item(edge));
+        return new IndexDigest(records, edges, Limitations.Order(StringComparer.Ordinal).ToArray());
+    }
+
+    public string Digest() => Accumulate().Final();
+}
+
+/// <summary>Order-independent, incrementally updatable digest of the published reference index.</summary>
+internal sealed record IndexDigest(SetDigest Records, SetDigest Edges, string[] Limitations)
+{
+    public static byte[] Item(ReferenceRecord record)
     {
         using var output = new BinaryOutput();
-        output.Byte(1);
-        output.Unsigned((ulong)Records.Length);
-        foreach (var record in Records.OrderBy(r => r.Id))
-        {
-            output.Guid(record.Id); output.Integer(record.ClassId); output.Integer(record.OwningField);
-            output.Byte(record.Owner.HasValue ? (byte)1 : (byte)0);
-            if (record.Owner.HasValue) output.Guid(record.Owner.Value);
-        }
-        output.Unsigned((ulong)Edges.Length);
-        foreach (var edge in Edges.OrderBy(e => e.Target).ThenBy(e => e.Source).ThenBy(e => e.Field).ThenBy(e => e.Position).ThenBy(e => e.Occurrence, StringComparer.Ordinal))
-        {
-            output.Guid(edge.Target); output.Guid(edge.Source); output.Integer(edge.Field); output.Integer(edge.Position);
-            output.Byte(edge.Owning ? (byte)1 : (byte)0); output.Text(edge.Occurrence);
-        }
+        output.Guid(record.Id); output.Integer(record.ClassId); output.Integer(record.OwningField);
+        output.Byte(record.Owner.HasValue ? (byte)1 : (byte)0);
+        if (record.Owner.HasValue) output.Guid(record.Owner.Value);
+        return output.Finish();
+    }
+
+    public static byte[] Item(NativeReference edge)
+    {
+        using var output = new BinaryOutput();
+        output.Guid(edge.Target); output.Guid(edge.Source); output.Integer(edge.Field); output.Integer(edge.Position);
+        output.Byte(edge.Owning ? (byte)1 : (byte)0); output.Text(edge.Occurrence);
+        return output.Finish();
+    }
+
+    public IndexDigest WithEdge(NativeReference? removed, NativeReference? added) => this with
+    {
+        Edges = added is null ? (removed is null ? Edges : Edges.Remove(Item(removed)))
+            : removed is null ? Edges.Add(Item(added)) : Edges.Remove(Item(removed)).Add(Item(added))
+    };
+
+    public string Final()
+    {
+        using var output = new BinaryOutput();
+        output.Byte(2);
+        output.Text(Records.Final("index-records")); output.Text(Edges.Final("index-edges"));
         output.Unsigned((ulong)Limitations.Length);
-        foreach (var limitation in Limitations.Order(StringComparer.Ordinal)) output.Text(limitation);
-        return Convert.ToHexStringLower(SHA256.HashData(output.Finish()));
+        foreach (var limitation in Limitations) output.Text(limitation);
+        return Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(output.Finish()));
     }
 }

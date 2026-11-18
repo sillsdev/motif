@@ -52,9 +52,9 @@ public sealed partial class RecordStore : IAsyncDisposable
             using (var command = database.Database.GetDbConnection().CreateCommand())
             {
                 database.Database.OpenConnection();
-                command.CommandText = created ? "PRAGMA user_version=2" : "PRAGMA user_version";
+                command.CommandText = created ? "PRAGMA user_version=3" : "PRAGMA user_version";
                 if (created) command.ExecuteNonQuery();
-                else if (Convert.ToInt32(command.ExecuteScalar()) != 2) throw new InvalidDataException("Unsupported record store format.");
+                else if (Convert.ToInt32(command.ExecuteScalar()) != 3) throw new InvalidDataException("Unsupported record store format.");
                 database.Database.CloseConnection();
             }
             content = scope.ServiceProvider.GetRequiredService<RecordContent>();
@@ -87,6 +87,7 @@ public sealed partial class RecordStore : IAsyncDisposable
     public async Task ImportAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage? nativeCoverage = null)
     {
         using var writer = AcquireWriter();
+        point = null;
         if ((await database.Set<StoreState>().AsNoTracking().SingleAsync()).Published || await database.Set<Commit>().AnyAsync()) throw new InvalidOperationException("Import requires an empty store.");
         var imported = records.ToList();
         if (nativeCoverage is not null)
@@ -153,21 +154,51 @@ public sealed partial class RecordStore : IAsyncDisposable
         .Select(c => new RecordCommit(c.Id, c.HybridDateTime.DateTime, c.HybridDateTime.Counter, c.ChangeEntities.Count))
         .ToListAsync();
 
-    public Task<ReferenceIndexSnapshot> ReferencesAsync(ReferenceEvidence? evidence = null) => ReadPublishedAsync(async state =>
+    public async Task<ReferenceIndexSnapshot> ReferencesAsync(ReferenceEvidence? evidence = null)
     {
+        var acquired = await ReadPublishedAsync(state => AcquireAsync(state));
+        return evidence is null ? acquired.Index : acquired.Index.WithEvidence(evidence);
+    }
+
+    /// <summary>Reads and verifies the published point; a trusted result is retained for reuse.</summary>
+    private async Task<VerifiedPoint> AcquireAsync(StoreState state)
+    {
+        point = null;
         var records = await ReadRecordsAsync();
-        VerifySnapshots(state, records);
+        var snapshot = VerifySnapshots(state, records);
         var projection = new ReferenceProjection(await ReferencePersistence.ReadAsync(database), records.Where(r => r.Kind == "lcm")
             .Select(r => new ReferenceRecord(r.Id, r.ClassId, r.Owner, r.OwningField)).ToArray(),
             state.IndexLimitations.Split('\n', StringSplitOptions.RemoveEmptyEntries));
         var limitations = projection.Limitations.ToList();
-        if (projection.Digest() != state.IndexDigest) limitations.Add("Incoming-reference index is corrupt; rebuild it before use.");
-        return new ReferenceIndexSnapshot(state.Revision, projection.Edges, projection.Records, limitations, evidence, NativeUsageSchema.Read(records));
-    });
+        var digest = projection.Accumulate();
+        var trusted = digest.Final() == state.IndexDigest;
+        if (!trusted) limitations.Add("Incoming-reference index is corrupt; rebuild it before use.");
+        var schema = NativeUsageSchema.Read(records);
+        var verified = new VerifiedPoint(state, records.Where(r => r.Kind == "lcm").ToDictionary(r => r.Id),
+            new ReferenceIndexSnapshot(state.Revision, projection.Edges, projection.Records, limitations, null, schema), snapshot, digest);
+        PointAcquisitions++;
+        if (trusted) point = verified;
+        return verified;
+    }
+
+    /// <summary>
+    /// The current verified point. A retained point is reused only while the published state row (revision and all
+    /// digests) is unchanged; otherwise the full acquisition runs again. Cost of a reused point: one state read and
+    /// one commit-hash read, independent of project size.
+    /// </summary>
+    /// <summary>Number of full verified acquisitions this handle has performed.</summary>
+    internal int PointAcquisitions { get; private set; }
+
+    /// <summary>The reference snapshot that planning and guarded writes currently reuse.</summary>
+    internal async Task<ReferenceIndexSnapshot> PlanningIndexAsync() => (await PointAsync()).Index;
+
+    private Task<VerifiedPoint> PointAsync() => ReadPublishedAsync(async state =>
+        point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state));
 
     public async Task RebuildReferenceIndexAsync()
     {
         using var writer = AcquireWriter();
+        point = null;
         var state = await PublishedStateAsync();
         var records = await ReadRecordsAsync();
         VerifySnapshots(state, records);
@@ -178,6 +209,7 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision)
     {
+        point = null;
         var projection = ReferenceProjection.Build(records);
         await using var transaction = database.Database.CurrentTransaction is null ? await database.Database.BeginTransactionAsync() : null;
         await ReferencePersistence.ReplaceAsync(database, projection.Edges);
@@ -186,7 +218,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         state.IndexDigest = projection.Digest();
         state.IndexLimitations = string.Join("\n", projection.Limitations);
         state.ReplayDigest = await ReplayIntegrity.DigestAsync(database);
-        state.SnapshotDigest = SnapshotDigest(records);
+        state.SnapshotDigest = SnapshotDigest(records).Final("snapshot");
         state.ContentDigest = content.Digest();
         state.Published = true;
         await database.SaveChangesAsync();
@@ -211,28 +243,31 @@ public sealed partial class RecordStore : IAsyncDisposable
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", hashes.Order(StringComparer.Ordinal)))));
     }
 
-    private string SnapshotDigest(IReadOnlyList<GenericRecord> records)
+    internal static byte[] SnapshotItem(GenericRecord record) => RecordContent.Canonical(JsonSerializer.SerializeToElement(new
     {
-        using var output = new BinaryOutput();
-        output.Byte(1);
-        output.Unsigned((ulong)records.Count);
-        foreach (var record in records.OrderBy(r => r.Id)) output.Bytes(RecordContent.Canonical(JsonSerializer.SerializeToElement(new
-        {
-            record.Id, record.Kind, record.ClassId, record.Owner, record.OwningField, record.OwnOrdinal,
-            record.IdentityFields, record.Layout, record.Values, record.Provenance, record.DeletedAt
-        })));
-        return Convert.ToHexStringLower(SHA256.HashData(output.Finish()));
+        record.Id, record.Kind, record.ClassId, record.Owner, record.OwningField, record.OwnOrdinal,
+        record.IdentityFields, record.Layout, record.Values, record.Provenance, record.DeletedAt
+    }));
+
+    private static SetDigest SnapshotDigest(IEnumerable<GenericRecord> records)
+    {
+        var digest = new SetDigest();
+        foreach (var record in records) digest = digest.Add(SnapshotItem(record));
+        return digest;
     }
 
-    private void VerifySnapshots(StoreState state, IReadOnlyList<GenericRecord> records)
+    private static SetDigest VerifySnapshots(StoreState state, IReadOnlyList<GenericRecord> records)
     {
-        if (state.SnapshotDigest != SnapshotDigest(records))
+        var digest = SnapshotDigest(records);
+        if (state.SnapshotDigest != digest.Final("snapshot"))
             throw new InvalidDataException("The snapshot projection is corrupt; regenerate it from history before use.");
+        return digest;
     }
 
     public async Task RegenerateAsync()
     {
         using var writer = AcquireWriter();
+        point = null;
         var state = await PublishedStateAsync();
         if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database))
             throw new InvalidDataException("History is corrupt; the existing snapshot projection has been preserved.");

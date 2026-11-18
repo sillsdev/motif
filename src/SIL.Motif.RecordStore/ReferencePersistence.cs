@@ -41,6 +41,28 @@ internal static class ReferencePersistence
         }
     }
 
+    /// <summary>Applies one single-reference edit to the persisted index inside the caller's transaction.</summary>
+    public static async Task ApplyAsync(RecordDatabase database, NativeReference? removed, NativeReference? added)
+    {
+        await using var command = database.Database.GetDbConnection().CreateCommand();
+        command.Transaction = database.Database.CurrentTransaction!.GetDbTransaction();
+        void Run(string text, NativeReference edge)
+        {
+            command.Parameters.Clear();
+            command.CommandText = text;
+            command.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$target", NetworkGuidConverter.Write(edge.Target)));
+            command.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$source", NetworkGuidConverter.Write(edge.Source)));
+            command.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$field", edge.Field));
+            command.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$position", edge.Position));
+            command.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$owning", edge.Owning ? 1 : 0));
+            command.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("$occurrence", edge.Occurrence));
+            if (command.ExecuteNonQuery() != 1) throw new InvalidDataException("The persisted reference index does not match the published point.");
+        }
+        if (removed is not null) Run("DELETE FROM IncomingReferences WHERE Target=$target AND Source=$source AND Field=$field AND Position=$position AND Occurrence=$occurrence AND Owning=$owning", removed);
+        if (added is not null) Run("INSERT INTO IncomingReferences(Target,Source,Field,Position,Owning,Occurrence) VALUES($target,$source,$field,$position,$owning,$occurrence)", added);
+        await Task.CompletedTask;
+    }
+
     public static async Task<NativeReference[]> ReadAsync(RecordDatabase database)
     {
         await database.Database.OpenConnectionAsync();
