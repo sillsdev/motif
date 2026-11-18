@@ -6,7 +6,7 @@ namespace SIL.Motif.Host.PanGloss;
 public static class PanGlossInterfaceVersions
 {
     /// <summary>The PanGloss source tag that defines the formats Motif reads.</summary>
-    public const string SourceTag = "v0.22.1";
+    public const string SourceTag = "v0.23.0";
     /// <summary>The version of the object returned by <c>pangloss --describe</c>.</summary>
     public const int DescribeSchemaVersion = 1;
     /// <summary>The version of reports returned by <c>pangloss grammar-health</c>.</summary>
@@ -15,8 +15,8 @@ public static class PanGlossInterfaceVersions
     public const int FstHealthSchemaVersion = 10;
     /// <summary>The identifier of detailed parse-trace documents.</summary>
     public const string TraceDetailsSchemaId = "pangloss.trace-details.v5";
-    /// <summary>The version of the SQLite cache written by <c>batch --stats</c>.</summary>
-    public const int StatsCacheVersion = 11;
+    /// <summary>The full SQLite cache version written by <c>batch --stats</c>, without compact storage.</summary>
+    public const int StatsCacheVersion = 13;
     /// <summary>The meaning of the statistics cache counters.</summary>
     public const int StatsCounterSemanticsVersion = 8;
     /// <summary>The version of structured parser compile errors.</summary>

@@ -203,7 +203,7 @@ public static class PanGlossBatchStatisticsReader
             var version = ReadSchemaVersion(connection);
             if (version != PanGlossInterfaceVersions.StatsCacheVersion)
                 throw new InvalidDataException($"The PanGloss batch statistics cache has schema version {version}; " +
-                    $"Motif requires version {PanGlossInterfaceVersions.StatsCacheVersion}.");
+                    $"Motif requires full version {PanGlossInterfaceVersions.StatsCacheVersion}. Run a new Assessment.");
             ValidateCounterSemantics(connection);
             var loadedWords = ReadWords(connection);
             var unexpected = loadedWords.Keys.FirstOrDefault(word => !expected.Contains(word));

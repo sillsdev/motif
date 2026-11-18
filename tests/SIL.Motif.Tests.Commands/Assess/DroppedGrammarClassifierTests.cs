@@ -237,7 +237,7 @@ public sealed class DroppedGrammarClassifierTests
     public void TheRecordedCodeListIsTheOneOfTheReleaseTheProjectPins()
     {
         using var pinned = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.22.1.json")));
+            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.23.0.json")));
         using var release = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoPaths.FindRepoRoot(),
             "pangloss-release.json")));
 
@@ -247,10 +247,30 @@ public sealed class DroppedGrammarClassifierTests
     }
 
     [Fact]
+    public void TheReleaseCatalogSeparatesImportCodesFromGrammarHealthCodes()
+    {
+        using var pinned = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.23.0.json")));
+        var imports = pinned.RootElement.GetProperty("codes").EnumerateArray()
+            .Select(code => code.GetString()!).ToArray();
+        var health = pinned.RootElement.GetProperty("grammarHealthCodes").EnumerateArray()
+            .Select(code => code.GetString()!).ToArray();
+
+        Assert.Equal(86, imports.Length);
+        Assert.Equal(15, health.Length);
+        Assert.Equal(101, imports.Concat(health).Distinct(StringComparer.Ordinal).Count());
+        Assert.DoesNotContain("error", imports);
+        Assert.DoesNotContain("warning", imports);
+        Assert.DoesNotContain("info", imports);
+        Assert.Contains("grammar.stored-analysis.no-longer-parses", health);
+        Assert.DoesNotContain("grammar.stored-analysis.no-longer-parses", imports);
+    }
+
+    [Fact]
     public void EveryDroppedGrammarCodeIsACodeOfThePinnedParserRelease()
     {
         using var pinned = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.22.1.json")));
+            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.23.0.json")));
         var released = pinned.RootElement.GetProperty("codes").EnumerateArray()
             .Select(code => code.GetString()!).ToHashSet(StringComparer.Ordinal);
 

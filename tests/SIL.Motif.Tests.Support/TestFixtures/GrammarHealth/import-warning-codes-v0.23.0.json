@@ -1,10 +1,9 @@
 {
-  "tag": "v0.22.1",
-  "source": "PanGloss tag v0.22.1, commit c433c753729eca92904c4419cd3e8e6543f27681, rust/crates/pg-snapshot/src/warning.rs, every ImportWarningCode string",
+  "tag": "v0.23.0",
+  "source": "PanGloss tag v0.23.0, commit 62da5c4f4d185e60721866cbafc055343b5af03f, rust/crates/pg-snapshot/src/warning.rs import_warning_codes! and docs/diagnostics/",
   "codes": [
     "conversion.source-provenance-unknown",
     "conversion.unsegmentable-form",
-    "error",
     "fwdata.dangling-reference",
     "fwdata.empty-representation",
     "fwdata.invalid-parser-parameter",
@@ -77,7 +76,6 @@
     "grammar.template.slot-no-rules",
     "grammar.template.slot-unresolved",
     "grammar.variant.component-unresolved",
-    "info",
     "invalid-source.active-parser",
     "invalid-source.duplicate-guid",
     "invalid-source.missing-guid",
@@ -89,7 +87,23 @@
     "snapshot.reference-out-of-scope",
     "snapshot.rule-feature-unresolved",
     "substrate.classification-ambiguous",
-    "substrate.position-unmapped",
-    "warning"
+    "substrate.position-unmapped"
+  ],
+  "grammarHealthCodes": [
+    "fst.circumfix-no-route",
+    "fst.pattern-root-shape",
+    "fst.process-not-emittable",
+    "fst.reduplication-no-route",
+    "fst.shape-not-in-surface-table",
+    "grammar.stored-analysis.budget-reached",
+    "grammar.stored-analysis.incomplete",
+    "grammar.stored-analysis.no-longer-parses",
+    "hc-duplicate-feature-bundle",
+    "hc-inflectional-affix-missing-template-slot",
+    "hc-partial-reason-unspecified",
+    "hc-stem-no-grammatical-category",
+    "hc-unclassified-affix",
+    "hc-undeclared-segment",
+    "provisional.phoneme-features"
   ]
 }

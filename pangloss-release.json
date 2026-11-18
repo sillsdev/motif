@@ -1,12 +1,12 @@
 {
-  "version": "0.22.1",
-  "tag": "v0.22.1",
+  "version": "0.23.0",
+  "tag": "v0.23.0",
   "interfaces": {
-    "sourceTag": "v0.22.1",
+    "sourceTag": "v0.23.0",
     "describeSchemaVersion": 1,
     "grammarHealthSchemaVersion": 5,
     "traceDetailsSchemaId": "pangloss.trace-details.v5",
-    "statsCacheVersion": 11,
+    "statsCacheVersion": 13,
     "serveProtocol": 2,
     "batchTsv": 5,
     "compileErrorSchemaVersion": 1,
@@ -73,20 +73,20 @@
   },
   "assets": {
     "win-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.22.1/pangloss-win-x64.exe",
-      "sha256": "e9add37705c86771305d85016b4db63057ac1e8cb220854c8d2651fb31798131"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.23.0/pangloss-win-x64.exe",
+      "sha256": "a0639e98eb32ff279d97741d84a6dde36f1b0f1af4d8566261d3fbc70c469224"
     },
     "linux-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.22.1/pangloss-linux-x64",
-      "sha256": "f309f4dac97e620174d0314da7ed11f83484240904d04799402cd77b0f2e4738"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.23.0/pangloss-linux-x64",
+      "sha256": "e6761ff3d1b873f1cced4b449bb500a3ea64196eb4d73484fd892a0438543719"
     },
     "osx-arm64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.22.1/pangloss-osx-arm64",
-      "sha256": "3fca5efe28afb2b9cab674be5b1f0d02b380aa68ffeea195250fc5efc74fbe75"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.23.0/pangloss-osx-arm64",
+      "sha256": "a7021f91e549b51cfb67e23f81c3bee61009973eab31c15dc60b49d6fd337adf"
     },
     "osx-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.22.1/pangloss-osx-x64",
-      "sha256": "fa221b48dad003db59a28e83264f84ceb3fe041c4ce71ec908a81e8f4c2256b6"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.23.0/pangloss-osx-x64",
+      "sha256": "930681a7e7fdd96fcdbbcb5a74c78ef04cb5922726d0a125b81a081caae677ab"
     }
   }
 }

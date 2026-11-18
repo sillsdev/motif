@@ -85,6 +85,7 @@ internal static class BeforeAssessmentReuse
                         .FirstOrDefault(item => item.Selection.Sha256 == selection.Sha256 &&
                             item.Selection.Words.SequenceEqual(selection.Words, StringComparer.Ordinal));
                     if (timing is null || !Matches(timing.CachePath, timing.CacheDigest)) continue;
+                    PanGlossBatchStatisticsReader.ReadWords(timing.CachePath!, scope.ParsedWords);
                 }
                 if (scope.Collect.Contains(AssessmentKind.Correctness))
                 {

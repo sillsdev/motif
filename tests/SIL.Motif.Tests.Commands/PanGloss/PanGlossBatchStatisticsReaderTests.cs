@@ -388,16 +388,20 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
-    [Fact]
-    public void RefusesAnUnsupportedCacheVersion()
+    [Theory]
+    [InlineData(11)]
+    [InlineData(12)]
+    [InlineData(14)]
+    public void RefusesAnUnsupportedCacheVersion(int version)
     {
         var path = Path.Combine(_root, "wrong-version.sqlite");
-        WriteCache(path, PanGlossInterfaceVersions.StatsCacheVersion - 1);
+        WriteCache(path, version);
 
         var error = Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.Read(path, ["word"]));
 
         Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadWords(path, ["word"]));
-        Assert.Contains($"schema version {PanGlossInterfaceVersions.StatsCacheVersion - 1}", error.Message,
+        Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1));
+        Assert.Contains($"schema version {version}", error.Message,
             StringComparison.Ordinal);
     }
 

@@ -125,6 +125,10 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     [InlineData("missing-artifact")]
     [InlineData("missing-stats")]
     [InlineData("corrupt-stats")]
+    [InlineData("stats-schema-11")]
+    [InlineData("stats-schema-12")]
+    [InlineData("stats-schema-14")]
+    [InlineData("stats-semantics")]
     [InlineData("baseline")]
     [InlineData("parser-version")]
     [InlineData("parser-hash")]
@@ -168,6 +172,28 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         }
         if (changed == "parser-version")
             File.WriteAllText(Path.Combine(Path.GetDirectoryName(parser)!, "_fake-pangloss-version"), "pangloss 99.1.0");
+        if (changed.StartsWith("stats-", StringComparison.Ordinal))
+        {
+            var timingId = first.Value.Measurements.Single(item => item.Kind == "ObjectTiming").AssessmentId;
+            var path = OpenRepository(seeded.FwDataPath).Get(timingId).CachePath!;
+            using (var statistics = new SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                statistics.Open();
+                using var mutate = statistics.CreateCommand();
+                mutate.CommandText = changed == "stats-semantics"
+                    ? "UPDATE run SET counter_semantics = 7"
+                    : "UPDATE cache_identity SET schema_version = $version";
+                if (changed != "stats-semantics")
+                    mutate.Parameters.AddWithValue("$version", int.Parse(changed.Split('-')[2]));
+                Assert.Equal(1, mutate.ExecuteNonQuery());
+            }
+            using var connection = OpenDatabase(seeded.FwDataPath).OpenConnection();
+            using var update = connection.CreateCommand();
+            update.CommandText = "UPDATE Assessments SET CacheDigest = $digest WHERE AssessmentId = $id";
+            update.Parameters.AddWithValue("$digest", BatchInvocationEvidence.DigestFile(path));
+            update.Parameters.AddWithValue("$id", timingId);
+            Assert.Equal(1, update.ExecuteNonQuery());
+        }
         if (changed == "parser-hash") File.AppendAllText(parser, "different executable bytes");
         if (changed == "expectations")
         {
@@ -204,6 +230,12 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             reuseBefore: true);
         Assert.True(second.Succeeded, second.Refusal?.Message);
         Assert.DoesNotContain(id, second.Value!.AssessmentIds);
+        if (changed.StartsWith("stats-", StringComparison.Ordinal))
+        {
+            var timingId = second.Value.Measurements.Single(item => item.Kind == "ObjectTiming").AssessmentId;
+            var path = OpenRepository(seeded.FwDataPath).Get(timingId).CachePath!;
+            Assert.Single(PanGlossBatchStatisticsReader.ReadWords(path, ["balay"]));
+        }
     }
 
     [Fact]
@@ -2355,7 +2387,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
                 CREATE TABLE run (counter_semantics INTEGER NOT NULL);
                 INSERT INTO run VALUES (8);
-                INSERT INTO cache_identity VALUES (1, 11);
+                INSERT INTO cache_identity VALUES (1, 13);
                 CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                     attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER);
                 CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
@@ -2396,7 +2428,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
             CREATE TABLE run (counter_semantics INTEGER NOT NULL);
             INSERT INTO run VALUES (8);
-            INSERT INTO cache_identity VALUES (1, 11);
+            INSERT INTO cache_identity VALUES (1, 13);
             CREATE TABLE word (
                 word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                 attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER, capped INTEGER NOT NULL,

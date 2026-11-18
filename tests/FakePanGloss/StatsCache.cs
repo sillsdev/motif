@@ -32,7 +32,7 @@ internal static class StatsCache
                                      kind TEXT NOT NULL, label TEXT NOT NULL);
                 CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
                                    direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER, work_steps INTEGER);
-                INSERT INTO cache_identity VALUES (1, 11);
+                INSERT INTO cache_identity VALUES (1, 13);
                 """;
             create.ExecuteNonQuery();
         }

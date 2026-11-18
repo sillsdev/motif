@@ -6,6 +6,13 @@ An assessed AI Handoff keeps measured results beside a cost-free trace projectio
 
 ## Batch measurements
 
+Motif collects full PanGloss statistics caches at schema 13 with counter semantics 8. Compact schema 14
+is a separate format and is not requested or accepted by Motif's direct readers. Before Assessment reuse
+validates retained cache schema, counters and Selection coverage; incompatible caches cause a fresh
+Assessment. Earlier retained Assessment evidence is not rewritten. Direct reads of incompatible caches
+request a new Assessment. PanGloss also regenerates old 11/12 caches when opening them for writing.
+See the [pinned statistics cache contract](https://github.com/sillsdev/PanGloss/blob/v0.23.0/docs/formats/stats-cache.md).
+
 Each word in the Assessment Selection has one record from the batch pass:
 
 | Field | What it holds |
