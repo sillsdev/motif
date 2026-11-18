@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
+using System.Security.Cryptography;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
@@ -67,7 +69,7 @@ namespace SIL.TextEditing.Project
                     throw new ArgumentException("Unknown kind root " + rootName + ".");
             }
             var omitted = new Dictionary<int, OmittedCustomField>();
-            var builder = new RecordSchemaBuilder(Required(root, "id"));
+            var builder = new RecordSchemaBuilder(SchemaId(Required(root, "id"), metadata, managed));
             foreach (var pair in classes)
             {
                 if (pair.Key == "CmObject") continue;
@@ -131,6 +133,25 @@ namespace SIL.TextEditing.Project
             CheckReachability(schema, classes, metadata);
             return new ProjectRecordSchemaResult(schema, omitted.Values.OrderBy(o => o.Class, StringComparer.Ordinal)
                 .ThenBy(o => o.Field, StringComparer.Ordinal).ToArray());
+        }
+
+        static string SchemaId(string id, IFwMetaDataCache metadata, IFwMetaDataCacheManaged managed)
+        {
+            var signatures = new List<string>();
+            foreach (int field in managed.GetFieldIds().Where(managed.IsCustom))
+            {
+                int destination = metadata.GetDstClsId(field);
+                var parts = new[] { metadata.GetOwnClsName(field), metadata.GetFieldName(field),
+                    metadata.GetFieldType(field).ToString(CultureInfo.InvariantCulture),
+                    destination == 0 ? "" : metadata.GetClassName(destination),
+                    metadata.GetFieldWs(field).ToString(CultureInfo.InvariantCulture), managed.GetFieldListRoot(field).ToString("D") };
+                signatures.Add(string.Concat(parts.Select(p => p.Length.ToString(CultureInfo.InvariantCulture) + ":" + p)));
+            }
+            if (signatures.Count == 0) return id;
+            signatures.Sort(StringComparer.Ordinal);
+            var bytes = Encoding.UTF8.GetBytes(string.Concat(signatures.Select(s => s.Length.ToString(CultureInfo.InvariantCulture) + ":" + s)));
+            using var hash = SHA256.Create();
+            return id + "-custom-" + string.Concat(hash.ComputeHash(bytes).Take(12).Select(b => b.ToString("x2", CultureInfo.InvariantCulture)));
         }
 
         static string? UnsupportedCustomOwnership(int field, IFwMetaDataCache m, IFwMetaDataCacheManaged managed,

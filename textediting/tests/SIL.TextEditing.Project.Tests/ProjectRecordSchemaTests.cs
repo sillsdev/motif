@@ -159,6 +159,30 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void SchemaIdFingerprintsSortedCustomSignaturesAcrossProjects()
+        {
+            using var first = new ProjectFixture();
+            using var second = new ProjectFixture();
+            using var third = new ProjectFixture();
+            const string plain = "https://software.sil.org/textediting/schemas/notebook-record-v1.json";
+            Assert.Equal(plain, ProjectRecordSchema.Generate(first.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id);
+            var a = (IFwMetaDataCacheManaged)first.Cache.MetaDataCacheAccessor;
+            var b = (IFwMetaDataCacheManaged)second.Cache.MetaDataCacheAccessor;
+            var c = (IFwMetaDataCacheManaged)third.Cache.MetaDataCacheAccessor;
+            a.AddCustomField("RnGenericRec", "First", CellarPropertyType.Unicode, 0);
+            a.AddCustomField("LexEntry", "Second", CellarPropertyType.Integer, 0);
+            b.AddCustomField("LexEntry", "Second", CellarPropertyType.Integer, 0);
+            b.AddCustomField("RnGenericRec", "First", CellarPropertyType.Unicode, 0);
+            c.AddCustomField("RnGenericRec", "First", CellarPropertyType.Integer, 0);
+            c.AddCustomField("LexEntry", "Second", CellarPropertyType.Integer, 0);
+            string id = ProjectRecordSchema.Generate(first.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id;
+            Assert.StartsWith(plain + "-custom-", id);
+            Assert.Equal(id, ProjectRecordSchema.Generate(second.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id);
+            Assert.NotEqual(id, ProjectRecordSchema.Generate(third.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema.Id);
+            Assert.Equal(plain.Length + "-custom-".Length + 24, id.Length);
+        }
+
+        [Fact]
         public void UnknownClassIsRejectedBeforeResolvingItsId()
         {
             using var fixture = new ProjectFixture();

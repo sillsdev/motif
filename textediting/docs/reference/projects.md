@@ -167,3 +167,8 @@ characters and characters forbidden in field paths or file names. The encoding i
 names from overlay keys; overlays cannot include custom fields by name or use the `custom-` prefix. An overlay may
 exclude a custom field by name. Excluded and unsupported custom fields are listed once in `OmittedCustomFields`,
 with their declaring class, name and reason, so the host can report data the schema does not represent.
+
+The schema id stays the overlay id when the project has no custom fields. Otherwise it appends `-custom-` and the
+first 24 lowercase hexadecimal digits of SHA-256 over the sorted, length-prefixed custom-field signatures in the
+whole project. Each signature names the declaring class, field name, metadata type, destination class, writing-system
+hint and list-root GUID. Excluded and unsupported fields participate. Cache-local field IDs and display labels do not.
