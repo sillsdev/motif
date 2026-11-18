@@ -141,7 +141,6 @@ Windows with the .NET 10 SDK and the .NET Framework 4.8 targeting pack. net48 bu
 - The headless tests use the Windows fonts Segoe UI, Nirmala UI, Leelawadee UI and Constantia.
 - A person tests with the checklist in [docs/manual-testing.md](../manual-testing.md).
 
-
 ## Record schema overlays
 
 `ProjectRecordSchema.Generate(cache, overlay)` returns a detached record schema and a list of omitted custom fields from an open `LcmCache`.
@@ -152,13 +151,14 @@ renumbering an outline does not move its files. Its required `class` selects one
 The notebook's description is the body; the list item has no body. These schemas do not export or import values.
 
 An overlay is XML with `<overlay version="1" id="...">`. Each `<kind name="..." root="..." pathSegments="...">`
-may give `body` or `subclasses="true"`; the latter selects every concrete subclass and cannot be combined with a
-body. Each `<class name="...">` declares its own metadata fields in output order with `<field name="..."
+may give `body` or `subclasses="true"`; the latter selects the root itself when concrete and every concrete subclass,
+and cannot be combined with a body. Each `<class name="...">` declares its own metadata fields in output order with `<field name="..."
 key="..."/>`, or `<exclude name="..."/>`. Base-class decisions are inherited. Every model field must have a
 decision and every class must be reachable from a kind root through included owned objects or be a base of one.
 Metadata supplies field shapes and concrete owned-object alternatives. A field can set `notation`, `blocks` for
-paragraphs, or `ws="analysis"`/`ws="vernacular"` for single-valued text. Without a `ws` override, metadata hints
-apply; absent hints use analysis. Mixed ordered hints are unsupported. Timestamps, binary and general dates
+paragraphs, or `ws="analysis"`/`ws="vernacular"` for single-valued text. The override takes precedence over metadata hints. Without one, metadata hints
+apply; absent hints use analysis. Mixed ordered hints are unsupported. The lexicon overlay marks the single-valued
+`LexPronunciation.Tone` field vernacular; this changes the earlier lexicon schema's analysis default. Timestamps, binary and general dates
 have no schema kind and must be excluded.
 
 Custom fields on included classes are appended after all overlay fields, in metadata order, including inherited
