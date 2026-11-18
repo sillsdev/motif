@@ -95,6 +95,8 @@ namespace SIL.TextEditing.Markdown.Records
         DependsOnRefusedChange,
         /// <summary>The project's record could not be written as a file, so there is nothing to compare with.</summary>
         ExportFailed,
+        /// <summary>The object a removal names has no GUID or is not in the project, so the delete rule cannot be checked.</summary>
+        UnknownDeleteTarget,
     }
 
     /// <summary>Whether a span of a word-level summary is in both values, only the old one or only the new one.</summary>
@@ -239,6 +241,10 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>The field path from that object, empty when the refusal is about the object itself.</summary>
         public string Field { get; internal set; } = string.Empty;
 
+        /// <summary>True when the refusal is about the whole file: the change set then has no change at all. A kind does not decide this (<see cref="RecordRefusalKind.UnknownField"/> is
+        /// whole-file when the file names a key the schema lacks and per-change when a change cannot be mapped to a field); read this flag, not the kind.</summary>
+        public bool WholeFile { get; internal set; }
+
         public string? WritingSystem { get; internal set; }
         public string? Old { get; internal set; }
         public string? New { get; internal set; }
@@ -261,6 +267,9 @@ namespace SIL.TextEditing.Markdown.Records
 
         /// <summary>True when the target was a partial file, so what it omits is no change.</summary>
         public bool IsPartial { get; }
+
+        /// <summary>True when a refusal is about the whole file (<see cref="RecordRefusal.WholeFile"/>); there is then no change.</summary>
+        public bool IsRefusedWhole => Refusals.Any(r => r.WholeFile);
 
         /// <summary>True when there is nothing to apply and nothing refused.</summary>
         public bool IsEmpty => Changes.Count == 0 && Refusals.Count == 0;

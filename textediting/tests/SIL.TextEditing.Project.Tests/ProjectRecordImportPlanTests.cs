@@ -324,7 +324,8 @@ namespace SIL.TextEditing.Project.Tests
             fixture.Change(() => w.Entry.DateModified = w.Entry.DateModified.AddDays(1));
             var plan = Plan(exporter, export.Text!);
             Assert.Equal(ProjectRecordBaseVerdict.Stale, plan.BaseVerdict);
-            Single(plan, RecordRefusalKind.StaleBase);
+            Assert.True(Single(plan, RecordRefusalKind.StaleBase).WholeFile);
+            Assert.True(plan.ChangeSet.IsRefusedWhole);
             Assert.Empty(plan.ChangeSet.Changes);
         }
 
@@ -387,6 +388,8 @@ namespace SIL.TextEditing.Project.Tests
             var plan = Plan(exporter, text);
             var refusal = Single(plan, RecordRefusalKind.UnknownReference);
             Assert.Equal("morph-type", refusal.Field);
+            Assert.False(refusal.WholeFile);
+            Assert.False(plan.ChangeSet.IsRefusedWhole);
             Assert.Equal("custom-LexEntry-Count", Assert.Single(plan.ChangeSet.Changes).Field);
         }
 

@@ -41,7 +41,8 @@ namespace SIL.TextEditing.Project
         /// is about is not in <see cref="RecordChangeSet.Changes"/>. A refusal that applies to the whole file (a stale base, say) leaves no change at all.</summary>
         public RecordChangeSet ChangeSet { get; }
 
-        /// <summary>Whether the file's <c>base:</c> matches a fresh export.</summary>
+        /// <summary>Whether the file's <c>base:</c> matches a fresh export. It only reports the comparison and never decides by itself: whether the file may be used is
+        /// <see cref="RecordChangeSet.Refusals"/> (<see cref="RecordChangeSet.IsRefusedWhole"/>).</summary>
         public ProjectRecordBaseVerdict BaseVerdict { get; }
 
         /// <summary>The record kind the file names, or null.</summary>
@@ -50,7 +51,7 @@ namespace SIL.TextEditing.Project
         /// <summary>The GUID of the project's record object the file is about (for a partial file, the record that holds the object it names), or null when it could not be found.</summary>
         public Guid? RecordGuid { get; }
 
-        /// <summary>The fresh export the file was compared with, or null when there was none.</summary>
+        /// <summary>The fresh export the file was compared with, or null when there was none. For diagnostics and display; a lowerer needs only <see cref="ChangeSet"/>.</summary>
         public ProjectRecordExport? Export { get; }
 
         /// <summary>Every finding of the record-file reader, whatever its severity.</summary>
@@ -161,7 +162,10 @@ namespace SIL.TextEditing.Project
         // ------------------------------------------------------------------ the file
 
         ProjectRecordPlan Whole(RecordDocument? file, ProjectRecordBaseVerdict verdict, Guid? record, ProjectRecordExport? export, RecordReadResult read, IReadOnlyList<RecordRefusal> refusals)
-            => new ProjectRecordPlan(new RecordChangeSet(new List<RecordChange>().AsReadOnly(), refusals.ToList().AsReadOnly(), file?.Root != null), verdict, file?.Kind, record, export, read.Diagnostics);
+        {
+            foreach (var r in refusals) r.WholeFile = true;
+            return new ProjectRecordPlan(new RecordChangeSet(new List<RecordChange>().AsReadOnly(), refusals.ToList().AsReadOnly(), file?.Root != null), verdict, file?.Kind, record, export, read.Diagnostics);
+        }
 
         static RecordRefusal Refusal(RecordRefusalKind kind, string reason, Guid? obj = null, string field = "")
             => new RecordRefusal(kind, reason) { ObjectGuid = obj, Field = field };
@@ -513,7 +517,7 @@ namespace SIL.TextEditing.Project
             {
                 var obj = RemovedObject(c);
                 if (obj == null)
-                    return ForChange(RecordRefusalKind.DeleteHasUnexportedData, "The object to delete has no guid or is not in the project, so what it holds cannot be checked.", c);
+                    return ForChange(RecordRefusalKind.UnknownDeleteTarget, "The object to delete has no guid or is not in the project, so what it holds cannot be checked.", c);
                 var owned = new HashSet<Guid>(obj.AllOwnedObjects.Select(o => o.Guid)) { obj.Guid };
                 foreach (var u in _export.Unexported)
                 {
