@@ -2,6 +2,8 @@
 
 **Status:** Accepted, 2026-11-14.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 LibLCM writes can cascade and update derived caches. Rollback and Undo do not provide an equivalent disposable
@@ -61,6 +63,9 @@ ExposurePolicy and the HumanOnly catalog command enforce the human boundary. An 
 ([ADR 0021](0021-a-trial-review-report-has-three-levels-and-no-verdict.md) D16). Completed parser findings remain
 advisory; incomplete/pending/cancelled/tool-failed evidence needs the explicit override where policy permits.
 
+These Dry Run and Readiness requirements govern Proposal Apply. Immediate hand analysis follows the
+bounded annotation contract in ADR 0014 and requires no Proposal or Apply Receipt.
+
 ### D5. Apply is synchronous, exclusive and one-way
 
 Apply is never queued or retried because a connection disappeared. It waits up to five seconds for the per-project
@@ -80,6 +85,9 @@ unexpected task state at end is an external-collision diagnostic, not a normal M
 work or call a bare UndoableUnitOfWorkHelper.Do from Lowering; use join-or-open helpers or avoid convenience methods
 that start their own tasks.
 
+Hand analysis shares exclusive mutation, current-source guards, read-back and persistence verification,
+without entering the Proposal Apply orchestration.
+
 ### D6. Failure recovery discards the live cache
 
 A failed live Apply unwinds for data atomicity, but nothing trusts rollback to restore derived state or nonundoable
@@ -93,6 +101,9 @@ failed backend commit/wait may leave changed writing systems on disk; inspect bo
 project applied-log entries/watermarks repair known attempts and minimal Receipts in Motif's store; unknown Proposal
 ids become tombstones. Disagreement is a derived Conflict with a deterministic explanation, blocking only the affected
 Proposal and dependents until resolved. A disconnect is never authority to repeat mutation.
+
+Annotation recovery distinguishes an uncommitted refusal from an unknown commit outcome. Resolve an
+unknown outcome by request id; never replay an uncertain write as a new request.
 
 ### D7. Custom-field schema has its own non-undoable phase
 

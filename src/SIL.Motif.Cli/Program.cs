@@ -30,6 +30,7 @@ using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.HandAnalyses;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Query;
@@ -188,7 +189,7 @@ try
 
     // Every invocation naming a project upserts it into the machine store (ADR 0023 decision 4).
     if (flags.TryGetValue("project", out var projectForRegistry) &&
-        commandName is not ("project initialize" or "project tag" or "project tag --set"))
+        commandName is not ("project initialize" or "project tag" or "project tag --set" or "hand-analysis check"))
     {
         var recordFailure = RecordKnownProject(projectForRegistry, ResolveRoot(), error);
         // An unrecorded project's jobs never run: refuse now.
@@ -1945,6 +1946,23 @@ try
                         reviewRequest.ReportId)).GetAwaiter().GetResult() : commands.Read(reviewRequest with { ProjectKey = key });
             });
             result = RenderCommand(reviewRead);
+            break;
+
+        case "hand-analysis":
+            if (!positionals.SequenceEqual(new[] { "check" }) || !flags.TryGetValue("project", out var handProject) ||
+                !flags.TryGetValue("input", out var handInput) || handInput == "true" ||
+                flags.Keys.Any(key => key is not ("project" or "input" or "json")))
+                return Usage(UsageLineFor("hand-analysis check"), asJson);
+            string handJson;
+            try { handJson = File.ReadAllText(handInput); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                result = RenderCommand(CommandOutcome<HandAnalysisCheckResponse>.Refused(new(
+                    RefusalCodes.HandAnalysisInvalidLink, FailureReason.InvalidArgument,
+                    "The hand-analysis input file cannot be read.", new Dictionary<string, string> { ["input"] = handInput })));
+                break;
+            }
+            result = RenderCommand(HandAnalysisCommands.Check(new HandAnalysisCheckRequest(handProject, handJson)));
             break;
 
         case "writing-systems":

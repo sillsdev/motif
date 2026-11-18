@@ -5,6 +5,8 @@ Their judgements travel with the language project; computed annotations can be r
 
 **Status:** Accepted, 2026-11-14; D2 to D4 amended, D3 completed and D14 (Approve at an Occurrence) added by the owner, 2026-11-16. Occurrence-first progress and evidence policy in Proposed remains unaccepted.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 Running text must preserve order, repetitions, provenance and location. Scripture, editable corpus files
@@ -328,25 +330,35 @@ requires its own frozen identity/expectation, not merely one failed split.
 
 ### D14. Approve at an Occurrence follows FieldWorks
 
-To Approve an Occurrence is to choose the analysis it has, as FieldWorks does in a Text, which also approves
-that analysis; it works the same in a Text and in every Corpus, Paratext Sources first. An Occurrence nobody
-has approved shows a **guess**. The only actions at an Occurrence are Approve and Clear. Intake and machine
-analysis approve nothing; only a person's Approve, saved by Apply, does.
+To Approve an Occurrence is to choose its reading, which also approves its analysis. An Occurrence nobody
+has approved shows a **guess**. Its actions are Approve and Clear; intake and automatic parser analysis
+approve nothing.
 
-1. **Opinion.** Approving when the analysis's Opinion is Unknown also stages Opinion Approved. A Disapproved
-   Opinion is left alone and the conflict is shown.
-2. **One approved analysis.** An Occurrence holds at most one. The newest Approve replaces the old one and
-   Clear returns the Occurrence to a guess. Everything is staged in a Draft and saved only by Apply; MCP never
-   applies.
-3. **Guess-only Add + Approve.** When FieldWorks holds no analysis (a PanGloss guess only), Approve stages "Add
-   analysis from PanGloss" plus the approval in one Draft. Apply writes both, or neither.
-4. **Stale.** An approval carries over only when the verse text, the word number and the analysis are all
-   unchanged. Otherwise it is stale: shown, not counted as approved, and never re-approved automatically.
-5. **Enter approves one place.** Enter approves this Occurrence and moves on. Approving every place is a separate,
-   explicit action that shows the count first, such as "Approve 14 Places".
-6. **Bulk Approve.** It covers the same Wordform whose guess is the same analysis, across Documents within one
-   Corpus. It skips Occurrences already approved to another analysis, and stale ones, and shows the count
-   before Apply, such as "approve 37 Occurrences in 12 chapters".
+A hand analysis immediately chooses one Occurrence and approves its analysis. Unknown becomes Approved;
+Disapproved is never silently overridden. A conflict refuses recording until separately resolved. Creating
+or approving an analysis never assigns it elsewhere. Existing .fwdata Source approval staging remains
+supported; it is not the hand-analysis writer. Those actions still stage a Draft and save through Apply,
+including Add from PanGloss plus Approve in one atomic Proposal when only a parser guess exists.
+
+An Occurrence holds at most one settled reading. A new guarded approval replaces that choice; Clear returns
+it to a guess without clearing word-wide Opinion or deleting lexical creations. Competing heads remain
+visible and uncounted until explicitly settled, as D3 requires. Scripture anchors remain outside exported
+LCM data on the hand-analysis Home.
+
+Stale approval is shown and not counted: verse text, word number and analysis must remain unchanged.
+Changed context, segmentation or assignment requires explicit reconfirmation; never carry approval to a
+nearby equal word. D5's suggestions assist reads only.
+
+Enter approves one place. Approve elsewhere is a separate counted action, bound to the exact enumerated
+Occurrences in one explicitly named Corpus or Text. It covers the same Wordform and guessed reading,
+skips stale, conflicting or differently approved places, and refuses a changed set or count at commit.
+It never silently expands the set or replaces another approved reading.
+
+Ctrl+E uses the distinct `CurrentChapterOrTextBareEitherCase` policy: the explicitly identified current
+chapter or containing Text, bare attachments only, in either case form. It leaves every existing analysis
+or gloss attachment alone, whether or not its guess agrees. It may reuse the exact-plan, digest and count
+checks internally without adding an obligatory confirmation dialog to the keyboard action. General
+counted elsewhere retains its separate same-Wordform, same-guessed-reading predicate.
 
 ## Proposed
 

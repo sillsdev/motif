@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SIL.Motif.Contract.HandAnalyses;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
@@ -49,6 +50,8 @@ public static class CommandCatalog
         new CommandDescriptor("query forms", typeof(FormsQueryRequest), typeof(FormsQueryResponse), CommandSurface.Released, AgentClass.Read),
         // ProposalCommands
         new CommandDescriptor("open", typeof(OpenRequest), typeof(ProjectSummaryProjection), CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("hand-analysis check", typeof(HandAnalysisCheckRequest), typeof(HandAnalysisCheckResponse),
+            CommandSurface.Released, AgentClass.Read) { ExposeAsAgentTool = false },
         new CommandDescriptor("progress", typeof(ProgressRequest), typeof(ProgressResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("analyses", typeof(ManualAnalysesRequest), typeof(AnalysisAggregateProjection), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("new", typeof(NewDraftRequest), typeof(DraftCreatedResponse), CommandSurface.AdvancedAi, AgentClass.Draft),

@@ -2,6 +2,8 @@
 
 **Status:** Accepted, 2026-11-14.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 People move between FieldWorks and Motif while working on the same language project. Shared words, marks,
@@ -22,6 +24,9 @@ proposals to send upstream. Every UX change checks the register, and hosting rev
 Apply is one-way: Undo exists only before Apply, and there is no unapply. Proposals, Dry Runs and Trials provide
 the opportunity to test first; this matches FieldWorks' preview-and-commit Bulk Edit model. Apply safety belongs
 to [ADR 0017](0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md).
+
+Immediate hand-analysis confirmation is a distinct annotation action under ADR 0014. Cancel or Esc
+discards unsaved input; saved work has no shortcut Undo or Redo. Correct it with a new guarded annotation.
 
 ### D2. Use Avalonia 12 and net10 on FieldWorks' hosting path
 
@@ -63,6 +68,12 @@ remains staged but cannot apply until reconfirmed or undone. Preserve its Text, 
 anchor, and compare the previous sentence before replacing the stored copy. Uncertain is distinct from a change
 that no longer fits because the analysis itself moved.
 
+Hand analysis approves one Occurrence immediately. A separate Approve elsewhere action first shows a
+count and never silently replaces another approved reading. Its morphology becomes an Approved expectation
+under ADR 0020; approval is not evidence that the parser agrees. Ctrl+E uses the separate
+`CurrentChapterOrTextBareEitherCase` policy in ADR 0024: current chapter or containing Text, bare
+attachments in either case, retaining existing analysis/gloss attachments without an obligatory extra dialog.
+
 ### D6. Editing keys respect focused text and exact copyable content
 
 Copy, Undo and Redo use Ctrl on Windows and Linux and ⌘ on macOS; Redo also accepts Ctrl+Shift+Z or ⌘⇧Z.
@@ -80,6 +91,9 @@ Redo. Apply, Refresh, project close and project switch clear both histories.
 An entry is valid only while the pending changes match its recorded state. If another window or the CLI changes
 or removes those changes, refuse Undo or Redo and name the change in a short status-area message in window words.
 Apply remains the only action that writes the reviewed changes to FieldWorks.
+
+The Apply-only rule above governs reviewed Proposal changes. Saved hand analysis is outside staging
+history: Undo and Redo do not reverse it, and a correction is a new guarded annotation.
 
 ### D8. Window text is localized through FieldWorks-style .resx resources
 

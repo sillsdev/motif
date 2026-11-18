@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.HandAnalyses;
 using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Phonology;
@@ -123,6 +124,9 @@ public static class CommandTextRenderer
                 : "Setup remains open." + Environment.NewLine,
             TextInventoryResponse r => RenderTextInventory(r),
             ProgressResponse r => RenderProgress(r),
+            HandAnalysisCheckResponse r => "Hand analysis checked; no records changed.\n" +
+                string.Join("\n", r.Pieces.Select(piece => $"  {piece.PieceKey}: type {piece.EffectiveMorphTypeId}; allomorph {piece.AllomorphId}")) +
+                "\n" + string.Join("\n", r.Diagnostics.Select(diagnostic => $"  {diagnostic.Pointer}: {diagnostic.Message}")) + "\n",
             SourceProgressResponse r => RenderSourceProgress(r),
             OverviewResponse r => RenderOverview(r),
             GrammarCheckResponse r => RenderGrammarCheck(r),

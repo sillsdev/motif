@@ -2,6 +2,8 @@
 
 **Status:** Accepted, 2026-11-14.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 FieldWorks owns the language project. Motif must preserve shapes FieldWorks can produce, bind changes and
@@ -18,6 +20,10 @@ A Motif-specific refusal states Motif's own reason. An entry may lose its last s
 variant of a component with a stem analysis; the variant composers cite `CreateVariantEntryAndBackRef` and
 FLEx's Create Variant dialog. These are data-shape rules, not preferences between linguistic analyses
 ([ADR 0004](0004-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)).
+
+The full-fidelity hand-analysis Home in ADR 0025 preserves native LCM GUIDs, classes, ownership, fields
+and references as generic records, with LibLCM as model authority. FW Lite is a view over that data;
+Motif-only anchors and audit use separate namespaced records, not invented Wfi fields.
 
 ### D2. Parser projections are not the canonical change contract
 

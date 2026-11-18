@@ -1,4 +1,9 @@
 {
+  "hand-analysis check": {
+    "title": "Check a Hand Analysis",
+    "description": "Validates a hand-analysis JSON file and resolves its saved FieldWorks identities without changing project records. Reports matching wordforms and allomorphs, marker defaults and type-mismatch consequences; Home and external Source guards remain unverified.",
+    "source": "Hand-written from the hand-analysis contract and read-only project resolver."
+  },
   "guide show": {
     "title": "Read a Grammar Guide section",
     "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs; available in Advanced AI mode.",

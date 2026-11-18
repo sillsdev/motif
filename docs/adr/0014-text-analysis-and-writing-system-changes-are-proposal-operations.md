@@ -2,10 +2,13 @@
 
 **Status:** Accepted, 2026-11-14.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
-Text, manual analysis and writing-system choices affect the grammar work a linguist can test. They belong in
-the Proposal workflow, but durable project objects, occurrence positions and separately saved LDML have distinct
+Text, staged analysis actions and writing-system choices affect the grammar work a linguist can test. They belong in
+the Proposal workflow; hand analysis is the immediate annotation exception below. Durable project objects,
+occurrence positions and separately saved LDML have distinct
 failure modes. The existing object identity and effect model can describe them without inventing nonobject ids.
 
 ## Decisions
@@ -68,7 +71,7 @@ save failure after LDML was written may leave it ahead of `.fwdata`. Report `Nee
 inspect both stores before continuing. Reload alone is not proof of recovery after that partial save.
 [ADR 0017](0017-dry-runs-and-trials-use-a-scratch-copy-and-apply-is-read-back.md) owns the common scratch/Apply rules.
 
-### D6. Authoring and extension stay within the normal workflow
+### D6. Writing-system authoring and extension stay within the normal workflow
 
 `compose-set-character-class` stages a Draft; Dry Run, Trial and Apply do the rest. The advanced AI Draft tool is
 `motif_set_character_class`; it never Applies. Record intent/rationale as an operation and effects in the Applied
@@ -96,6 +99,33 @@ sets nonsemantic `extensions.trialWords` to the edited segments' NFD wordforms. 
 those words; a mixed grammar Proposal or an operation without that extension uses the Default Selection.
 `trialWords` affects scope only, never Apply readiness or Proposal overlap. Appending, editing multiple Notes in
 one Segment and Note-level removal are not supplied by this replace operation.
+
+### D8. Hand analysis is immediate annotation
+
+A speaker's intended reading can be recorded at once, even when the grammar cannot explain it. Recording
+that reading also supplies a test for later grammar changes.
+
+Hand analysis is a bounded non-Proposal write: ordered morph bundles, word category and glosses, one
+Occurrence choice, native approval, and explicit lexical creations from its choosers. Each confirmed
+chooser action is one transaction; recording an analysis is one transaction. It requires neither Draft,
+Finalize, Dry Run, Trial, Readiness nor Apply. Structural validity, exact identities, current-source guards,
+exclusive mutation, read-back, persistence verification and audit remain mandatory. Unlinked pieces and
+underdefined grammatical info are valid; parser inability cannot block approval. This permits no rule,
+environment, template, slot, existing grammar-feature or Guide edit.
+
+Native Morph, Sense, Msa and InflType links are independently nullable, subject to class, ownership and
+variant checks. Each Piece has a request-local `pieceKey` for correlation and optional `variantRef`
+provenance; the key is not a native bundle GUID. Typed marker defaults use project list order and
+FieldWorks' stem, bound-stem, plain-affix and phrase disambiguation. Unknown markers retain their spelling,
+warn and use the project's stem GUID even for a requested lexical creation. Diagnostic candidates do
+not require another decision before approval.
+
+Add New Sense always creates a sense; only equal grammatical info may be reused. A new variant is its
+own creation case with entry, form and reference, requiring no invented sense or MSA. `LexiconPolicy`
+defaults to `AnalysisOnly`; `SyncSinglePieceGlossAndCategory` enables only the single-piece approval's
+ordered lexicon synchronization: reuse an equal sense, fill its missing category, edit the Occurrence's
+exclusive single-piece sense, add a sense on a matching entry, or create entry/form/sense. Those guarded
+choices belong inside the same annotation transaction, never a general grammar writer.
 
 ## Consequences
 

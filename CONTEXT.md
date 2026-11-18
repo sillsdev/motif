@@ -152,9 +152,11 @@ applied. Not a **Baseline**.
 _Avoid_: preview project, backup, baseline
 
 **Home** (of a project):
-Where a project's lexicon and grammar really live: a FieldWorks project (.fwdata) or an FW Lite project's history (a
-Harmony log). A Proposal is applied to the Home; everything else is built from it
-([ADR 0026](docs/adr/0026-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md)).
+Where a project's lexicon and grammar really live: a FieldWorks project (.fwdata), or the full-fidelity
+generic LCM record Home for hand analysis under [ADR 0025](docs/adr/0025-motif-bible-is-an-expanded-interlinearizer-on-fw-lite.md).
+The latter preserves native identities and fields in a Harmony log; FW Lite models are views. A Proposal
+is applied to the Home; bounded hand-analysis annotation commits there directly. The broader architecture
+in [ADR 0026](docs/adr/0026-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md) remains Proposed.
 _Avoid_: source (that is the Paratext project), master copy, database, backend
 
 **Build**:
@@ -335,8 +337,10 @@ analysis, independently of completion for the other words in the same Assessment
 _Avoid_: first match, success, correctness
 
 **Approved expectation**:
-The set of morphologies represented by all human-approved analyses on a FieldWorks word form.
-Every distinct morphology in that set is expected; finding one reading does not cover the others.
+All distinct approved morphologies of a Wordform, with each approving Occurrence retained as evidence.
+Every distinct morphology is expected; finding one reading does not cover the others. Choosing one place
+assigns nothing elsewhere. Legacy native Approved Opinions remain type-level expectations without invented
+Occurrence approvals.
 _Avoid_: the approved analysis, any parse
 
 **Candidate**:
@@ -366,8 +370,24 @@ _Avoid_: rejected, grade, verdict, no opinion, status
 **Approve** (an Occurrence):
 FieldWorks' interlinear action, kept for its meaning: choose the analysis one Occurrence has, which also
 approves that analysis. It works the same in a Text and in a Corpus. An Occurrence nobody has approved shows
-a **guess**. Approving never overrides a Disapproved Opinion; it shows the conflict instead.
+a **guess**. Approving never overrides a Disapproved Opinion; it shows the conflict instead. Hand analysis
+is immediate annotation; existing staged analysis actions retain Review and Apply. General Approve elsewhere
+is a separate counted action. Ctrl+E instead uses `CurrentChapterOrTextBareEitherCase`: only bare attachments
+in the current chapter or containing Text, in either case, preserving existing analysis/gloss attachments.
 _Avoid_: place judgement, confirm, accept, reject (at an Occurrence)
+
+**Hand analysis**:
+An asserted intended reading of one Occurrence as ordered pieces, with optional lexical links, glosses and
+category; recording it approves that Occurrence. `LexiconPolicy` defaults to `AnalysisOnly`; the explicit
+`SyncSinglePieceGlossAndCategory` mode synchronizes the one-piece gloss and category within approval.
+_Avoid_: Proposal, parser reading
+
+**Piece**:
+One ordered position in a hand analysis with a request-local `pieceKey`, optional `variantRef`, typed form
+and morph-type markers. Allomorph, sense, grammatical info and inflectional type links are independently
+nullable; the piece key is not a native bundle GUID. Marker defaults follow the project's type list and
+FieldWorks disambiguation; unknown markers retain their spelling and use the project's stem GUID.
+_Avoid_: entry, token
 
 **Set (an analysis)**:
 The action that chooses what FieldWorks will hold for one analysis: **Approved**, **Unknown**,
@@ -764,8 +784,9 @@ _Avoid_: gap, miss, failure, uncovered case
 ## Where state lives
 
 **Canonical data**:
-The FieldWorks language project itself — `.fwdata` on disk, or the live LibLCM model loaded from it.
-The authority on model invariants, ownership, and validity.
+The FieldWorks language project itself: `.fwdata`, its live LibLCM model, or the full-fidelity hand-analysis
+Home preserving native GUIDs, classes, owners, fields and references under ADR 0025. LibLCM remains the
+authority on model invariants, ownership and validity; FW Lite models are views.
 _Avoid_: source of truth, database, backing store
 
 **Live model**:
@@ -782,8 +803,9 @@ database. Primary Corpus files and their metadata sidecar live under the project
 but reviewed negatives and rulings remain durable data in the FieldWorks project. File-backed
 Baselines and disposable parser and grammar-analysis artifacts live separately under the Motif worker root, which defaults on Windows to
 `%LOCALAPPDATA%\SIL\Motif` and can be changed with `MOTIF_WORKER_ROOT`. Content digests identify
-immutable intent and evidence, but neither storage location is content-addressed. There is no merge
-engine and no replication. The Machine store holds what belongs to the installation rather than to a
+immutable intent and evidence, but neither storage location is content-addressed. This workflow database has no merge
+engine or replication; the full-fidelity hand-analysis Home is a separate canonical store with namespaced
+annotation anchors and audit. The Machine store holds what belongs to the installation rather than to a
 project.
 _Avoid_: proposal store, change store, database, repository, queue
 

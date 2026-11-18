@@ -1,0 +1,1334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/hand-analysis/v1",
+  "title": "Hand analysis",
+  "description": "An asserted intended reading at exactly one Occurrence. Check validates and resolves without writing; schema acceptance is not permission to mutate or a Dry Run guarantee. Project membership, reference class and ownership, unique acyclic creation keys and normalized identity require semantic validation.",
+  "$ref": "#/$defs/Input",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        {
+          "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}$"
+        }
+      ]
+    },
+    "Uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "Ws": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$"
+    },
+    "NewKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.-]{0,63}$",
+      "description": "Request-local name; it must not parse as a stored Id."
+    },
+    "Reference": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Id"
+        },
+        {
+          "$ref": "#/$defs/NewKey"
+        }
+      ]
+    },
+    "MultiText": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/Ws"
+      },
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Project writing-system tags mapped to NFD text; omitted alternatives are preserved."
+    },
+    "Expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectGuid",
+        "homeRevision",
+        "occurrenceHeads",
+        "contextHash",
+        "segmentationId"
+      ],
+      "properties": {
+        "projectGuid": {
+          "$ref": "#/$defs/Id"
+        },
+        "homeRevision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "occurrenceHeads": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "contextHash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "segmentationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assignmentId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parseIsCurrent": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "person",
+            "agent"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "IntentSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "speaker",
+            "analyst"
+          ]
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ScriptureAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "sourceId",
+        "versification",
+        "anchor",
+        "verseHash"
+      ],
+      "properties": {
+        "kind": {
+          "const": "scripture"
+        },
+        "sourceId": {
+          "$ref": "#/$defs/Id"
+        },
+        "versification": {
+          "type": "string",
+          "minLength": 1
+        },
+        "anchor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verseHash": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "TextAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "textId",
+        "paragraphId",
+        "segmentId",
+        "index",
+        "wordPosition"
+      ],
+      "properties": {
+        "kind": {
+          "const": "text"
+        },
+        "textId": {
+          "$ref": "#/$defs/Id"
+        },
+        "paragraphId": {
+          "$ref": "#/$defs/Id"
+        },
+        "segmentId": {
+          "$ref": "#/$defs/Id"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "wordPosition": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "Occurrence": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ScriptureAnchor"
+        },
+        {
+          "$ref": "#/$defs/TextAnchor"
+        }
+      ]
+    },
+    "Wordform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ws",
+        "surface",
+        "caseForm"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "ws": {
+          "$ref": "#/$defs/Ws"
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caseForm": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Markers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after"
+      ],
+      "properties": {
+        "before": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string"
+        }
+      }
+    },
+    "Form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ws",
+        "text",
+        "markers"
+      ],
+      "properties": {
+        "ws": {
+          "$ref": "#/$defs/Ws"
+        },
+        "text": {
+          "type": "string"
+        },
+        "markers": {
+          "$ref": "#/$defs/Markers"
+        },
+        "morphTypeId": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "Link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry",
+        "allomorph",
+        "sense",
+        "msa"
+      ],
+      "properties": {
+        "entry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "allomorph": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sense": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "msa": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inflTypeId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Piece": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "form",
+        "link",
+        "pieceKey"
+      ],
+      "properties": {
+        "form": {
+          "$ref": "#/$defs/Form"
+        },
+        "link": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Link"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bundleForm": {
+          "$ref": "#/$defs/MultiText"
+        },
+        "pieceKey": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "variantRef": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "MsaSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "categoryId"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "stem",
+            "unclassified-affix"
+          ]
+        },
+        "categoryId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "EntryCreation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "key",
+        "formKey",
+        "senseKey",
+        "msaKey",
+        "forms",
+        "morphTypeId",
+        "glosses",
+        "msa"
+      ],
+      "properties": {
+        "kind": {
+          "const": "entry"
+        },
+        "key": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "formKey": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "senseKey": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "msaKey": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "forms": {
+          "$ref": "#/$defs/MultiText"
+        },
+        "morphTypeId": {
+          "$ref": "#/$defs/Id"
+        },
+        "glosses": {
+          "$ref": "#/$defs/MultiText"
+        },
+        "msa": {
+          "$ref": "#/$defs/MsaSpec"
+        }
+      }
+    },
+    "SenseCreation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "key",
+        "entry",
+        "glosses",
+        "msa"
+      ],
+      "properties": {
+        "kind": {
+          "const": "sense"
+        },
+        "key": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "entry": {
+          "$ref": "#/$defs/Reference"
+        },
+        "glosses": {
+          "$ref": "#/$defs/MultiText",
+          "description": "A nonblank alternative in the project default analysis writing system is required; other alternatives may be empty."
+        },
+        "msa": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Reference"
+            },
+            {
+              "$ref": "#/$defs/MsaSpec"
+            }
+          ]
+        }
+      },
+      "description": "Add New Sense always creates a new sense; only an equal MSA on the selected entry may be reused."
+    },
+    "AllomorphCreation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "key",
+        "entry",
+        "forms",
+        "morphTypeId",
+        "mismatch"
+      ],
+      "properties": {
+        "kind": {
+          "const": "allomorph"
+        },
+        "key": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "entry": {
+          "$ref": "#/$defs/Reference"
+        },
+        "forms": {
+          "$ref": "#/$defs/MultiText"
+        },
+        "morphTypeId": {
+          "$ref": "#/$defs/Id"
+        },
+        "mismatch": {
+          "enum": [
+            "refuse",
+            "add-compatible-msa"
+          ]
+        },
+        "msaKey": {
+          "$ref": "#/$defs/NewKey"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mismatch": {
+                "const": "add-compatible-msa"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "msaKey"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "msaKey"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "Component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "entryId": {
+          "$ref": "#/$defs/Id"
+        },
+        "senseId": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "entryId"
+          ],
+          "not": {
+            "required": [
+              "senseId"
+            ]
+          }
+        },
+        {
+          "required": [
+            "senseId"
+          ],
+          "not": {
+            "required": [
+              "entryId"
+            ]
+          }
+        }
+      ]
+    },
+    "VariantCreation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "key",
+        "entry",
+        "component",
+        "variantTypeIds"
+      ],
+      "properties": {
+        "kind": {
+          "const": "variant"
+        },
+        "key": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "entry": {
+          "$ref": "#/$defs/Reference"
+        },
+        "component": {
+          "$ref": "#/$defs/Component"
+        },
+        "variantTypeIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "Creation": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/EntryCreation"
+        },
+        {
+          "$ref": "#/$defs/SenseCreation"
+        },
+        {
+          "$ref": "#/$defs/AllomorphCreation"
+        },
+        {
+          "$ref": "#/$defs/VariantCreation"
+        },
+        {
+          "$ref": "#/$defs/VariantEntryCreation"
+        }
+      ]
+    },
+    "NoGloss": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "enabledWs"
+      ],
+      "properties": {
+        "mode": {
+          "const": "none"
+        },
+        "enabledWs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Ws"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "SelectGloss": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "enabledWs",
+        "id"
+      ],
+      "properties": {
+        "mode": {
+          "const": "select"
+        },
+        "enabledWs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Ws"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "AutoGloss": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "enabledWs",
+        "forms"
+      ],
+      "properties": {
+        "mode": {
+          "const": "auto"
+        },
+        "enabledWs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Ws"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "startedFromId": {
+          "$ref": "#/$defs/Id"
+        },
+        "forms": {
+          "$ref": "#/$defs/MultiText"
+        }
+      }
+    },
+    "WordGloss": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/NoGloss"
+        },
+        {
+          "$ref": "#/$defs/SelectGloss"
+        },
+        {
+          "$ref": "#/$defs/AutoGloss"
+        }
+      ]
+    },
+    "Input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "requestId",
+        "expected",
+        "actor",
+        "intentSource",
+        "occurrence",
+        "wordform",
+        "categoryId",
+        "pieces",
+        "creations",
+        "wordGloss",
+        "approve"
+      ],
+      "properties": {
+        "schema": {
+          "const": "motif.hand-analysis/1"
+        },
+        "requestId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "expected": {
+          "$ref": "#/$defs/Expected"
+        },
+        "actor": {
+          "$ref": "#/$defs/Actor"
+        },
+        "intentSource": {
+          "$ref": "#/$defs/IntentSource"
+        },
+        "occurrence": {
+          "$ref": "#/$defs/Occurrence"
+        },
+        "wordform": {
+          "$ref": "#/$defs/Wordform"
+        },
+        "categoryId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pieces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Piece"
+          },
+          "minItems": 0
+        },
+        "creations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Creation"
+          },
+          "minItems": 0
+        },
+        "wordGloss": {
+          "$ref": "#/$defs/WordGloss"
+        },
+        "approve": {
+          "const": true
+        },
+        "lexiconPolicy": {
+          "enum": [
+            "AnalysisOnly",
+            "SyncSinglePieceGlossAndCategory"
+          ],
+          "default": "AnalysisOnly"
+        },
+        "startedFromAnalysisId": {
+          "$ref": "#/$defs/Id"
+        },
+        "selectedAnalysisId": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "occurrence": {
+                "properties": {
+                  "kind": {
+                    "const": "text"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expected": {
+                "required": [
+                  "assignmentId",
+                  "parseIsCurrent"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "expected": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "assignmentId"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "parseIsCurrent"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "VariantEntryCreation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "key",
+        "formKey",
+        "refKey",
+        "forms",
+        "morphTypeId",
+        "component",
+        "variantTypeIds"
+      ],
+      "properties": {
+        "kind": {
+          "const": "variant-entry"
+        },
+        "key": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "formKey": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "refKey": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "forms": {
+          "$ref": "#/$defs/MultiText"
+        },
+        "morphTypeId": {
+          "$ref": "#/$defs/Id"
+        },
+        "component": {
+          "$ref": "#/$defs/Component"
+        },
+        "variantTypeIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "CorpusPopulation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "corpusId"
+      ],
+      "properties": {
+        "kind": {
+          "const": "corpus"
+        },
+        "corpusId": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "TextPopulation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "textId"
+      ],
+      "properties": {
+        "kind": {
+          "const": "text"
+        },
+        "textId": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "ChapterPopulation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "sourceId",
+        "versification",
+        "book",
+        "chapter"
+      ],
+      "properties": {
+        "kind": {
+          "const": "chapter"
+        },
+        "sourceId": {
+          "$ref": "#/$defs/Id"
+        },
+        "versification": {
+          "type": "string",
+          "minLength": 1
+        },
+        "book": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chapter": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "ElsewhereScope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "policy",
+            "population"
+          ],
+          "properties": {
+            "policy": {
+              "const": "SameWordformAndGuess"
+            },
+            "population": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/CorpusPopulation"
+                },
+                {
+                  "$ref": "#/$defs/TextPopulation"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "policy",
+            "population"
+          ],
+          "properties": {
+            "policy": {
+              "const": "CurrentChapterOrTextBareEitherCase"
+            },
+            "population": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/ChapterPopulation"
+                },
+                {
+                  "$ref": "#/$defs/TextPopulation"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "description": "The Ctrl+E policy targets bare attachments in either case in the current chapter or Text, preserving every existing analysis/gloss attachment. It is distinct from general counted elsewhere. Both commit only an exact immutable enumerated plan."
+    },
+    "Diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "pointer",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pointer": {
+          "type": "string",
+          "pattern": "^(|/.*)$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "consequence": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "PieceCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "morphTypeMatches",
+        "allomorphMatches",
+        "pieceKey",
+        "effectiveMorphTypeId",
+        "typedSpelling"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "morphTypeMatches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "allomorphMatches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "entryId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "allomorphId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "senseId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "msaId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "pieceKey": {
+          "$ref": "#/$defs/NewKey"
+        },
+        "effectiveMorphTypeId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "typedSpelling": {
+          "type": "string"
+        },
+        "variantRefId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "inflTypeId": {
+          "$ref": "#/$defs/Uuid"
+        }
+      }
+    },
+    "CheckResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "changed",
+        "homeGuardsChecked",
+        "requestId",
+        "projectGuid",
+        "wordformMatches",
+        "pieces",
+        "diagnostics"
+      ],
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "changed": {
+          "const": false
+        },
+        "homeGuardsChecked": {
+          "const": false
+        },
+        "requestId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "projectGuid": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "wordformMatches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "wordformId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "pieces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PieceCheck"
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Diagnostic"
+          }
+        }
+      }
+    },
+    "Response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "requestId",
+        "homeRevision",
+        "expectationRevision",
+        "auditId",
+        "changed",
+        "bundleIds",
+        "creationIds",
+        "reusedIds",
+        "createdIds",
+        "completedIds",
+        "deletedIds",
+        "occurrenceStatus",
+        "warnings",
+        "pieceBundleIds"
+      ],
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "requestId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "homeRevision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectationRevision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "auditId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "wordformId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "analysisId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "glossId": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "bundleIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "creationIds": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "reusedIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "createdIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "completedIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "deletedIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Uuid"
+          }
+        },
+        "occurrenceStatus": {
+          "type": "string",
+          "minLength": 1
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Diagnostic"
+          }
+        },
+        "pieceBundleIds": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Uuid"
+          }
+        }
+      }
+    },
+    "FailureEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "code",
+        "reason",
+        "message"
+      ],
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HandAnalysisFailureCode"
+            },
+            {
+              "$ref": "#/$defs/ProjectReadFailureCode"
+            }
+          ]
+        },
+        "reason": {
+          "enum": [
+            "InvalidArgument",
+            "NotFound",
+            "Refused",
+            "Cancelled",
+            "StoppedByBudget",
+            "Busy",
+            "StoreInconsistent"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "HandAnalysisFailureCode": {
+      "enum": [
+        "hand-analysis.stale",
+        "hand-analysis.ambiguous-wordform",
+        "hand-analysis.invalid-link",
+        "hand-analysis.type-mismatch",
+        "hand-analysis.disapproved",
+        "hand-analysis.request-id-reused",
+        "hand-analysis.busy",
+        "hand-analysis.store-unavailable",
+        "hand-analysis.outcome-unknown"
+      ]
+    },
+    "ProjectReadFailureCode": {
+      "description": "Shared project-location and read-infrastructure refusals forwarded without changing their reason or detail facts.",
+      "enum": [
+        "project.not-found",
+        "project.invalid",
+        "project.busy",
+        "project.writing-system-missing",
+        "change.project-saving",
+        "project.in-use",
+        "project.unloadable",
+        "project.operation-io",
+        "store.other-version",
+        "store.unsupported",
+        "store.inconsistent",
+        "store.other-project"
+      ]
+    }
+  }
+}

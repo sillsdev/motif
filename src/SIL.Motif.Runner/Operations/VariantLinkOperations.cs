@@ -62,13 +62,27 @@ public static class VariantLinkSafety
     {
         var component = ResolveObject<ICmObject>(cache, componentId, RefusalCodes.VariantInvalidComponent,
             "The component must be an entry or sense.");
-        var destination = OwningEntry(component) ?? throw Refuse(RefusalCodes.VariantInvalidComponent, "The component must be an entry or sense.");
         var type = ResolveObject<ILexEntryType>(cache, typeId, RefusalCodes.VariantInvalidType,
             "The type must belong to the variant types list.");
+        CheckType(cache, type);
+        CheckComponent(cache, source, component, staged);
+        return (component, type);
+    }
+
+    /// <summary>Requires ancestry under the project's variant types list, including nested types.</summary>
+    public static void CheckType(LcmCache cache, ILexEntryType type)
+    {
         ICmObject? owner = type;
         var list = cache.LangProject.LexDbOA.VariantEntryTypesOA;
         while (owner is not null && owner.Guid != list?.Guid) owner = owner.Owner;
         if (owner is null) throw Refuse(RefusalCodes.VariantInvalidType, "The type must belong to the variant types list.");
+    }
+
+    /// <summary>Requires an entry or sense component without a self-link or a reachable variant cycle.</summary>
+    public static void CheckComponent(LcmCache cache, ILexEntry source, ICmObject component,
+        IReadOnlyDictionary<Guid, List<Guid>>? staged = null)
+    {
+        var destination = OwningEntry(component) ?? throw Refuse(RefusalCodes.VariantInvalidComponent, "The component must be an entry or sense.");
         if (destination.Guid == source.Guid)
             throw Refuse(RefusalCodes.VariantSelfLink,
                 $"A variant cannot link to its own entry or sense: {SenseRemoval.Describe(source)} cannot be a " +
@@ -106,7 +120,6 @@ public static class VariantLinkSafety
                 pending.Push(next);
             }
         }
-        return (component, type);
     }
 
     /// <summary>Throws the already-linked error when the source entry is a variant of the component.</summary>

@@ -1747,6 +1747,19 @@
     },
     {
       "kind": "command",
+      "code": "hand-analysis check",
+      "slug": "hand-analysis-check",
+      "title": "Check a Hand Analysis",
+      "description": "Validates a hand-analysis JSON file and resolves its saved FieldWorks identities without changing project records. Reports matching wordforms and allomorphs, marker defaults and type-mismatch consequences; Home and external Source guards remain unverified.",
+      "helpPage": "# Check a Hand Analysis\n\nUse \u0060hand-analysis check --project \u003Cproject.fwdata\u003E --input \u003Cfile.json\u003E --json\u0060 to validate an asserted reading of one Occurrence against a saved FieldWorks project. The file uses \u0060motif.hand-analysis/1\u0060: exactly one Scripture or Text anchor, explicit \u0060approve: true\u0060, the Wordform\u0027s writing system and case form, and ordered pieces with request-local \u0060pieceKey\u0060 values. A piece can retain typed form, independently nullable lexical links, and optional variant provenance. Unknown and irrelevant fields are refused with JSON-pointer errors.\n\nThe check reads a private copy. It resolves portable ids with class and ownership checks, looks up the Wordform by exact NFD writing system and case form, and reports allomorph matches within an entry. Marker defaults follow the project\u0027s morph-type list and FieldWorks\u0027 disambiguation rules. Unknown markers retain their spelling and warn while using the project\u0027s stem GUID. An acknowledged allomorph-family mismatch reports the compatible grammatical info it would require; the check creates none.\n\n\u0060LexiconPolicy\u0060 defaults to \u0060AnalysisOnly\u0060; \u0060SyncSinglePieceGlossAndCategory\u0060 describes a future single-piece annotation transaction. Add New Sense requests a distinct sense; variants can request an entry, form and reference without inventing a sense or grammatical info. Request-local creation references are validated and reported without allocating identities.\n\nThis command records no approval, lexical creation, Proposal or Receipt. It is not a [Dry Run](term:dry-run) or a guarantee about a later write. A saved project cannot verify Home revisions, occurrence heads or external Scripture context, so those checks are reported unavailable. The hand-analysis writers and MCP surface are not exposed.\n",
+      "usage": [
+        "Usage: motif hand-analysis check --project \u003Cproject\u003E --input \u003Cfile.json\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/hand-analysis-check/"
+    },
+    {
+      "kind": "command",
       "code": "handoff",
       "slug": "handoff",
       "title": "Prepare an AI Handoff",

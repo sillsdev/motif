@@ -17,6 +17,7 @@
       canonicalizer (Anders Rundgren / Samuel Erdtman, https://github.com/cyberphone/json-canonicalization).
       We deliberately do not hand-roll RFC 8785 member-ordering/ES6-number-serialization rules.
     -->
+    <PackageReference Include="JsonSchema.Net" Version="9.4.0" />
     <PackageReference Include="jsoncanonicalizer" Version="1.0.0" />
   </ItemGroup>
 

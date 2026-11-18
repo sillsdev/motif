@@ -14,6 +14,16 @@ namespace SIL.Motif.Contract.Commands;
 /// </remarks>
 public static class RefusalCodes
 {
+    public const string HandAnalysisStale = "hand-analysis.stale";
+    public const string HandAnalysisAmbiguousWordform = "hand-analysis.ambiguous-wordform";
+    public const string HandAnalysisInvalidLink = "hand-analysis.invalid-link";
+    public const string HandAnalysisTypeMismatch = "hand-analysis.type-mismatch";
+    public const string HandAnalysisDisapproved = "hand-analysis.disapproved";
+    public const string HandAnalysisRequestIdReused = "hand-analysis.request-id-reused";
+    public const string HandAnalysisBusy = "hand-analysis.busy";
+    public const string HandAnalysisStoreUnavailable = "hand-analysis.store-unavailable";
+    public const string HandAnalysisOutcomeUnknown = "hand-analysis.outcome-unknown";
+
     /// <summary>The saved Text Progress projection has not been published or needs reconciliation.</summary>
     public const string ProgressIndexNotReady = "progress.index-not-ready";
     /// <summary>A Progress cursor is malformed or belongs to another scope or filter.</summary>

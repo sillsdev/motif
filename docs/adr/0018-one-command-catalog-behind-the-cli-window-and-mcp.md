@@ -2,6 +2,8 @@
 
 **Status:** Accepted, 2026-11-14.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 First-party front ends need the same decisions, results and refusals without duplicating logic or serializing and
@@ -21,6 +23,14 @@ CLI holds parsing, dispatch and rendering, not storage or domain decisions.
 The App and MCP project this catalog with their respective exposure policies; an additional front end creates no
 second implementation. In particular, MCP is a Consultant/authoring surface and never invokes HumanOnly Apply.
 Agent semantic authoring follows [ADR 0013](0013-the-operation-catalog-is-generated-from-the-liblcm-model.md).
+
+All Proposal writes continue through the one Apply orchestration and its evidence gates. Hand analysis has
+its own bounded semantic annotation command, shared by CLI and MCP, with no Proposal or Apply Receipt.
+An Annotation command class permits only these immediate actions and conveys no grammar Apply power.
+CLI can record explicitly asserted speaker or analyst intent. Audit names the actual caller and supplied
+source; it must never relabel an agent as a person. Automatic parser intake approves nothing.
+The catalog records annotation separately from Draft and HumanOnly Apply. Read-only hand-analysis check
+is a CLI command without an MCP tool until the shared annotation surface is complete.
 
 ### D2. CLI reach covers every command's store effects
 

@@ -149,6 +149,16 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
+    public void HandAnalysisCheckHasNoAgentToolAndNoWriterIsCatalogued()
+    {
+        var command = Assert.Single(CommandCatalog.All, item => item.Name.StartsWith("hand-analysis ", StringComparison.Ordinal));
+        Assert.Equal("hand-analysis check", command.Name);
+        Assert.False(command.IsAgentTool);
+        Assert.DoesNotContain(AgentTools.All, tool => tool.Requests.Contains(command.RequestType));
+        Assert.DoesNotContain(AgentTools.All, tool => tool.Name.StartsWith("motif_hand_analysis", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void CliFirstCommandsTheSourceValidatedStagerAndTheActivityReaderOptOutOfDefaultToolExposure()
     {
         var optedOut = CommandCatalog.All.Where(command => !command.ExposeAsAgentTool)
@@ -183,6 +193,7 @@ public sealed class ToolSurfaceTests
             "compose-retire-boundary-marker",
             "compose-set-stem-part-of-speech",
             "compose-tag-stems-by-query",
+            "hand-analysis check",
             "hypothesis neighbours",
             "hypothesis report",
             "list hypotheses",
@@ -224,7 +235,8 @@ public sealed class ToolSurfaceTests
         });
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
-            command.Name != "activity" && command.Name != "project tag" && command.Name != "proposal trial" &&
+            command.Name != "activity" && command.Name != "hand-analysis check" &&
+            command.Name != "project tag" && command.Name != "proposal trial" &&
             command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
             command.Name is not ("hypothesis neighbours" or "hypothesis report" or "list hypotheses")), command =>
             Assert.True(command.ExposeAsAgentTool));

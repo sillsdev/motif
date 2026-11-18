@@ -5,6 +5,8 @@ shows one proposed grammar update and its effects while the desktop retains the 
 
 **Status:** Accepted, 2026-11-14. The general Home architecture in ADR 0026 remains Proposed.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 The plugin needs to help people understand and analyze their scripture without duplicating a desktop
@@ -62,20 +64,21 @@ A chapter is either in Context or not. There are no invented Paratext stages or 
 names are added only if Paratext 10 supplies stages. Current chapter follows the scroll-group reference.
 A person's word gloss is separate from the analysis and never changes automatically.
 
-### D7. FW Lite is the plugin's project from the start
+### D7. The hand-analysis Home preserves every native LCM record
 
-Use FW Lite/LcmCrdt with Motif Guide, Source, judgement and Proposal types carried in its Harmony log,
-syncing through LexBox with stock FW Lite. Testing is local-server only; this decision claims no hosted
-deployment proof. The .fwdata Home remains a desktop path. The broader type registration, mapping and
-Build design is wholly Proposed in
-[ADR 0026](0026-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md); this accepted plugin
-scope does not promote that whole design.
+The hand-analysis Home is a full-fidelity generic LCM record store. FW Lite models are views, not the
+canonical schema. Every imported GUID, class, owner, field, reference and ordered member is preserved.
+New analyses are real Wfi records; there is no copied Motif analysis type or reduced FW Lite first phase.
+Motif-only anchors and audit are separate namespaced records; scripture bytes are never stored here.
+The paired Motif workflow database remains distinct and is not promoted to canonical language data.
 
-On sync, copy interlinearizer approvals one way as normal human-approved WfiAnalysis/morph bundles into
-Motif log records, preserving GUIDs, plus occurrence anchors in per-Source chapter items. Never copy
-scripture. The provisional copy disappears only when the interlinearizer team agrees a common shape.
-[ADR 0024](0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md) owns Source/Passage/Context,
-judgement meaning and anchors. Phase-one spell flagging is omitted.
+Explicitly seed the Home from saved .fwdata and complete writing-system records, preserving native
+identities and shapes. Its generated .fwdata is derived output. Stage A permits Motif-only import/export
+and sync between Motif clients before upstream agreement. Deployment shared with FW Lite requires agreed
+Harmony and LexBox versions and a minimum-client/version gate for converted projects; stock FW Lite does
+not supply full-feature storage or display by itself.
+This accepts only the storage and annotation boundary, not all of proposed ADR 0026. Existing .fwdata
+Proposal commands retain their Apply path; no .fwdata-only annotation fallback satisfies this boundary.
 
 ### D8. Integration proceeds through the interlinearizer hook first
 
@@ -88,8 +91,10 @@ build order; existing desktop support remains useful on its own.
 
 ## Open
 
-The interlinearizer team must agree the hook and shared approval/analysis shape before upstream publication
-and removal of the one-way copy. This is an integration dependency, not permission to widen the plugin.
+Stage A writes native LCM records directly and returns results through whole-.fwdata export. Shared FW Lite
+integration is a later qualification: the interlinearizer team must agree the hook, shared views and
+Harmony/LexBox version compatibility before upstream publication and deployment shared with FW Lite.
+This is an integration dependency, not permission to widen the plugin.
 
 ## Consequences
 

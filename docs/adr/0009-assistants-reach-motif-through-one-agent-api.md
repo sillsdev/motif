@@ -2,6 +2,8 @@
 
 **Status:** Accepted, 2026-11-14.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 An assistant needs to discover a linguistic Composer, draft a change, measure it, read what happened and
@@ -33,6 +35,14 @@ lifecycle, the hypothesis ledger), is listed in help with its switch, and, like 
 `MOTIF_DEVELOPER_COMMANDS` stays for true developer diagnostics only; a refusal for a command that moved names the
 Autonomous switch.
 
+All Proposal writes continue through the one Apply orchestration and its evidence gates. Hand analysis has
+its own bounded semantic annotation command, shared by CLI and MCP, with no Proposal or Apply Receipt.
+An Annotation command class permits only these immediate actions and conveys no grammar Apply power.
+CLI can record explicitly asserted speaker or analyst intent. Audit names the actual caller and supplied
+source; it must never relabel an agent as a person. Automatic parser intake approves nothing.
+MCP describes annotation as an immediate write and requires the host's ordinary write confirmation.
+Supplied labels are not verified identity, and an MCP caller cannot claim a person as its operator.
+
 ### D2. The default profile has seven always-loaded tools
 
 | Tool | Effect | Role |
@@ -50,6 +60,10 @@ behaviour. Each action/view accepts only its arguments; irrelevant arguments ref
 and a batch use one call. The full evaluation profile exposes one tool per Composer and the older separate
 tools to measure equivalence; it is not required for normal sessions and no other profile is retained.
 Request and Comment capabilities remain on the shared catalog under ADRs 0007 and 0008.
+
+The completed hand-analysis surface adds a distinct annotation tool to the default profile; it never
+hides live writes behind the Draft compose tool. Until the writer and Home prerequisites are implemented,
+only the CLI read-only check is exposed; there is no hand-analysis MCP route.
 
 ### D3. Advanced AI mode gates all tools
 

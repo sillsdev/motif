@@ -2,6 +2,8 @@
 
 **Status:** Accepted, 2026-11-14.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 A Proposal must preserve the reason for a change, support revision and human review, and reach the project
@@ -120,6 +122,12 @@ Pending changes are identified by a stored role, never their Draft name; `trial 
 Trial as `trial <id>`. Every Draft edit, including composition, compares and swaps against the revision
 read, refusing races rather than losing edits. Readiness is computed from exact evidence; no recorded
 approval substitutes for it. Apply/read-back and unforceable stale-field rules are in ADR 0017.
+
+All Proposal writes continue through the one Apply orchestration and its evidence gates. Hand analysis has
+its own bounded semantic annotation command, shared by CLI and MCP, with no Proposal or Apply Receipt.
+An Annotation command class permits only these immediate actions and conveys no grammar Apply power.
+CLI can record explicitly asserted speaker or analyst intent. Audit names the actual caller and supplied
+source; it must never relabel an agent as a person. Automatic parser intake approves nothing.
 
 ### D10. Plugin presentation does not introduce an owner or inverse Apply
 

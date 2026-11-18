@@ -5,6 +5,8 @@ released when no longer useful, while authored work, primary sources and permane
 
 **Status:** Accepted, 2026-11-14.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 Location-dependent stores can show different work for the same project. Parser workspaces can also grow
@@ -23,6 +25,10 @@ Primary corpus files and metadata remain outside the database under
 [ADR 0024](0024-sources-are-read-in-place-and-scripture-stays-in-paratext.md); database indexes never become
 their authority. Human judgements remain FieldWorks data under ADR 0003. Motif data enters FieldWorks only
 by deliberate, reviewable promotion through semantic Proposals and Apply, never merely by ingestion.
+
+The full-fidelity hand-analysis Home in ADR 0025 is separate from this paired workflow database. It owns
+native LCM records plus namespaced annotation anchors and audit; this database retains jobs, Proposals
+and evidence. Never turn an existing workflow database into canonical language data.
 
 ### D2. Every project-scoped command names the project
 

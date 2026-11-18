@@ -2,6 +2,8 @@
 
 **Status:** Accepted, 2026-11-14.
 
+**Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
+
 ## Context
 
 A readable current account of a grammar must travel with its FieldWorks project. Proposals explain changes;
@@ -42,7 +44,7 @@ time. Generated content sits in marked blocks that the importer ignores, so impo
 never stores it. This is decided; the concrete marker spelling, filenames and index contents still need
 specification. The objects and approved analyses supplying each section remain Open below.
 
-### D5. All Motif edits use the Proposal path and remember their starting text
+### D5. All Motif Guide edits use the Proposal path and remember their starting text
 
 A person may edit directly in FieldWorks. In Motif, a person's edit joins the pending Draft Proposal; an
 agent writes only through a Proposal's operations. Project writes use the same Apply as other changes.
@@ -54,6 +56,9 @@ Agents receive Guide content at increasing depth (ID/title, summary, body) when 
 when touching linked objects. Reads are logged; a missing-read warning at Finalize never blocks. Each plugin
 grammar update names the section it carries out, or edits one, with evidence verses. Claude's plugin
 playbook requires that link before Finalize; this is distinct from a Guide-check finding becoming a gate.
+
+Guide examples may be derived from approved analyses. Recording a hand analysis never writes the Guide;
+agent grammar explanations and every Guide edit retain the Proposal path.
 
 ### D6. An original starter interview seeds sections and grammar together
 
