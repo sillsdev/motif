@@ -114,41 +114,52 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
-    public async Task StopProjectWorkWaitsForAnInFlightSelectionReaderOpen()
+    public void StopProjectWorkDrainsTheInFlightSelectionWithoutOpeningTheQueuedSelection()
     {
-        var fake = new FakeCommandClient();
-        using var fixture = StoredSelectionFixture.FromDisplayRecords(new TextWordsResponse([], [], true));
-        fake.SelectionReaderHandler = fixture.OpenAsync;
-        fake.ListTextsCompletesWith(new TextInventoryResponse(
-            [new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
-        var context = NewContext(fake);
-        _ = new TextsPageModel(context);
-        await context.Selection.SetProjectAsync(ProjectPath);
-        await context.OpenProjectAsync(ProjectPath);
-        context.OpenPage(WorkspacePage.Texts);
-        await context.EvidencePublication;
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            using var fixture = StoredSelectionFixture.FromDisplayRecords(new TextWordsResponse([], [], true));
+            fake.SelectionReaderHandler = fixture.OpenAsync;
+            fake.ListTextsCompletesWith(new TextInventoryResponse(
+                [new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+            var context = NewContext(fake);
+            _ = new TextsPageModel(context);
+            await context.OpenProjectAsync(fixture.ProjectPath);
+            context.OpenPage(WorkspacePage.Texts);
+            await context.EvidencePublication;
 
-        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var completion = new TaskCompletionSource<CommandOutcome<SelectionReader>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        fake.SelectionReaderHandler = (_, _) =>
-        {
-            started.SetResult();
-            return completion.Task;
-        };
-        try
-        {
-            context.Selection.Texts.Single().IsChecked = true;
-            await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
-            var stopped = context.StopProjectWorkAsync();
-            Assert.False(stopped.IsCompleted);
-        }
-        finally
-        {
-            completion.SetResult(await fixture.OpenAsync(new OpenSelectionReaderRequest(fixture.ProjectPath, [], []),
-                CancellationToken.None));
-            await context.StopProjectWorkAsync().WaitAsync(TimeSpan.FromSeconds(10));
-        }
+            var opened = await fixture.OpenAsync(new OpenSelectionReaderRequest(fixture.ProjectPath, [], []));
+            Assert.True(opened.Succeeded, opened.Refusal?.Message);
+            var completion = new TaskCompletionSource<CommandOutcome<SelectionReader>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var attempts = 0;
+            fake.SelectionReaderHandler = (request, cancellation) => ++attempts == 1
+                ? completion.Task : fixture.OpenAsync(request, cancellation);
+            try
+            {
+                var text = context.Selection.Texts.Single();
+                text.IsChecked = true;
+                await Wait.UntilAsync(() => attempts == 1);
+                text.IsChecked = false;
+                var stopped = context.StopProjectWorkAsync();
+                Assert.False(stopped.IsCompleted);
+
+                completion.SetResult(opened);
+                await stopped;
+                Assert.Equal(1, attempts);
+                Assert.True(context.EvidencePublication.IsCompletedSuccessfully);
+                Assert.Null(context.SelectionReads.Reader);
+                Assert.True(opened.Value!.Diagnostics.IsDisposed);
+            }
+            finally
+            {
+                completion.TrySetResult(opened);
+                await context.EvidencePublication;
+                await context.StopProjectWorkAsync();
+                await opened.Value!.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]

@@ -390,6 +390,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     private long _proposalReadGeneration;
     private bool _publishing;
     private bool _republish;
+    private Task _projectWorkStop = Task.CompletedTask;
+    private bool _stoppingProjectWork;
     private CurrentEvidenceSnapshot? _readerEvidence;
     private bool _selectionReaderRequested;
     private long _pageRequestVersion;
@@ -575,19 +577,31 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>Cancels and awaits project commands and page work before switching or closing the workspace.</summary>
-    internal async Task StopProjectWorkAsync()
+    internal Task StopProjectWorkAsync() => _projectWorkStop.IsCompleted
+        ? _projectWorkStop = StopProjectWorkCoreAsync()
+        : _projectWorkStop;
+
+    private async Task StopProjectWorkCoreAsync()
     {
-        ++_pageRequestVersion;
-        TrialRun.CancelAll();
-        if (_pendingMeasurement is { } measurement) await measurement.StopAsync().ConfigureAwait(true);
-        if (_proposalApply is { } apply) await apply.StopAsync().ConfigureAwait(true);
-        await Assess.DisposeAsync().ConfigureAwait(true);
-        if (_wordTraceSession is { } trace) await trace.StopAsync().ConfigureAwait(true);
-        else await Assess.Trace.StopAsync().ConfigureAwait(true);
-        await StopPageWorkAsync().ConfigureAwait(true);
-        await SelectionReads.StopAsync().ConfigureAwait(true);
-        await ProposalSelectionReads.StopAsync().ConfigureAwait(true);
-        await _requestDelivery.ConfigureAwait(true);
+        _stoppingProjectWork = true;
+        var publication = _publishing ? EvidencePublication : Task.CompletedTask;
+        try
+        {
+            ++_pageRequestVersion;
+            TrialRun.CancelAll();
+            if (_pendingMeasurement is { } measurement) await measurement.StopAsync().ConfigureAwait(true);
+            if (_proposalApply is { } apply) await apply.StopAsync().ConfigureAwait(true);
+            await Assess.DisposeAsync().ConfigureAwait(true);
+            if (_wordTraceSession is { } trace) await trace.StopAsync().ConfigureAwait(true);
+            else await Assess.Trace.StopAsync().ConfigureAwait(true);
+            await StopPageWorkAsync().ConfigureAwait(true);
+            await SelectionReads.StopAsync().ConfigureAwait(true);
+            await ProposalSelectionReads.StopAsync().ConfigureAwait(true);
+            try { await publication.ConfigureAwait(true); }
+            catch (OperationCanceledException) when (publication.IsCanceled) { }
+            await _requestDelivery.ConfigureAwait(true);
+        }
+        finally { _stoppingProjectWork = false; }
     }
 
     private bool IsCurrentOpen(int generation) => generation == Volatile.Read(ref _openGeneration);
@@ -690,6 +704,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     // Arrivals during a pass are folded into one more pass, so every page ends on the same, latest evidence.
     private Task PublishToPagesAsync(CancellationToken cancellationToken)
     {
+        if (_stoppingProjectWork) return Task.CompletedTask;
         if (_publishing)
         {
             _republish = true;
@@ -712,18 +727,19 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
                 if (ProjectPath is { } path && (_selectionReaderRequested || Evidence.HasAssessment))
                     await SelectionReads.ReloadAsync(path, Selection.ChosenTextIds, Selection.PastedWordEntries,
                         _readerEvidence, cancellationToken, ShownSelectionAssessment()).ConfigureAwait(true);
+                if (_stoppingProjectWork || !IsCurrentOpen(generation)) return;
                 if (ProjectPath is { } proposalPath && EvidenceLens.Proposal is { Set.RootAssessmentId: not null } trial)
                     await ProposalSelectionReads.ReloadAsync(proposalPath, Selection.ChosenTextIds,
                         Selection.PastedWordEntries, _readerEvidence, cancellationToken, trial.Set)
                         .ConfigureAwait(true);
                 else
                     ProposalSelectionReads.Clear();
-                if (!IsCurrentOpen(generation)) return;
+                if (_stoppingProjectWork || !IsCurrentOpen(generation)) return;
                 await Task.WhenAll(_pages.ToArray()
                     .Select(page => page.EvidencePublishedAsync(EvidenceLens, cancellationToken))
                     .Append(_grammarCheck.EvidencePublishedAsync(cancellationToken))).ConfigureAwait(true);
             }
-            while (_republish && IsCurrentOpen(generation));
+            while (_republish && !_stoppingProjectWork && IsCurrentOpen(generation));
         }
         finally
         {
