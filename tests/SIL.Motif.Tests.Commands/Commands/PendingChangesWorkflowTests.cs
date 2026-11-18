@@ -261,7 +261,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.Equal(3, FailureEnvelope.ExitCodeFor(overlapping.Refusal!.Reason));
     }
 
-    [Fact(Timeout = 240_000)]
+    [Fact]
     public async Task AnApplyKilledWhileItHoldsTheLeaseLeavesNoLockForTheNextApply()
     {
         string path;
@@ -285,32 +285,27 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         {
             try
             {
-                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(90);
-                while (!File.Exists(held))
-                {
-                    if (child.HasExited)
-                        Assert.Fail($"The Apply exited with {child.ExitCode} before it held the lease: " +
-                            await ReadWithinAsync(child.StandardError, TimeSpan.FromSeconds(5)));
-                    if (DateTime.UtcNow >= deadline) Assert.Fail("The Apply did not take the lease within 90 s.");
-                    await Task.Delay(100);
-                }
-                Assert.Null(ProjectApplyLease.TryAcquire(path));
+                await Wait.UntilAsync(() => File.Exists(held) || child.HasExited,
+                    "The Apply takes the lease", timeout: TimeSpan.FromSeconds(90));
+                if (child.HasExited)
+                    Assert.Fail($"The Apply exited with {child.ExitCode} before it held the lease: " +
+                        await ReadWithinAsync(child.StandardError, Wait.Scaled(Wait.Default)));
+                Assert.True(File.Exists(held));
+                using var competing = ProjectApplyLease.TryAcquire(path);
+                Assert.Null(competing);
             }
             finally
             {
                 if (!child.HasExited) child.Kill(entireProcessTree: true);
-                try
-                {
-                    await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
-                }
-                catch (TimeoutException)
-                {
-                    Assert.Fail($"The killed Apply (process {child.Id}) had not exited after 30 s.");
-                }
+                await Wait.UntilAsync(() => child.HasExited, $"The killed Apply (process {child.Id}) exits");
             }
         }
 
-        using (var lease = ProjectApplyLease.TryAcquire(path)) Assert.NotNull(lease);
+        await Wait.UntilAsync(() =>
+        {
+            using var lease = ProjectApplyLease.TryAcquire(path);
+            return lease is not null;
+        }, "The killed Apply releases its lease");
         var next = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
             dryRunTimeout: TimeSpan.FromSeconds(5), runnerLauncher: IsolatedRunner.None(root));
         Assert.NotEqual("apply.in-progress", next.Refusal?.Code);
