@@ -3,6 +3,7 @@ using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Commands;
@@ -14,6 +15,7 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Scripture;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Sources;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -87,6 +89,19 @@ public sealed class SourceStagingTests(PristineProjectFixture pristine)
         Assert.True(ProposalCommands.StageSourceRestore(new SourceRestoreRequest(path, "WEB")).Succeeded);
         Assert.True(Apply(path).Value!.Applied);
         Assert.Equal(SourceStatus.Active, Assert.Single(Read(path)).Status);
+    }
+
+    [Fact]
+    public void SourceIndexingDoesNotCopyTheRunnersLockedArtifacts()
+    {
+        var path = Project();
+        using var artifact = new FileStream(Path.Combine(Root(path), "active-worker.lock"),
+            FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+        using var database = ProjectMotifDatabase.Open(path);
+
+        var refreshed = SourceIndexRefresh.Run(database);
+
+        Assert.True(refreshed.Status == JobStatus.Completed, refreshed.ResultJson);
     }
 
     [Fact]
@@ -164,7 +179,14 @@ public sealed class SourceStagingTests(PristineProjectFixture pristine)
             var applied = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
                 dryRunTimeout: TimeSpan.FromMinutes(2), runnerLauncher: runner);
             if (applied.Succeeded && applied.Value!.Applied)
-                Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), Root(path)).Succeeded);
+            {
+                var drained = runner.WhenIdleAsync();
+                Wait.Until(() => drained.IsCompleted, "The Source staging runner finishes its queued work");
+                drained.GetAwaiter().GetResult();
+                var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), Root(path));
+                Assert.True(captured.Succeeded, captured.Refusal?.Code + ": " + captured.Refusal?.Message +
+                    " " + JsonSerializer.Serialize(captured.Refusal?.Facts));
+            }
             return applied;
         }
         finally
@@ -175,7 +197,9 @@ public sealed class SourceStagingTests(PristineProjectFixture pristine)
 
     private static string Root(string projectPath)
     {
-        var root = Path.Combine(Path.GetDirectoryName(projectPath)!, "source-staging-root");
+        // A FieldWorks copy must not include its runner's changing artifacts.
+        var root = Path.Combine(Directory.GetParent(Path.GetDirectoryName(projectPath)!)!.FullName,
+            "source-staging-root");
         Directory.CreateDirectory(root);
         return root;
     }
