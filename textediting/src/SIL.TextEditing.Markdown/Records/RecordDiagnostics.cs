@@ -14,6 +14,8 @@ namespace SIL.TextEditing.Markdown.Records
         public const string YamlSyntax = "fwmd.yaml.syntax";
         /// <summary>Error: a tab in the indentation of a front-matter line. Fix: the indentation with two spaces for each tab.</summary>
         public const string Tab = "fwmd.yaml.tab";
+        /// <summary>Error: a raw tab in a plain-text literal block, which reading normalizes to a space and loses. No automatic fix is safe.</summary>
+        public const string TabInPlainBlock = "fwmd.yaml.tab-in-plain-block";
         /// <summary>Error: a raw U+2028, U+2029 or U+0085, which one YAML reader takes as a line break and another does not. Fix in a rich value: its
         /// character reference (<c>&amp;#x2028;</c>); elsewhere none.</summary>
         public const string LineSeparator = "fwmd.yaml.line-separator";
@@ -97,7 +99,7 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>Every id above, for documentation and the conformance check.</summary>
         public static IReadOnlyList<string> All { get; } = new[]
         {
-            YamlSyntax, Tab, LineSeparator, DuplicateKey, Anchor, Alias, Tag, MergeKey, Folded, SecondDocument, TooDeep, CommentDropped, Unquoted, ScalarStyle,
+            YamlSyntax, Tab, TabInPlainBlock, LineSeparator, DuplicateKey, Anchor, Alias, Tag, MergeKey, Folded, SecondDocument, TooDeep, CommentDropped, Unquoted, ScalarStyle,
             Flow, Empty, KeyOrder, NotARecord, UnknownKey, UnknownKind, SchemaMismatch, UnknownField, ClassNotAllowed, WrongShape, NotAnInteger, NotABoolean, BadGuid,
             DuplicateGuid, NotAReference, PlainFieldMarkup, Unwritable, BadRoot, OutsideRoot, UnexpectedBody, BodyInFrame, BlockNotAllowed, Notation,
         };

@@ -156,6 +156,7 @@ record-data:
 - **A value on the same line follows its key's colon with one space.** A tab or several spaces there is
   `fwmd.yaml.scalar-style` (information), with a fix replacing just the separator with one space. This concerns block mappings;
   indentation tabs remain errors, and flow collections have their own finding.
+- **A raw tab in a plain-text literal block is an error** (`fwmd.yaml.tab-in-plain-block`): reading it normalizes it to a space, losing the authored tab. It has no automatic fix that discards that text.
 - **The schema types every value**, not YAML. A plain `no` in a text field is the text "no", with the information `fwmd.yaml.unquoted`:
 
 <!-- fixture: records/02-traps.json | the Norway problem: a plain no in a text field is the text no, with information | file -->
@@ -287,7 +288,7 @@ to pay money for [something]{.v}
 
 - **Information** (`fwmd.yaml.unquoted`, `scalar-style`, `flow`, `empty`, `key-order`, `comment-dropped`): the file is read as it means,
   and the writer spells it canonically. Comments are dropped, because the project has nowhere to keep them.
-- **Errors** for what YAML readers disagree on or what would lose data: tabs in indentation, raw line separators, duplicate keys, anchors,
+- **Errors** for what YAML readers disagree on or what would lose data: tabs in indentation or plain-text literal blocks, raw line separators, duplicate keys, anchors,
   aliases, tags, merge keys, folded blocks, a second document, nesting deeper than 64, and YAML that does not parse.
 - **Read, then write, is total.** A value the reader can read but the writer cannot spell is an error, `fwmd.record.unwritable`, whose
   fix spells what was read. A file read with no error can always be written, and reads back the same.
