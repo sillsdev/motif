@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -415,6 +416,9 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             return left is null && right is null ? null : new Placement(left, right);
         }
 
+        private static bool IsVector(CellarPropertyType type) => type is CellarPropertyType.OwningCollection
+            or CellarPropertyType.OwningSequence or CellarPropertyType.ReferenceCollection or CellarPropertyType.ReferenceSequence;
+
         private List<Guid>? List(Guid owner, string key, (string DeclaringClass, string Field, bool IsCustom) binding)
         {
             if (_lists.TryGetValue((owner, key), out var known))
@@ -424,8 +428,10 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 return null;
             var flid = cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true);
             var data = cache.DomainDataByFlid;
-            var items = Enumerable.Range(0, data.get_VecSize(instance.Hvo, flid))
-                .Select(position => repository.GetObject(data.get_VecItem(instance.Hvo, flid, position)).Guid).ToList();
+            var items = IsVector((CellarPropertyType)cache.MetaDataCacheAccessor.GetFieldType(flid))
+                ? Enumerable.Range(0, data.get_VecSize(instance.Hvo, flid))
+                    .Select(position => repository.GetObject(data.get_VecItem(instance.Hvo, flid, position)).Guid).ToList()
+                : data.get_ObjectProp(instance.Hvo, flid) is var held and not 0 ? [repository.GetObject(held).Guid] : [];
             return _lists[(owner, key)] = items;
         }
 
