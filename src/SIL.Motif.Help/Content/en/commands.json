@@ -450,6 +450,16 @@
     "description": "Runs PanGloss for one word against the project's current Baseline and returns its diagnostic. Use it to inspect recorded analyses and trace events.",
     "source": "Hand-written from command behavior."
   },
+  "parse": {
+    "title": "Explain a word's parse",
+    "description": "Shows where PanGloss's parse of one word stopped, path by path, with each grammar object named by canonical id or marked unknown. Use it to see why a word does not parse.",
+    "source": "Hand-written from command behavior."
+  },
+  "generate": {
+    "title": "Explain a generation",
+    "description": "Refuses with a typed reason until the pinned PanGloss can trace generation. Use parse --trace to explain a word that does not parse.",
+    "source": "Hand-written from command behavior."
+  },
   "trace --load": {
     "title": "Load a saved trace",
     "description": "Reads a saved diagnostic without opening a project or starting PanGloss. Use it to inspect earlier trace evidence with the same reader as a live trace.",

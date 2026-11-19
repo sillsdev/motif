@@ -929,6 +929,22 @@ internal static class AgentTools
                 a.Optional("detail") == "detailed", ct, c.ParserPath)))
             { Requests = [typeof(WordTraceRequest)] },
 
+        new("motif_explain_parse",
+            string.Empty,
+            AgentClass.Evaluate,
+            Schema.Object([("word", Schema.String("The word to explain."), true),
+                ("at", Schema.String("'baseline' (default) for the current Baseline, or a proposal id for that Draft or Proposal's latest Trial copy."), false),
+                ("max_paths", Schema.Integer("Most terminal paths to show; default 16.", 1, 64), false)]),
+            false,
+            true,
+            true,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(
+                RejectionTraceQuery.Parse(new ParseTraceRequest(c.ProjectPath, a.Required("word"), a.Optional("at"),
+                    a.OptionalInt("max_paths")), c.ParserPath, ct),
+                _ => "A path with attribution 'unknown' has no recorded stop; do not guess one. Fix the first named stop, then call motif_try_word.")))
+            { Requests = [typeof(ParseTraceRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["At"] = "at", ["MaxPaths"] = "max_paths", ["ProjectPath"] = null } },
+
         new("motif_job",
             string.Empty,
             AgentClass.Read,

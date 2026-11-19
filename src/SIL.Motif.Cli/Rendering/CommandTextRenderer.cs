@@ -140,6 +140,7 @@ public static class CommandTextRenderer
             InspectResponse r => RenderInspect(r),
             HandoffCommandResponse r => RenderHandoff(r),
             WordTraceResponse r => RenderTrace(r),
+            RejectionTraceResponse r => RenderRejectionTrace(r),
             FormsQueryResponse r => RenderFormsQuery(r),
             GrammarReadResponse r => GrammarReadTextRenderer.Render(r),
             ProjectStoreResetResponse r => r.Deleted
@@ -2052,6 +2053,28 @@ public static class CommandTextRenderer
         : "not recorded";
 
     private static string ShortHash(string? value) => value is null ? "unknown" : value[..Math.Min(8, value.Length)] + "…";
+
+    private static string RenderRejectionTrace(RejectionTraceResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Rejection trace of {response.Input} against {response.TracedAgainst}: search {response.Search.Status}, " +
+            $"{response.Outputs.Count:N0} output(s), {response.Bound.PathsShown:N0} of {response.Bound.TerminalPathsRetained:N0} retained path(s) shown.");
+        foreach (var path in response.Paths)
+        {
+            text.AppendLine($"  Path {path.PathId} ({path.Outcome}, {path.Attribution}): {path.Sentence}");
+            if (path.EarliestRejection is { } stop)
+            {
+                var subject = stop.Subject.Resolved
+                    ? string.Join(", ", stop.Subject.Ids.Where(id => id.IsSubject).Select(id => id.Id))
+                    : stop.Subject.Unknown ?? "unknown";
+                text.AppendLine($"    Stopped by {stop.Reason} at {stop.Stage}; subject {stop.Subject.Kind} {subject}");
+            }
+        }
+        foreach (var note in response.Notes) text.AppendLine("  " + note);
+        if (response.Bound.Truncated)
+            text.AppendLine($"  Left out here: {response.Bound.PathsOmittedByCap:N0} path(s), {response.Bound.OutputsOmittedByCap:N0} output(s). Raise --max-paths to see more.");
+        return text.ToString();
+    }
 
     private static string TraceJson(WordTraceResponse response) => ProjectionJson.Serialize(StandaloneTraceProjection.From(response));
 

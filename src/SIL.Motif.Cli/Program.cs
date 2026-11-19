@@ -2754,6 +2754,31 @@ try
                 WordTraceQuery.Query(new WordTraceRequest(traceProject, traceWord, flags.GetValueOrDefault("proposal")), token)));
             break;
 
+        case "parse" or "generate":
+        {
+            var traceVerb = verb;
+            if (!flags.TryGetValue("project", out var rejectionProject) || positionals.Count != 1 ||
+                !flags.ContainsKey("trace") || flags["trace"] != "true")
+                return Usage("Usage: motif " + UsageLineFor(traceVerb), asJson);
+            int? rejectionMax = null;
+            if (flags.TryGetValue("max-paths", out var maxPathsText))
+            {
+                if (!int.TryParse(maxPathsText, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var parsedMax))
+                {
+                    result = RenderCommand(RejectionTraceQuery.InvalidCap(maxPathsText));
+                    break;
+                }
+                rejectionMax = parsedMax;
+            }
+            var rejectionAt = flags.GetValueOrDefault("at");
+            result = traceVerb == "parse"
+                ? RunWithConsoleCancellation(token => RenderCommand(RejectionTraceQuery.Parse(
+                    new ParseTraceRequest(rejectionProject, positionals[0], rejectionAt, rejectionMax), token)))
+                : RenderCommand(RejectionTraceQuery.Generate(
+                    new GenerateTraceRequest(rejectionProject, positionals[0], rejectionAt, rejectionMax)));
+            break;
+        }
+
         case "selection":
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var selectionProject))
                 return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default") +

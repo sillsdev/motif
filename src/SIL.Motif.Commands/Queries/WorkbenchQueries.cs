@@ -200,6 +200,20 @@ public sealed record TextToken(string Text, string? Form, string? Gloss, string?
 /// <param name="ProposalId">The Proposal whose latest Trial to trace; omitted traces the project evidence.</param>
 public sealed record WordTraceRequest(string ProjectPath, string Word, string? ProposalId = null);
 
+/// <summary>Which word to explain: where PanGloss's parse of it stopped, path by path.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Word">The exact word form to parse.</param>
+/// <param name="At"><c>baseline</c> (the default) for the current published Baseline, or a Proposal id for its latest Trial copy.</param>
+/// <param name="MaxPaths">The most terminal paths to show, 1 through 64; omitted shows 16.</param>
+public sealed record ParseTraceRequest(string ProjectPath, string Word, string? At = null, int? MaxPaths = null);
+
+/// <summary>Which entry to explain: where PanGloss's generation of it stopped, path by path.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Entry">The canonical id of the entry or sense to generate from.</param>
+/// <param name="At"><c>baseline</c> (the default) or a Proposal id.</param>
+/// <param name="MaxPaths">The most terminal paths to show, 1 through 64; omitted shows 16.</param>
+public sealed record GenerateTraceRequest(string ProjectPath, string Entry, string? At = null, int? MaxPaths = null);
+
 /// <summary>Which saved trace file to read: a PanGloss trace document, as the window's Save diagnostic writes it.</summary>
 /// <param name="DiagnosticPath">The saved parser diagnostic to read.</param>
 public sealed record WordTraceLoadRequest(string DiagnosticPath);

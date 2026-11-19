@@ -193,6 +193,7 @@ public sealed class ToolSurfaceTests
             "compose-retire-boundary-marker",
             "compose-set-stem-part-of-speech",
             "compose-tag-stems-by-query",
+            "generate",
             "hand-analysis check",
             "hypothesis neighbours",
             "hypothesis report",
@@ -235,7 +236,7 @@ public sealed class ToolSurfaceTests
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
             command.Name != "activity" && command.Name != "hand-analysis check" &&
-            command.Name != "project tag" && command.Name != "proposal trial" &&
+            command.Name != "project tag" && command.Name != "proposal trial" && command.Name != "generate" &&
             command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
             command.Name is not ("hypothesis neighbours" or "hypothesis report" or "list hypotheses")), command =>
             Assert.True(command.ExposeAsAgentTool));

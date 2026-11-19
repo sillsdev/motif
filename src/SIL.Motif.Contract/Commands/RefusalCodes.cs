@@ -431,6 +431,11 @@ public static class RefusalCodes
     /// <summary>A Motif update is being installed, so no Trial can be queued until it finishes.</summary>
     public const string TrialUpdateInProgress = "trial.update-in-progress";
 
+    public const string RejectionTraceRequestInvalid = "rejection-trace.request-invalid";
+    public const string RejectionTraceUnsupported = "rejection-trace.unsupported";
+    public const string RejectionTraceCaptureRefused = "rejection-trace.capture-refused";
+    public const string RejectionTraceMalformed = "rejection-trace.malformed";
+    public const string RejectionTraceCaptureLimit = "rejection-trace.capture-limit";
     public const string WordTraceCancelled = "wordtrace.cancelled";
     public const string WordTraceMalformedDiagnostic = "wordtrace.malformed-diagnostic";
     public const string WordTraceMalformedOutput = "wordtrace.malformed-output";

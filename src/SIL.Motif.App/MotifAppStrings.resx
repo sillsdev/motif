@@ -4840,6 +4840,26 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Motif is installing an update. Try the check again in a moment.</value>
     <comment>Sentence the window shows when the command refuses with code C.TrialUpdateInProgress. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalRejectionTraceRequestInvalid" xml:space="preserve">
+    <value>That word or option cannot be traced. Check the word and the cap on paths, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RejectionTraceRequestInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalRejectionTraceUnsupported" xml:space="preserve">
+    <value>This trace is not available with the PanGloss Motif uses. Parsing can be traced; generation cannot yet.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RejectionTraceUnsupported. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalRejectionTraceCaptureRefused" xml:space="preserve">
+    <value>PanGloss refused to capture the trace. Open the details to read its reason.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RejectionTraceCaptureRefused. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalRejectionTraceMalformed" xml:space="preserve">
+    <value>PanGloss wrote a trace Motif cannot read. Update Motif and PanGloss together, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RejectionTraceMalformed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalRejectionTraceCaptureLimit" xml:space="preserve">
+    <value>The trace was too large or did not finish. Lower the number of paths and try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RejectionTraceCaptureLimit. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalWordTraceCancelled" xml:space="preserve">
     <value>Trying the word was cancelled.</value>
     <comment>Sentence the window shows when the command refuses with code C.WordTraceCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

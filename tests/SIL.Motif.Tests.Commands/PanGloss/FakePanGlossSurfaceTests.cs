@@ -194,10 +194,10 @@ public sealed class FakePanGlossSurfaceTests
                 { ParserWorkLimit = SIL.Motif.Contract.Assess.ParserWorkLimit.Default },
         ];
         if (!includeFacts) requests = requests.Where(request => request is not PanGlossRequest.Facts).ToArray();
-        // Trace is checked by AssertTraceCommandIsDeclared; this walker cannot express an "=file" flag.
+        // Both trace requests are checked by AssertTraceCommandIsDeclared; this walker cannot express an "=file" flag.
         var requestTypes = typeof(PanGlossRequest).GetNestedTypes()
             .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type) && type != typeof(PanGlossRequest.Trace) &&
-                type != typeof(PanGlossRequest.PhonologyExamples))
+                type != typeof(PanGlossRequest.RejectionTrace) && type != typeof(PanGlossRequest.PhonologyExamples))
             .Where(type => includeFacts || type != typeof(PanGlossRequest.Facts))
             .OrderBy(type => type.Name);
         Assert.Equal(requestTypes, requests.Where(request => request is not PanGlossRequest.Trace)
@@ -295,6 +295,12 @@ public sealed class FakePanGlossSurfaceTests
         Assert.True(flags.TryGetValue("--trace-details", out var traceDetails),
             "the description does not declare 'parse --trace-details'.");
         Assert.False(traceDetails.GetProperty("takes_value").GetBoolean());
+        Assert.True(flags.TryGetValue("--trace-rejections", out var rejections),
+            "the description does not declare 'parse --trace-rejections'.");
+        Assert.True(rejections.GetProperty("takes_value").GetBoolean());
+        Assert.True(flags.TryGetValue("--trace-max-paths", out var maxPaths),
+            "the description does not declare 'parse --trace-max-paths'.");
+        Assert.True(maxPaths.GetProperty("takes_value").GetBoolean());
     }
 
     internal static async Task<JsonDocument> Describe(string executable)

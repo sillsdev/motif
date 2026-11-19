@@ -16,6 +16,26 @@
     "why": "Another Motif task holds this project, so it cannot be used yet. Wait about ten seconds.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "rejection-trace.request-invalid": {
+    "why": "The request is not one Motif can trace. Check the word, the cap on paths (1 to 64) and --at, then try again.",
+    "source": "Hand-written from the rejection-trace request check."
+  },
+  "rejection-trace.unsupported": {
+    "why": "The pinned PanGloss cannot give this trace. Parsing is traced; generation and revision selectors are not available yet.",
+    "source": "Hand-written from the rejection-trace capability check."
+  },
+  "rejection-trace.capture-refused": {
+    "why": "PanGloss refused to capture the trace and said why. Read its reason, then change the request or the grammar.",
+    "source": "Hand-written from PanGloss's typed diagnostic error."
+  },
+  "rejection-trace.malformed": {
+    "why": "PanGloss wrote a trace Motif cannot read. Update Motif and PanGloss together, then try again.",
+    "source": "Hand-written from the rejection-trace reader."
+  },
+  "rejection-trace.capture-limit": {
+    "why": "The trace did not finish or was larger than Motif keeps. Lower the cap on paths and try again.",
+    "source": "Hand-written from the rejection-trace capture limit."
+  },
   "project.startup-busy": {
     "why": "Wait for the Motif task using the project to finish, then repeat the command.",
     "source": "Hand-written from the project startup refusal."

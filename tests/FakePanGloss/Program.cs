@@ -74,7 +74,7 @@ internal static class Program
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
         new("parse", ["grammar", "word"],
             [new("--trace", true), new("--trace-format", true), new("--trace-details", false),
-                new("--work-cap", true)], RunParse),
+                new("--work-cap", true), new("--trace-rejections", true), new("--trace-max-paths", true)], RunParse),
         new("serve", [],
             [new("--project", true), new("--work-cap", true), new("--word-timeout-ms", true),
                 new("--guess", false)], RunServe),

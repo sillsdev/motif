@@ -281,6 +281,12 @@ public sealed partial record WindowRefusal
         [C.TrialProposalGone] = () => MotifAppStrings.RefusalTrialProposalGone,
         [C.TrialUpdateInProgress] = () => MotifAppStrings.RefusalTrialUpdateInProgress,
 
+        [C.RejectionTraceRequestInvalid] = () => MotifAppStrings.RefusalRejectionTraceRequestInvalid,
+        [C.RejectionTraceUnsupported] = () => MotifAppStrings.RefusalRejectionTraceUnsupported,
+        [C.RejectionTraceCaptureRefused] = () => MotifAppStrings.RefusalRejectionTraceCaptureRefused,
+        [C.RejectionTraceMalformed] = () => MotifAppStrings.RefusalRejectionTraceMalformed,
+        [C.RejectionTraceCaptureLimit] = () => MotifAppStrings.RefusalRejectionTraceCaptureLimit,
+
         [C.WordTraceCancelled] = () => MotifAppStrings.RefusalWordTraceCancelled,
         [C.WordTraceMalformedDiagnostic] = () => MotifAppStrings.RefusalWordTraceMalformedDiagnostic,
         [C.WordTraceMalformedOutput] = () => ParserWrong,

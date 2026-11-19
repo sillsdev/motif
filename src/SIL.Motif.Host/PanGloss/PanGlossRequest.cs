@@ -301,6 +301,69 @@ public abstract record PanGlossRequest
     }
 
     /// <summary>
+    /// <c>pangloss parse &lt;grammar&gt; &lt;word&gt; --trace-rejections &lt;file&gt; --trace-max-paths &lt;n&gt;</c>: one
+    /// word parsed by the same engine that answers an ordinary parse, with PanGloss's bounded rejection witnesses written
+    /// as <c>pangloss.diagnostic.v1</c> JSON lines. Motif never runs a second tracing parser; this is the only source of
+    /// first-rejection evidence. Needs the pinned PanGloss, which advertises <c>interfaces.diagnostic</c>.
+    /// </summary>
+    /// <param name="GrammarPath">The grammar, or saved project, PanGloss parses against.</param>
+    /// <param name="Word">The single spelling to parse, exactly as written.</param>
+    /// <param name="MaxPaths">How many terminal path witnesses PanGloss may keep, 1 through 64.</param>
+    public sealed record RejectionTrace(string GrammarPath, string Word, int MaxPaths) : PanGlossRequest
+    {
+        /// <summary>The largest capture PanGloss may write; it is also the most Motif will read back.</summary>
+        public const int MaxCaptureBytes = 16 * 1024 * 1024;
+
+        /// <summary>The scratch file name PanGloss writes the JSON lines to.</summary>
+        public const string ArtifactName = "rejections.jsonl";
+
+        public override string Subcommand => "parse";
+
+        internal override void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));
+            if (string.IsNullOrEmpty(Word)) throw new ArgumentException("Required.", nameof(Word));
+            if (MaxPaths is < 1 or > 64) throw new ArgumentOutOfRangeException(nameof(MaxPaths), "Must be 1 through 64.");
+            if (!File.Exists(GrammarPath))
+                throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
+        }
+
+        internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
+        {
+            startInfo.ArgumentList.Add("parse");
+            startInfo.ArgumentList.Add(GrammarPath);
+            startInfo.ArgumentList.Add(Word);
+            startInfo.ArgumentList.Add("--trace-rejections");
+            startInfo.ArgumentList.Add(Path.Combine(scratch, ArtifactName));
+            startInfo.ArgumentList.Add("--trace-max-paths");
+            startInfo.ArgumentList.Add(MaxPaths.ToString(CultureInfo.InvariantCulture));
+        }
+
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            var path = Path.Combine(scratch, ArtifactName);
+            try
+            {
+                var info = new FileInfo(path);
+                if (!info.Exists)
+                    return new PanGlossOutcome.Incomplete("PanGloss wrote no rejection trace.", standardError);
+                if (info.Length > MaxCaptureBytes + 4096 + 3072)
+                    return new PanGlossOutcome.Incomplete(
+                        $"The rejection trace is {info.Length} bytes, over Motif's {MaxCaptureBytes}-byte capture limit.",
+                        standardError);
+                return new PanGlossOutcome.Completed(File.ReadAllText(path), standardError, elapsed);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                return new PanGlossOutcome.Incomplete("The rejection trace could not be read: " + exception.Message,
+                    standardError);
+            }
+        }
+    }
+
+    /// <summary>
     /// <c>pangloss grammar-health &lt;grammar&gt; --fw-project &lt;project&gt; --stored-analyses &lt;mode&gt;</c>: a JSON
     /// grammar-health report on standard output. Omitting its optional output path keeps the report available
     /// when PanGloss exits nonzero to signal error-level diagnostics.

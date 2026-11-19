@@ -1708,6 +1708,19 @@
     },
     {
       "kind": "command",
+      "code": "generate",
+      "slug": "generate",
+      "title": "Explain a generation",
+      "description": "Refuses with a typed reason until the pinned PanGloss can trace generation. Use parse --trace to explain a word that does not parse.",
+      "helpPage": "# Explain a generation\n\n\u0060generate \u003Centry-id\u003E --trace\u0060 is reserved for explaining why a generation does not produce a surface. The PanGloss Motif pins traces parsing only, so the command checks its arguments and refuses with \u0060rejection-trace.unsupported\u0060; it never guesses a cause.\n\n\u0060\u0060\u0060powershell\nmotif generate LATZ3P_3QsKF7LmA9uF1Ag --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --trace\n\u0060\u0060\u0060\n\n## Related commands\n\n- [Explain a word\u0027s parse](cmd:parse) shows where each candidate path of a parse stopped.\n",
+      "usage": [
+        "Usage: motif generate \u003Centry-id\u003E --project \u003Cfwdata\u003E --trace [--at \u003Cbaseline|proposal-id\u003E] [--max-paths \u003C1-64\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/generate/"
+    },
+    {
+      "kind": "command",
       "code": "grammar check",
       "slug": "grammar-check",
       "title": "Check a grammar",
@@ -2083,6 +2096,20 @@
       ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/overview/"
+    },
+    {
+      "kind": "command",
+      "code": "parse",
+      "slug": "parse",
+      "title": "Explain a word\u0027s parse",
+      "description": "Shows where PanGloss\u0027s parse of one word stopped, path by path, with each grammar object named by canonical id or marked unknown. Use it to see why a word does not parse.",
+      "helpPage": "# Explain a word\u0027s parse\n\n\u0060parse \u003Cword\u003E --trace\u0060 asks the PanGloss that parses the word where each candidate path stopped. It reads the project\u0027s current Baseline, or a Proposal\u0027s Trial copy with \u0060--at \u003Cproposal-id\u003E\u0060, and changes nothing. Motif runs no tracing parser of its own: every stop is something PanGloss recorded.\n\n\u0060\u0060\u0060powershell\nmotif parse mirusi --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --trace --json\n\u0060\u0060\u0060\n\n## What you get\n\n- **Paths.** Each retained terminal path is \u0060rejected\u0060, \u0060accepted\u0060 or \u0060unresolved\u0060. A rejected path names its earliest recorded stop: the stage, PanGloss\u0027s reason code, a sentence, and the grammar object whose gate stopped it.\n- **Canonical ids.** An object PanGloss bound to authored data carries the canonical id of each authored source, with the relation PanGloss recorded. An object it could not bind, such as a compiled stratum, is marked \u0060unknown\u0060 with the reason; its compiled key stays so it can be told apart.\n- **Unknown stays unknown.** A path with no recorded stop has attribution \u0060unknown\u0060 and says why. An unfinished search never shows a dead end it did not prove.\n- **Outputs.** Every parse output PanGloss returned, with its morphs by canonical id, so a rejected path can be read beside the readings that did parse.\n\n## Bounds\n\n\u0060--max-paths\u0060 (1 to 64, default 16) caps both what PanGloss keeps and what Motif shows. The response says how many terminal paths PanGloss retained, how many Motif omitted, and what PanGloss\u0027s own capture limits dropped. Operands are scalar and capped.\n\n## When it refuses\n\nA request Motif cannot trace, a capture PanGloss refuses, a capture larger than Motif keeps and a trace Motif cannot read each refuse with their own code and a sentence. Revision digests for \u0060--at\u0060 and generation are not available yet.\n\n## Related commands\n\n- [Trace a word](cmd:trace) returns the full diagnostic tree for one word.\n- [Explain a generation](cmd:generate) names what generation tracing still needs.\n",
+      "usage": [
+        "Usage: motif parse \u003Cword\u003E --project \u003Cfwdata\u003E --trace [--at \u003Cbaseline|proposal-id\u003E] [--max-paths \u003C1-64\u003E] [--json]",
+        "Usage: motif Where PanGloss\u0027s parse of the word stopped, path by path: each candidate\u0027s earliest recorded stop, with"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/parse/"
     },
     {
       "kind": "command",

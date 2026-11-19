@@ -540,6 +540,22 @@ public static class CliVerbCatalog
             new[] { "trace --load <file> [--json]" }),
 
         new CliVerbDescriptor(
+            "Trace", "parse", "parse",
+            new[]
+            {
+                "parse <word> --project <fwdata> --trace [--at <baseline|proposal-id>] [--max-paths <1-64>] [--json]",
+                "Where PanGloss's parse of the word stopped, path by path: each candidate's earliest recorded stop, with",
+                "grammar objects named by canonical id, or by an explicit unknown where PanGloss could not bind them.",
+            }),
+        new CliVerbDescriptor(
+            "Trace", "generate", "generate",
+            new[]
+            {
+                "generate <entry-id> --project <fwdata> --trace [--at <baseline|proposal-id>] [--max-paths <1-64>] [--json]",
+                "Refuses with a typed reason until the pinned PanGloss can trace generation.",
+            }),
+
+        new CliVerbDescriptor(
             "Handoff", "handoff", "handoff",
             new[]
             {
