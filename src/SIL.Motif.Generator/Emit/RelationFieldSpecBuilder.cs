@@ -12,6 +12,13 @@ namespace SIL.Motif.Generator.Emit;
 /// </summary>
 public static class RelationFieldSpecBuilder
 {
+    /// <summary>The possibility list FieldWorks's chooser offers for a field, as <c>LexDb</c> owns it.</summary>
+    private static readonly Dictionary<FieldKey, string> PossibilityLists = new()
+    {
+        [new FieldKey("LexSense", "SenseType")] = "c => c.LangProject.LexDbOA.SenseTypesOA",
+        [new FieldKey("LexSense", "Status")] = "c => c.LangProject.StatusOA",
+    };
+
     public static ReferenceAtomicFieldSpec BuildAtomic(JoinedRow row)
     {
         var group = GroupDerivation.Derive(row.DeclaringClass);
@@ -29,7 +36,8 @@ public static class RelationFieldSpecBuilder
             RefInterface: "I" + row.Sig,
             // LibLCM's own accessor-property suffix convention (SIL.LCModel's IMoForm): "RA" for a reference atomic.
             AccessorPropertyName: row.FieldName + "RA",
-            SnapshotFieldConstant: row.DeclaringClass + row.FieldName);
+            SnapshotFieldConstant: row.DeclaringClass + row.FieldName,
+            PossibilityListExpression: PossibilityLists.GetValueOrDefault(row.Key));
     }
 
     public static ReferenceCollectionFieldSpec BuildCollection(JoinedRow row, bool supportsPlacement = false)

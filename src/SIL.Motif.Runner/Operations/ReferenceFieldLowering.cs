@@ -1,5 +1,9 @@
 using System;
+using System.Collections.Generic;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Resolution;
 using SIL.LCModel;
 
@@ -47,6 +51,21 @@ internal static class ReferenceFieldLowering
     }
 
     /// <summary>
+    /// Lowers a <c>set</c> kind for a field FieldWorks fills from one possibility list: an object that is not in
+    /// <paramref name="list"/> is refused by name rather than attached.
+    /// </summary>
+    public static void ApplySetInList<TRef>(LcmCache cache, Action<TRef> setter, CanonicalId refId, string kind,
+        string field, Func<LcmCache, ICmPossibilityList?> list)
+        where TRef : ICmPossibility
+    {
+        var member = Resolve<TRef>(cache, refId, kind);
+        if (member.OwningList.Guid != list(cache)?.Guid)
+            throw new ReferenceFieldRefusal(RefusalCodes.ReferenceWrongList, kind, field,
+                $"Referenced object '{refId.Value}' is not in the list {field} takes.");
+        setter(member);
+    }
+
+    /// <summary>
     /// Lowers a <c>clear</c> kind: detaches the reference by passing <c>null</c> to
     /// <paramref name="setter"/>. Takes the same <c>Action&lt;TRef&gt;</c> shape as
     /// <see cref="ApplySet{TRef}"/> (rather than <c>Action&lt;TRef?&gt;</c>) so one generated field's
@@ -59,3 +78,8 @@ internal static class ReferenceFieldLowering
         setter(default!);
     }
 }
+
+/// <summary>A reference write the field's list does not take, with the field it names.</summary>
+internal sealed class ReferenceFieldRefusal(string code, string kind, string field, string reason)
+    : ProposalRefusalException(code, FailureReason.Refused, $"'{kind}': {reason}",
+        new Dictionary<string, string> { ["kind"] = kind, ["field"] = field });

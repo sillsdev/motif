@@ -55,6 +55,12 @@ public static partial class SnapshotFields
     /// <summary>A <c>LexSense</c>'s <c>MorphoSyntaxAnalysis</c> rel/atomic MoMorphSynAnalysis field.</summary>
     public const string LexSenseMorphoSyntaxAnalysis = "lexical/lexSense/morphoSyntaxAnalysis";
 
+    /// <summary>A <c>LexSense</c>'s <c>SenseType</c> rel/atomic CmPossibility field.</summary>
+    public const string LexSenseSenseType = "lexical/lexSense/senseType";
+
+    /// <summary>A <c>LexSense</c>'s <c>Status</c> rel/atomic CmPossibility field.</summary>
+    public const string LexSenseStatus = "lexical/lexSense/status";
+
     /// <summary>A <c>MoAdhocProhib</c>'s <c>Disabled</c> basic Boolean field.</summary>
     public const string MoAdhocProhibDisabled = "grammar/moAdhocProhib/disabled";
 

@@ -3,7 +3,7 @@
 //   Do NOT hand-edit. Rerun `dotnet run --project src/SIL.Motif.Generator -- emit` after a
 //   manifest or MasterLCModel.xml change, and check in the result.
 //
-//   Source rows (Scope=in, DeclaringClass=LexSense): LexSense.MorphoSyntaxAnalysis (MoMorphSynAnalysis, rel/atomic).
+//   Source rows (Scope=in, DeclaringClass=LexSense): LexSense.MorphoSyntaxAnalysis (MoMorphSynAnalysis, rel/atomic), LexSense.SenseType (CmPossibility, rel/atomic), LexSense.Status (CmPossibility, rel/atomic).
 // </auto-generated>
 using System.Collections.Generic;
 using SIL.Motif.Contract.Ids;
@@ -26,6 +26,8 @@ public static class LexSenseRelationsSnapshotter
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
         AddIfPopulated(fields, SnapshotFields.LexSenseMorphoSyntaxAnalysis, ReferenceFieldSnapshotting.ReadAlternatives(lexSense.MorphoSyntaxAnalysisRA));
+        AddIfPopulated(fields, SnapshotFields.LexSenseSenseType, ReferenceFieldSnapshotting.ReadAlternatives(lexSense.SenseTypeRA));
+        AddIfPopulated(fields, SnapshotFields.LexSenseStatus, ReferenceFieldSnapshotting.ReadAlternatives(lexSense.StatusRA));
 
         return new ObjectSnapshot(canonicalId, fields);
     }
