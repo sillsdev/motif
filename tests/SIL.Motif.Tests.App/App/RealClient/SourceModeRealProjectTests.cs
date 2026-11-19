@@ -10,11 +10,13 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Sources;
 using SIL.TextEditing;
 using SIL.TextEditing.Avalonia;
 using Xunit;
@@ -29,6 +31,21 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public void SourceIndexingCanReadTheProjectWhileTheRunnerHasACaptureFileOpen()
+    {
+        var path = ProjectWithGdrs();
+        var capture = Path.Combine(RootFor(path), "captures", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(capture);
+        using var stagingFile = new FileStream(Path.Combine(capture, Path.GetFileName(path)),
+            FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        using var database = ProjectMotifDatabase.Open(path);
+
+        var indexed = SourceIndexRefresh.Run(database);
+
+        Assert.True(indexed.Status == JobStatus.Completed, indexed.ResultJson);
+    }
+
     [Fact]
     public void ReopeningAndUndoingAPendingTitleRestoresItsPreviousDraftValue()
     {
@@ -341,18 +358,24 @@ public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
 
     private string ProjectWithGdrs(Action<LcmCache>? more = null)
     {
-        using var cache = pristine.NewScratch();
-        SeededGdrs.Seed(cache);
-        more?.Invoke(cache);
-        var path = cache.ProjectId.Path;
-        new FwDataProjectLoader().Save(cache);
-        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
+        string path;
+        using (var cache = pristine.NewScratch())
+        {
+            SeededGdrs.Seed(cache);
+            more?.Invoke(cache);
+            path = cache.ProjectId.Path;
+            new FwDataProjectLoader().Save(cache);
+        }
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path));
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
         return path;
     }
 
     private static string RootFor(string projectPath)
     {
-        var root = Path.Combine(Path.GetDirectoryName(projectPath)!, "source-mode-root");
+        // Keep in-flight runner staging files outside the tree copied for Source indexing.
+        var scratch = Directory.GetParent(Path.GetDirectoryName(projectPath)!)!;
+        var root = Path.Combine(scratch.FullName, "source-mode-root");
         Directory.CreateDirectory(root);
         return root;
     }
