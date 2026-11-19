@@ -24,7 +24,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     private readonly ProjectRecordExporter _exporter;
     private ILexEntry _entry = null!;
     private ILexSense _sense = null!, _second = null!;
-    private ICmSemanticDomain _domain = null!;
+    private ICmPossibility _publication = null!;
 
     public RecordChangeSetLowererTests()
     {
@@ -45,9 +45,13 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             _second = services.GetInstance<ILexSenseFactory>().Create();
             _entry.SensesOS.Add(_second);
             _second.Gloss.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzother", _cache.DefaultAnalWs));
-            _domain = services.GetInstance<ICmSemanticDomainFactory>().Create();
-            _cache.LangProject.SemanticDomainListOA.PossibilitiesOS.Add(_domain);
-            _domain.Name.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzdomain", _cache.DefaultAnalWs));
+            _publication = services.GetInstance<ICmPossibilityFactory>().Create();
+            _cache.LangProject.LexDbOA.PublicationTypesOA.PossibilitiesOS.Add(_publication);
+            _publication.Name.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzpub", _cache.DefaultAnalWs));
+            var held = services.GetInstance<ICmPossibilityFactory>().Create();
+            _cache.LangProject.LexDbOA.PublicationTypesOA.PossibilitiesOS.Add(held);
+            held.Name.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzheld", _cache.DefaultAnalWs));
+            _entry.DoNotPublishInRC.Add(held);
         });
     }
 
@@ -133,10 +137,11 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     [Fact]
     public void AReferenceAddLowersToItsKind()
     {
-        var link = "[zzdomain](/objects/" + _domain.Guid.ToString("D") + "){.name guid=" + _domain.Guid.ToString("D") + "}";
-        var lowering = Lower(PlanEdit(d => ((RecordList)SenseAt(d, 0)["semantic-domains"]!).Add(new RecordScalar(link))));
+        var link = "[zzpub](/objects/" + _publication.Guid.ToString("D") + "){.name guid=" + _publication.Guid.ToString("D") + "}";
+        var refPlan = PlanEdit(d => ((RecordList)d.Data["do-not-publish-in"]!).Add(new RecordScalar(link)));
+        var lowering = Lower(refPlan);
         var operation = Assert.Single(lowering.Operations);
-        Assert.Equal(_domain.Guid.ToString("D"), CanonicalId.Parse(operation.After!.Value.GetProperty("member").GetString()!).ToGuid().ToString("D"));
+        Assert.Equal(_publication.Guid.ToString("D"), CanonicalId.Parse(operation.After!.Value.GetProperty("member").GetString()!).ToGuid().ToString("D"));
         Assert.NotEmpty(DryRun(lowering).ExpectedEffects);
     }
 
