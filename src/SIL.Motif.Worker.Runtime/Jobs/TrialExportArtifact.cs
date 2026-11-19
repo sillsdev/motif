@@ -48,11 +48,14 @@ public static class TrialExportArtifact
         var receipt = new TrialExportReceipt(Version, jobId, path, binding.Bytes, binding.Sha256, reportId, reportDigest,
             binding.Denominators, binding.ProposalRevision, binding.BaselineBundle, binding.PublishMilliseconds,
             binding.PageOffsets.Length, binding.ComparisonComplete, PathIsStoreSuffix: false);
-        if (ProjectionJson.ToUtf8Bytes(receipt).Length > 1950)
-            receipt = receipt with { Path = suffix, PathIsStoreSuffix = true };
+        receipt = WithinBound(receipt, suffix);
 
         return page is { } number ? receipt with { Page = ReadPage(stream, binding, number) } : receipt;
     }
+
+    /// <summary>Keeps the serialized receipt under its bound by swapping an over-long, JSON-escaped path for the store suffix.</summary>
+    internal static TrialExportReceipt WithinBound(TrialExportReceipt receipt, string suffix) =>
+        ProjectionJson.ToUtf8Bytes(receipt).Length > 1950 ? receipt with { Path = suffix, PathIsStoreSuffix = true } : receipt;
 
     private static bool MatchesHeader(Stream stream, ArtifactBinding binding)
     {
