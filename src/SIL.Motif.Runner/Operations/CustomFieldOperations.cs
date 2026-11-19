@@ -4,12 +4,16 @@ using SIL.LCModel;
 using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Model.Snapshot;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Resolution;
 
 namespace SIL.Motif.Runner.Operations;
@@ -21,14 +25,16 @@ namespace SIL.Motif.Runner.Operations;
 /// </summary>
 /// <remarks>
 /// <para>
-/// FieldWorks writes a custom field's value through <c>ISilDataAccess</c> by field id, which is what each handler does:
-/// an integer is <c>SetInt</c> (DetailControls/BasicTypeSlices.cs, <c>IntegerSlice.m_tb_LostFocus</c>); an atomic
-/// reference is <c>SetObjProp</c> (DetailControls/AtomicReferenceLauncher.cs and ReferenceComboBoxSlice.cs); a reference
-/// collection is <c>Replace</c> on the vector (DetailControls/VectorReferenceLauncher.cs, <c>AddNewObjectsToProperty</c>
-/// and <c>RemoveFromPropertyAt</c>); a string is <c>SetString</c> (Common/Framework/FwEditingHelper.cs) and a
-/// multilingual string is <c>SetMultiStringAlt</c> (Common/Controls/Widgets/FwMultilingualPropView.cs). The types
-/// FieldWorks lets a user create are in xWorks/AddCustomFieldDlg.cs, <c>SetFieldType</c>: String, MultiUnicode, an
-/// owned StText, Integer, GenDate, ReferenceAtomic and ReferenceCollection.
+/// FieldWorks writes a custom field's value through <c>ISilDataAccess</c> by field id, which is what each handler does.
+/// Paths are under the FieldWorks <c>Src</c> folder. An integer is <c>SetInt</c> (Common/Controls/DetailControls/BasicTypeSlices.cs:539,
+/// <c>IntegerSlice.m_tb_LostFocus</c>); an atomic reference is <c>SetObjProp</c> (Common/Controls/DetailControls/AtomicReferenceLauncher.cs:140 and
+/// ReferenceComboBoxSlice.cs:196); a reference collection is <c>Replace</c> on the vector, reached through
+/// <c>AddNewObjectsToProperty</c> (Common/Controls/DetailControls/VectorReferenceLauncher.cs:287, the <c>Replace</c> at 293) and
+/// <c>RemoveFromPropertyAt</c> (same file, 315, the <c>Replace</c> at 317); a string is <c>SetString</c>
+/// (Common/Framework/FwEditingHelper.cs:457) and a multilingual string is <c>SetMultiStringAlt</c>
+/// (Common/Controls/Widgets/FwMultilingualPropView.cs:159). The types FieldWorks lets a user create are in
+/// xWorks/AddCustomFieldDlg.cs:395, <c>SetFieldType</c>: String, MultiUnicode, an owned StText, Integer, GenDate,
+/// ReferenceAtomic and ReferenceCollection.
 /// </para>
 /// <para>
 /// Not written here, and refused when a record file asks: Boolean, Guid, Unicode, Binary, Time, Float, reference
@@ -152,15 +158,16 @@ internal sealed class CustomFieldHandler(string kind, string[] allowed, CellarPr
         var instance = CanonicalIdResolver.Resolve(cache, target);
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
         if (!metadata.FieldExists(instance.ClassID, name, true))
-            throw new InvalidOperationException($"'{kind}': {instance.ClassName} has no field '{name}'.");
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldMissing, kind, name,
+                $"{instance.ClassName} has no field '{name}'.");
         var flid = metadata.GetFieldId2(instance.ClassID, name, true);
         if (!metadata.IsCustom(flid))
-            throw new InvalidOperationException(
-                $"'{kind}': '{name}' on {instance.ClassName} is a stock field, which its own kinds write, not a custom field.");
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldNotCustom, kind, name,
+                $"'{name}' on {instance.ClassName} is a stock field, which its own kinds write.");
         var type = (CellarPropertyType)metadata.GetFieldType(flid);
         if (!types.Contains(type))
-            throw new InvalidOperationException(
-                $"'{kind}': custom field '{name}' is {type}, which this kind does not write.");
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldWrongType, kind, name,
+                $"Custom field '{name}' is {type}, which this kind does not write.");
         return (target, new Write(cache, kind, instance, flid, type, after));
     }
 
@@ -199,12 +206,27 @@ internal sealed class CustomFieldHandler(string kind, string[] allowed, CellarPr
         }
     }
 
+    private static string FieldName(Write context) =>
+        ClosedPayloadParsing.GetRequiredString(context.After, "field", context.Kind);
+
     private static int Ws(Write context)
     {
         var tag = ClosedPayloadParsing.GetRequiredString(context.After, "ws", context.Kind);
         var handle = context.Cache.WritingSystemFactory.GetWsFromStr(tag);
-        return handle != 0 ? handle : throw new InvalidOperationException(
-            $"'{context.Kind}' operation: writing system tag '{tag}' is not known to this project.");
+        if (handle == 0)
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldWritingSystem, context.Kind, FieldName(context),
+                $"Writing system '{tag}' is not known to this project.");
+        var selector = ((IFwMetaDataCacheManaged)context.Cache.MetaDataCacheAccessor).GetFieldWs(context.Flid);
+        var allowed = selector switch
+        {
+            0 => null,
+            > 0 => [selector],
+            _ => WritingSystemServices.GetWritingSystemList(context.Cache, selector, false).Select(system => system.Handle).ToList(),
+        };
+        if (allowed is not null && !allowed.Contains(handle))
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldWritingSystem, context.Kind, FieldName(context),
+                $"Writing system '{tag}' is not one the field's selector allows.");
+        return handle;
     }
 
     private static bool Clearing(Write context) => context.Kind.Contains("/clear", StringComparison.Ordinal);
@@ -255,12 +277,17 @@ internal sealed class CustomFieldHandler(string kind, string[] allowed, CellarPr
         var metadata = (IFwMetaDataCacheManaged)context.Cache.MetaDataCacheAccessor;
         var destination = metadata.GetDstClsId(context.Flid);
         if (member.ClassID != destination && !metadata.GetAllSubclasses(destination).Contains(member.ClassID))
-            throw new InvalidOperationException(
-                $"'{context.Kind}' operation: referenced object '{id.Value}' is a {member.ClassName}, not a {metadata.GetClassName(destination)}.");
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldWrongClass, context.Kind, FieldName(context),
+                $"Referenced object '{id.Value}' is a {member.ClassName}, not a {metadata.GetClassName(destination)}.");
         var root = metadata.GetFieldListRoot(context.Flid);
         if (root != Guid.Empty && (member as ICmPossibility)?.OwningList.Guid != root)
-            throw new InvalidOperationException(
-                $"'{context.Kind}' operation: referenced object '{id.Value}' is not in the list this field was created over.");
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldWrongList, context.Kind, FieldName(context),
+                $"Referenced object '{id.Value}' is not in the list this field was created over.");
         return member;
     }
 }
+
+/// <summary>A custom-field operation the project cannot take, with the field it names.</summary>
+internal sealed class CustomFieldRefusal(string code, string kind, string field, string reason)
+    : ProposalRefusalException(code, FailureReason.Refused, $"'{kind}': {reason}",
+        new Dictionary<string, string> { ["kind"] = kind, ["field"] = field });
