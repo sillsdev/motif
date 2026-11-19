@@ -128,6 +128,47 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
     }
 
     [Fact]
+    public void EditingASenseStatusThroughTheImportCommandReportsTheStatusOperation()
+    {
+        Directory.CreateDirectory(_folder);
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        Guid entryId = default;
+        Guid statusId = default;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var entry = services.GetInstance<ILexEntryFactory>().Create();
+            entryId = entry.Guid;
+            var form = services.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = form;
+            form.Form.set_String(cache.DefaultVernWs, "zzword");
+            var sense = services.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(sense);
+            sense.Gloss.set_String(cache.DefaultAnalWs, "zzgloss");
+            var status = services.GetInstance<ICmPossibilityFactory>().Create();
+            (cache.LangProject.StatusOA ??= services.GetInstance<ICmPossibilityListFactory>().Create()).PossibilitiesOS.Add(status);
+            statusId = status.Guid;
+        });
+        new FwDataProjectLoader().Save(cache);
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(cache, schema);
+        var read = RecordFileReader.Read(exporter.Export(entryId).Text!, schema.Schema, exporter.CreateReadOptions());
+        Assert.False(read.HasErrors);
+        var sense0 = (RecordObject)((RecordList)read.Document!.Data["senses"]!).Items[0];
+        sense0.Set("status", new RecordScalar("[zzstatus](/objects/" + statusId.ToString("D") + "){.name guid=" + statusId.ToString("D") + "}"));
+        var file = Path.Combine(_folder, "entry.md");
+        File.WriteAllText(file, RecordFileWriter.Write(read.Document!, schema.Schema));
+        var before = Hashes(path);
+
+        var outcome = RecordImportCommand.Run(new(path, file));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal("lexical/lexSense/setStatus", Assert.Single(outcome.Value!.Operations).Kind);
+        Assert.Equal(before, Hashes(path));
+    }
+
+    [Fact]
     public void DraftStagesExactlyOneDraftAndAppliesNothing()
     {
         var (project, file, entry, _, _) = Fixture(1, EditGloss);
