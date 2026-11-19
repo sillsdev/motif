@@ -232,7 +232,7 @@ public sealed class PanGlossAssessor : IAssessor
                     var origin = lowercaseOrigin.GetValueOrDefault(row.Word);
                     var retry = retried?.RetriedIndices.Contains(row.Index) == true ? retried : null;
                     var warnings = retry is not null ? retriedWarnings :
-                        row.Outcome == WordOutcome.NoAnalysis ? unavailableWarnings : [];
+                        row.Outcome == WordOutcome.Skipped ? [] : unavailableWarnings;
                     if (warnings.Length > 0)
                         item = item with { Unavailable = item.Unavailable.Concat(warnings).ToArray() };
                     if (retry is null)

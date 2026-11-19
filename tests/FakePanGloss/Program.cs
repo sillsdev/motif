@@ -405,6 +405,7 @@ internal static class Program
                 if (statsManifestPath is not null && behaviour.Mode != "noStatsManifest")
                     File.WriteAllText(statsManifestPath, "{}");
                 if (recovered && behaviour.RetryStandardError is { } retryError) Console.Error.Write(retryError);
+                if (!recovered && behaviour.FirstPassStandardError is { } firstPassError) Console.Error.Write(firstPassError);
                 return behaviour.ExitCode;
         }
     }
@@ -1031,6 +1032,7 @@ internal static class Program
         public bool StreamProgress { get; init; }
         public string RetryStatisticsMode { get; init; } = "present";
         public string? RetryStandardError { get; init; }
+        public string? FirstPassStandardError { get; init; }
         public string? HeartbeatPath { get; init; }
         public string? StartedPath { get; init; }
         public string? StartOrderPath { get; init; }

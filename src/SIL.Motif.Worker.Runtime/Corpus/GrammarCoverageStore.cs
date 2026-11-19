@@ -93,9 +93,15 @@ internal sealed class GrammarCoverageStore(string path, ProjectLocator project,
         return rows.Read() ? new(id, rows.GetString(0), rows.GetString(1), generation) : null;
     }
 
-    private string ComparisonVersion(string sourceNormalization)
+    private static readonly Lazy<bool> LoaderInitialised = new(() =>
     {
         FwDataProjectLoader.Init();
+        return true;
+    }, LazyThreadSafetyMode.PublicationOnly);
+
+    private string ComparisonVersion(string sourceNormalization)
+    {
+        _ = LoaderInitialised.Value;
         var icuVersion = readIcuVersion?.Invoke() ?? Icu.Wrapper.IcuVersion;
         return $"{sourceNormalization?.ToLowerInvariant()}-to-nfd/icu-{icuVersion}/ordinal/{RankOrder}";
     }
