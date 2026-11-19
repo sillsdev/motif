@@ -31,9 +31,9 @@ public static class LexPronunciationFormOperationKinds
         OperationKindRegistry.Register(SetForm);
         OperationKindRegistry.Register(ClearForm);
         OperationHandlerRegistry.Register(SetForm, LexPronunciationFormSetHandler.Instance,
-            new FieldWriteCapability("LexPronunciation", "Form", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("LexPronunciation", "Form", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearForm, LexPronunciationFormClearHandler.Instance,
-            new FieldWriteCapability("LexPronunciation", "Form", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("LexPronunciation", "Form", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetForm, SnapshotFields.LexPronunciationForm);
         OperationSlotRegistry.RegisterAlternative(ClearForm, SnapshotFields.LexPronunciationForm);
     }

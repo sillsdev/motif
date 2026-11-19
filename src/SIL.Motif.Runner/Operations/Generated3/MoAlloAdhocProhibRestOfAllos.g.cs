@@ -33,9 +33,9 @@ public static class MoAlloAdhocProhibRestOfAllosOperationKinds
         OperationKindRegistry.Register(RemoveRefRestOfAllos);
         OperationHandlerRegistry.Register(AddRefRestOfAllos, MoAlloAdhocProhibRestOfAllosAddRefHandler.Instance,
             new FieldWriteCapability("MoAlloAdhocProhib", "RestOfAllos", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefRestOfAllos, MoAlloAdhocProhibRestOfAllosRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoAlloAdhocProhib", "RestOfAllos", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoAlloAdhocProhib", "RestOfAllos", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefRestOfAllos, SnapshotFields.MoAlloAdhocProhibRestOfAllos);
         OperationSlotRegistry.RegisterMember(RemoveRefRestOfAllos, SnapshotFields.MoAlloAdhocProhibRestOfAllos);
     }

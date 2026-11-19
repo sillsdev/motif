@@ -31,9 +31,9 @@ public static class LexEntryBibliographyOperationKinds
         OperationKindRegistry.Register(SetBibliography);
         OperationKindRegistry.Register(ClearBibliography);
         OperationHandlerRegistry.Register(SetBibliography, LexEntryBibliographySetHandler.Instance,
-            new FieldWriteCapability("LexEntry", "Bibliography", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("LexEntry", "Bibliography", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearBibliography, LexEntryBibliographyClearHandler.Instance,
-            new FieldWriteCapability("LexEntry", "Bibliography", RecordWriteVerb.ClearRich, Fallback: true));
+            new FieldWriteCapability("LexEntry", "Bibliography", RecordWriteVerb.ClearRich, Fallback: true) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetBibliography, SnapshotFields.LexEntryBibliography);
         OperationSlotRegistry.RegisterAlternative(ClearBibliography, SnapshotFields.LexEntryBibliography);
     }

@@ -26,7 +26,7 @@ public static class MorphoSyntaxAnalysisDeleteOperationKinds
     {
         OperationKindRegistry.Register(Delete);
         OperationHandlerRegistry.Register(Delete, MorphoSyntaxAnalysisDeleteHandler.Instance,
-            new FieldWriteCapability("LexEntry", "MorphoSyntaxAnalyses", RecordWriteVerb.RemoveObject));
+            new FieldWriteCapability("LexEntry", "MorphoSyntaxAnalyses", RecordWriteVerb.RemoveObject) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterEntityDeletion(Delete);
     }
 #pragma warning restore CA2255

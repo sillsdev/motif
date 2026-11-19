@@ -34,7 +34,7 @@ public static class PhonologicalRuleDeleteOperationKinds
         OperationKindRegistry.Register(DeleteRightHandSides);
         OperationHandlerRegistry.Register(DeleteRightHandSides, new PhonologicalRuleOutcomeDeleteHandler(),
             new FieldWriteCapability("PhRegularRule", "RightHandSides", RecordWriteVerb.RemoveObject)
-            { ChildClasses = ["PhSegRuleRHS"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["PhSegRuleRHS"] });
         OperationSlotRegistry.RegisterEntityDeletion(DeleteRightHandSides);
         OperationKindRegistry.Register(PhonologicalRuleConstraintCollectionHandler.Kind);
         OperationHandlerRegistry.Register(PhonologicalRuleConstraintCollectionHandler.Kind, new PhonologicalRuleConstraintCollectionHandler());
@@ -42,7 +42,7 @@ public static class PhonologicalRuleDeleteOperationKinds
             PhonologicalRuleConstraintCollectionHandler.Constraints(operation).Select(id => new OperationSlot(id, null)).ToArray());
         OperationKindRegistry.Register(DeleteContexts);
         OperationHandlerRegistry.Register(DeletePhonRules, new PhonologicalRuleDeleteHandler(DeletePhonRules),
-            new FieldWriteCapability("PhPhonData", "PhonRules", RecordWriteVerb.RemoveObject));
+            new FieldWriteCapability("PhPhonData", "PhonRules", RecordWriteVerb.RemoveObject) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(DeleteContexts, new PhonologicalRuleDeleteHandler(DeleteContexts));
         OperationSlotRegistry.RegisterEntityDeletion(DeletePhonRules);
         OperationSlotRegistry.RegisterEntityDeletion(DeleteContexts);

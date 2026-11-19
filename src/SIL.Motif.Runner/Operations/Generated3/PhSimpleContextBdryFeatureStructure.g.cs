@@ -31,9 +31,9 @@ public static class PhSimpleContextBdryFeatureStructureOperationKinds
         OperationKindRegistry.Register(SetFeatureStructure);
         OperationKindRegistry.Register(ClearFeatureStructure);
         OperationHandlerRegistry.Register(SetFeatureStructure, PhSimpleContextBdryFeatureStructureSetHandler.Instance,
-            new FieldWriteCapability("PhSimpleContextBdry", "FeatureStructure", RecordWriteVerb.Set));
+            new FieldWriteCapability("PhSimpleContextBdry", "FeatureStructure", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearFeatureStructure, PhSimpleContextBdryFeatureStructureClearHandler.Instance,
-            new FieldWriteCapability("PhSimpleContextBdry", "FeatureStructure", RecordWriteVerb.Clear));
+            new FieldWriteCapability("PhSimpleContextBdry", "FeatureStructure", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetFeatureStructure, SnapshotFields.PhSimpleContextBdryFeatureStructure);
         OperationSlotRegistry.RegisterScalar(ClearFeatureStructure, SnapshotFields.PhSimpleContextBdryFeatureStructure);
     }

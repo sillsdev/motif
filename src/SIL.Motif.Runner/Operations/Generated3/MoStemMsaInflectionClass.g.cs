@@ -31,9 +31,9 @@ public static class MoStemMsaInflectionClassOperationKinds
         OperationKindRegistry.Register(SetInflectionClass);
         OperationKindRegistry.Register(ClearInflectionClass);
         OperationHandlerRegistry.Register(SetInflectionClass, MoStemMsaInflectionClassSetHandler.Instance,
-            new FieldWriteCapability("MoStemMsa", "InflectionClass", RecordWriteVerb.Set));
+            new FieldWriteCapability("MoStemMsa", "InflectionClass", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearInflectionClass, MoStemMsaInflectionClassClearHandler.Instance,
-            new FieldWriteCapability("MoStemMsa", "InflectionClass", RecordWriteVerb.Clear));
+            new FieldWriteCapability("MoStemMsa", "InflectionClass", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetInflectionClass, SnapshotFields.MoStemMsaInflectionClass);
         OperationSlotRegistry.RegisterScalar(ClearInflectionClass, SnapshotFields.MoStemMsaInflectionClass);
     }

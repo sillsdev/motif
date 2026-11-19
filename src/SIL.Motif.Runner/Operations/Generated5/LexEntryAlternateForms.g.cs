@@ -21,7 +21,7 @@ public static class LexEntryAlternateFormsOperationKinds
     {
         OperationKindRegistry.Register(MoveAlternateForms);
         OperationHandlerRegistry.Register(MoveAlternateForms, LexEntryAlternateFormsMoveHandler.Instance,
-            new FieldWriteCapability("LexEntry", "AlternateForms", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));
+            new FieldWriteCapability("LexEntry", "AlternateForms", RecordWriteVerb.MoveObject, FieldWritePlacement.Required) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(MoveAlternateForms, SnapshotFields.LexEntryAlternateForms);
     }
 }

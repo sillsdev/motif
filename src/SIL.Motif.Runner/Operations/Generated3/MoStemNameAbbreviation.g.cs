@@ -31,9 +31,9 @@ public static class MoStemNameAbbreviationOperationKinds
         OperationKindRegistry.Register(SetAbbreviation);
         OperationKindRegistry.Register(ClearAbbreviation);
         OperationHandlerRegistry.Register(SetAbbreviation, MoStemNameAbbreviationSetHandler.Instance,
-            new FieldWriteCapability("MoStemName", "Abbreviation", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("MoStemName", "Abbreviation", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearAbbreviation, MoStemNameAbbreviationClearHandler.Instance,
-            new FieldWriteCapability("MoStemName", "Abbreviation", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("MoStemName", "Abbreviation", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.MoStemNameAbbreviation);
         OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.MoStemNameAbbreviation);
     }

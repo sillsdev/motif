@@ -24,7 +24,7 @@ public static class MoMorphDataNoDefaultCompoundingOperationKinds
     {
         OperationKindRegistry.Register(Set);
         OperationHandlerRegistry.Register(Set, MoMorphDataNoDefaultCompoundingHandler.Instance,
-            new FieldWriteCapability("MoMorphData", "NoDefaultCompounding", RecordWriteVerb.Set));
+            new FieldWriteCapability("MoMorphData", "NoDefaultCompounding", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.MoMorphDataNoDefaultCompounding);
     }
 #pragma warning restore CA2255

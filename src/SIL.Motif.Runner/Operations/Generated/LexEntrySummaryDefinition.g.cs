@@ -31,9 +31,9 @@ public static class LexEntrySummaryDefinitionOperationKinds
         OperationKindRegistry.Register(SetSummaryDefinition);
         OperationKindRegistry.Register(ClearSummaryDefinition);
         OperationHandlerRegistry.Register(SetSummaryDefinition, LexEntrySummaryDefinitionSetHandler.Instance,
-            new FieldWriteCapability("LexEntry", "SummaryDefinition", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("LexEntry", "SummaryDefinition", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearSummaryDefinition, LexEntrySummaryDefinitionClearHandler.Instance,
-            new FieldWriteCapability("LexEntry", "SummaryDefinition", RecordWriteVerb.ClearRich, Fallback: true));
+            new FieldWriteCapability("LexEntry", "SummaryDefinition", RecordWriteVerb.ClearRich, Fallback: true) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetSummaryDefinition, SnapshotFields.LexEntrySummaryDefinition);
         OperationSlotRegistry.RegisterAlternative(ClearSummaryDefinition, SnapshotFields.LexEntrySummaryDefinition);
     }

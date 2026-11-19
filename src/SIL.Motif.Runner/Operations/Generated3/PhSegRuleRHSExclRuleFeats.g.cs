@@ -33,9 +33,9 @@ public static class PhSegRuleRHSExclRuleFeatsOperationKinds
         OperationKindRegistry.Register(RemoveRefExclRuleFeats);
         OperationHandlerRegistry.Register(AddRefExclRuleFeats, PhSegRuleRHSExclRuleFeatsAddRefHandler.Instance,
             new FieldWriteCapability("PhSegRuleRHS", "ExclRuleFeats", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefExclRuleFeats, PhSegRuleRHSExclRuleFeatsRemoveRefHandler.Instance,
-            new FieldWriteCapability("PhSegRuleRHS", "ExclRuleFeats", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("PhSegRuleRHS", "ExclRuleFeats", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefExclRuleFeats, SnapshotFields.PhSegRuleRHSExclRuleFeats);
         OperationSlotRegistry.RegisterMember(RemoveRefExclRuleFeats, SnapshotFields.PhSegRuleRHSExclRuleFeats);
     }

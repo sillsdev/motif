@@ -64,9 +64,9 @@ public static class AlternativesFieldEmitter
                 OperationKindRegistry.Register(Set__FIELDNAME__);
                 OperationKindRegistry.Register(Clear__FIELDNAME__);
                 OperationHandlerRegistry.Register(Set__FIELDNAME__, __PREFIX__SetHandler.Instance,
-                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.__SET_RECORD_VERB__));
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.__SET_RECORD_VERB__) { Payload = FieldWritePayload.Generic });
                 OperationHandlerRegistry.Register(Clear__FIELDNAME__, __PREFIX__ClearHandler.Instance,
-                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.__CLEAR_RECORD_VERB____CLEAR_CAPABILITY_OPTIONS__));
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.__CLEAR_RECORD_VERB____CLEAR_CAPABILITY_OPTIONS__) { Payload = FieldWritePayload.Generic });
                 OperationSlotRegistry.RegisterAlternative(Set__FIELDNAME__, __SNAPSHOTFIELD__);
                 OperationSlotRegistry.RegisterAlternative(Clear__FIELDNAME__, __SNAPSHOTFIELD__);
             }

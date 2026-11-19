@@ -31,9 +31,9 @@ public static class LexEntryInflTypeGlossAppendOperationKinds
         OperationKindRegistry.Register(SetGlossAppend);
         OperationKindRegistry.Register(ClearGlossAppend);
         OperationHandlerRegistry.Register(SetGlossAppend, LexEntryInflTypeGlossAppendSetHandler.Instance,
-            new FieldWriteCapability("LexEntryInflType", "GlossAppend", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("LexEntryInflType", "GlossAppend", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearGlossAppend, LexEntryInflTypeGlossAppendClearHandler.Instance,
-            new FieldWriteCapability("LexEntryInflType", "GlossAppend", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("LexEntryInflType", "GlossAppend", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetGlossAppend, SnapshotFields.LexEntryInflTypeGlossAppend);
         OperationSlotRegistry.RegisterAlternative(ClearGlossAppend, SnapshotFields.LexEntryInflTypeGlossAppend);
     }

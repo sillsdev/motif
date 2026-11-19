@@ -31,9 +31,9 @@ public static class MoInflClassAbbreviationOperationKinds
         OperationKindRegistry.Register(SetAbbreviation);
         OperationKindRegistry.Register(ClearAbbreviation);
         OperationHandlerRegistry.Register(SetAbbreviation, MoInflClassAbbreviationSetHandler.Instance,
-            new FieldWriteCapability("MoInflClass", "Abbreviation", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("MoInflClass", "Abbreviation", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearAbbreviation, MoInflClassAbbreviationClearHandler.Instance,
-            new FieldWriteCapability("MoInflClass", "Abbreviation", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("MoInflClass", "Abbreviation", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.MoInflClassAbbreviation);
         OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.MoInflClassAbbreviation);
     }

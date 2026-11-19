@@ -31,9 +31,9 @@ public static class MoInflClassNameOperationKinds
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, MoInflClassNameSetHandler.Instance,
-            new FieldWriteCapability("MoInflClass", "Name", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("MoInflClass", "Name", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearName, MoInflClassNameClearHandler.Instance,
-            new FieldWriteCapability("MoInflClass", "Name", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("MoInflClass", "Name", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.MoInflClassName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.MoInflClassName);
     }

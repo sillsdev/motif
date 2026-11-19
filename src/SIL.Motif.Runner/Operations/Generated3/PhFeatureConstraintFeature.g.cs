@@ -31,9 +31,9 @@ public static class PhFeatureConstraintFeatureOperationKinds
         OperationKindRegistry.Register(SetFeature);
         OperationKindRegistry.Register(ClearFeature);
         OperationHandlerRegistry.Register(SetFeature, PhFeatureConstraintFeatureSetHandler.Instance,
-            new FieldWriteCapability("PhFeatureConstraint", "Feature", RecordWriteVerb.Set));
+            new FieldWriteCapability("PhFeatureConstraint", "Feature", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearFeature, PhFeatureConstraintFeatureClearHandler.Instance,
-            new FieldWriteCapability("PhFeatureConstraint", "Feature", RecordWriteVerb.Clear));
+            new FieldWriteCapability("PhFeatureConstraint", "Feature", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetFeature, SnapshotFields.PhFeatureConstraintFeature);
         OperationSlotRegistry.RegisterScalar(ClearFeature, SnapshotFields.PhFeatureConstraintFeature);
     }

@@ -34,7 +34,7 @@ public static class PartOfSpeechAffixTemplatesOperationKinds
         OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PartOfSpeech", "AffixTemplates"));
         OperationKindRegistry.Register(MoveAffixTemplates);
         OperationHandlerRegistry.Register(MoveAffixTemplates, PartOfSpeechAffixTemplatesMoveHandler.Instance,
-            new FieldWriteCapability("PartOfSpeech", "AffixTemplates", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));
+            new FieldWriteCapability("PartOfSpeech", "AffixTemplates", RecordWriteVerb.MoveObject, FieldWritePlacement.Required) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(MoveAffixTemplates, SnapshotFields.PartOfSpeechAffixTemplates);
     }
 }

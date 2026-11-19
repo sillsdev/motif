@@ -33,9 +33,9 @@ public static class MoStemMsaSlotsOperationKinds
         OperationKindRegistry.Register(RemoveRefSlots);
         OperationHandlerRegistry.Register(AddRefSlots, MoStemMsaSlotsAddRefHandler.Instance,
             new FieldWriteCapability("MoStemMsa", "Slots", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefSlots, MoStemMsaSlotsRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoStemMsa", "Slots", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoStemMsa", "Slots", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefSlots, SnapshotFields.MoStemMsaSlots);
         OperationSlotRegistry.RegisterMember(RemoveRefSlots, SnapshotFields.MoStemMsaSlots);
     }

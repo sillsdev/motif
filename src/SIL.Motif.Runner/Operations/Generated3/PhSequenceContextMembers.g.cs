@@ -35,15 +35,15 @@ public static class PhSequenceContextMembersOperationKinds
         OperationKindRegistry.Register(RemoveRefMembers);
         OperationHandlerRegistry.Register(AddRefMembers, PhSequenceContextMembersAddRefHandler.Instance,
             new FieldWriteCapability("PhSequenceContext", "Members", RecordWriteVerb.AddReference,
-                FieldWritePlacement.RequiredWhenNonempty));
+                FieldWritePlacement.RequiredWhenNonempty) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefMembers, PhSequenceContextMembersRemoveRefHandler.Instance,
-            new FieldWriteCapability("PhSequenceContext", "Members", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("PhSequenceContext", "Members", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefMembers, SnapshotFields.PhSequenceContextMembers);
         OperationSlotRegistry.RegisterMember(RemoveRefMembers, SnapshotFields.PhSequenceContextMembers);
         OperationKindRegistry.Register(MoveMembers);
         OperationHandlerRegistry.Register(MoveMembers, PhSequenceContextMembersMoveHandler.Instance,
             new FieldWriteCapability("PhSequenceContext", "Members", RecordWriteVerb.MoveReference,
-                FieldWritePlacement.Required));
+                FieldWritePlacement.Required) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(MoveMembers, SnapshotFields.PhSequenceContextMembers);
     }
 }

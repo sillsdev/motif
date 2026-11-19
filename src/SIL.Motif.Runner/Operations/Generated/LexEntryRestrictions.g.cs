@@ -31,9 +31,9 @@ public static class LexEntryRestrictionsOperationKinds
         OperationKindRegistry.Register(SetRestrictions);
         OperationKindRegistry.Register(ClearRestrictions);
         OperationHandlerRegistry.Register(SetRestrictions, LexEntryRestrictionsSetHandler.Instance,
-            new FieldWriteCapability("LexEntry", "Restrictions", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("LexEntry", "Restrictions", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearRestrictions, LexEntryRestrictionsClearHandler.Instance,
-            new FieldWriteCapability("LexEntry", "Restrictions", RecordWriteVerb.ClearRich, Fallback: true));
+            new FieldWriteCapability("LexEntry", "Restrictions", RecordWriteVerb.ClearRich, Fallback: true) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetRestrictions, SnapshotFields.LexEntryRestrictions);
         OperationSlotRegistry.RegisterAlternative(ClearRestrictions, SnapshotFields.LexEntryRestrictions);
     }

@@ -23,6 +23,7 @@ internal sealed class OwningCreateHandler<TOwner>(
             sequence && positionMatters ? FieldWritePlacement.RequiredWhenNonempty : FieldWritePlacement.Forbidden,
             OwnerClass: ownerClass)
         {
+            Payload = FieldWritePayload.Generic,
             ChildClasses = concreteClasses.Length == 0 ? [expectedClass] : concreteClasses,
             CreatePayload = concreteClasses.Length == 0 ? OwningCreatePayload.Empty : OwningCreatePayload.ClassProperty,
         };

@@ -31,9 +31,9 @@ public static class PhCodeRepresentationOperationKinds
         OperationKindRegistry.Register(SetRepresentation);
         OperationKindRegistry.Register(ClearRepresentation);
         OperationHandlerRegistry.Register(SetRepresentation, PhCodeRepresentationSetHandler.Instance,
-            new FieldWriteCapability("PhCode", "Representation", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("PhCode", "Representation", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearRepresentation, PhCodeRepresentationClearHandler.Instance,
-            new FieldWriteCapability("PhCode", "Representation", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("PhCode", "Representation", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetRepresentation, SnapshotFields.PhCodeRepresentation);
         OperationSlotRegistry.RegisterAlternative(ClearRepresentation, SnapshotFields.PhCodeRepresentation);
     }

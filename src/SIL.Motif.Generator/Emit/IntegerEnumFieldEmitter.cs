@@ -74,9 +74,9 @@ public static class IntegerEnumFieldEmitter
                 OperationKindRegistry.Register(Set__FIELDNAME__);
                 OperationKindRegistry.Register(Clear__FIELDNAME__);
                 OperationHandlerRegistry.Register(Set__FIELDNAME__, __PREFIX__SetHandler.Instance,
-                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.Set));
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
                 OperationHandlerRegistry.Register(Clear__FIELDNAME__, __PREFIX__ClearHandler.Instance,
-                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.Clear));
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
                 OperationSlotRegistry.RegisterScalar(Set__FIELDNAME__, __SNAPSHOTFIELD__);
                 OperationSlotRegistry.RegisterScalar(Clear__FIELDNAME__, __SNAPSHOTFIELD__);
             }

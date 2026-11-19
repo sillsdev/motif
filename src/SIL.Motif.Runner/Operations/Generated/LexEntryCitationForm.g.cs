@@ -31,9 +31,9 @@ public static class LexEntryCitationFormOperationKinds
         OperationKindRegistry.Register(SetCitationForm);
         OperationKindRegistry.Register(ClearCitationForm);
         OperationHandlerRegistry.Register(SetCitationForm, LexEntryCitationFormSetHandler.Instance,
-            new FieldWriteCapability("LexEntry", "CitationForm", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("LexEntry", "CitationForm", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearCitationForm, LexEntryCitationFormClearHandler.Instance,
-            new FieldWriteCapability("LexEntry", "CitationForm", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("LexEntry", "CitationForm", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetCitationForm, SnapshotFields.LexEntryCitationForm);
         OperationSlotRegistry.RegisterAlternative(ClearCitationForm, SnapshotFields.LexEntryCitationForm);
     }

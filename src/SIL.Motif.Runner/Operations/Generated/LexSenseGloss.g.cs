@@ -34,9 +34,9 @@ public static class LexicalSenseOperationKinds
         OperationKindRegistry.Register(SetGloss);
         OperationKindRegistry.Register(ClearGloss);
         OperationHandlerRegistry.Register(SetGloss, SetGlossOperationHandler.Instance,
-            new FieldWriteCapability("LexSense", "Gloss", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("LexSense", "Gloss", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearGloss, ClearGlossOperationHandler.Instance,
-            new FieldWriteCapability("LexSense", "Gloss", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("LexSense", "Gloss", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetGloss, SnapshotFields.LexSenseGloss);
         OperationSlotRegistry.RegisterAlternative(ClearGloss, SnapshotFields.LexSenseGloss);
     }

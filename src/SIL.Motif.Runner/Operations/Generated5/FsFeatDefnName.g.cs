@@ -31,9 +31,9 @@ public static class FsFeatDefnNameOperationKinds
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, FsFeatDefnNameSetHandler.Instance,
-            new FieldWriteCapability("FsFeatDefn", "Name", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("FsFeatDefn", "Name", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearName, FsFeatDefnNameClearHandler.Instance,
-            new FieldWriteCapability("FsFeatDefn", "Name", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("FsFeatDefn", "Name", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.FsFeatDefnName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.FsFeatDefnName);
     }

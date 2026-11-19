@@ -33,9 +33,9 @@ public static class PhSimpleContextNCPlusConstrOperationKinds
         OperationKindRegistry.Register(RemoveRefPlusConstr);
         OperationHandlerRegistry.Register(AddRefPlusConstr, PhSimpleContextNCPlusConstrAddRefHandler.Instance,
             new FieldWriteCapability("PhSimpleContextNC", "PlusConstr", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefPlusConstr, PhSimpleContextNCPlusConstrRemoveRefHandler.Instance,
-            new FieldWriteCapability("PhSimpleContextNC", "PlusConstr", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("PhSimpleContextNC", "PlusConstr", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefPlusConstr, SnapshotFields.PhSimpleContextNCPlusConstr);
         OperationSlotRegistry.RegisterMember(RemoveRefPlusConstr, SnapshotFields.PhSimpleContextNCPlusConstr);
     }

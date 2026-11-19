@@ -32,10 +32,10 @@ public static class MoStemMsaMsFeaturesOperationKinds
         OperationKindRegistry.Register(DeleteMsFeatures);
         OperationHandlerRegistry.Register(CreateMsFeatures, MoStemMsaMsFeaturesCreateHandler.Instance,
             new FieldWriteCapability("MoStemMsa", "MsFeatures", RecordWriteVerb.AddObject)
-            { ChildClasses = ["FsFeatStruc"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["FsFeatStruc"] });
         OperationHandlerRegistry.Register(DeleteMsFeatures, MoStemMsaMsFeaturesDeleteHandler.Instance,
             new FieldWriteCapability("MoStemMsa", "MsFeatures", RecordWriteVerb.RemoveObject)
-            { ChildClasses = ["FsFeatStruc"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["FsFeatStruc"] });
         OperationSlotRegistry.RegisterOwningCreate(CreateMsFeatures, SnapshotFields.MoStemMsaMsFeatures, true);
         OperationSlotRegistry.RegisterScalar(DeleteMsFeatures, SnapshotFields.MoStemMsaMsFeatures);
     }

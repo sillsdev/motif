@@ -25,7 +25,7 @@ public static class BoundaryMarkerDeleteOperationKinds
         OperationKindRegistry.Register(DeleteBoundaryMarkers);
         OperationHandlerRegistry.Register(DeleteBoundaryMarkers, new BoundaryMarkerDeleteHandler(),
             new FieldWriteCapability("PhPhonemeSet", "BoundaryMarkers", RecordWriteVerb.RemoveObject)
-            { ChildClasses = ["PhBdryMarker"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["PhBdryMarker"] });
         OperationSlotRegistry.RegisterEntityDeletion(DeleteBoundaryMarkers);
     }
 #pragma warning restore CA2255

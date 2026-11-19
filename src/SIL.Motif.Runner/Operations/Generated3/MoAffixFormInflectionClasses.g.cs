@@ -33,9 +33,9 @@ public static class MoAffixFormInflectionClassesOperationKinds
         OperationKindRegistry.Register(RemoveRefInflectionClasses);
         OperationHandlerRegistry.Register(AddRefInflectionClasses, MoAffixFormInflectionClassesAddRefHandler.Instance,
             new FieldWriteCapability("MoAffixForm", "InflectionClasses", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefInflectionClasses, MoAffixFormInflectionClassesRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoAffixForm", "InflectionClasses", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoAffixForm", "InflectionClasses", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefInflectionClasses, SnapshotFields.MoAffixFormInflectionClasses);
         OperationSlotRegistry.RegisterMember(RemoveRefInflectionClasses, SnapshotFields.MoAffixFormInflectionClasses);
     }

@@ -31,9 +31,9 @@ public static class MoFormFormOperationKinds
         OperationKindRegistry.Register(SetForm);
         OperationKindRegistry.Register(ClearForm);
         OperationHandlerRegistry.Register(SetForm, MoFormFormSetHandler.Instance,
-            new FieldWriteCapability("MoForm", "Form", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("MoForm", "Form", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearForm, MoFormFormClearHandler.Instance,
-            new FieldWriteCapability("MoForm", "Form", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("MoForm", "Form", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetForm, SnapshotFields.MoFormForm);
         OperationSlotRegistry.RegisterAlternative(ClearForm, SnapshotFields.MoFormForm);
     }

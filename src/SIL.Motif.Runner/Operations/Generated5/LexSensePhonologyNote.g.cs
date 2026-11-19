@@ -31,9 +31,9 @@ public static class LexSensePhonologyNoteOperationKinds
         OperationKindRegistry.Register(SetPhonologyNote);
         OperationKindRegistry.Register(ClearPhonologyNote);
         OperationHandlerRegistry.Register(SetPhonologyNote, LexSensePhonologyNoteSetHandler.Instance,
-            new FieldWriteCapability("LexSense", "PhonologyNote", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("LexSense", "PhonologyNote", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearPhonologyNote, LexSensePhonologyNoteClearHandler.Instance,
-            new FieldWriteCapability("LexSense", "PhonologyNote", RecordWriteVerb.ClearRich, Fallback: true));
+            new FieldWriteCapability("LexSense", "PhonologyNote", RecordWriteVerb.ClearRich, Fallback: true) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetPhonologyNote, SnapshotFields.LexSensePhonologyNote);
         OperationSlotRegistry.RegisterAlternative(ClearPhonologyNote, SnapshotFields.LexSensePhonologyNote);
     }

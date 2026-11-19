@@ -31,9 +31,9 @@ public static class FsClosedValueValueOperationKinds
         OperationKindRegistry.Register(SetValue);
         OperationKindRegistry.Register(ClearValue);
         OperationHandlerRegistry.Register(SetValue, FsClosedValueValueSetHandler.Instance,
-            new FieldWriteCapability("FsClosedValue", "Value", RecordWriteVerb.Set));
+            new FieldWriteCapability("FsClosedValue", "Value", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearValue, FsClosedValueValueClearHandler.Instance,
-            new FieldWriteCapability("FsClosedValue", "Value", RecordWriteVerb.Clear));
+            new FieldWriteCapability("FsClosedValue", "Value", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetValue, SnapshotFields.FsClosedValueValue);
         OperationSlotRegistry.RegisterScalar(ClearValue, SnapshotFields.FsClosedValueValue);
     }

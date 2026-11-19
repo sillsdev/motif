@@ -31,9 +31,9 @@ public static class FsSymFeatValNameOperationKinds
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, FsSymFeatValNameSetHandler.Instance,
-            new FieldWriteCapability("FsSymFeatVal", "Name", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("FsSymFeatVal", "Name", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearName, FsSymFeatValNameClearHandler.Instance,
-            new FieldWriteCapability("FsSymFeatVal", "Name", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("FsSymFeatVal", "Name", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.FsSymFeatValName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.FsSymFeatValName);
     }

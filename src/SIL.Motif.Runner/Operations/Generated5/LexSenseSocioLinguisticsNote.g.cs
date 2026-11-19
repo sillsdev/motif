@@ -31,9 +31,9 @@ public static class LexSenseSocioLinguisticsNoteOperationKinds
         OperationKindRegistry.Register(SetSocioLinguisticsNote);
         OperationKindRegistry.Register(ClearSocioLinguisticsNote);
         OperationHandlerRegistry.Register(SetSocioLinguisticsNote, LexSenseSocioLinguisticsNoteSetHandler.Instance,
-            new FieldWriteCapability("LexSense", "SocioLinguisticsNote", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("LexSense", "SocioLinguisticsNote", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearSocioLinguisticsNote, LexSenseSocioLinguisticsNoteClearHandler.Instance,
-            new FieldWriteCapability("LexSense", "SocioLinguisticsNote", RecordWriteVerb.ClearRich, Fallback: true));
+            new FieldWriteCapability("LexSense", "SocioLinguisticsNote", RecordWriteVerb.ClearRich, Fallback: true) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetSocioLinguisticsNote, SnapshotFields.LexSenseSocioLinguisticsNote);
         OperationSlotRegistry.RegisterAlternative(ClearSocioLinguisticsNote, SnapshotFields.LexSenseSocioLinguisticsNote);
     }

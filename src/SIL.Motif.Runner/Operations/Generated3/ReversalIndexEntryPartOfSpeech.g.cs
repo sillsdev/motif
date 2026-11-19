@@ -31,9 +31,9 @@ public static class ReversalIndexEntryPartOfSpeechOperationKinds
         OperationKindRegistry.Register(SetPartOfSpeech);
         OperationKindRegistry.Register(ClearPartOfSpeech);
         OperationHandlerRegistry.Register(SetPartOfSpeech, ReversalIndexEntryPartOfSpeechSetHandler.Instance,
-            new FieldWriteCapability("ReversalIndexEntry", "PartOfSpeech", RecordWriteVerb.Set));
+            new FieldWriteCapability("ReversalIndexEntry", "PartOfSpeech", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearPartOfSpeech, ReversalIndexEntryPartOfSpeechClearHandler.Instance,
-            new FieldWriteCapability("ReversalIndexEntry", "PartOfSpeech", RecordWriteVerb.Clear));
+            new FieldWriteCapability("ReversalIndexEntry", "PartOfSpeech", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetPartOfSpeech, SnapshotFields.ReversalIndexEntryPartOfSpeech);
         OperationSlotRegistry.RegisterScalar(ClearPartOfSpeech, SnapshotFields.ReversalIndexEntryPartOfSpeech);
     }

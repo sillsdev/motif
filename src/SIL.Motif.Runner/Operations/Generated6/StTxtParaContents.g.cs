@@ -25,9 +25,9 @@ public static class StTxtParaContentsOperationKinds
         OperationKindRegistry.Register(Set);
         OperationKindRegistry.Register(Clear);
         OperationHandlerRegistry.Register(Set, new StTxtParaContentsHandler(false),
-            new FieldWriteCapability("StTxtPara", "Contents", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("StTxtPara", "Contents", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(Clear, new StTxtParaContentsHandler(true),
-            new FieldWriteCapability("StTxtPara", "Contents", RecordWriteVerb.ClearRich));
+            new FieldWriteCapability("StTxtPara", "Contents", RecordWriteVerb.ClearRich) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.StTxtParaContents);
         OperationSlotRegistry.RegisterScalar(Clear, SnapshotFields.StTxtParaContents);
     }

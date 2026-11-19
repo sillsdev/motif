@@ -648,6 +648,17 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     }
 
     [Fact]
+    public void EveryRegisteredFieldWriteStatesItsPayload()
+    {
+        var unstated = OperationHandlerRegistry.RegisteredKinds
+            .SelectMany(kind => OperationHandlerRegistry.FieldWrites(kind).Select(write => (kind, write)))
+            .Where(item => item.write.Payload == FieldWritePayload.Unspecified)
+            .Select(item => item.kind + " " + item.write.DeclaringClass + "." + item.write.Field + " " + item.write.Verb)
+            .ToArray();
+        Assert.True(unstated.Length == 0, string.Join(Environment.NewLine, unstated));
+    }
+
+    [Fact]
     public void ABooleanScalarSetLowersAndExecutes()
     {
         var lowering = Lower(PlanEdit(d => d.Data["do-not-use-for-parsing"] = RecordScalar.Of(true)));

@@ -31,9 +31,9 @@ public static class PhEnvironmentNameOperationKinds
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, PhEnvironmentNameSetHandler.Instance,
-            new FieldWriteCapability("PhEnvironment", "Name", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("PhEnvironment", "Name", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearName, PhEnvironmentNameClearHandler.Instance,
-            new FieldWriteCapability("PhEnvironment", "Name", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("PhEnvironment", "Name", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.PhEnvironmentName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.PhEnvironmentName);
     }

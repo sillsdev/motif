@@ -23,7 +23,7 @@ public static class VariantRefCreateOperationKinds
         OperationKindRegistry.Register(Create);
         OperationHandlerRegistry.Register(Create, VariantRefCreateHandler.Instance,
             new FieldWriteCapability("LexEntry", "EntryRefs", RecordWriteVerb.AddObject, Shape: FieldWriteShape.VariantReference)
-            { ChildClasses = ["LexEntryRef"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["LexEntryRef"] });
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LexEntryEntryRefs, false);
     }
 #pragma warning restore CA2255

@@ -35,15 +35,15 @@ public static class MoAffixAllomorphPositionOperationKinds
         OperationKindRegistry.Register(RemoveRefPosition);
         OperationHandlerRegistry.Register(AddRefPosition, MoAffixAllomorphPositionAddRefHandler.Instance,
             new FieldWriteCapability("MoAffixAllomorph", "Position", RecordWriteVerb.AddReference,
-                FieldWritePlacement.RequiredWhenNonempty));
+                FieldWritePlacement.RequiredWhenNonempty) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefPosition, MoAffixAllomorphPositionRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoAffixAllomorph", "Position", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoAffixAllomorph", "Position", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefPosition, SnapshotFields.MoAffixAllomorphPosition);
         OperationSlotRegistry.RegisterMember(RemoveRefPosition, SnapshotFields.MoAffixAllomorphPosition);
         OperationKindRegistry.Register(MovePosition);
         OperationHandlerRegistry.Register(MovePosition, MoAffixAllomorphPositionMoveHandler.Instance,
             new FieldWriteCapability("MoAffixAllomorph", "Position", RecordWriteVerb.MoveReference,
-                FieldWritePlacement.Required));
+                FieldWritePlacement.Required) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(MovePosition, SnapshotFields.MoAffixAllomorphPosition);
     }
 }

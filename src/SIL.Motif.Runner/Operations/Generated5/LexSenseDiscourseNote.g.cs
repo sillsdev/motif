@@ -31,9 +31,9 @@ public static class LexSenseDiscourseNoteOperationKinds
         OperationKindRegistry.Register(SetDiscourseNote);
         OperationKindRegistry.Register(ClearDiscourseNote);
         OperationHandlerRegistry.Register(SetDiscourseNote, LexSenseDiscourseNoteSetHandler.Instance,
-            new FieldWriteCapability("LexSense", "DiscourseNote", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("LexSense", "DiscourseNote", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearDiscourseNote, LexSenseDiscourseNoteClearHandler.Instance,
-            new FieldWriteCapability("LexSense", "DiscourseNote", RecordWriteVerb.ClearRich, Fallback: true));
+            new FieldWriteCapability("LexSense", "DiscourseNote", RecordWriteVerb.ClearRich, Fallback: true) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetDiscourseNote, SnapshotFields.LexSenseDiscourseNote);
         OperationSlotRegistry.RegisterAlternative(ClearDiscourseNote, SnapshotFields.LexSenseDiscourseNote);
     }

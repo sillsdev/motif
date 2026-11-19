@@ -33,9 +33,9 @@ public static class MoMorphAdhocProhibRestOfMorphsOperationKinds
         OperationKindRegistry.Register(RemoveRefRestOfMorphs);
         OperationHandlerRegistry.Register(AddRefRestOfMorphs, MoMorphAdhocProhibRestOfMorphsAddRefHandler.Instance,
             new FieldWriteCapability("MoMorphAdhocProhib", "RestOfMorphs", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefRestOfMorphs, MoMorphAdhocProhibRestOfMorphsRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoMorphAdhocProhib", "RestOfMorphs", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoMorphAdhocProhib", "RestOfMorphs", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefRestOfMorphs, SnapshotFields.MoMorphAdhocProhibRestOfMorphs);
         OperationSlotRegistry.RegisterMember(RemoveRefRestOfMorphs, SnapshotFields.MoMorphAdhocProhibRestOfMorphs);
     }

@@ -31,9 +31,9 @@ public static class LexSenseDefinitionOperationKinds
         OperationKindRegistry.Register(SetDefinition);
         OperationKindRegistry.Register(ClearDefinition);
         OperationHandlerRegistry.Register(SetDefinition, LexSenseDefinitionSetHandler.Instance,
-            new FieldWriteCapability("LexSense", "Definition", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("LexSense", "Definition", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearDefinition, LexSenseDefinitionClearHandler.Instance,
-            new FieldWriteCapability("LexSense", "Definition", RecordWriteVerb.ClearRich, Fallback: true));
+            new FieldWriteCapability("LexSense", "Definition", RecordWriteVerb.ClearRich, Fallback: true) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetDefinition, SnapshotFields.LexSenseDefinition);
         OperationSlotRegistry.RegisterAlternative(ClearDefinition, SnapshotFields.LexSenseDefinition);
     }

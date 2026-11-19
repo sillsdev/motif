@@ -33,9 +33,9 @@ public static class ReversalIndexEntrySensesOperationKinds
         OperationKindRegistry.Register(RemoveRefSenses);
         OperationHandlerRegistry.Register(AddRefSenses, ReversalIndexEntrySensesAddRefHandler.Instance,
             new FieldWriteCapability("ReversalIndexEntry", "Senses", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefSenses, ReversalIndexEntrySensesRemoveRefHandler.Instance,
-            new FieldWriteCapability("ReversalIndexEntry", "Senses", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("ReversalIndexEntry", "Senses", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefSenses, SnapshotFields.ReversalIndexEntrySenses);
         OperationSlotRegistry.RegisterMember(RemoveRefSenses, SnapshotFields.ReversalIndexEntrySenses);
     }

@@ -33,9 +33,9 @@ public static class MoStemMsaProdRestrictOperationKinds
         OperationKindRegistry.Register(RemoveRefProdRestrict);
         OperationHandlerRegistry.Register(AddRefProdRestrict, MoStemMsaProdRestrictAddRefHandler.Instance,
             new FieldWriteCapability("MoStemMsa", "ProdRestrict", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefProdRestrict, MoStemMsaProdRestrictRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoStemMsa", "ProdRestrict", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoStemMsa", "ProdRestrict", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefProdRestrict, SnapshotFields.MoStemMsaProdRestrict);
         OperationSlotRegistry.RegisterMember(RemoveRefProdRestrict, SnapshotFields.MoStemMsaProdRestrict);
     }

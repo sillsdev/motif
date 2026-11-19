@@ -40,7 +40,7 @@ public static class PhPhonDataPhonRulesOperationKinds
         OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("PhPhonData", "PhonRules"));
         OperationKindRegistry.Register(MovePhonRules);
         OperationHandlerRegistry.Register(MovePhonRules, PhPhonDataPhonRulesMoveHandler.Instance,
-            new FieldWriteCapability("PhPhonData", "PhonRules", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));
+            new FieldWriteCapability("PhPhonData", "PhonRules", RecordWriteVerb.MoveObject, FieldWritePlacement.Required) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(MovePhonRules, SnapshotFields.PhPhonDataPhonRules);
     }
 }

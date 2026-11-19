@@ -63,7 +63,7 @@ public static class ReferenceCollectionFieldEmitter
                 OperationKindRegistry.Register(Move__FIELDNAME__);
                 OperationHandlerRegistry.Register(Move__FIELDNAME__, __PREFIX__MoveHandler.Instance,
                     new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.MoveReference,
-                        FieldWritePlacement.Required));
+                        FieldWritePlacement.Required) { Payload = FieldWritePayload.Generic });
                 OperationSlotRegistry.RegisterMember(Move__FIELDNAME__, SnapshotFields.__PREFIX__);
         """;
 
@@ -170,9 +170,9 @@ public static class ReferenceCollectionFieldEmitter
                 OperationKindRegistry.Register(RemoveRef__FIELDNAME__);
                 OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance,
                     new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.AddReference,
-                        FieldWritePlacement.__ADD_PLACEMENT__));
+                        FieldWritePlacement.__ADD_PLACEMENT__) { Payload = FieldWritePayload.Generic });
                 OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance,
-                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.RemoveReference));
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
                 OperationSlotRegistry.RegisterMember(AddRef__FIELDNAME__, __SNAPSHOTFIELD__);
                 OperationSlotRegistry.RegisterMember(RemoveRef__FIELDNAME__, __SNAPSHOTFIELD__);
         __MOVE_REGISTRATION__    }

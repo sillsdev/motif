@@ -35,7 +35,7 @@ public static class LexEntryAlternateFormsCreateOperationKinds
         OperationKindRegistry.Register(CreateAlternateForms);
         OperationHandlerRegistry.Register(CreateAlternateForms, LexEntryAlternateFormsCreateHandler.Instance,
             new FieldWriteCapability("LexEntry", "AlternateForms", RecordWriteVerb.AddObject, FieldWritePlacement.RequiredWhenNonempty)
-            { ChildClasses = ["MoStemAllomorph", "MoAffixAllomorph", "MoAffixProcess"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["MoStemAllomorph", "MoAffixAllomorph", "MoAffixProcess"] });
         OperationSlotRegistry.RegisterOwningCreate(CreateAlternateForms, SnapshotFields.LexEntryAlternateForms, false);
     }
 #pragma warning restore CA2255

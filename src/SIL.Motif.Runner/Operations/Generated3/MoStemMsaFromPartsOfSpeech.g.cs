@@ -33,9 +33,9 @@ public static class MoStemMsaFromPartsOfSpeechOperationKinds
         OperationKindRegistry.Register(RemoveRefFromPartsOfSpeech);
         OperationHandlerRegistry.Register(AddRefFromPartsOfSpeech, MoStemMsaFromPartsOfSpeechAddRefHandler.Instance,
             new FieldWriteCapability("MoStemMsa", "FromPartsOfSpeech", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefFromPartsOfSpeech, MoStemMsaFromPartsOfSpeechRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoStemMsa", "FromPartsOfSpeech", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoStemMsa", "FromPartsOfSpeech", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefFromPartsOfSpeech, SnapshotFields.MoStemMsaFromPartsOfSpeech);
         OperationSlotRegistry.RegisterMember(RemoveRefFromPartsOfSpeech, SnapshotFields.MoStemMsaFromPartsOfSpeech);
     }

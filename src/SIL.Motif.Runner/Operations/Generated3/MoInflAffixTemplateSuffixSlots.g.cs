@@ -35,15 +35,15 @@ public static class MoInflAffixTemplateSuffixSlotsOperationKinds
         OperationKindRegistry.Register(RemoveRefSuffixSlots);
         OperationHandlerRegistry.Register(AddRefSuffixSlots, MoInflAffixTemplateSuffixSlotsAddRefHandler.Instance,
             new FieldWriteCapability("MoInflAffixTemplate", "SuffixSlots", RecordWriteVerb.AddReference,
-                FieldWritePlacement.RequiredWhenNonempty));
+                FieldWritePlacement.RequiredWhenNonempty) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefSuffixSlots, MoInflAffixTemplateSuffixSlotsRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoInflAffixTemplate", "SuffixSlots", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoInflAffixTemplate", "SuffixSlots", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefSuffixSlots, SnapshotFields.MoInflAffixTemplateSuffixSlots);
         OperationSlotRegistry.RegisterMember(RemoveRefSuffixSlots, SnapshotFields.MoInflAffixTemplateSuffixSlots);
         OperationKindRegistry.Register(MoveSuffixSlots);
         OperationHandlerRegistry.Register(MoveSuffixSlots, MoInflAffixTemplateSuffixSlotsMoveHandler.Instance,
             new FieldWriteCapability("MoInflAffixTemplate", "SuffixSlots", RecordWriteVerb.MoveReference,
-                FieldWritePlacement.Required));
+                FieldWritePlacement.Required) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(MoveSuffixSlots, SnapshotFields.MoInflAffixTemplateSuffixSlots);
     }
 }

@@ -33,9 +33,9 @@ public static class MoAffixAllomorphPhoneEnvOperationKinds
         OperationKindRegistry.Register(RemoveRefPhoneEnv);
         OperationHandlerRegistry.Register(AddRefPhoneEnv, MoAffixAllomorphPhoneEnvAddRefHandler.Instance,
             new FieldWriteCapability("MoAffixAllomorph", "PhoneEnv", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefPhoneEnv, MoAffixAllomorphPhoneEnvRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoAffixAllomorph", "PhoneEnv", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoAffixAllomorph", "PhoneEnv", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefPhoneEnv, SnapshotFields.MoAffixAllomorphPhoneEnv);
         OperationSlotRegistry.RegisterMember(RemoveRefPhoneEnv, SnapshotFields.MoAffixAllomorphPhoneEnv);
     }

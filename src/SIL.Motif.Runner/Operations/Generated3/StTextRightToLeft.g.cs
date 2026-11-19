@@ -31,9 +31,9 @@ public static class StTextRightToLeftOperationKinds
         OperationKindRegistry.Register(SetRightToLeft);
         OperationKindRegistry.Register(ClearRightToLeft);
         OperationHandlerRegistry.Register(SetRightToLeft, StTextRightToLeftSetHandler.Instance,
-            new FieldWriteCapability("StText", "RightToLeft", RecordWriteVerb.Set));
+            new FieldWriteCapability("StText", "RightToLeft", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearRightToLeft, StTextRightToLeftClearHandler.Instance,
-            new FieldWriteCapability("StText", "RightToLeft", RecordWriteVerb.Clear));
+            new FieldWriteCapability("StText", "RightToLeft", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetRightToLeft, SnapshotFields.StTextRightToLeft);
         OperationSlotRegistry.RegisterScalar(ClearRightToLeft, SnapshotFields.StTextRightToLeft);
     }

@@ -33,10 +33,10 @@ public static class PhonemeDeleteOperationKinds
         OperationKindRegistry.Register(DeleteCodes);
         OperationHandlerRegistry.Register(DeletePhonemes, new PhonemeDeleteHandler(DeletePhonemes),
             new FieldWriteCapability("PhPhonemeSet", "Phonemes", RecordWriteVerb.RemoveObject)
-            { ChildClasses = ["PhPhoneme"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["PhPhoneme"] });
         OperationHandlerRegistry.Register(DeleteCodes, new PhonemeDeleteHandler(DeleteCodes),
             new FieldWriteCapability("PhTerminalUnit", "Codes", RecordWriteVerb.RemoveObject, OwnerClass: "PhPhoneme")
-            { ChildClasses = ["PhCode"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["PhCode"] });
         OperationSlotRegistry.RegisterEntityDeletion(DeletePhonemes);
         OperationSlotRegistry.RegisterEntityDeletion(DeleteCodes);
     }

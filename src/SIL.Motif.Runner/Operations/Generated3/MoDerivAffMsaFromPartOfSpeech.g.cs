@@ -31,9 +31,9 @@ public static class MoDerivAffMsaFromPartOfSpeechOperationKinds
         OperationKindRegistry.Register(SetFromPartOfSpeech);
         OperationKindRegistry.Register(ClearFromPartOfSpeech);
         OperationHandlerRegistry.Register(SetFromPartOfSpeech, MoDerivAffMsaFromPartOfSpeechSetHandler.Instance,
-            new FieldWriteCapability("MoDerivAffMsa", "FromPartOfSpeech", RecordWriteVerb.Set));
+            new FieldWriteCapability("MoDerivAffMsa", "FromPartOfSpeech", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearFromPartOfSpeech, MoDerivAffMsaFromPartOfSpeechClearHandler.Instance,
-            new FieldWriteCapability("MoDerivAffMsa", "FromPartOfSpeech", RecordWriteVerb.Clear));
+            new FieldWriteCapability("MoDerivAffMsa", "FromPartOfSpeech", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetFromPartOfSpeech, SnapshotFields.MoDerivAffMsaFromPartOfSpeech);
         OperationSlotRegistry.RegisterScalar(ClearFromPartOfSpeech, SnapshotFields.MoDerivAffMsaFromPartOfSpeech);
     }
