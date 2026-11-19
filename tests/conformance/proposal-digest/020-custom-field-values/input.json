@@ -1,0 +1,99 @@
+{
+  "contractVersions": {
+    "customField": "1.0"
+  },
+  "operations": [
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAQ",
+      "kind": "customField/setAlternative",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Gloss2",
+        "ws": "en",
+        "text": "zz"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAg",
+      "kind": "customField/clearAlternative",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Gloss2",
+        "ws": "en"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAw",
+      "kind": "customField/setString",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Note",
+        "ws": "en",
+        "text": "zz"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABA",
+      "kind": "customField/clearString",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Note",
+        "ws": "en"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABQ",
+      "kind": "customField/setInteger",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Rank",
+        "value": 7
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABg",
+      "kind": "customField/clearInteger",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Rank"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABw",
+      "kind": "customField/setReference",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Status",
+        "ref": "AAAAAAAAAAAAAAAAAAAAQQ"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAACA",
+      "kind": "customField/clearReference",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Status"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAACQ",
+      "kind": "customField/addReference",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Tags",
+        "member": "AAAAAAAAAAAAAAAAAAAAQg"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAACg",
+      "kind": "customField/removeReference",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "field": "Tags",
+        "member": "AAAAAAAAAAAAAAAAAAAAQg"
+      }
+    }
+  ],
+  "proposalId": "AAAAAAAAAAAAAAAAAAAAUA",
+  "requires": []
+}
