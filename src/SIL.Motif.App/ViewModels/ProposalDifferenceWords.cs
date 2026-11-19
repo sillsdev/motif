@@ -152,7 +152,7 @@ public static class ProposalDifferenceWords
         "source-approved" => MotifAppStrings.DifferenceEvidenceTierSourceApproved,
         "valid-attested" => MotifAppStrings.DifferenceEvidenceTierValidAttested,
         "valid-productive" => MotifAppStrings.DifferenceEvidenceTierValidProductive,
-        "misspelled-typo" => MotifAppStrings.DifferenceEvidenceTierTypo,
+        "misspelled-typo" or "misspelled" => MotifAppStrings.DifferenceEvidenceTierTypo,
         "ill-formed" => MotifAppStrings.DifferenceEvidenceTierIllFormed,
         "nonstandard-variant" => MotifAppStrings.DifferenceEvidenceTierNonstandardVariant,
         "join-split" => MotifAppStrings.DifferenceEvidenceTierJoinSplit,

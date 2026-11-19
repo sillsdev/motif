@@ -232,7 +232,9 @@ public sealed record ComposeAuthorTextRequest(
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="IntentJson">
 /// Closed <c>{decision, analysis}</c> input for approve, disapprove or unknown, or <c>{decision, wordform}</c> for
-/// misspelled, naming the exact canonical identity. <c>{decision:"add-reading", wordform, morphs}</c> stores the
+/// misspelled, naming the exact canonical identity; misspelled may add <c>intendedForm</c> (<c>form</c> and
+/// <c>writingSystem</c>) and a <c>note</c>, and <c>{decision:"clear-misspelled", wordform}</c> returns the spelling to
+/// undecided. <c>{decision:"add-reading", wordform, morphs}</c> stores the
 /// listed morphs, each by exact form, MSA and InflType identities, as a new analysis in the unknown state.
 /// </param>
 public sealed record ComposeEditAnalysisDecisionRequest(

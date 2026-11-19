@@ -109,10 +109,11 @@ A source-validated decision records why a program, not a person, decided as a se
 `{"type":"decisionEvidence","tier":"misspelled-typo","sources":[{"kind":"dictionary","source":"...","locator":"..."}],
 "detail":{"intendedForm":"...","editType":"..."},"stagedBy":"..."}`. The entry is closed: `tier` is one of
 `source-approved`, `valid-attested`, `valid-productive`, `misspelled-typo`, `ill-formed`, `nonstandard-variant`,
-`join-split`, `name-foreign-number` or `undecided`; `sources` holds at most 12 entries, each a `kind`
+`join-split`, `name-foreign-number`, `undecided` or `misspelled`; `sources` holds at most 12 entries, each a `kind`
 (`dictionary`, `grammar`, `corpus` or `example`), a `source` of 1 to 300 characters and an optional `locator`
-of at most 120; `detail` accepts only `intendedForm`, `editType`, `violatedRule`, `standardForm` and a whole-number
-`corpusCount`. A tier names the detail it requires: `misspelled-typo` needs `intendedForm` and `editType`,
+of at most 120; `detail` accepts only `intendedForm`, `intendedFormWritingSystem`, `editType`, `violatedRule`, `standardForm`, a
+whole-number `corpusCount` and a `note`. A tier names the detail it requires: `misspelled-typo` needs `intendedForm` and `editType`, `misspelled` (a word-level
+misspelling recorded with `setSpellingStatus`) needs `intendedForm` and `intendedFormWritingSystem`,
 `ill-formed` needs `violatedRule`, `nonstandard-variant` needs `standardForm`, and `source-approved` needs a
 dictionary, a grammar and a corpus source. An operation carries at most one, and a malformed or repeated entry makes
 the Proposal unparseable. It is outside the intent digest and outside the FieldWorks project; `motif evidence show`,

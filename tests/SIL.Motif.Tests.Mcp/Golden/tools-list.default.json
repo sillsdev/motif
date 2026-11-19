@@ -4617,6 +4617,7 @@
                           "disapprove",
                           "unknown",
                           "misspelled",
+                          "clear-misspelled",
                           "add-reading"
                         ]
                       },
@@ -4626,7 +4627,29 @@
                       },
                       "wordform": {
                         "type": "string",
-                        "description": "Id of a wordform; required for misspelled and add-reading."
+                        "description": "Id of a wordform; required for misspelled, clear-misspelled and add-reading."
+                      },
+                      "intendedForm": {
+                        "type": "object",
+                        "properties": {
+                          "form": {
+                            "type": "string",
+                            "description": "The intended spelling."
+                          },
+                          "writingSystem": {
+                            "type": "string",
+                            "description": "BCP 47 tag of the writing system the form is in."
+                          }
+                        },
+                        "required": [
+                          "form",
+                          "writingSystem"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "note": {
+                        "type": "string",
+                        "description": "Evidence note for misspelled and clear-misspelled."
                       },
                       "morphs": {
                         "type": "array",

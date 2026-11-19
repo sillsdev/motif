@@ -34,7 +34,7 @@ public sealed record DecisionEvidence
     public static readonly IReadOnlyList<string> Tiers =
     [
         "source-approved", "valid-attested", "valid-productive", "misspelled-typo", "ill-formed",
-        "nonstandard-variant", "join-split", "name-foreign-number", "undecided",
+        "nonstandard-variant", "join-split", "name-foreign-number", "undecided", "misspelled",
     ];
 
     /// <summary>The kinds a <see cref="DecisionEvidenceSource"/> can have.</summary>
@@ -50,7 +50,7 @@ public sealed record DecisionEvidence
     public const int MaxTextLength = 120;
 
     private static readonly string[] DetailNames =
-        ["intendedForm", "editType", "violatedRule", "standardForm", "corpusCount"];
+        ["intendedForm", "intendedFormWritingSystem", "editType", "violatedRule", "standardForm", "corpusCount", "note"];
 
     private DecisionEvidence(string tier, IReadOnlyList<DecisionEvidenceSource> sources,
         IReadOnlyDictionary<string, string> detail, string? stagedBy)
@@ -68,8 +68,8 @@ public sealed record DecisionEvidence
     public IReadOnlyList<DecisionEvidenceSource> Sources { get; }
 
     /// <summary>
-    /// The tier's facts by name: <c>intendedForm</c>, <c>editType</c>, <c>violatedRule</c>, <c>standardForm</c> and
-    /// <c>corpusCount</c> (a whole number, kept as its text).
+    /// The tier's facts by name: <c>intendedForm</c> with <c>intendedFormWritingSystem</c>, <c>editType</c>,
+    /// <c>violatedRule</c>, <c>standardForm</c>, <c>corpusCount</c> (a whole number, kept as its text) and a free <c>note</c>.
     /// </summary>
     public IReadOnlyDictionary<string, string> Detail { get; }
 
@@ -171,6 +171,10 @@ public sealed record DecisionEvidence
             case "misspelled-typo":
                 Need("intendedForm");
                 Need("editType");
+                break;
+            case "misspelled":
+                Need("intendedForm");
+                Need("intendedFormWritingSystem");
                 break;
             case "ill-formed":
                 Need("violatedRule");

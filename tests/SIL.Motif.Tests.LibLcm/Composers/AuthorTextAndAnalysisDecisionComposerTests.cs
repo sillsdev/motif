@@ -250,6 +250,53 @@ public sealed class AuthorTextAndAnalysisDecisionComposerTests : IDisposable
         return created;
     }
 
+    [Fact]
+    public void Decision_MisspelledCarriesTheIntendedFormAndNoteAsEvidenceAndSetsTheStatus()
+    {
+        var wordform = _cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(_sita.ToGuid());
+        var operations = Decide($$"""
+            {"decision":"misspelled","wordform":"{{_sita.Value}}","intendedForm":{"form":"sitaa","writingSystem":"{{_ws}}"},"note":"corpus reads sitaa"}
+            """);
+
+        var operation = Assert.Single(operations);
+        Assert.Equal(WfiWordformSpellingStatusOperationKinds.SetSpellingStatus, operation.Kind);
+        var evidence = DecisionEvidence.FromProvenance(operation.Provenance)!;
+        Assert.Equal("misspelled", evidence.Tier);
+        Assert.Equal("sitaa", evidence.Detail["intendedForm"]);
+        Assert.Equal(_ws, evidence.Detail["intendedFormWritingSystem"]);
+        Assert.Equal("corpus reads sitaa", evidence.Detail["note"]);
+        Apply(operations);
+        Assert.Equal(2, wordform.SpellingStatus);
+    }
+
+    [Fact]
+    public void Decision_ClearMisspelledReturnsTheStatusToUndecidedAndRefusesAnUnmarkedWord()
+    {
+        var wordform = _cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(_sita.ToGuid());
+        Assert.Contains("not marked misspelled", Assert.Throws<InvalidOperationException>(() =>
+            Decide($$"""{"decision":"clear-misspelled","wordform":"{{_sita.Value}}"}""")).Message, StringComparison.Ordinal);
+
+        Apply(Decide($$"""{"decision":"misspelled","wordform":"{{_sita.Value}}"}"""));
+        var cleared = Decide($$"""{"decision":"clear-misspelled","wordform":"{{_sita.Value}}","note":"attested"}""");
+
+        var operation = Assert.Single(cleared);
+        Assert.Equal(WfiWordformSpellingStatusOperationKinds.ClearSpellingStatus, operation.Kind);
+        Assert.Equal("undecided", DecisionEvidence.FromProvenance(operation.Provenance)!.Tier);
+        Apply(cleared);
+        Assert.Equal(0, wordform.SpellingStatus);
+    }
+
+    [Theory]
+    [InlineData("""{"form":"sitaa","writingSystem":"zz-notaws"}""", "not a writing system")]
+    [InlineData("""{"form":"  ","writingSystem":"WS"}""", "must not be blank")]
+    [InlineData("""{"form":"sita","writingSystem":"WS"}""", "wordform's own spelling")]
+    public void Decision_RefusesAnInvalidIntendedForm(string intended, string message)
+    {
+        var json = $$"""{"decision":"misspelled","wordform":"{{_sita.Value}}","intendedForm":{{intended.Replace("WS", _ws)}}}""";
+        Assert.Contains(message, Assert.Throws<InvalidOperationException>(() => Decide(json)).Message,
+            StringComparison.Ordinal);
+    }
+
     private static AuthorTextIntent Parse(string json) => AuthorTextIntentParser.Parse(Json(json));
 
     internal static JsonElement Json(string json)
@@ -346,5 +393,15 @@ public sealed class AuthorTextAndAnalysisDecisionParserTests
     [InlineData("""{"decision":"approve","analysis":"AAAAAAAAAAAAAAAAAAAAAA","extra":true}""")]
     [InlineData("""{"decision":"approve","analysis":"not-an-id"}""")]
     public void Decision_RefusesAnythingOutsideTheClosedShape(string json) =>
+        Assert.ThrowsAny<Exception>(() => EditAnalysisDecisionIntentParser.Parse(Json(json)));
+
+    [Theory]
+    [InlineData("""{"decision":"misspelled","wordform":"AAAAAAAAAAAAAAAAAAAAAA","intendedForm":{"form":"x"}}""")]
+    [InlineData("""{"decision":"misspelled","wordform":"AAAAAAAAAAAAAAAAAAAAAA","intendedForm":{"form":"x","writingSystem":"fr","extra":1}}""")]
+    [InlineData("""{"decision":"approve","analysis":"AAAAAAAAAAAAAAAAAAAAAA","intendedForm":{"form":"x","writingSystem":"fr"}}""")]
+    [InlineData("""{"decision":"clear-misspelled","wordform":"AAAAAAAAAAAAAAAAAAAAAA","intendedForm":{"form":"x","writingSystem":"fr"}}""")]
+    [InlineData("""{"decision":"clear-misspelled","analysis":"AAAAAAAAAAAAAAAAAAAAAA"}""")]
+    [InlineData("""{"decision":"unknown","analysis":"AAAAAAAAAAAAAAAAAAAAAA","note":"x"}""")]
+    public void Decision_RefusesAMisplacedIntendedFormOrNote(string json) =>
         Assert.ThrowsAny<Exception>(() => EditAnalysisDecisionIntentParser.Parse(Json(json)));
 }

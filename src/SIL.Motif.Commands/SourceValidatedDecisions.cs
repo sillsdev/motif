@@ -19,7 +19,7 @@ internal sealed class SourceValidatedDecisions
 {
     private static readonly HashSet<string> IncorrectTiers = new(StringComparer.Ordinal)
     {
-        "misspelled-typo", "ill-formed",
+        "misspelled-typo", "ill-formed", "misspelled",
     };
 
     private const int MostCachedProjects = 4;
@@ -236,6 +236,14 @@ internal sealed class SourceValidatedDecisions
                     if (IncorrectTiers.Contains(evidence.Tier)) incorrect.Add(target.ToGuid());
                     else incorrect.Remove(target.ToGuid());
                 }
+                else if (operation.Kind == WfiWordformSpellingStatusOperationKinds.SetSpellingStatus &&
+                    operation.After is { } statusAfter)
+                {
+                    if (WfiWordformSpellingStatusSetPayload.Parse(statusAfter) == 2) incorrect.Add(target.ToGuid());
+                    else incorrect.Remove(target.ToGuid());
+                }
+                else if (operation.Kind == WfiWordformSpellingStatusOperationKinds.ClearSpellingStatus)
+                    incorrect.Remove(target.ToGuid());
                 else continue;
                 if (!evidenceBySubject.TryGetValue(target.Value, out var list))
                     evidenceBySubject[target.Value] = list = [];

@@ -830,7 +830,8 @@ public static partial class ProposalCommands
                 .Concat(WithoutImplied(creators.Concat(editors).ToArray(), editors, staged.Operations, staged.Positions))
                 .Distinct().Select(id => new OperationDependency(id)).ToArray();
             return new OperationEnvelope(operation.OperationId, operation.Kind, operation.EntityId,
-                operation.Target, operation.After, operation.Placement, dependencies, rationale: operation.Rationale, extensions: operation.Extensions);
+                operation.Target, operation.After, operation.Placement, dependencies, rationale: operation.Rationale, provenance: operation.Provenance,
+                extensions: operation.Extensions);
         }).ToArray();
     }
 

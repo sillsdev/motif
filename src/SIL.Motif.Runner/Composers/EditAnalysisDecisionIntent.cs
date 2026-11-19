@@ -15,6 +15,8 @@ public static class AnalysisDecisions
     public const string Unknown = "unknown";
     /// <summary>Mark one wordform's spelling as incorrect.</summary>
     public const string Misspelled = "misspelled";
+    /// <summary>Return one wordform's spelling to undecided, retracting a misspelled mark.</summary>
+    public const string ClearMisspelled = "clear-misspelled";
     /// <summary>Store one parser reading under a wordform as a new analysis in the unknown state.</summary>
     public const string AddReading = "add-reading";
 }
@@ -26,17 +28,25 @@ public static class AnalysisDecisions
 /// <param name="GuessedString">The surface text of a guessed morph that has no allomorph.</param>
 public sealed record ReadingMorph(CanonicalId? Form, CanonicalId? Msa, CanonicalId? InflType, string? GuessedString);
 
+/// <summary>The form a misspelled wordform was meant to be, in one writing system.</summary>
+/// <param name="Form">The intended spelling, exactly as it should be written.</param>
+/// <param name="WritingSystem">The BCP 47 tag of the writing system the form is in.</param>
+public sealed record IntendedForm(string Form, string WritingSystem);
+
 /// <summary>One human decision about an existing analysis or wordform.</summary>
 /// <param name="Decision">One of the <see cref="AnalysisDecisions"/> values.</param>
 /// <param name="Analysis">The stored analysis, for approve, disapprove and unknown.</param>
 /// <param name="Wordform">The wordform, for misspelled and add-reading.</param>
 /// <param name="Morphs">The ordered morphs of the reading, for add-reading.</param>
+/// <param name="IntendedForm">The intended spelling, for misspelled.</param>
+/// <param name="Note">The evidence note for misspelled and clear-misspelled.</param>
 public sealed record EditAnalysisDecisionIntent(string Decision, CanonicalId? Analysis, CanonicalId? Wordform,
-    IReadOnlyList<ReadingMorph>? Morphs = null);
+    IReadOnlyList<ReadingMorph>? Morphs = null, IntendedForm? IntendedForm = null, string? Note = null);
 
 /// <summary>
 /// Parses <c>{ "decision": "approve|disapprove|unknown", "analysis": id }</c> or
-/// <c>{ "decision": "misspelled", "wordform": id }</c>, or <c>{ "decision": "add-reading", "wordform": id,
+/// <c>{ "decision": "misspelled", "wordform": id, "intendedForm": { "form": "...", "writingSystem": "ceb" }, "note": "..." }</c>,
+/// <c>{ "decision": "clear-misspelled", "wordform": id, "note": "..." }</c>, or <c>{ "decision": "add-reading", "wordform": id,
 /// "morphs": [ { "form": id, "msa": id, "inflType": id, "guessedString": "..." } ] }</c>. Closed to any other or repeated property.
 /// </summary>
 public static class EditAnalysisDecisionIntentParser
@@ -46,13 +56,19 @@ public static class EditAnalysisDecisionIntentParser
     /// <summary>Reads the decision and exactly the one identity it needs.</summary>
     public static EditAnalysisDecisionIntent Parse(JsonElement authored)
     {
-        SoundSystemIntentParsing.Object(authored, ConstructName, "decision", "analysis", "wordform", "morphs");
+        SoundSystemIntentParsing.Object(authored, ConstructName, "decision", "analysis", "wordform", "morphs", "intendedForm", "note");
         var decision = SoundSystemIntentParsing.Text(authored, "decision");
         var hasAnalysis = authored.TryGetProperty("analysis", out _);
         var hasWordform = authored.TryGetProperty("wordform", out _);
         var hasMorphs = authored.TryGetProperty("morphs", out _);
         if (hasMorphs != (decision == AnalysisDecisions.AddReading))
             throw new ContractParseException($"'{ConstructName}': only 'add-reading' takes 'morphs', and it requires them.");
+        var hasIntended = authored.TryGetProperty("intendedForm", out _);
+        var hasNote = authored.TryGetProperty("note", out _);
+        if (hasIntended && decision != AnalysisDecisions.Misspelled)
+            throw new ContractParseException($"'{ConstructName}': only 'misspelled' takes 'intendedForm'.");
+        if (hasNote && decision is not (AnalysisDecisions.Misspelled or AnalysisDecisions.ClearMisspelled))
+            throw new ContractParseException($"'{ConstructName}': only 'misspelled' and 'clear-misspelled' take 'note'.");
         switch (decision)
         {
             case AnalysisDecisions.Approve or AnalysisDecisions.Disapprove or AnalysisDecisions.Unknown:
@@ -62,15 +78,29 @@ public static class EditAnalysisDecisionIntentParser
             case AnalysisDecisions.Misspelled:
                 if (!hasWordform || hasAnalysis)
                     throw new ContractParseException($"'{ConstructName}': 'misspelled' takes 'wordform' and no 'analysis'.");
-                return new(decision, null, SoundSystemIntentParsing.Id(authored, "wordform"));
+                return new(decision, null, SoundSystemIntentParsing.Id(authored, "wordform"),
+                    IntendedForm: hasIntended ? Intended(authored.GetProperty("intendedForm")) : null,
+                    Note: hasNote ? SoundSystemIntentParsing.Text(authored, "note") : null);
+            case AnalysisDecisions.ClearMisspelled:
+                if (!hasWordform || hasAnalysis)
+                    throw new ContractParseException($"'{ConstructName}': 'clear-misspelled' takes 'wordform' and no 'analysis'.");
+                return new(decision, null, SoundSystemIntentParsing.Id(authored, "wordform"),
+                    Note: hasNote ? SoundSystemIntentParsing.Text(authored, "note") : null);
             case AnalysisDecisions.AddReading:
                 if (!hasWordform || hasAnalysis)
                     throw new ContractParseException($"'{ConstructName}': 'add-reading' takes 'wordform' and no 'analysis'.");
                 return new(decision, null, SoundSystemIntentParsing.Id(authored, "wordform"), Morphs(authored));
             default:
                 throw new ContractParseException(
-                    $"'{ConstructName}': 'decision' must be approve, disapprove, unknown, misspelled or add-reading.");
+                    $"'{ConstructName}': 'decision' must be approve, disapprove, unknown, misspelled, clear-misspelled or add-reading.");
         }
+    }
+
+    private static IntendedForm Intended(JsonElement element)
+    {
+        SoundSystemIntentParsing.Object(element, ConstructName + " intendedForm", "form", "writingSystem");
+        return new IntendedForm(SoundSystemIntentParsing.Text(element, "form"),
+            SoundSystemIntentParsing.Text(element, "writingSystem"));
     }
 
     private static ReadingMorph[] Morphs(JsonElement authored)

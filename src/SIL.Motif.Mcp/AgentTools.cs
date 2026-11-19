@@ -756,9 +756,13 @@ internal static class AgentTools
             AgentClass.Draft,
             Schema.Object(
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
-                ("decision", Schema.String("The decision to record.", "approve", "disapprove", "unknown", "misspelled", "add-reading"), true),
+                ("decision", Schema.String("The decision to record.", "approve", "disapprove", "unknown", "misspelled", "clear-misspelled", "add-reading"), true),
                 ("analysis", Schema.String("Id of a stored analysis; required for approve, disapprove and unknown."), false),
-                ("wordform", Schema.String("Id of a wordform; required for misspelled and add-reading."), false),
+                ("wordform", Schema.String("Id of a wordform; required for misspelled, clear-misspelled and add-reading."), false),
+                ("intendedForm", Schema.Object(
+                    ("form", Schema.String("The intended spelling."), true),
+                    ("writingSystem", Schema.String("BCP 47 tag of the writing system the form is in."), true)), false),
+                ("note", Schema.String("Evidence note for misspelled and clear-misspelled."), false),
                 ("morphs", Schema.Array("Ordered morphs of the parser reading to store as unknown; required for add-reading.",
                     Schema.Object(
                         ("form", Schema.String("Id of the allomorph."), false),
@@ -770,7 +774,7 @@ internal static class AgentTools
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeEditAnalysisDecision(new(
-                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("decision", "analysis", "wordform", "morphs"))),
+                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("decision", "analysis", "wordform", "morphs", "intendedForm", "note"))),
                 r => $"Draft now has {r.OperationCount} changes. Run motif_dry_run, revise, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeEditAnalysisDecisionRequest)] },
         new("motif_record_parsimony_disposition",
             ComposerTools.Describe("compose-record-parsimony-disposition"),
