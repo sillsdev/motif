@@ -101,6 +101,7 @@ public static class CommandTextRenderer
             ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
             FindComposerResponse r => RenderFindComposer(r),
+            ProposalComparison r => RenderProposalComparison(r),
             TrialExportReceipt r => RenderTrialExport(r),
             TrialRecord r => RenderTrial(r),
             TrialReviewResult r => TrialReviewTextRenderer.Render(r),
@@ -694,6 +695,24 @@ public static class CommandTextRenderer
             text.AppendLine($"  Skipped Text {occurrence.TextId}, paragraph {occurrence.ParagraphId}, " +
                 $"segment {occurrence.SegmentId}, position {occurrence.Index}.");
         AppendTextListOverflow(text, response.SkippedOccurrences.Count, TextListLimit);
+        return text.ToString();
+    }
+
+    private static string RenderProposalComparison(ProposalComparison comparison)
+    {
+        var text = new StringBuilder();
+        text.Append("Comparison of each Proposal's Trial before and after. It is not measured against approved analyses.\n");
+        text.Append($"Forms compared: {comparison.FormsCompared:N0}  Diverging: {comparison.FormsDiverging:N0}  Rows: {comparison.RowsTotal:N0} ({comparison.Pages:N0} pages)\n");
+        for (var index = 0; index < comparison.Columns.Count; index++)
+        {
+            var column = comparison.Columns[index];
+            text.Append($"{index + 1}. {column.ProposalId}: {column.Gained:N0} gained, {column.Lost:N0} lost, " +
+                $"{column.Unchanged:N0} unchanged, {column.NotMeasured:N0} not measured, {column.Incomplete:N0} incomplete\n");
+        }
+        text.Append(comparison.Complete ? "Comparison complete" :
+            "Comparison incomplete: " + string.Join(", ", comparison.Limitations.Select(item => item.Code + " " + item.Count)));
+        if (comparison.Page is { } page)
+            foreach (var row in page.Rows) text.Append('\n').Append(ProjectionJson.Serialize(row));
         return text.ToString();
     }
 

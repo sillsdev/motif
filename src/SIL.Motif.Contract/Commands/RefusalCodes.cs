@@ -412,6 +412,14 @@ public static class RefusalCodes
     public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";
     /// <summary>The exact Trial has no readable retained evidence export.</summary>
     public const string TrialExportUnavailable = "trial.export-unavailable";
+    /// <summary>A comparison needs two to eight distinct Proposals.</summary>
+    public const string ProposalCompareProposalsInvalid = "proposal.compare-proposals-invalid";
+    /// <summary>A Proposal has no completed Trial with a retained evidence export to compare.</summary>
+    public const string ProposalCompareTrialMissing = "proposal.compare-trial-missing";
+    /// <summary>The Trials were measured on different Baselines, so their gains and losses are not comparable.</summary>
+    public const string ProposalCompareBaselineMismatch = "proposal.compare-baseline-mismatch";
+    /// <summary>A Trial was not measured on the Baseline the comparison was asked to use.</summary>
+    public const string ProposalCompareAtMismatch = "proposal.compare-at-mismatch";
     /// <summary>The Trial's frozen review inputs could not be captured or read.</summary>
     public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
     /// <summary>The exact inputs needed for a report-bound diagnostic trace are unavailable.</summary>

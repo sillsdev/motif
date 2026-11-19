@@ -469,6 +469,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Project", "overview", "overview",
             new[] { "overview --project <fwdata> [--proposal <id>] [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal compare", "proposal compare",
+            new[] { "proposal compare <proposalId> <proposalId> [<proposalId>...] --project <fwdata> [--at <digest>] [--page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial export", "proposal trial export",
             new[] { "proposal trial export <jobId> --project <fwdata> [--at <digest>] [--page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",

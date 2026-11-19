@@ -10839,6 +10839,45 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_proposal_compare",
+    "description": "Compare Proposals. Compares two to eight Proposals side by side from each one\u0027s Trial before and after, not against approved analyses. It reads retained Trial evidence and measures nothing.\nCommand: proposal compare. Agent class: Read.\nProposalIds: Two to eight distinct Proposal IDs. Each uses its newest completed Trial.\nAt: The Baseline digest every Trial must have been measured on. Omit to use the one they share.\nPage: The one-based page of form rows to read. Omit for the compact summary.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposalIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Value for the request field."
+          },
+          "description": "Declared items.",
+          "minItems": 2,
+          "maxItems": 8
+        },
+        "at": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "proposalIds",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_proposal_trial_export",
     "description": "Read a Trial export. Finds the retained evidence file for an exact Trial job. The file contains the observed forms and Readings on both sides, the completion counts and the provenance used to measure the Trial.\nCommand: proposal trial export. Agent class: Read.\nJobId: The exact Trial job ID.\nAt: The frozen Proposal revision, Baseline digest or saved report digest the export must match.\nPage: The one-based page of words to read. Omit for the compact receipt.",
     "inputSchema": {
