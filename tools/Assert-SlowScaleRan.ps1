@@ -29,8 +29,7 @@ $slowTests = @(
     'SIL.Motif.Tests.Contract.Parsimony.FormQueryTests.ThirtyOneThousandFormsGroupWithinOneSecond'
 )
 
-# A name that no test carries any more can never pass, so say so by name rather than as a missing result. The layout
-# test also runs in the gate, so only the others must carry the SlowScale trait.
+# The layout test runs in the gate; every other listed test must exist and carry the SlowScale trait.
 $gateTests = @('SIL.Motif.Tests.App.LayoutInvariantSystemTests.EveryPageAndApplicableStateSatisfiesTheFullLightGrid')
 if (-not (Test-Path -LiteralPath $TestsRoot -PathType Container)) { throw "Test source directory does not exist: $TestsRoot" }
 $sources = @(Get-ChildItem -LiteralPath $TestsRoot -Filter '*.cs' -File -Recurse | ForEach-Object { [pscustomobject]@{ Lines = [IO.File]::ReadAllLines($_.FullName) } })

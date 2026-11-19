@@ -1,8 +1,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# The required slow-scale list must name only tests that exist and are slow-gated; a deleted test once failed the
-# scheduled run because the list still named it.
+# The required slow-scale list must name only tests that exist and are slow-gated.
 $script = Join-Path $PSScriptRoot 'Assert-SlowScaleRan.ps1'
 function Get-Failure([scriptblock] $Action) { try { & $Action | Out-Null } catch { return $_.Exception.Message }; return $null }
 
