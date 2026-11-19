@@ -53,6 +53,13 @@ public static class Slice3FieldSelector
         new FieldKey("LexSense", "Gloss"),
     };
 
+    // Possibility-list fields FieldWorks sets through SenseTypeRA and StatusRA, beyond HcReachable.
+    private static readonly HashSet<FieldKey> LexiconEditAtomicFields = new()
+    {
+        new FieldKey("LexSense", "SenseType"),
+        new FieldKey("LexSense", "Status"),
+    };
+
     private static readonly string[] BasicOkSigs = { "MultiUnicode", "MultiString", "Boolean" };
 
     private static readonly HashSet<FieldKey> OrderedTemplateSlotFields = new()
@@ -81,7 +88,8 @@ public static class Slice3FieldSelector
         Filter(rows, row =>
             row.Kind == FieldKind.Rel &&
             row.Card == FieldCard.Atomic &&
-            row.Manifest.Verbs == "set|clear");
+            row.Manifest.Verbs == "set|clear",
+            LexiconEditAtomicFields);
 
     public static IReadOnlyList<JoinedRow> SelectCollectionAddRemove(IReadOnlyList<JoinedRow> rows) =>
         Filter(rows, row =>
@@ -110,14 +118,15 @@ public static class Slice3FieldSelector
             row.Card == FieldCard.Seq &&
             row.Manifest.Verbs == "addRef|removeRef|move");
 
-    private static IReadOnlyList<JoinedRow> Filter(IReadOnlyList<JoinedRow> rows, Func<JoinedRow, bool> shapeFilter)
+    private static IReadOnlyList<JoinedRow> Filter(IReadOnlyList<JoinedRow> rows, Func<JoinedRow, bool> shapeFilter,
+        HashSet<FieldKey>? alsoSelected = null)
     {
         var selected = new List<JoinedRow>();
 
         foreach (var row in rows)
         {
             if (row.Manifest.Scope != "in") continue;
-            if (row.Manifest.HcReachable != "yes") continue;
+            if (row.Manifest.HcReachable != "yes" && alsoSelected?.Contains(row.Key) != true) continue;
             if (AlreadyEmittedElsewhere.Contains(row.Key)) continue;
             if (!shapeFilter(row)) continue;
 

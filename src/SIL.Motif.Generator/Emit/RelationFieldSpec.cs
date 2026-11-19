@@ -19,6 +19,9 @@ namespace SIL.Motif.Generator.Emit;
 /// <param name="SnapshotFieldConstant">The <c>SnapshotFields</c> constant name:
 /// <c>DeclaringClass + FieldName</c>, matching <see cref="BasicFieldSpec"/>'s collision-resistance
 /// rationale.</param>
+/// <param name="PossibilityListExpression">A <c>Func&lt;LcmCache, ICmPossibilityList&gt;</c> lambda naming the list
+/// FieldWorks offers for the field, or null when any object of the reference class is accepted; a <c>set</c> of an
+/// object in another list is refused.</param>
 public sealed record ReferenceAtomicFieldSpec(
     string DeclaringClass,
     string FieldName,
@@ -30,7 +33,8 @@ public sealed record ReferenceAtomicFieldSpec(
     string TargetInterface,
     string RefInterface,
     string AccessorPropertyName,
-    string SnapshotFieldConstant);
+    string SnapshotFieldConstant,
+    string? PossibilityListExpression = null);
 
 /// <summary>
 /// Every derived fact the <c>addRef|removeRef</c> templates need for one <c>rel/col</c> or

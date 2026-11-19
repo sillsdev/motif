@@ -1,0 +1,37 @@
+{
+  "contractVersions": {
+    "lexical": "1.0"
+  },
+  "proposalId": "AAAAAAAAAAAAAAAAAAAAUA",
+  "requires": [],
+  "operations": [
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAQ",
+      "kind": "lexical/lexSense/setStatus",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "ref": "AAAAAAAAAAAAAAAAAAAAQQ"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAg",
+      "kind": "lexical/lexSense/clearStatus",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {}
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAw",
+      "kind": "lexical/lexSense/setSenseType",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "ref": "AAAAAAAAAAAAAAAAAAAAQg"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABA",
+      "kind": "lexical/lexSense/clearSenseType",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {}
+    }
+  ]
+}

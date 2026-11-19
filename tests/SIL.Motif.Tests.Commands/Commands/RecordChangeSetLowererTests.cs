@@ -1032,4 +1032,91 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         RefusedWith(RefusalCodes.CustomFieldWritingSystem, "customField/setString",
             new { field = "ZedString", ws = _cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem.Id, text = "zz" });
     }
+
+    private ICmPossibility NewListItem(Func<ICmPossibilityList> list)
+    {
+        var made = default(ICmPossibility)!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            made = _cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
+            list().PossibilitiesOS.Add(made);
+            made.Name.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzitem", _cache.DefaultAnalWs));
+        });
+        return made;
+    }
+
+    private ICmPossibilityList StatusList() => _cache.LangProject.StatusOA ??=
+        _cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().Create();
+
+    private ICmPossibilityList SenseTypeList() => _cache.LangProject.LexDbOA.SenseTypesOA ??=
+        _cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().Create();
+
+    private static string LinkTo(ICmPossibility target) =>
+        "[zzitem](/objects/" + target.Guid.ToString("D") + "){.name guid=" + target.Guid.ToString("D") + "}";
+
+    [Fact]
+    public void SenseStatusAndSenseTypeSetAndClearLowerToTheirKindsAndReadBack()
+    {
+        var status = NewListItem(StatusList);
+        var type = NewListItem(SenseTypeList);
+        var senseDocument = (Action<RecordDocument> edit) => PlanEdit(d => edit(d));
+        var set = Lower(senseDocument(d =>
+        {
+            SenseAt(d, 0).Set("status", new RecordScalar(LinkTo(status)));
+            SenseAt(d, 0).Set("sense-type", new RecordScalar(LinkTo(type)));
+        }));
+        Assert.Empty(set.Refusals);
+        Assert.Equal(["lexical/lexSense/setSenseType", "lexical/lexSense/setStatus"], set.Operations.Select(op => op.Kind).Order().ToArray());
+        var effects = DryRun(set).ExpectedEffects;
+        Assert.Contains(effects, e => e.Field == "lexical/lexSense/status" &&
+            e.After.Values.Any(v => CanonicalId.Parse(v).ToGuid() == status.Guid));
+        Assert.Contains(effects, e => e.Field == "lexical/lexSense/senseType" &&
+            e.After.Values.Any(v => CanonicalId.Parse(v).ToGuid() == type.Guid));
+
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            _sense.StatusRA = status;
+            _sense.SenseTypeRA = type;
+        });
+        var cleared = Lower(senseDocument(d =>
+        {
+            SenseAt(d, 0).Fields.RemoveAll(f => f.Key == "status");
+            SenseAt(d, 0).Fields.RemoveAll(f => f.Key == "sense-type");
+        }));
+        Assert.Equal(["lexical/lexSense/clearSenseType", "lexical/lexSense/clearStatus"], cleared.Operations.Select(op => op.Kind).Order().ToArray());
+        Assert.All(DryRun(cleared).ExpectedEffects, e => Assert.Single(e.Before.Values));
+        Assert.True(new CatalogWritableFields(_schema).CanWrite("LexSense", "Status"));
+        Assert.True(new CatalogWritableFields(_schema).CanWrite("LexSense", "SenseType"));
+    }
+
+    [Fact]
+    public void TheRunnerRefusesASenseStatusOrTypeFromAnotherListWithARegisteredCode()
+    {
+        var elsewhere = CanonicalId.FromGuid(_publication.Guid).Value;
+        NewListItem(StatusList);
+        NewListItem(SenseTypeList);
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexSense/setStatus", new { @ref = elsewhere }, _sense.Guid);
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexSense/setSenseType", new { @ref = elsewhere }, _sense.Guid);
+        var swapped = CanonicalId.FromGuid(NewListItem(SenseTypeList).Guid).Value;
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexSense/setStatus", new { @ref = swapped }, _sense.Guid);
+    }
+
+    [Fact]
+    public void ASubPossibilityOfTheFieldsListIsAcceptedAndAnAbsentListRefuses()
+    {
+        var parent = NewListItem(SenseTypeList);
+        var child = default(ICmPossibility)!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            child = _cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
+            parent.SubPossibilitiesOS.Add(child);
+        });
+        var accepted = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "lexical/lexSense/setSenseType",
+            target: CanonicalId.FromGuid(_sense.Guid), after: JsonSerializer.SerializeToElement(new { @ref = CanonicalId.FromGuid(child.Guid).Value }));
+        Assert.NotEmpty(ScratchDryRun.Of(_cache, Proposal([accepted])).ExpectedEffects);
+
+        Assert.Null(_cache.LangProject.StatusOA);
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexSense/setStatus",
+            new { @ref = CanonicalId.FromGuid(child.Guid).Value }, _sense.Guid);
+    }
 }

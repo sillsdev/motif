@@ -273,6 +273,8 @@ Covered	LexSense	scientific-name	LexSense.ScientificName	ClearRich	text/setRichS
 Covered	LexSense	semantics-note	LexSense.SemanticsNote	SetPlainRich	lexical/lexSense/setSemanticsNote	-	-
 Covered	LexSense	semantics-note	LexSense.SemanticsNote	SetRich	text/setRichString	-	-
 Covered	LexSense	semantics-note	LexSense.SemanticsNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	sense-type	LexSense.SenseType	Set	lexical/lexSense/setSenseType	-	-
+Covered	LexSense	sense-type	LexSense.SenseType	Clear	lexical/lexSense/clearSenseType	-	-
 Covered	LexSense	senses	LexSense.Senses	RemoveObject	lexical/lexSense/remove	-	-
 Covered	LexSense	socio-linguistics-note	LexSense.SocioLinguisticsNote	SetPlainRich	lexical/lexSense/setSocioLinguisticsNote	-	-
 Covered	LexSense	socio-linguistics-note	LexSense.SocioLinguisticsNote	SetRich	text/setRichString	-	-
@@ -280,6 +282,8 @@ Covered	LexSense	socio-linguistics-note	LexSense.SocioLinguisticsNote	ClearRich	
 Covered	LexSense	source	LexSense.Source	SetPlainRich	text/setRichString	-	-
 Covered	LexSense	source	LexSense.Source	SetRich	text/setRichString	-	-
 Covered	LexSense	source	LexSense.Source	ClearRich	text/setRichString	-	-
+Covered	LexSense	status	LexSense.Status	Set	lexical/lexSense/setStatus	-	-
+Covered	LexSense	status	LexSense.Status	Clear	lexical/lexSense/clearStatus	-	-
 Covered	LexSense	usage-note	LexSense.UsageNote	SetPlainRich	text/setRichString	-	-
 Covered	LexSense	usage-note	LexSense.UsageNote	SetRich	text/setRichString	-	-
 Covered	LexSense	usage-note	LexSense.UsageNote	ClearRich	text/setRichString	-	-
@@ -1000,12 +1004,8 @@ OtherFields	LexSense	extended-note	LexSense.ExtendedNote	MoveObject	none	NoOpera
 OtherFields	LexSense	pictures	LexSense.Pictures	AddObject	none	NoOperationKind	-
 OtherFields	LexSense	pictures	LexSense.Pictures	RemoveObject	none	NoOperationKind	-
 OtherFields	LexSense	pictures	LexSense.Pictures	MoveObject	none	NoOperationKind	-
-OtherFields	LexSense	sense-type	LexSense.SenseType	Set	none	NoOperationKind	-
-OtherFields	LexSense	sense-type	LexSense.SenseType	Clear	none	NoOperationKind	-
 OtherFields	LexSense	senses	LexSense.Senses	AddObject	none	NoOperationKind	-
 OtherFields	LexSense	senses	LexSense.Senses	MoveObject	none	NoOperationKind	-
-OtherFields	LexSense	status	LexSense.Status	Set	none	NoOperationKind	-
-OtherFields	LexSense	status	LexSense.Status	Clear	none	NoOperationKind	-
 OtherFields	LexSense	thesaurus-items	LexSense.ThesaurusItems	AddReference	none	NoOperationKind	-
 OtherFields	LexSense	thesaurus-items	LexSense.ThesaurusItems	RemoveReference	none	NoOperationKind	-
 OtherFields	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	RemoveObject	none	NoOperationKind	-
@@ -1690,7 +1690,9 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	lexical/lexSense/clearMorphoSyntaxAnalysis	LexSense	MorphoSyntaxAnalysis	Clear	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/clearPhonologyNote	LexSense	PhonologyNote	ClearRich	Forbidden	-		Unspecified	True
 # Handler	lexical/lexSense/clearSemanticsNote	LexSense	SemanticsNote	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/clearSenseType	LexSense	SenseType	Clear	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/clearSocioLinguisticsNote	LexSense	SocioLinguisticsNote	ClearRich	Forbidden	-		Unspecified	True
+# Handler	lexical/lexSense/clearStatus	LexSense	Status	Clear	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/createExamples	LexSense	Examples	AddObject	RequiredWhenNonempty	-	LexExampleSentence	Unspecified	False
 # Handler	lexical/lexSense/delete	(no direct field edit)
 # Handler	lexical/lexSense/moveToEntry	(no direct field edit)
@@ -1705,7 +1707,9 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	lexical/lexSense/setMorphoSyntaxAnalysis	LexSense	MorphoSyntaxAnalysis	Set	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/setPhonologyNote	LexSense	PhonologyNote	SetPlainRich	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/setSemanticsNote	LexSense	SemanticsNote	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setSenseType	LexSense	SenseType	Set	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/setSocioLinguisticsNote	LexSense	SocioLinguisticsNote	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/setStatus	LexSense	Status	Set	Forbidden	-		Unspecified	False
 # Handler	lexical/moAffixProcess/deleteGraph	(no direct field edit)
 # Handler	lexical/reversalIndexEntry/addRefSenses	ReversalIndexEntry	Senses	AddReference	Forbidden	-		Unspecified	False
 # Handler	lexical/reversalIndexEntry/clearPartOfSpeech	ReversalIndexEntry	PartOfSpeech	Clear	Forbidden	-		Unspecified	False

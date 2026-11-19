@@ -59,9 +59,12 @@ public class Slice3FieldSelectorTests
         Assert.NotEmpty(selected);
         Assert.All(selected, row => Assert.Equal(FieldKind.Rel, row.Kind));
         Assert.All(selected, row => Assert.Equal(FieldCard.Atomic, row.Card));
-        Assert.All(selected, row => Assert.Equal("yes", row.Manifest.HcReachable));
+        Assert.All(selected.Where(r => r.DeclaringClass != "LexSense" || r.FieldName is not ("SenseType" or "Status")),
+            row => Assert.Equal("yes", row.Manifest.HcReachable));
         Assert.DoesNotContain(selected, r => r.DeclaringClass == "MoForm" && r.FieldName == "MorphType");
         Assert.Contains(selected, r => r.DeclaringClass == "LexSense" && r.FieldName == "MorphoSyntaxAnalysis");
+        Assert.Contains(selected, r => r.DeclaringClass == "LexSense" && r.FieldName == "SenseType");
+        Assert.Contains(selected, r => r.DeclaringClass == "LexSense" && r.FieldName == "Status");
     }
 
     [Fact]
@@ -121,7 +124,7 @@ public class Slice3FieldSelectorTests
     }
 
     [Fact]
-    public void AllThreeSelectors_RealModel_TogetherYieldSeventyNineRows()
+    public void AllThreeSelectors_RealModel_TogetherYieldEightyOneRows()
     {
         var model = MotifModelLoader.Load();
 
@@ -130,6 +133,6 @@ public class Slice3FieldSelectorTests
             Slice3FieldSelector.SelectAtomicSetClear(model.Rows).Count +
             Slice3FieldSelector.SelectCollectionAddRemove(model.Rows).Count;
 
-        Assert.Equal(79, total);
+        Assert.Equal(81, total);
     }
 }

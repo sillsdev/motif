@@ -69,6 +69,11 @@ public class ConformanceVectorTests
         OperationKindRegistry.Register("grammar/phSimpleContextSeg/setFeatureStructure");
         OperationKindRegistry.Register("grammar/phSimpleContextNC/setFeatureStructure");
         OperationKindRegistry.Register("grammar/phSimpleContextBdry/setFeatureStructure");
+        foreach (var field in new[] { "Status", "SenseType" })
+        {
+            OperationKindRegistry.Register("lexical/lexSense/set" + field);
+            OperationKindRegistry.Register("lexical/lexSense/clear" + field);
+        }
         foreach (var kind in new[] { "setAlternative", "clearAlternative", "setString", "clearString", "setInteger", "clearInteger", "setReference", "clearReference", "addReference", "removeReference" })
             OperationKindRegistry.Register("customField/" + kind);
     }
