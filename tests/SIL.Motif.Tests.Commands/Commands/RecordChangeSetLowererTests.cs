@@ -515,9 +515,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     }
 
     private static bool IsVector(CellarPropertyType type) => type is CellarPropertyType.OwningCollection or CellarPropertyType.OwningSequence
+        or CellarPropertyType.ReferenceCollection or CellarPropertyType.ReferenceSequence;
 
-    /// <summary>Creates the class through the liblcm factory overload that names the owner, for classes only a composer authors.</summary>
-    /// <summary>Creates a child through the lowerer and the Runner's own create handler, the way an import would.</summary>
+    /// <summary>Creates a child through the lowerer and the Runner's create handler.</summary>
     private bool Make(Guid owner, string ownerType, RecordField field, (string DeclaringClass, string Field, bool IsCustom) binding, string className)
     {
         var anchored = field.Kind == RecordFieldKind.Sequence && Members(owner, binding).Count > 0;
