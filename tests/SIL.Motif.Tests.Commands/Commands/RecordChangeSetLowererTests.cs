@@ -415,7 +415,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                 changes.Add(Make(RecordChangeKind.Set, change =>
                 {
                     Put(change, "New", field.Kind == RecordFieldKind.Boolean ? "true" : field.Kind == RecordFieldKind.Integer ? "1" : "x");
-                    Put(change, "NewTarget", fresh);
+                    Put(change, "NewTarget", field.Kind == RecordFieldKind.Reference ? RealTarget(field) ?? fresh : fresh);
                 }));
                 break;
             case RecordWriteVerb.Clear: changes.Add(Make(RecordChangeKind.Clear)); break;
@@ -645,6 +645,48 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         // A pair whose class the fixture cannot create is skipped under a named rule.
         Assert.True(gaps.IsSubsetOf(CreationRules), string.Join(Environment.NewLine, gaps.Except(CreationRules)));
         Assert.True(lowered > 100, $"{skipped} offered pairs went unexercised against {lowered} lowered: " + string.Join("; ", gaps));
+    }
+
+    private Guid? RealTarget(RecordField field) =>
+        (field.Item ?? field).ObjectTypes.Select(type => Instance(type.Name).Id).FirstOrDefault(id => id is not null);
+
+    [Fact]
+    public void OneEachOfAReferenceSetAMoveAndAClassPropertyCreateExecuteInADryRun()
+    {
+        var catalog = new CatalogWritableFields();
+        var resolver = new RecordWritableFields(_schema);
+        var lowerer = new RecordChangeSetLowerer(_schema, resolver);
+        var executed = new Dictionary<string, bool> { ["reference set"] = false, ["move"] = false, ["class-property create"] = false };
+        foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
+        {
+            if (resolution is not WritableFieldResolution.Covered || _schema.Schema.ObjectType(typeName)?.Field(fieldName) is not { } field
+                || _schema.FieldBinding(typeName, fieldName) is not { } binding)
+                continue;
+            var declared = Declarations(binding, verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb)
+                .Where(d => RecordLoweringRules.Lowers(d.Kind, d.Write)).ToArray();
+            var family = declared.Length == 0 ? null
+                : verb == RecordWriteVerb.Set && field.Kind == RecordFieldKind.Reference ? "reference set"
+                : verb is RecordWriteVerb.MoveObject or RecordWriteVerb.MoveReference ? "move"
+                : verb == RecordWriteVerb.AddObject && declared.Any(d => d.Write.CreatePayload == OwningCreatePayload.ClassProperty) ? "class-property create"
+                : null;
+            if (family is null || executed[family])
+                continue;
+            var (changes, gap) = ChangesFor(_schema.Schema.ObjectType(typeName)!, field, verb, catalog, binding);
+            if (gap is not null || changes.Count == 0)
+                continue;
+            var lowering = lowerer.LowerChanges(_cache, Guid.NewGuid().ToString("N"), changes);
+            if (lowering.Refusals.Count != 0 || lowering.Operations.Count == 0)
+                continue;
+            try
+            {
+                executed[family] = ScratchDryRun.Of(_cache, Proposal(lowering.Operations)).ExpectedEffects.Count > 0;
+            }
+            catch (InvalidOperationException)
+            {
+                // This pair's operation does not run on the fixture's object; the next pair of the family is tried.
+            }
+        }
+        Assert.All(executed, family => Assert.True(family.Value, family.Key + " has no pair that lowers and dry-runs"));
     }
 
     [Fact]
