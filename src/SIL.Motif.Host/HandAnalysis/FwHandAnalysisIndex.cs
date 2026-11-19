@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SIL.LCModel;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.HandAnalysis;
@@ -31,7 +32,8 @@ public interface IApprovedReadingSource
 /// </summary>
 /// <remarks>
 /// This slice serves <c>PinAsync</c>, <c>Stamp</c> and <c>WordsAsync</c> and the approved set; the other queries refuse with
-/// <see cref="RefusalCodes.HandAnalysisUnsupportedOperation"/>. The latest four points per project are retained.
+/// <see cref="RefusalCodes.HandAnalysisUnsupportedOperation"/>. The latest four points per project are retained, and a
+/// live pin is reused until the project file's length or modification time changes.
 /// </remarks>
 public sealed class FwHandAnalysisIndex(IHandAnalysisProjectSources sources) : IHandAnalysisIndex
 {
@@ -40,6 +42,10 @@ public sealed class FwHandAnalysisIndex(IHandAnalysisProjectSources sources) : I
     private const int Retained = 4;
     private readonly object _gate = new();
     private readonly List<FwHandAnalysisSnapshot.Point> _points = [];
+    private int _loads;
+
+    /// <summary>How many times a project has been copied and read, for observing live-pin reuse.</summary>
+    public int Loads => Volatile.Read(ref _loads);
 
     public async ValueTask<CommandOutcome<IHandAnalysisSnapshot>> PinAsync(Guid projectId, string? exactSnapshotId, CancellationToken ct)
     {
@@ -52,7 +58,15 @@ public sealed class FwHandAnalysisIndex(IHandAnalysisProjectSources sources) : I
                 : Pin(found);
         }
 
-        return await BuildAsync(projectId, sources.LiveFwData(projectId), null, ct);
+        var live = sources.LiveFwData(projectId);
+        var stamp = LiveStamp(live);
+        if (stamp is not null)
+        {
+            var reused = Find(point => point.Stamp.ProjectId == projectId && point.LiveStamp == stamp);
+            if (reused is not null) return Pin(reused);
+        }
+
+        return await BuildAsync(projectId, live, null, ct, stamp);
     }
 
     /// <summary>Pins the project state a saved Baseline captured, for <c>--at &lt;baseline&gt;</c>.</summary>
@@ -69,14 +83,22 @@ public sealed class FwHandAnalysisIndex(IHandAnalysisProjectSources sources) : I
             : await BuildAsync(projectId, path, identity, ct);
     }
 
+    private static string? LiveStamp(string? path)
+    {
+        if (path is null) return null;
+        var info = new FileInfo(path);
+        return info.Exists ? info.Length + ":" + info.LastWriteTimeUtc.Ticks : null;
+    }
+
     private async ValueTask<CommandOutcome<IHandAnalysisSnapshot>> BuildAsync(Guid projectId, string? path,
-        BaselineSemanticIdentity? baseline, CancellationToken ct)
+        BaselineSemanticIdentity? baseline, CancellationToken ct, string? liveStamp = null)
     {
         if (path is null || !File.Exists(path))
             return Refuse(RefusalCodes.HandAnalysisIndexUnavailable, (HandAnalysisRefusalFacts.Cause, HandAnalysisRefusalFacts.Unavailable));
         ApprovedReadingSet set;
         try
         {
+            Interlocked.Increment(ref _loads);
             set = await Task.Run(() =>
             {
                 using var copy = baseline is null ? BaselineReadCache.OpenWithCoordinatedCopy(path, ct) : BaselineReadCache.Open(path);
@@ -92,7 +114,8 @@ public sealed class FwHandAnalysisIndex(IHandAnalysisProjectSources sources) : I
         {
             return Refuse(RefusalCodes.HandAnalysisIndexUnavailable, (HandAnalysisRefusalFacts.Cause, HandAnalysisRefusalFacts.Unavailable));
         }
-        catch (Exception)
+        catch (Exception error) when (error is InvalidDataException or System.Xml.XmlException
+                                          or LcmInitializationException or LcmCacheUnusableException)
         {
             return Refuse(RefusalCodes.HandAnalysisIndexUnavailable, (HandAnalysisRefusalFacts.Cause, HandAnalysisRefusalFacts.Corrupt));
         }
@@ -102,11 +125,16 @@ public sealed class FwHandAnalysisIndex(IHandAnalysisProjectSources sources) : I
         var id = "hand-analysis/" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(
             string.Join('|', projectId, home, ComparisonVersion, Schema))));
         var stamp = new SnapshotStamp(id, projectId, home, "none", "none", "none", ComparisonVersion, Schema, SnapshotVerification.Full);
-        var existing = Find(point => point.Stamp.ProjectId == projectId && point.Stamp.SnapshotId == id);
-        if (existing is not null) return Pin(existing);
-        var point = new FwHandAnalysisSnapshot.Point(stamp, baseline, set);
+        var point = new FwHandAnalysisSnapshot.Point(stamp, baseline, set, liveStamp);
         lock (_gate)
         {
+            var existing = _points.Find(item => item.Stamp.ProjectId == projectId && item.Stamp.SnapshotId == id);
+            if (existing is not null)
+            {
+                if (liveStamp is null) return Pin(existing);
+                _points.Remove(existing);
+            }
+
             _points.Insert(0, point);
             foreach (var old in _points.Where(item => item.Stamp.ProjectId == projectId).Skip(Retained).ToArray())
                 _points.Remove(old);

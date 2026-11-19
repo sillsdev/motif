@@ -34,6 +34,8 @@ public sealed class ApprovedReadingSet
 {
     private const int SampleIds = 20;
     private readonly ILookup<string, ApprovedAnalysisFact> _bySenseFree;
+    private readonly ILookup<Guid, ApprovedAnalysisFact> _byWordform;
+    private readonly ILookup<Guid, ApprovedAnalysisFact> _byAnalysis;
 
     private ApprovedReadingSet(ImmutableArray<ApprovedAnalysisFact> analyses, int wordforms, int skipped,
         ImmutableArray<Guid> skippedSample)
@@ -42,6 +44,8 @@ public sealed class ApprovedReadingSet
         WordformCount = wordforms;
         SkippedOtherHumanAgentApprovals = skipped;
         SkippedSample = skippedSample;
+        _byWordform = analyses.ToLookup(fact => fact.WordformId);
+        _byAnalysis = analyses.ToLookup(fact => fact.AnalysisId);
         _bySenseFree = analyses.Where(fact => fact.Signature is not null)
             .ToLookup(fact => fact.Signature!.SenseFree().Id, StringComparer.Ordinal);
     }
@@ -58,6 +62,12 @@ public sealed class ApprovedReadingSet
     public ImmutableArray<Guid> SkippedSample { get; }
 
     public int SignedCount => Analyses.Count(fact => fact.Signature is not null);
+
+    /// <summary>The approved analyses of one wordform, in analysis-GUID order.</summary>
+    public ImmutableArray<ApprovedAnalysisFact> ForWordform(Guid wordformId) => [.. _byWordform[wordformId]];
+
+    /// <summary>The approved analysis with this id, if it is approved.</summary>
+    public ImmutableArray<ApprovedAnalysisFact> ForAnalysis(Guid analysisId) => [.. _byAnalysis[analysisId]];
 
     /// <summary>The approved analyses a parser reading still yields.</summary>
     public IReadOnlyList<ApprovedAnalysisFact> KeptBy(ReadingSignature parserReading) =>

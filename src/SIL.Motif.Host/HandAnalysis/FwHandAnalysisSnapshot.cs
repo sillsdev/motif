@@ -15,7 +15,8 @@ public sealed class FwHandAnalysisSnapshot : IHandAnalysisSnapshot, IApprovedRea
 
     internal FwHandAnalysisSnapshot(Point point) => this.point = point;
 
-    internal sealed record Point(SnapshotStamp Stamp, BaselineSemanticIdentity? Baseline, ApprovedReadingSet Set);
+    internal sealed record Point(SnapshotStamp Stamp, BaselineSemanticIdentity? Baseline, ApprovedReadingSet Set,
+        string? LiveStamp = null);
 
     public SnapshotStamp Stamp => point.Stamp;
 
@@ -33,7 +34,7 @@ public sealed class FwHandAnalysisSnapshot : IHandAnalysisSnapshot, IApprovedRea
         get
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            return new ProjectRead.Unavailable(Stamp, new(RefusalCodes.HandAnalysisIndexUnavailable, [],
+            return new ProjectRead.Unavailable(Stamp, new(RefusalCodes.HandAnalysisUnsupportedOperation, [],
                 "Project settings are not projected by this index."));
         }
     }
@@ -44,27 +45,34 @@ public sealed class FwHandAnalysisSnapshot : IHandAnalysisSnapshot, IApprovedRea
         ct.ThrowIfCancellationRequested();
         if (page.Limit is < 1 or > PageRequest.MaxLimit)
             return Refused(RefusalCodes.HandAnalysisInvalidPageLimit);
-        IEnumerable<ApprovedAnalysisFact> rows;
+        ImmutableArray<ApprovedAnalysisFact> rows;
         switch (query)
         {
             case WordQuery.Alternatives { Wordform: WordIdentity.Native(var word) }:
-                rows = point.Set.Analyses.Where(fact => fact.WordformId == word);
+                rows = point.Set.ForWordform(word);
                 break;
             case WordQuery.Reading { Key: ReadingKey.Analysis(AnalysisRef.Native(var analysis)) }:
-                rows = point.Set.Analyses.Where(fact => fact.AnalysisId == analysis);
+                rows = point.Set.ForAnalysis(analysis);
                 break;
             default:
                 return Refused(RefusalCodes.HandAnalysisUnsupportedOperation);
         }
 
         var queryKey = JsonSerializer.Serialize(query);
-        var ordered = rows.OrderBy(fact => fact.AnalysisId).ToArray();
+        var ordered = rows;
         var start = 0;
         if (page.Cursor is not null)
         {
             if (!TryReadCursor(page.Cursor, queryKey, out var last)) return Refused(RefusalCodes.HandAnalysisInvalidCursor);
-            start = Array.FindIndex(ordered, fact => fact.AnalysisId.CompareTo(last) > 0);
-            if (start < 0) start = ordered.Length;
+            int low = 0, high = ordered.Length;
+            while (low < high)
+            {
+                var mid = (low + high) / 2;
+                if (ordered[mid].AnalysisId.CompareTo(last) > 0) high = mid;
+                else low = mid + 1;
+            }
+
+            start = low;
         }
 
         var items = ordered.Skip(start).Take(page.Limit).ToArray();

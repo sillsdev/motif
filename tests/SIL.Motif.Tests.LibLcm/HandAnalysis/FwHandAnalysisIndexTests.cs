@@ -258,6 +258,27 @@ public sealed class FwHandAnalysisIndexTests : IDisposable, IHandAnalysisProject
     }
 
     [Fact]
+    public async Task ALivePinIsReusedUntilTheProjectFileChanges()
+    {
+        Analysis(Wordform("zzReuse"), _seed.FirstEntryId, Opinions.approves);
+        Save();
+        var index = Index();
+
+        await using var first = await Pin(index);
+        await using var second = await Pin(index);
+        Assert.Equal(1, index.Loads);
+        Assert.Equal(first.Stamp, second.Stamp);
+
+        Analysis(Wordform("zzReuseChanged"), _seed.SecondEntryId, Opinions.approves);
+        Save();
+        await using var third = await Pin(index);
+
+        Assert.Equal(2, index.Loads);
+        Assert.NotEqual(first.Stamp.SnapshotId, third.Stamp.SnapshotId);
+        Assert.Equal(2, ((IApprovedReadingSource)third).Approved.Analyses.Length);
+    }
+
+    [Fact]
     public async Task AMissingBaselineProjectOrSnapshotRefusesWithRegisteredCodes()
     {
         var index = Index();
@@ -282,8 +303,10 @@ public sealed class FwHandAnalysisIndexTests : IDisposable, IHandAnalysisProject
         var started = DateTime.UtcNow;
         using var copy = SIL.Motif.Host.Baselines.BaselineReadCache.Open(path);
         var set = ApprovedReadingSet.Read(copy.Cache);
-        _output.WriteLine($"wordforms={set.WordformCount} approved={set.Analyses.Length} signed={set.SignedCount} " +
+        var line = ($"wordforms={set.WordformCount} approved={set.Analyses.Length} signed={set.SignedCount} " +
             $"unsigned={set.Analyses.Length - set.SignedCount} otherHuman={set.SkippedOtherHumanAgentApprovals} " +
             $"seconds={(DateTime.UtcNow - started).TotalSeconds:F1}");
+        _output.WriteLine(line);
+        Console.Out.WriteLine(line);
     }
 }
