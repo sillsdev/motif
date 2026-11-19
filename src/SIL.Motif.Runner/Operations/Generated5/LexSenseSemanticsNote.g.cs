@@ -31,9 +31,9 @@ public static class LexSenseSemanticsNoteOperationKinds
         OperationKindRegistry.Register(SetSemanticsNote);
         OperationKindRegistry.Register(ClearSemanticsNote);
         OperationHandlerRegistry.Register(SetSemanticsNote, LexSenseSemanticsNoteSetHandler.Instance,
-            new FieldWriteCapability("LexSense", "SemanticsNote", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("LexSense", "SemanticsNote", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearSemanticsNote, LexSenseSemanticsNoteClearHandler.Instance,
-            new FieldWriteCapability("LexSense", "SemanticsNote", RecordWriteVerb.ClearRich, Fallback: true));
+            new FieldWriteCapability("LexSense", "SemanticsNote", RecordWriteVerb.ClearRich, Fallback: true) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetSemanticsNote, SnapshotFields.LexSenseSemanticsNote);
         OperationSlotRegistry.RegisterAlternative(ClearSemanticsNote, SnapshotFields.LexSenseSemanticsNote);
     }

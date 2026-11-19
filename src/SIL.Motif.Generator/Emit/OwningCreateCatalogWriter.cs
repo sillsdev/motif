@@ -436,7 +436,7 @@ public static class OwningCreateCatalogWriter
         code = code.Insert(registrationEndIndex,
             $"\n        OperationKindRegistry.Register(Move{field});\n" +
             $"        OperationHandlerRegistry.Register(Move{field}, {prefix}MoveHandler.Instance,\n" +
-            $"            new FieldWriteCapability(\"{owner}\", \"{field}\", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));\n" +
+            $"            new FieldWriteCapability(\"{owner}\", \"{field}\", RecordWriteVerb.MoveObject, FieldWritePlacement.Required) {{ Payload = FieldWritePayload.Generic }});\n" +
             $"        OperationSlotRegistry.RegisterMember(Move{field}, SnapshotFields.{prefix});");
         return code.TrimEnd() + "\n\n" + RenderMoveHandler(prefix, owner, field).Trim() + "\n";
     }
@@ -502,7 +502,7 @@ public static class OwningCreateCatalogWriter
             {
                 OperationKindRegistry.Register(Move__FIELD__);
                 OperationHandlerRegistry.Register(Move__FIELD__, __PREFIX__MoveHandler.Instance,
-                    new FieldWriteCapability("__OWNER__", "__FIELD__", RecordWriteVerb.MoveObject, FieldWritePlacement.Required));
+                    new FieldWriteCapability("__OWNER__", "__FIELD__", RecordWriteVerb.MoveObject, FieldWritePlacement.Required) { Payload = FieldWritePayload.Generic });
                 OperationSlotRegistry.RegisterMember(Move__FIELD__, SnapshotFields.__PREFIX__);
             }
         }

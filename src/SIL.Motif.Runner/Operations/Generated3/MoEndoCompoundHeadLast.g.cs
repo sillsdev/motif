@@ -31,9 +31,9 @@ public static class MoEndoCompoundHeadLastOperationKinds
         OperationKindRegistry.Register(SetHeadLast);
         OperationKindRegistry.Register(ClearHeadLast);
         OperationHandlerRegistry.Register(SetHeadLast, MoEndoCompoundHeadLastSetHandler.Instance,
-            new FieldWriteCapability("MoEndoCompound", "HeadLast", RecordWriteVerb.Set));
+            new FieldWriteCapability("MoEndoCompound", "HeadLast", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearHeadLast, MoEndoCompoundHeadLastClearHandler.Instance,
-            new FieldWriteCapability("MoEndoCompound", "HeadLast", RecordWriteVerb.Clear));
+            new FieldWriteCapability("MoEndoCompound", "HeadLast", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetHeadLast, SnapshotFields.MoEndoCompoundHeadLast);
         OperationSlotRegistry.RegisterScalar(ClearHeadLast, SnapshotFields.MoEndoCompoundHeadLast);
     }

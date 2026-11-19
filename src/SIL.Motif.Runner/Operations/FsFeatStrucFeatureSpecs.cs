@@ -59,9 +59,9 @@ public static class FsFeatStrucFeatureSpecsOperationKinds
         OperationKindRegistry.Register(DeleteFeatureSpecs);
         OperationHandlerRegistry.Register(CreateFeatureSpecs, FsFeatStrucFeatureSpecsCreateHandler.Instance,
             new FieldWriteCapability("FsFeatStruc", "FeatureSpecs", RecordWriteVerb.AddObject)
-            { ChildClasses = ["FsClosedValue"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["FsClosedValue"] });
         OperationHandlerRegistry.Register(DeleteFeatureSpecs, FsFeatStrucFeatureSpecsDeleteHandler.Instance,
-            new FieldWriteCapability("FsFeatStruc", "FeatureSpecs", RecordWriteVerb.RemoveObject));
+            new FieldWriteCapability("FsFeatStruc", "FeatureSpecs", RecordWriteVerb.RemoveObject) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterOwningCreate(CreateFeatureSpecs, SnapshotFields.FsFeatStrucFeatureSpecs, false);
         OperationSlotRegistry.RegisterEntityDeletion(DeleteFeatureSpecs);
     }

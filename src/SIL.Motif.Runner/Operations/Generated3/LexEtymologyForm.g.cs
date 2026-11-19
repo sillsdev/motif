@@ -31,9 +31,9 @@ public static class LexEtymologyFormOperationKinds
         OperationKindRegistry.Register(SetForm);
         OperationKindRegistry.Register(ClearForm);
         OperationHandlerRegistry.Register(SetForm, LexEtymologyFormSetHandler.Instance,
-            new FieldWriteCapability("LexEtymology", "Form", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("LexEtymology", "Form", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearForm, LexEtymologyFormClearHandler.Instance,
-            new FieldWriteCapability("LexEtymology", "Form", RecordWriteVerb.ClearRich, Fallback: true));
+            new FieldWriteCapability("LexEtymology", "Form", RecordWriteVerb.ClearRich, Fallback: true) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetForm, SnapshotFields.LexEtymologyForm);
         OperationSlotRegistry.RegisterAlternative(ClearForm, SnapshotFields.LexEtymologyForm);
     }

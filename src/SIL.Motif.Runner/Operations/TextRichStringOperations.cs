@@ -43,9 +43,9 @@ public static class TextRichStringOperationKinds
         OperationHandlerRegistry.Register(Set, TextRichStringHandler.Instance, TextRichStringFields.Names
             .SelectMany(field => new[]
             {
-                FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetPlainRich, fallback: true),
-                FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetRich),
-                FieldWriteCapability.ForAddress(field, RecordWriteVerb.ClearRich),
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetPlainRich, FieldWritePayload.Generic, fallback: true),
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetRich, FieldWritePayload.Generic),
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.ClearRich, FieldWritePayload.Generic),
             }).ToArray());
         OperationSlotRegistry.Register(Set, operation =>
         {

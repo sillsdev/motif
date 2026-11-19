@@ -31,9 +31,9 @@ public static class MoModifyFromInputContentOperationKinds
         OperationKindRegistry.Register(SetContent);
         OperationKindRegistry.Register(ClearContent);
         OperationHandlerRegistry.Register(SetContent, MoModifyFromInputContentSetHandler.Instance,
-            new FieldWriteCapability("MoModifyFromInput", "Content", RecordWriteVerb.Set));
+            new FieldWriteCapability("MoModifyFromInput", "Content", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearContent, MoModifyFromInputContentClearHandler.Instance,
-            new FieldWriteCapability("MoModifyFromInput", "Content", RecordWriteVerb.Clear));
+            new FieldWriteCapability("MoModifyFromInput", "Content", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetContent, SnapshotFields.MoModifyFromInputContent);
         OperationSlotRegistry.RegisterScalar(ClearContent, SnapshotFields.MoModifyFromInputContent);
     }

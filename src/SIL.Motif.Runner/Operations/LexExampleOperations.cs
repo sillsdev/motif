@@ -29,7 +29,7 @@ public static class LexExampleOperationKinds
         OperationKindRegistry.Register(Create);
         OperationHandlerRegistry.Register(Create, LexExampleCreateHandler.Instance,
             new FieldWriteCapability("LexSense", "Examples", RecordWriteVerb.AddObject, FieldWritePlacement.RequiredWhenNonempty)
-            { ChildClasses = ["LexExampleSentence"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["LexExampleSentence"] });
         OperationSlotRegistry.RegisterMany(Create, operation =>
         {
             var example = operation.EntityId ?? throw new ContractParseException($"'{Create}' requires 'entityId'.");

@@ -32,9 +32,9 @@ public static class WfiWordformSpellingStatusOperationKinds
         OperationKindRegistry.Register(SetSpellingStatus);
         OperationKindRegistry.Register(ClearSpellingStatus);
         OperationHandlerRegistry.Register(SetSpellingStatus, WfiWordformSpellingStatusSetHandler.Instance,
-            new FieldWriteCapability("WfiWordform", "SpellingStatus", RecordWriteVerb.Set));
+            new FieldWriteCapability("WfiWordform", "SpellingStatus", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearSpellingStatus, WfiWordformSpellingStatusClearHandler.Instance,
-            new FieldWriteCapability("WfiWordform", "SpellingStatus", RecordWriteVerb.Clear));
+            new FieldWriteCapability("WfiWordform", "SpellingStatus", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetSpellingStatus, SnapshotFields.WfiWordformSpellingStatus);
         OperationSlotRegistry.RegisterScalar(ClearSpellingStatus, SnapshotFields.WfiWordformSpellingStatus);
     }

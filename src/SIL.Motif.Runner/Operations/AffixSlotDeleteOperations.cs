@@ -24,7 +24,7 @@ public static class AffixSlotDeleteOperationKinds
         OperationKindRegistry.Register(DeleteAffixSlots);
         OperationHandlerRegistry.Register(DeleteAffixSlots, new AffixSlotDeleteHandler(),
             new FieldWriteCapability("PartOfSpeech", "AffixSlots", RecordWriteVerb.RemoveObject)
-            { ChildClasses = ["MoInflAffixSlot"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["MoInflAffixSlot"] });
         OperationSlotRegistry.RegisterEntityDeletion(DeleteAffixSlots);
     }
 #pragma warning restore CA2255

@@ -31,10 +31,10 @@ public static class LexEntryLexemeFormOperationKinds
         OperationKindRegistry.Register(DeleteLexemeForm);
         OperationHandlerRegistry.Register(CreateLexemeForm, LexEntryLexemeFormCreateHandler.Instance,
             new FieldWriteCapability("LexEntry", "LexemeForm", RecordWriteVerb.AddObject)
-            { ChildClasses = ["MoStemAllomorph", "MoAffixAllomorph", "MoAffixProcess"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["MoStemAllomorph", "MoAffixAllomorph", "MoAffixProcess"] });
         OperationHandlerRegistry.Register(DeleteLexemeForm, LexEntryLexemeFormDeleteHandler.Instance,
             new FieldWriteCapability("LexEntry", "LexemeForm", RecordWriteVerb.RemoveObject)
-            { ChildClasses = ["MoStemAllomorph", "MoAffixAllomorph"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["MoStemAllomorph", "MoAffixAllomorph"] });
         OperationSlotRegistry.RegisterOwningCreate(CreateLexemeForm, SnapshotFields.LexEntryLexemeForm, true);
         OperationSlotRegistry.RegisterScalar(DeleteLexemeForm, SnapshotFields.LexEntryLexemeForm);
     }

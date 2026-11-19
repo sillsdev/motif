@@ -22,7 +22,7 @@ public static class AlternateFormRemoveOperationKinds
     {
         OperationKindRegistry.Register(Remove);
         OperationHandlerRegistry.Register(Remove, AlternateFormRemoveHandler.Instance,
-            new FieldWriteCapability("LexEntry", "AlternateForms", RecordWriteVerb.RemoveObject));
+            new FieldWriteCapability("LexEntry", "AlternateForms", RecordWriteVerb.RemoveObject) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMany(Remove, operation =>
         {
             var form = AlternateFormRemovePayload.Parse(OperationSlotRegistry.After(operation)).Form;

@@ -31,9 +31,9 @@ public static class PhIterationContextMemberOperationKinds
         OperationKindRegistry.Register(SetMember);
         OperationKindRegistry.Register(ClearMember);
         OperationHandlerRegistry.Register(SetMember, PhIterationContextMemberSetHandler.Instance,
-            new FieldWriteCapability("PhIterationContext", "Member", RecordWriteVerb.Set));
+            new FieldWriteCapability("PhIterationContext", "Member", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearMember, PhIterationContextMemberClearHandler.Instance,
-            new FieldWriteCapability("PhIterationContext", "Member", RecordWriteVerb.Clear));
+            new FieldWriteCapability("PhIterationContext", "Member", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetMember, SnapshotFields.PhIterationContextMember);
         OperationSlotRegistry.RegisterScalar(ClearMember, SnapshotFields.PhIterationContextMember);
     }

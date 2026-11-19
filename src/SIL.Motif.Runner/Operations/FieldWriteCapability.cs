@@ -43,6 +43,30 @@ public enum FieldWriteShape
     VariantReference,
 }
 
+/// <summary>The <c>after</c> shape of an owning create that a record-file lowerer may author without a hand-written composer.</summary>
+public enum OwningCreatePayload
+{
+    /// <summary>The kind has its own payload, so only its composer authors it.</summary>
+    Unspecified,
+    /// <summary>The generic creation: <c>{}</c>.</summary>
+    Empty,
+    /// <summary>The generic creation of a field that holds several concrete classes: <c>{ "class": "..." }</c>.</summary>
+    ClassProperty,
+}
+
+/// <summary>Who authors the <c>after</c> payload of a declared edit, which decides whether a record-file lowerer can.</summary>
+public enum FieldWritePayload
+{
+    /// <summary>The declaration does not say, so no lowerer authors it. Every registration states one of the others.</summary>
+    Unspecified,
+    /// <summary>The payload follows from the verb and the field alone: <c>{ws,text}</c>, <c>{value}</c>, <c>{ref}</c>, <c>{member}</c>, <c>{}</c>.</summary>
+    Generic,
+    /// <summary>The payload carries more than the verb and field name (digests, paragraph keys, a census), so only its own composer authors it.</summary>
+    Bespoke,
+    /// <summary>The operations are built from the project by the kind's registered composer, which a lowerer calls rather than authors.</summary>
+    Composer,
+}
+
 /// <summary>
 /// A direct edit supported by a Runner registration. The declaring class is where the field originates in LibLCM.
 /// An owner restriction narrows an inherited field. Child classes are concrete and an empty list accepts every
@@ -57,9 +81,15 @@ public sealed record FieldWriteCapability(
     /// <summary>Concrete child classes accepted by an owning edit.</summary>
     public IReadOnlyList<string> ChildClasses { get; init; } = [];
 
-    internal static FieldWriteCapability ForAddress(string address, RecordWriteVerb verb, bool fallback = false)
+    /// <summary>Who authors the payload. Each declaration states it; a removal is lowered only when it is <see cref="FieldWritePayload.Composer"/>.</summary>
+    public FieldWritePayload Payload { get; init; }
+
+    /// <summary>For an owning create, the generic payload shape its handler accepts; <see cref="OwningCreatePayload.Unspecified"/> for any other edit.</summary>
+    public OwningCreatePayload CreatePayload { get; init; }
+
+    internal static FieldWriteCapability ForAddress(string address, RecordWriteVerb verb, FieldWritePayload payload, bool fallback = false)
     {
         var separator = address.IndexOf('.');
-        return new(address[..separator], address[(separator + 1)..], verb, Fallback: fallback);
+        return new(address[..separator], address[(separator + 1)..], verb, Fallback: fallback) { Payload = payload };
     }
 }

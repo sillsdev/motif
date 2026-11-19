@@ -33,7 +33,7 @@ public static class MoAffixAllomorphMsEnvFeaturesOperationKinds
         OperationKindRegistry.Register(CreateMsEnvFeatures);
         OperationHandlerRegistry.Register(CreateMsEnvFeatures, MoAffixAllomorphMsEnvFeaturesCreateHandler.Instance,
             new FieldWriteCapability("MoAffixAllomorph", "MsEnvFeatures", RecordWriteVerb.AddObject)
-            { ChildClasses = ["FsFeatStruc"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["FsFeatStruc"] });
         OperationSlotRegistry.RegisterOwningCreate(CreateMsEnvFeatures, SnapshotFields.MoAffixAllomorphMsEnvFeatures, true);
     }
 #pragma warning restore CA2255

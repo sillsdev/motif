@@ -23,8 +23,8 @@ public static class LexSenseRemoveOperationKinds
     {
         OperationKindRegistry.Register(Remove);
         OperationHandlerRegistry.Register(Remove, LexSenseRemoveHandler.Instance,
-            new FieldWriteCapability("LexEntry", "Senses", RecordWriteVerb.RemoveObject) { ChildClasses = ["LexSense"] },
-            new FieldWriteCapability("LexSense", "Senses", RecordWriteVerb.RemoveObject) { ChildClasses = ["LexSense"] });
+            new FieldWriteCapability("LexEntry", "Senses", RecordWriteVerb.RemoveObject) { ChildClasses = ["LexSense"], Payload = FieldWritePayload.Composer },
+            new FieldWriteCapability("LexSense", "Senses", RecordWriteVerb.RemoveObject) { ChildClasses = ["LexSense"], Payload = FieldWritePayload.Composer });
         OperationSlotRegistry.RegisterMany(Remove, operation =>
         {
             var sense = OperationSlotRegistry.Target(operation);

@@ -26,9 +26,9 @@ public static class PhEnvironmentStringRepresentationOperationKinds
         OperationKindRegistry.Register(Set);
         OperationKindRegistry.Register(Clear);
         OperationHandlerRegistry.Register(Set, new EnvironmentStringHandler(false),
-            new FieldWriteCapability("PhEnvironment", "StringRepresentation", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("PhEnvironment", "StringRepresentation", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(Clear, new EnvironmentStringHandler(true),
-            new FieldWriteCapability("PhEnvironment", "StringRepresentation", RecordWriteVerb.ClearRich));
+            new FieldWriteCapability("PhEnvironment", "StringRepresentation", RecordWriteVerb.ClearRich) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.PhEnvironmentStringRepresentation);
         OperationSlotRegistry.RegisterScalar(Clear, SnapshotFields.PhEnvironmentStringRepresentation);
     }

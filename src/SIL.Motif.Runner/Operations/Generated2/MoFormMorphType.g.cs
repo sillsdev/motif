@@ -31,9 +31,9 @@ public static class MoFormMorphTypeOperationKinds
         OperationKindRegistry.Register(SetMorphType);
         OperationKindRegistry.Register(ClearMorphType);
         OperationHandlerRegistry.Register(SetMorphType, MoFormMorphTypeSetHandler.Instance,
-            new FieldWriteCapability("MoForm", "MorphType", RecordWriteVerb.Set));
+            new FieldWriteCapability("MoForm", "MorphType", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearMorphType, MoFormMorphTypeClearHandler.Instance,
-            new FieldWriteCapability("MoForm", "MorphType", RecordWriteVerb.Clear));
+            new FieldWriteCapability("MoForm", "MorphType", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetMorphType, SnapshotFields.MoFormMorphType);
         OperationSlotRegistry.RegisterScalar(ClearMorphType, SnapshotFields.MoFormMorphType);
     }

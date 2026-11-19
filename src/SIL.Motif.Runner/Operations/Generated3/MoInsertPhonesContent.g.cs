@@ -33,9 +33,9 @@ public static class MoInsertPhonesContentOperationKinds
         OperationKindRegistry.Register(RemoveRefContent);
         OperationHandlerRegistry.Register(AddRefContent, MoInsertPhonesContentAddRefHandler.Instance,
             new FieldWriteCapability("MoInsertPhones", "Content", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden));
+                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(RemoveRefContent, MoInsertPhonesContentRemoveRefHandler.Instance,
-            new FieldWriteCapability("MoInsertPhones", "Content", RecordWriteVerb.RemoveReference));
+            new FieldWriteCapability("MoInsertPhones", "Content", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterMember(AddRefContent, SnapshotFields.MoInsertPhonesContent);
         OperationSlotRegistry.RegisterMember(RemoveRefContent, SnapshotFields.MoInsertPhonesContent);
     }

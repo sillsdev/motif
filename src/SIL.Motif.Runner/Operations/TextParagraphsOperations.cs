@@ -34,8 +34,8 @@ public static class TextParagraphsOperationKinds
         OperationHandlerRegistry.Register(Set, TextParagraphsHandler.Instance, TextParagraphFields.Names
             .SelectMany(field => new[]
             {
-                FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetRich),
-                FieldWriteCapability.ForAddress(field, RecordWriteVerb.ClearRich),
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetRich, FieldWritePayload.Bespoke),
+                FieldWriteCapability.ForAddress(field, RecordWriteVerb.ClearRich, FieldWritePayload.Bespoke),
             }).ToArray());
         OperationSlotRegistry.Register(Set, operation => new OperationSlot(OperationSlotRegistry.Target(operation),
             FieldPrefix + TextParagraphsPayload.FieldOf(OperationSlotRegistry.After(operation))));

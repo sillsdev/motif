@@ -31,9 +31,9 @@ public static class MoInflAffixSlotNameOperationKinds
         OperationKindRegistry.Register(SetName);
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, MoInflAffixSlotNameSetHandler.Instance,
-            new FieldWriteCapability("MoInflAffixSlot", "Name", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("MoInflAffixSlot", "Name", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearName, MoInflAffixSlotNameClearHandler.Instance,
-            new FieldWriteCapability("MoInflAffixSlot", "Name", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("MoInflAffixSlot", "Name", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.MoInflAffixSlotName);
         OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.MoInflAffixSlotName);
     }

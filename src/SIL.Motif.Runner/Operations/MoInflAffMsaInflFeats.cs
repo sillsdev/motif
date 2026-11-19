@@ -33,7 +33,7 @@ public static class MoInflAffMsaInflFeatsOperationKinds
         OperationKindRegistry.Register(CreateInflFeats);
         OperationHandlerRegistry.Register(CreateInflFeats, MoInflAffMsaInflFeatsCreateHandler.Instance,
             new FieldWriteCapability("MoInflAffMsa", "InflFeats", RecordWriteVerb.AddObject)
-            { ChildClasses = ["FsFeatStruc"] });
+            { Payload = FieldWritePayload.Generic, ChildClasses = ["FsFeatStruc"] });
         OperationSlotRegistry.RegisterOwningCreate(CreateInflFeats, SnapshotFields.MoInflAffMsaInflFeats, true);
     }
 #pragma warning restore CA2255

@@ -31,9 +31,9 @@ public static class PartOfSpeechDefaultInflectionClassOperationKinds
         OperationKindRegistry.Register(SetDefaultInflectionClass);
         OperationKindRegistry.Register(ClearDefaultInflectionClass);
         OperationHandlerRegistry.Register(SetDefaultInflectionClass, PartOfSpeechDefaultInflectionClassSetHandler.Instance,
-            new FieldWriteCapability("PartOfSpeech", "DefaultInflectionClass", RecordWriteVerb.Set));
+            new FieldWriteCapability("PartOfSpeech", "DefaultInflectionClass", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearDefaultInflectionClass, PartOfSpeechDefaultInflectionClassClearHandler.Instance,
-            new FieldWriteCapability("PartOfSpeech", "DefaultInflectionClass", RecordWriteVerb.Clear));
+            new FieldWriteCapability("PartOfSpeech", "DefaultInflectionClass", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetDefaultInflectionClass, SnapshotFields.PartOfSpeechDefaultInflectionClass);
         OperationSlotRegistry.RegisterScalar(ClearDefaultInflectionClass, SnapshotFields.PartOfSpeechDefaultInflectionClass);
     }

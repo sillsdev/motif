@@ -31,9 +31,9 @@ public static class FsFeatureSpecificationFeatureOperationKinds
         OperationKindRegistry.Register(SetFeature);
         OperationKindRegistry.Register(ClearFeature);
         OperationHandlerRegistry.Register(SetFeature, FsFeatureSpecificationFeatureSetHandler.Instance,
-            new FieldWriteCapability("FsFeatureSpecification", "Feature", RecordWriteVerb.Set));
+            new FieldWriteCapability("FsFeatureSpecification", "Feature", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearFeature, FsFeatureSpecificationFeatureClearHandler.Instance,
-            new FieldWriteCapability("FsFeatureSpecification", "Feature", RecordWriteVerb.Clear));
+            new FieldWriteCapability("FsFeatureSpecification", "Feature", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetFeature, SnapshotFields.FsFeatureSpecificationFeature);
         OperationSlotRegistry.RegisterScalar(ClearFeature, SnapshotFields.FsFeatureSpecificationFeature);
     }

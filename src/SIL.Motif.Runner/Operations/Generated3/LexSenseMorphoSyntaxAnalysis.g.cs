@@ -31,9 +31,9 @@ public static class LexSenseMorphoSyntaxAnalysisOperationKinds
         OperationKindRegistry.Register(SetMorphoSyntaxAnalysis);
         OperationKindRegistry.Register(ClearMorphoSyntaxAnalysis);
         OperationHandlerRegistry.Register(SetMorphoSyntaxAnalysis, LexSenseMorphoSyntaxAnalysisSetHandler.Instance,
-            new FieldWriteCapability("LexSense", "MorphoSyntaxAnalysis", RecordWriteVerb.Set));
+            new FieldWriteCapability("LexSense", "MorphoSyntaxAnalysis", RecordWriteVerb.Set) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearMorphoSyntaxAnalysis, LexSenseMorphoSyntaxAnalysisClearHandler.Instance,
-            new FieldWriteCapability("LexSense", "MorphoSyntaxAnalysis", RecordWriteVerb.Clear));
+            new FieldWriteCapability("LexSense", "MorphoSyntaxAnalysis", RecordWriteVerb.Clear) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(SetMorphoSyntaxAnalysis, SnapshotFields.LexSenseMorphoSyntaxAnalysis);
         OperationSlotRegistry.RegisterScalar(ClearMorphoSyntaxAnalysis, SnapshotFields.LexSenseMorphoSyntaxAnalysis);
     }

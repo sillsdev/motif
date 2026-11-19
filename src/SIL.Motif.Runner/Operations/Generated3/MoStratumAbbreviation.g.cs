@@ -31,9 +31,9 @@ public static class MoStratumAbbreviationOperationKinds
         OperationKindRegistry.Register(SetAbbreviation);
         OperationKindRegistry.Register(ClearAbbreviation);
         OperationHandlerRegistry.Register(SetAbbreviation, MoStratumAbbreviationSetHandler.Instance,
-            new FieldWriteCapability("MoStratum", "Abbreviation", RecordWriteVerb.SetAlternative));
+            new FieldWriteCapability("MoStratum", "Abbreviation", RecordWriteVerb.SetAlternative) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(ClearAbbreviation, MoStratumAbbreviationClearHandler.Instance,
-            new FieldWriteCapability("MoStratum", "Abbreviation", RecordWriteVerb.ClearAlternative));
+            new FieldWriteCapability("MoStratum", "Abbreviation", RecordWriteVerb.ClearAlternative) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.MoStratumAbbreviation);
         OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.MoStratumAbbreviation);
     }

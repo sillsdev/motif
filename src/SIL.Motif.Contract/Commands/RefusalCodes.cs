@@ -274,6 +274,17 @@ public static class RefusalCodes
     public const string RequestNotFound = "request.not-found";
     public const string RequestNotOpen = "request.not-open";
     public const string RequestProposalOpen = "request.proposal-open";
+
+    /// <summary>An import plan declines its whole file, so nothing in it was lowered to operations.</summary>
+    public const string RecordImportPlanRefused = "record-import.plan-refused";
+    /// <summary>No Runner kind covers the verb a record-file change needs on this class and field.</summary>
+    public const string RecordImportFieldUncovered = "record-import.field-uncovered";
+    /// <summary>A kind covers the field, but no payload shape is authored for this change.</summary>
+    public const string RecordImportShapeUnsupported = "record-import.shape-unsupported";
+    /// <summary>The project's value is no longer the one the file started from.</summary>
+    public const string RecordImportValueStale = "record-import.value-stale";
+    /// <summary>The change names an object, list member or text the project cannot take as written.</summary>
+    public const string RecordImportNotExecutable = "record-import.not-executable";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";
     public const string ProposalRationaleFindings = "proposal.rationale-findings";
     public const string ProposalRationaleUnchecked = "proposal.rationale-unchecked";

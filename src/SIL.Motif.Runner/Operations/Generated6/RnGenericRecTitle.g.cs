@@ -25,9 +25,9 @@ public static class RnGenericRecTitleOperationKinds
         OperationKindRegistry.Register(Set);
         OperationKindRegistry.Register(Clear);
         OperationHandlerRegistry.Register(Set, new RnGenericRecTitleHandler(false),
-            new FieldWriteCapability("RnGenericRec", "Title", RecordWriteVerb.SetPlainRich));
+            new FieldWriteCapability("RnGenericRec", "Title", RecordWriteVerb.SetPlainRich) { Payload = FieldWritePayload.Generic });
         OperationHandlerRegistry.Register(Clear, new RnGenericRecTitleHandler(true),
-            new FieldWriteCapability("RnGenericRec", "Title", RecordWriteVerb.ClearRich));
+            new FieldWriteCapability("RnGenericRec", "Title", RecordWriteVerb.ClearRich) { Payload = FieldWritePayload.Generic });
         OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.RnGenericRecTitle);
         OperationSlotRegistry.RegisterScalar(Clear, SnapshotFields.RnGenericRecTitle);
     }
