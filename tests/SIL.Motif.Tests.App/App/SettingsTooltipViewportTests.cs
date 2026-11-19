@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
@@ -39,15 +40,24 @@ public sealed class SettingsTooltipViewportTests
                 Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
                 await Hover(window, gear);
                 Capture(window, zoomChange, dark, "before");
-                if (zoomChange) settings.ZoomPercent = 150;
-                else
+                // Scene hit testing can request a fresh hover while the frame is settling.
+                ToolTip.AddToolTipOpeningHandler(gear, CancelOpening);
+                try
                 {
-                    window.Width = 1040;
-                    window.Height = 780;
+                    if (zoomChange) settings.ZoomPercent = 150;
+                    else
+                    {
+                        window.Width = 1040;
+                        window.Height = 780;
+                    }
+                    PageScreenshots.Settle(window);
+                    Capture(window, zoomChange, dark, "changed");
+                    Assert.False(ToolTip.GetIsOpen(gear), "The transient gear tooltip retained its old frame position.");
                 }
-                PageScreenshots.Settle(window);
-                Capture(window, zoomChange, dark, "changed");
-                Assert.False(ToolTip.GetIsOpen(gear), "The transient gear tooltip retained its old frame position.");
+                finally
+                {
+                    ToolTip.RemoveToolTipOpeningHandler(gear, CancelOpening);
+                }
                 await Hover(window, gear);
                 var tip = Assert.Single(window.GetVisualDescendants().OfType<ToolTip>(), item => item.IsEffectivelyVisible);
                 var bounds = ClearTipPlacement.AreaOf(tip, window);
@@ -67,6 +77,8 @@ public sealed class SettingsTooltipViewportTests
             }
         }, TimeSpan.FromMinutes(2));
     }
+
+    private static void CancelOpening(object? sender, CancelRoutedEventArgs args) => args.Cancel = true;
 
     private static async Task Hover(Window window, Control owner)
     {
