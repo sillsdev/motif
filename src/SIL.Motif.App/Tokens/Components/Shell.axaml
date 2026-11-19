@@ -106,7 +106,7 @@
     <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Page}" />
   </Style>
   <Style Selector="Border.workspaceNoticeBand">
-    <Setter Property="Height" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Shell.PaneHeaderInset}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />

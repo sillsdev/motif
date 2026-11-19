@@ -357,6 +357,7 @@ public static class AutomationIds
     // fix1-progress
     public const string ProgressNothingParsed = "motif-progress-nothing-parsed";
     public const string ProgressChooseTexts = "motif-progress-choose-texts";
+    public const string ProgressRefreshToUpgrade = "motif-progress-refresh-to-upgrade";
     public const string ProgressParsed = "motif-progress-parsed";
     public const string ProgressReviewWords = "motif-progress-review-words";
     public const string ProgressReadTexts = "motif-progress-read-texts";

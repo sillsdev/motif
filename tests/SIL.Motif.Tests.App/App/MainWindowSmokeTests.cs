@@ -589,6 +589,35 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
+    public void ALongRefusalNoticeWrapsInsteadOfBeingCutOff()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                window.Width = 700;
+                window.Show();
+                window.ApplyTemplate();
+                workspace.Baseline.ShownRefusal = WindowRefusal.Plain(MotifAppStrings.RefusalStoreLockMissing);
+                window.UpdateLayout();
+                var band = window.FindInWindowOrWorkspace<Border>("NoticeBand")!;
+                var summary = window.FindInWindowOrWorkspace<TextBlock>("NoticeSummary")!;
+                Assert.True(band.IsEffectivelyVisible);
+                Assert.Equal(TextTrimming.None, summary.TextTrimming);
+                Assert.Equal(TextWrapping.Wrap, summary.TextWrapping);
+                Assert.True(summary.Bounds.Height > summary.FontSize * 2,
+                    $"The notice should take several lines at this width, not one: {summary.Bounds.Height}.");
+                Assert.True(band.Bounds.Height >= summary.Bounds.Height);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void ProgressWithoutStoredAssessmentDoesNotShowZeroesAsResults()
     {
         _avalonia.Invoke(() =>

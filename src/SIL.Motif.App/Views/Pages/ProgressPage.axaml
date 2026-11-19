@@ -40,7 +40,13 @@
           </StackPanel>
         </StackPanel>
       </Border>
-      <Border Classes="progressNextList" IsVisible="{Binding OverviewUnavailable}">
+      <Border Classes="progressNextList" IsVisible="{Binding ShowRefreshToUpgrade}">
+        <StackPanel Classes="progressNextNotice" Spacing="{DynamicResource Intent.Space.Related}">
+          <Button Command="{Binding RefreshProjectCommand}" Content="{x:Static app:MotifAppStrings.ProgressRefreshToUpgrade}"
+                  HorizontalAlignment="Left" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressRefreshToUpgrade}" />
+        </StackPanel>
+      </Border>
+      <Border Classes="progressNextList" IsVisible="{Binding ShowOverviewUnavailable}">
         <StackPanel Classes="progressNextNotice" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressUnavailable}" Spacing="{DynamicResource Intent.Space.Related}">
           <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProgressParseUnavailable}" TextWrapping="Wrap" />
           <Button Command="{Binding TryAgainCommand}" Content="{x:Static app:MotifAppStrings.TryAgain}" HorizontalAlignment="Left"

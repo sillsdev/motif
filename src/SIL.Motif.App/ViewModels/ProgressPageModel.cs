@@ -129,7 +129,7 @@ public sealed partial class ProgressPageModel : PageModel
 
     /// <summary>Whether the stored Overview could not be read, so nothing may be claimed about parsing.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanOfferNextTryAgain), nameof(ShowReadingParse))]
+    [NotifyPropertyChangedFor(nameof(CanOfferNextTryAgain), nameof(ShowReadingParse), nameof(ShowOverviewUnavailable))]
     private bool _overviewUnavailable;
 
     private void RaiseParseStateChanged()
@@ -143,9 +143,11 @@ public sealed partial class ProgressPageModel : PageModel
     }
 
     /// <summary>The words under Next when a read was refused, naming the store problem when there is one.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanOfferTryAgain))]
-    private string _unavailableNextText = MotifAppStrings.ProgressNextUnavailable;
+    public string UnavailableNextText => _storeProblem is null ? MotifAppStrings.ProgressNextUnavailable
+        : MotifAppStrings.ProgressNextStoreProblem;
+
+    /// <summary>Whether the page says the parse results could not be read; not when the store itself is the cause and the window already says so.</summary>
+    public bool ShowOverviewUnavailable => OverviewUnavailable && CanOfferTryAgain;
 
     /// <summary>False when the store itself cannot be used and asking again would only refuse again.</summary>
     public bool CanOfferTryAgain => _storeProblem is null;
@@ -154,6 +156,22 @@ public sealed partial class ProgressPageModel : PageModel
     public bool CanOfferNextTryAgain => CanOfferTryAgain && !OverviewUnavailable;
 
     private WindowRefusal? _storeProblem;
+
+    /// <summary>Whether the store problem is an older store that Refresh upgrades.</summary>
+    public bool ShowRefreshToUpgrade => _storeProblem?.OffersRefreshToUpgrade == true && Context.RefreshProjectCommand is not null;
+
+    /// <summary>The shell's Refresh, which upgrades an older store.</summary>
+    public IAsyncRelayCommand? RefreshProjectCommand => Context.RefreshProjectCommand;
+
+    private void RaiseStoreProblemChanged()
+    {
+        OnPropertyChanged(nameof(ShowRefreshToUpgrade));
+        OnPropertyChanged(nameof(RefreshProjectCommand));
+        OnPropertyChanged(nameof(UnavailableNextText));
+        OnPropertyChanged(nameof(CanOfferTryAgain));
+        OnPropertyChanged(nameof(CanOfferNextTryAgain));
+        OnPropertyChanged(nameof(ShowOverviewUnavailable));
+    }
     private Task? _earlyRead;
     private EvidenceSet? _earlySet;
 
@@ -164,10 +182,7 @@ public sealed partial class ProgressPageModel : PageModel
         var window = WindowRefusal.From(refusal);
         if (!window.IsStoreCauseThatRetryCannotClear) return;
         _storeProblem = window;
-        UnavailableNextText = string.Format(System.Globalization.CultureInfo.CurrentCulture,
-            MotifAppStrings.ProgressNextStoreProblemFormat, window.Sentence);
-        OnPropertyChanged(nameof(CanOfferTryAgain));
-        OnPropertyChanged(nameof(CanOfferNextTryAgain));
+        RaiseStoreProblemChanged();
     }
 
     protected override void OnProjectCleared()
@@ -223,9 +238,7 @@ public sealed partial class ProgressPageModel : PageModel
         HasUnavailableNext = false;
         OverviewUnavailable = false;
         _storeProblem = null;
-        UnavailableNextText = MotifAppStrings.ProgressNextUnavailable;
-        OnPropertyChanged(nameof(CanOfferTryAgain));
-        OnPropertyChanged(nameof(CanOfferNextTryAgain));
+        RaiseStoreProblemChanged();
         IsReading = false;
         foreach (var row in previous) row.OpenCommand.NotifyCanExecuteChanged();
     }
@@ -283,8 +296,7 @@ public sealed partial class ProgressPageModel : PageModel
             { IsStoreCauseThatRetryCannotClear: true } storeCause)
         {
             _storeProblem = storeCause;
-            OnPropertyChanged(nameof(CanOfferTryAgain));
-            OnPropertyChanged(nameof(CanOfferNextTryAgain));
+            RaiseStoreProblemChanged();
         }
         RaiseParseStateChanged();
     }

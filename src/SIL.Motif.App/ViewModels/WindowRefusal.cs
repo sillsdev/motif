@@ -361,7 +361,11 @@ public sealed partial record WindowRefusal
     /// <c>.use.lock</c> file is missing), so asking again cannot clear it.
     /// </summary>
     public bool IsStoreCauseThatRetryCannotClear =>
-        Code == C.StoreOtherProject || Facts.ContainsKey(RefusalFactNames.StoreLockMissing);
+        Code == C.StoreOtherProject || Facts.ContainsKey(RefusalFactNames.StoreLockMissing) ||
+        Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StoreUpgradable);
+
+    /// <summary>Whether this refusal is an older Motif store that Refresh upgrades, because Refresh writes to the store.</summary>
+    public bool OffersRefreshToUpgrade => Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StoreUpgradable);
 
     /// <summary>Presents a command's refusal in the window's words.</summary>
     public static WindowRefusal From(Refusal refusal) => From(refusal, GenericSentence);

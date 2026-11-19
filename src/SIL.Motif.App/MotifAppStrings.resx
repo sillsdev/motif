@@ -4161,7 +4161,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Sentence the window shows for a refusal about an answer from PanGloss Motif could not read. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>
   </data>
   <data name="MotifApp.RefusalStoreUpgradable" xml:space="preserve">
-    <value>This project's Motif store is from an older version. Opening the project normally upgrades it and keeps the original as a .bak file; your FieldWorks project is not touched.</value>
+    <value>This project's Motif store is from an older version. Refresh the project to upgrade it; the original is kept as a .bak file, and your FieldWorks project is not touched.</value>
     <comment>Sentence the window shows when a read found an older Motif store that a normal open upgrades. FieldWorks is a product name; .bak is a file extension.</comment>
   </data>
   <data name="MotifApp.RefusalStoreFromOtherVersion" xml:space="preserve">
@@ -7622,7 +7622,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ApplyBackupLink" xml:space="preserve"><value>How to Back Up a Project in FieldWorks</value></data>
   <!-- fix1-layout -->
   <data name="MotifApp.RefusalStoreLockMissing" xml:space="preserve"><value>Motif's file for this project is missing the small companion file that goes beside it (its .use.lock file), so Motif cannot open it. This usually means the .motif.db file was copied or moved without it. Close Motif and put the .use.lock file back beside the .motif.db file, or, while Motif is closed, move the .motif.db file aside (do not delete it, because it may hold Proposals) so this project gets its own. Trying again will not help.</value><comment>Sentence the window shows when the project's Motif store cannot be opened because its .use.lock file is missing. .motif.db and .use.lock are file names; Motif is a product name.</comment></data>
-  <data name="MotifApp.ProgressNextStoreProblemFormat" xml:space="preserve"><value>Next actions are unavailable until this is fixed. {0}</value><comment>Progress next-actions notice when the project's Motif store was refused for a cause that trying again cannot clear. {0} is the refusal sentence.</comment></data>
+  <data name="MotifApp.ProgressRefreshToUpgrade" xml:space="preserve"><value>Refresh the Project</value><comment>Progress button shown when the project's Motif store is from an older version; Refresh upgrades it.</comment></data>
+  <data name="MotifApp.ProgressNextStoreProblem" xml:space="preserve"><value>Next actions are unavailable until the problem described at the top of the window is fixed.</value><comment>Progress next-actions notice when the project's Motif store was refused for a cause that trying again cannot clear; the window's notice band at the top already says what the cause is.</comment></data>
   <!-- round2-diag -->
   <data name="MotifApp.DiagnosticKindConversionSourceProvenanceUnknown" xml:space="preserve"><value>Conversion Provenance Is Unavailable</value><comment>Heading for the group of Diagnostics findings with the rule code conversion.source-provenance-unknown. Title Case.</comment></data>
   <data name="MotifApp.DiagnosticKindConversionUnsegmentableForm" xml:space="preserve"><value>Allomorph Form Cannot Be Segmented</value><comment>Heading for the group of Diagnostics findings with the rule code conversion.unsegmentable-form. Title Case.</comment></data>

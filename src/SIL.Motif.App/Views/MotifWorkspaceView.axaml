@@ -147,7 +147,7 @@
                   </Flyout>
                 </Button.Flyout>
               </Button>
-              <views:CopyableTextBlock x:Name="NoticeSummary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+              <views:CopyableTextBlock x:Name="NoticeSummary" VerticalAlignment="Center" TextWrapping="Wrap"
                                        Background="{DynamicResource Intent.Clear}" views:ClearTipPlacement.IsEnabled="True" />
             </DockPanel>
           </Border>

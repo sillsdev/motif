@@ -72,7 +72,8 @@ public sealed class StoreCauseRefusalTests
         {
             await context.OpenProjectAsync("project.fwdata");
             Assert.True(page.HasUnavailableNext);
-            Assert.Contains(WindowRefusal.From(refusal).Sentence, page.UnavailableNextText);
+            Assert.Equal(MotifAppStrings.ProgressNextStoreProblem, page.UnavailableNextText);
+            Assert.DoesNotContain(WindowRefusal.From(refusal).Sentence, page.UnavailableNextText);
             Assert.False(page.CanOfferTryAgain);
         }
         finally { await context.StopProjectWorkAsync(); }
@@ -96,7 +97,9 @@ public sealed class StoreCauseRefusalTests
                 await context.OpenProjectAsync("project.fwdata");
                 PageScreenshots.Settle(window);
                 var shown = page.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text ?? string.Empty);
-                Assert.Contains(shown, text => text.Contains(".use.lock", StringComparison.Ordinal));
+                // The window's notice band names the cause once; Progress does not repeat it.
+                Assert.DoesNotContain(shown, text => text.Contains(".use.lock", StringComparison.Ordinal));
+                Assert.Contains(MotifAppStrings.ProgressNextStoreProblem, shown);
                 var retries = page.GetVisualDescendants().OfType<Button>()
                     .Where(button => button.Content as string == MotifAppStrings.TryAgain);
                 Assert.DoesNotContain(retries, retry => retry.IsEffectivelyVisible);
@@ -127,6 +130,82 @@ public sealed class StoreCauseRefusalTests
                 var retries = page.GetVisualDescendants().OfType<Button>()
                     .Where(button => button.Content as string == MotifAppStrings.TryAgain && button.IsEffectivelyVisible);
                 Assert.Equal(storeCause ? 0 : 1, retries.Count());
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void ProgressDoesNotSayTheParseResultsCouldNotBeReadWhenTheStoreCauseIsAlreadyExplained()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.OnOverview((_, _) => Task.FromResult(CommandOutcome<OverviewResponse>.Refused(MissingLock())));
+            fake.OnProposalStandings((_, _) =>
+                Task.FromResult(CommandOutcome<ProposalStandings>.Refused(MissingLock())));
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProgressPageModel(context);
+            var page = new ProgressPage(model);
+            var window = new MotifTestWindow { Content = page, Width = 900, Height = 700 };
+            try
+            {
+                window.Show();
+                await context.OpenProjectAsync("project.fwdata");
+                PageScreenshots.Settle(window);
+                var shown = page.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(text => text.IsEffectivelyVisible).Select(text => text.Text ?? string.Empty).ToArray();
+                Assert.DoesNotContain(shown, text => text.Contains("Parse results could not be read", StringComparison.Ordinal));
+                Assert.DoesNotContain(shown, text => text.Contains("try again", StringComparison.OrdinalIgnoreCase));
+                Assert.DoesNotContain(shown, text => text.Contains(".use.lock", StringComparison.Ordinal));
+                Assert.Contains(MotifAppStrings.ProgressNextStoreProblem, shown);
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void AnUpgradableStoreSaysRefreshUpgradesItAndProgressOffersThatButton()
+    {
+        var refusal = new Refusal(RefusalCodes.StoreOtherVersion, FailureReason.Refused, "older",
+            new Dictionary<string, string>
+            {
+                [RefusalFactNames.StorePath] = "/p/ceb.motif.db",
+                [RefusalFactNames.StoreUpgradable] = "true",
+            });
+        var sentence = WindowRefusal.From(refusal);
+        Assert.Contains("Refresh the project to upgrade it", sentence.Sentence);
+        Assert.True(sentence.IsStoreCauseThatRetryCannotClear);
+        Assert.True(sentence.OffersRefreshToUpgrade);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.OnOverview((_, _) => Task.FromResult(CommandOutcome<OverviewResponse>.Refused(refusal)));
+            fake.OnProposalStandings((_, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Refused(refusal)));
+            var context = WorkspaceContextTests.NewContext(fake);
+            var refreshes = 0;
+            context.RefreshProjectCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() =>
+            {
+                refreshes++;
+                return Task.CompletedTask;
+            });
+            var model = new ProgressPageModel(context);
+            var page = new ProgressPage(model);
+            var window = new MotifTestWindow { Content = page, Width = 900, Height = 700 };
+            try
+            {
+                window.Show();
+                await context.OpenProjectAsync("project.fwdata");
+                PageScreenshots.Settle(window);
+                var button = Assert.Single(page.GetVisualDescendants().OfType<Button>(), candidate =>
+                    candidate.IsEffectivelyVisible &&
+                    Avalonia.Automation.AutomationProperties.GetAutomationId(candidate) == AutomationIds.ProgressRefreshToUpgrade);
+                Assert.Equal(MotifAppStrings.ProgressRefreshToUpgrade, button.Content);
+                Assert.DoesNotContain(page.GetVisualDescendants().OfType<Button>(), retry =>
+                    retry.IsEffectivelyVisible && retry.Content as string == MotifAppStrings.TryAgain);
+                button.Command!.Execute(null);
+                Assert.Equal(1, refreshes);
             }
             finally { window.Close(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromMinutes(2));
