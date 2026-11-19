@@ -295,6 +295,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     public bool HasSavedSelection => _workspace.Context.Setup?.CanRunDefaultSelection == true;
     public bool HasProjectWithoutSelection => HasProject && !HasSavedSelection;
+
+    /// <summary>Why the parsing limits wait: nothing is chosen yet, or Texts are chosen but not yet parsed.</summary>
+    public string ParsingLimitsPlaceholderText => _workspace.Selection.ChosenTextIds.Count > 0
+        ? MotifAppStrings.ParseChosenForLimitsPlaceholder : MotifAppStrings.ChooseWhatToParseForLimitsPlaceholder;
     public string TextSelectionSummary =>
         string.Format(MotifAppStrings.TextSelectionSummaryFormat,
             _workspace.Selection.ChosenTextIds.Count,
@@ -1206,6 +1210,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             nameof(SelectionViewModel.TextCount))
         {
             OnPropertyChanged(nameof(TextSelectionSummary));
+            OnPropertyChanged(nameof(ParsingLimitsPlaceholderText));
             OnPropertyChanged(nameof(CanUseAllTexts));
             UseAllTextsCommand.NotifyCanExecuteChanged();
             NotifyResetChoices();

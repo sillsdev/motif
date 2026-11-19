@@ -1551,6 +1551,10 @@
     <value>Open a project to set its parsing limits.</value>
     <comment>Label or heading in the Settings page: open project for parsing limits.</comment>
   </data>
+  <data name="MotifApp.ParseChosenForLimitsPlaceholder" xml:space="preserve">
+    <value>Parse the Texts you chose before setting their parsing limits.</value>
+    <comment>Explanatory sentence in the Settings page: Texts are chosen but not parsed yet, so parsing limits wait.</comment>
+  </data>
   <data name="MotifApp.ChooseWhatToParseForLimitsPlaceholder" xml:space="preserve">
     <value>Choose what to parse before setting its parsing limits.</value>
     <comment>Explanatory sentence in the Settings page: choose what to parse for limits.</comment>

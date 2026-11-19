@@ -1182,6 +1182,7 @@ public static class MotifAppStrings
 
     public static string OpenProjectForParsingLimitsPlaceholder => Text("MotifApp.OpenProjectForParsingLimitsPlaceholder");
 
+    public static string ParseChosenForLimitsPlaceholder => Text("MotifApp.ParseChosenForLimitsPlaceholder");
     public static string ChooseWhatToParseForLimitsPlaceholder => Text("MotifApp.ChooseWhatToParseForLimitsPlaceholder");
 
     public static string ParserWorkLimitPerWordLabel => Text("MotifApp.ParserWorkLimitPerWordLabel");

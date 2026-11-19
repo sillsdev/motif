@@ -634,6 +634,49 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void ParsingLimitsSayToParseWhenTextsAreChosenButNoneIsSaved()
+    {
+        var settingsPath = NewSettingsPath();
+        var priorTheme = ReadTheme();
+        try
+        {
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+            {
+                var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
+                    settingsFilePath: settingsPath);
+                try
+                {
+                    var page = OpenSettings(window);
+                    SettingsTestAccess.Select(page, SettingsGroup.Parsing);
+                    PageScreenshots.Settle(window);
+                    string Seen() => string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>()
+                        .Where(text => text.IsEffectivelyVisible).Select(text => text.Text));
+                    Assert.False(workspace.Context.Setup?.CanRunDefaultSelection);
+                    workspace.Selection.ClearTextsCommand.Execute(null);
+                    PageScreenshots.Settle(window);
+                    Assert.Contains(MotifAppStrings.ChooseWhatToParseForLimitsPlaceholder, Seen());
+
+                    workspace.Selection.SelectAllTextsCommand.Execute(null);
+                    PageScreenshots.Settle(window);
+                    Assert.True(workspace.Selection.ChosenTextIds.Count > 0);
+                    Assert.Contains(MotifAppStrings.ParseChosenForLimitsPlaceholder, Seen());
+                    Assert.DoesNotContain(MotifAppStrings.ChooseWhatToParseForLimitsPlaceholder, Seen());
+                }
+                finally
+                {
+                    window.Close();
+                    await workspace.DisposeAsync();
+                }
+            }, TimeSpan.FromMinutes(1));
+        }
+        finally
+        {
+            RestoreTheme(priorTheme);
+            DeleteSettingsPath(settingsPath);
+        }
+    }
+
+    [Fact]
     public void ParsingLimitFieldsShareAndCommitTheSetupSelection()
     {
         var settingsPath = NewSettingsPath();

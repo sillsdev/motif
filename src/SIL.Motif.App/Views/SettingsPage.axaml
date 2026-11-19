@@ -108,7 +108,7 @@
                          IsVisible="{Binding HasProject}" />
               <views:CopyableTextBlock Classes="settingsPlaceholder" Text="{x:Static app:MotifAppStrings.OpenProjectForParsingLimitsPlaceholder}"
                          IsVisible="{Binding !HasProject}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Classes="settingsPlaceholder" Text="{x:Static app:MotifAppStrings.ChooseWhatToParseForLimitsPlaceholder}"
+              <views:CopyableTextBlock Classes="settingsPlaceholder" Text="{Binding ParsingLimitsPlaceholderText}"
                          IsVisible="{Binding HasProjectWithoutSelection}"
                          TextWrapping="Wrap" />
               <Button Classes="settingsAction" Content="{x:Static app:MotifAppStrings.ChooseWhatToParse}"
