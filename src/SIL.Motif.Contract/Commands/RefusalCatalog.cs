@@ -769,6 +769,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.WindowDiagnosticUnreadable, FailureReason.Refused),
         Spec(RefusalCodes.WindowDifferenceMakeFailed, FailureReason.Refused),
         Spec(RefusalCodes.WindowDifferenceReadFailed, FailureReason.Refused),
+        Spec(RefusalCodes.WindowDryRunFailed, FailureReason.Refused),
         Spec(RefusalCodes.WindowNoProject, FailureReason.Refused),
         Spec(RefusalCodes.WindowOpenFailed, FailureReason.Refused),
         Spec(RefusalCodes.WindowOpenProposalFailed, FailureReason.Refused),

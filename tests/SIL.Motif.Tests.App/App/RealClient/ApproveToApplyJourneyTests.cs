@@ -173,7 +173,12 @@ public sealed class ApproveToApplyJourneyTests(PristineProjectFixture pristine)
                     $"canExecute={document.PrepareApplyCommand.CanExecute(null)} block='{document.ApplyBlockReason}'");
             HeadlessClick.Click(walkthrough.Window, prepare, MotifAppStrings.ProposalApplyPrepare);
             walkthrough.WaitUntil(() => document.IsConfirmingApply, WalkthroughSteps.Remaining(deadline),
-                "Apply did not ask for confirmation");
+                "Apply did not ask for confirmation",
+                () => $"pending={document.IsPending} loading={document.IsLoading} outdated={document.IsOutdated} " +
+                    $"canApply={document.CanApply} canPrepare={document.CanPrepareApply} block='{document.ApplyBlockReason}' " +
+                    $"target='{workspace.Context.Changes.TargetProposalId}' applying={workspace.Context.ProposalApply.IsApplying} " +
+                    $"hasReview={document.HasReview} stale={workspace.Context.Evidence.IsStale} lens='{workspace.Context.Lens?.ProposalId}' " +
+                    $"reading={document.Reading.Status} measuring={document.PendingMeasurement.IsMeasuring} refusal='{document.PendingMeasurement.Refusal?.Sentence}'");
             Assert.Empty(StoredApproved(project.FwDataPath, pristine, word));
             var confirm = ButtonById(walkthrough, AutomationIds.ProposalConfirmApply);
             Assert.True(confirm.IsEffectivelyEnabled, document.ApplyBlockReason);

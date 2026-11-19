@@ -26,6 +26,8 @@ public sealed partial class TextChoiceViewModel : ObservableObject
 
     public int WordCount { get; }
 
+    internal int InventoryOccurrenceCount { get; init; }
+
     public int InterlinearizedWordCount { get; }
 
     /// <summary>The share computed by the Text inventory command.</summary>

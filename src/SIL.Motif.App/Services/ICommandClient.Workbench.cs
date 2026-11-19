@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -47,6 +48,14 @@ public partial interface ICommandClient
     Task<CommandOutcome<ProposalDifferenceResponse>> ProduceProposalDifferenceAsync(
         ProposalDifferenceProduceRequest request, IProgress<AssessmentProgress>? progress,
         CancellationToken cancellationToken);
+
+    /// <summary>Queues a Dry Run of the Proposal's current revision.</summary>
+    Task<CommandOutcome<JobEnqueuedResponse>> EnqueueDryRunAsync(
+        EnqueueDryRunRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Waits for the Dry Run and binds its result when it still describes the Proposal and Baseline.</summary>
+    Task<CommandOutcome<DryRunProjection>> WaitForDryRunAsync(
+        WaitForDryRunRequest request, IProgress<JobStatusResponse> progress, CancellationToken cancellationToken);
 
     /// <summary>Deletes a declined, superseded or withdrawn Proposal that never applied, with its Trials.</summary>
     Task<CommandOutcome<ProposalDeletedResponse>> DeleteProposalAsync(

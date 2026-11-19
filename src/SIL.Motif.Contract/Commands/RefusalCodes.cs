@@ -883,6 +883,8 @@ public static class RefusalCodes
 
     /// <summary>The window could not make a Proposal's Difference.</summary>
     public const string WindowDifferenceMakeFailed = "window.difference-make-failed";
+    /// <summary>The window could not run and record a Proposal's Dry Run.</summary>
+    public const string WindowDryRunFailed = "window.dry-run-failed";
     /// <summary>The window could not open the chosen project.</summary>
     public const string WindowOpenFailed = "window.open-failed";
     /// <summary>The window could not open a Proposal.</summary>

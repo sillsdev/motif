@@ -217,9 +217,7 @@ public sealed class ProposalApplyViewModel : ObservableObject
                      review.IntentDigest != _context.Lens?.IntentDigest || review.Readiness is null)
                 blockers.Add(new(ApplyBlockerKind.NotReady, MotifAppStrings.ApplyReadinessUnavailable));
             else if (review.Readiness is { IsReady: false } readiness)
-                blockers.Add(new(ApplyBlockerKind.NotReady, string.Join(" ", readiness.Reasons.Select(reason =>
-                    readiness.DroppedGrammar is { } dropped && reason == readiness.DroppedGrammarReason
-                        ? DroppedGrammarWords.Blocker(dropped) : reason))));
+                blockers.Add(new(ApplyBlockerKind.NotReady, ProposalReadinessWords.For(readiness)));
         }
         else
         {

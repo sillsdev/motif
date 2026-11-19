@@ -4,6 +4,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -42,6 +43,20 @@ public sealed partial class CommandClient
         ProposalDifferenceProduceRequest request, IProgress<AssessmentProgress>? progress,
         CancellationToken cancellationToken) =>
         Task.Run(() => ProposalDifferenceCommands.Produce(request, progress, cancellationToken));
+
+    public async Task<CommandOutcome<JobEnqueuedResponse>> EnqueueDryRunAsync(
+        EnqueueDryRunRequest request, CancellationToken cancellationToken)
+    {
+        var queued = await OneAtATime(() => JobCommands.EnqueueDryRun(request), cancellationToken)
+            .ConfigureAwait(false);
+        if (queued.Succeeded) _options.RunnerLauncher.Start(request.FwDataPath);
+        return queued;
+    }
+
+    public Task<CommandOutcome<DryRunProjection>> WaitForDryRunAsync(
+        WaitForDryRunRequest request, IProgress<JobStatusResponse> progress, CancellationToken cancellationToken) =>
+        Task.Run(() => JobCommands.WaitForDryRun(request, cancellationToken, cancelOnTimeout: true,
+            wakeRunner: () => _options.RunnerLauncher.Start(request.FwDataPath), progress: progress));
 
     public Task<CommandOutcome<ProposalDeletedResponse>> DeleteProposalAsync(
         DeleteProposalRequest request, CancellationToken cancellationToken) =>

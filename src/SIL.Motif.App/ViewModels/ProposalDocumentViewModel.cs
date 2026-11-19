@@ -38,7 +38,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         ProposalId = proposalId;
         Difference = new ProposalDifferenceViewModel(context.Commands.ReadProposalDifferenceAsync,
             context.OpenWord, context.Commands.ProduceProposalDifferenceAsync,
-            () => [.. context.Selection.AllTexts.Select(text => new DifferenceTextChoice(text.Id, text.Title))]);
+            DifferenceTexts);
         Evidence = new ProposalEvidenceColumnsViewModel(Difference, context.TextStyles);
         Parsimony = new ProposalParsimonyViewModel(context.Commands.ReadProposalParsimonyStatusAsync,
             parsimonyDelay, context.Commands.ReadParsimonyReportAsync, context.Commands.ReadParsimonyViewAsync);
@@ -48,6 +48,9 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         MeasurePendingCommand = new AsyncRelayCommand(MeasurePendingAsync,
             () => !_stopped && IsPending && !_context.PendingMeasurement.IsMeasuring);
         PrepareApplyCommand = new AsyncRelayCommand(PrepareApplyAsync, () => CanPrepareApply);
+        RunDryRunCommand = new AsyncRelayCommand(RunDryRunAsync, () => CanRunDryRun);
+        CancelDryRunCommand = new RelayCommand(CancelDryRun,
+            () => IsDryRunActive && !RunDryRunCommand.IsCancellationRequested);
         ConfirmApplyCommand = new AsyncRelayCommand(ConfirmApplyAsync);
         CancelApplyCommand = new RelayCommand(() => IsConfirmingApply = false);
         RefreshCommand = new AsyncRelayCommand(() => RefreshAsync());
@@ -103,6 +106,14 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     [ObservableProperty] private RationaleEditorModel? _rationaleEditor;
     [ObservableProperty] private ObservableCollection<RationaleEditorModel> _comments = [];
     [ObservableProperty] private IReadOnlyList<string> _operationDescriptions = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOperationRows))]
+    private IReadOnlyList<ProposalOperationRow> _operationRows = [];
+    public bool HasOperationRows => OperationRows.Count > 0;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSharedEffectSummaries))]
+    private IReadOnlyList<string> _sharedEffectSummaries = [];
+    public bool HasSharedEffectSummaries => SharedEffectSummaries.Count > 0;
     [ObservableProperty] private WindowRefusal? _detailRefusal;
     [ObservableProperty] private string _reviewProgress = string.Empty;
     [ObservableProperty] private bool _isLoading;
@@ -128,38 +139,33 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     public RationaleEditorModel? UnsavedEditor =>
         RationaleEditor is { HasUnsavedChanges: true } rationale ? rationale :
         Comments.FirstOrDefault(editor => editor.HasUnsavedChanges);
-    public bool CanPrepareApply => !_stopped && CanAddComment && !IsLoading && !_context.ProposalApply.IsApplying &&
-        PrepareBlockReason is null;
+    public bool CanPrepareApply => CanAddComment && !IsDryRunActive &&
+        !_context.ProposalApply.IsApplying && PrepareBlockReason is null;
     /// <summary>
-    /// Why Apply cannot even be started for this Proposal, or null when it can: the window's Selection has no current
-    /// Trial or no ready evidence for it. A pending Draft is measured by Check These Changes instead.
+    /// Why Apply cannot start, or null when it can. A pending Draft is measured by Check These Changes.
     /// </summary>
     public string? PrepareBlockReason
     {
         get
         {
             if (_stopped || IsLoading || !CanAddComment) return null;
+            if (IsOutdated) return MotifAppStrings.ProposalDocumentOutdated;
             if (IsPending)
             {
                 var pending = _context.ProposalApply.Blockers(_review, _context.Changes.RemoveNonFittingCommand, _context.RefreshProjectCommand, null);
                 return pending.Count == 0 ? null : string.Join(" ", pending.Select(blocker => blocker.Sentence));
             }
-            if (IsOutdated) return MotifAppStrings.ProposalDocumentOutdated;
-            var standing = Card?.Standing ?? (_review?.Trial is { Freshness: TrialFreshness.Current }
-                ? TrialStanding.Current : TrialStanding.NotTried);
-            if (standing.Kind != TrialStandingKind.Current)
+            if (!TriedChecked)
             {
-                var words = TrialStandingWords.For(standing);
+                var words = TrialStandingWords.For(CurrentStanding);
                 return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalApplyNeedsTrialFormat,
                     words.Action);
             }
-            if (!Difference.IsShown)
+            if (!DifferenceChecked)
                 return Difference.ShowsMakeControls ? MotifAppStrings.ProposalApplyNeedsDifference
                     : MotifAppStrings.ProposalApplyDifferenceUnavailable;
             if (_review?.Readiness is not { } readiness) return MotifAppStrings.ApplyReadinessUnavailable;
-            return readiness.IsReady ? null : string.Join(" ", readiness.Reasons.Select(reason =>
-                readiness.DroppedGrammar is { } dropped && reason == readiness.DroppedGrammarReason
-                    ? DroppedGrammarWords.Blocker(dropped) : reason));
+            return readiness.IsReady && !readiness.MissingBoundDryRun ? null : ProposalReadinessWords.For(readiness);
         }
     }
 
@@ -178,7 +184,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     });
     private IAsyncRelayCommand? _openBackupHelp;
     public bool CanApply => !_stopped && !IsLoading && !IsOutdated && CanAddComment &&
-        _context.ProjectPath == ProjectPath && (IsPending || Difference.IsShown) &&
+        _context.ProjectPath == ProjectPath && (IsPending || PrepareBlockReason is null) &&
         (IsPending ? _context.Changes.TargetProposalId is null : _context.Changes.TargetProposalId == ProposalId &&
             _context.Lens?.ProposalId == ProposalId) && _context.ProposalApply.CanApply(_review, null,
             _context.RefreshProjectCommand, null);
@@ -188,11 +194,21 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     /// <summary>Removes the staged changes that no longer fit.</summary>
     public System.Windows.Input.ICommand RemoveNonFittingCommand => _context.Changes.RemoveNonFittingCommand;
 
-    public string ApplyBlockReason => PrepareBlockReason is { } cannotStart ? cannotStart :
-        !IsPending && _context.Changes.TargetProposalId != ProposalId
-        ? MotifAppStrings.ProposalActivateForApply : IsOutdated ? MotifAppStrings.ProposalDocumentOutdated :
-        string.Join(" ", _context.ProposalApply.Blockers(_review, _context.Changes.RemoveNonFittingCommand, _context.RefreshProjectCommand, null)
-            .Select(blocker => blocker.Sentence));
+    public string ApplyBlockReason
+    {
+        get
+        {
+            if (PrepareBlockReason is { } cannotStart) return cannotStart;
+            if (IsLoading || !CanAddComment || (!IsPending && _context.Changes.TargetProposalId != ProposalId))
+                return string.Empty;
+            return string.Join(" ", _context.ProposalApply.Blockers(_review, _context.Changes.RemoveNonFittingCommand,
+                _context.RefreshProjectCommand, null).Select(blocker => blocker.Sentence));
+        }
+    }
+
+    public string ApplyDisplayReason => ShowsReadiness &&
+        (!TriedChecked || ShowsDifferenceAdvice || ShowsDryRunAdvice || IsDryRunActive)
+        ? string.Empty : ApplyBlockReason;
 
     partial void OnCardChanged(ProposalCardViewModel? value)
     {
@@ -207,6 +223,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     }
     partial void OnDetailChanged(ProposalDetailProjection? value)
     {
+        RefreshOperationDisplay();
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(CanAddComment));
@@ -215,7 +232,11 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     }
     partial void OnOperationDescriptionsChanged(IReadOnlyList<string> value) => OnPropertyChanged(nameof(Label));
     partial void OnIsLoadingChanged(bool value) => RaiseApply();
-    partial void OnIsOutdatedChanged(bool value) => RaiseApply();
+    partial void OnIsOutdatedChanged(bool value)
+    {
+        RefreshOperationDisplay();
+        RaiseApply();
+    }
     partial void OnReceiptChanged(ApplyProjection? value)
     {
         OnPropertyChanged(nameof(HasReceipt));
@@ -294,6 +315,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             ReviewProgress = _review is null ? string.Empty : string.Format(CultureInfo.CurrentCulture,
                 MotifAppStrings.ProposalReviewProgressFormat, _review.LookedAtCount, _review.Entries.Count);
             IsOutdated = _context.Evidence.IsStale || Card?.Standing.Kind == TrialStandingKind.NeedsAnotherTry;
+            RefreshOperationDisplay();
             var offer = Offer();
             var identity = new DifferenceIdentity(detail.CurrentIntentDigest,
                 _review?.Trial?.JobId ?? Card?.Card.Trial?.JobId, _context.Baseline?.Token?.SemanticIdentity, offer);
@@ -328,6 +350,31 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             if (ReferenceEquals(_cancellation, cancellation)) _cancellation = null;
             cancellation.Dispose();
         }
+    }
+
+    private IReadOnlyList<DifferenceTextChoice> DifferenceTexts() =>
+        [.. _context.Selection.AllTexts
+            .Where(text => text.WordCount > 0 || text.InventoryOccurrenceCount > 0)
+            .OrderByDescending(text => text.IsChecked)
+            .ThenByDescending(text => Math.Max(text.InventoryOccurrenceCount, text.WordCount))
+            .Select(text => new DifferenceTextChoice(text.Id, text.Title))];
+
+    private void RefreshOperationDisplay()
+    {
+        if (Detail is not { } detail)
+        {
+            OperationRows = [];
+            SharedEffectSummaries = [];
+            return;
+        }
+        var effects = !IsOutdated && _review?.Trial is { Freshness: TrialFreshness.Current } trial &&
+            trial.IntentDigest == detail.CurrentIntentDigest ? trial.DryRun?.Effects ?? [] : [];
+        var byOperation = effects.Where(effect => effect.OperationIds.Count == 1)
+            .ToLookup(effect => effect.OperationIds[0], StringComparer.Ordinal);
+        OperationRows = detail.Operations.Select(operation =>
+            ProposalOperationRow.For(operation, byOperation[operation.OperationId])).ToArray();
+        SharedEffectSummaries = effects.Where(effect => effect.OperationIds.Count > 1 && effect.Changes.Count > 0)
+            .Select(ProposalEffectText.Shared).ToArray();
     }
 
     private DifferenceOffer Offer() => (Detail is { } detail && IsDecided(detail.Status)) ||
@@ -409,7 +456,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         if (e.PropertyName is nameof(SelectionViewModel.ChosenTextIds) or nameof(SelectionViewModel.PastedWords) or
             nameof(SelectionViewModel.AllWordforms) or nameof(SelectionViewModel.RetryFailed))
             InvalidateEvidence();
-        if (e.PropertyName == nameof(SelectionViewModel.TextCount)) Difference.RefreshTexts();
+        if (e.PropertyName is nameof(SelectionViewModel.TextCount) or nameof(SelectionViewModel.ChosenTextIds))
+            Difference.RefreshTexts();
     }
 
     private void OnApplyChanged(object? sender, PropertyChangedEventArgs e)
@@ -429,9 +477,12 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         OnPropertyChanged(nameof(ApplyLossNotice));
         OnPropertyChanged(nameof(OffersRemoveNonFitting));
         PrepareApplyCommand.NotifyCanExecuteChanged();
+        RunDryRunCommand.NotifyCanExecuteChanged();
+        CancelDryRunCommand.NotifyCanExecuteChanged();
         MeasurePendingCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanApply));
         OnPropertyChanged(nameof(ApplyBlockReason));
+        OnPropertyChanged(nameof(ApplyDisplayReason));
         RaiseStatus();
     }
 
@@ -446,14 +497,43 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
 
     private async Task PrepareApplyAsync()
     {
-        if (!CanPrepareApply || _context.ProjectPath != ProjectPath) return;
+        ApplyRefusal = null;
+        // A press while the window is re-reading waits for the read rather than being dropped.
+        if (!await SettleReadAsync().ConfigureAwait(true)) return;
+        if (IsLoading || !CanPrepareApply || _context.ProjectPath != ProjectPath) return;
         if (IsPending) await _context.LeaveProposalAsync().ConfigureAwait(true);
         else await _context.OpenProposalAsync(ProposalId, CancellationToken.None, Label).ConfigureAwait(true);
         if (_stopped || _context.ProjectPath != ProjectPath ||
             (!IsPending && _context.Lens?.ProposalId != ProposalId)) return;
         await RefreshAsync().ConfigureAwait(true);
+        if (!await SettleReadAsync().ConfigureAwait(true)) return;
+        // An evidence change that superseded the read leaves it outdated with no read running: read once more.
+        if (!_stopped && (IsOutdated || _review is null) && !_context.Evidence.IsStale)
+        {
+            await RefreshAsync().ConfigureAwait(true);
+            if (!await SettleReadAsync().ConfigureAwait(true)) return;
+        }
         IsConfirmingApply = CanApply;
     }
+
+    /// <summary>How long a press waits for a read before saying it is still reading.</summary>
+    internal TimeSpan ReadWait { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>Waits for the last read within the bound, showing a reason if it never ends.</summary>
+    private async Task<bool> SettleReadAsync()
+    {
+        var give = Task.Delay(ReadWait);
+        for (var attempt = 0; attempt < 5 && !_stopped; attempt++)
+        {
+            var reading = Reading;
+            if (await Task.WhenAny(reading, give).ConfigureAwait(true) != reading) break;
+            if (ReferenceEquals(reading, Reading)) return true;
+        }
+        if (!_stopped) ApplyRefusal = WindowRefusal.Plain(MotifAppStrings.ProposalApplyStillReading);
+        return false;
+    }
+
+    internal bool HasReview => _review is not null;
 
     private async Task ConfirmApplyAsync()
     {
@@ -474,6 +554,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         _stopped = true;
         ++_generation;
         _cancellation?.Cancel();
+        RunDryRunCommand.Cancel();
         Difference.PropertyChanged -= OnDifferenceStatusChanged;
         _context.Evidence.PropertyChanged -= OnEvidenceChanged;
         _context.Selection.PropertyChanged -= OnSelectionChanged;
@@ -486,7 +567,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         DiagnosticsContent = null;
         Parsimony.Stop();
         Pictures.Clear();
-        await Task.WhenAll(_reads.Append(Difference.StopAsync())).ConfigureAwait(true);
+        var dryRun = RunDryRunCommand.ExecutionTask ?? Task.CompletedTask;
+        await Task.WhenAll(_reads.Append(Difference.StopAsync()).Append(dryRun)).ConfigureAwait(true);
         Difference.Clear();
         IsLoading = false;
         Detail = null;

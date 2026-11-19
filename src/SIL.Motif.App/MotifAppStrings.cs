@@ -3915,6 +3915,7 @@ public static class MotifAppStrings
     public static string ProgressNextUnavailable => Text("MotifApp.ProgressNextUnavailable");
 
     #region W5
+    public static string ProposalApplyStillReading => Text("MotifApp.ProposalApplyStillReading");
     public static string ProposalDocumentOutdated => Text("MotifApp.ProposalDocumentOutdated");
     public static string ProposalDocumentUnreadable => Text("MotifApp.ProposalDocumentUnreadable");
     public static string ProposalEvidenceUnavailable => Text("MotifApp.ProposalEvidenceUnavailable");
@@ -3940,7 +3941,36 @@ public static class MotifAppStrings
     public static string ProposalDeclined => Text("MotifApp.ProposalDeclined");
     public static string ProposalSuperseded => Text("MotifApp.ProposalSuperseded");
     public static string ProposalWithdrawn => Text("MotifApp.ProposalWithdrawn");
-    public static string ProposalActivateForApply => Text("MotifApp.ProposalActivateForApply");
+    public static string ProposalChangeWritingSystem => Text("MotifApp.ProposalChangeWritingSystem");
+    public static string ProposalDifferenceEarlierTry => Text("MotifApp.ProposalDifferenceEarlierTry");
+    public static string ProposalChangeHeading => Text("MotifApp.ProposalChangeHeading");
+    public static string ProposalChangeSense => Text("MotifApp.ProposalChangeSense");
+    public static string ProposalChangeEntry => Text("MotifApp.ProposalChangeEntry");
+    public static string ProposalChangeTarget => Text("MotifApp.ProposalChangeTarget");
+    public static string ProposalChangeGloss => Text("MotifApp.ProposalChangeGloss");
+    public static string ProposalChangeEmpty => Text("MotifApp.ProposalChangeEmpty");
+    public static string ProposalChangeTransition => Text("MotifApp.ProposalChangeTransition");
+    public static string ProposalSharedEffect => Text("MotifApp.ProposalSharedEffect");
+    public static string ProposalChangeFieldWithWritingSystem => Text("MotifApp.ProposalChangeFieldWithWritingSystem");
+    public static string ProposalChangeValue => Text("MotifApp.ProposalChangeValue");
+    public static string ProposalChangeValueWithWritingSystem => Text("MotifApp.ProposalChangeValueWithWritingSystem");
+    public static string ProposalCheckHeading => Text("MotifApp.ProposalCheckHeading");
+    public static string ProposalCheckTried => Text("MotifApp.ProposalCheckTried");
+    public static string ProposalCheckDifference => Text("MotifApp.ProposalCheckDifference");
+    public static string ProposalCheckDryRun => Text("MotifApp.ProposalCheckDryRun");
+    public static string ProposalCheckComplete => Text("MotifApp.ProposalCheckComplete");
+    public static string ProposalCheckCompleteDetail => Text("MotifApp.ProposalCheckCompleteDetail");
+    public static string ProposalCheckNeeded => Text("MotifApp.ProposalCheckNeeded");
+    public static string ProposalRunDryRun => Text("MotifApp.ProposalRunDryRun");
+    public static string ProposalDryRunNeeded => Text("MotifApp.ProposalDryRunNeeded");
+    public static string ProposalDryRunQueued => Text("MotifApp.ProposalDryRunQueued");
+    public static string ProposalDryRunWaitingForBaseline => Text("MotifApp.ProposalDryRunWaitingForBaseline");
+    public static string ProposalDryRunRunning => Text("MotifApp.ProposalDryRunRunning");
+    public static string ProposalDryRunBinding => Text("MotifApp.ProposalDryRunBinding");
+    public static string ProposalDryRunFailed => Text("MotifApp.ProposalDryRunFailed");
+    public static string ProposalDryRunOutdated => Text("MotifApp.ProposalDryRunOutdated");
+    public static string ProposalDryRunCancelling => Text("MotifApp.ProposalDryRunCancelling");
+    public static string ProposalDryRunCancelled => Text("MotifApp.ProposalDryRunCancelled");
     public static string ProposalSelectedNameFormat => Text("MotifApp.ProposalSelectedNameFormat");
     public static string ProposalReceiptFormat => Text("MotifApp.ProposalReceiptFormat");
     public static string ReviewApplyMeasuring => Text("MotifApp.ReviewApplyMeasuring");

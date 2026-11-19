@@ -366,6 +366,7 @@ public static class AutomationIds
     public const string ProgressReadingParse = "motif-progress-reading-parse";
     // round2-proposal
     public const string ProposalStatus = "motif-proposal-status";
+    public const string ProposalRunDryRun = "motif-proposal-run-dry-run";
     // round2-landrev
     public const string ProposalRemoveNonFitting = "motif-proposal-remove-non-fitting";
     // round2-deferred

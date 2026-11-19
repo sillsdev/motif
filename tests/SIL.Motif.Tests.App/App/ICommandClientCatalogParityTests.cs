@@ -67,6 +67,8 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.RemoveProposalPictureAsync)] = "proposal picture remove",
             [nameof(ICommandClient.ReadProposalDifferenceAsync)] = "difference show",
             [nameof(ICommandClient.ProduceProposalDifferenceAsync)] = "difference produce",
+            [nameof(ICommandClient.EnqueueDryRunAsync)] = "dry-run",
+            [nameof(ICommandClient.WaitForDryRunAsync)] = "dry-run --wait",
             [nameof(ICommandClient.ListSourcesAsync)] = "source list",
             [nameof(ICommandClient.ShowSourceAsync)] = "source show",
             [nameof(ICommandClient.WhereSourceAsync)] = "source where",
