@@ -621,7 +621,7 @@ public sealed partial class ResultsInTextViewModel
             nameof(ShowWordCheckboxes), nameof(SelectMenuLabel), nameof(SelectedReadStateCount),
             nameof(HasSelectedReadStateOccurrences), nameof(DiffersCount), nameof(NewCount), nameof(NoParseCount),
             nameof(MatchesCount), nameof(LimitCount), nameof(NotAssessedCount), nameof(NeedsALookCount),
-            nameof(NamedInWarningCount), nameof(HasWarningEvidence), nameof(ObjectTimingDetailText), nameof(HasNotAssessed),
+            nameof(NamedInWarningCount), nameof(HasWarningEvidence), nameof(HasNotAssessed),
             nameof(ChosenTextsAnalysisCount), nameof(HasChosenTextAnalyses), nameof(ChosenTextsRemoveHeader),
             nameof(ChosenTextsRemovalPreview) }) OnPropertyChanged(name);
         SelectAllWordsCommand.NotifyCanExecuteChanged();

@@ -2182,6 +2182,12 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
     }
 
     [Fact]
+    public void TheTextsReaderCarriesNoObjectTimingLineBelongingToDiagnostics()
+    {
+        Assert.Null(typeof(ResultsInTextViewModel).GetProperty("ObjectTimingDetailText"));
+    }
+
+    [Fact]
     public async Task ItSaysItIsReadingSelectedTextsOnlyWhenSomeTextIsSelected()
     {
         var fake = new FakeCommandClient();
