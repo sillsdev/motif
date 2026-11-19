@@ -356,6 +356,14 @@ public static class AuthorPhonologicalRuleComposer
 
         var named = leftContexts.Concat(rightContexts).Select(context => context.BoundaryMarker)
             .OfType<CanonicalId>().Select(id => id.ToGuid()).ToHashSet();
+        // A stray marker without a standard twin blocks only a rule that uses that boundary.
+        var usedRepresentations = leftContexts.Concat(rightContexts).Select(context => context.Boundary switch
+        {
+            "word" => "#",
+            "morpheme" => "+",
+            _ => context.BoundaryMarker is { } marker && marker.ToGuid() == LangProjectTags.kguidPhRuleWordBdry ? "#"
+                : context.BoundaryMarker is { } other && other.ToGuid() == LangProjectTags.kguidPhRuleMorphBdry ? "+" : null,
+        }).OfType<string>().ToHashSet();
         var stored = firstSet.BoundaryMarkersOC.SelectMany(marker => marker.CodesOS
                 .SelectMany(code => code.Representation.AvailableWritingSystemIds
                     .Select(ws => code.Representation.get_String(ws)?.Text)
@@ -365,8 +373,9 @@ public static class AuthorPhonologicalRuleComposer
             .ToArray();
         var conflicts = stored
             .Where(item => item.Marker.Guid != ReservedBoundaryId(item.Representation))
-            .Where(item => named.Contains(item.Marker.Guid) || !stored.Any(other =>
-                other.Marker.Guid == ReservedBoundaryId(item.Representation) && other.Representation == item.Representation))
+            .Where(item => named.Contains(item.Marker.Guid) || (usedRepresentations.Contains(item.Representation) &&
+                !stored.Any(other => other.Marker.Guid == ReservedBoundaryId(item.Representation) &&
+                    other.Representation == item.Representation)))
             .Select(item =>
             {
                 var role = item.Representation == "#" ? "word" : "morpheme";

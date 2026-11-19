@@ -40,6 +40,10 @@ public sealed class RetireBoundaryMarkerComposerTests(PristineProjectFixture pri
         return marker;
     }
 
+    private static void RemoveStandardMorphemeMarker(LcmCache cache) =>
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            FirstSet(cache).BoundaryMarkersOC.Single(item => item.Guid == LangProjectTags.kguidPhRuleMorphBdry).Delete());
+
     private static string Refusal(Action act) => Assert.Throws<InvalidOperationException>(act).Message;
 
     private static CanonicalId Id(IPhBdryMarker marker) => CanonicalId.FromGuid(marker.Guid);
@@ -73,6 +77,50 @@ public sealed class RetireBoundaryMarkerComposerTests(PristineProjectFixture pri
     }
 
     [Fact]
+    public void MergingAUsedStrayPlusWhenTheStandardMarkerIsAbsentPassesTheDryRunAndTakesTheRule()
+    {
+        // The Tamil shape: a stray '+' marker used by rule contexts, and no marker under the standard identity.
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, ["n", "m"]);
+        RemoveStandardMorphemeMarker(cache);
+        var stray = Marker(cache, Guid.NewGuid(), "+");
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            foreach (var _ in Enumerable.Range(0, 3))
+            {
+                var context = cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create();
+                cache.LangProject.PhonologicalDataOA.ContextsOS.Add(context);
+                context.FeatureStructureRA = stray;
+            }
+        });
+        Assert.DoesNotContain(FirstSet(cache).BoundaryMarkersOC, item => item.Guid == LangProjectTags.kguidPhRuleMorphBdry);
+
+        var operations = MergeBoundaryMarkersComposer.Build(cache, new(Id(stray)));
+        SoundSystemComposerTests.Execute(cache, operations);
+
+        Assert.DoesNotContain(FirstSet(cache).BoundaryMarkersOC, item => item.Guid == stray.Guid);
+        Assert.Contains(FirstSet(cache).BoundaryMarkersOC, item => item.Guid == LangProjectTags.kguidPhRuleMorphBdry);
+        Assert.All(cache.LangProject.PhonologicalDataOA.ContextsOS.OfType<IPhSimpleContextBdry>(),
+            context => Assert.Equal(LangProjectTags.kguidPhRuleMorphBdry, context.FeatureStructureRA!.Guid));
+    }
+
+    [Fact]
+    public void AStrayPlusWithNoStandardTwinOnlyBlocksARuleThatNamesABoundary()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, ["n", "m"]);
+        RemoveStandardMorphemeMarker(cache);
+        Marker(cache, Guid.NewGuid(), "+");
+        var phoneme = CanonicalId.FromGuid(cache.LangProject.PhonologicalDataOA.PhonemeSetsOS[0].PhonemesOC.First().Guid);
+        var plain = new AuthorPhonologicalRuleIntent("n to m", PhonologicalRuleDirection.Simultaneous,
+            [new(Phoneme: phoneme)], [], [], []);
+
+        Assert.NotEmpty(AuthorPhonologicalRuleComposer.Build(cache, plain));
+        Assert.Contains("conflicting boundary markers", Refusal(() =>
+            AuthorPhonologicalRuleComposer.Build(cache, plain with { Right = [new(Boundary: "morpheme")] })));
+    }
+
+    [Fact]
     public void RetiresAnUnusedDuplicateOfTheStandardMorphemeMarkerAndKeepsTheStandardOne()
     {
         using var cache = pristine.NewScratch();
@@ -89,7 +137,7 @@ public sealed class RetireBoundaryMarkerComposerTests(PristineProjectFixture pri
     }
 
     [Fact]
-    public void AMarkerDeletedOrNewlyUsedAfterTheDryRunFailsItsFootprintCleanlyNamingTheMarker()
+    public void AMarkerDeletedAfterTheDryRunFailsItsFootprintAndOneNewlyUsedRefusesWhenApplied()
     {
         using var cache = pristine.NewScratch();
         Marker(cache, LangProjectTags.kguidPhRuleMorphBdry, "+");
@@ -111,8 +159,9 @@ public sealed class RetireBoundaryMarkerComposerTests(PristineProjectFixture pri
             cache.LangProject.PhonologicalDataOA.ContextsOS.Add(context);
             context.FeatureStructureRA = used;
         });
+        handler.ReadCurrentFootprint(cache, usedOperation);
         Assert.Contains("still used", Assert.Throws<InvalidOperationException>(
-            () => handler.ReadCurrentFootprint(cache, usedOperation)).Message);
+            () => handler.ApplyAndCaptureEffect(cache, usedOperation, [])).Message);
     }
 
     [Fact]
@@ -137,7 +186,9 @@ public sealed class RetireBoundaryMarkerComposerTests(PristineProjectFixture pri
         });
         var lone = Marker(cache, Guid.NewGuid(), "+");
 
-        Assert.Contains("not in the phoneme set", Refusal(() => RetireBoundaryMarkerComposer.Build(cache, new(Id(lone)))));
+        var refusal = Refusal(() => RetireBoundaryMarkerComposer.Build(cache, new(Id(lone))));
+        Assert.Contains("not in the phoneme set", refusal);
+        Assert.Contains("compose-merge-boundary-markers", refusal);
     }
 
     [Fact]

@@ -59,7 +59,8 @@ internal static class BoundaryMarkerRetirement
             var standard = spelling == "#" ? wordMarker : morphemeMarker;
             if (!set.BoundaryMarkersOC.Any(other => other.Guid == standard && Spellings(other).Contains(spelling)))
                 throw new InvalidOperationException(
-                    $"'{Kind}': the standard marker for '{spelling}' is not in the phoneme set, so '{id.Value}' is not a duplicate.");
+                    $"'{Kind}': the standard marker for '{spelling}' is not in the phoneme set, so '{id.Value}' is not a duplicate " +
+                    "and retiring it would leave the set with no such marker. Use compose-merge-boundary-markers, which adds the standard marker, re-points any use and removes this one.");
         }
         if (allowUsers) return marker;
         var users = marker.ReferringObjects.Where(user => !ReferenceEquals(user, marker) && user.Owner != marker).ToArray();
@@ -96,7 +97,8 @@ internal sealed class BoundaryMarkerDeleteHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var id = OperationSlotRegistry.Target(operation);
-        BoundaryMarkerRetirement.Inspect(cache, id);
+        // Users are checked when applying, not in the base-state footprint.
+        BoundaryMarkerRetirement.Inspect(cache, id, allowUsers: true);
         var current = ReferenceFieldAlternatives.ToAlternatives(id);
         return new ExpectedEffect(id, SnapshotFields.PhPhonemeSetBoundaryMarkers, current, current);
     }
