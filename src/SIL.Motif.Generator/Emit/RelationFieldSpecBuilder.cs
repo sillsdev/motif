@@ -15,7 +15,9 @@ public static class RelationFieldSpecBuilder
     /// <summary>The possibility list FieldWorks's chooser offers for a field, as <c>LexDb</c> owns it.</summary>
     private static readonly Dictionary<FieldKey, string> PossibilityLists = new()
     {
+        // FieldWorks LexSenseParts.xml:457-462, possAtomicReference for SenseType, chooses from LexDb.SenseTypesOA.
         [new FieldKey("LexSense", "SenseType")] = "c => c.LangProject.LexDbOA.SenseTypesOA",
+        // FieldWorks LexSenseParts.xml:509-514, possAtomicReference for Status, chooses from LangProject.StatusOA.
         [new FieldKey("LexSense", "Status")] = "c => c.LangProject.StatusOA",
     };
 

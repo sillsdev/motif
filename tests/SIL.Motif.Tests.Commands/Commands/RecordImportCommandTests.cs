@@ -127,8 +127,10 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         Assert.Equal(before, Hashes(path));
     }
 
-    [Fact]
-    public void EditingASenseStatusThroughTheImportCommandReportsTheStatusOperation()
+    [Theory]
+    [InlineData("status", "lexical/lexSense/setStatus")]
+    [InlineData("sense-type", "lexical/lexSense/setSenseType")]
+    public void EditingASensePossibilityFieldThroughTheImportCommandReportsItsOperation(string field, string kind)
     {
         Directory.CreateDirectory(_folder);
         using var cache = pristine.NewScratch();
@@ -147,7 +149,10 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
             entry.SensesOS.Add(sense);
             sense.Gloss.set_String(cache.DefaultAnalWs, "zzgloss");
             var status = services.GetInstance<ICmPossibilityFactory>().Create();
-            (cache.LangProject.StatusOA ??= services.GetInstance<ICmPossibilityListFactory>().Create()).PossibilitiesOS.Add(status);
+            var list = field == "status"
+                ? cache.LangProject.StatusOA ??= services.GetInstance<ICmPossibilityListFactory>().Create()
+                : cache.LangProject.LexDbOA.SenseTypesOA ??= services.GetInstance<ICmPossibilityListFactory>().Create();
+            list.PossibilitiesOS.Add(status);
             statusId = status.Guid;
         });
         new FwDataProjectLoader().Save(cache);
@@ -156,7 +161,7 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         var read = RecordFileReader.Read(exporter.Export(entryId).Text!, schema.Schema, exporter.CreateReadOptions());
         Assert.False(read.HasErrors);
         var sense0 = (RecordObject)((RecordList)read.Document!.Data["senses"]!).Items[0];
-        sense0.Set("status", new RecordScalar("[zzstatus](/objects/" + statusId.ToString("D") + "){.name guid=" + statusId.ToString("D") + "}"));
+        sense0.Set(field, new RecordScalar("[zzstatus](/objects/" + statusId.ToString("D") + "){.name guid=" + statusId.ToString("D") + "}"));
         var file = Path.Combine(_folder, "entry.md");
         File.WriteAllText(file, RecordFileWriter.Write(read.Document!, schema.Schema));
         var before = Hashes(path);
@@ -164,7 +169,7 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         var outcome = RecordImportCommand.Run(new(path, file));
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        Assert.Equal("lexical/lexSense/setStatus", Assert.Single(outcome.Value!.Operations).Kind);
+        Assert.Equal(kind, Assert.Single(outcome.Value!.Operations).Kind);
         Assert.Equal(before, Hashes(path));
     }
 

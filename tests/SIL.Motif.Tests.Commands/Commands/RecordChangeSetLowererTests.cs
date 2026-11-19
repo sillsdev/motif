@@ -1100,4 +1100,23 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var swapped = CanonicalId.FromGuid(NewListItem(SenseTypeList).Guid).Value;
         RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexSense/setStatus", new { @ref = swapped }, _sense.Guid);
     }
+
+    [Fact]
+    public void ASubPossibilityOfTheFieldsListIsAcceptedAndAnAbsentListRefuses()
+    {
+        var parent = NewListItem(SenseTypeList);
+        var child = default(ICmPossibility)!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            child = _cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
+            parent.SubPossibilitiesOS.Add(child);
+        });
+        var accepted = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "lexical/lexSense/setSenseType",
+            target: CanonicalId.FromGuid(_sense.Guid), after: JsonSerializer.SerializeToElement(new { @ref = CanonicalId.FromGuid(child.Guid).Value }));
+        Assert.NotEmpty(ScratchDryRun.Of(_cache, Proposal([accepted])).ExpectedEffects);
+
+        Assert.Null(_cache.LangProject.StatusOA);
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexSense/setStatus",
+            new { @ref = CanonicalId.FromGuid(child.Guid).Value }, _sense.Guid);
+    }
 }
