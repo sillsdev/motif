@@ -1,7 +1,7 @@
 ---
 name: linguistic-consultant
 description: >-
-  Use when a language-documentation workflow, FieldWorks analysis, grammar recommendation, report,
+  For grammar-building work, load the `grammar` skill first. Use when a language-documentation workflow, FieldWorks analysis, grammar recommendation, report,
   or explanation needs linguistic judgment, a user persona, or a check that evidence supports the
   conclusion. Covers morphology, affixes, MSAs, slots, templates, terminology, and asking the
   linguist when the data cannot decide.

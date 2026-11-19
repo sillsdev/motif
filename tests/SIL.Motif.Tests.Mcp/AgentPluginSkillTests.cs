@@ -14,9 +14,12 @@ public sealed class AgentPluginSkillTests
     [
         "fieldworks-expert",
         "fieldworks-parsing-expert",
+        "grammar",
+        "grammar-discovery-loop",
         "linguistic-consultant",
         "motif-workflow",
         "parsimony-review",
+        "rule-hypothesis-test",
     ];
 
     [Fact]

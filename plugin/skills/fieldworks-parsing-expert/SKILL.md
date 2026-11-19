@@ -1,6 +1,6 @@
 ---
 name: fieldworks-parsing-expert
-description: Diagnose FLEx HermitCrab or XAmple parses that are wrong, missing, ambiguous or slow, and explain Grammar-area setup, affix templates, allomorphs, features, phonological rules and parser traces. Use for parser behavior and configuration; route general screen lookup to fieldworks-expert and linguistic judgments to linguistic-consultant.
+description: For grammar-building work, load the `grammar` skill first. Diagnose FLEx HermitCrab or XAmple parses that are wrong, missing, ambiguous or slow, and explain Grammar-area setup, affix templates, allomorphs, features, phonological rules and parser traces. Use for parser behavior and configuration; route general screen lookup to fieldworks-expert and linguistic judgments to linguistic-consultant.
 ---
 
 # FieldWorks parsing expert

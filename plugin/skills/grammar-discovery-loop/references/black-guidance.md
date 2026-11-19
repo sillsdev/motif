@@ -2,8 +2,7 @@
 
 Read before writing or changing a Guide section and before choosing a mechanism. The ladder is in
 [mechanism-ladder.md](mechanism-ladder.md). Line numbers (P:) refer to Black's conceptual introduction to FLEx
-grammar modelling; cite them, not this page. Repository analysis of the same material:
-`docs/references/grammar-authoring.md`.
+grammar modelling; cite them, not this page.
 
 - **Fix an incorrect parse with the tightest principled mechanism that works** (P:2734-2740, 3971). Black gives
   no decision rule between rule and list, no numeric cap on ad hoc rules or exception-feature holders, and

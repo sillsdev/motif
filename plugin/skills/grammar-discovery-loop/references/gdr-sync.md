@@ -1,12 +1,11 @@
 # Grammar Guide and sync
 
 The Grammar Guide is the project's readable account of its grammar. Sections have stable `GDR-n` identities;
-Proposals explain changes. Consult [ADR 0005](../../../../docs/adr/0005-the-grammar-guide.md) for the
-accepted Guide structure, generated blocks and sync contract.
+Proposals explain changes. Run `motif guide check` (Autonomous today) to see where a section is out of sync with the grammar.
 
 When a Proposal changes a grammar object, read the relevant Guide section and record the chosen mechanism,
 evidence, decisions and uncertainty alongside the change. Consult [black-guidance.md](black-guidance.md),
-[mechanism-ladder.md](mechanism-ladder.md) and the findings in `docs/references/grammar-authoring.md`.
+[mechanism-ladder.md](mechanism-ladder.md).
 
 A section has **How it works**, **Examples**, **Exceptions**, **Decisions**, **Open questions** and
 **In the grammar**, in that order. A part uses `#`, a section `##`, and template parts `###`. Generated

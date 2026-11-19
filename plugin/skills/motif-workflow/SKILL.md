@@ -1,6 +1,6 @@
 ---
 name: motif-workflow
-description: Use Motif to inspect a Known project, draft and measure a Proposal, revise it, and Finalize it for a person to Apply. Use for any change to a FieldWorks project; never edit the project another way.
+description: For grammar-building work, load the `grammar` skill first. Use Motif to inspect a Known project, draft and measure a Proposal, revise it, and Finalize it for a person to Apply. Use for any change to a FieldWorks project; never edit the project another way.
 ---
 
 # Motif workflow

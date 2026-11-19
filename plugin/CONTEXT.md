@@ -7,7 +7,7 @@ Decisions and their reasoning: [agent and skill findings](../docs/references/age
 ## The package
 
 **Plugin**:
-The unit an AI assistant installs: one directory holding all five skills, their shared references,
+The unit an AI assistant installs: one directory holding all seven skills, their shared references,
 and the registration of Motif's agent server. Named `motif` because the skills assume Motif is there:
 FieldWorks itself offers an agent no safe way to change a project. Every skill is invoked as
 `motif:<skill>`. A plugin cannot read files outside its own directory. Motif's installer carries it,
@@ -17,7 +17,7 @@ _Avoid_: extension, package, bundle, "the fieldworks plugin"
 **Marketplace**:
 The catalog Claude Code adds with one command, `/plugin marketplace add sillsdev/motif`. It is this
 repository, named `motif`, declared in `.claude-plugin/marketplace.json` at the repo root. One
-marketplace, one plugin, five skills.
+marketplace, one plugin, seven skills.
 _Avoid_: registry, store, feed
 
 **Skill**:
@@ -26,7 +26,7 @@ trigger: it is always in context, the body loads when it fires, references load 
 must stay self-contained enough to be zipped for Claude.ai on its own.
 _Avoid_: prompt, persona file, agent
 
-## The five skills
+## The seven skills
 
 **FieldWorks expert** (`fieldworks-expert`):
 Answers what FLEx does, where, and how it maps to the data model: location, visibility, and the
@@ -58,6 +58,15 @@ How an agent reads a Parsimony finding's evidence and recipe and chooses fix, ke
 the update or the ruling in a Draft for a person to Apply. Never promises a fix the recipe does not
 name.
 _Avoid_: simplification skill, cleanup skill
+
+**Grammar** (`grammar`):
+The router for grammar work. Sends an agent to the discovery loop, then the hypothesis test, then a Proposal,
+then Apply, and names listing word forms instead of writing a rule as the anti-pattern.
+_Avoid_: grammar guide (that is the Guide in the project), grammar bot
+
+**Grammar discovery loop** (`grammar-discovery-loop`) and **Rule hypothesis test** (`rule-hypothesis-test`):
+The hypothesis-first method for building a grammar from a corpus and speakers, and its smallest step: a rule
+is tested against letter-swap controls on held-out books. They name `motif` command lines, not Motif's tools.
 
 ## Words the skills share
 

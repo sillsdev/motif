@@ -13,7 +13,7 @@ its test, and record each rung tried. Guidance and its sources: [black-guidance.
    combination is simply incorrect. Tag the fewest objects among what FieldWorks can express: use the feature
    where the rule or allomorph can require or exclude it. An affix restriction is positive only (the stem must
    carry the feature), so where the majority must carry the tag, record that as a FieldWorks limitation in the
-   hypothesis record and the Guide and invent no negative mechanism (ADR 0003).
+   hypothesis record and the Guide and invent no negative mechanism.
 5. Separate templates or entries, including a separate clitic entry (one clitic per orthographic word may carry
    the clitic type; others are proclitic or enclitic in order).
 6. Ad hoc co-occurrence rules, tightest first: adjacent before or after, then somewhere, then anywhere.
@@ -21,4 +21,4 @@ its test, and record each rung tried. Guidance and its sources: [black-guidance.
 
 Black sets no numeric cap and no decision rule between rule and list, and says nothing on nonword testing;
 the loop's controls and size delta fill that gap. Avoid null allomorphs without need (parser speed).
-Constructs a real FieldWorks project cannot create are out of scope (ADR 0003).
+Constructs a real FieldWorks project cannot create are out of scope.

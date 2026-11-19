@@ -15,3 +15,7 @@ The Grammar Design Records list is now the Grammar Guide, and its commands are r
 ## Window
 
 - The window and its Help call the list the Grammar Guide, and its entries Guide sections, instead of Grammar Design Records. A project whose list is still named "Grammar Design Records" opens the Guide read-only with a sentence saying to rename it in FieldWorks (Lists). Both names present shows a sentence saying to remove one in FieldWorks.
+
+## Agent plugin
+
+- The Motif plugin now ships the `grammar` router skill and the `grammar-discovery-loop` and `rule-hypothesis-test` skills, so agents building a grammar are pointed at writing and testing a rule before listing word forms. The `motif hypothesis` verbs the skills use are still Autonomous commands.

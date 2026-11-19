@@ -9,6 +9,8 @@ description: >-
 
 # Grammar discovery loop
 
+The `grammar` skill routes here first. Wording below is advisory: these are the steps you should follow.
+
 The unit of work is a **hypothesis**: a rule plus the forms it predicts. A package is the mechanical result of
 an accepted hypothesis, never a list of unparsed words. Lists are the cheapest thing to pass a gate and
 the thing that grows a grammar without understanding it; the loop forces the broader rule to be tried first.
@@ -21,11 +23,12 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
 
 ## Steps
 
-1. **Mine** the discovery set, not failures. Recurring partials and paradigm tables, affix candidates ranked by
+1. **Mine** the discovery set, not failures. Cluster the words the grammar does not parse yet (unparsed and Open types); that is where the next rule comes from. Recurring partials and paradigm tables, affix candidates ranked by
    distinct stems, alternation candidates from near-pairs (stem plus affix expected, surface differs by one
    edit at the boundary). Output: a pattern ledger ranked by token mass. No grammar edit. Done when each
    candidate has a pattern (not a word list), its stems, and its token mass. Never open held-out books.
-2. **Neighbour check.** Run `motif hypothesis neighbours --project <fwdata> --change <x>:<y> [--environment …] [--host-class …] [--slot …]`
+2. **Neighbour check.** The `motif hypothesis` verbs are Autonomous commands today: set `MOTIF_AUTONOMOUS=1` or pass
+   `--autonomous`, or they refuse with `command.autonomous-required`. Run `motif hypothesis neighbours --project <fwdata> --change <x>:<y> [--environment …] [--host-class …] [--slot …]`
    and query the live rules for the same change, environment, host class or slot. `hasPassed` means a passed rule
    stands: widen or merge it. `hasFailedAttempt` means a rule attempt is on record, which permits a list. Done when the result is written down: a neighbour exists (the `neighbour` field is the id of the hypothesis widened or merged, `H-3`),
    or `none-found`. Free text is refused, and `none-found` is refused when the exact shape is already in the ledger.
@@ -44,7 +47,7 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
    minority by the encoding that tags the fewest objects among those FieldWorks can express: a stem exception
    feature (ProdRestrict) where the rule or allomorph can require or exclude it. FieldWorks affix restrictions
    take only positive requirements; where that forces the majority to carry the tag, record it in the
-   hypothesis record and the Guide as a FieldWorks limitation and invent no negative mechanism (ADR 0003).
+   hypothesis record and the Guide as a FieldWorks limitation and invent no negative mechanism.
    Start permissive and restrict on speaker-rejected forms. A list is allowed only when a FAIL is on record
    for that shape, or the fact is lexical (TAKESMU case in
    [references/hypothesis-record.md](references/hypothesis-record.md)). Done when the encoding follows the
@@ -72,7 +75,7 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
 
 ## Completion
 
-A hypothesis is finished when its ledger row has a verdict (`motif hypothesis decide`; the ledger is in the Motif store, ADR 0011), its encoding follows the verdict (rule for PASS;
+A hypothesis is finished when its ledger row has a verdict (`motif hypothesis decide`; the ledger is in the Motif store), its encoding follows the verdict (rule for PASS;
 list only after FAIL or for a lexical fact; speaker questions queued for UNDECIDED), and its Guide matches the
 rules as Trial left them. A brief for a hypothesis-first package uses
 [references/brief-template.md](references/brief-template.md).
