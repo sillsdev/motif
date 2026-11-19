@@ -126,16 +126,50 @@ public sealed class LcmGraphReader
         }).ToArray()
     });
 
-    public IReadOnlyList<GenericRecord> Read() => objects.Values.OrderBy(o => o.Guid)
-        .Select(o => new GenericRecord
+    // LCModel is read on this thread; a chunk's values then become JSON in parallel, from plain objects only.
+    public IReadOnlyList<GenericRecord> Read()
+    {
+        const int Chunk = 1024;
+        var ordered = objects.Values.OrderBy(o => o.Guid).ToArray();
+        var records = new GenericRecord[ordered.Length];
+        var options = new ParallelOptions { MaxDegreeOfParallelism = Math.Min(4, Environment.ProcessorCount) };
+        for (var start = 0; start < ordered.Length; start += Chunk)
         {
-            Provenance = provenance[o.Hvo],
-            Id = o.Guid, ClassId = o.ClassID, Owner = o.Owner?.Guid,
-            OwningField = ownership.GetValueOrDefault(o.Hvo).Field,
-            Values = Fields(o.ClassID).ToDictionary(f => fieldKeys[f], f => ReadValue(o, f))
-        }).ToArray();
+            var count = Math.Min(Chunk, ordered.Length - start);
+            var extracted = new object?[count][];
+            var heads = new (Guid Id, int ClassId, Guid? Owner, int Hvo)[count];
+            for (var index = 0; index < count; index++)
+            {
+                var value = ordered[start + index];
+                heads[index] = (value.Guid, value.ClassID, value.Owner?.Guid, value.Hvo);
+                extracted[index] = Fields(value.ClassID).Select(field => Value(value, field)).ToArray();
+            }
+            try
+            {
+                Parallel.For(0, count, options, index =>
+                {
+                    var head = heads[index];
+                    var fields = Fields(head.ClassId);
+                    var values = new Dictionary<string, JsonElement>(fields.Length);
+                    for (var field = 0; field < fields.Length; field++) values.Add(fieldKeys[fields[field]], Json(extracted[index][field]));
+                    records[start + index] = new GenericRecord
+                    {
+                        Provenance = provenance[head.Hvo],
+                        Id = head.Id, ClassId = head.ClassId, Owner = head.Owner,
+                        OwningField = ownership.GetValueOrDefault(head.Hvo).Field,
+                        Values = values
+                    };
+                });
+            }
+            catch (AggregateException failure) when (failure.InnerExceptions.Count > 0)
+            {
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure.InnerExceptions[0]).Throw();
+            }
+        }
+        return records;
+    }
 
-    private JsonElement ReadValue(ICmObject record, int field) => Value(record, field) switch
+    private static JsonElement Json(object? extracted) => extracted switch
     {
         null => NullValue,
         true => TrueValue,

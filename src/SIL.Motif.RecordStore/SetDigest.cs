@@ -10,14 +10,18 @@ namespace SIL.Motif.RecordStore;
 /// </summary>
 internal readonly record struct SetDigest(UInt128 Low, UInt128 High, long Count)
 {
-    public SetDigest Add(byte[] item)
+    public SetDigest Add(byte[] item) => Add(item.AsSpan());
+
+    public SetDigest Add(ReadOnlySpan<byte> item)
     {
         var (low, high) = Hash(item);
         var sum = Low + low;
         return new(sum, High + high + (sum < Low ? UInt128.One : UInt128.Zero), Count + 1);
     }
 
-    public SetDigest Remove(byte[] item)
+    public SetDigest Remove(byte[] item) => Remove(item.AsSpan());
+
+    public SetDigest Remove(ReadOnlySpan<byte> item)
     {
         var (low, high) = Hash(item);
         return new(Low - low, High - high - (Low < low ? UInt128.One : UInt128.Zero), Count - 1);
@@ -32,9 +36,10 @@ internal readonly record struct SetDigest(UInt128 Low, UInt128 High, long Count)
         return Convert.ToHexStringLower(SHA256.HashData([..System.Text.Encoding.UTF8.GetBytes(domain), 0, ..bytes]));
     }
 
-    private static (UInt128, UInt128) Hash(byte[] item)
+    private static (UInt128, UInt128) Hash(ReadOnlySpan<byte> item)
     {
-        var hash = SHA256.HashData(item);
-        return (BinaryPrimitives.ReadUInt128LittleEndian(hash.AsSpan(0, 16)), BinaryPrimitives.ReadUInt128LittleEndian(hash.AsSpan(16, 16)));
+        Span<byte> hash = stackalloc byte[32];
+        SHA256.HashData(item, hash);
+        return (BinaryPrimitives.ReadUInt128LittleEndian(hash[..16]), BinaryPrimitives.ReadUInt128LittleEndian(hash[16..]));
     }
 }

@@ -5,9 +5,17 @@ using SIL.Harmony.Core;
 
 namespace SIL.Motif.RecordStore;
 
-internal sealed class RecordCodec(RecordContent content)
+/// <param name="retainValues">Keep each stored value decoded for reading back; a bulk import writes values it never reads.</param>
+internal sealed class RecordCodec(RecordContent content, bool retainValues = true)
 {
     private readonly Dictionary<JsonElement, int> layoutIds = [];
+    private readonly Dictionary<JsonElement, RecordInitialization.LayoutView> layouts = [];
+
+    private RecordInitialization.LayoutView View(JsonElement layout)
+    {
+        if (!layouts.TryGetValue(layout, out var view)) layouts.Add(layout, view = new RecordInitialization.LayoutView(layout));
+        return view;
+    }
 
     public byte[] Snapshot(IObjectBase entity)
     {
@@ -19,13 +27,14 @@ internal sealed class RecordCodec(RecordContent content)
         Header(output, record);
         output.Byte(record.DeletedAt.HasValue ? (byte)1 : (byte)0);
         if (record.DeletedAt.HasValue) output.Integer(record.DeletedAt.Value.UtcTicks);
-        var fields = record.Values.Where(p => !editedKeys.Contains(p.Key) && !RecordInitialization.IsInitial(record, p.Key, p.Value))
+        var view = View(record.Layout);
+        var fields = record.Values.Where(p => !editedKeys.Contains(p.Key) && !view.IsInitial(record, p.Key, p.Value))
             .OrderBy(p => p.Key, StringComparer.Ordinal).ToArray();
         output.Unsigned((ulong)fields.Length);
         foreach (var (field, value) in fields)
         {
             Key(output, field);
-            var type = RecordInitialization.Type(record, field);
+            var type = view.Type(record, field);
             if (type is 14 or 16)
             {
                 var alternatives = value.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal).ToArray();
@@ -233,8 +242,8 @@ internal sealed class RecordCodec(RecordContent content)
                 throw new InvalidDataException("Invalid encounter ordinal.");
             output.Unsigned((ulong)record.Provenance.EncounterOrdinal + 1);
             Text(output, record.Provenance.TraversalVersion);
-            Value(output, JsonSerializer.SerializeToElement(record.Provenance.Vectors));
-            Value(output, JsonSerializer.SerializeToElement(record.Provenance.RepositoryOrdinals));
+            output.Unsigned((ulong)content.PutBuilt(built => RecordContent.WriteVectors(built, record.Provenance.Vectors)));
+            output.Unsigned((ulong)content.PutBuilt(built => RecordContent.WriteOrdinals(built, record.Provenance.RepositoryOrdinals)));
         }
     }
 
@@ -262,11 +271,11 @@ internal sealed class RecordCodec(RecordContent content)
         return RecordInitialization.Create(id, kind, classId, owner, field, ordinal, flags, layout, provenance);
     }
 
-    private void Guid(BinaryOutput output, Guid value) => Value(output, JsonSerializer.SerializeToElement(value));
+    private void Guid(BinaryOutput output, Guid value) => output.Unsigned((ulong)content.PutGuid(value));
     private Guid Guid(BinaryInput input) => Value(input).GetGuid();
-    private void Value(BinaryOutput output, JsonElement value) => output.Unsigned((ulong)content.Put(value));
+    private void Value(BinaryOutput output, JsonElement value) => output.Unsigned((ulong)content.Put(value, retainValues));
     private JsonElement Value(BinaryInput input) => content.Get(checked((int)input.Unsigned()));
-    private void Text(BinaryOutput output, string value) => Value(output, JsonSerializer.SerializeToElement(value));
+    private void Text(BinaryOutput output, string value) => output.Unsigned((ulong)content.PutText(value));
     private string Text(BinaryInput input) => Value(input).GetString() ?? throw new InvalidDataException("Missing record text.");
     private static void Key(BinaryOutput output, string key)
     {

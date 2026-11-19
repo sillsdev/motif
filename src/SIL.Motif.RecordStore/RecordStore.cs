@@ -1,5 +1,6 @@
 using SIL.Harmony.Changes;
 using SIL.Motif.RecordStore.HandAnalysis;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -87,9 +88,12 @@ public sealed partial class RecordStore : IAsyncDisposable
             }
             else if (storedFormat == 0 && File.Exists(path))
                 throw new InvalidDataException("Unsupported record store format.");
-            var unsupported = database.Set<ChangeEntity<IChange>>()
-                .Where(change => change.AuthoredModelVersion < 0 || change.AuthoredModelVersion > ModelVersion)
-                .Select(change => (int?)change.AuthoredModelVersion).FirstOrDefault();
+            // A bounded index probe, not a scan of every change body, finds history authored by a newer model.
+            database.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_ChangeEntities_AuthoredModelVersion ON ChangeEntities (AuthoredModelVersion)");
+            var unsupported = database.Database.SqlQuery<int>($"""
+                SELECT AuthoredModelVersion AS Value FROM ChangeEntities WHERE AuthoredModelVersion < 0
+                UNION ALL SELECT AuthoredModelVersion AS Value FROM ChangeEntities WHERE AuthoredModelVersion > {ModelVersion} LIMIT 1
+                """).AsEnumerable().Select(value => (int?)value).FirstOrDefault();
             if (unsupported is int version) RequireSupportedModelVersion(version, ModelVersion);
             content = scope.ServiceProvider.GetRequiredService<RecordContent>();
             if (!readOnly) content.Load(database.Set<ContentRow>().AsNoTracking().ToArray());
@@ -182,10 +186,12 @@ public sealed partial class RecordStore : IAsyncDisposable
             new RecordImport(RecordInitialization.Prepare(r.Record, entry.Layout, reuseValues: packed), r.FieldTypes)));
         var baseline = packed ? prepared.Select(import => import.Record).ToArray() : null;
         await using var transaction = await database.Database.BeginTransactionAsync();
+        PublishedWork? work = null;
         try
         {
             if (baseline is not null)
             {
+                work = PublishedWork.Start(baseline);
                 var clock = scope.ServiceProvider.GetRequiredService<IHybridDateTimeProvider>();
                 await new NativeImportWriter(database, content).WriteAsync(baseline, clientId, clock);
             }
@@ -196,12 +202,14 @@ public sealed partial class RecordStore : IAsyncDisposable
                     await model.AddChanges(clientId, batch);
                 database.ChangeTracker.Clear();
             }
-            await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync());
+            await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync(), work);
             await transaction.CommitAsync();
         }
         catch
         {
             requiresReopen = true;
+            // The overlapped work only reads the records; let it finish so nothing outlives a failed import.
+            if (work is not null) await Task.WhenAll(work.Snapshot, work.Projection).ContinueWith(_ => { });
             throw;
         }
     }
@@ -340,18 +348,25 @@ public sealed partial class RecordStore : IAsyncDisposable
         await PublishIndexAsync(records, state.Revision);
     }
 
-    private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision)
+    /// <summary>Digests and index of records in hand; an import computes them while its rows are written.</summary>
+    private sealed record PublishedWork(Task<SetDigest> Snapshot, Task<ReferenceProjection> Projection)
+    {
+        public static PublishedWork Start(IReadOnlyList<GenericRecord> records) =>
+            new(Task.Run(() => SnapshotDigest(records)), Task.Run(() => ReferenceProjection.Build(records)));
+    }
+
+    private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision, PublishedWork? work = null)
     {
         point = null;
-        var projection = ReferenceProjection.Build(records);
+        var projection = work is null ? ReferenceProjection.Build(records) : await work.Projection;
         await using var transaction = database.Database.CurrentTransaction is null ? await database.Database.BeginTransactionAsync() : null;
-        await ReferencePersistence.ReplaceAsync(database, projection.Edges);
+            await ReferencePersistence.ReplaceAsync(database, projection.Edges);
         var state = await database.Set<StoreState>().SingleAsync();
         state.Revision = revision;
         state.IndexDigest = projection.Digest();
         state.IndexLimitations = string.Join("\n", projection.Limitations);
         state.ReplayDigest = await ReplayIntegrity.DigestAsync(database);
-        state.SnapshotDigest = SnapshotDigest(records).Final("snapshot");
+        state.SnapshotDigest = (work is null ? SnapshotDigest(records) : await work.Snapshot).Final("snapshot");
         state.ContentDigest = content.Digest();
         state.Published = true;
         await database.SaveChangesAsync();
@@ -388,6 +403,18 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     internal static byte[] SnapshotItem(GenericRecord record)
     {
+        if (RecordContent.HasDirectItem(record))
+        {
+            using var output = new BinaryOutput();
+            RecordContent.WriteRecordItem(output, record);
+            return output.Finish();
+        }
+        return SnapshotItemFromJson(record);
+    }
+
+    /// <summary>The reference definition of a digest item; the direct writer must produce exactly these bytes.</summary>
+    internal static byte[] SnapshotItemFromJson(GenericRecord record)
+    {
         var edited = record.Lists.Where(p => p.Value.Ops.Count > 0).OrderBy(p => p.Key).ToArray();
         // Unedited records keep their earlier digest shape; edited lists add their retained operations.
         if (edited.Length == 0) return RecordContent.Canonical(JsonSerializer.SerializeToElement(new
@@ -403,7 +430,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         }));
     }
 
-    private static SetDigest SnapshotDigest(IEnumerable<GenericRecord> records, CancellationToken ct = default)
+    internal static SetDigest SnapshotDigest(IEnumerable<GenericRecord> records, CancellationToken ct = default)
     {
         var digest = new SetDigest();
         foreach (var record in records)

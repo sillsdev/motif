@@ -12,15 +12,29 @@ internal sealed class ContentRow
     public byte[] Data { get; set; } = [];
 }
 
-internal sealed class RecordContent
+/// <summary>The SHA-256 of an immutable value's canonical bytes; it is the value's identity.</summary>
+internal readonly record struct ContentKey(ulong A, ulong B, ulong C, ulong D)
+{
+    public static ContentKey Of(ReadOnlySpan<byte> canonical)
+    {
+        Span<byte> hash = stackalloc byte[32];
+        SHA256.HashData(canonical, hash);
+        return new(BinaryPrimitives.ReadUInt64LittleEndian(hash), BinaryPrimitives.ReadUInt64LittleEndian(hash[8..]),
+            BinaryPrimitives.ReadUInt64LittleEndian(hash[16..]), BinaryPrimitives.ReadUInt64LittleEndian(hash[24..]));
+    }
+}
+
+internal sealed partial class RecordContent
 {
     // Rows stay encoded until read: opening a store costs one hash per row, not one decode per row.
-    private Dictionary<string, int>? identities;
+    private Dictionary<ContentKey, int>? identities;
     private Dictionary<int, byte[]> encoded = new();
     private Dictionary<int, JsonElement> values = new();
     private readonly List<ContentRow> pending = [];
     private int next;
-    private SortedDictionary<int, byte[]> hashes = new();
+    // Ids only grow past every loaded id, so the list stays ordered once loading has sorted it.
+    private List<(int Id, byte[] Hash)> hashes = [];
+    private readonly BinaryOutput scratch = new();
     /// <summary>Number of rows decoded from storage; proves that opening and hashing do not decode.</summary>
     internal int DecodedCount { get; private set; }
     public IReadOnlyList<ContentRow> Pending => pending;
@@ -44,41 +58,91 @@ internal sealed class RecordContent
 
     public void Load(IEnumerable<ContentRow> rows, CancellationToken ct = default)
     {
-        foreach (var row in rows)
+        var loaded = rows as ContentRow[] ?? rows.ToArray();
+        foreach (var row in loaded) if (row.Id <= 0) throw new InvalidDataException("Invalid immutable content identity.");
+        var rowHashes = new byte[loaded.Length][];
+        try
         {
             ct.ThrowIfCancellationRequested();
-            if (row.Id <= 0) throw new InvalidDataException("Invalid immutable content identity.");
-            Check(row.Data);
-            hashes.Add(row.Id, SHA256.HashData(row.Data));
+            Parallel.For(0, loaded.Length, new ParallelOptions { MaxDegreeOfParallelism = Math.Min(4, Environment.ProcessorCount), CancellationToken = ct }, index =>
+            {
+                Check(loaded[index].Data);
+                rowHashes[index] = SHA256.HashData(loaded[index].Data);
+            });
+        }
+        catch (AggregateException failure) when (failure.InnerExceptions.Count > 0)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure.InnerExceptions[0]).Throw();
+        }
+        for (var index = 0; index < loaded.Length; index++)
+        {
+            var row = loaded[index];
             encoded.Add(row.Id, row.Data);
+            hashes.Add((row.Id, rowHashes[index]));
             next = Math.Max(next, row.Id);
         }
+        hashes.Sort((a, b) => a.Id.CompareTo(b.Id));
+        for (var index = 1; index < hashes.Count; index++)
+            if (hashes[index].Id == hashes[index - 1].Id) throw new InvalidDataException("Invalid immutable content identity.");
+        digest = null;
+    }
+
+    /// <summary>Stores a value once. Its bytes are retained; the decoded element only when the caller will read it back.</summary>
+    public int Put(JsonElement value, bool retain = true)
+    {
+        scratch.Reset();
+        WriteCanonical(scratch, value);
+        return PutCanonical(retain ? value : null);
+    }
+
+    public int PutGuid(Guid value)
+    {
+        scratch.Reset();
+        scratch.Byte(2); scratch.Byte(6); scratch.Guid(value);
+        return PutCanonical(null);
+    }
+
+    public int PutText(string value)
+    {
+        scratch.Reset();
+        scratch.Byte(2); WriteString(scratch, value);
+        return PutCanonical(null);
+    }
+
+    /// <summary>Stores an immutable value whose canonical bytes (after the version byte) the caller writes.</summary>
+    public int PutBuilt(Action<BinaryOutput> write)
+    {
+        scratch.Reset();
+        scratch.Byte(2);
+        write(scratch);
+        if (scratch.Written.Length > 64 * 1024 * 1024) throw new InvalidDataException("Record content is too large.");
+        return PutCanonical(null);
     }
 
     // The stored hash is the identity: it is fixed by the stored bytes, never by decoding them.
-    public int Put(JsonElement value)
+    private int PutCanonical(JsonElement? retained)
     {
-        var raw = Canonical(value);
-        var key = Convert.ToHexString(SHA256.HashData(raw));
+        var raw = scratch.Written;
+        var key = ContentKey.Of(raw);
         var known = Identities();
         if (known.TryGetValue(key, out var prior)) return prior;
         var bytes = Encode(raw);
-        var hash = SHA256.HashData(bytes);
         var id = checked(++next);
         known.Add(key, id);
-        values.Add(id, value.Clone());
-        hashes.Add(id, hash);
+        encoded.Add(id, bytes);
+        if (retained is { } value) values.Add(id, value.Clone());
+        hashes.Add((id, SHA256.HashData(bytes)));
         pending.Add(new ContentRow { Id = id, Data = bytes });
         digest = null;
         return id;
     }
 
-    private Dictionary<string, int> Identities()
+    private Dictionary<ContentKey, int> Identities()
     {
         if (identities is not null) return identities;
-        var built = new Dictionary<string, int>(StringComparer.Ordinal);
+        var built = new Dictionary<ContentKey, int>(encoded.Count);
         foreach (var (id, bytes) in encoded)
-            if (!built.TryAdd(Convert.ToHexString(SHA256.HashData(Raw(bytes))), id))
+            if (!built.TryAdd(ContentKey.Of(Raw(bytes)), id))
                 throw new InvalidDataException("Duplicate immutable record content.");
         return identities = built;
     }
@@ -113,20 +177,29 @@ internal sealed class RecordContent
     internal static byte[] Canonical(JsonElement value)
     {
         using var writer = new BinaryOutput();
-        writer.Byte(2);
-        Write(writer, value, 0);
-        var raw = writer.Finish();
-        if (raw.Length > 64 * 1024 * 1024) throw new InvalidDataException("Record content is too large.");
-        return raw;
+        WriteCanonical(writer, value);
+        return writer.Finish();
     }
 
-    private static byte[] Encode(byte[] raw)
+    internal static void WriteCanonical(BinaryOutput writer, JsonElement value)
     {
-        if (raw.Length < 256) return [0, ..raw];
-        using var output = new MemoryStream();
-        output.WriteByte(1);
-        using (var compression = new BrotliStream(output, CompressionLevel.Optimal, true)) compression.Write(raw);
-        return output.Length < raw.Length + 1 ? output.ToArray() : [0, ..raw];
+        writer.Byte(2);
+        Write(writer, value, 0);
+        if (writer.Written.Length > 64 * 1024 * 1024) throw new InvalidDataException("Record content is too large.");
+    }
+
+    private static byte[] Encode(ReadOnlySpan<byte> raw)
+    {
+        if (raw.Length >= 256)
+        {
+            using var output = new MemoryStream();
+            output.WriteByte(1);
+            using (var compression = new BrotliStream(output, CompressionLevel.Optimal, true)) compression.Write(raw);
+            if (output.Length < raw.Length + 1) return output.ToArray();
+        }
+        var plain = new byte[raw.Length + 1];
+        raw.CopyTo(plain.AsSpan(1));
+        return plain;
     }
 
     private static void Check(byte[] bytes)
@@ -184,14 +257,7 @@ internal sealed class RecordContent
                 if (value.TryGetInt64(out var number)) { writer.Byte(3); writer.Integer(number); }
                 else { writer.Byte(4); writer.Text(value.GetRawText()); }
                 break;
-            case JsonValueKind.String:
-                var text = value.GetString()!;
-                Span<char> canonical = stackalloc char[36];
-                if (Guid.TryParseExact(text, "D", out var guid) && guid.TryFormat(canonical, out _, "D") &&
-                    text.AsSpan().SequenceEqual(canonical))
-                { writer.Byte(6); writer.Guid(guid); }
-                else { writer.Byte(5); writer.Text(text); }
-                break;
+            case JsonValueKind.String: WriteString(writer, value.GetString()!); break;
             case JsonValueKind.Array:
                 writer.Byte(8);
                 writer.Unsigned((ulong)value.GetArrayLength());
@@ -206,6 +272,15 @@ internal sealed class RecordContent
                 break;
             default: throw new InvalidDataException("Undefined record value.");
         }
+    }
+
+    internal static void WriteString(BinaryOutput writer, string text)
+    {
+        Span<char> canonical = stackalloc char[36];
+        if (text.Length == 36 && Guid.TryParseExact(text, "D", out var guid) && guid.TryFormat(canonical, out _, "D") &&
+            text.AsSpan().SequenceEqual(canonical))
+        { writer.Byte(6); writer.Guid(guid); }
+        else { writer.Byte(5); writer.Text(text); }
     }
 
     private static void Read(BinaryInput reader, Utf8JsonWriter writer, int depth)

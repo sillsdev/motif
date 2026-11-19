@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
 namespace SIL.Motif.RecordStore;
@@ -16,15 +17,47 @@ public sealed class ResourceContentStore(string storePath)
             var temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try
             {
-                File.WriteAllBytes(temporary, bytes);
+                // The bytes reach the disk before the name appears, so a published reference never meets a torn file.
+                using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    file.Write(bytes);
+                    file.Flush(flushToDisk: true);
+                }
                 try { File.Move(temporary, target); }
                 catch (IOException) when (File.Exists(target)) { }
+                SyncDirectory(root);
             }
             finally { File.Delete(temporary); }
         }
         Read(hash);
         return hash;
     }
+
+    // The new name must survive a power cut too; Windows has no directory handle to flush.
+    private static void SyncDirectory(string directory)
+    {
+        if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS()) return;
+        try
+        {
+            var descriptor = Open(directory, 0);
+            if (descriptor < 0) return;
+            try { Sync(descriptor); }
+            finally { Close(descriptor); }
+        }
+        catch (DllNotFoundException) { } // best effort: no libc to call, so no directory flush
+    }
+
+    // LibraryImport needs project-wide unsafe code; these calls take only ints and a path.
+#pragma warning disable SYSLIB1054
+    [DllImport("libc", EntryPoint = "open", CharSet = CharSet.Ansi)]
+    private static extern int Open(string path, int flags);
+
+    [DllImport("libc", EntryPoint = "fsync")]
+    private static extern int Sync(int descriptor);
+
+    [DllImport("libc", EntryPoint = "close")]
+    private static extern int Close(int descriptor);
+#pragma warning restore SYSLIB1054
 
     public byte[] Read(string hash)
     {
