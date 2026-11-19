@@ -167,6 +167,17 @@ Assert-Interface '--describe facts.contextVersion' $interfaces.facts.contextVers
 Assert-Interface '--describe facts.statsManifestVersion' $interfaces.facts.statsManifestVersion $description.facts.statsManifestVersion
 Assert-Interface '--describe interfaces.serveProtocol' $interfaces.serveProtocol $description.interfaces.serveProtocol
 Assert-Interface '--describe interfaces.batchTsv' $interfaces.batchTsv $description.interfaces.batchTsv
+$diagnostic = $description.interfaces.PSObject.Properties['diagnostic']
+$diagnosticSchemaId = if ($null -ne $diagnostic -and $null -ne $diagnostic.Value) {
+    $version = $diagnostic.Value.PSObject.Properties['schemaVersion']
+    if ($null -ne $version) { $version.Value }
+}
+Assert-Interface '--describe interfaces.diagnostic.schemaVersion' $interfaces.rejectionTraceSchemaId $diagnosticSchemaId
+$diagnosticModes = if ($null -ne $diagnostic -and $null -ne $diagnostic.Value) {
+    $modes = $diagnostic.Value.PSObject.Properties['modes']
+    if ($null -ne $modes) { (@($modes.Value) | ForEach-Object { [string] $_ }) -join ',' }
+}
+Assert-Interface '--describe interfaces.diagnostic.modes' (@($interfaces.rejectionTraceModes) -join ',') $diagnosticModes
 
 $commands = @{}
 foreach ($command in @($description.commands)) {

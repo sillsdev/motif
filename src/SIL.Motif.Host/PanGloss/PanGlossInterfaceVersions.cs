@@ -2,11 +2,11 @@ using System.Collections.Immutable;
 
 namespace SIL.Motif.Host.PanGloss;
 
-/// <summary>Versions of the PanGloss wire formats read by Motif.</summary>
+/// <summary>Versions of the PanGloss wire formats pinned by Motif.</summary>
 public static class PanGlossInterfaceVersions
 {
     /// <summary>The PanGloss source tag that defines the formats Motif reads.</summary>
-    public const string SourceTag = "v0.24.0";
+    public const string SourceTag = "v0.27.0";
     /// <summary>The version of the object returned by <c>pangloss --describe</c>.</summary>
     public const int DescribeSchemaVersion = 1;
     /// <summary>The version of reports returned by <c>pangloss grammar-health</c>.</summary>
@@ -15,6 +15,10 @@ public static class PanGlossInterfaceVersions
     public const int FstHealthSchemaVersion = 10;
     /// <summary>The identifier of detailed parse-trace documents.</summary>
     public const string TraceDetailsSchemaId = "pangloss.trace-details.v5";
+    /// <summary>The identifier advertised for bounded rejection diagnostics.</summary>
+    public const string RejectionTraceSchemaId = "pangloss.diagnostic.v1";
+    /// <summary>The capture modes the pinned release advertises for bounded rejection diagnostics.</summary>
+    public static ImmutableArray<string> RejectionTraceModes { get; } = ["lineage"];
     /// <summary>The full SQLite cache version written by <c>batch --stats</c>, without compact storage.</summary>
     public const int StatsCacheVersion = 13;
     /// <summary>The meaning of the statistics cache counters.</summary>

@@ -1,6 +1,9 @@
+using System.Globalization;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
+using SIL.LCModel.Core.Text;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
@@ -50,6 +53,17 @@ public sealed class RewriteRuleSampleTrialTests(ITestOutputHelper output)
 
         try
         {
+            using (var cache = loader.LoadCache(projectPath))
+            {
+                // Keep both test words in one writing-system partition.
+                var form = TsStringUtils.MakeString(words[1], cache.DefaultVernWs);
+                if (!cache.ServiceLocator.GetInstance<IWfiWordformRepository>().TryGetObject(form, out _))
+                {
+                    NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                        cache.ServiceLocator.GetInstance<IWfiWordformFactory>().Create(form));
+                    loader.Save(cache);
+                }
+            }
             var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath), workerRoot);
             Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
 
@@ -124,6 +138,24 @@ public sealed class RewriteRuleSampleTrialTests(ITestOutputHelper output)
                 proposalId, null, operations);
             SavePendingDraft(projectPath, proposal);
 
+            var trialWaitMs = Wait.Scaled(TimeSpan.FromMinutes(3)).TotalMilliseconds
+                .ToString("0", CultureInfo.InvariantCulture);
+            var trialStart = CliProcess.CreateStartInfoWithAdvancedAiModePath(workerRoot,
+                PanGlossExecutable.TryLocate(), true, Path.Combine(root, "advanced-ai-mode.json"),
+                "trial", "--pending", "--project", projectPath, "--words", string.Join(',', words),
+                "--wait", "--wait-timeout-ms", trialWaitMs, "--before-correctness", beforeCorrectnessId, "--json");
+            trialStart.Environment[ProcessRunnerLauncher.ExecutableVariable] = BuildOutput.Worker;
+            trialStart.Environment[RunnerOptions.NamespaceVariable] = Guid.NewGuid().ToString("N");
+            trialStart.Environment[RunnerOptions.IdleVariable] = "1";
+            var trial = await CliProcess.RunAsync(trialStart);
+            Assert.True(trial.ExitCode == 0, trial.Error + Environment.NewLine + trial.Output);
+            using var response = JsonDocument.Parse(trial.Output);
+            Assert.True(response.RootElement.GetProperty("evidenceComplete").GetBoolean(), trial.Output);
+            var numbers = response.RootElement.GetProperty("numbers");
+            Assert.Equal(2, numbers.GetProperty("sharedWordCount").GetInt32());
+            Assert.Equal(0, numbers.GetProperty("touchedWordsCovered").GetInt32());
+            output.WriteLine("trial=" + response.RootElement.GetRawText());
+
             using (var cache = loader.LoadCache(projectPath))
             {
                 var dryRun = ScratchDryRun.Of(cache, proposal);
@@ -165,22 +197,6 @@ public sealed class RewriteRuleSampleTrialTests(ITestOutputHelper output)
             Assert.NotEmpty(after.Single(word => word.Word == words[1]).Analyses);
             output.WriteLine($"parserReadings={string.Join(";", before.Select((word, index) =>
                 $"{word.Word}:{word.Analyses.Count}->{after[index].Analyses.Count}"))}");
-
-            var trialStart = CliProcess.CreateStartInfoWithAdvancedAiModePath(workerRoot,
-                PanGlossExecutable.TryLocate(), true, Path.Combine(root, "advanced-ai-mode.json"),
-                "trial", "--pending", "--project", projectPath, "--words", string.Join(',', words),
-                "--wait", "--wait-timeout-ms", "30000", "--before-correctness", beforeCorrectnessId, "--json");
-            trialStart.Environment[ProcessRunnerLauncher.ExecutableVariable] = BuildOutput.Worker;
-            trialStart.Environment[RunnerOptions.NamespaceVariable] = Guid.NewGuid().ToString("N");
-            trialStart.Environment[RunnerOptions.IdleVariable] = "1";
-            var trial = await CliProcess.RunAsync(trialStart);
-            Assert.True(trial.ExitCode == 0, trial.Error + Environment.NewLine + trial.Output);
-            using var response = JsonDocument.Parse(trial.Output);
-            Assert.True(response.RootElement.GetProperty("evidenceComplete").GetBoolean());
-            var numbers = response.RootElement.GetProperty("numbers");
-            Assert.Equal(2, numbers.GetProperty("sharedWordCount").GetInt32());
-            Assert.Equal(0, numbers.GetProperty("touchedWordsCovered").GetInt32());
-            output.WriteLine("trial=" + response.RootElement.GetRawText());
 
             DraftRationale.Author(projectPath, PendingChanges.DraftName,
                 "Create an enabled sample rule", "Verify rewrite-rule Preflight after Apply.");

@@ -25,6 +25,10 @@ public sealed class PanGlossInterfaceVersionTests
             interfaces.GetProperty("fstHealthSchemaVersion").GetInt32());
         Assert.Equal(PanGlossInterfaceVersions.TraceDetailsSchemaId,
             interfaces.GetProperty("traceDetailsSchemaId").GetString());
+        Assert.Equal(PanGlossInterfaceVersions.RejectionTraceSchemaId,
+            interfaces.GetProperty("rejectionTraceSchemaId").GetString());
+        Assert.Equal(PanGlossInterfaceVersions.RejectionTraceModes,
+            interfaces.GetProperty("rejectionTraceModes").EnumerateArray().Select(mode => mode.GetString()).ToArray());
         Assert.Equal(PanGlossInterfaceVersions.StatsCacheVersion,
             interfaces.GetProperty("statsCacheVersion").GetInt32());
         Assert.Equal(PanGlossInterfaceVersions.StatsCounterSemanticsVersion,

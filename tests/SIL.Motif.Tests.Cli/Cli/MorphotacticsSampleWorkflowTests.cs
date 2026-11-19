@@ -195,10 +195,12 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             {
                 var selectedMsa = cache.ServiceLocator.GetInstance<ICmObjectRepository>().AllInstances()
                     .OfType<IMoInflAffMsa>()
-                    .Where(candidate => candidate.PartOfSpeechRA is not null && candidate.Owner is ILexEntry)
+                    .Where(candidate => candidate.PartOfSpeechRA is not null && candidate.Owner is ILexEntry entry &&
+                        entry.LexemeFormOA is IMoAffixAllomorph &&
+                        !entry.AlternateFormsOS.OfType<IMoAffixProcess>().Any())
                     .OrderBy(candidate => candidate.Guid.ToString("N"), StringComparer.Ordinal)
                     .FirstOrDefault() ?? throw new InvalidOperationException(
-                    "The Mbugwe sample has no existing inflectional affix MSA to assign.");
+                    "The Mbugwe sample has no inflectional MSA on a simple affix entry to assign.");
                 categoryId = CanonicalId.FromGuid(selectedMsa.PartOfSpeechRA!.Guid);
                 msaId = CanonicalId.FromGuid(selectedMsa.Guid);
                 writingSystem = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);

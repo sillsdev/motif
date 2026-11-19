@@ -237,7 +237,12 @@ internal static class Program
         {
             schema_version = 1,
             binary = "pangloss",
-            interfaces = new { serveProtocol = 2, batchTsv = 5 },
+            interfaces = new
+            {
+                serveProtocol = 2,
+                batchTsv = 5,
+                diagnostic = new { schemaVersion = "pangloss.diagnostic.v1", modes = new[] { "lineage" } },
+            },
             facts = new
             {
                 format = FactsArtifact.Format,
