@@ -406,6 +406,13 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                 return (changes, CreationRefused);
             }
         }
+        // A move needs a second member to place against, whatever order the fixture was built in.
+        for (var tries = 0; verb is RecordWriteVerb.MoveObject && members.Count < 2 && tries < 2; tries++)
+        {
+            if (Seed(owner, type.Name, field, binding) is not null)
+                break;
+            members = Members(owner, binding);
+        }
         var fresh = Guid.NewGuid();
         RecordChange Make(RecordChangeKind kind, Action<RecordChange>? more = null) => NewChange(kind, change =>
         {

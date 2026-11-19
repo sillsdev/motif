@@ -409,6 +409,8 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             }
             if (anchor.Kind != RecordAnchorKind.Start && at < 0)
                 throw Refuse(RefusalCodes.RecordImportNotExecutable, change, "The placement names an item the list does not hold.");
+            if (rest.Count == 0 && moving is not null)
+                throw Refuse(RefusalCodes.RecordImportNotExecutable, change, "The list holds no other member to place the moved item against.");
             if (rest.Count == 0)
                 return null;
             CanonicalId? left = at >= 0 ? CanonicalId.FromGuid(rest[at]) : null;
