@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using SIL.LCModel;
+using SIL.LCModel.Core.Cellar;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Records;
@@ -87,6 +89,42 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         Assert.Null(response.ProposalId);
         // The project folder, including any store beside it, is byte for byte as it was.
         Assert.Equal(before, Hashes(project));
+    }
+
+    [Fact]
+    public void EditingACustomFieldThroughTheImportCommandReportsTheCustomFieldOperation()
+    {
+        Directory.CreateDirectory(_folder);
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        Guid entryId = default;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            new FieldDescription(cache)
+            {
+                Class = cache.MetaDataCacheAccessor.GetClassId("LexEntry"), Name = "ZedRank", Type = CellarPropertyType.Integer,
+            }.UpdateCustomField();
+            var entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+            entryId = entry.Guid;
+            var form = cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = form;
+            form.Form.set_String(cache.DefaultVernWs, "zzword");
+        });
+        new FwDataProjectLoader().Save(cache);
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(cache, schema);
+        var read = RecordFileReader.Read(exporter.Export(entryId).Text!, schema.Schema, exporter.CreateReadOptions());
+        Assert.False(read.HasErrors);
+        read.Document!.Data["custom-LexEntry-ZedRank"] = RecordScalar.Of(9);
+        var file = Path.Combine(_folder, "entry.md");
+        File.WriteAllText(file, RecordFileWriter.Write(read.Document!, schema.Schema));
+        var before = Hashes(path);
+
+        var outcome = RecordImportCommand.Run(new(path, file));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal("customField/setInteger", Assert.Single(outcome.Value!.Operations).Kind);
+        Assert.Equal(before, Hashes(path));
     }
 
     [Fact]

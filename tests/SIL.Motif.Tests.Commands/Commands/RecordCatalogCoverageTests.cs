@@ -28,6 +28,13 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
         metadata.AddCustomField("LexEntry", "ExampleNumber", CellarPropertyType.Integer, 0);
         metadata.AddCustomField("LexSense", "ExampleNote", CellarPropertyType.MultiString, 0);
+        metadata.AddCustomField("LexEntry", "ExampleLabel", CellarPropertyType.MultiUnicode, 0);
+        metadata.AddCustomField("LexEntry", "ExampleTag", CellarPropertyType.String, 0);
+        var possibility = metadata.GetClassId("CmPossibility");
+        metadata.AddCustomField("LexEntry", "ExampleStatus", CellarPropertyType.ReferenceAtomic, possibility);
+        metadata.AddCustomField("LexEntry", "ExampleSet", CellarPropertyType.ReferenceCollection, possibility);
+        metadata.AddCustomField("LexEntry", "ExampleFlag", CellarPropertyType.Boolean, 0);
+        metadata.AddCustomField("LexEntry", "ExampleDate", CellarPropertyType.GenDate, 0);
         var schemas = new[]
         {
             ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay),
@@ -134,7 +141,7 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
         {
             "# Runner catalog coverage for record files",
             "# Generated in RecordCatalogCoverageTests from the lexicon entry, notebook record and list item schemas.",
-            "# ExampleNumber and ExampleNote exercise project-local custom fields.",
+            "# The Example* fields are project-local custom fields: one of each type a kind writes, a Boolean no kind writes, and a date the schema omits.",
             "# One row per reachable concrete schema class, record field key and verb.",
             "# Covered rows are subject to the placement, owner, child and shape in the Runner declarations.",
             "# Non-authorable fields cite their classification in manifest/liblcm-inventory.tsv.",

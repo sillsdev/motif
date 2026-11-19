@@ -184,6 +184,18 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             throw Refuse(RefusalCodes.RecordImportFieldUncovered, change, $"No Runner kind covers {verb} of this field ({why}).");
         }
 
+        /// <summary>Adds the field name that a custom-field kind needs.</summary>
+        private object? Named(string type, string key, object? after)
+        {
+            if (schema.FieldBinding(type, key) is not { IsCustom: true } binding || after is null)
+                return after;
+            var json = after is JsonElement element ? element : JsonSerializer.SerializeToElement(after);
+            var fields = new Dictionary<string, JsonElement> { ["field"] = JsonSerializer.SerializeToElement(binding.Field) };
+            foreach (var property in json.EnumerateObject())
+                fields[property.Name] = property.Value;
+            return JsonSerializer.SerializeToElement(fields);
+        }
+
         private static OperationEnvelope Operation(CanonicalId id, string kind, CanonicalId target, object? after,
             Placement? placement = null, CanonicalId? entity = null) => new(id, kind, entityId: entity, target: target,
             after: after is null ? null : after is JsonElement json ? json : JsonSerializer.SerializeToElement(after), placement: placement);
@@ -207,7 +219,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             else if (field?.Kind is not (RecordFieldKind.Boolean or RecordFieldKind.Integer or RecordFieldKind.Reference))
                 throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
                     $"A {field?.Kind.ToString() ?? "missing"} value has no payload shape for {kind}.");
-            _pending.Add(Operation(Id(role + ":" + kind), kind, target, after));
+            _pending.Add(Operation(Id(role + ":" + kind), kind, target, Named(type, key, after)));
         }
 
         private void LowerAlternative(RecordChange change, string type, string key, CanonicalId target, string role, bool set)
@@ -220,7 +232,8 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             if (change.Old is { } old && Current(change, target, binding, ws) is { } current &&
                 !SameText(current.Text, old))
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
-            _pending.Add(Operation(Id(role + ":" + kind), kind, target, set ? new { ws, text = change.New } : new { ws }));
+            _pending.Add(Operation(Id(role + ":" + kind), kind, target,
+                Named(type, key, set ? new { ws, text = change.New } : new { ws })));
         }
 
         private void LowerRich(RecordChange change, string type, string key,
@@ -258,8 +271,8 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             else
             {
                 var tag = ws ?? (runs.Count > 0 ? runs[0].Ws : DefaultWs(field));
-                _pending.Add(Operation(Id(role + ":" + kind), kind, target,
-                    text is null ? new { ws = tag } : new { ws = tag, text = string.Concat(runs.Select(run => run.Text)) }));
+                _pending.Add(Operation(Id(role + ":" + kind), kind, target, Named(type, key,
+                    text is null ? new { ws = tag } : new { ws = tag, text = string.Concat(runs.Select(run => run.Text)) })));
             }
         }
 
@@ -274,7 +287,8 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 if (list is not null && !list.Contains(gone))
                     throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project no longer holds the reference the file removes.");
                 var removeKind = KindFor(change, type, key, RecordWriteVerb.RemoveReference);
-                _pending.Add(Operation(Id(role + ":" + removeKind), removeKind, target, new { member = CanonicalId.FromGuid(gone).Value }));
+                _pending.Add(Operation(Id(role + ":" + removeKind), removeKind, target,
+                    Named(type, key, new { member = CanonicalId.FromGuid(gone).Value })));
                 list?.Remove(gone);
                 return;
             }
@@ -298,7 +312,8 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             var placement = list is null ? null : Place(change, list, change.Anchor, verb == RecordWriteVerb.AddReference ? null : member);
             var effective = verb == RecordWriteVerb.AddReference && placement is not null ? RecordWriteVerb.InsertReference : verb;
             var kind = KindFor(change, type, key, effective, child: change.Subtree?.Class ?? ChildOf(type, key) ?? ClassOf(member.Value), placement);
-            _pending.Add(Operation(Id(role + ":" + kind), kind, target, new { member = CanonicalId.FromGuid(member.Value).Value }, placement));
+            _pending.Add(Operation(Id(role + ":" + kind), kind, target,
+                Named(type, key, new { member = CanonicalId.FromGuid(member.Value).Value }), placement));
             if (list is not null)
             {
                 list.Remove(member.Value);
@@ -345,7 +360,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 case RecordAlternatives alternatives when field.Kind != RecordFieldKind.Rich:
                     foreach (var (ws, text) in alternatives.Items.Where(item => !item.Value.IsEmpty))
                         _pending.Add(Operation(Id(role + ":" + ws), KindFor(change, type, key, RecordWriteVerb.SetAlternative),
-                            entity, new { ws, text = text.Text }));
+                            entity, Named(type, key, new { ws, text = text.Text })));
                     break;
                 case RecordAlternatives alternatives:
                     foreach (var (ws, text) in alternatives.Items.Where(item => !item.Value.IsEmpty))

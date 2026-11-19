@@ -1,6 +1,6 @@
 # Runner catalog coverage for record files
 # Generated in RecordCatalogCoverageTests from the lexicon entry, notebook record and list item schemas.
-# ExampleNumber and ExampleNote exercise project-local custom fields.
+# The Example* fields are project-local custom fields: one of each type a kind writes, a Boolean no kind writes, and a date the schema omits.
 # One row per reachable concrete schema class, record field key and verb.
 # Covered rows are subject to the placement, owner, child and shape in the Runner declarations.
 # Non-authorable fields cite their classification in manifest/liblcm-inventory.tsv.
@@ -117,6 +117,16 @@ Covered	LexEntry	citation-form	LexEntry.CitationForm	ClearAlternative	lexical/le
 Covered	LexEntry	comment	LexEntry.Comment	SetPlainRich	lexical/lexEntry/setComment	-	-
 Covered	LexEntry	comment	LexEntry.Comment	SetRich	text/setRichString	-	-
 Covered	LexEntry	comment	LexEntry.Comment	ClearRich	text/setRichString	-	-
+Covered	LexEntry	custom-LexEntry-ExampleLabel	LexEntry.ExampleLabel	SetAlternative	customField/setAlternative	-	-
+Covered	LexEntry	custom-LexEntry-ExampleLabel	LexEntry.ExampleLabel	ClearAlternative	customField/clearAlternative	-	-
+Covered	LexEntry	custom-LexEntry-ExampleNumber	LexEntry.ExampleNumber	Set	customField/setInteger	-	-
+Covered	LexEntry	custom-LexEntry-ExampleNumber	LexEntry.ExampleNumber	Clear	customField/clearInteger	-	-
+Covered	LexEntry	custom-LexEntry-ExampleSet	LexEntry.ExampleSet	AddReference	customField/addReference	-	-
+Covered	LexEntry	custom-LexEntry-ExampleSet	LexEntry.ExampleSet	RemoveReference	customField/removeReference	-	-
+Covered	LexEntry	custom-LexEntry-ExampleStatus	LexEntry.ExampleStatus	Set	customField/setReference	-	-
+Covered	LexEntry	custom-LexEntry-ExampleStatus	LexEntry.ExampleStatus	Clear	customField/clearReference	-	-
+Covered	LexEntry	custom-LexEntry-ExampleTag	LexEntry.ExampleTag	SetPlainRich	customField/setString	-	-
+Covered	LexEntry	custom-LexEntry-ExampleTag	LexEntry.ExampleTag	ClearRich	customField/clearString	-	-
 Covered	LexEntry	dialect-labels	LexEntry.DialectLabels	AddReference	lexical/lexEntry/addRefDialectLabels	-	-
 Covered	LexEntry	dialect-labels	LexEntry.DialectLabels	RemoveReference	lexical/lexEntry/removeRefDialectLabels	-	-
 Covered	LexEntry	do-not-publish-in	LexEntry.DoNotPublishIn	AddReference	lexical/lexEntry/addRefDoNotPublishIn	-	-
@@ -226,6 +236,8 @@ Covered	LexSense	anthro-note	LexSense.AnthroNote	ClearRich	text/setRichString	-	
 Covered	LexSense	bibliography	LexSense.Bibliography	SetPlainRich	text/setRichString	-	-
 Covered	LexSense	bibliography	LexSense.Bibliography	SetRich	text/setRichString	-	-
 Covered	LexSense	bibliography	LexSense.Bibliography	ClearRich	text/setRichString	-	-
+Covered	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	SetPlainRich	customField/setAlternative	-	-
+Covered	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	ClearRich	customField/clearAlternative	-	-
 Covered	LexSense	definition	LexSense.Definition	SetPlainRich	lexical/lexSense/setDefinition	-	-
 Covered	LexSense	definition	LexSense.Definition	SetRich	text/setRichString	-	-
 Covered	LexSense	definition	LexSense.Definition	ClearRich	text/setRichString	-	-
@@ -466,11 +478,10 @@ Covered	RnGenericRec	title	RnGenericRec.Title	SetPlainRich	system/rnGenericRec/s
 Covered	RnGenericRec	title	RnGenericRec.Title	ClearRich	system/rnGenericRec/clearTitle	-	-
 Covered	RnGenericRec	type	RnGenericRec.Type	Set	system/rnGenericRec/setType	-	-
 Covered	RnGenericRec	type	RnGenericRec.Type	Clear	system/rnGenericRec/clearType	-	-
-CustomFields	LexEntry	custom-LexEntry-ExampleNumber	LexEntry.ExampleNumber	Set	none	CustomField	-
-CustomFields	LexEntry	custom-LexEntry-ExampleNumber	LexEntry.ExampleNumber	Clear	none	CustomField	-
-CustomFields	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	SetPlainRich	none	CustomField	-
-CustomFields	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	SetRich	none	CustomField	-
-CustomFields	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	ClearRich	none	CustomField	-
+CustomFields	LexEntry	custom-LexEntry-ExampleFlag	LexEntry.ExampleFlag	Set	none	CustomField	-
+CustomFields	LexEntry	custom-LexEntry-ExampleFlag	LexEntry.ExampleFlag	Clear	none	CustomField	-
+CustomFields	LexEntry	custom-LexEntry-ExampleTag	LexEntry.ExampleTag	SetRich	none	NoOperationKind	-
+CustomFields	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	SetRich	none	NoOperationKind	-
 LexiconEditReferenceSets	LexEntry	dialect-labels	LexEntry.DialectLabels	InsertReference	none	UnsupportedPlacement	-
 LexiconEditReferenceSets	LexEntry	dialect-labels	LexEntry.DialectLabels	MoveReference	none	NoOperationKind	-
 LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	AddReference	none	NoOperationKind	-
@@ -1382,6 +1393,18 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	analysis/wfiWordform/clearSpellingStatus	WfiWordform	SpellingStatus	Clear	Forbidden	-		Unspecified	False
 # Handler	analysis/wfiWordform/createAnalyses	WfiWordform	Analyses	AddObject	Forbidden	-	WfiAnalysis	Unspecified	False
 # Handler	analysis/wfiWordform/setSpellingStatus	WfiWordform	SpellingStatus	Set	Forbidden	-		Unspecified	False
+# Handler	customField/addReference	CustomField	ReferenceCollection	AddReference	Forbidden	-		Unspecified	False
+# Handler	customField/clearAlternative	CustomField	MultiString	ClearRich	Forbidden	-		Unspecified	False
+# Handler	customField/clearAlternative	CustomField	MultiUnicode	ClearAlternative	Forbidden	-		Unspecified	False
+# Handler	customField/clearInteger	CustomField	Integer	Clear	Forbidden	-		Unspecified	False
+# Handler	customField/clearReference	CustomField	ReferenceAtomic	Clear	Forbidden	-		Unspecified	False
+# Handler	customField/clearString	CustomField	String	ClearRich	Forbidden	-		Unspecified	False
+# Handler	customField/removeReference	CustomField	ReferenceCollection	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	customField/setAlternative	CustomField	MultiString	SetPlainRich	Forbidden	-		Unspecified	False
+# Handler	customField/setAlternative	CustomField	MultiUnicode	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	customField/setInteger	CustomField	Integer	Set	Forbidden	-		Unspecified	False
+# Handler	customField/setReference	CustomField	ReferenceAtomic	Set	Forbidden	-		Unspecified	False
+# Handler	customField/setString	CustomField	String	SetPlainRich	Forbidden	-		Unspecified	False
 # Handler	grammar/fsClosedFeature/createValues	FsClosedFeature	Values	AddObject	Forbidden	-	FsSymFeatVal	Unspecified	False
 # Handler	grammar/fsClosedValue/clearValue	FsClosedValue	Value	Clear	Forbidden	-		Unspecified	False
 # Handler	grammar/fsClosedValue/setValue	FsClosedValue	Value	Set	Forbidden	-		Unspecified	False
