@@ -189,6 +189,8 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         }
         Assert.Equal(7, seen.Count);
         Assert.Equal(7, seen.Distinct().Count());
-        Assert.Empty(RecordImportCommand.Run(new(project, file, null, 4)).Value!.Operations);
+        var past = RecordImportCommand.Run(new(project, file, null, 4));
+        Assert.Equal(RefusalCodes.RecordImportInvalidPage, past.Refusal!.Code);
+        Assert.Equal("3", past.Refusal.Facts["pageCount"]);
     }
 }

@@ -254,8 +254,7 @@ internal static class AgentTools
             false,
             false,
             true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(RecordImportCommand.Run(new RecordImportRequest(
-                c.ProjectPath, a.Required("file"), a.Optional("draft"), a.OptionalInt("page") ?? 1)))))
+            (c, a, ct) => Task.FromResult(ImportRecord(c, a)))
         {
             Requests = [typeof(RecordImportRequest)],
             OutputSchema = RecordImportToolSchema.Output,
@@ -1460,6 +1459,15 @@ internal static class AgentTools
         contexts["items"]!.AsObject()["properties"]!.AsObject()["naturalClass"] =
             Schema.String("Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation.");
         return contexts;
+    }
+
+    private static ToolOutcome ImportRecord(ServerContext context, ToolArgs args)
+    {
+        var file = args.Required("file");
+        if (RecordImportCommand.RefuseOutsideAgentRoots(context.ProjectPath, file, Directory.GetCurrentDirectory()) is { } refusal)
+            return ToolOutcome.Refused(refusal);
+        return ToolOutcome.From(RecordImportCommand.Run(new RecordImportRequest(
+            context.ProjectPath, file, args.Optional("draft"), args.OptionalInt("page") ?? 1)));
     }
 
     private static ToolOutcome StartProposal(ServerContext context, ToolArgs args)

@@ -62,6 +62,12 @@ public static partial class RecordImportCommand
         if (found.Plan.ChangeSet.IsRefusedWhole)
             return CommandOutcome<RecordImportResponse>.Refused(WholeFileRefusal(found));
 
+        var pages = PageCount(found.Lowering.Operations.Count, Refusals(found, found.Lowering).Count);
+        if (request.Page > pages)
+            return Refused(RefusalCodes.RecordImportInvalidPage, FailureReason.InvalidArgument,
+                $"The file has {pages} page(s); page {request.Page} does not exist.",
+                ("page", request.Page.ToString()), ("pageCount", pages.ToString()));
+
         if (request.DraftName is null)
             return CommandOutcome<RecordImportResponse>.Success(Summarize(found, found.Lowering, DryRun, request.Page, null, null));
 
@@ -77,8 +83,17 @@ public static partial class RecordImportCommand
         if (!staged.Succeeded)
         {
             // A Draft this command made and could not fill is not left behind.
-            ProposalCommands.DiscardNamedDraft(new(request.ProjectPath, MotifProductVersion.CurrentText, request.DraftName, null));
-            return CommandOutcome<RecordImportResponse>.Refused(staged.Refusal!);
+            var discarded = ProposalCommands.DiscardNamedDraft(
+                new(request.ProjectPath, MotifProductVersion.CurrentText, request.DraftName, null));
+            if (discarded.Succeeded) return CommandOutcome<RecordImportResponse>.Refused(staged.Refusal!);
+            var facts = new Dictionary<string, string>(staged.Refusal!.Facts)
+            {
+                ["draftNotDiscarded"] = request.DraftName,
+                ["discardRefusal"] = discarded.Refusal!.Code,
+            };
+            return CommandOutcome<RecordImportResponse>.Refused(new Refusal(staged.Refusal.Code, staged.Refusal.Reason,
+                staged.Refusal.Message + " The empty Draft '" + request.DraftName + "' could not be discarded; discard it with discard-draft.",
+                facts));
         }
         return CommandOutcome<RecordImportResponse>.Success(Summarize(found, staged.Value!.Lowering, DraftMode, request.Page,
             created.Value!.DraftName, created.Value.ProposalId));
@@ -105,13 +120,18 @@ public static partial class RecordImportCommand
         return new(schema!, plan, lowering);
     }
 
-    [GeneratedRegex(@"^kind:[ \t]*[""']?([A-Za-z0-9_.\-]+)", RegexOptions.Multiline)]
-    private static partial Regex KindLine();
+    [GeneratedRegex(@"^record:[ \t]*[""']?([A-Za-z0-9_.\-]+)")]
+    private static partial Regex RecordLine();
 
+    /// <summary>The record kind named in the front matter, between the first two <c>---</c> lines only.</summary>
     private static string? KindName(string text)
     {
-        var match = KindLine().Match(text);
-        return match.Success ? match.Groups[1].Value : null;
+        using var reader = new StringReader(text);
+        if (reader.ReadLine()?.TrimEnd() != "---") return null;
+        while (reader.ReadLine() is { } line && line.TrimEnd() != "---")
+            if (RecordLine().Match(line) is { Success: true } match)
+                return match.Groups[1].Value;
+        return null;
     }
 
     private static Refusal WholeFileRefusal(Planned found)
@@ -147,7 +167,7 @@ public static partial class RecordImportCommand
         var refusals = Refusals(found, lowering);
         var operations = lowering.Operations;
         var size = RecordImportPaging.PageSize;
-        var pageCount = Math.Max(1, (Math.Max(operations.Count, refusals.Count) + size - 1) / size);
+        var pageCount = PageCount(operations.Count, refusals.Count);
         var pageOperations = operations.Skip((page - 1) * size).Take(size).ToList();
         var pageRefusals = refusals.Skip((page - 1) * size).Take(size).ToList();
         // Text is shortened until the response fits, so long or non-ASCII names stay within 2 KB.
@@ -164,6 +184,55 @@ public static partial class RecordImportCommand
             if (length <= 4 || ProjectionJson.ToUtf8Bytes(response).Length <= RecordImportPaging.SummaryBytes)
                 return response;
         }
+    }
+
+    private static int PageCount(int operations, int refusals) =>
+        Math.Max(1, (Math.Max(operations, refusals) + RecordImportPaging.PageSize - 1) / RecordImportPaging.PageSize);
+
+    /// <summary>Returns a refusal for an agent path that leaves the allowed roots.</summary>
+    /// <returns>The refusal, or <see langword="null"/> when the path may be read.</returns>
+    public static Refusal? RefuseOutsideAgentRoots(string projectPath, string filePath, string workingDirectory)
+    {
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        string real;
+        string[] roots;
+        try
+        {
+            real = RealPath(filePath);
+            roots = [RealPath(Path.GetDirectoryName(Path.GetFullPath(projectPath))!), RealPath(workingDirectory)];
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException
+            or NotSupportedException)
+        {
+            return Unreadable(filePath);
+        }
+        foreach (var root in roots)
+        {
+            var prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
+            if (real.StartsWith(prefix, comparison)) return null;
+        }
+        return Unreadable(filePath);
+    }
+
+    private static Refusal Unreadable(string filePath) => new(RefusalCodes.RecordImportFileUnreadable,
+        FailureReason.InvalidArgument,
+        "An agent may read a record file only under the project's folder or the working directory.",
+        new Dictionary<string, string> { ["file"] = Path.GetFileName(filePath) });
+
+    /// <summary>The full path with every link followed, so a link in an allowed folder cannot lead out.</summary>
+    private static string RealPath(string path)
+    {
+        var full = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(full)!;
+        var current = root;
+        foreach (var part in full[root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, part);
+            FileSystemInfo info = Directory.Exists(current) ? new DirectoryInfo(current) : new FileInfo(current);
+            if (info.LinkTarget is not null && info.ResolveLinkTarget(true) is { } target)
+                current = Path.GetFullPath(target.FullName);
+        }
+        return current;
     }
 
     private static string Clip(string? text) => Clip(text ?? "", RecordImportPaging.TextLength) ?? "";
