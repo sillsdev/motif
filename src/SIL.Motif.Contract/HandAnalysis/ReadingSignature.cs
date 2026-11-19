@@ -50,6 +50,40 @@ public sealed record ReadingSignature
     /// <summary>SHA-256 of the RFC 8785 JSON object containing the ordered morphemes.</summary>
     public string Id { get; }
 
+    /// <summary>The same Reading with the sense dimension dropped from every morpheme, head and non-head alike.</summary>
+    /// <remarks>
+    /// Each morpheme keeps its entry, MSA, allomorph, inflection type, stem flag, derivation and features, and becomes
+    /// sense-unresolved with no candidates. A parser cannot choose a sense, so this is the identity on which an approval
+    /// and a parser reading are matched; <see cref="ApprovalKept"/> then checks the senses themselves.
+    /// </remarks>
+    public ReadingSignature SenseFree() =>
+        new([.. Morphemes.Select(morpheme => morpheme with
+        {
+            SenseId = null, SenseCandidates = [], SenseStatus = ReadingSenseStatus.Unresolved
+        })]);
+
+    /// <summary>Whether a parser reading still yields an approved Reading: equal sense-free identity and compatible senses.</summary>
+    /// <remarks>
+    /// Per morpheme, an approval that resolved a sense is kept only when the parser reading resolves the same sense or lists
+    /// it among its candidates. A parser reading that resolves a different sense, or none, loses the approval.
+    /// An approval that resolved no sense places no constraint on that morpheme.
+    /// </remarks>
+    public static bool ApprovalKept(ReadingSignature approved, ReadingSignature parser)
+    {
+        ArgumentNullException.ThrowIfNull(approved);
+        ArgumentNullException.ThrowIfNull(parser);
+        if (approved.SenseFree() != parser.SenseFree()) return false;
+        for (var index = 0; index < approved.Morphemes.Length; index++)
+        {
+            var sense = approved.Morphemes[index].SenseId;
+            if (sense is null) continue;
+            var other = parser.Morphemes[index];
+            if (other.SenseId != sense && !other.SenseCandidates.Contains(sense, StringComparer.Ordinal)) return false;
+        }
+
+        return true;
+    }
+
     /// <summary>Returns a defensive copy of the canonical identity bytes for exact content comparison.</summary>
     public byte[] GetCanonicalBytes() => (byte[])canonicalBytes.Clone();
 
