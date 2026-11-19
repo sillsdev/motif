@@ -54,7 +54,11 @@ public static partial class RecordImportCommand
         var read = ProjectStoreCommand.RunOperation(request.ProjectPath, () =>
             ProjectReadCache.ReadSaved(located.Value!, (_, cache) =>
             {
-                return CommandOutcome<Planned>.Success(Plan(cache, text));
+                return Plan(cache, text) is { } planned
+                    ? CommandOutcome<Planned>.Success(planned)
+                    : CommandOutcome<Planned>.Refused(new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused,
+                        "The file names no known record kind in its record: line, so it was not planned.",
+                        new Dictionary<string, string> { ["refusalKind"] = "unknown-record-kind" }));
             }));
         if (!read.Succeeded) return CommandOutcome<RecordImportResponse>.Refused(read.Refusal!);
         var found = read.Value!;
@@ -101,36 +105,36 @@ public static partial class RecordImportCommand
 
     private sealed record Planned(ProjectRecordSchemaResult Schema, ProjectRecordPlan Plan, RecordLowering Lowering);
 
-    private static Planned Plan(LcmCache cache, string text)
+    private static Planned? Plan(LcmCache cache, string text)
     {
         var name = KindName(text);
+        if (name is null) return null;
         ProjectRecordSchemaResult? schema = null;
         foreach (var overlay in Overlays)
         {
             var candidate = ProjectRecordSchema.Generate(cache, overlay());
-            schema ??= candidate;
-            if (name is not null && candidate.Schema.Kind(name) is not null)
-            {
-                schema = candidate;
-                break;
-            }
+            if (candidate.Schema.Kind(name) is null) continue;
+            schema = candidate;
+            break;
         }
-        var plan = ProjectRecordImporter.Plan(cache, schema!, text, new CatalogWritableFields());
-        var lowering = new RecordChangeSetLowerer(schema!, new RecordWritableFields(schema!)).Lower(cache, plan);
-        return new(schema!, plan, lowering);
+        if (schema is null) return null;
+        var plan = ProjectRecordImporter.Plan(cache, schema, text, new CatalogWritableFields());
+        var lowering = new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
+        return new(schema, plan, lowering);
     }
 
-    [GeneratedRegex(@"^record:[ \t]*[""']?([A-Za-z0-9_./\-]+)")]
-    private static partial Regex RecordLine();
-
-    /// <summary>The record kind named in the front matter, between the first two <c>---</c> lines only.</summary>
+    /// <summary>The whole unquoted value of the front matter's record: line.</summary>
     private static string? KindName(string text)
     {
         using var reader = new StringReader(text);
         if (reader.ReadLine()?.TrimEnd() != "---") return null;
         while (reader.ReadLine() is { } line && line.TrimEnd() != "---")
-            if (RecordLine().Match(line) is { Success: true } match)
-                return match.Groups[1].Value;
+        {
+            if (!line.StartsWith("record:", StringComparison.Ordinal)) continue;
+            var value = line["record:".Length..].Trim();
+            if (value.Length >= 2 && value[0] is '"' or '\'' && value[^1] == value[0]) value = value[1..^1];
+            return value;
+        }
         return null;
     }
 

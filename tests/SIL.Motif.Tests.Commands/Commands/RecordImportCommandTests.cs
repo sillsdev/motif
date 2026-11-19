@@ -229,6 +229,16 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         Assert.False(refused.Succeeded);
         Assert.Contains(refused.Refusal!.Code, new[] { RefusalCodes.RecordImportPlanRefused });
 
+        foreach (var value in new[] { "\"lists/cmPossibility x\"", "\"lists/cm\u00e9\"", "\"lexicon/entry \"x" })
+        {
+            var odd = Path.Combine(_folder, "odd.md");
+            File.WriteAllText(odd, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(file), "(?m)^record:.*$", "record: " + value));
+            Assert.Equal(RefusalCodes.RecordImportPlanRefused, RecordImportCommand.Run(new(project, odd)).Refusal?.Code);
+        }
+        var none = Path.Combine(_folder, "none.md");
+        File.WriteAllText(none, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(file), "(?m)^record:.*\n", ""));
+        Assert.Equal(RefusalCodes.RecordImportPlanRefused, RecordImportCommand.Run(new(project, none)).Refusal?.Code);
+
         static string KindOf(string path) =>
             File.ReadLines(path).First(line => line.StartsWith("record:")).Substring("record:".Length).Trim().Trim('"', '\'');
     }
