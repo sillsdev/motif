@@ -217,7 +217,11 @@ public sealed class ProjectLaneTests
         await Wait.UntilAsync(() => lane.PendingWorkCount == 0 || refreshStarted, timeout: TimeSpan.FromSeconds(2));
         Assert.False(refreshStarted);
 
-        await Task.Run(lane.Dispose).WaitAsync(TimeSpan.FromSeconds(2));
+        // Disposal needs a pool thread to finish cancelling; run it off the pool and wait on the scaled clock.
+        var disposal = Task.Factory.StartNew(lane.Dispose, CancellationToken.None,
+            TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        await Wait.UntilAsync(() => disposal.IsCompleted, "Lane disposal did not finish while an apply gate was awaited.");
+        await disposal;
 
         await WaitForExpectedCancellation(
             Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting),
