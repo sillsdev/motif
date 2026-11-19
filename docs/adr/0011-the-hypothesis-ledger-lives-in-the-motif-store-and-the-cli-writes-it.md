@@ -27,10 +27,9 @@ rows, are loaded through the CLI rather than committed. No non-FieldWorks shape 
 
 ### D3. Only the CLI and shared command layer write the ledger
 
-All ledger verbs are Autonomous-audience commands with `ExposeAsAgentTool = false`; writes are HumanOnly in the
-catalog. No ledger MCP tool exists. An agent driving the shell may run these commands with
-`MOTIF_AUTONOMOUS=1` or `--autonomous`, without a human step: HumanOnly excludes MCP, while CLI dispatch checks the
-surface. A ledger decision Applies nothing. Read exposure to MCP is a later decision.
+All ledger verbs are Released commands with `ExposeAsAgentTool = false`; writes are HumanOnly in the
+catalog. No ledger MCP tool exists. An agent driving the shell may run these commands without a switch and without a
+human step: HumanOnly excludes MCP, and the Released surface needs no environment variable. A ledger decision Applies nothing. Read exposure to MCP is a later decision.
 
 Commands are `hypothesis add | test | decide | link | grade | answer | neighbours | report` and
 `list hypotheses`. Later writers call the command layer, not the tables.

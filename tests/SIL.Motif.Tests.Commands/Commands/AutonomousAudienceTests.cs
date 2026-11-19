@@ -63,6 +63,23 @@ public sealed class AutonomousAudienceTests
     }
 
     [Theory]
+    [InlineData("hypothesis add")]
+    [InlineData("hypothesis test")]
+    [InlineData("hypothesis decide")]
+    [InlineData("hypothesis link")]
+    [InlineData("hypothesis grade")]
+    [InlineData("hypothesis answer")]
+    [InlineData("hypothesis neighbours")]
+    [InlineData("hypothesis report")]
+    [InlineData("list hypotheses")]
+    public void TheHypothesisLedgerVerbsAreReleasedAndNeverAgentTools(string name)
+    {
+        var command = Command(name);
+        Assert.Equal(CommandSurface.Released, command.Surface);
+        Assert.False(command.IsAgentTool);
+    }
+
+    [Theory]
     [InlineData("discard-draft")]
     [InlineData("discard-empty-drafts")]
     [InlineData("reopen")]
@@ -73,9 +90,6 @@ public sealed class AutonomousAudienceTests
     [InlineData("split")]
     [InlineData("promote-gloss")]
     [InlineData("preflight")]
-    [InlineData("hypothesis add")]
-    [InlineData("hypothesis report")]
-    [InlineData("list hypotheses")]
     public void TheAgentWorkflowCommandsAreOnTheAutonomousSurface(string name) =>
         Assert.Equal(CommandSurface.Autonomous, Command(name).Surface);
 

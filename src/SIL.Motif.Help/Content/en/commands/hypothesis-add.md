@@ -12,4 +12,4 @@ The file is JSON with snake_case names that match the hypothesis record: `statem
 
 ## Related commands
 
-- [Check the neighbours of a change](cmd:hypothesis%20neighbours) is the check that runs before any new object.
+- [Check a change's neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.

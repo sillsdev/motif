@@ -27,8 +27,7 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
    distinct stems, alternation candidates from near-pairs (stem plus affix expected, surface differs by one
    edit at the boundary). Output: a pattern ledger ranked by token mass. No grammar edit. Done when each
    candidate has a pattern (not a word list), its stems, and its token mass. Never open held-out books.
-2. **Neighbour check.** The `motif hypothesis` verbs are Autonomous commands today: set `MOTIF_AUTONOMOUS=1` or pass
-   `--autonomous`, or they refuse with `command.autonomous-required`. Run `motif hypothesis neighbours --project <fwdata> --change <x>:<y> [--environment …] [--host-class …] [--slot …]`
+2. **Neighbour check.** Run `motif hypothesis neighbours --project <fwdata> --change <x>:<y> [--environment …] [--host-class …] [--slot …]`
    and query the live rules for the same change, environment, host class or slot. `hasPassed` means a passed rule
    stands: widen or merge it. `hasFailedAttempt` means a rule attempt is on record, which permits a list. Done when the result is written down: a neighbour exists (the `neighbour` field is the id of the hypothesis widened or merged, `H-3`),
    or `none-found`. Free text is refused, and `none-found` is refused when the exact shape is already in the ledger.

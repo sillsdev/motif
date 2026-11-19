@@ -10,7 +10,7 @@ The Grammar Design Records list is now the Grammar Guide, and its commands are r
 - Refusal and finding codes `gdr.*` are now `guide.*` (for example `gdr.not-found` is `guide.not-found`, `gdr.no-records` is `guide.no-records`).
 - Motif reads the possibility list named "Grammar Guide". A list still named "Grammar Design Records" is read too, with a `guide.list-old-name` warning from `guide check` asking you to rename it in FieldWorks. Both names present is refused as ambiguous.
 - Record ids stay `GDR-n`, and the Motif store keeps its existing hypothesis columns; nothing is migrated.
-- `MOTIF_DEVELOPER_COMMANDS=1` no longer opens the Autonomous commands, which now refuse with `command.autonomous-required`. Set `MOTIF_AUTONOMOUS=1` or pass the global `--autonomous` flag instead; there is no alias. Moved commands: `discard-draft`, `discard-empty-drafts`, `reopen`, `duplicate`, `split`, `defer`, `reject`, `supersede`, `promote-gloss`, `preflight`, `add-delete-lexeme-form`, `project create`, `guide list`, `guide check`, and the hypothesis verbs `add`, `test`, `decide`, `link`, `grade`, `answer`, `neighbours`, `report` and `list`. They are never MCP tools. The same switch also makes `apply` an Autonomous-mode Apply, which needs a green Gate and `--message`; `motif help autonomous` explains it.
+- `MOTIF_DEVELOPER_COMMANDS=1` no longer opens the Autonomous commands, which now refuse with `command.autonomous-required`. Set `MOTIF_AUTONOMOUS=1` or pass the global `--autonomous` flag instead; there is no alias. Moved commands: `discard-draft`, `discard-empty-drafts`, `reopen`, `duplicate`, `split`, `defer`, `reject`, `supersede`, `promote-gloss`, `preflight`, `add-delete-lexeme-form`, `project create`, `guide list` and `guide check`. They are never MCP tools. The same switch also makes `apply` an Autonomous-mode Apply, which needs a green Gate and `--message`; `motif help autonomous` explains it.
 
 ## Window
 
@@ -18,4 +18,4 @@ The Grammar Design Records list is now the Grammar Guide, and its commands are r
 
 ## Agent plugin
 
-- The Motif plugin now ships the `grammar` router skill and the `grammar-discovery-loop` and `rule-hypothesis-test` skills, so agents building a grammar are pointed at writing and testing a rule before listing word forms. The `motif hypothesis` verbs the skills use are still Autonomous commands.
+- The Motif plugin now ships the `grammar` router skill and the `grammar-discovery-loop` and `rule-hypothesis-test` skills, so agents building a grammar are pointed at writing and testing a rule before listing word forms. The `motif hypothesis` verbs the skills use (`add`, `test`, `decide`, `link`, `grade`, `answer`, `neighbours`, `report`) and `motif list hypotheses` are released CLI commands: they need no switch and are never MCP tools.

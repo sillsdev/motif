@@ -1,4 +1,4 @@
-# Check the neighbours of a change
+# Check a change's neighbours
 
 `hypothesis neighbours` asks the ledger whether a hypothesis already exists for a change, environment, host class and slot, and whether a passed rule stands or a rule attempt failed. Run it before authoring any object.
 

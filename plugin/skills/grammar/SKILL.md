@@ -57,5 +57,4 @@ Ask of every package: what broader rule was tried, and was a neighbour widened o
 ## Hypothesis commands
 
 `grammar-discovery-loop` records hypotheses with `motif hypothesis` verbs (`add`, `neighbours`, `test`,
-`decide`, `link`). These are Autonomous commands today: set `MOTIF_AUTONOMOUS=1` or pass `--autonomous`, or
-they refuse with `command.autonomous-required`. `motif guide check` is Autonomous too.
+`decide`, `link`). They are released CLI commands and need no switch. `motif guide check` is an Autonomous command: set `MOTIF_AUTONOMOUS=1` or pass `--autonomous`, or it refuses with `command.autonomous-required`.

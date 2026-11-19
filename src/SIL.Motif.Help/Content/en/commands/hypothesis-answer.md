@@ -12,4 +12,4 @@ motif hypothesis answer H-12 --project <fwdata> --question 1 --answer yes
 
 ## Related commands
 
-- [Check the neighbours of a change](cmd:hypothesis%20neighbours) is the check that runs before any new object.
+- [Check a change's neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.

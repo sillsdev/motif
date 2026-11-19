@@ -1,4 +1,4 @@
-# Link a hypothesis to Proposals and a Guide section
+# Link a hypothesis
 
 `hypothesis link` links a hypothesis to the Proposals that carry its rule change and to the Guide section it changed, or states why no Guide section changed.
 
@@ -12,4 +12,4 @@ motif hypothesis link H-12 --project <fwdata> --proposal <proposalId> --guide GD
 
 ## Related commands
 
-- [Check the neighbours of a change](cmd:hypothesis%20neighbours) is the check that runs before any new object.
+- [Check a change's neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.

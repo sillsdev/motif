@@ -1774,6 +1774,110 @@
     },
     {
       "kind": "command",
+      "code": "hypothesis add",
+      "slug": "hypothesis-add",
+      "title": "State a hypothesis",
+      "description": "Records a rule hypothesis in the ledger from a JSON file: statement, mechanism, change, the neighbour check and the predicted forms. It returns the permanent H-n id and the hypotheses already on the same shape.",
+      "helpPage": "# State a hypothesis\n\n\u0060hypothesis add\u0060 records a rule hypothesis in the ledger from a JSON file: statement, mechanism, change, the neighbour check and the predicted forms. It returns the permanent H-n id and the hypotheses already on the same shape.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis add --project \u003Cfwdata\u003E --file hypothesis.json\n\u0060\u0060\u0060\n\nThe file is JSON with snake_case names that match the hypothesis record: \u0060statement\u0060, \u0060mechanism\u0060, \u0060change\u0060, \u0060neighbour\u0060 (required: \u0060none-found\u0060 after running \u0060hypothesis neighbours\u0060, or the ids of the hypotheses this widens or merges, such as \u0060H-3, H-7\u0060, optionally followed by \u0060: a note\u0060; \u0060none-found\u0060 is refused when the ledger already holds the exact shape), and optionally \u0060pattern\u0060, \u0060environment\u0060, \u0060host_class\u0060, \u0060slot\u0060, \u0060predictions\u0060, \u0060falsifier\u0060, \u0060exceptions\u0060, \u0060objects_added\u0060, \u0060attested_types_gained\u0060 and \u0060questions\u0060 (each \u0060{question, predicted}\u0060). \u0060change\u0060, \u0060environment\u0060, \u0060host_class\u0060 and \u0060slot\u0060 form the shape the neighbour check looks up. The ledger lives in Motif\u0027s store and never writes the FieldWorks project.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+      "usage": [
+        "Usage: motif hypothesis add --project \u003Cfwdata\u003E --file \u003Chypothesis.json\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-add/"
+    },
+    {
+      "kind": "command",
+      "code": "hypothesis answer",
+      "slug": "hypothesis-answer",
+      "title": "Record a speaker\u0027s answer",
+      "description": "Records a speaker\u0027s answer to one question queued on a hypothesis.",
+      "helpPage": "# Record a speaker\u0027s answer\n\n\u0060hypothesis answer\u0060 records a speaker\u0027s answer to one question queued on a hypothesis.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis answer H-12 --project \u003Cfwdata\u003E --question 1 --answer yes\n\u0060\u0060\u0060\n\n\u0060--question\u0060 is the 1-based number in the hypothesis\u0027s question list.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+      "usage": [
+        "Usage: motif hypothesis answer \u003CH-n\u003E --project \u003Cfwdata\u003E --question \u003Cn\u003E --answer \u003Ctext\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-answer/"
+    },
+    {
+      "kind": "command",
+      "code": "hypothesis decide",
+      "slug": "hypothesis-decide",
+      "title": "Decide a hypothesis",
+      "description": "Marks a hypothesis passed, failed or superseded with its decision. A pass needs a PASS test, a Guide link and no passed neighbour with another mechanism.",
+      "helpPage": "# Decide a hypothesis\n\n\u0060hypothesis decide\u0060 marks a hypothesis passed, failed or superseded with its decision. A pass needs a PASS test, a Guide link and no passed neighbour with another mechanism.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis decide H-12 --project \u003Cfwdata\u003E --status passed --decision \u0022Rule stands as the default; 3 stems tagged.\u0022\n\u0060\u0060\u0060\n\n\u0060--status\u0060 is \u0060passed\u0060, \u0060failed\u0060 or \u0060superseded\u0060, and \u0060--decision\u0060 is required. A pass needs the latest test to be PASS and a Guide link or a stated reason for none (see [link](cmd:hypothesis%20link)). If another hypothesis already passed on the same shape with a different mechanism, the pass is refused unless \u0060--supersedes\u0060 names it; the shape is compared whole, a blank part matching only a blank one. A hypothesis cannot supersede itself. A decided hypothesis changes only by being superseded.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+      "usage": [
+        "Usage: motif hypothesis decide \u003CH-n\u003E --project \u003Cfwdata\u003E --status passed|failed|superseded --decision \u003Ctext\u003E [--superseded-by \u003CH-n\u003E] [--supersedes \u003CH-n,...\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-decide/"
+    },
+    {
+      "kind": "command",
+      "code": "hypothesis grade",
+      "slug": "hypothesis-grade",
+      "title": "Grade a hypothesis",
+      "description": "Records the four numbers for a hypothesis once the answer key is known: whether the sealed loop reached the verdict, the word questions it needed, objects per attested type before and after, and agent hours against the list alternative.",
+      "helpPage": "# Grade a hypothesis\n\n\u0060hypothesis grade\u0060 records the four numbers for a hypothesis once the answer key is known: whether the sealed loop reached the verdict, the word questions it needed, objects per attested type before and after, and agent hours against the list alternative.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis grade H-12 --project \u003Cfwdata\u003E --sealed-verdict match --verdict-source Wolff --word-questions 6 --objects-before 395 --types-before 400 --objects-after 10 --types-after 400 --agent-hours 3 --alternative-hours 20\n\u0060\u0060\u0060\n\nEach flag is optional but at least one is needed; grade in steps as numbers arrive. The response shows objects per attested type before and after.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+      "usage": [
+        "Usage: motif hypothesis grade \u003CH-n\u003E --project \u003Cfwdata\u003E [--sealed-verdict match|mismatch] [--verdict-source \u003Ctext\u003E] [--word-questions \u003Cn\u003E] [--objects-before \u003Cn\u003E] [--types-before \u003Cn\u003E] [--objects-after \u003Cn\u003E] [--types-after \u003Cn\u003E] [--agent-hours \u003Cx\u003E] [--alternative-hours \u003Cx\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-grade/"
+    },
+    {
+      "kind": "command",
+      "code": "hypothesis link",
+      "slug": "hypothesis-link",
+      "title": "Link a hypothesis",
+      "description": "Links a hypothesis to the Proposals that carry its rule change and to the Guide section it changed, or states why no Guide section changed.",
+      "helpPage": "# Link a hypothesis\n\n\u0060hypothesis link\u0060 links a hypothesis to the Proposals that carry its rule change and to the Guide section it changed, or states why no Guide section changed.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis link H-12 --project \u003Cfwdata\u003E --proposal \u003CproposalId\u003E --guide GDR-8 --guide-section Examples\n\u0060\u0060\u0060\n\n\u0060--proposal\u0060 takes one or more Proposal ids separated by commas. \u0060--guide\u0060 and \u0060--guide-section\u0060 go together; \u0060--guide-none\u0060 gives the reason no Guide section changed and excludes them. A Proposal is not looked up, because Proposals can be archived.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+      "usage": [
+        "Usage: motif hypothesis link \u003CH-n\u003E --project \u003Cfwdata\u003E [--proposal \u003Cid,...\u003E] [--guide \u003CGDR-n\u003E --guide-section \u003Ctext\u003E | --guide-none \u003Creason\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-link/"
+    },
+    {
+      "kind": "command",
+      "code": "hypothesis neighbours",
+      "slug": "hypothesis-neighbours",
+      "title": "Check a change\u0027s neighbours",
+      "description": "Asks the ledger whether a hypothesis already exists for a change, environment, host class and slot, and whether a passed rule stands or a rule attempt failed. Run it before authoring any object.",
+      "helpPage": "# Check a change\u0027s neighbours\n\n\u0060hypothesis neighbours\u0060 asks the ledger whether a hypothesis already exists for a change, environment, host class and slot, and whether a passed rule stands or a rule attempt failed. Run it before authoring any object.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis neighbours --project \u003Cfwdata\u003E --change d\u003Er --environment \u0022_ an\u0022\n\u0060\u0060\u0060\n\n\u0060--change\u0060 is required. The environment, host class and slot narrow the match; leave one out to match any. \u0060hasPassed\u0060 means a passed rule stands, so widen or merge it. \u0060hasFailedAttempt\u0060 means a rule attempt is on record as failed, which permits a list for that shape.\n\n## Related commands\n\n- [State a hypothesis](cmd:hypothesis%20add) records a new one.\n",
+      "usage": [
+        "Usage: motif hypothesis neighbours --project \u003Cfwdata\u003E --change \u003Cx\u003E:\u003Cy\u003E [--environment \u003Ctext\u003E] [--host-class \u003Ctext\u003E] [--slot \u003Ctext\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-neighbours/"
+    },
+    {
+      "kind": "command",
+      "code": "hypothesis report",
+      "slug": "hypothesis-report",
+      "title": "Report from the ledger",
+      "description": "Prints the decision record or the speaker-question log, generated from the ledger so nobody writes either by hand.",
+      "helpPage": "# Report from the ledger\n\n\u0060hypothesis report\u0060 prints the decision record or the speaker-question log, generated from the ledger so nobody writes either by hand.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis report --project \u003Cfwdata\u003E --kind decisions\n\u0060\u0060\u0060\n\n\u0060--kind decisions\u0060 lists every decided hypothesis with its test, Proposals and Guide section. \u0060--kind questions\u0060 lists the speaker questions with their answers and never shows the predicted answers.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+      "usage": [
+        "Usage: motif hypothesis report --project \u003Cfwdata\u003E --kind decisions|questions [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-report/"
+    },
+    {
+      "kind": "command",
+      "code": "hypothesis test",
+      "slug": "hypothesis-test",
+      "title": "Record a hypothesis test",
+      "description": "Records a rule-hypothesis-test result for a hypothesis from the JSON that control_test.py prints, with optional Trial numbers. A PASS needs 20 predicted forms and no attested loss.",
+      "helpPage": "# Record a hypothesis test\n\n\u0060hypothesis test\u0060 records a rule-hypothesis-test result for a hypothesis from the JSON that control_test.py prints, with optional Trial numbers. A PASS needs 20 predicted forms and no attested loss.\n\n## Example\n\n\u0060\u0060\u0060text\npython3 scripts/control_test.py ... --json \u003E control.json\nmotif hypothesis test H-12 --project \u003Cfwdata\u003E --file control.json --command \u0022control_test.py ...\u0022\n\u0060\u0060\u0060\n\nThe file is the JSON \u0060control_test.py --json\u0060 prints (\u0060predicted\u0060, \u0060rule_hits\u0060, \u0060controls\u0060, \u0060margin\u0060, \u0060verdict\u0060), with \u0060trial_attested_losses\u0060 (required for a PASS, 0 when nothing attested was lost), and optionally \u0060trial_new_readings\u0060, \u0060trial_work_steps\u0060 and \u0060command\u0060. A PASS is refused with fewer than 20 predicted forms, an attested Trial loss, no Trial losses recorded, no controls, fewer than 20 hits, or under twice the best control; record those as UNDECIDED or FAIL.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+      "usage": [
+        "Usage: motif hypothesis test \u003CH-n\u003E --project \u003Cfwdata\u003E --file \u003Ccontrol-test.json\u003E [--command \u003Ctext\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-test/"
+    },
+    {
+      "kind": "command",
       "code": "import",
       "slug": "import",
       "title": "Import an edited record file",
@@ -1901,6 +2005,19 @@
       ],
       "surface": "AdvancedAi",
       "url": "https://motif-docs.pages.dev/reference/commands/list/"
+    },
+    {
+      "kind": "command",
+      "code": "list hypotheses",
+      "slug": "list-hypotheses",
+      "title": "List the hypotheses",
+      "description": "Lists hypotheses in id order with their tests, Proposals, Guide link and graded numbers, or shows one by id.",
+      "helpPage": "# List the hypotheses\n\n\u0060list hypotheses\u0060 lists hypotheses in id order with their tests, Proposals, Guide link and graded numbers, or shows one by id.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif list hypotheses --project \u003Cfwdata\u003E --status passed\nmotif list hypotheses --project \u003Cfwdata\u003E --id H-12 --json\n\u0060\u0060\u0060\n\nPages are \u0060--limit\u0060 at a time (1 to 200, default 50). \u0060--id\u0060 shows one hypothesis in full.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+      "usage": [
+        "Usage: motif list hypotheses --project \u003Cfwdata\u003E [--id \u003CH-n\u003E | --status proposed|passed|failed|superseded] [--offset \u003Cn\u003E] [--limit \u003Cn\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/list-hypotheses/"
     },
     {
       "kind": "command",

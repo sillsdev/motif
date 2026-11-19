@@ -12,4 +12,4 @@ motif hypothesis decide H-12 --project <fwdata> --status passed --decision "Rule
 
 ## Related commands
 
-- [Check the neighbours of a change](cmd:hypothesis%20neighbours) is the check that runs before any new object.
+- [Check a change's neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.

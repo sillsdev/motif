@@ -2577,12 +2577,12 @@
     "source": "Hand-written from command behavior."
   },
   "hypothesis link": {
-    "title": "Link a hypothesis to Proposals and a Guide section",
+    "title": "Link a hypothesis",
     "description": "Links a hypothesis to the Proposals that carry its rule change and to the Guide section it changed, or states why no Guide section changed.",
     "source": "Hand-written from command behavior."
   },
   "hypothesis grade": {
-    "title": "Grade a hypothesis against the answer key",
+    "title": "Grade a hypothesis",
     "description": "Records the four numbers for a hypothesis once the answer key is known: whether the sealed loop reached the verdict, the word questions it needed, objects per attested type before and after, and agent hours against the list alternative.",
     "source": "Hand-written from command behavior."
   },
@@ -2592,12 +2592,12 @@
     "source": "Hand-written from command behavior."
   },
   "hypothesis neighbours": {
-    "title": "Check the neighbours of a change",
+    "title": "Check a change's neighbours",
     "description": "Asks the ledger whether a hypothesis already exists for a change, environment, host class and slot, and whether a passed rule stands or a rule attempt failed. Run it before authoring any object.",
     "source": "Hand-written from command behavior."
   },
   "hypothesis report": {
-    "title": "Generate a record from the ledger",
+    "title": "Report from the ledger",
     "description": "Prints the decision record or the speaker-question log, generated from the ledger so nobody writes either by hand.",
     "source": "Hand-written from command behavior."
   },

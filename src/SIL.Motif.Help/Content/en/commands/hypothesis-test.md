@@ -13,4 +13,4 @@ The file is the JSON `control_test.py --json` prints (`predicted`, `rule_hits`, 
 
 ## Related commands
 
-- [Check the neighbours of a change](cmd:hypothesis%20neighbours) is the check that runs before any new object.
+- [Check a change's neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.

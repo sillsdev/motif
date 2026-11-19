@@ -1,4 +1,4 @@
-# Grade a hypothesis against the answer key
+# Grade a hypothesis
 
 `hypothesis grade` records the four numbers for a hypothesis once the answer key is known: whether the sealed loop reached the verdict, the word questions it needed, objects per attested type before and after, and agent hours against the list alternative.
 
@@ -12,4 +12,4 @@ Each flag is optional but at least one is needed; grade in steps as numbers arri
 
 ## Related commands
 
-- [Check the neighbours of a change](cmd:hypothesis%20neighbours) is the check that runs before any new object.
+- [Check a change's neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.

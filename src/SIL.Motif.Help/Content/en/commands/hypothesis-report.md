@@ -1,4 +1,4 @@
-# Generate a record from the ledger
+# Report from the ledger
 
 `hypothesis report` prints the decision record or the speaker-question log, generated from the ledger so nobody writes either by hand.
 
@@ -12,4 +12,4 @@ motif hypothesis report --project <fwdata> --kind decisions
 
 ## Related commands
 
-- [Check the neighbours of a change](cmd:hypothesis%20neighbours) is the check that runs before any new object.
+- [Check a change's neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.

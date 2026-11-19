@@ -13,4 +13,4 @@ Pages are `--limit` at a time (1 to 200, default 50). `--id` shows one hypothesi
 
 ## Related commands
 
-- [Check the neighbours of a change](cmd:hypothesis%20neighbours) is the check that runs before any new object.
+- [Check a change's neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.
