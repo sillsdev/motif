@@ -271,6 +271,8 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             if (change.Kind == RecordChangeKind.RemoveReference)
             {
                 var gone = change.OldTarget ?? throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change, "The removed reference names no target.");
+                if (list is not null && !list.Contains(gone))
+                    throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project no longer holds the reference the file removes.");
                 var removeKind = KindFor(change, type, key, RecordWriteVerb.RemoveReference);
                 _pending.Add(Operation(Id(role + ":" + removeKind), removeKind, target, new { member = CanonicalId.FromGuid(gone).Value }));
                 list?.Remove(gone);
@@ -288,6 +290,12 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             if (member is null)
                 throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change, "The change names no member.");
             var list = List(owner, key, binding);
+            // The project's list is the precondition the file started from: an add of a member it already holds, or a move of
+            // one it no longer holds, is refused as stale rather than applied to a list that has changed.
+            if (list is not null && verb == RecordWriteVerb.AddReference && list.Contains(member.Value))
+                throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project already holds the reference the file adds.");
+            if (list is not null && verb != RecordWriteVerb.AddReference && !list.Contains(member.Value))
+                throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project no longer holds the member the file moves.");
             var placement = list is null ? null : Place(change, list, change.Anchor, verb == RecordWriteVerb.AddReference ? null : member);
             var effective = verb == RecordWriteVerb.AddReference && placement is not null ? RecordWriteVerb.InsertReference : verb;
             var kind = KindFor(change, type, key, effective, child: change.Subtree?.Class ?? ChildOf(type, key) ?? ClassOf(member.Value), placement);
@@ -532,7 +540,6 @@ public static class RecordLoweringRules
         RecordWriteVerb.SetAlternative or RecordWriteVerb.ClearAlternative or RecordWriteVerb.SetPlainRich or
             RecordWriteVerb.AddReference or RecordWriteVerb.InsertReference or RecordWriteVerb.RemoveReference or
             RecordWriteVerb.MoveReference or RecordWriteVerb.MoveObject => true,
-        RecordWriteVerb.SetRich or RecordWriteVerb.ClearRich => kind != TextParagraphsOperationKinds.Set,
         RecordWriteVerb.AddObject => write.CreatePayload != OwningCreatePayload.Unspecified,
         RecordWriteVerb.RemoveObject => write.Payload == FieldWritePayload.Composer,
         _ => false,

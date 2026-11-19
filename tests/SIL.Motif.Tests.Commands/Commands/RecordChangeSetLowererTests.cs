@@ -163,6 +163,29 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     }
 
     [Fact]
+    public void AReferenceChangeAgainstAListThatMovedOnIsRefusedAsStale()
+    {
+        var link = "[zzpub](/objects/" + _publication.Guid.ToString("D") + "){.name guid=" + _publication.Guid.ToString("D") + "}";
+        var addPlan = PlanEdit(d => ((RecordList)d.Data["do-not-publish-in"]!).Add(new RecordScalar(link)));
+        var removePlan = PlanEdit(d => ((RecordList)d.Data["do-not-publish-in"]!).Items.Clear());
+        Assert.Empty(Lower(addPlan).Refusals);
+        Assert.Empty(Lower(removePlan).Refusals);
+
+        // The project changes after the plan was made: the added member arrives, the removed one leaves.
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            _entry.DoNotPublishInRC.Clear();
+            _entry.DoNotPublishInRC.Add(_publication);
+        });
+        var added = Lower(addPlan);
+        Assert.Empty(added.Operations);
+        Assert.Equal(RefusalCodes.RecordImportValueStale, Assert.Single(added.Refusals).Code);
+        var removed = Lower(removePlan);
+        Assert.Empty(removed.Operations);
+        Assert.Equal(RefusalCodes.RecordImportValueStale, Assert.Single(removed.Refusals).Code);
+    }
+
+    [Fact]
     public void ARefusedCreateLeavesNoStateForWhatIsAnchoredOnIt()
     {
         var link = "[zzpub](/objects/" + _publication.Guid.ToString("D") + "){.name guid=" + _publication.Guid.ToString("D") + "}";
