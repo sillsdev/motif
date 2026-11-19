@@ -43,6 +43,17 @@ public enum FieldWriteShape
     VariantReference,
 }
 
+/// <summary>The <c>after</c> shape of an owning create that a record-file lowerer may author without a hand-written composer.</summary>
+public enum OwningCreatePayload
+{
+    /// <summary>The kind has its own payload, so only its composer authors it.</summary>
+    Unspecified,
+    /// <summary>The generic creation: <c>{}</c>.</summary>
+    Empty,
+    /// <summary>The generic creation of a field that holds several concrete classes: <c>{ "class": "..." }</c>.</summary>
+    ClassProperty,
+}
+
 /// <summary>
 /// A direct edit supported by a Runner registration. The declaring class is where the field originates in LibLCM.
 /// An owner restriction narrows an inherited field. Child classes are concrete and an empty list accepts every
@@ -56,6 +67,9 @@ public sealed record FieldWriteCapability(
 {
     /// <summary>Concrete child classes accepted by an owning edit.</summary>
     public IReadOnlyList<string> ChildClasses { get; init; } = [];
+
+    /// <summary>For an owning create, the generic payload shape its handler accepts; <see cref="OwningCreatePayload.Unspecified"/> for any other edit.</summary>
+    public OwningCreatePayload CreatePayload { get; init; }
 
     internal static FieldWriteCapability ForAddress(string address, RecordWriteVerb verb, bool fallback = false)
     {

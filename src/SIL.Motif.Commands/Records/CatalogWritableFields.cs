@@ -1,0 +1,64 @@
+using System.Collections.Frozen;
+using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Runner.Operations;
+using SIL.TextEditing.Project;
+
+namespace SIL.Motif.Commands.Records;
+
+/// <summary>
+/// What the record importer may plan, read from the Runner's registered field-write declarations, which are the
+/// generated catalog the coverage report is made from. Names are FieldWorks metadata names: the class that declares
+/// the field, and the LibLCM field name. A custom field has no declaration, so it is not writable.
+/// </summary>
+/// <remarks>
+/// <see cref="CanWrite"/> is true when some kind sets, clears, adds to, removes from or reorders the field; it does not
+/// know the owner's concrete class, so a field narrowed to one owner class is writable here and the lowerer refuses the
+/// others by name. <see cref="CanCreate"/> and <see cref="CanDelete"/> are the owning create and delete kinds.
+/// A field the field inventory classifies as not user-editable is never writable, as in the coverage report.
+/// </remarks>
+public sealed class CatalogWritableFields : WritableFields
+{
+    private static readonly FrozenSet<RecordWriteVerb> WriteVerbs = new[]
+    {
+        RecordWriteVerb.Set, RecordWriteVerb.Clear, RecordWriteVerb.SetAlternative, RecordWriteVerb.ClearAlternative,
+        RecordWriteVerb.SetPlainRich, RecordWriteVerb.SetRich, RecordWriteVerb.ClearRich, RecordWriteVerb.MoveObject,
+        RecordWriteVerb.AddReference, RecordWriteVerb.InsertReference, RecordWriteVerb.RemoveReference,
+        RecordWriteVerb.MoveReference, RecordWriteVerb.AddItem, RecordWriteVerb.RemoveItem, RecordWriteVerb.MoveItem,
+    }.ToFrozenSet();
+
+    private readonly FrozenSet<(string Class, string Field)> _writable;
+    private readonly ILookup<(string Class, string Field), FieldWriteCapability> _creates;
+    private readonly ILookup<(string Class, string Field), FieldWriteCapability> _deletes;
+
+    /// <summary>Reads every registered declaration.</summary>
+    public CatalogWritableFields()
+    {
+        OperationRegistryBootstrap.Initialize();
+        var all = OperationHandlerRegistry.RegisteredKinds.Where(OperationKindRegistry.IsKnown)
+            .SelectMany(OperationHandlerRegistry.FieldWrites)
+            .Where(write => !RecordFieldAuthorability.IsReadOnly(
+                RecordFieldAuthorability.Classification(write.DeclaringClass, write.Field)))
+            .ToArray();
+        _writable = all.Where(write => WriteVerbs.Contains(write.Verb))
+            .Select(write => (write.DeclaringClass, write.Field)).ToFrozenSet();
+        _creates = all.Where(write => write.Verb == RecordWriteVerb.AddObject)
+            .ToLookup(write => (write.DeclaringClass, write.Field));
+        _deletes = all.Where(write => write.Verb == RecordWriteVerb.RemoveObject)
+            .ToLookup(write => (write.DeclaringClass, write.Field));
+    }
+
+    /// <inheritdoc />
+    public override bool CanWrite(string className, string fieldName) => _writable.Contains((className, fieldName));
+
+    /// <inheritdoc />
+    public override bool CanCreate(string ownerClassName, string ownerFieldName, string className) =>
+        Allows(_creates, ownerClassName, ownerFieldName, className);
+
+    /// <inheritdoc />
+    public override bool CanDelete(string ownerClassName, string ownerFieldName, string className) =>
+        Allows(_deletes, ownerClassName, ownerFieldName, className);
+
+    private static bool Allows(ILookup<(string Class, string Field), FieldWriteCapability> kinds, string owner, string field,
+        string child) => kinds[(owner, field)].Any(write =>
+        write.ChildClasses.Count == 0 || write.ChildClasses.Contains(child, StringComparer.Ordinal));
+}

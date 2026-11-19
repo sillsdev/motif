@@ -24,6 +24,7 @@ internal sealed class OwningCreateHandler<TOwner>(
             OwnerClass: ownerClass)
         {
             ChildClasses = concreteClasses.Length == 0 ? [expectedClass] : concreteClasses,
+            CreatePayload = concreteClasses.Length == 0 ? OwningCreatePayload.Empty : OwningCreatePayload.ClassProperty,
         };
 
     public ExpectedEffect ApplyAndCaptureEffect(LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets)
