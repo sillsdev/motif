@@ -193,4 +193,43 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         Assert.Equal(RefusalCodes.RecordImportInvalidPage, past.Refusal!.Code);
         Assert.Equal("3", past.Refusal.Facts["pageCount"]);
     }
+
+    [Fact]
+    public void AListItemFilePlansWithTheListItemSchemaAndAnUnknownRecordIsRefused()
+    {
+        Directory.CreateDirectory(_folder);
+        string project, file;
+        Guid item;
+        using (var cache = pristine.NewScratch())
+        {
+            project = cache.ProjectId.Path;
+            var possibility = cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.First();
+            item = possibility.Guid;
+            var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.ListItemOverlay);
+            var exporter = new ProjectRecordExporter(cache, schema);
+            var read = RecordFileReader.Read(exporter.Export(item).Text!, schema.Schema, exporter.CreateReadOptions());
+            Assert.False(read.HasErrors);
+            ((RecordAlternatives)read.Document!.Data["name"]!).Add("en", new RecordScalar("zzrenamed"));
+            file = Path.Combine(_folder, "item.md");
+            File.WriteAllText(file, RecordFileWriter.Write(read.Document!, schema.Schema));
+        }
+
+        var outcome = RecordImportCommand.Run(new(project, file));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var response = outcome.Value!;
+        Assert.Equal(KindOf(file), response.RecordKind);
+        Assert.StartsWith("lists/", response.RecordKind);
+        Assert.Equal(0, response.RefusalCount);
+        Assert.True(response.OperationCount >= 1);
+
+        var unknown = Path.Combine(_folder, "unknown.md");
+        File.WriteAllText(unknown, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(file), "(?m)^record:.*$", "record: no/such-kind"));
+        var refused = RecordImportCommand.Run(new(project, unknown));
+        Assert.False(refused.Succeeded);
+        Assert.Contains(refused.Refusal!.Code, new[] { RefusalCodes.RecordImportPlanRefused });
+
+        static string KindOf(string path) =>
+            File.ReadLines(path).First(line => line.StartsWith("record:")).Substring("record:".Length).Trim().Trim('"', '\'');
+    }
 }

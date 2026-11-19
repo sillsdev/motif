@@ -120,7 +120,7 @@ public static partial class RecordImportCommand
         return new(schema!, plan, lowering);
     }
 
-    [GeneratedRegex(@"^record:[ \t]*[""']?([A-Za-z0-9_.\-]+)")]
+    [GeneratedRegex(@"^record:[ \t]*[""']?([A-Za-z0-9_./\-]+)")]
     private static partial Regex RecordLine();
 
     /// <summary>The record kind named in the front matter, between the first two <c>---</c> lines only.</summary>
