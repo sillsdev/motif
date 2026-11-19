@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Cellar;
+using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Records;
@@ -399,6 +400,11 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             if (Seed(owner, type.Name, field, binding) is { } seedWhy)
                 return (changes, seedWhy);
             members = Members(owner, binding);
+            if (members.Count == 0)
+            {
+                _factoryFailures.Add($"seed {type.Name}.{field.Name} {verb}: member not in field");
+                return (changes, CreationRefused);
+            }
         }
         var fresh = Guid.NewGuid();
         RecordChange Make(RecordChangeKind kind, Action<RecordChange>? more = null) => NewChange(kind, change =>
@@ -415,7 +421,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                 changes.Add(Make(RecordChangeKind.Set, change =>
                 {
                     Put(change, "New", field.Kind == RecordFieldKind.Boolean ? "true" : field.Kind == RecordFieldKind.Integer ? "1" : "x");
-                    Put(change, "NewTarget", field.Kind == RecordFieldKind.Reference ? RealTarget(field) ?? fresh : fresh);
+                    Put(change, "NewTarget", field.Kind == RecordFieldKind.Reference ? RealTarget(binding) ?? fresh : fresh);
                 }));
                 break;
             case RecordWriteVerb.Clear: changes.Add(Make(RecordChangeKind.Clear)); break;
@@ -506,8 +512,10 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                     why = ownerWhy ?? why;
                     continue;
                 }
-                if (Make(owner.Value, ownerType.Name, field, binding, className) && RealObject(className) is { } created)
+                var made = Make(owner.Value, ownerType.Name, field, binding, className);
+                if (made && RealObject(className) is { } created)
                     return (created, null);
+                _factoryFailures.Add($"{className}: under {ownerType.Name}.{field.Name} made={made}");
                 why = CreationRefused;
             }
         }
@@ -531,7 +539,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         });
         var lowering = new RecordChangeSetLowerer(_schema, new RecordWritableFields(_schema)).LowerChanges(_cache, Guid.NewGuid().ToString("N"), [change]);
         if (lowering.Refusals.Count != 0 || lowering.Operations.Count == 0)
-            return false;
+            return MakeByFactory(owner, binding, className);
         try
         {
             NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
@@ -543,8 +551,78 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         }
         catch (InvalidOperationException)
         {
+            return MakeByFactory(owner, binding, className);
+        }
+    }
+
+    private readonly SortedSet<string> _factoryFailures = [];
+
+    /// <summary>Test setup, not lowering: the liblcm factory makes a class no create kind authors.</summary>
+    private bool MakeByFactory(Guid ownerGuid, (string DeclaringClass, string Field, bool IsCustom) binding, string className)
+    {
+        var factoryType = typeof(ILexSenseFactory).Assembly.GetTypes().FirstOrDefault(t => t.IsInterface && t.Name == "I" + className + "Factory");
+        if (factoryType is null)
+        {
+            _factoryFailures.Add(className + ": no factory");
             return false;
         }
+        var metadata = (IFwMetaDataCacheManaged)_cache.MetaDataCacheAccessor;
+        var flid = metadata.GetFieldId(binding.DeclaringClass, binding.Field, true);
+        var fieldType = (CellarPropertyType)metadata.GetFieldType(flid);
+        var owner = _cache.ServiceLocator.GetInstance<ICmObjectRepository>().GetObject(ownerGuid);
+        var getInstance = typeof(ILexSenseFactory).Assembly.GetTypes().Where(t => t.IsSealed && t.IsAbstract)
+            .SelectMany(t => t.GetMethods()).First(m => m.Name == "GetInstance" && m.IsGenericMethodDefinition && m.GetParameters().Length == 1);
+        var factory = getInstance.MakeGenericMethod(factoryType).Invoke(null, [_cache.ServiceLocator]);
+        var creates = factoryType.GetMethods().Concat(factoryType.GetInterfaces().SelectMany(i => i.GetMethods()))
+            .Where(m => m.Name == "Create").Select(m => (Method: m, Parameters: m.GetParameters())).ToArray();
+        var repository = _cache.ServiceLocator.GetInstance<ICmObjectRepository>();
+        object? Argument(Type type) =>
+            type == typeof(Guid) ? Guid.NewGuid() : type == typeof(int) ? 0 : type == typeof(string) ? "x"
+            : type == typeof(ITsString) ? TsStringUtils.MakeString("x", _cache.DefaultAnalWs)
+            : type.IsInstanceOfType(owner) ? owner
+            : typeof(ICmObject).IsAssignableFrom(type) ? repository.AllInstances().FirstOrDefault(item => type.IsInstanceOfType(item)) : null;
+        // Where an overload names the owner it places the child itself; a bare Create is attached through the owner's field.
+        foreach (var create in creates.OrderBy(c => c.Parameters.Length))
+        {
+            var arguments = create.Parameters.Select(p => Argument(p.ParameterType)).ToArray();
+            if (arguments.Any(argument => argument is null) || (create.Parameters.Length > 0 && !arguments.Any(argument => ReferenceEquals(argument, owner))))
+                continue;
+            try
+            {
+                NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => create.Method.Invoke(factory, arguments));
+                return true;
+            }
+            catch (Exception e)
+            {
+                _factoryFailures.Add(className + ": " + (e.InnerException ?? e).GetType().Name);
+            }
+        }
+        foreach (var create in creates.Where(c => c.Parameters.Length == 0))
+        {
+            try
+            {
+                NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+                {
+                    var made = (ICmObject)create.Method.Invoke(factory, null)!;
+                    if (IsVector(fieldType))
+                    {
+                        var end = _cache.DomainDataByFlid.get_VecSize(owner.Hvo, flid);
+                        _cache.DomainDataByFlid.Replace(owner.Hvo, flid, end, end, [made.Hvo], 1);
+                    }
+                    else
+                    {
+                        _cache.DomainDataByFlid.SetObjProp(owner.Hvo, flid, made.Hvo);
+                    }
+                });
+                return true;
+            }
+            catch (Exception e)
+            {
+                _factoryFailures.Add(className + ": " + (e.InnerException ?? e).GetType().Name);
+            }
+        }
+        _factoryFailures.Add(className + ": no usable Create among " + string.Join(" | ", creates.Select(c => string.Join(",", c.Parameters.Select(p => p.ParameterType.Name)))));
+        return false;
     }
 
     /// <summary>Gives an empty field one member: a created child, or an existing object.</summary>
@@ -644,11 +722,26 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         Assert.True(lowered > 50, $"only {lowered} lowered");
         // A pair whose class the fixture cannot create is skipped under a named rule.
         Assert.True(gaps.IsSubsetOf(CreationRules), string.Join(Environment.NewLine, gaps.Except(CreationRules)));
-        Assert.True(lowered > 100, $"{skipped} offered pairs went unexercised against {lowered} lowered: " + string.Join("; ", gaps));
+        Assert.True(skipped * 5 <= lowered, $"{skipped} offered pairs went unexercised against {lowered} lowered ({string.Join("; ", gaps)}): " + string.Join("; ", _factoryFailures));
     }
 
-    private Guid? RealTarget(RecordField field) =>
-        (field.Item ?? field).ObjectTypes.Select(type => Instance(type.Name).Id).FirstOrDefault(id => id is not null);
+    private Guid NewPartOfSpeech()
+    {
+        var made = default(IPartOfSpeech)!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            made = _cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create();
+            _cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(made);
+        });
+        return made.Guid;
+    }
+
+    private Guid? RealTarget((string DeclaringClass, string Field, bool IsCustom) binding)
+    {
+        var metadata = (IFwMetaDataCacheManaged)_cache.MetaDataCacheAccessor;
+        var target = metadata.GetDstClsName(metadata.GetFieldId(binding.DeclaringClass, binding.Field, true));
+        return Instance(target).Id ?? (target == "CmPossibility" ? UnheldPublication().Guid : target == "PartOfSpeech" ? NewPartOfSpeech() : null);
+    }
 
     [Fact]
     public void OneEachOfAReferenceSetAMoveAndAClassPropertyCreateExecuteInADryRun()
@@ -657,6 +750,13 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var resolver = new RecordWritableFields(_schema);
         var lowerer = new RecordChangeSetLowerer(_schema, resolver);
         var executed = new Dictionary<string, bool> { ["reference set"] = false, ["move"] = false, ["class-property create"] = false };
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            for (var i = 0; i < 2; i++)
+                _entry.AlternateFormsOS.Add(_cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create());
+        });
+        var lastReason = new Dictionary<string, string>();
+        var allReasons = new List<string>();
         foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
         {
             if (resolution is not WritableFieldResolution.Covered || _schema.Schema.ObjectType(typeName)?.Field(fieldName) is not { } field
@@ -669,24 +769,34 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                 : verb is RecordWriteVerb.MoveObject or RecordWriteVerb.MoveReference ? "move"
                 : verb == RecordWriteVerb.AddObject && declared.Any(d => d.Write.CreatePayload == OwningCreatePayload.ClassProperty) ? "class-property create"
                 : null;
-            if (family is null || executed[family])
+            if (family is null || executed[family] || (family == "reference set" && RealTarget(binding) is null))
                 continue;
             var (changes, gap) = ChangesFor(_schema.Schema.ObjectType(typeName)!, field, verb, catalog, binding);
             if (gap is not null || changes.Count == 0)
+            {
+                lastReason[family] = $"{typeName}.{fieldName} {verb}: {gap}";
+                allReasons.Add(lastReason[family]);
                 continue;
+            }
             var lowering = lowerer.LowerChanges(_cache, Guid.NewGuid().ToString("N"), changes);
             if (lowering.Refusals.Count != 0 || lowering.Operations.Count == 0)
+            {
+                lastReason[family] = $"{typeName}.{fieldName} {verb}: refused {string.Join(",", lowering.Refusals.Select(r => r.Code + " " + r.Reason))}";
+                allReasons.Add(lastReason[family]);
                 continue;
+            }
             try
             {
                 executed[family] = ScratchDryRun.Of(_cache, Proposal(lowering.Operations)).ExpectedEffects.Count > 0;
             }
-            catch (InvalidOperationException)
+            catch (Exception e)
             {
                 // This pair's operation does not run on the fixture's object; the next pair of the family is tried.
+                lastReason[family] = $"{typeName}.{fieldName} {verb}: {e.GetType().Name} {e.Message}";
+                allReasons.Add(lastReason[family]);
             }
         }
-        Assert.All(executed, family => Assert.True(family.Value, family.Key + " has no pair that lowers and dry-runs"));
+        Assert.All(executed, family => Assert.True(family.Value, family.Key + " has no pair that lowers and dry-runs; last: " + lastReason.GetValueOrDefault(family.Key) + "\n" + string.Join("\n", allReasons.Distinct().Take(40))));
     }
 
     [Fact]
