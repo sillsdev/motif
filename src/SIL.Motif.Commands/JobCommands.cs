@@ -625,7 +625,7 @@ public static class JobCommands
             return job.Kind switch
             {
                 TrialKind => FrozenProposalRevision.Create(TrialJobInput.Parse(job.InputJson).ProposalJson).ProposalId == expected,
-                DryRunKind => DryRunJobInput.Parse(job.InputJson).Proposal.ProposalId == expected,
+                DryRunKind => DryRunJobInput.ParseWithoutSourceCheck(job.InputJson).Proposal.ProposalId == expected,
                 _ => false,
             };
         }

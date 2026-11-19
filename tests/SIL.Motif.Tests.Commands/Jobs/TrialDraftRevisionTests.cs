@@ -101,6 +101,33 @@ public sealed class TrialDraftRevisionTests : IDisposable
     }
 
     [Fact]
+    public void WaitingOnADryRunNeverReadsTheBaselineFileTheRunnerOpensExclusively()
+    {
+        var id = NewDraftWithOneGloss("wait-no-read");
+        var root = Path.Combine(Path.GetTempPath(), "motif-wait-root-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath), root);
+            Assert.True(captured.Succeeded, captured.Refusal?.Message);
+            var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(_fwDataPath, ProductVersion, id));
+            Assert.True(queued.Succeeded, queued.Refusal?.Message);
+
+            // The runner opens the Baseline exclusively; a wait that hashed it would fail on that open.
+            using var held = new FileStream(captured.Value!.FwDataPath, FileMode.Open, FileAccess.Read, FileShare.None);
+            var shown = JobCommands.ShowForWait(new ShowJobRequest(_fwDataPath, queued.Value!.JobId, ProductVersion),
+                JobCommands.DryRunKind, id, trackExecution: false);
+
+            Assert.True(shown.Succeeded, shown.Refusal?.Code + ": " + shown.Refusal?.Message);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    [Fact]
     public void ADryRunOrTrialQueuedAfterTheProjectWasSavedAgainIsRefusedNamingTheCapture()
     {
         var id = NewDraftWithOneGloss("saved-since");

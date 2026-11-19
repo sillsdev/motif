@@ -21,7 +21,16 @@ public sealed record DryRunJobInput(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool NoBackground { get; init; }
 
-    public static DryRunJobInput Parse(string inputJson)
+    public static DryRunJobInput Parse(string inputJson) => Read(inputJson, verifySource: true);
+
+    /// <summary>
+    /// Reads the frozen request without hashing the Baseline file its source names. A status or identity read of a
+    /// queued or running Dry Run must use this: the runner opens that file exclusively, and a read of it from the
+    /// waiting command fails the command, or makes the runner's own open fail.
+    /// </summary>
+    public static DryRunJobInput ParseWithoutSourceCheck(string inputJson) => Read(inputJson, verifySource: false);
+
+    private static DryRunJobInput Read(string inputJson, bool verifySource)
     {
         try
         {
@@ -32,7 +41,7 @@ public sealed record DryRunJobInput(
                 throw new InvalidDataException("The Dry Run job input contains unsupported fields.");
             var input = JsonSerializer.Deserialize<DryRunJobInput>(inputJson, MotifJson.CreateOptions())
                 ?? throw new InvalidDataException("The Dry Run job input is empty.");
-            input.Validate();
+            input.Validate(verifySource);
             return input;
         }
         catch (JsonException exception)
@@ -42,7 +51,9 @@ public sealed record DryRunJobInput(
         }
     }
 
-    public void Validate()
+    public void Validate() => Validate(verifySource: true);
+
+    private void Validate(bool verifySource)
     {
         if (SchemaVersion != CurrentSchemaVersion || Proposal is null || Prerequisites is null)
             throw new InvalidDataException("This Dry Run job lacks frozen source or Proposal evidence. Rerun its Dry Run.");
@@ -54,7 +65,7 @@ public sealed record DryRunJobInput(
                 throw new InvalidDataException("The frozen prerequisite closure contains a repeated Proposal.");
             prerequisite.Validate();
         }
-        if (SourceBaseline is not null) SourceBaseline.Validate();
+        if (verifySource) SourceBaseline?.Validate();
     }
 
     public PrerequisiteExecutionPlan BuildExecutionPlan(IReadOnlyCollection<Guid> appliedProposalIds)
