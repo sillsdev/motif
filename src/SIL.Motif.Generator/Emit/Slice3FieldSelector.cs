@@ -60,6 +60,16 @@ public static class Slice3FieldSelector
         new FieldKey("LexSense", "Status"),
     };
 
+    // Possibility-list sets the Lexicon Edit sense detail slices edit, beyond HcReachable.
+    private static readonly HashSet<FieldKey> LexiconEditCollectionFields = new()
+    {
+        new FieldKey("LexSense", "UsageTypes"),
+        new FieldKey("LexSense", "DialectLabels"),
+        new FieldKey("LexSense", "DomainTypes"),
+        new FieldKey("LexSense", "SemanticDomains"),
+        new FieldKey("LexSense", "AnthroCodes"),
+    };
+
     private static readonly string[] BasicOkSigs = { "MultiUnicode", "MultiString", "Boolean" };
 
     private static readonly HashSet<FieldKey> OrderedTemplateSlotFields = new()
@@ -95,7 +105,8 @@ public static class Slice3FieldSelector
         Filter(rows, row =>
             row.Kind == FieldKind.Rel &&
             (row.Card == FieldCard.Col || row.Card == FieldCard.Seq) &&
-            (row.Manifest.Verbs == "addRef|removeRef" || row.Manifest.Verbs == "addRef|removeRef|move"));
+            (row.Manifest.Verbs == "addRef|removeRef" || row.Manifest.Verbs == "addRef|removeRef|move"),
+            LexiconEditCollectionFields);
 
     public static IReadOnlyList<JoinedRow> SelectOrderedTemplateSlotSequences(IReadOnlyList<JoinedRow> rows) =>
         Filter(rows, row =>

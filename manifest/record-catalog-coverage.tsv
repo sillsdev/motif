@@ -230,6 +230,8 @@ Covered	LexRefType	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/
 Covered	LexReference	comment	LexReference.Comment	SetPlainRich	text/setRichString	-	-
 Covered	LexReference	comment	LexReference.Comment	SetRich	text/setRichString	-	-
 Covered	LexReference	comment	LexReference.Comment	ClearRich	text/setRichString	-	-
+Covered	LexSense	anthro-codes	LexSense.AnthroCodes	AddReference	lexical/lexSense/addRefAnthroCodes	-	-
+Covered	LexSense	anthro-codes	LexSense.AnthroCodes	RemoveReference	lexical/lexSense/removeRefAnthroCodes	-	-
 Covered	LexSense	anthro-note	LexSense.AnthroNote	SetPlainRich	lexical/lexSense/setAnthroNote	-	-
 Covered	LexSense	anthro-note	LexSense.AnthroNote	SetRich	text/setRichString	-	-
 Covered	LexSense	anthro-note	LexSense.AnthroNote	ClearRich	text/setRichString	-	-
@@ -241,9 +243,13 @@ Covered	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	ClearRich	cust
 Covered	LexSense	definition	LexSense.Definition	SetPlainRich	lexical/lexSense/setDefinition	-	-
 Covered	LexSense	definition	LexSense.Definition	SetRich	text/setRichString	-	-
 Covered	LexSense	definition	LexSense.Definition	ClearRich	text/setRichString	-	-
+Covered	LexSense	dialect-labels	LexSense.DialectLabels	AddReference	lexical/lexSense/addRefDialectLabels	-	-
+Covered	LexSense	dialect-labels	LexSense.DialectLabels	RemoveReference	lexical/lexSense/removeRefDialectLabels	-	-
 Covered	LexSense	discourse-note	LexSense.DiscourseNote	SetPlainRich	lexical/lexSense/setDiscourseNote	-	-
 Covered	LexSense	discourse-note	LexSense.DiscourseNote	SetRich	text/setRichString	-	-
 Covered	LexSense	discourse-note	LexSense.DiscourseNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	domain-types	LexSense.DomainTypes	AddReference	lexical/lexSense/addRefDomainTypes	-	-
+Covered	LexSense	domain-types	LexSense.DomainTypes	RemoveReference	lexical/lexSense/removeRefDomainTypes	-	-
 Covered	LexSense	encyclopedic-info	LexSense.EncyclopedicInfo	SetPlainRich	text/setRichString	-	-
 Covered	LexSense	encyclopedic-info	LexSense.EncyclopedicInfo	SetRich	text/setRichString	-	-
 Covered	LexSense	encyclopedic-info	LexSense.EncyclopedicInfo	ClearRich	text/setRichString	-	-
@@ -270,6 +276,8 @@ Covered	LexSense	restrictions	LexSense.Restrictions	ClearRich	text/setRichString
 Covered	LexSense	scientific-name	LexSense.ScientificName	SetPlainRich	text/setRichString	-	-
 Covered	LexSense	scientific-name	LexSense.ScientificName	SetRich	text/setRichString	-	-
 Covered	LexSense	scientific-name	LexSense.ScientificName	ClearRich	text/setRichString	-	-
+Covered	LexSense	semantic-domains	LexSense.SemanticDomains	AddReference	lexical/lexSense/addRefSemanticDomains	-	-
+Covered	LexSense	semantic-domains	LexSense.SemanticDomains	RemoveReference	lexical/lexSense/removeRefSemanticDomains	-	-
 Covered	LexSense	semantics-note	LexSense.SemanticsNote	SetPlainRich	lexical/lexSense/setSemanticsNote	-	-
 Covered	LexSense	semantics-note	LexSense.SemanticsNote	SetRich	text/setRichString	-	-
 Covered	LexSense	semantics-note	LexSense.SemanticsNote	ClearRich	text/setRichString	-	-
@@ -287,6 +295,8 @@ Covered	LexSense	status	LexSense.Status	Clear	lexical/lexSense/clearStatus	-	-
 Covered	LexSense	usage-note	LexSense.UsageNote	SetPlainRich	text/setRichString	-	-
 Covered	LexSense	usage-note	LexSense.UsageNote	SetRich	text/setRichString	-	-
 Covered	LexSense	usage-note	LexSense.UsageNote	ClearRich	text/setRichString	-	-
+Covered	LexSense	usage-types	LexSense.UsageTypes	AddReference	lexical/lexSense/addRefUsageTypes	-	-
+Covered	LexSense	usage-types	LexSense.UsageTypes	RemoveReference	lexical/lexSense/removeRefUsageTypes	-	-
 Covered	MoAffixAllomorph	form	MoForm.Form	SetAlternative	grammar/moForm/setForm	-	-
 Covered	MoAffixAllomorph	form	MoForm.Form	ClearAlternative	grammar/moForm/clearForm	-	-
 Covered	MoAffixAllomorph	inflection-classes	MoAffixForm.InflectionClasses	AddReference	grammar/moAffixForm/addRefInflectionClasses	-	-
@@ -504,18 +514,8 @@ LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	AddReferenc
 LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	InsertReference	none	NoOperationKind	-
 LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	RemoveReference	none	NoOperationKind	-
 LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	MoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	anthro-codes	LexSense.AnthroCodes	AddReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	anthro-codes	LexSense.AnthroCodes	RemoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	AddReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	InsertReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	RemoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	InsertReference	none	UnsupportedPlacement	-
 LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	MoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	domain-types	LexSense.DomainTypes	AddReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	domain-types	LexSense.DomainTypes	RemoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	semantic-domains	LexSense.SemanticDomains	AddReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	semantic-domains	LexSense.SemanticDomains	RemoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	usage-types	LexSense.UsageTypes	AddReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	usage-types	LexSense.UsageTypes	RemoveReference	none	NoOperationKind	-
 OtherFields	ChkRef	key-word	ChkRef.KeyWord	SetPlainRich	none	NoOperationKind	-
 OtherFields	ChkRef	key-word	ChkRef.KeyWord	SetRich	none	NoOperationKind	-
 OtherFields	ChkRef	key-word	ChkRef.KeyWord	ClearRich	none	NoOperationKind	-
@@ -1682,6 +1682,11 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	lexical/lexExampleSentence/moveToSense	(no direct field edit)
 # Handler	lexical/lexPronunciation/clearForm	LexPronunciation	Form	ClearAlternative	Forbidden	-		Unspecified	False
 # Handler	lexical/lexPronunciation/setForm	LexPronunciation	Form	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/addRefAnthroCodes	LexSense	AnthroCodes	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/addRefDialectLabels	LexSense	DialectLabels	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/addRefDomainTypes	LexSense	DomainTypes	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/addRefSemanticDomains	LexSense	SemanticDomains	AddReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/addRefUsageTypes	LexSense	UsageTypes	AddReference	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/clearAnthroNote	LexSense	AnthroNote	ClearRich	Forbidden	-		Unspecified	True
 # Handler	lexical/lexSense/clearDefinition	LexSense	Definition	ClearRich	Forbidden	-		Unspecified	True
 # Handler	lexical/lexSense/clearDiscourseNote	LexSense	DiscourseNote	ClearRich	Forbidden	-		Unspecified	True
@@ -1699,6 +1704,11 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	lexical/lexSense/moveToEntry	(no direct field edit)
 # Handler	lexical/lexSense/remove	LexEntry	Senses	RemoveObject	Forbidden	-	LexSense	Unspecified	False
 # Handler	lexical/lexSense/remove	LexSense	Senses	RemoveObject	Forbidden	-	LexSense	Unspecified	False
+# Handler	lexical/lexSense/removeRefAnthroCodes	LexSense	AnthroCodes	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/removeRefDialectLabels	LexSense	DialectLabels	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/removeRefDomainTypes	LexSense	DomainTypes	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/removeRefSemanticDomains	LexSense	SemanticDomains	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	lexical/lexSense/removeRefUsageTypes	LexSense	UsageTypes	RemoveReference	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/setAnthroNote	LexSense	AnthroNote	SetPlainRich	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/setDefinition	LexSense	Definition	SetPlainRich	Forbidden	-		Unspecified	False
 # Handler	lexical/lexSense/setDiscourseNote	LexSense	DiscourseNote	SetPlainRich	Forbidden	-		Unspecified	False
