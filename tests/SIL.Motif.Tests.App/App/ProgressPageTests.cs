@@ -13,7 +13,9 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.App.Views.Shell;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -124,6 +126,56 @@ public sealed class ProgressPageTests
                 Assert.Contains("not your approval", seen);
                 Visible(AutomationIds.ProgressReviewWords).Command!.Execute(null);
                 Assert.Equal(WorkspacePage.Words, context.CurrentPage);
+            }
+            finally
+            {
+                window.Close();
+                await context.StopProjectWorkAsync();
+            }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void ProgressOffersParseAllWordsInsteadOfAskingForTextsOnceTextsAreChosen()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.OverviewCompletesWith(SampleOverview.Populated() with { AssessmentId = null, AssessedUtc = null });
+            var textId = Guid.NewGuid();
+            fake.DefaultSelectionIs(new NamedSelectionProjection("Default", [textId], [], string.Empty, string.Empty,
+                new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1"));
+            var context = WorkspaceContextTests.NewContext(fake);
+            context.AttachSetup(new SetupViewModel(context, new TextWordsViewModel(fake, context.Selection, context.SelectionReads)));
+            var parses = 0;
+            context.ParseAllWordsCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() =>
+            {
+                parses++;
+                return Task.CompletedTask;
+            });
+            var model = new ProgressPageModel(context);
+            var page = new ProgressPage(model);
+            var window = new MotifTestWindow { Width = 1280, Height = 800, Content = page };
+            string Seen() => string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>()
+                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text));
+            try
+            {
+                window.Show();
+                await context.OpenProjectAsync("project.fwdata");
+                PageScreenshots.Settle(window);
+                Assert.True(context.Setup?.CanRunDefaultSelection);
+                var seen = Seen();
+                Assert.Contains("No Texts Parsed Yet", seen);
+                Assert.Contains("chosen", seen);
+                Assert.Contains("Nothing has been parsed yet.", seen);
+                Assert.DoesNotContain("Choose the Texts to parse", seen);
+                Assert.DoesNotContain(page.GetVisualDescendants().OfType<Button>(),
+                    button => button.IsEffectivelyVisible && AutomationProperties.GetAutomationId(button) == AutomationIds.ProgressChooseTexts);
+                var parse = Assert.Single(page.GetVisualDescendants().OfType<Button>(),
+                    button => button.IsEffectivelyVisible && AutomationProperties.GetAutomationId(button) == AutomationIds.ProgressParseChosen);
+                Assert.Equal(MotifAppStrings.ParseAllWords, parse.Content);
+                parse.Command!.Execute(null);
+                Assert.Equal(1, parses);
             }
             finally
             {

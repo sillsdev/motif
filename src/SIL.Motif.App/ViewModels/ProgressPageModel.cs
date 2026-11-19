@@ -30,14 +30,32 @@ public sealed partial class ProgressPageModel : PageModel
             if (e.PropertyName == nameof(HealthStripViewModel.Overview)) RaiseParseStateChanged();
         };
         context.Selection.PropertyChanged += OnSelectionChanged;
+        WatchSetup();
         context.Evidence.PropertyChanged += OnEvidenceChanged;
         context.PropertyChanged += (_, e) =>
         {
+            if (e.PropertyName == nameof(WorkspaceContext.Setup)) WatchSetup();
             if (e.PropertyName == nameof(WorkspaceContext.HasProject)) TryAgainCommand.NotifyCanExecuteChanged();
             if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) &&
                 context.CurrentPage == WorkspacePage.Progress && !context.IsOpeningProject && !IsReadingForCurrentState())
                 _ = RefreshCurrentAsync(CancellationToken.None);
         };
+    }
+
+    private SetupViewModel? _watchedSetup;
+
+    private void WatchSetup()
+    {
+        if (ReferenceEquals(_watchedSetup, Context.Setup)) return;
+        if (_watchedSetup is not null) _watchedSetup.PropertyChanged -= OnSetupChanged;
+        _watchedSetup = Context.Setup;
+        if (_watchedSetup is not null) _watchedSetup.PropertyChanged += OnSetupChanged;
+        RaiseNothingParsedChanged();
+    }
+
+    private void OnSetupChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SetupViewModel.CanRunDefaultSelection)) RaiseNothingParsedChanged();
     }
 
     /// <summary>The health facts shared with the shell.</summary>
@@ -99,6 +117,29 @@ public sealed partial class ProgressPageModel : PageModel
     /// <summary>Whether the project is known to have no stored parse yet.</summary>
     public bool ShowNothingParsed => CurrentOverview is { AssessmentId: null };
 
+    /// <summary>Whether the page can offer to parse what is already chosen, instead of asking for Texts to be chosen.</summary>
+    public bool ShowParseChosen => ShowNothingParsed && Context.Setup?.CanRunDefaultSelection == true &&
+        Context.ParseAllWordsCommand is not null;
+
+    /// <summary>Whether nothing is parsed and nothing is chosen yet, so the page asks for Texts to be chosen.</summary>
+    public bool ShowChooseTexts => ShowNothingParsed && !ShowParseChosen;
+
+    /// <summary>Says how many Texts are chosen, so the page does not ask for a choice that has been made.</summary>
+    public string NothingParsedChosenText => Context.Selection.ChosenTextIds.Count is var count and > 0
+        ? PluralText.Format(MotifAppStrings.ProgressChosenTextsPattern, count)
+        : MotifAppStrings.ProgressChosenWordsReady;
+
+    /// <summary>The shell's Parse All Words command, which the page offers once something is chosen.</summary>
+    public IAsyncRelayCommand? ParseAllWordsCommand => Context.ParseAllWordsCommand;
+
+    private void RaiseNothingParsedChanged()
+    {
+        OnPropertyChanged(nameof(ShowParseChosen));
+        OnPropertyChanged(nameof(ShowChooseTexts));
+        OnPropertyChanged(nameof(NothingParsedChosenText));
+        OnPropertyChanged(nameof(ParseAllWordsCommand));
+    }
+
     /// <summary>Whether the stored parse facts are being read, so the page says so instead of standing blank.</summary>
     public bool ShowReadingParse => IsReading && !HasParseFacts && !OverviewUnavailable;
 
@@ -141,6 +182,7 @@ public sealed partial class ProgressPageModel : PageModel
         OnPropertyChanged(nameof(ParseSummaryLines));
         OnPropertyChanged(nameof(ParseSummaryText));
         OnPropertyChanged(nameof(ShowReadingParse));
+        RaiseNothingParsedChanged();
     }
 
     /// <summary>The words under Next when a read was refused, naming the store problem when there is one.</summary>
@@ -333,6 +375,8 @@ public sealed partial class ProgressPageModel : PageModel
 
     private void OnSelectionChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(SelectionViewModel.ChosenTextIds) or nameof(SelectionViewModel.PastedWords))
+            RaiseNothingParsedChanged();
         if (e.PropertyName is nameof(SelectionViewModel.ChosenTextIds) or nameof(SelectionViewModel.PastedWords) &&
             !SelectionMatches()) Invalidate();
     }

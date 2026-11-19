@@ -7592,6 +7592,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <!-- fix1-progress -->
   <data name="MotifApp.ProgressNothingParsedHeading" xml:space="preserve"><value>No Texts Parsed Yet</value></data>
   <data name="MotifApp.ProgressNothingParsedNext" xml:space="preserve"><value>Choose the Texts to parse, then use Parse All Words at the top of the window. Nothing has been parsed for this project yet.</value></data>
+  <data name="MotifApp.ProgressChosenTextsPattern" xml:space="preserve"><value>{0, plural, one {# Text chosen. Nothing has been parsed yet.} other {# Texts chosen. Nothing has been parsed yet.}}</value></data>
+  <data name="MotifApp.ProgressChosenWordsReady" xml:space="preserve"><value>Your chosen words are ready. Nothing has been parsed yet.</value></data>
   <data name="MotifApp.ProgressChooseTexts" xml:space="preserve"><value>Choose Texts</value></data>
   <data name="MotifApp.ProgressParsedHeading" xml:space="preserve"><value>Parsed So Far</value></data>
   <data name="MotifApp.ProgressParsedPlacesFormat" xml:space="preserve"><value>{0} of {1} places in your chosen Texts have a parse.</value></data>

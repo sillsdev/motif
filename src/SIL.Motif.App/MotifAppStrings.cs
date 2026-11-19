@@ -4158,6 +4158,8 @@ public static class MotifAppStrings
     // fix1-layout
     public static string RefusalStoreLockMissing => Text("MotifApp.RefusalStoreLockMissing");
     public static string ProgressRefreshToUpgrade => Text("MotifApp.ProgressRefreshToUpgrade");
+    public static string ProgressChosenTextsPattern => Text("MotifApp.ProgressChosenTextsPattern");
+    public static string ProgressChosenWordsReady => Text("MotifApp.ProgressChosenWordsReady");
     public static string ProgressNextStoreProblem => Text("MotifApp.ProgressNextStoreProblem");
     // round2-diag
     public static string DiagnosticKindConversionSourceProvenanceUnknown => Text("MotifApp.DiagnosticKindConversionSourceProvenanceUnknown");

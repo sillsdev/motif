@@ -22,9 +22,16 @@
       <Border Classes="progressNextList" IsVisible="{Binding ShowNothingParsed}">
         <StackPanel Classes="progressNextNotice" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressNothingParsed}" Spacing="{DynamicResource Intent.Space.Related}">
           <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProgressNothingParsedHeading}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProgressNothingParsedNext}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProgressNothingParsedNext}" TextWrapping="Wrap"
+                                   IsVisible="{Binding ShowChooseTexts}" />
           <Button Command="{Binding OpenTextsCommand}" Content="{x:Static app:MotifAppStrings.ProgressChooseTexts}"
+                  IsVisible="{Binding ShowChooseTexts}"
                   HorizontalAlignment="Left" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressChooseTexts}" />
+          <views:CopyableTextBlock Text="{Binding NothingParsedChosenText}" TextWrapping="Wrap"
+                                   IsVisible="{Binding ShowParseChosen}" />
+          <Button Command="{Binding ParseAllWordsCommand}" Content="{x:Static app:MotifAppStrings.ParseAllWords}"
+                  IsVisible="{Binding ShowParseChosen}"
+                  HorizontalAlignment="Left" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressParseChosen}" />
         </StackPanel>
       </Border>
       <Border Classes="progressNextList" IsVisible="{Binding HasParse}">
