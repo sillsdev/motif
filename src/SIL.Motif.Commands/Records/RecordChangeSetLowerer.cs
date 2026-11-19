@@ -442,6 +442,8 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 throw Refuse(RefusalCodes.RecordImportNotExecutable, change, "The object is not in the project.");
             var flid = cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true);
             var handle = ws is null ? 0 : cache.WritingSystemFactory.GetWsFromStr(ws);
+            if (handle == 0 && (CellarPropertyType)cache.MetaDataCacheAccessor.GetFieldType(flid) is not (CellarPropertyType.String))
+                throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change, "The field holds text per writing system and the change names none.");
             var value = handle == 0 ? cache.DomainDataByFlid.get_StringProp(instance.Hvo, flid)
                 : cache.DomainDataByFlid.get_MultiStringAlt(instance.Hvo, flid, handle);
             if (value is null || value.Length == 0)

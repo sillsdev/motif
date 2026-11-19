@@ -471,7 +471,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     }
 
     // Why liblcm cannot make an owned class generically: rules about classes, not pairs.
-    private const string AbstractClass = "the class is abstract, so liblcm creates none of it";
+    /// <summary>Remove and Move on references whose target class is abstract with no standalone subclass.</summary>
+    private const int UnexercisedAbstractReferencePairs = 22;
+    private const string AbstractClass = "the class is abstract and no concrete subclass stands alone in the fixture";
     private const string NoOwnerChain = "no owning field leads from an object the project holds to the class";
     private const string CreationRefused = "only the class's own composer creates it, or no create kind does, so the fixture holds none";
     private static readonly string[] CreationRules = [AbstractClass, NoOwnerChain, CreationRefused];
@@ -581,15 +583,16 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             : type == typeof(ITsString) ? TsStringUtils.MakeString("x", _cache.DefaultAnalWs)
             : type.IsInstanceOfType(owner) ? owner
             : typeof(ICmObject).IsAssignableFrom(type) ? repository.AllInstances().FirstOrDefault(item => type.IsInstanceOfType(item)) : null;
-        // Where an overload names the owner it places the child itself; a bare Create is attached through the owner's field.
+        // An overload naming the owner places the child; a bare Create is attached by property.
         foreach (var create in creates.OrderBy(c => c.Parameters.Length))
         {
             var arguments = create.Parameters.Select(p => Argument(p.ParameterType)).ToArray();
-            if (arguments.Any(argument => argument is null) || (create.Parameters.Length > 0 && !arguments.Any(argument => ReferenceEquals(argument, owner))))
+            if (create.Parameters.Length == 0 || arguments.Any(argument => argument is null) || (!arguments.Any(argument => ReferenceEquals(argument, owner))))
                 continue;
             try
             {
                 NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => create.Method.Invoke(factory, arguments));
+                _factoryFailures.Add(className + ": named create ok " + string.Join(",", create.Parameters.Select(p => p.ParameterType.Name)));
                 return true;
             }
             catch (Exception e)
@@ -604,16 +607,17 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                 NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
                 {
                     var made = (ICmObject)create.Method.Invoke(factory, null)!;
+                    var property = owner.GetType().GetProperty(binding.Field + "OS") ?? owner.GetType().GetProperty(binding.Field + "OC")
+                        ?? owner.GetType().GetProperty(binding.Field + "OA") ?? throw new InvalidOperationException("no property " + binding.Field);
                     if (IsVector(fieldType))
-                    {
-                        var end = _cache.DomainDataByFlid.get_VecSize(owner.Hvo, flid);
-                        _cache.DomainDataByFlid.Replace(owner.Hvo, flid, end, end, [made.Hvo], 1);
+                        {
+                        var list = property.GetValue(owner)!;
+                        list.GetType().GetMethods().First(m => m.Name == "Add" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType.IsInstanceOfType(made)).Invoke(list, [made]);
                     }
                     else
-                    {
-                        _cache.DomainDataByFlid.SetObjProp(owner.Hvo, flid, made.Hvo);
-                    }
+                        property.SetValue(owner, made);
                 });
+                _factoryFailures.Add(className + ": bare create ok");
                 return true;
             }
             catch (Exception e)
@@ -675,6 +679,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var gaps = new SortedSet<string>(StringComparer.Ordinal);
         var lowered = 0;
         var skipped = 0;
+        var unexercised = new List<string>();
         foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
         {
             if (resolution is not WritableFieldResolution.Covered)
@@ -689,7 +694,10 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             if (gap is not null)
             {
                 if (offered)
+                {
                     gaps.Add(gap);
+                    unexercised.Add(subject + " [" + gap + "]");
+                }
 
                 skipped++;
                 continue;
@@ -722,8 +730,11 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         Assert.True(lowered > 50, $"only {lowered} lowered");
         // A pair whose class the fixture cannot create is skipped under a named rule.
         Assert.True(gaps.IsSubsetOf(CreationRules), string.Join(Environment.NewLine, gaps.Except(CreationRules)));
-        Assert.True(skipped * 5 <= lowered, $"{skipped} offered pairs went unexercised against {lowered} lowered ({string.Join("; ", gaps)}): " + string.Join("; ", _factoryFailures));
+        Assert.True(unexercised.Count == UnexercisedAbstractReferencePairs && unexercised.All(item => item.EndsWith("[" + AbstractClass + "]", StringComparison.Ordinal)),
+            $"{unexercised.Count} offered pairs unexercised: " + string.Join(" | ", unexercised));
     }
+
+    private IMoMorphType MorphType(Guid id) => _cache.ServiceLocator.GetInstance<IMoMorphTypeRepository>().GetObject(id);
 
     private Guid NewPartOfSpeech()
     {
@@ -753,7 +764,11 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
         {
             for (var i = 0; i < 2; i++)
-                _entry.AlternateFormsOS.Add(_cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create());
+            {
+                var allomorph = _cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create();
+                _entry.AlternateFormsOS.Add(allomorph);
+                allomorph.MorphTypeRA = MorphType(MoMorphTypeTags.kguidMorphStem);
+            }
         });
         var lastReason = new Dictionary<string, string>();
         var allReasons = new List<string>();
@@ -785,9 +800,15 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                 allReasons.Add(lastReason[family]);
                 continue;
             }
+            NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            {
+                foreach (var process in _cache.ServiceLocator.GetInstance<IMoAffixProcessRepository>().AllInstances().ToList())
+                    _cache.DomainDataByFlid.DeleteObj(process.Hvo);
+            });
             try
             {
                 executed[family] = ScratchDryRun.Of(_cache, Proposal(lowering.Operations)).ExpectedEffects.Count > 0;
+                if (!executed[family]) allReasons.Add($"{typeName}.{fieldName} {verb}: no effects from {string.Join(",", lowering.Operations.Select(o => o.Kind))}");
             }
             catch (Exception e)
             {
