@@ -5,6 +5,7 @@ using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Records;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Commands;
@@ -241,6 +242,26 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(StartProposal(c, a)))
         {
             Requests = [typeof(NewDraftRequest)],
+        },
+
+        new("motif_import_record",
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object([("file", Schema.String("Path of the edited record file, exported from this project."), true),
+                ("draft", Schema.String("A new Draft name to stage the operations in. Leave it out for a dry run that writes nothing."), false),
+                ("page", Schema.Integer("Page of operations and refusals to list. Default 1.", 1, 100000), false)]),
+            false,
+            false,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ImportRecord(c, a)))
+        {
+            Requests = [typeof(RecordImportRequest)],
+            OutputSchema = RecordImportToolSchema.Output,
+            FieldNames = new Dictionary<string, string?>
+            {
+                ["FilePath"] = "file", ["DraftName"] = "draft", ["Page"] = "page",
+            },
         },
 
         new("motif_guide",
@@ -1438,6 +1459,15 @@ internal static class AgentTools
         contexts["items"]!.AsObject()["properties"]!.AsObject()["naturalClass"] =
             Schema.String("Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation.");
         return contexts;
+    }
+
+    private static ToolOutcome ImportRecord(ServerContext context, ToolArgs args)
+    {
+        var file = args.Required("file");
+        if (RecordImportCommand.RefuseOutsideAgentRoots(context.ProjectPath, file, Directory.GetCurrentDirectory()) is { } refusal)
+            return ToolOutcome.Refused(refusal);
+        return ToolOutcome.From(RecordImportCommand.Run(new RecordImportRequest(
+            context.ProjectPath, file, args.Optional("draft"), args.OptionalInt("page") ?? 1)));
     }
 
     private static ToolOutcome StartProposal(ServerContext context, ToolArgs args)

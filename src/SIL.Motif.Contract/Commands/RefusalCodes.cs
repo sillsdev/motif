@@ -285,6 +285,14 @@ public static class RefusalCodes
     public const string RecordImportValueStale = "record-import.value-stale";
     /// <summary>The change names an object, list member or text the project cannot take as written.</summary>
     public const string RecordImportNotExecutable = "record-import.not-executable";
+    /// <summary>The importer declines this one change (its kind says why); the rest of the file is still planned.</summary>
+    public const string RecordImportChangeRefused = "record-import.change-refused";
+    /// <summary>The record file cannot be read from the path given.</summary>
+    public const string RecordImportFileUnreadable = "record-import.file-unreadable";
+    /// <summary>Staging was asked for, but the file lowers to no operation, so no Draft was made.</summary>
+    public const string RecordImportNothingToStage = "record-import.nothing-to-stage";
+    /// <summary>The page asked for is not a page number from 1.</summary>
+    public const string RecordImportInvalidPage = "record-import.invalid-page";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";
     public const string ProposalRationaleFindings = "proposal.rationale-findings";
     public const string ProposalRationaleUnchecked = "proposal.rationale-unchecked";

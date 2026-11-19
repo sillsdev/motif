@@ -1,0 +1,21 @@
+{
+  "mode": "draft",
+  "recordKind": "lexiconEntry",
+  "recordId": "-AAAAAAAAAAAAAAAAAAAAAA",
+  "baseVerdict": "fresh",
+  "changeCount": 1,
+  "operationCount": 1,
+  "refusalCount": 0,
+  "page": 1,
+  "pageCount": 1,
+  "operations": [
+    {
+      "operationId": "-BBBBBBBBBBBBBBBBBBBBBB",
+      "kind": "lexical/lexSense/setGloss",
+      "target": "-CCCCCCCCCCCCCCCCCCCCCC"
+    }
+  ],
+  "refusals": [],
+  "draftName": "import-1",
+  "proposalId": "-DDDDDDDDDDDDDDDDDDDDDD"
+}

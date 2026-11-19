@@ -1,0 +1,27 @@
+{
+  "mode": "dryRun",
+  "recordKind": "lexiconEntry",
+  "recordId": "-AAAAAAAAAAAAAAAAAAAAAA",
+  "baseVerdict": "fresh",
+  "changeCount": 2,
+  "operationCount": 1,
+  "refusalCount": 1,
+  "page": 1,
+  "pageCount": 1,
+  "operations": [
+    {
+      "operationId": "-BBBBBBBBBBBBBBBBBBBBBB",
+      "kind": "lexical/lexSense/setGloss",
+      "target": "-CCCCCCCCCCCCCCCCCCCCCC"
+    }
+  ],
+  "refusals": [
+    {
+      "code": "record-import.field-uncovered",
+      "class": "LexSense",
+      "field": "senseType",
+      "object": "-CCCCCCCCCCCCCCCCCCCCCC",
+      "reason": "No operation kind writes this field."
+    }
+  ]
+}

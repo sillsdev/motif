@@ -1889,6 +1889,15 @@
     "description": "Pages through a stored Trial Difference by category. Unfinished parser cases are separate from words that no longer parse.",
     "source": "Authored from the agent read contract."
   },
+  "import": {
+    "title": "Import an edited record file",
+    "description": "Plans an edited record file against the saved project and lowers it to operations. Without --draft it is a dry run that writes nothing; with --draft <name> it stages the operations in a new Draft. It never applies: only a person can Apply. A stale or missing base refuses the whole file; changes with no operation are listed with their codes.",
+    "source": "Authored from the R1d record-import plan and the typed command contract.",
+    "guides": [
+      "workflow"
+    ],
+    "redirect": "Export the record again, redo the edits, and import that file."
+  },
   "new": {
     "title": "Start a Proposal",
     "description": "Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.",
