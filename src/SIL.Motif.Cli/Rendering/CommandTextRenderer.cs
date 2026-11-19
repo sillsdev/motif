@@ -702,7 +702,8 @@ public static class CommandTextRenderer
     {
         var text = new StringBuilder();
         text.Append("Comparison of each Proposal's Trial before and after. It is not measured against approved analyses.\n");
-        text.Append($"Forms compared: {comparison.FormsCompared:N0}  Diverging: {comparison.FormsDiverging:N0}  Rows: {comparison.RowsTotal:N0} ({comparison.Pages:N0} pages)\n");
+        text.Append($"Snapshot {comparison.Snapshot} (pass it with --page)\n" +
+            $"Forms compared: {comparison.FormsCompared:N0}  Diverging: {comparison.FormsDiverging:N0}  Rows: {comparison.RowsTotal:N0} ({comparison.Pages:N0} pages)\n");
         for (var index = 0; index < comparison.Columns.Count; index++)
         {
             var column = comparison.Columns[index];

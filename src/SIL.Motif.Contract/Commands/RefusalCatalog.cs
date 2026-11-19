@@ -522,6 +522,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.ProposalCompareTrialMissing, FailureReason.Refused),
         Spec(RefusalCodes.ProposalCompareBaselineMismatch, FailureReason.Refused),
         Spec(RefusalCodes.ProposalCompareAtMismatch, FailureReason.Refused),
+        Spec(RefusalCodes.ProposalCompareSnapshotChanged, FailureReason.Refused, NextStep.Repeat()),
         Spec(RefusalCodes.TrialReviewInputUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.TrialTraceUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.TrialUpdateInProgress, FailureReason.Busy),

@@ -5,11 +5,13 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>
 /// The bounded summary of a side-by-side comparison of Proposals. Every number is measured from the retained Trial
 /// before/after evidence of each Proposal; nothing here is measured against approved analyses.
+/// <c>Snapshot</c> is a digest of the exact Trial job IDs read, in column order; pass it back with a page.
 /// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ProposalComparison(
     [property: JsonRequired] int SchemaVersion,
     [property: JsonRequired] string Basis,
+    [property: JsonRequired] string Snapshot,
     [property: JsonRequired] IReadOnlyList<CompareColumn> Columns,
     [property: JsonRequired] int FormsCompared,
     [property: JsonRequired] int FormsDiverging,
@@ -50,11 +52,11 @@ public sealed record CompareColumn(
     [property: JsonRequired] int NotMeasured,
     [property: JsonRequired] int Incomplete);
 
-/// <summary>A typed reason the totals may not mean what they seem to, with how many forms or columns it touches.</summary>
+/// <summary>A typed reason the totals may not mean what they seem to. Count is the number of columns it touches.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CompareLimitation([property: JsonRequired] string Code, [property: JsonRequired] int Count)
 {
-    /// <summary>Some forms were not measured on both sides in some column; they never read as unchanged.</summary>
+    /// <summary>Some column did not measure some forms on both sides; they never read as unchanged.</summary>
     public const string NotMeasured = "not-measured";
 
     /// <summary>Some Trials stopped early, so their gains and losses are partial.</summary>

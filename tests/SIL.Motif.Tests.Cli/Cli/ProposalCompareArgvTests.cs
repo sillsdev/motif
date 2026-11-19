@@ -42,10 +42,15 @@ public sealed class ProposalCompareArgvTests
         Assert.Equal(2, json.RootElement.GetProperty("columns").GetArrayLength());
         Assert.False(json.RootElement.TryGetProperty("page", out _));
 
-        var rows = await Run("--json", "--page", "1", "--at", ProposalCompareExports.BaselineDigest('a'));
+        var rows = await Run("--json", "--page", "1", "--snapshot", json.RootElement.GetProperty("snapshot").GetString()!, "--at", ProposalCompareExports.BaselineDigest('a'));
         Assert.True(rows.ExitCode == 0, rows.Error);
         using var page = JsonDocument.Parse(rows.Output);
         Assert.Equal(2, page.RootElement.GetProperty("page").GetProperty("rows").GetArrayLength());
+
+        var stale = await Run("--json", "--page", "1", "--snapshot", "000000000000");
+        Assert.NotEqual(0, stale.ExitCode);
+        var past = await Run("--json", "--page", "9");
+        Assert.NotEqual(0, past.ExitCode);
 
         var text = await Run();
         Assert.True(text.ExitCode == 0, text.Error);

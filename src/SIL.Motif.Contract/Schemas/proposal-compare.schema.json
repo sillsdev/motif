@@ -3,10 +3,11 @@
   "title": "Proposal comparison from each Trial's own before and after, not against approved analyses",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "basis", "columns", "formsCompared", "formsDiverging", "rowsTotal", "pages", "complete", "limitations"],
+  "required": ["schemaVersion", "basis", "snapshot", "columns", "formsCompared", "formsDiverging", "rowsTotal", "pages", "complete", "limitations"],
   "properties": {
     "schemaVersion": {"const": 1},
     "basis": {"const": "trial-before-after"},
+    "snapshot": {"type": "string", "pattern": "^[0-9a-f]{12}$", "description": "Digest of the exact Trial job IDs read; pass it with --page so every page reads the same Trials."},
     "columns": {
       "type": "array",
       "minItems": 2,
@@ -38,7 +39,7 @@
         "required": ["code", "count"],
         "properties": {
           "code": {"enum": ["not-measured", "incomplete-trial"]},
-          "count": {"type": "integer", "minimum": 1}
+          "count": {"type": "integer", "minimum": 1, "description": "The number of columns (Proposals) the limitation touches; per-column form counts are in columns."}
         }
       }
     },

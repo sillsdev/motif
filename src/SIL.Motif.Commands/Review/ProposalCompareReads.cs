@@ -42,7 +42,7 @@ public static class ProposalCompareReads
             FailureReason.Refused, "The project has no Motif store, so no Trial evidence to compare."));
         return ProjectStoreCommand.ReadExisting(request.ProjectPath, absent, (database, project) =>
         {
-            try { return Compare(database, project, ids, request.At, request.Page); }
+            try { return Compare(database, project, ids, request.At, request.Page, request.Snapshot); }
             catch (Exception exception) when (exception is IOException or InvalidDataException or
                 UnauthorizedAccessException or JsonException)
             {
@@ -53,7 +53,7 @@ public static class ProposalCompareReads
     }
 
     private static CommandOutcome<ProposalComparison> Compare(MotifDatabase database,
-        SIL.Motif.Contract.Projects.ProjectLocator project, List<CanonicalId> ids, string? at, int? page)
+        SIL.Motif.Contract.Projects.ProjectLocator project, List<CanonicalId> ids, string? at, int? page, string? requestedSnapshot)
     {
         var columns = new List<(CanonicalId Proposal, TrialExportReceipt Receipt)>();
         foreach (var id in ids)
@@ -72,11 +72,17 @@ public static class ProposalCompareReads
                     return Refuse(RefusalCodes.ProposalCompareAtMismatch, FailureReason.Refused,
                         "A Trial was not measured on the requested Baseline or Proposal revision.",
                         new() { ["proposalId"] = id.Value });
-        if (columns.Select(column => column.Receipt.BaselineBundle).Distinct(StringComparer.Ordinal).Count() > 1)
+        if (columns.Select(column => Semantic(database, column.Receipt)).Distinct(StringComparer.Ordinal).Count() > 1)
             return Refuse(RefusalCodes.ProposalCompareBaselineMismatch, FailureReason.Refused,
                 "These Trials were measured on different Baselines, so their gains and losses are not comparable. " +
                 "Run a Trial for each Proposal on the current Baseline.",
-                columns.ToDictionary(column => column.Proposal.Value, column => Short(column.Receipt.BaselineBundle)));
+                columns.ToDictionary(column => column.Proposal.Value, column => Short(Semantic(database, column.Receipt))));
+
+        var snapshot = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(string.Join('\n', columns.Select(column => column.Receipt.JobId)))))[..12];
+        if (requestedSnapshot is not null && requestedSnapshot != snapshot)
+            return Refuse(RefusalCodes.ProposalCompareSnapshotChanged, FailureReason.Refused,
+                "A newer Trial has replaced one this comparison was read from. Read the summary again.");
 
         var forms = new Dictionary<(string Ws, string Key), FormAccumulator>();
         for (var index = 0; index < columns.Count; index++)
@@ -115,14 +121,17 @@ public static class ProposalCompareReads
             counts[index, 0], counts[index, 1],
             counts[index, 2], counts[index, 3], counts[index, 4])).ToArray();
         var limitations = new List<CompareLimitation>();
-        var notMeasured = summaryColumns.Sum(column => column.NotMeasured);
+        var notMeasured = summaryColumns.Count(column => column.NotMeasured > 0);
         if (notMeasured > 0) limitations.Add(new(CompareLimitation.NotMeasured, notMeasured));
         var incomplete = columns.Where((column, index) =>
             !column.Receipt.ComparisonComplete || summaryColumns[index].Incomplete > 0).Count();
         if (incomplete > 0) limitations.Add(new(CompareLimitation.IncompleteTrial, incomplete));
         var pages = (rows.Count + CompareRowPage.Size - 1) / CompareRowPage.Size;
-        var summary = new ProposalComparison(1, ProposalComparison.TrialBeforeAfter, summaryColumns, forms.Count,
+        var summary = new ProposalComparison(1, ProposalComparison.TrialBeforeAfter, snapshot, summaryColumns, forms.Count,
             diverging, rows.Count, pages, limitations.Count == 0, limitations);
+        if (page > Math.Max(pages, 1))
+            return Refuse(RefusalCodes.EvidenceInvalidPage, FailureReason.InvalidArgument,
+                $"The comparison has {Math.Max(pages, 1)} page(s); page {page} does not exist.");
         if (page is { } number)
             summary = summary with
             {
@@ -174,6 +183,10 @@ public static class ProposalCompareReads
 
     private static HashSet<string> Ids(JsonElement readings) =>
         readings.EnumerateArray().Select(reading => reading.GetProperty("id").GetString()!).ToHashSet(StringComparer.Ordinal);
+
+    // Two Trials share a Baseline when its semantic identity matches; the bundle digest also varies with capture.
+    private static string Semantic(MotifDatabase database, TrialExportReceipt receipt) =>
+        TrialExportArtifact.ReadBaselineSemantic(database, receipt.JobId) ?? receipt.BaselineBundle;
 
     private static string Short(string digest)
     {

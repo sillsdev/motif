@@ -32,8 +32,8 @@ public sealed class ProposalCompareReadTests
     }
 
     private static SIL.Motif.Contract.Commands.CommandOutcome<ProposalComparison> Compare(ProjectLocator project,
-        string[] ids, string? at = null, int? page = null) =>
-        ProposalCompareReads.Read(new(project.FullFwDataPath, ids, at, page));
+        string[] ids, string? at = null, int? page = null, string? snapshot = null) =>
+        ProposalCompareReads.Read(new(project.FullFwDataPath, ids, at, page, snapshot));
 
     private static int[] Counts(CompareColumn column) =>
         [column.Gained, column.Lost, column.Unchanged, column.NotMeasured, column.Incomplete];
@@ -57,7 +57,7 @@ public sealed class ProposalCompareReadTests
             Assert.Equal([1, 1, 2, 2, 1], Counts(summary.Columns[0]));
             Assert.Equal([3, 0, 2, 1, 0], Counts(summary.Columns[1]));
             Assert.False(summary.Complete);
-            Assert.Contains(summary.Limitations, item => item.Code == "not-measured" && item.Count == 3);
+            Assert.Contains(summary.Limitations, item => item.Code == "not-measured" && item.Count == 2);
             Assert.Equal(1, summary.Pages);
         });
     }
@@ -193,7 +193,8 @@ public sealed class ProposalCompareReadTests
             var b = AddTrial(database, project, forms.Select(form => form with { After = [1] }));
             var first = Compare(project, [a, b], page: 1).Value!;
             var third = Compare(project, [a, b], page: 3).Value!;
-            var beyond = Compare(project, [a, b], page: 4).Value!;
+            var beyond = Compare(project, [a, b], page: 4);
+            Assert.Equal("evidence.invalid-page", beyond.Refusal?.Code);
 
             Assert.Equal(250, first.RowsTotal);
             Assert.Equal(3, first.Pages);
@@ -201,11 +202,44 @@ public sealed class ProposalCompareReadTests
             Assert.Equal(2, first.Page.NextPage);
             Assert.Equal(50, third.Page!.Rows.Count);
             Assert.Null(third.Page.NextPage);
-            Assert.Empty(beyond.Page!.Rows);
             Assert.Equal(forms.Select(form => "key/" + form.Form).Order(StringComparer.Ordinal),
                 Enumerable.Range(1, 3).SelectMany(page => Compare(project, [a, b], page: page).Value!.Page!.Rows)
                     .Select(row => row.FormKey));
             Assert.Null(Compare(project, [a, b]).Value!.Page);
+        });
+    }
+
+    [Fact]
+    public void APageIsRefusedWhenANewerTrialReplacesAPinnedOne()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], [1, 2])], minute: 1);
+            var b = AddTrial(database, project, [F("f1", [1], [1, 3])]);
+            var first = Compare(project, [a, b]).Value!;
+            Assert.Matches("^[0-9a-f]{12}$", first.Snapshot);
+
+            var same = Compare(project, [a, b], page: 1, snapshot: first.Snapshot);
+            Assert.True(same.Succeeded, same.Refusal?.Message);
+            Assert.Equal(first.Snapshot, same.Value!.Snapshot);
+
+            AddTrial(database, project, [F("f1", [1], [])], a, minute: 5);
+            var stale = Compare(project, [a, b], page: 1, snapshot: first.Snapshot);
+            Assert.Equal("proposal.compare-snapshot-changed", stale.Refusal?.Code);
+            var fresh = Compare(project, [a, b]).Value!;
+            Assert.NotEqual(first.Snapshot, fresh.Snapshot);
+        });
+    }
+
+    [Fact]
+    public void LimitationsCountColumnsNotForms()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], [1], complete: false)]);
+            var b = AddTrial(database, project, [F("f1", [1], [1], complete: false)]);
+            var limitations = Compare(project, [a, b]).Value!.Limitations;
+            Assert.Equal(new CompareLimitation("incomplete-trial", 2), Assert.Single(limitations));
         });
     }
 }

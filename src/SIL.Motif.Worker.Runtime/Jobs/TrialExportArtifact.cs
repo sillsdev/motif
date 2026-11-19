@@ -28,11 +28,7 @@ public static class TrialExportArtifact
         if (string.IsNullOrWhiteSpace(jobId) || JsonEncodedText.Encode(jobId).EncodedUtf8Bytes.Length > 256 || page is < 1)
             return null;
         var key = JobKey(jobId);
-        var record = new ReportRepository(database).Get(BindingId(key));
-        if (record is not { Kind: BindingKind }) return null;
-        var binding = JsonSerializer.Deserialize<ArtifactBinding>(record.ReportJson, Json);
-        if (binding is null || binding.JobId != jobId || binding.ProjectKey != ProjectWorkspaceKey.Compute(database.Project) ||
-            !Sha256Value.IsCanonical(binding.Sha256)) return null;
+        if (LoadBinding(database, jobId) is not { } binding) return null;
 
         var suffix = FileSuffix(key, binding.Sha256);
         var path = database.FullPath + suffix;
@@ -56,6 +52,19 @@ public static class TrialExportArtifact
     /// <summary>Keeps the serialized receipt under its bound by swapping an over-long, JSON-escaped path for the store suffix.</summary>
     internal static TrialExportReceipt WithinBound(TrialExportReceipt receipt, string suffix) =>
         ProjectionJson.ToUtf8Bytes(receipt).Length > 1950 ? receipt with { Path = suffix, PathIsStoreSuffix = true } : receipt;
+
+    /// <summary>The semantic-snapshot digest of the Baseline this Trial was measured on, or null when it has no export.</summary>
+    internal static string? ReadBaselineSemantic(MotifDatabase database, string jobId) =>
+        string.IsNullOrWhiteSpace(jobId) ? null : LoadBinding(database, jobId)?.BaselineSemantic;
+
+    private static ArtifactBinding? LoadBinding(MotifDatabase database, string jobId)
+    {
+        var record = new ReportRepository(database).Get(BindingId(JobKey(jobId)));
+        if (record is not { Kind: BindingKind }) return null;
+        var binding = JsonSerializer.Deserialize<ArtifactBinding>(record.ReportJson, Json);
+        return binding is null || binding.JobId != jobId || binding.ProjectKey != ProjectWorkspaceKey.Compute(database.Project) ||
+            !Sha256Value.IsCanonical(binding.Sha256) ? null : binding;
+    }
 
     private static bool MatchesHeader(Stream stream, ArtifactBinding binding)
     {

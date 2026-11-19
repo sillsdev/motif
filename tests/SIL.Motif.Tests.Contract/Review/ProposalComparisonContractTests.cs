@@ -14,7 +14,7 @@ public sealed class ProposalComparisonContractTests
     {
         var all = Enumerable.Range(0, columns).Select(index => new CompareColumn(CanonicalId.Mint("proposal/").Value,
             99999, 99999, 99999, 99999, 99999)).ToArray();
-        var summary = new ProposalComparison(1, ProposalComparison.TrialBeforeAfter, all, 99999, 99999, 99999, 1000, false,
+        var summary = new ProposalComparison(1, ProposalComparison.TrialBeforeAfter, "0123456789ab", all, 99999, 99999, 99999, 1000, false,
             [new(CompareLimitation.NotMeasured, 99999), new(CompareLimitation.IncompleteTrial, 8)]);
         if (!withPage) return summary;
         var cells = all.Select((_, index) => new CompareCell(true, true, [Digest('1')], index == 0 ? [Digest('2')] : [])).ToArray();

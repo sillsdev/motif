@@ -420,6 +420,8 @@ public static class RefusalCodes
     public const string ProposalCompareBaselineMismatch = "proposal.compare-baseline-mismatch";
     /// <summary>A Trial was not measured on the Baseline the comparison was asked to use.</summary>
     public const string ProposalCompareAtMismatch = "proposal.compare-at-mismatch";
+    /// <summary>A newer Trial has replaced one the comparison's earlier pages were read from.</summary>
+    public const string ProposalCompareSnapshotChanged = "proposal.compare-snapshot-changed";
     /// <summary>The Trial's frozen review inputs could not be captured or read.</summary>
     public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
     /// <summary>The exact inputs needed for a report-bound diagnostic trace are unavailable.</summary>
