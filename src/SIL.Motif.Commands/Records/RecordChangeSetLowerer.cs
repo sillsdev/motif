@@ -99,8 +99,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         internal void Lower(int index, RecordChange change)
         {
             _pending = [];
-            // A change that is refused leaves no trace: not its operations, not the entity it would have created, not its edits
-            // to the cached lists. What is anchored on it is then refused too, not placed beside an object that never existed.
+            // A declined change leaves no trace in the caches, so nothing anchors on an object that never existed.
             var added = new Dictionary<int, CanonicalId>(_added);
             var lists = _lists.ToDictionary(pair => pair.Key, pair => pair.Value.ToList());
             try
@@ -290,8 +289,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             if (member is null)
                 throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change, "The change names no member.");
             var list = List(owner, key, binding);
-            // The project's list is the precondition the file started from: an add of a member it already holds, or a move of
-            // one it no longer holds, is refused as stale rather than applied to a list that has changed.
+            // The project's list is the base the file started from; a changed list is stale.
             if (list is not null && verb == RecordWriteVerb.AddReference && list.Contains(member.Value))
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project already holds the reference the file adds.");
             if (list is not null && verb != RecordWriteVerb.AddReference && !list.Contains(member.Value))
@@ -527,7 +525,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
 
 /// <summary>
 /// Which declared field edits the lowerer authors. The catalog answers <c>CanWrite</c>, <c>CanCreate</c> and
-/// <c>CanDelete</c> from this, so a field is never offered that the lowerer then refuses. A declaration whose kind takes
+/// <c>CanDelete</c> from this, so no field is offered that the lowerer then declines. A declaration whose kind takes
 /// a payload only its own composer builds is not lowered, and so is not offered.
 /// </summary>
 public static class RecordLoweringRules

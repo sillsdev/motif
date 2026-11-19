@@ -12,7 +12,7 @@ namespace SIL.Motif.Commands.Records;
 /// </summary>
 /// <remarks>
 /// <see cref="CanWrite"/> is true when some kind sets, clears, adds to, removes from or reorders the field; it does not
-/// know the owner's concrete class, so a field narrowed to one owner class is writable here and the lowerer refuses the
+/// know the owner's concrete class, so a field narrowed to one owner class is writable here and the lowerer declines the
 /// others by name. <see cref="CanCreate"/> and <see cref="CanDelete"/> are the owning create and delete kinds.
 /// Only declarations the lowerer authors count (<see cref="RecordLoweringRules"/>), so a true answer is a promise that the
 /// lowerer produces an operation for it; a kind with a payload only its own composer builds is false here.

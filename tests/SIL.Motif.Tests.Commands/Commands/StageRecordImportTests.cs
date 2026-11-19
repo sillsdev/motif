@@ -80,7 +80,7 @@ public sealed class StageRecordImportTests(PristineProjectFixture pristine)
         var again = new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
         Assert.Equal(digest, IntentDigest.Compute(new Proposal(proposal.ContractVersions, proposal.ProposalId, null, again.Operations)));
 
-        // Nothing was applied: the sense still holds its gloss, and the project file, object count and modified time are as they were.
+        // Nothing was applied: the gloss, file, object count and modified time are as they were.
         var sense2 = cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(senseId);
         Assert.Equal("zzgloss", sense2.Gloss.get_String(cache.DefaultAnalWs).Text);
         Assert.Equal(objectsBefore, cache.ServiceLocator.GetInstance<ICmObjectRepository>().AllInstances().Count());

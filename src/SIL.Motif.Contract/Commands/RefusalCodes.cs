@@ -275,7 +275,7 @@ public static class RefusalCodes
     public const string RequestNotOpen = "request.not-open";
     public const string RequestProposalOpen = "request.proposal-open";
 
-    /// <summary>An import plan refuses its whole file, so nothing in it was lowered to operations.</summary>
+    /// <summary>An import plan declines its whole file, so nothing in it was lowered to operations.</summary>
     public const string RecordImportPlanRefused = "record-import.plan-refused";
     /// <summary>No Runner kind covers the verb a record-file change needs on this class and field.</summary>
     public const string RecordImportFieldUncovered = "record-import.field-uncovered";
