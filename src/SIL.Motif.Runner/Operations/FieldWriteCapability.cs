@@ -54,6 +54,17 @@ public enum OwningCreatePayload
     ClassProperty,
 }
 
+/// <summary>Who authors the <c>after</c> payload of a declared edit, which decides whether a record-file lowerer can.</summary>
+public enum FieldWritePayload
+{
+    /// <summary>The payload follows from the verb and the field alone: <c>{ws,text}</c>, <c>{value}</c>, <c>{ref}</c>, <c>{member}</c>, <c>{}</c>.</summary>
+    Generic,
+    /// <summary>The payload carries more than the verb and field name (digests, paragraph keys, a census), so only its own composer authors it.</summary>
+    Bespoke,
+    /// <summary>The operations are built from the project by the kind's registered composer, which a lowerer calls rather than authors.</summary>
+    Composer,
+}
+
 /// <summary>
 /// A direct edit supported by a Runner registration. The declaring class is where the field originates in LibLCM.
 /// An owner restriction narrows an inherited field. Child classes are concrete and an empty list accepts every
@@ -67,6 +78,9 @@ public sealed record FieldWriteCapability(
 {
     /// <summary>Concrete child classes accepted by an owning edit.</summary>
     public IReadOnlyList<string> ChildClasses { get; init; } = [];
+
+    /// <summary>Who authors the payload. <see cref="FieldWritePayload.Generic"/> unless the declaration says otherwise; a removal is lowered only when it is <see cref="FieldWritePayload.Composer"/>.</summary>
+    public FieldWritePayload Payload { get; init; }
 
     /// <summary>For an owning create, the generic payload shape its handler accepts; <see cref="OwningCreatePayload.Unspecified"/> for any other edit.</summary>
     public OwningCreatePayload CreatePayload { get; init; }

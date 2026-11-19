@@ -34,7 +34,7 @@ public static class MsaReferenceRetargetOperationKinds
         OperationKindRegistry.Register(SetBundleMsa);
         OperationHandlerRegistry.Register(RetargetProhibitionMorphemes, ProhibitionMorphemesHandler.Instance);
         OperationHandlerRegistry.Register(SetBundleMsa, BundleMsaHandler.Instance,
-            new FieldWriteCapability("WfiMorphBundle", "Msa", RecordWriteVerb.Set));
+            new FieldWriteCapability("WfiMorphBundle", "Msa", RecordWriteVerb.Set) { Payload = FieldWritePayload.Bespoke });
         OperationSlotRegistry.RegisterMany(RetargetProhibitionMorphemes, operation =>
         {
             var target = OperationSlotRegistry.Target(operation);

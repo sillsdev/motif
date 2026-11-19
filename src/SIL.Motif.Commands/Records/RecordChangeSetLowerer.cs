@@ -527,13 +527,14 @@ public static class RecordLoweringRules
     /// <summary>Whether the lowerer authors <paramref name="write"/> as declared by <paramref name="kind"/>.</summary>
     public static bool Lowers(string kind, FieldWriteCapability write) => write.Verb switch
     {
-        RecordWriteVerb.Set or RecordWriteVerb.Clear => write.DeclaringClass != "WfiMorphBundle",
+        RecordWriteVerb.Set or RecordWriteVerb.Clear or RecordWriteVerb.SetRich or RecordWriteVerb.ClearRich =>
+            write.Payload == FieldWritePayload.Generic,
         RecordWriteVerb.SetAlternative or RecordWriteVerb.ClearAlternative or RecordWriteVerb.SetPlainRich or
             RecordWriteVerb.AddReference or RecordWriteVerb.InsertReference or RecordWriteVerb.RemoveReference or
             RecordWriteVerb.MoveReference or RecordWriteVerb.MoveObject => true,
         RecordWriteVerb.SetRich or RecordWriteVerb.ClearRich => kind != TextParagraphsOperationKinds.Set,
         RecordWriteVerb.AddObject => write.CreatePayload != OwningCreatePayload.Unspecified,
-        RecordWriteVerb.RemoveObject => kind == LexSenseRemoveOperationKinds.Remove,
+        RecordWriteVerb.RemoveObject => write.Payload == FieldWritePayload.Composer,
         _ => false,
     };
 }
