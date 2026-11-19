@@ -63,10 +63,20 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             return new([], [new(RefusalCodes.RecordImportPlanRefused, plan.Kind ?? "", refusal.Field,
                 refusal.ObjectGuid, $"The plan refuses the whole file ({refusal.Kind}): {refusal.Reason}")], set.Refusals);
         }
-        var run = new Run(schema, catalog, cache, plan, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown);
-        for (var index = 0; index < set.Changes.Count; index++)
-            run.Lower(index, set.Changes[index]);
-        return new(run.Operations, run.Refusals, set.Refusals);
+        var seed = plan.Export?.Base ?? plan.RecordGuid?.ToString("D") ?? "";
+        var lowered = LowerChanges(cache, seed, set.Changes);
+        return new(lowered.Operations, lowered.Refusals, set.Refusals);
+    }
+
+    /// <summary>Lowers individual changes; <paramref name="seed"/> makes the operation ids, so one seed and one list give one intent digest.</summary>
+    public RecordLowering LowerChanges(LcmCache cache, string seed, IReadOnlyList<RecordChange> changes)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(changes);
+        var run = new Run(schema, catalog, cache, seed, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown);
+        for (var index = 0; index < changes.Count; index++)
+            run.Lower(index, changes[index]);
+        return new(run.Operations, run.Refusals, []);
     }
 
     private sealed class Stop(RecordLoweringRefusal refusal) : Exception(refusal.Reason)
@@ -75,9 +85,9 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
     }
 
     private sealed class Run(ProjectRecordSchemaResult schema, RecordWritableFields catalog, LcmCache cache,
-        ProjectRecordPlan plan, MarkdownOptions markdown)
+        string seed, MarkdownOptions markdown)
     {
-        private readonly string _seed = plan.Export?.Base ?? plan.RecordGuid?.ToString("D") ?? "";
+        private readonly string _seed = seed;
         private readonly Dictionary<int, CanonicalId> _added = [];
         private readonly Dictionary<(Guid Owner, string Field), List<Guid>> _lists = [];
         private List<OperationEnvelope> _pending = [];
@@ -120,6 +130,9 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 case RecordChangeKind.SetAlternative or RecordChangeKind.ClearAlternative:
                     LowerAlternative(change, type, key, target, role, change.Kind == RecordChangeKind.SetAlternative);
                     break;
+                case RecordChangeKind.Set or RecordChangeKind.Clear:
+                    LowerScalar(change, type, key, target, role);
+                    break;
                 case RecordChangeKind.SetRich or RecordChangeKind.ClearRich:
                     LowerRich(change, type, key, binding, target, role, owner, change.Old, change.New, change.WritingSystem, fresh: false);
                     break;
@@ -145,7 +158,16 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             string? child = null, Placement? placement = null)
         {
             if (catalog.Resolve(type, key, verb, child, placement) is WritableFieldResolution.Covered covered)
-                return covered.Kind;
+            {
+                var binding = schema.FieldBinding(type, key);
+                var write = binding is null ? null : OperationHandlerRegistry.FieldWrites(covered.Kind).FirstOrDefault(item =>
+                    item.DeclaringClass == binding.Value.DeclaringClass && item.Field == binding.Value.Field &&
+                    (item.Verb == verb || verb == RecordWriteVerb.InsertReference && item.Verb == RecordWriteVerb.AddReference));
+                if (write is null || RecordLoweringRules.Lowers(covered.Kind, write))
+                    return covered.Kind;
+                throw Refuse(RefusalCodes.RecordImportFieldUncovered, change,
+                    $"{covered.Kind} covers {verb} of this field with a payload this lowering does not author.");
+            }
             var why = ((WritableFieldResolution.Uncovered)catalog.Resolve(type, key, verb, child, placement)).Reason;
             throw Refuse(RefusalCodes.RecordImportFieldUncovered, change, $"No Runner kind covers {verb} of this field ({why}).");
         }
@@ -153,6 +175,28 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         private static OperationEnvelope Operation(CanonicalId id, string kind, CanonicalId target, object? after,
             Placement? placement = null, CanonicalId? entity = null) => new(id, kind, entityId: entity, target: target,
             after: after is null ? null : after is JsonElement json ? json : JsonSerializer.SerializeToElement(after), placement: placement);
+
+        private void LowerScalar(RecordChange change, string type, string key, CanonicalId target, string role)
+        {
+            var field = schema.Schema.ObjectType(type)?.Field(key);
+            var set = change.Kind == RecordChangeKind.Set;
+            var kind = KindFor(change, type, key, set ? RecordWriteVerb.Set : RecordWriteVerb.Clear);
+            object? after = new { };
+            if (set)
+                after = field?.Kind switch
+                {
+                    RecordFieldKind.Boolean when bool.TryParse(change.New, out var flag) => new { value = flag },
+                    RecordFieldKind.Integer when int.TryParse(change.New, System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out var number) => new { value = number },
+                    RecordFieldKind.Reference when change.NewTarget is { } to => new { @ref = CanonicalId.FromGuid(to).Value },
+                    _ => throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
+                        $"A {field?.Kind.ToString() ?? "missing"} value has no payload shape for {kind}."),
+                };
+            else if (field?.Kind is not (RecordFieldKind.Boolean or RecordFieldKind.Integer or RecordFieldKind.Reference))
+                throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
+                    $"A {field?.Kind.ToString() ?? "missing"} value has no payload shape for {kind}.");
+            _pending.Add(Operation(Id(role + ":" + kind), kind, target, after));
+        }
 
         private void LowerAlternative(RecordChange change, string type, string key, CanonicalId target, string role, bool set)
         {
@@ -234,7 +278,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             var list = List(owner, key, binding);
             var placement = list is null ? null : Place(change, list, change.Anchor, verb == RecordWriteVerb.AddReference ? null : member);
             var effective = verb == RecordWriteVerb.AddReference && placement is not null ? RecordWriteVerb.InsertReference : verb;
-            var kind = KindFor(change, type, key, effective, child: change.Subtree?.Class ?? ChildOf(type, key), placement);
+            var kind = KindFor(change, type, key, effective, child: change.Subtree?.Class ?? ChildOf(type, key) ?? ClassOf(member.Value), placement);
             _pending.Add(Operation(Id(role + ":" + kind), kind, target, new { member = CanonicalId.FromGuid(member.Value).Value }, placement));
             if (list is not null)
             {
@@ -315,6 +359,9 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 throw Refuse(RefusalCodes.RecordImportNotExecutable, change, exception.Message);
             }
         }
+
+        private string? ClassOf(Guid item) =>
+            cache.ServiceLocator.GetInstance<ICmObjectRepository>().TryGetObject(item, out var found) ? found.ClassName : null;
 
         private string? ChildOf(string type, string key)
         {
@@ -453,4 +500,25 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             public bool IsKnown(string tag) => inner.IsKnown(tag);
         }
     }
+}
+
+/// <summary>
+/// Which declared field edits the lowerer authors. The catalog answers <c>CanWrite</c>, <c>CanCreate</c> and
+/// <c>CanDelete</c> from this, so a field is never offered that the lowerer then refuses. A declaration whose kind takes
+/// a payload only its own composer builds is not lowered, and so is not offered.
+/// </summary>
+public static class RecordLoweringRules
+{
+    /// <summary>Whether the lowerer authors <paramref name="write"/> as declared by <paramref name="kind"/>.</summary>
+    public static bool Lowers(string kind, FieldWriteCapability write) => write.Verb switch
+    {
+        RecordWriteVerb.Set or RecordWriteVerb.Clear => write.DeclaringClass != "WfiMorphBundle",
+        RecordWriteVerb.SetAlternative or RecordWriteVerb.ClearAlternative or RecordWriteVerb.SetPlainRich or
+            RecordWriteVerb.AddReference or RecordWriteVerb.InsertReference or RecordWriteVerb.RemoveReference or
+            RecordWriteVerb.MoveReference or RecordWriteVerb.MoveObject => true,
+        RecordWriteVerb.SetRich or RecordWriteVerb.ClearRich => kind != TextParagraphsOperationKinds.Set,
+        RecordWriteVerb.AddObject => write.CreatePayload != OwningCreatePayload.Unspecified,
+        RecordWriteVerb.RemoveObject => kind == LexSenseRemoveOperationKinds.Remove,
+        _ => false,
+    };
 }
