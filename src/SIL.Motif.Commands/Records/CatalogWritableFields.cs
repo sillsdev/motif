@@ -32,9 +32,10 @@ public sealed class CatalogWritableFields : WritableFields
     private readonly ILookup<(string Class, string Field), FieldWriteCapability> _creates;
     private readonly ILookup<(string Class, string Field), FieldWriteCapability> _deletes;
 
-    /// <summary>Reads every registered declaration; <paramref name="schema"/> adds the project's custom fields a kind writes.</summary>
-    public CatalogWritableFields(ProjectRecordSchemaResult? schema = null)
+    /// <summary>Reads every registered declaration; <paramref name="schema"/> supplies the project's custom fields.</summary>
+    public CatalogWritableFields(ProjectRecordSchemaResult schema)
     {
+        ArgumentNullException.ThrowIfNull(schema);
         OperationRegistryBootstrap.Initialize();
         var all = OperationHandlerRegistry.RegisteredKinds.Where(OperationKindRegistry.IsKnown)
             .SelectMany(kind => OperationHandlerRegistry.FieldWrites(kind).Where(write => RecordLoweringRules.Lowers(kind, write)))
@@ -43,7 +44,7 @@ public sealed class CatalogWritableFields : WritableFields
             .ToArray();
         var customTypes = all.Where(write => write.DeclaringClass == CustomFieldOperationKinds.DeclaringClass &&
             WriteVerbs.Contains(write.Verb)).Select(write => write.Field).ToHashSet(StringComparer.Ordinal);
-        var customs = schema is null ? [] : schema.Schema.ObjectTypes.SelectMany(type => type.Fields.Select(field =>
+        var customs = schema.Schema.ObjectTypes.SelectMany(type => type.Fields.Select(field =>
                 (Field: field, Binding: schema.FieldBinding(type.Name, field.Name))))
             .Where(item => item.Binding is { IsCustom: true } && !item.Field.Computed &&
                 CustomFieldCatalog.TypeOf(item.Field) is { } kind && customTypes.Contains(kind))
