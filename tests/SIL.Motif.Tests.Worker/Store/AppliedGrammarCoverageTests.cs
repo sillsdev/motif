@@ -186,6 +186,86 @@ public sealed class AppliedGrammarCoverageTests(PristineProjectFixture pristine)
         }
     }
 
+    [Fact]
+    public void FirstPassCapabilityWarningLeavesAnAnalysedRowsCorrectnessUnmeasured()
+    {
+        const string warning = "capability: an affix rule was omitted in the first pass";
+        const string word = "approved";
+        var root = Directory.CreateTempSubdirectory("motif-firstpass-correctness-").FullName;
+        try
+        {
+            string path;
+            Guid formId;
+            Guid msaId;
+            using (var cache = pristine.NewScratch())
+            {
+                path = cache.ProjectId.Path;
+                var services = cache.ServiceLocator;
+                var entry = services.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.FirstEntryId);
+                var form = entry.LexemeFormOA;
+                var msa = entry.MorphoSyntaxAnalysesOC.First();
+                formId = form.Guid;
+                msaId = msa.Guid;
+                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                {
+                    var alternate = services.GetInstance<IMoStemAllomorphFactory>().Create();
+                    entry.AlternateFormsOS.Add(alternate);
+                    alternate.MorphTypeRA = form.MorphTypeRA;
+                    alternate.Form.set_String(cache.DefaultVernWs, word);
+                    var wordform = services.GetInstance<IWfiWordformFactory>().Create(
+                        TsStringUtils.MakeString(word, cache.DefaultVernWs));
+                    foreach (var approved in new IMoForm[] { form, alternate })
+                    {
+                        var analysis = services.GetInstance<IWfiAnalysisFactory>().Create();
+                        wordform.AnalysesOC.Add(analysis);
+                        var bundle = services.GetInstance<IWfiMorphBundleFactory>().Create();
+                        analysis.MorphBundlesOS.Add(bundle);
+                        bundle.MorphRA = approved;
+                        bundle.MsaRA = msa;
+                        bundle.SenseRA = entry.SensesOS[0];
+                        cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.approves);
+                    }
+                });
+                new FwDataProjectLoader().Save(cache);
+            }
+
+            var parser = FakeParser.Copy(Path.Combine(root, "parser"));
+            FakeParser.BehaveBesideExecutable(parser, new
+            {
+                firstPassStandardError = warning + "\n",
+                words = new[] { new
+                {
+                    word, outcome = "complete",
+                    analyses = new[] { new
+                    {
+                        morphs = new[] { new { form = formId, msa = msaId, inflType = (string?)null, guessedString = (string?)null } },
+                    } },
+                } },
+            });
+            var request = new AssessRequest(path, new(false, [], [word], false, null),
+                PerWordLimitMs: 700, PerWordParserWorkLimit: ParserWorkLimit.Default, Collect: ["Correctness"]);
+            var run = AssessCommand.Assess(request, Path.Combine(root, "worker"), parser, null, CancellationToken.None);
+            Assert.True(run.Succeeded, run.Refusal?.Message);
+            using var database = Open(new ProjectLocator(path, Path.GetFileNameWithoutExtension(path)));
+            var repository = new AssessmentRepository(database);
+            var assessment = Assert.Single(run.Value!.AssessmentIds.Select(id => repository.Get(id)),
+                item => item.Kind == "Correctness");
+            Assert.Null(assessment.Invocation!.StoppedWordRetry);
+            Assert.Equal(warning, Assert.Single(assessment.Invocation.FirstPassGrammarWarningLines));
+            var row = Assert.Single(assessment.Words!);
+
+            Assert.Equal(2, row.Correctness!.Expected);
+            Assert.Equal(1, row.Correctness.Matched);
+            Assert.Equal("unavailable", row.Correctness.Status);
+            Assert.Contains(warning, row.Correctness.Unavailable);
+            Assert.Contains(warning, row.Morphology!.Unavailable);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     [RealParserFact]
     public void ApplyAndReassessReuseTheSegmentationAndChangeAnalysisCounts()
     {
