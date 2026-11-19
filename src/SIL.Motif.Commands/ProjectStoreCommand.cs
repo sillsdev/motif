@@ -231,6 +231,10 @@ public static class ProjectStoreCommand
             return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,
                 "Another Motif task is using this project's Baseline. Try again in a moment.", Fact(fwDataPath)));
         }
+        catch (ProjectStartupBusyException failure)
+        {
+            return CommandOutcome<T>.Refused(failure.ToRefusal());
+        }
         catch (ProjectWritingSystemsUnavailableException failure)
         {
             return CommandOutcome<T>.Refused(WritingSystemRefusal(failure, fwDataPath));

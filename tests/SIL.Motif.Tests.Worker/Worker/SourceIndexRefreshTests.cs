@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.LcmUtils;
@@ -36,6 +37,212 @@ public sealed class SourceIndexRefreshTests : IDisposable
             [ScriptureLocalStore.PathEnvironmentVariable] = Path.Combine(_root, "scripture-local.json"),
         });
         ScriptureLocalStore.ForInstallation().SetSourcePath(ProjectWorkspaceKey.Compute(project), _entry.Id, _source.Folder);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void WindowsVolumeWithoutExtendedFileIdsStillGetsAStableIdentity(bool hasLegacyId)
+    {
+        var legacy = new ProjectFileIdentity(0x89abcdef, 0x76543210fedcba98);
+        var calls = 0;
+        ProjectFileIdentity Read(string path, string? resolved) => ProjectFileIdentity.ReadWindowsIdentity(path,
+            () => (87, default),
+            () => { calls++; return hasLegacyId ? (0, legacy) : (87, default); },
+            () => resolved);
+
+        var original = Read(@"C:\Projects\EntryAlias.fwdata", @"\\?\C:\Projects\Lexicon.fwdata");
+        var alias = Read(@"C:\PROJECTS\LEXICON.FWDATA", null);
+
+        Assert.Equal(2, calls);
+        Assert.Equal(original, alias);
+        if (hasLegacyId) Assert.Equal(legacy, original);
+        else Assert.NotEqual(original, Read(@"C:\Projects\Other.fwdata", null));
+    }
+
+    [Fact]
+    public void PermanentProjectIoFailureDoesNotQueueAnotherJobOrRestartOnReconciliation()
+    {
+        var jobs = new JobRepository(_database);
+        SourceIndexRefresh.Enqueue(_database);
+        var current = jobs.Transition(Assert.Single(jobs.ListActive()), JobStatus.Running);
+        ProgressSourceIdentity.BeforeHash.Value = () => throw new IOException("The project file cannot be read.");
+        try
+        {
+            var outcome = SourceIndexRefresh.Run(_database);
+            Assert.Equal(JobStatus.Failed, outcome.Status);
+            jobs.Transition(current.JobId, outcome.Status, current.Version, outcome.Category, outcome.ResultJson);
+            Assert.Empty(jobs.ListActive());
+            using var detail = JsonDocument.Parse(outcome.ResultJson!);
+            Assert.Equal("PermanentIo", detail.RootElement.GetProperty("reason").GetString());
+            Assert.False(SourceIndexRefresh.Reconcile(_database));
+            Assert.Single(jobs.ListByProjectAndKind(current.ProjectKey, current.Kind));
+            jobs.DeleteArchived(current.JobId);
+            Assert.False(SourceIndexRefresh.Reconcile(_database));
+            Assert.Empty(jobs.ListByProjectAndKind(current.ProjectKey, current.Kind));
+            SourceIndexRefresh.Enqueue(_database);
+            Assert.Equal(JobStatus.Queued, Assert.Single(jobs.ListActive()).Status);
+        }
+        finally { ProgressSourceIdentity.BeforeHash.Value = null; }
+    }
+
+    [Fact]
+    public void RestoringReadAccessToAWritingSystemFileQueuesOneRefresh()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var store = Directory.CreateDirectory(Path.Combine(_root, "WritingSystemStore"));
+        var ldml = Path.Combine(store.FullName, "ar.ldml");
+        File.WriteAllText(ldml, "<ldml/>");
+        var original = File.GetUnixFileMode(ldml);
+        var jobs = new JobRepository(_database);
+        SourceIndexRefresh.Enqueue(_database);
+        var current = jobs.Transition(Assert.Single(jobs.ListActive()), JobStatus.Running);
+        File.SetUnixFileMode(ldml, UnixFileMode.None);
+        try
+        {
+            // A privileged account reads through mode bits, so the failure cannot be produced.
+            if (Record.Exception(() => File.OpenRead(ldml).Dispose()) is null) return;
+            var outcome = SourceIndexRefresh.Run(_database);
+            Assert.Equal(JobStatus.Failed, outcome.Status);
+            jobs.Transition(current.JobId, outcome.Status, current.Version, outcome.Category, outcome.ResultJson);
+            using var detail = JsonDocument.Parse(outcome.ResultJson!);
+            Assert.Equal("PermanentIo", detail.RootElement.GetProperty("reason").GetString());
+            Assert.False(SourceIndexRefresh.Reconcile(_database));
+            Assert.Empty(jobs.ListActive());
+            var stamp = File.GetLastWriteTimeUtc(ldml);
+            File.SetUnixFileMode(ldml, original);
+            File.SetLastWriteTimeUtc(ldml, stamp);
+            Assert.True(SourceIndexRefresh.Reconcile(_database));
+            Assert.Equal(JobStatus.Queued, Assert.Single(jobs.ListActive()).Status);
+            Assert.False(SourceIndexRefresh.Reconcile(_database));
+            Assert.Single(jobs.ListActive());
+        }
+        finally { File.SetUnixFileMode(ldml, original); }
+    }
+
+    [Fact]
+    public void ProjectBusyRequeuesTwiceAndStopsAcrossAttemptsAndReconciliation()
+    {
+        var jobs = new JobRepository(_database);
+        SourceIndexRefresh.Enqueue(_database);
+        ProgressSourceIdentity.BeforeHash.Value = () =>
+            throw new ProjectStartupBusyException(_database.Project.FullFwDataPath, "Another Motif project opener");
+        try
+        {
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                var current = jobs.Transition(Assert.Single(jobs.ListActive()), JobStatus.Running);
+                var outcome = SourceIndexRefresh.Run(_database);
+                Assert.Equal(JobStatus.Failed, outcome.Status);
+                jobs.Transition(current.JobId, outcome.Status, current.Version, outcome.Category, outcome.ResultJson);
+            }
+            Assert.Empty(jobs.ListActive());
+            Assert.False(SourceIndexRefresh.Reconcile(_database));
+            Assert.Equal(3, jobs.ListByProjectAndKind(ProjectWorkspaceKey.Compute(_database.Project),
+                SourceIndexRefresh.JobKind).Count);
+        }
+        finally { ProgressSourceIdentity.BeforeHash.Value = null; }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SourceIndexStopsWaitingForAStalledProjectOpen(bool cancel)
+    {
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var holder = Task.Run(() =>
+        {
+            using var gate = ProjectStartupGate.Enter(_database.Project.FullFwDataPath);
+            held.SetResult();
+            release.Task.WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(2))).GetAwaiter().GetResult();
+        });
+        using var cancellation = new CancellationTokenSource();
+        JobOutcome? outcome = null;
+        Task<Exception?>? worker = null;
+        try
+        {
+            await held.Task.WaitAsync(Wait.Scaled(Wait.Default));
+            worker = Task.Run<Exception?>(() =>
+            {
+                ProjectStartupGate.WaitingForWorkerRead.Value = () => waiting.TrySetResult();
+                return Record.Exception(() => { outcome = SourceIndexRefresh.Run(_database, cancellation.Token); });
+            });
+            await waiting.Task.WaitAsync(Wait.Scaled(Wait.Default));
+            if (cancel) cancellation.Cancel();
+            var within = cancel ? TimeSpan.FromSeconds(2) : TimeSpan.FromSeconds(20);
+            Assert.True(await Wait.ForAsync(() => worker.IsCompleted, within),
+                "Source indexing stayed blocked behind the stalled project open.");
+            if (cancel)
+            {
+                Assert.IsAssignableFrom<OperationCanceledException>(await worker);
+                Assert.Empty(new JobRepository(_database).ListActive());
+            }
+            else
+            {
+                Assert.Null(await worker);
+                Assert.Equal(JobStatus.Failed, outcome!.Status);
+                Assert.Contains("retryQueued", outcome.ResultJson);
+                Assert.Equal(SourceIndexRefresh.JobKind, Assert.Single(new JobRepository(_database).ListActive()).Kind);
+            }
+        }
+        finally
+        {
+            release.TrySetResult();
+            await holder;
+            if (worker is not null) await worker;
+        }
+    }
+
+    [RequiresSymbolicLinkFact]
+    public async Task SourceIndexAndProjectOpenShareTheGateThroughNestedSymlinks()
+    {
+        var real = Path.Combine(_root, "real");
+        var folder = Path.Combine(real, "Lexicon");
+        var parentAlias = Path.Combine(_root, "parent-alias");
+        var entryAlias = Path.Combine(_root, "entry-alias");
+        Directory.CreateDirectory(folder);
+        Directory.CreateSymbolicLink(parentAlias, real);
+        Directory.CreateSymbolicLink(entryAlias, Path.Combine(parentAlias, "Lexicon"));
+        var path = Path.Combine(folder, "Lexicon.fwdata");
+        File.WriteAllText(path, "identity input");
+
+        var acquired = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var holder = Task.Run(() =>
+        {
+            using var gate = ProjectStartupGate.Enter(path);
+            acquired.SetResult();
+            release.Task.WaitAsync(Wait.Scaled(Wait.Default)).GetAwaiter().GetResult();
+        });
+        Task? opener = null;
+        try
+        {
+            await acquired.Task.WaitAsync(Wait.Scaled(Wait.Default));
+            var sibling = Path.Combine(folder, "lexicon.fwdata");
+            if (!File.Exists(sibling))
+            {
+                File.WriteAllText(sibling, "separate file");
+                await Task.Run(() =>
+                {
+                    using var gate = ProjectStartupGate.Enter(sibling);
+                }).WaitAsync(Wait.Scaled(Wait.Default));
+            }
+            opener = Task.Run(() =>
+            {
+                ProjectStartupGate.WaitingForWorkerRead.Value = () => waiting.TrySetResult();
+                using var gate = ProjectStartupGate.Enter(Path.Combine(entryAlias, "Lexicon.fwdata"));
+            });
+            Assert.Same(waiting.Task, await Task.WhenAny(opener, waiting.Task).WaitAsync(Wait.Scaled(Wait.Default)));
+        }
+        finally
+        {
+            release.TrySetResult();
+            await holder;
+            if (opener is not null) await opener;
+        }
     }
 
     [Fact]
@@ -270,6 +477,99 @@ public sealed class SourceIndexRunTests(PristineProjectFixture pristine) : IDisp
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-source-run-" + Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void UnreadableSourceLeavesHealthyIndexesReadyAndReconciliationDetectsChanges()
+    {
+        Directory.CreateDirectory(_root);
+        using var unreadable = TinyProject.Create();
+        using var healthy = TinyProject.Create();
+        using var environment = LocalEnvironment();
+        using var database = CreateProject(
+            new("WEB", "First invented source", "MAT", "Paratext", "English"),
+            new("TINY", "Second invented source", "MAT", "Paratext", "English"));
+        var key = ProjectWorkspaceKey.Compute(database.Project);
+        ScriptureLocalStore.ForInstallation().SetSourcePath(key, "WEB", unreadable.Folder);
+        ScriptureLocalStore.ForInstallation().SetSourcePath(key, "TINY", healthy.Folder);
+        SourceIndexRefresh.Enqueue(database);
+        Assert.Equal(JobStatus.Completed, RunQueued(database).Status);
+
+        var deniedPath = Path.Combine(unreadable.Folder, "Settings.xml");
+        SourceIndexIdentity.BeforeReadFile.Value = path =>
+        {
+            if (path == deniedPath) throw new UnauthorizedAccessException("Cannot read Source settings.");
+        };
+        SourceIndexRefresh.Enqueue(database);
+        AssertPermanentIo(RunQueued(database));
+
+        var repository = new SourceIndexRepository(database);
+        Assert.Equal("stale", repository.ReadState("WEB")!.Status);
+        Assert.Empty(repository.ReadPage("WEB", "MAT 1", 0, 100));
+        Assert.Equal("ready", repository.ReadState("TINY")!.Status);
+        Assert.Equal("MAT 1:1#1", repository.ReadPage("TINY", "MAT 1", 0, 100)[0].Place.Anchor);
+        Assert.Equal("ready", repository.ReadState(FieldWorksTextsIndex.SourceId)!.Status);
+        Assert.False(SourceIndexRefresh.Reconcile(database));
+
+        var healthyBook = Path.Combine(healthy.Folder, "41MAT.SFM");
+        File.AppendAllText(healthyBook, "\n");
+        Assert.True(SourceIndexRefresh.Reconcile(database));
+        AssertPermanentIo(RunQueued(database));
+        Assert.False(SourceIndexRefresh.Reconcile(database));
+
+        SourceIndexIdentity.BeforeReadFile.Value = null;
+        Assert.True(SourceIndexRefresh.Reconcile(database));
+        Assert.Equal(JobStatus.Completed, RunQueued(database).Status);
+        Assert.Equal("ready", repository.ReadState("WEB")!.Status);
+        Assert.False(SourceIndexRefresh.Reconcile(database));
+
+        File.AppendAllText(healthyBook, "\n");
+        Assert.True(SourceIndexRefresh.Reconcile(database));
+        Assert.Equal(JobStatus.Completed, RunQueued(database).Status);
+        Assert.False(SourceIndexRefresh.Reconcile(database));
+    }
+
+    [Fact]
+    public void RestoringTheRemovedLiveProjectReconcilesEvenWithTheOriginalBytesAndTimestamps()
+    {
+        Directory.CreateDirectory(_root);
+        using var environment = LocalEnvironment();
+        using var database = CreateProject();
+        SourceIndexRefresh.Enqueue(database);
+        Assert.Equal(JobStatus.Completed, RunQueued(database).Status);
+
+        var path = database.Project.FullFwDataPath;
+        var moved = Path.Combine(_root, "saved-project.fwdata");
+        File.Move(path, moved);
+        try
+        {
+            SourceIndexRefresh.Enqueue(database);
+            AssertPermanentIo(RunQueued(database));
+            Assert.False(SourceIndexRefresh.Reconcile(database));
+        }
+        finally { File.Move(moved, path); }
+
+        Assert.True(SourceIndexRefresh.Reconcile(database));
+        Assert.Equal(JobStatus.Completed, RunQueued(database).Status);
+        Assert.Equal("ready", new SourceIndexRepository(database).ReadState(FieldWorksTextsIndex.SourceId)!.Status);
+        Assert.False(SourceIndexRefresh.Reconcile(database));
+    }
+
+    private static JobOutcome RunQueued(MotifDatabase database)
+    {
+        var jobs = new JobRepository(database);
+        var current = jobs.Transition(Assert.Single(jobs.ListActive()), JobStatus.Running);
+        var outcome = SourceIndexRefresh.Run(database);
+        jobs.Transition(current.JobId, outcome.Status, current.Version, outcome.Category, outcome.ResultJson);
+        return outcome;
+    }
+
+    private static void AssertPermanentIo(JobOutcome outcome)
+    {
+        Assert.Equal(JobStatus.Failed, outcome.Status);
+        using var detail = JsonDocument.Parse(outcome.ResultJson!);
+        Assert.Equal("PermanentIo", detail.RootElement.GetProperty("reason").GetString());
+        Assert.False(detail.RootElement.GetProperty("retryQueued").GetBoolean());
+    }
+
+    [Fact]
     public void CorruptFirstSourceDoesNotPreventHealthySecondSourceFromPublishing()
     {
         Directory.CreateDirectory(_root);
@@ -405,6 +705,7 @@ public sealed class SourceIndexRunTests(PristineProjectFixture pristine) : IDisp
     public void Dispose()
     {
         SourceIndexRefresh.PassageTokenized.Value = null;
+        SourceIndexIdentity.BeforeReadFile.Value = null;
         ProgressSourceIdentity.BeforeHash.Value = null;
         Directory.Delete(_root, recursive: true);
     }

@@ -212,6 +212,7 @@ public sealed partial record WindowRefusal
         [C.ProjectInvalid] = () => MotifAppStrings.RefusalProjectInvalid,
         [C.ProjectNotFound] = () => MotifAppStrings.RefusalProjectNotFound,
         [C.ProjectOperationIo] = () => MotifAppStrings.RefusalProjectOperationIo,
+        [C.ProjectStartupBusy] = () => MotifAppStrings.RefusalProjectStartupBusy,
         [C.ProjectStoreIo] = () => MotifAppStrings.RefusalProjectStoreIo,
         [C.ProjectUnloadable] = () => MotifAppStrings.RefusalProjectUnloadable,
         [C.ProjectWaitCancelled] = () => MotifAppStrings.RefusalProjectWaitCancelled,

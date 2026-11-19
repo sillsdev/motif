@@ -315,6 +315,7 @@ public static class RefusalCodes
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
+    public const string ProjectStartupBusy = "project.startup-busy";
     public const string ProjectInUse = "project.in-use";
     public const string ProjectInvalid = "project.invalid";
     public const string ProjectNotFound = "project.not-found";

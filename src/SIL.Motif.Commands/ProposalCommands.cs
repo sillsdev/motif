@@ -2276,6 +2276,10 @@ public static partial class ProposalCommands
                 }
             }
         }
+        catch (ProjectStartupBusyException failure)
+        {
+            return CommandOutcome<ApplyProjection>.Refused(failure.ToRefusal(proposalId));
+        }
         catch (LcmFileLockedException)
         {
             // A held project is retryable once it is let go, which is what Busy tells a caller.

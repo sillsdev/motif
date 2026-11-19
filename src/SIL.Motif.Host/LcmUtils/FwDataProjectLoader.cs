@@ -272,7 +272,14 @@ public class FwDataProjectLoader
     /// copy, a temp project, a read-only analysis — use <see cref="LoadScratchCache"/> instead.
     /// </remarks>
     public virtual LcmCache LoadCache(string fwDataFilePath, string? templatesFolder = null) =>
-        Serialized(() => LoadCacheCore(fwDataFilePath, templatesFolder));
+        OpenSerialized(fwDataFilePath, () => LoadCacheCore(fwDataFilePath, templatesFolder));
+
+    private static LcmCache OpenSerialized(string fwDataFilePath, Func<LcmCache> open)
+    {
+        // Wait for this project's reader before taking the load gate needed by every project in the process.
+        using var startup = ProjectStartupGate.Enter(fwDataFilePath);
+        return Serialized(open);
+    }
 
     // One cache opens at a time in a process: LibLCM's startup is not thread-safe, and neither is the decoy swap.
     private static readonly object LoadGate = new();
@@ -423,7 +430,7 @@ public class FwDataProjectLoader
     public virtual LcmCache LoadScratchCache(string fwDataFilePath, string? templatesFolder = null)
     {
         Init();
-        return Serialized(() =>
+        return OpenSerialized(fwDataFilePath, () =>
         {
             using (SuppressGlobalWritingSystemPersistence())
                 return LoadCacheCore(fwDataFilePath, templatesFolder);

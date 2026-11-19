@@ -77,7 +77,7 @@ internal static class FieldWorksTextsIndex
         }
         cancellationToken.ThrowIfCancellationRequested();
         using var stage = builder.Complete(Convert.ToHexStringLower(digest.GetHashAndReset()));
-        if (!identity.ProjectCurrent(database.Project.FullFwDataPath)) return false;
+        if (!projectIdentity.MatchesMetadata(database.Project.FullFwDataPath)) return false;
         return repository.Publish(stage, previous?.Generation ?? "");
     }
 

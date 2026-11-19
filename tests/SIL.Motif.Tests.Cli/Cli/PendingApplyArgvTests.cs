@@ -11,6 +11,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
@@ -20,6 +21,8 @@ using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Sources;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -117,6 +120,97 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         CliProcess.EnableAdvancedAiMode(start, root);
         var outcome = await CliProcess.RunAsync(start);
         Assert.True(outcome.ExitCode == 0, outcome.Error);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CliApplyCanReopenWhileItsWorkerStartsIndexing(bool stallWorker)
+    {
+        const string gloss = "Gloss saved before Source indexing";
+        var (path, _) = ReleasedProjectWithWord("apply-reopen", out var senseId);
+        var root = Path.Combine(Directory.GetParent(Path.GetDirectoryName(path)!)!.FullName, "apply-reopen-worker");
+        var created = ProposalCommands.New(new NewDraftRequest(path, "1.0", "edit", "Edit a gloss"));
+        Assert.True(created.Succeeded, created.Refusal?.Message);
+        var edit = ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, "1.0", "edit",
+            CanonicalId.FromGuid(senseId).Value, "en", gloss));
+        Assert.True(edit.Succeeded, edit.Refusal?.Message);
+        DraftRationale.Author(path, "edit", "Edit a gloss", "Clarify the intended lexical meaning.");
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, "1.0", "edit"));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var dryRun = DryRunJobRunner.Run(path, "1.0", finalized.Value!.ProposalId);
+        Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
+
+        var marker = Path.Combine(root, "source-index-reading");
+        var timeout = TimeSpan.FromMinutes(2);
+        var apply = CliProcess.Start(IsolatedRunner.Options(root), "apply", finalized.Value.ProposalId,
+            "--project", path, "--force", "--json");
+        CliProcess.EnableAdvancedAiMode(apply, root);
+        apply.Environment.Remove(ProcessRunnerLauncher.SuppressVariable);
+        apply.Environment["MOTIF_TEST_SOURCE_INDEX_READ_MARKER"] = marker;
+
+        try
+        {
+            var result = await CliProcess.RunAsync(apply);
+            Assert.True(result.ExitCode == 0, result.Error);
+            await Wait.UntilAsync(() => File.Exists(marker), "The worker did not open the saved project for indexing.",
+                timeout);
+
+            if (stallWorker)
+            {
+                var open = CliProcess.Start(IsolatedRunner.Options(root), "project", "word-forming",
+                    "--project", path, "--add", "7", "--json");
+                open.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
+                var opening = CliProcess.RunAsync(open);
+                try
+                {
+                    Assert.True(await Wait.ForAsync(() => opening.IsCompleted, TimeSpan.FromSeconds(20)),
+                        "The CLI did not refuse while the Source index worker held the project.");
+                    var refusal = await opening;
+                    Assert.True(refusal.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.Busy), refusal.Error);
+                    using var json = JsonDocument.Parse(refusal.Error);
+                    Assert.Equal("project.startup-busy", json.RootElement.GetProperty("code").GetString());
+                    Assert.Contains("Source index worker", json.RootElement.GetProperty("message").GetString());
+                    Assert.False(File.Exists(marker + ".release"));
+                }
+                finally
+                {
+                    File.WriteAllText(marker + ".release", "");
+                    await opening;
+                }
+                return;
+            }
+
+            var waiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            ProjectStartupGate.WaitingForWorkerRead.Value = () => waiting.TrySetResult();
+            Task<string> reopened;
+            try
+            {
+                reopened = Task.Run(() =>
+                {
+                    using var cache = new FwDataProjectLoader().LoadCache(path);
+                    var sense = cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(senseId);
+                    return sense.Gloss.get_String(cache.DefaultAnalWs).Text;
+                });
+            }
+            finally { ProjectStartupGate.WaitingForWorkerRead.Value = null; }
+
+            if (await Task.WhenAny(reopened, waiting.Task).WaitAsync(Wait.Scaled(timeout)) == waiting.Task)
+                File.WriteAllText(marker + ".release", "");
+            Assert.Equal(gloss, await reopened.WaitAsync(Wait.Scaled(timeout)));
+            Assert.True(waiting.Task.IsCompletedSuccessfully, "The opener did not wait for the worker's read.");
+
+            IsolatedRunner.WaitUntilExited(root);
+            using var database = ProjectMotifDatabase.Open(path);
+            var jobs = new JobRepository(database).ListByProjectAndKind(ProjectWorkspaceKey.Compute(database.Project),
+                SourceIndexRefresh.JobKind);
+            Assert.Contains(jobs, job => job.Status == JobStatus.Completed);
+        }
+        finally
+        {
+            if (!File.Exists(marker + ".release")) File.WriteAllText(marker + ".release", "");
+            IsolatedRunner.TryWaitUntilExited(root);
+        }
     }
 
     [Theory]

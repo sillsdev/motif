@@ -28,6 +28,10 @@ public sealed class JobRepository
     public JobRecord Create(JobRecord requested)
         => Create(requested, null);
 
+    /// <summary>Queues a job atomically with the caller's project store changes.</summary>
+    internal void CreateInTransaction(SqliteConnection connection, SqliteTransaction transaction, JobRecord requested) =>
+        Insert(connection, transaction, Normalize(requested));
+
     internal JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments)
         => Create(requested, requiredAssessments, null, null, null, null, null);
 

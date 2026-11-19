@@ -2732,6 +2732,8 @@ public static class MotifAppStrings
 
     public static string RefusalProjectOperationIo => Text("MotifApp.RefusalProjectOperationIo");
 
+    public static string RefusalProjectStartupBusy => Text("MotifApp.RefusalProjectStartupBusy");
+
     public static string RefusalProjectStoreIo => Text("MotifApp.RefusalProjectStoreIo");
 
     public static string RefusalProjectUnloadable => Text("MotifApp.RefusalProjectUnloadable");

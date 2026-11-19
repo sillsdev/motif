@@ -36,10 +36,10 @@ internal sealed record ProgressSourceIdentity(string Digest, ProgressFileStamp[]
         }).ToArray();
     }
 
-    public static ProgressSourceIdentity? Capture(string path)
+    public static ProgressSourceIdentity? Capture(string path, Action? projectFileOpened = null)
     {
         var before = Metadata(path);
-        var (digest, sidecars) = ComputeDigest(path, before);
+        var (digest, sidecars) = ComputeDigest(path, before, projectFileOpened: projectFileOpened);
         var after = Metadata(path);
         return before.SequenceEqual(after) ? new ProgressSourceIdentity(digest, after) { SidecarDigest = sidecars } : null;
     }
@@ -66,10 +66,12 @@ internal sealed record ProgressSourceIdentity(string Digest, ProgressFileStamp[]
 
     public bool Current(string path)
     {
-        try { return Files.SequenceEqual(Metadata(path)); }
+        try { return MatchesMetadata(path); }
         catch (IOException) { return false; }
         catch (UnauthorizedAccessException) { return false; }
     }
+
+    internal bool MatchesMetadata(string path) => Files.SequenceEqual(Metadata(path));
 
     public string Serialize() => JsonSerializer.Serialize(this);
     public static ProgressSourceIdentity? Parse(string? value)
@@ -84,7 +86,7 @@ internal sealed record ProgressSourceIdentity(string Digest, ProgressFileStamp[]
     }
 
     private static (string Digest, string Sidecars) ComputeDigest(string projectPath, ProgressFileStamp[] files,
-        bool observe = true)
+        bool observe = true, Action? projectFileOpened = null)
     {
         if (observe) BeforeHash.Value?.Invoke();
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -98,6 +100,7 @@ internal sealed record ProgressSourceIdentity(string Digest, ProgressFileStamp[]
                 file.Name.Replace('/', Path.DirectorySeparatorChar));
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete,
                 128 * 1024, FileOptions.SequentialScan);
+            if (file.Name == "project") projectFileOpened?.Invoke();
             var content = SHA256.HashData(stream);
             hash.AppendData(content);
             if (file.Name != "project")

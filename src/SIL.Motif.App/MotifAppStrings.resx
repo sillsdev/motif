@@ -4628,6 +4628,10 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Motif could not read or write a file it needed. Check the disk, then try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProjectOperationIo. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalProjectStartupBusy" xml:space="preserve">
+    <value>Another Motif task is opening this project. Wait for it to finish, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectStartupBusy. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalProjectStoreIo" xml:space="preserve">
     <value>Motif could not read or write its file for this project. Check that the folder can be written to, then try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProjectStoreIo. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

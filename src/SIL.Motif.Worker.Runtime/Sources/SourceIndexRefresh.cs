@@ -1,11 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Sources;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Runner.Operations;
@@ -22,14 +24,36 @@ public static class SourceIndexRefresh
 {
     public const string JobKind = "source-index";
     internal static readonly AsyncLocal<Action<string>?> PassageTokenized = new();
+    private const int MaxAutomaticRequeues = 2;
+    private enum RefreshRequest { Explicit, Retry, Reconcile }
+    private enum SourceIndexFailureReason { Busy, Timeout, PermanentIo }
 
     /// <summary>Marks old generations pending and queues a durable refresh without reading or tokenizing Source text.</summary>
-    public static void Enqueue(MotifDatabase database, IReadOnlyList<SourceListEntry>? sources = null)
+    public static void Enqueue(MotifDatabase database, IReadOnlyList<SourceListEntry>? sources = null) =>
+        Enqueue(database, RefreshRequest.Explicit, sources);
+
+    private static bool Enqueue(MotifDatabase database, RefreshRequest request,
+        IReadOnlyList<SourceListEntry>? sources = null)
     {
-        MarkPending(database, sources, deferred: false);
-        var now = JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
-        new JobRepository(database).Create(CanonicalId.FromGuid(Guid.NewGuid()).Value, ProjectWorkspaceKey.Compute(database.Project),
-            JobKind, "{}", now);
+        var projectKey = ProjectWorkspaceKey.Compute(database.Project);
+        using (var connection = database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            var input = "{}";
+            if (request == RefreshRequest.Retry)
+            {
+                if (NextRetry(connection, transaction, projectKey) is not { } retry) return false;
+                input = JsonSerializer.Serialize(new { sourceIndexRetry = retry });
+            }
+            if (request == RefreshRequest.Reconcile && !CanReconcile(connection, projectKey, transaction)) return false;
+            MarkPendingCore(connection, transaction, sources, deferred: false);
+            var now = JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
+            new JobRepository(database).CreateInTransaction(connection, transaction,
+                new JobRecord(CanonicalId.FromGuid(Guid.NewGuid()).Value, projectKey, JobKind, JobStatus.Queued, 1,
+                    input, null, now, now, null, null));
+            transaction.Commit();
+        }
+        return true;
     }
 
     /// <summary>
@@ -39,63 +63,140 @@ public static class SourceIndexRefresh
     public static void MarkPending(MotifDatabase database, IReadOnlyList<SourceListEntry>? sources = null,
         bool deferred = true)
     {
-        using (var connection = database.OpenConnection())
-        using (var transaction = connection.BeginTransaction())
+        using var connection = database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        MarkPendingCore(connection, transaction, sources, deferred);
+        transaction.Commit();
+    }
+
+    private static void MarkPendingCore(SqliteConnection connection, SqliteTransaction transaction,
+        IReadOnlyList<SourceListEntry>? sources, bool deferred)
+    {
+        SourceIndexRepository.MarkAllPending(connection, transaction);
+        foreach (var source in sources ?? [])
         {
-            SourceIndexRepository.MarkAllPending(connection, transaction);
-            foreach (var source in sources ?? [])
-            {
-                using var pending = connection.CreateCommand();
-                pending.Transaction = transaction;
-                pending.CommandText = "INSERT OR IGNORE INTO SourceIndexState VALUES " +
-                    "($source,$kind,$generation,'','{}','pending',$tokenizer,$anchor);";
-                pending.Parameters.AddWithValue("$source", source.Id.ToUpperInvariant());
-                pending.Parameters.AddWithValue("$kind", source.Kind.ToString());
-                pending.Parameters.AddWithValue("$generation", Guid.NewGuid().ToString("N"));
-                pending.Parameters.AddWithValue("$tokenizer", ParatextPassages.TokenizerVersion);
-                pending.Parameters.AddWithValue("$anchor", ParatextPassages.AnchorVersion);
-                pending.ExecuteNonQuery();
-            }
-            using (var texts = connection.CreateCommand())
-            {
-                texts.Transaction = transaction;
-                texts.CommandText = "INSERT OR IGNORE INTO SourceIndexState VALUES " +
-                    "($source,$kind,$generation,'','{}','pending',$tokenizer,$anchor);";
-                texts.Parameters.AddWithValue("$source", FieldWorksTextsIndex.SourceId);
-                texts.Parameters.AddWithValue("$kind", FieldWorksTextsIndex.Kind);
-                texts.Parameters.AddWithValue("$generation", Guid.NewGuid().ToString("N"));
-                texts.Parameters.AddWithValue("$tokenizer", FieldWorksTextsIndex.TokenizerVersion);
-                texts.Parameters.AddWithValue("$anchor", FieldWorksTextsIndex.AnchorVersion);
-                texts.ExecuteNonQuery();
-            }
-            if (deferred) SourceIndexRepository.MarkAllDeferred(connection, transaction);
-            transaction.Commit();
+            using var pending = connection.CreateCommand();
+            pending.Transaction = transaction;
+            pending.CommandText = "INSERT OR IGNORE INTO SourceIndexState VALUES " +
+                "($source,$kind,$generation,'','{}','pending',$tokenizer,$anchor);";
+            pending.Parameters.AddWithValue("$source", source.Id.ToUpperInvariant());
+            pending.Parameters.AddWithValue("$kind", source.Kind.ToString());
+            pending.Parameters.AddWithValue("$generation", Guid.NewGuid().ToString("N"));
+            pending.Parameters.AddWithValue("$tokenizer", ParatextPassages.TokenizerVersion);
+            pending.Parameters.AddWithValue("$anchor", ParatextPassages.AnchorVersion);
+            pending.ExecuteNonQuery();
         }
+        using (var texts = connection.CreateCommand())
+        {
+            texts.Transaction = transaction;
+            texts.CommandText = "INSERT OR IGNORE INTO SourceIndexState VALUES " +
+                "($source,$kind,$generation,'','{}','pending',$tokenizer,$anchor);";
+            texts.Parameters.AddWithValue("$source", FieldWorksTextsIndex.SourceId);
+            texts.Parameters.AddWithValue("$kind", FieldWorksTextsIndex.Kind);
+            texts.Parameters.AddWithValue("$generation", Guid.NewGuid().ToString("N"));
+            texts.Parameters.AddWithValue("$tokenizer", FieldWorksTextsIndex.TokenizerVersion);
+            texts.Parameters.AddWithValue("$anchor", FieldWorksTextsIndex.AnchorVersion);
+            texts.ExecuteNonQuery();
+        }
+        if (deferred) SourceIndexRepository.MarkAllDeferred(connection, transaction);
+    }
+
+    private static long? NextRetry(SqliteConnection connection, SqliteTransaction transaction, string projectKey)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        // The running job carries the budget forward even if earlier attempts have been purged.
+        command.CommandText = """
+            SELECT 1 + COALESCE((
+                SELECT MAX(CAST(json_extract(InputJson, '$.sourceIndexRetry') AS INTEGER)) FROM Jobs
+                WHERE ProjectKey=$project AND Kind=$kind AND Status='running'
+            ), 0) WHERE NOT EXISTS (
+                SELECT 1 FROM Jobs WHERE ProjectKey=$project AND Kind=$kind AND Status='queued'
+            );
+            """;
+        command.Parameters.AddWithValue("$project", projectKey);
+        command.Parameters.AddWithValue("$kind", JobKind);
+        return command.ExecuteScalar() is long retry && retry <= MaxAutomaticRequeues ? retry : null;
+    }
+
+    private static bool CanReconcile(SqliteConnection connection, string projectKey, SqliteTransaction? transaction = null)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT NOT EXISTS (
+                SELECT 1 FROM Jobs WHERE ProjectKey=$project AND Kind=$kind AND Status IN ('queued','running')
+            );
+            """;
+        command.Parameters.AddWithValue("$project", projectKey);
+        command.Parameters.AddWithValue("$kind", JobKind);
+        return Equals(command.ExecuteScalar(), 1L);
+    }
+
+    private static void MarkRefreshFailed(MotifDatabase database, SourceIndexFailureReason reason)
+    {
+        var inputs = SourceIndexFailureInputs.Observe(database, checkProjectAccess: reason == SourceIndexFailureReason.PermanentIo);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        // Keep the observed inputs through job archival so only a fresh request can spend another retry budget.
+        command.CommandText = """
+            UPDATE SourceIndexState SET Status='failed', Generation=lower(hex(randomblob(16))), IdentityJson=$inputs
+            WHERE SourceId=$texts AND NOT EXISTS (
+                SELECT 1 FROM Jobs WHERE ProjectKey=$project AND Kind=$kind AND Status='queued'
+            );
+            """;
+        command.Parameters.AddWithValue("$project", ProjectWorkspaceKey.Compute(database.Project));
+        command.Parameters.AddWithValue("$kind", JobKind);
+        command.Parameters.AddWithValue("$texts", FieldWorksTextsIndex.SourceId);
+        command.Parameters.AddWithValue("$inputs", JsonSerializer.Serialize(inputs));
+        command.ExecuteNonQuery();
     }
 
     /// <summary>Builds from a private copy of saved project files and validates their identity before publication.</summary>
     public static JobOutcome Run(MotifDatabase database, CancellationToken cancellationToken = default)
     {
         try { return RunCore(database, cancellationToken); }
-        catch (IOException exception)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or TimeoutException or
+                                           LcmFileLockedException or LcmInitializationException)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            Enqueue(database);
-            return new(JobStatus.Failed, JobFailureCategory.Infrastructure,
-                JsonSerializer.Serialize(new { message = exception.Message, retryQueued = true }));
+            return Fail(database, ClassifyFailure(exception), exception.Message, cancellationToken);
         }
+    }
+
+    private static SourceIndexFailureReason ClassifyFailure(Exception exception) => exception switch
+    {
+        TimeoutException => SourceIndexFailureReason.Timeout,
+        ProjectStartupBusyException or LcmFileLockedException => SourceIndexFailureReason.Busy,
+        _ when ProjectFileHeldException.IsSharingViolation(exception) => SourceIndexFailureReason.Busy,
+        _ => SourceIndexFailureReason.PermanentIo,
+    };
+
+    private static JobOutcome Fail(MotifDatabase database, SourceIndexFailureReason reason, string message,
+        CancellationToken cancellationToken, bool projectWide = true)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var retryQueued = (reason is SourceIndexFailureReason.Busy or SourceIndexFailureReason.Timeout) &&
+            Enqueue(database, RefreshRequest.Retry);
+        if (!retryQueued && projectWide) MarkRefreshFailed(database, reason);
+        return new(JobStatus.Failed, JobFailureCategory.Infrastructure,
+            JsonSerializer.Serialize(new { reason = reason.ToString(), message, retryQueued }));
     }
 
     private static JobOutcome RunCore(MotifDatabase database, CancellationToken cancellationToken)
     {
         var project = database.Project;
         var key = ProjectWorkspaceKey.Compute(project);
-        var projectIdentity = ProgressSourceIdentity.Capture(project.FullFwDataPath);
-        if (projectIdentity is null) throw new IOException("The project changed while its Source index was being prepared.");
-        using var reader = BaselineReadCache.Open(project.FullFwDataPath);
+        ProgressSourceIdentity? projectIdentity;
+        using (ProjectStartupGate.Enter(project.FullFwDataPath, cancellationToken, sourceIndex: true))
+            projectIdentity = ProgressSourceIdentity.Capture(project.FullFwDataPath, ReadObserverForTest(cancellationToken));
+        if (projectIdentity is null)
+            return Fail(database, SourceIndexFailureReason.Busy, "The project changed while its Source index was being prepared.",
+                cancellationToken);
+        using var reader = BaselineReadCache.OpenWithCoordinatedCopy(project.FullFwDataPath, cancellationToken);
         if (ProgressSourceIdentity.Capture(reader.Cache.ProjectId.Path)?.Digest != projectIdentity.Digest ||
-            !projectIdentity.Current(project.FullFwDataPath))
-            throw new IOException("The saved project changed while its Source index was being prepared.");
+            !projectIdentity.MatchesMetadata(project.FullFwDataPath))
+            return Fail(database, SourceIndexFailureReason.Busy, "The project changed while its Source index was being prepared.",
+                cancellationToken);
         IReadOnlyList<SourceListEntry> sources;
         try { sources = SourceList.Read(reader.Cache); }
         catch (SourceListAmbiguousException) { sources = []; }
@@ -103,6 +204,7 @@ public static class SourceIndexRefresh
         var tokeniser = SourceApprovals.Tokeniser(reader.Cache);
         var local = ScriptureLocalStore.ForInstallation().Read(key);
         var retry = false;
+        (SourceIndexFailureReason Reason, string Message)? sourceFailure = null;
         foreach (var source in sources.Where(source =>
                      !string.Equals(source.Id, FieldWorksTextsIndex.SourceId, StringComparison.OrdinalIgnoreCase)))
         {
@@ -111,31 +213,67 @@ public static class SourceIndexRefresh
             SourceFileStamp[]? before = null;
             try
             {
-                before = folder is not null && Directory.Exists(folder) ? SourceIndexIdentity.Metadata(folder) : [];
+                before = folder is null ? null : MetadataIfPresent(folder);
                 if (source.Kind != SourceKind.Paratext || source.Error is not null || source.Status == SourceStatus.Removed ||
-                    folder is null || !Directory.Exists(folder))
-                    retry |= !PublishUnavailable(database, source, folder, ws, projectIdentity, source.Error, before);
+                    folder is null || before is null)
+                    retry |= !PublishUnavailable(database, source, folder, ws, projectIdentity, source.Error, before ?? []);
                 else
                     retry |= !Build(database, source, folder, ws, projectIdentity, tokeniser, cancellationToken, reader.Cache);
             }
-            catch (Exception exception) when (exception is IOException or InvalidDataException or
-                                               UnauthorizedAccessException or ArgumentException or System.Xml.XmlException)
+            catch (Exception exception) when (SourceIoFailure(exception) is { } io)
+            {
+                var reason = ClassifyFailure(io);
+                if (sourceFailure is null || reason == SourceIndexFailureReason.PermanentIo)
+                    sourceFailure = (reason, $"{source.Id}: {exception.Message}");
+                retry |= !PublishUnavailable(database, source, folder, ws, projectIdentity, exception.Message, null,
+                    SourceIndexIdentity.ObserveFolder(folder));
+            }
+            catch (Exception exception) when (exception is InvalidDataException or ArgumentException or System.Xml.XmlException)
             {
                 retry |= !PublishUnavailable(database, source, folder, ws, projectIdentity, exception.Message, before);
             }
         }
         retry |= !BuildTexts(database, reader.Cache, ws, projectIdentity, cancellationToken);
-        if (!retry) return JobOutcome.Completed;
-        Enqueue(database);
-        return new(JobStatus.Failed, JobFailureCategory.Infrastructure,
-            JsonSerializer.Serialize(new { message = "Source inputs changed during indexing; a fresh job was queued." }));
+        if (sourceFailure is { } failure)
+            return Fail(database, failure.Reason, failure.Message, cancellationToken, projectWide: false);
+        return retry
+            ? Fail(database, SourceIndexFailureReason.Busy, "Source inputs changed during indexing.", cancellationToken)
+            : JobOutcome.Completed;
+    }
+
+    private static SourceFileStamp[]? MetadataIfPresent(string folder)
+    {
+        try { return SourceIndexIdentity.Metadata(folder); }
+        catch (DirectoryNotFoundException) { return null; }
+    }
+
+    private static Exception? SourceIoFailure(Exception exception)
+    {
+        if (exception is InvalidDataException { InnerException: { } cause }) exception = cause;
+        return exception is IOException or UnauthorizedAccessException or TimeoutException ? exception : null;
+    }
+
+    // Keeps the source handle open until the CLI regression has started its LibLCM reopen.
+    private static Action? ReadObserverForTest(CancellationToken cancellationToken)
+    {
+        var marker = Environment.GetEnvironmentVariable("MOTIF_TEST_SOURCE_INDEX_READ_MARKER");
+        return string.IsNullOrEmpty(marker) ? null : () =>
+        {
+            using var watcher = new FileSystemWatcher(Path.GetDirectoryName(marker)!, Path.GetFileName(marker) + ".release");
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            watcher.Created += (_, _) => release.TrySetResult();
+            watcher.EnableRaisingEvents = true;
+            File.WriteAllText(marker, "");
+            if (!File.Exists(marker + ".release"))
+                release.Task.WaitAsync(TimeSpan.FromMinutes(5), cancellationToken).GetAwaiter().GetResult();
+        };
     }
 
     private static bool BuildTexts(MotifDatabase database, LcmCache cache, string writingSystem,
         ProgressSourceIdentity projectIdentity, CancellationToken cancellationToken)
     {
         try { return FieldWorksTextsIndex.Build(database, cache, writingSystem, projectIdentity, cancellationToken); }
-        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        catch (InvalidDataException exception)
         {
             return PublishUnavailable(database, FieldWorksTextsIndex.SourceId, FieldWorksTextsIndex.Kind, "", "", "Active",
                 null, writingSystem, projectIdentity, exception.Message, null);
@@ -143,21 +281,23 @@ public static class SourceIndexRefresh
     }
 
     private static bool PublishUnavailable(MotifDatabase database, SourceListEntry source, string? folder,
-        string writingSystem, ProgressSourceIdentity projectIdentity, string? error, SourceFileStamp[]? before) =>
+        string writingSystem, ProgressSourceIdentity projectIdentity, string? error, SourceFileStamp[]? before,
+        SourceFolderInputs? unavailableInputs = null) =>
         PublishUnavailable(database, source.Id, source.Kind.ToString(), source.ContextText, source.VersificationName,
-            source.Status.ToString(), folder, writingSystem, projectIdentity, error, before);
+            source.Status.ToString(), folder, writingSystem, projectIdentity, error, before, unavailableInputs);
 
     private static bool PublishUnavailable(MotifDatabase database, string sourceId, string kind, string contextText,
         string versification, string status, string? folder, string writingSystem, ProgressSourceIdentity projectIdentity,
-        string? error, SourceFileStamp[]? before)
+        string? error, SourceFileStamp[]? before, SourceFolderInputs? unavailableInputs = null)
     {
         var repository = new SourceIndexRepository(database);
         var previous = repository.ReadState(sourceId);
         var files = before ?? [];
         var identity = new SourceIndexIdentity(folder is null ? "" : Path.GetFullPath(folder), contextText,
-            versification, status, writingSystem, projectIdentity.Serialize(), files, error);
+            versification, status, writingSystem, projectIdentity.Serialize(), files, error)
+            { UnavailableInputs = unavailableInputs };
         var currentFolder = SourceProviders.Versions(kind).Folder(ProjectWorkspaceKey.Compute(database.Project), sourceId);
-        if (!identity.ProjectCurrent(database.Project.FullFwDataPath) ||
+        if (!projectIdentity.MatchesMetadata(database.Project.FullFwDataPath) ||
             (currentFolder is null ? "" : Path.GetFullPath(currentFolder)) != identity.Folder) return false;
         if (before is not null && !identity.FolderCurrent(currentFolder)) return false;
         var versions = SourceProviders.Versions(kind);
@@ -170,30 +310,35 @@ public static class SourceIndexRefresh
     public static bool Reconcile(MotifDatabase database)
     {
         using var connection = database.OpenConnection();
+        var workspace = ProjectWorkspaceKey.Compute(database.Project);
+        if (!CanReconcile(connection, workspace)) return false;
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT 1 FROM Jobs WHERE Kind=$kind AND Status IN ('queued','running') LIMIT 1;";
-        command.Parameters.AddWithValue("$kind", JobKind);
-        if (command.ExecuteScalar() is not null) return false;
         command.CommandText = "SELECT SourceId, Kind, IdentityJson, TokenizerVersion, AnchorVersion, Status FROM SourceIndexState;";
         var states = new List<(string Id, string Kind, string Identity, string Tokenizer, string Anchor, string Status)>();
         using (var rows = command.ExecuteReader())
             while (rows.Read()) states.Add((rows.GetString(0), rows.GetString(1), rows.GetString(2), rows.GetString(3), rows.GetString(4), rows.GetString(5)));
-        var workspace = ProjectWorkspaceKey.Compute(database.Project);
         // A foreground-only command left the index deferred: only a later default-mode command may queue its refresh.
         if (states.Any(state => state.Status == SourceIndexRepository.DeferredStatus)) return false;
+        var failedRefresh = states.FirstOrDefault(state => state.Id == FieldWorksTextsIndex.SourceId && state.Status == "failed");
+        if (failedRefresh.Identity is { } failedInputs)
+            return !SourceIndexFailureInputs.StillCurrent(failedInputs, database) && Enqueue(database, RefreshRequest.Reconcile);
         foreach (var state in states)
         {
             var identity = SourceIndexIdentity.Parse(state.Identity);
             var provider = SourceProviders.Versions(state.Kind);
             try
             {
-                if (state.Status != "pending" && identity is not null && identity.Current(database.Project.FullFwDataPath, provider.Folder(workspace, state.Id)) &&
+                var folder = provider.Folder(workspace, state.Id);
+                var projectPath = database.Project.FullFwDataPath;
+                var current = identity?.UnavailableInputs is { } unavailable
+                    ? identity.ProjectCurrent(projectPath) && unavailable.Matches(SourceIndexIdentity.ObserveFolder(folder))
+                    : identity?.Current(projectPath, folder) == true;
+                if (state.Status != "pending" && current &&
                     state.Tokenizer == provider.TokenizerVersion && state.Anchor == provider.AnchorVersion)
                     continue;
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { continue; }
-            Enqueue(database);
-            return true;
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+            return Enqueue(database, RefreshRequest.Reconcile);
         }
         return false;
     }
@@ -260,7 +405,8 @@ public static class SourceIndexRefresh
         cancellationToken.ThrowIfCancellationRequested();
         var currentFolder = ScriptureLocalStore.ForInstallation().Read(ProjectWorkspaceKey.Compute(database.Project))
             .SourcePaths.GetValueOrDefault(source.Id);
-        if (!identity.Current(database.Project.FullFwDataPath, currentFolder)) return false;
+        if (!projectIdentity.MatchesMetadata(database.Project.FullFwDataPath) || !identity.FolderCurrent(currentFolder))
+            return false;
         return repository.Publish(stage, previous?.Generation ?? "");
     }
 

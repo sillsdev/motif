@@ -57,6 +57,10 @@ public static class ProjectWordFormingCommand
         {
             cache = loader.LoadCache(path);
         }
+        catch (ProjectStartupBusyException failure)
+        {
+            return CommandOutcome<ProjectWordFormingResponse>.Refused(failure.ToRefusal());
+        }
         catch (LcmFileLockedException)
         {
             return Refused(RefusalCodes.ProjectInUse, FailureReason.Busy,

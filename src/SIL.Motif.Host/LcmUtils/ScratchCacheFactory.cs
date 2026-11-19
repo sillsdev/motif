@@ -114,18 +114,23 @@ public class ScratchCacheFactory
     /// </para>
     /// </remarks>
     /// <returns>The opened scratch cache. Deleting <paramref name="destinationRoot"/> is the caller's job.</returns>
-    public virtual LcmCache CreateFromFileCopy(string sourceFwDataPath, string destinationRoot)
+    public virtual LcmCache CreateFromFileCopy(string sourceFwDataPath, string destinationRoot) =>
+        CreateFromFileCopy(sourceFwDataPath, destinationRoot, coordinateProjectFile: false);
+
+    internal LcmCache CreateFromFileCopy(string sourceFwDataPath, string destinationRoot, bool coordinateProjectFile,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(sourceFwDataPath)) throw new ArgumentException("Required.", nameof(sourceFwDataPath));
         if (string.IsNullOrWhiteSpace(destinationRoot)) throw new ArgumentException("Required.", nameof(destinationRoot));
 
-        var sourceFolder = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(sourceFwDataPath))
+        var fullSource = System.IO.Path.GetFullPath(sourceFwDataPath);
+        var sourceFolder = System.IO.Path.GetDirectoryName(fullSource)
             ?? throw new ArgumentException($"Could not determine the project folder from '{sourceFwDataPath}'.", nameof(sourceFwDataPath));
 
         // Preserves FieldWorks' {projectsFolder}/{projectName}/{projectName}.fwdata layout the loader expects.
         var projectName = System.IO.Path.GetFileNameWithoutExtension(sourceFwDataPath);
         var destFolder = System.IO.Path.Combine(destinationRoot, projectName);
-        CopyDirectory(sourceFolder, destFolder, projectName);
+        CopyDirectory(sourceFolder, destFolder, projectName, coordinateProjectFile, cancellationToken);
 
         var destFwData = System.IO.Path.Combine(destFolder, System.IO.Path.GetFileName(sourceFwDataPath));
         if (!System.IO.File.Exists(destFwData))
@@ -142,27 +147,33 @@ public class ScratchCacheFactory
         }
     }
 
-    private static void CopyDirectory(string sourceDir, string destDir, string projectName)
+    private static void CopyDirectory(string sourceDir, string destDir, string projectName, bool coordinateProjectFile,
+        CancellationToken cancellationToken)
     {
         System.IO.Directory.CreateDirectory(destDir);
         foreach (var file in System.IO.Directory.GetFiles(sourceDir))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // Ownership belongs to the source reader, never to its independent copy.
             if (file.EndsWith(".fwdata.lock", StringComparison.OrdinalIgnoreCase)) continue;
             // The paired Motif store is owned separately; a scratch cache only needs FieldWorks files.
             if (IsMotifStoreFile(file, projectName)) continue;
-            CopyFileWhenFree(file, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(file)));
+            using var startup = coordinateProjectFile && file.EndsWith(".fwdata", StringComparison.OrdinalIgnoreCase)
+                ? ProjectStartupGate.Enter(file, cancellationToken, sourceIndex: true) : null;
+            CopyFileWhenFree(file, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(file)), cancellationToken);
         }
 
         foreach (var subDir in System.IO.Directory.GetDirectories(sourceDir))
-            CopyDirectory(subDir, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(subDir)), projectName);
+            CopyDirectory(subDir, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(subDir)), projectName,
+                coordinateProjectFile: false, cancellationToken: cancellationToken);
     }
 
     // Retries briefly while another writer still holds the file open.
-    private static void CopyFileWhenFree(string source, string destination)
+    private static void CopyFileWhenFree(string source, string destination, CancellationToken cancellationToken)
     {
         for (var attempt = 1; ; attempt++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 System.IO.File.Copy(source, destination, overwrite: true);

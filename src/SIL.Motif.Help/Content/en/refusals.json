@@ -16,6 +16,10 @@
     "why": "Another Motif task holds this project, so it cannot be used yet. Wait about ten seconds.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "project.startup-busy": {
+    "why": "Wait for the Motif task using the project to finish, then repeat the command.",
+    "source": "Hand-written from the project startup refusal."
+  },
   "project.in-use": {
     "why": "FieldWorks has the project open, so Motif cannot change it. Ask the linguist to save and close it, then repeat this call.",
     "source": "Hand-written from the Motif MCP refusal advice."

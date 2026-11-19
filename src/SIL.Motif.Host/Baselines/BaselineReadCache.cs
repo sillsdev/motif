@@ -37,8 +37,14 @@ public sealed class BaselineReadCache : IDisposable
     public static BaselineReadCache Open(string fwDataPath) =>
         Open(fwDataPath, BaselineReadCacheEnvironment.ForSystemTemporaryDirectory());
 
+    /// <summary>Coordinates the live project file copy with Motif's LibLCM startup.</summary>
+    internal static BaselineReadCache OpenWithCoordinatedCopy(string fwDataPath, CancellationToken cancellationToken) =>
+        Open(fwDataPath, BaselineReadCacheEnvironment.ForSystemTemporaryDirectory(), coordinateProjectFile: true,
+            cancellationToken: cancellationToken);
+
     /// <summary>Opens a copy with the supplied root, clock, owner inspector and record reader.</summary>
-    internal static BaselineReadCache Open(string fwDataPath, BaselineReadCacheEnvironment environment)
+    internal static BaselineReadCache Open(string fwDataPath, BaselineReadCacheEnvironment environment,
+        bool coordinateProjectFile = false, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
         ArgumentNullException.ThrowIfNull(environment);
@@ -57,7 +63,7 @@ public sealed class BaselineReadCache : IDisposable
         try
         {
             lifeLock = TryHoldLifeLock(LockPathFor(ownerPath));
-            cache = new ScratchCacheFactory().CreateFromFileCopy(fwDataPath, root);
+            cache = new ScratchCacheFactory().CreateFromFileCopy(fwDataPath, root, coordinateProjectFile, cancellationToken);
             return new BaselineReadCache(root, ownerPath, cache, lifeLock);
         }
         catch

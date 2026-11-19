@@ -61,6 +61,10 @@ public static class ProjectInitializationCommand
         {
             cache = loader.LoadCache(projectPath);
         }
+        catch (ProjectStartupBusyException failure)
+        {
+            return CommandOutcome<ProjectInitializationResponse>.Refused(failure.ToRefusal());
+        }
         catch (LcmFileLockedException)
         {
             return ProjectLockedRefusal(projectPath);

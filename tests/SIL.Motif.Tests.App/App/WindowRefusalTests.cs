@@ -472,7 +472,7 @@ public sealed class WindowRefusalTests
     {
         var root = RepoPaths.FindRepoRoot();
         var codePattern = new Regex(@"""([a-z][a-z]*(?:\.[a-z][a-z-]*)+)""");
-        var referencePattern = new Regex(@"RefusalCodes\.(\w+)");
+        var referencePattern = new Regex(@"\b(?:RefusalCodes|C)\.(\w+)");
         var declared = new HashSet<string>(StringComparer.Ordinal);
         foreach (var project in new[] { "SIL.Motif.Commands", "SIL.Motif.Runner", "SIL.Motif.App" })
         foreach (var file in Directory.EnumerateFiles(Path.Combine(root, "src", project), "*.cs",
