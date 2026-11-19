@@ -7,8 +7,8 @@ run proves them.
 
 ## What only the scheduled run proves
 
-Ten tests in `SIL.Motif.Tests.App`, selected by the trait `Category=SlowScale` plus the one layout test named below.
-Nine carry `[SlowScaleFact]`, which skips unless `MOTIF_SLOW_SCALE=1`, and the trait.
+Nine tests in `SIL.Motif.Tests.App`, selected by the trait `Category=SlowScale` plus the one layout test named below.
+Eight carry `[SlowScaleFact]`, which skips unless `MOTIF_SLOW_SCALE=1`, and the trait.
 
 | Test | What it pins |
 |---|---|
@@ -18,15 +18,15 @@ Nine carry `[SlowScaleFact]`, which skips unless `MOTIF_SLOW_SCALE=1`, and the t
 | `Walkthrough.LargeProjectScaleTests.LargeProjectCompletesTheFakeParserWorkflowWithinTimeAndMemoryBudgets` | time and memory budgets at representative project size |
 | `Walkthrough.SelectionViewportScaleTests.RepresentativeSequentialRangesKeepActualDisplayModelsAndReaderReadsBounded` | display models and reader reads stay bounded at 21,604 rows |
 | `Walkthrough.UnparsedLargeProjectScaleTests.LargeSelectionOpensScrollsAndReopensWithinMemoryBudgetsWithoutParsing` | memory budgets for a large unparsed selection |
-| `TextsProposalMemoryTests.AFlipOverASixHundredEightyEightThousandWordSelectionAlignsTheProposalOnceAndParsesNothing` | 688,000 words: a flip of the view aligns the Proposal once |
-| `TextsProposalMovedChipMemoryTests.ASixHundredEightyEightThousandWordProposalCountsAndFiltersItsMovedWordsWithoutRowsAndLetsAllOfThemGo` | 688,000 words: the Moved chip makes no rows and keeps nothing |
 | `TextsProposalChangesMemoryTests.ASixHundredEightyEightThousandWordProposalFindsItsMovesAsPositionsAndLetsAllOfThemGo` | 688,000 words: What Changed holds positions and counts and lets go |
+| `TextsProposalMemoryTests.AStoredTrialIndexLooksUpASixHundredEightyEightThousandWordSelection` | 688,000 words: a stored Trial index looks up the selection within its budget |
 | `LayoutInvariantSystemTests.EveryPageAndApplicableStateSatisfiesTheFullLightGrid` | the full layout grid |
 
 The layout test also runs in the gate, but there it inspects only the tightest cell (640x600 at 150%). With
 `MOTIF_SLOW_SCALE=1` it inspects all three cells (640x600 at 100%, 960x780 at 100%, 640x600 at 150%); the other two
-run nowhere else. The three 688,000-word App tests are in the table because they were moved out of the gate;
-landing no longer proves their memory limits, and a regression in them shows within a day instead of at landing.
+run nowhere else. The 688,000-word What Changed and stored-index tests are in the table because it was moved out of the gate;
+landing no longer proves their memory limits, and a regression in them shows within a day instead of at landing. The
+Texts Proposal flip and Moved chip memory tests were deleted with the old shell (9b07cba34) and are no longer run.
 
 The run also selects two named Commands tests, not the whole `Category=SlowScale` trait, so the Difference
 measurement below stays out:
@@ -45,12 +45,13 @@ which counts chapter reads and writes and so holds without a clock.
 
 ## Runner memory
 
-The three moved tests build their Trials as arrays of 688,000 `AssessmentWordResult` rows, which is most of what
-they hold. Measured here (Debug build, one test host running all three, a loaded 20-processor machine): peak
-resident set 1.2 GB. All ten tests together in one host peaked at 2.0 GB. The tests assert at most 40 MiB held above
+The moved tests built their Trials as arrays of 688,000 `AssessmentWordResult` rows, which is most of what
+they held. Measured when three of them existed (Debug build, one test host running all three, a loaded
+20-processor machine): peak resident set 1.2 GB. All ten tests then together in one host peaked at 2.0 GB.
+The tests assert at most 40 MiB held above
 the Trial and print far less (the `MEASURE` lines in the log). GitHub's published standard runners for a public
 repository, `ubuntu-22.04` and `windows-latest`, have 4 vCPUs and 16 GB; for a private repository they have 2 vCPUs
-and 8 GB. Either holds 2.0 GB with room to spare, so the three run on the hosted runner.
+and 8 GB. Either holds 2.0 GB with room to spare, so the remaining ones run on the hosted runner.
 
 ## Not in the run: the Commands Difference measurement
 
@@ -77,7 +78,20 @@ $env:MOTIF_SLOW_SCALE = '1'
 
 `tools/Assert-SlowScaleRan.ps1` names the tests the run must prove and fails unless each passed, because a skipped test reports
 success. Add a new slow test to that list as well as marking it with `[SlowScaleFact]` and
-`[Trait("Category", "SlowScale")]`.
+`[Trait("Category", "SlowScale")]`. The list is curated by hand, because the trait also covers tests that skip on
+other switches (`MOTIF_PROGRESS_BENCHMARK_FWDATA`) and the Difference measurement above. The script first checks the
+list against the test sources and names any entry whose test no longer exists or no longer carries the trait, so
+deleting or renaming a listed test fails the run with that name rather than a missing result. `./test.ps1` (a full
+run) runs the same check as `tools/Assert-SlowScaleRan.Tests.ps1`, so the deletion fails at landing, not a day later;
+`./tools/Assert-SlowScaleRan.ps1 -ListOnly` runs it alone. Delete or rename a listed test and its list entry in the
+same change.
+
+Some `Category=SlowScale` tests are deliberately not required. `slow.yml` selects the whole trait in the Worker and
+Contract projects, so they run, but a skip or a missing result does not fail the run: `QuerySourceStoreTests`,
+`AlloRepeatedFormTests`, `EntryDuplicateTests`, `FieldWorksTextsIndexScaleTests`, the `ProgressCapacityTests`
+measurement and `ProgressSourceIdentityTests` in Worker, and `HypothesisQueryScaleTests` in Contract. They are
+cost measurements or need an external data switch (`MOTIF_PROGRESS_BENCHMARK_FWDATA`) that the hosted runner does
+not set, so requiring them would fail every run. A test whose pass the run must prove belongs in the list.
 
 ## Corpus text authoring measurement
 
@@ -98,8 +112,8 @@ $env:MOTIF_TEXT_SCALE = '1'
 The workflow has not yet run on GitHub: it was validated by parsing only, and the same filtered commands were run
 locally. The first dispatch comes after this lands; check that run before relying on the schedule.
 
-Landing runs whole projects, with no filter. The slow run is the one deliberate exception: the nine tests above that
-skip without `MOTIF_SLOW_SCALE=1`, which include the three 688,000-word App tests, are not proven when a batch
+Landing runs whole projects, with no filter. The slow run is the one deliberate exception: the tests above that
+skip without `MOTIF_SLOW_SCALE=1`, which include the 688,000-word App tests, are not proven when a batch
 lands, and neither are the two layout cells the gate leaves out. They are proven by the next scheduled run. Do not
 run the slow set to land a batch, and do not treat its skips in `-All` as a gap to fill by hand. A slow-run failure
 is a defect to file against the commit range since the last green run.

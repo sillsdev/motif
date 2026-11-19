@@ -267,6 +267,7 @@ if (-not $Project -and -not $changedClasses) {
         @{ Name = 'shard abort regression'; Title = 'aborted shard detection regression'; Script = 'MotifShardVerdict.Tests.ps1' }
         @{ Name = 'changed-files selection regression'; Title = 'changed-files selection regression'; Script = 'MotifChangedTests.Tests.ps1' }
         @{ Name = 'shard weights regression'; Title = 'shard weight merge regression'; Script = 'Update-TestShardWeights.Tests.ps1' }
+        @{ Name = 'slow-scale list regression'; Title = 'slow-scale required-list regression'; Script = 'Assert-SlowScaleRan.Tests.ps1' }
     )
     if ($All) {
         $regressions += @{ Name = 'capture screen regression'; Title = 'capture screenshot tooling regression'; Script = 'Capture-Screens.Tests.ps1' }
