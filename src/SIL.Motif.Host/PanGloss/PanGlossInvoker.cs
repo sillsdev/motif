@@ -251,6 +251,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
             using (process)
             {
                 onStarted?.Invoke(process);
+                if (request is PanGlossRequest.Batch dispatched)
+                    dispatched.OnDispatched?.Invoke(dispatched.Words, executableDigest);
                 using var progressStop = new CancellationTokenSource();
                 var progressTask = request is PanGlossRequest.Batch { OnProgress: not null } batch
                     ? MonitorBatchProgressAsync(batch, Path.Combine(scratch, "out.tsv"), progressStop.Token)

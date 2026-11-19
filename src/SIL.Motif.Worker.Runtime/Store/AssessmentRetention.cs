@@ -6,6 +6,7 @@ using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Jobs;
 
 namespace SIL.Motif.Worker.Store;
 
@@ -531,6 +532,8 @@ internal static class AssessmentRetention
                     if (assessmentId is null)
                         throw new InvalidDataException(
                             $"Report '{reportId}' has no direct Assessment citation for kind '{kind}'.");
+                    break;
+                case TrialExportArtifact.BindingKind:
                     break;
                 case null:
                     if (assessmentId is null && (!reader.IsDBNull(3) || !reader.IsDBNull(4)))

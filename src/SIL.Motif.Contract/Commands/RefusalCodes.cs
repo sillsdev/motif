@@ -401,6 +401,8 @@ public static class RefusalCodes
     public const string TrialNothingPending = "trial.nothing-pending";
     /// <summary>The Baseline changed after the Trial's review inputs were captured.</summary>
     public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";
+    /// <summary>The exact Trial has no readable retained evidence export.</summary>
+    public const string TrialExportUnavailable = "trial.export-unavailable";
     /// <summary>The Trial's frozen review inputs could not be captured or read.</summary>
     public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
     /// <summary>The exact inputs needed for a report-bound diagnostic trace are unavailable.</summary>

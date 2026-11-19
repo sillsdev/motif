@@ -35,6 +35,17 @@ public sealed class CatalogExecutionTests
     }
 
     [Fact]
+    public void TrialExportAdvertisesItsCatalogRequestSchema()
+    {
+        var command = CommandCatalog.All.Single(item => item.Name == "proposal trial export");
+        var generated = CatalogTools.Prepare(CatalogTools.Create(command));
+        var actual = AgentTools.All.Single(tool => tool.Name == generated.Name);
+        Assert.True(JsonNode.DeepEquals(generated.InputSchema, actual.InputSchema),
+            "The Trial export tool must advertise the schema generated from its catalog request.");
+        Assert.NotNull(actual.OutputSchema);
+    }
+
+    [Fact]
     public async Task CatalogHandlerArgumentExceptionKeepsItsOriginalMessage()
     {
         var context = new ServerContext("", "1.0", new NoRunnerLauncher(

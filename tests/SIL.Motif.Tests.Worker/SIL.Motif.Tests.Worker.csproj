@@ -10,6 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="../SIL.Motif.Tests.Contract/HandAnalysis/reading-signature-vectors.json"
+                      LogicalName="TrialExport.ReadingSignatureVectors.json" />
     <Compile Include="..\SIL.Motif.Tests.Scripture\Fixtures\TinyProject.cs" Link="Fixtures\TinyProject.cs" />
     <Compile Include="..\SIL.Motif.Tests.Scripture\Fixtures\FieldWorksTokeniser.cs" Link="Fixtures\FieldWorksTokeniser.cs" />
     <Compile Include="..\SIL.Motif.Tests.Scripture\Fixtures\SeededSourceList.cs" Link="Fixtures\SeededSourceList.cs" />

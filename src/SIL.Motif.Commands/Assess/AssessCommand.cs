@@ -101,14 +101,16 @@ public static class AssessCommand
         AssessRequest request, string managedRoot, string? parserPath,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits, bool recordBudgetStop = true,
         ProjectParseLease? admission = null, bool reuseBefore = false, string? writingSystemId = null,
-        Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null, IReadOnlyCollection<string>? alsoProtect = null)
+        Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null, IReadOnlyCollection<string>? alsoProtect = null,
+        Action<IReadOnlyList<string>, string?>? onDispatched = null)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
         var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(
-            new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker), onPartial);
+            new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker),
+            onPartial, onDispatched);
         return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission, limits, recordBudgetStop,
-            reuseBefore ? parserPath : null, writingSystemId, alsoProtect);
+            reuseBefore ? parserPath : null, writingSystemId, alsoProtect, onDispatched);
     }
 
     /// <summary>
@@ -134,13 +136,13 @@ public static class AssessCommand
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission,
         TrialLimits? frozenLimits = null, bool recordBudgetStop = true, string? reuseParserPath = null, string? writingSystemId = null,
-        IReadOnlyCollection<string>? alsoProtect = null)
+        IReadOnlyCollection<string>? alsoProtect = null, Action<IReadOnlyList<string>, string?>? onDispatched = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         try
         {
             return RunMeasured(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission,
-                frozenLimits, recordBudgetStop, reuseParserPath, writingSystemId, alsoProtect);
+                frozenLimits, recordBudgetStop, reuseParserPath, writingSystemId, alsoProtect, onDispatched);
         }
         // Memory pressure is no corruption: nothing was saved, and a cheaper run is the cure.
         catch (OutOfMemoryException)
@@ -154,7 +156,7 @@ public static class AssessCommand
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission,
         TrialLimits? frozenLimits, bool recordBudgetStop, string? reuseParserPath, string? writingSystemId,
-        IReadOnlyCollection<string>? alsoProtect)
+        IReadOnlyCollection<string>? alsoProtect, Action<IReadOnlyList<string>, string?>? onDispatched)
     {
         ArgumentNullException.ThrowIfNull(assessor);
         ArgumentNullException.ThrowIfNull(invoker);
@@ -388,6 +390,9 @@ public static class AssessCommand
                     {
                         ProjectDiagnosticLog.Append(request.ProjectPath, "Assess reused evidence but could not prune old evidence.", exception);
                     }
+                    if (onDispatched is not null && assessments.GetHeader(reused)?.Invocation is { } invocation &&
+                        BatchInvocationEvidence.ReadVerifiedWords(invocation) is { } batchWords)
+                        onDispatched(batchWords, invocation.ExecutableBytesSha256);
                     return CommandOutcome<AssessCommandResponse>.Success(new AssessCommandResponse(
                         baseline, composition.Projection, [reused], string.Empty));
                 }
@@ -941,12 +946,15 @@ internal sealed class LazyPanGlossAssessor : IAssessor
 {
     private readonly Func<IAssessor> _factory;
     private readonly Action<IReadOnlyList<ParseWordEvidence>>? _onPartial;
+    private readonly Action<IReadOnlyList<string>, string?>? _onDispatched;
     private IAssessor? _built;
 
-    public LazyPanGlossAssessor(Func<IAssessor> factory, Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null)
+    public LazyPanGlossAssessor(Func<IAssessor> factory, Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null,
+        Action<IReadOnlyList<string>, string?>? onDispatched = null)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _onPartial = onPartial;
+        _onDispatched = onDispatched;
     }
 
     /// <inheritdoc />
@@ -968,8 +976,8 @@ internal sealed class LazyPanGlossAssessor : IAssessor
     public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress> onProgress,
         Action<bool>? onAdmissionWait, CancellationToken cancellationToken) =>
-        Resolve() is PanGlossAssessor parser && _onPartial is not null
-            ? parser.ProduceAsync(scope, exportedCandidate, onProgress, onAdmissionWait, cancellationToken, null, _onPartial)
+        Resolve() is PanGlossAssessor parser && (_onPartial is not null || _onDispatched is not null)
+            ? parser.ProduceAsync(scope, exportedCandidate, onProgress, onAdmissionWait, cancellationToken, null, _onPartial, _onDispatched)
             : Resolve().ProduceAsync(scope, exportedCandidate, onProgress, onAdmissionWait, cancellationToken);
 
     // A missing parser is the Assessor's own unavailability, not a fresh failure mode this wrapper invents.

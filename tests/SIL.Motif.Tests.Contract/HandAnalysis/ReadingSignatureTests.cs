@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Json.Schema;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.HandAnalysis;
@@ -49,6 +50,26 @@ public sealed class ReadingSignatureTests
         Assert.Equal(2, native.FeatureValues.Length);
         Assert.All(native.FeatureValues, feature => Assert.Equal(ReadingFeatureRole.Stem, feature.Role));
         Assert.Equal(native, JsonSerializer.Deserialize<ReadingSignature>(native.GetCanonicalBytes(), Json));
+    }
+
+    [Theory]
+    [InlineData("trial-export.schema.json")]
+    [InlineData("proposal-review-report.schema.json")]
+    public void ReadingSchemaRejectsTheAllZeroCanonicalId(string name)
+    {
+        using var stream = typeof(ReadingSignature).Assembly.GetManifestResourceStream("SIL.Motif.Contract.Schemas." + name)!;
+        var source = JsonNode.Parse(stream)!;
+        var definitions = source["$defs"]!.DeepClone();
+        var schema = JsonSchema.FromText(new JsonObject
+        {
+            ["$defs"] = definitions,
+            ["$ref"] = "#/$defs/ReadingSignature",
+        }.ToJsonString());
+        var signature = JsonNode.Parse(new ReadingSignature(ReadingSignatureFixture.NativeFacts(true)).GetCanonicalBytes())!;
+        Assert.True(schema.Evaluate(JsonSerializer.SerializeToElement(signature)).IsValid);
+        signature["morphemes"]![0]!["entryId"] = "AAAAAAAAAAAAAAAAAAAAAA";
+
+        Assert.False(schema.Evaluate(JsonSerializer.SerializeToElement(signature)).IsValid);
     }
 
     [Fact]

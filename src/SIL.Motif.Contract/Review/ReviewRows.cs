@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.Motif.Contract.Baselines;
-using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.HandAnalysis;
 
 namespace SIL.Motif.Contract.Review;
 
@@ -347,6 +347,10 @@ public sealed record ReadingRow(
 {
     [JsonRequired]
     public string RowKind { get; init; } = "reading";
+
+    /// <summary>The canonical Reading identity frozen against this side of the Trial.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReadingSignature? Signature { get; init; }
 
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();

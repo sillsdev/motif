@@ -288,15 +288,16 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         if (observation?.Morphology is not { InvalidShape: false, Refusal: null, Analyses: { } analyses }) yield break;
         foreach (var analysis in analyses.Where(ReviewCaseClassifier.Exact))
         {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(analysis.Morphs, MotifJson.CreateOptions());
-            var identity = "sha256:" + Convert.ToHexStringLower(SHA256.HashData(bytes));
+            var identity = analysis.Signature?.Id ?? "sha256:" + Convert.ToHexStringLower(SHA256.HashData(
+                JsonSerializer.SerializeToUtf8Bytes(analysis.Morphs, MotifJson.CreateOptions())));
             var matches = assertions.Where(assertion => assertion.Eligible && assertion.Morphology is not null &&
                 ReviewCaseClassifier.Exact(assertion.Morphology) && AnalysisMorphologyMatcher.Matches(analysis, assertion.Morphology)).ToArray();
             yield return new ReadingRow(identity, side, IdentityState.Exact,
                 analysis.Morphs.Select(morph => new Morph(morph.Form, morph.Msa,
                     morph.InflType is null ? [] : [morph.InflType], morph.GuessedString ?? "", "")).ToArray(),
                 true, matches.Select(assertion => assertion.Id).ToArray(),
-                matches.SelectMany(assertion => assertion.SourceRefs).Distinct(StringComparer.Ordinal).ToArray());
+                matches.SelectMany(assertion => assertion.SourceRefs).Distinct(StringComparer.Ordinal).ToArray())
+                { Signature = analysis.Signature };
         }
     }
 

@@ -101,7 +101,7 @@ public sealed class ReviewReportExpandedTests
             ["FindingRow"] = "rowKind eventId measureId findingId change group unit tier disposition evidenceDigest links",
             ["EffectRow"] = "rowKind operationId summary detail",
             ["EvidenceRow"] = "rowKind id kind pins limitations",
-            ["ReadingRow"] = "rowKind identityDigest side identityState morphs observed expectationIds sourceRefs",
+            ["ReadingRow"] = "rowKind identityDigest side identityState morphs observed expectationIds sourceRefs signature",
             ["ExpectationRow"] = "rowKind id assertion reference actorId revisionId readingIdentityDigest context sourceRefs before after",
             ["TraceNode"] = "id parentId kind label reasonCode objectRefs children detailTruncated",
             ["SourceRow"] = "rowKind id citation locator excerpt excerptComplete actorId",

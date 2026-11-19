@@ -32,6 +32,20 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
     private const long Budget = 100_000_000;
     private readonly MotifDatabase _database = database ?? throw new ArgumentNullException(nameof(database));
 
+    internal (string? ReportId, string? ReportDigest) FindTrialReportBinding(string jobId, string projectKey, string proposalId)
+    {
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        using var command = Command(connection, transaction,
+            """
+            SELECT ReportId, ManifestDigest FROM ReviewReports
+            WHERE TrialJobId=$job AND ProjectKey=$project AND ProposalId=$proposal
+            ORDER BY CreatedUtc DESC, ReportId DESC LIMIT 1;
+            """, ("$job", jobId), ("$project", projectKey), ("$proposal", proposalId));
+        using var row = command.ExecuteReader();
+        return row.Read() ? (row.GetString(0), row.GetString(1)) : (null, null);
+    }
+
     /// <summary>Stores a complete streamed index or an explicitly unavailable detail summary.</summary>
     public async Task<ReviewReportId> PublishAsync(ReviewReportPublication publication,
         IAsyncEnumerable<ReviewCaseDelta> cases, CancellationToken cancellationToken = default)

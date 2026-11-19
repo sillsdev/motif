@@ -11,6 +11,9 @@ namespace SIL.Motif.Contract.Canonicalization;
 /// </summary>
 public static class IntentDigest
 {
+    /// <summary>Versioned identifier of the canonical Proposal intent projection and its hash algorithm.</summary>
+    public const string Algorithm = "motif-intent-v1/rfc8785/sha256";
+
     /// <summary>The RFC 8785 canonical UTF-8 bytes of the Proposal's intent projection.</summary>
     public static byte[] CanonicalBytes(Proposal proposal)
     {

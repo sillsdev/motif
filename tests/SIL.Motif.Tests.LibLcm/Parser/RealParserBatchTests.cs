@@ -81,6 +81,37 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
     }
 
     [RealParserFact]
+    public async Task DispatchCallbackReportsTheBatchTheRealParserReceivedNotThePlannedWords()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "m", "o", "t", "i", "f", "a", "b");
+        var root = Path.Combine(Path.GetTempPath(), "motif-dispatch-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = new StatsCacheStore(WorkspaceOwnership.Bootstrap(root));
+            using var invoker = new PanGlossInvoker();
+            var assessor = new PanGlossAssessor(paths, invoker);
+            var planned = new[] { "Mofita" };
+            var dispatches = new List<(IReadOnlyList<string> Words, string? Digest)>();
+            var produced = await assessor.ProduceAsync(
+                new AssessmentScope.Words(planned, [AssessmentKind.ParseTime, AssessmentKind.Correctness], TimeSpan.FromSeconds(5)),
+                Path.GetDirectoryName(cache.ProjectId.Path)!, null, null, CancellationToken.None, null,
+                onDispatched: (words, digest) => dispatches.Add((words.ToArray(), digest)));
+            var reported = Assert.IsType<AssessmentRaw.Batch>(produced.First().Raw).Analysis.Words
+                .Select(word => word.Word).ToArray();
+            var dispatch = Assert.Single(dispatches);
+            Assert.Equal(reported, dispatch.Words);
+            Assert.Equal(["Mofita", "mofita"], dispatch.Words);
+            Assert.NotEqual(planned, dispatch.Words);
+            Assert.False(string.IsNullOrEmpty(dispatch.Digest));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    [RealParserFact]
     public async Task InflectionalVariantRetainsVariantFormBaseMsaAndInflTypeGuids()
     {
         using var cache = pristine.NewScratch();

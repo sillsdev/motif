@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using SIL.Motif.Contract.HandAnalysis;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -6,7 +8,25 @@ namespace SIL.Motif.Contract.Responses;
 public sealed record ParseMorph(string? Form, string? Msa, string? InflType, string? GuessedString);
 
 /// <summary>The ordered morph bundles of one parser reading.</summary>
-public sealed record ParseAnalysis(IReadOnlyList<ParseMorph> Morphs);
+public sealed record ParseAnalysis(IReadOnlyList<ParseMorph> Morphs)
+{
+    /// <summary>The canonical Reading identity frozen against the measured project, when captured.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReadingSignature? Signature { get; init; }
+
+    /// <summary>Lexicon evidence for each ordered morpheme, when inspected against the measured project.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<ReadingAcceptance>? MorphemeAcceptance { get; init; }
+}
+
+/// <summary>Whether a parser observation has an identified lexicon Reading.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ReadingAcceptance>))]
+public enum ReadingAcceptance
+{
+    [JsonStringEnumMemberName("lexicon-backed")] LexiconBacked,
+    [JsonStringEnumMemberName("guessed")] Guessed,
+    [JsonStringEnumMemberName("unresolved")] Unresolved,
+}
 
 /// <summary>One batch case's morphology and search termination, including partial findings.</summary>
 public sealed record ParseWordEvidence(

@@ -6,11 +6,13 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection.Review;
 using SIL.Motif.Worker.Jobs;
@@ -140,7 +142,7 @@ internal static class ReviewTrialCapture
                 }
                 var inputs = ReviewInputCapture.CaptureAsync(ProjectWorkspaceKey.Compute(project), request.ProposalId,
                     ParserIdentity.Read(parserPath)?.Sha256, sets, selectedIds, ordinary, identities,
-                    assertions, negatives, policyDigest: policyDigest).GetAwaiter().GetResult() with
+                    assertions, negatives, policyDigest: policyDigest, explicitWords: request.Words).GetAwaiter().GetResult() with
                     {
                         GainGate = configuration.GainGate,
                         ParsimonyBlockOn = configuration.ParsimonyBlockOn.Count == 0 ? null : configuration.ParsimonyBlockOn,
@@ -176,8 +178,17 @@ internal static class ReviewTrialCapture
                 var baselineFileDigest = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(baselineBytes));
                 var sidecars = SIL.Motif.Worker.Baselines.ProgressSourceIdentity.CaptureSidecars(evidence.Baseline.FwDataPath)
                     ?? throw new InvalidOperationException("The Baseline writing-system files changed during review capture.");
+                var submitted = SubmittedForms(inputs, ordinary, sets);
+                var byCase = inputs.Cases.ToDictionary(item => item.CaseKey, StringComparer.Ordinal);
+                var expansions = ReviewInputPartitions.Create(inputs).SelectMany(partition =>
+                {
+                    var casing = partition.WritingSystemId is { } writingSystem && cache.WritingSystemFactory.GetWsFromStr(writingSystem) == 0
+                        ? LowercasePass.None : LowercasePass.ForCache(cache, partition.WritingSystemId);
+                    return partition.CaseKeys.Select(key => (Key: key, Form: casing.LowercaseOf(byCase[key].Word)));
+                }).Where(item => item.Form is not null).ToDictionary(item => item.Key, item => item.Form!, StringComparer.Ordinal);
                 var reference = ReviewInputArtifacts.Store(database, new ReviewInputArtifact(inputs, sources)
-                    { Baseline = evidence.Baseline.Token, Scope = scope, Limits = limits, BaselineFile = evidence.Baseline.FwDataPath,
+                    { SubmittedForms = submitted, BeforeExpansionForms = expansions, Baseline = evidence.Baseline.Token,
+                        Scope = scope, Limits = limits, BaselineFile = evidence.Baseline.FwDataPath,
                         BaselineFileDigest = baselineFileDigest, BaselineSidecarDigest = sidecars.Digest });
                 return CommandOutcome<EnqueueTrialRequest>.Success(request with
                 {
@@ -187,6 +198,7 @@ internal static class ReviewTrialCapture
                     ReviewInputs = reference,
                     ReviewSnapshot = inputs,
                     ReviewBaselines = suppliedBaselines,
+                    ReviewBeforeExpansions = expansions,
                 });
             }
             catch (Exception exception) when (exception is not (OperationCanceledException or
@@ -196,6 +208,24 @@ internal static class ReviewTrialCapture
                     RefusalCodes.TrialReviewInputUnavailable, FailureReason.Refused, exception.Message));
             }
         });
+    }
+
+    private static Dictionary<string, string> SubmittedForms(FrozenReviewInputs inputs, IReadOnlyList<string> ordinary,
+        IReadOnlyList<ReviewCaptureSet> sets)
+    {
+        var literal = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var word in ordinary) literal.TryAdd(word.Normalize(NormalizationForm.FormD), word);
+        var named = new Dictionary<(string?, string), string>();
+        var active = inputs.Sets.Select(set => set.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var member in sets.Where(set => active.Contains(set.Id)).SelectMany(set => set.Members))
+        {
+            var writingSystem = string.IsNullOrWhiteSpace(member.WritingSystemId) ? null : member.WritingSystemId;
+            named.TryAdd((writingSystem, member.Word.Normalize(NormalizationForm.FormD)), member.Word);
+        }
+        return inputs.Cases.Select(item => (item.CaseKey, item.Word, Submitted: literal.GetValueOrDefault(item.Word)
+                ?? named.GetValueOrDefault((item.WritingSystemId, item.Word)) ?? item.Word))
+            .Where(item => item.Submitted != item.Word)
+            .ToDictionary(item => item.CaseKey, item => item.Submitted, StringComparer.Ordinal);
     }
 
     internal static IReadOnlyList<ReviewSourceDecision> ExcludingCandidate(

@@ -3040,6 +3040,67 @@
       ],
       "additionalProperties": false
     },
+    "ReadingSignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["morphemes"],
+      "properties": {
+        "morphemes": {"type": "array", "items": {"$ref": "#/$defs/ReadingMorpheme"}}
+      }
+    },
+    "ReadingMorpheme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryId", "senseId", "senseCandidates", "senseStatus", "msaId", "allomorphId", "inflectionTypeId", "isStem", "derivation", "featureValues"],
+      "properties": {
+        "entryId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "senseId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "senseCandidates": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}},
+        "senseStatus": {"$ref": "#/$defs/ReadingSenseStatus"},
+        "msaId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "allomorphId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "inflectionTypeId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "isStem": {"type": "boolean"},
+        "derivation": {"anyOf": [{"$ref": "#/$defs/ReadingDerivation"}, {"type": "null"}]},
+        "featureValues": {"type": "array", "items": {"$ref": "#/$defs/ReadingFeatureValue"}}
+      },
+      "oneOf": [
+        {"properties": {"senseStatus": {"const": "resolved"}, "senseId": {"type": "string"}, "senseCandidates": {"maxItems": 0}}},
+        {"properties": {"senseStatus": {"const": "ambiguous"}, "senseId": {"type": "null"}, "senseCandidates": {"minItems": 2}}},
+        {"properties": {"senseStatus": {"const": "unresolved"}, "senseId": {"type": "null"}, "senseCandidates": {"maxItems": 0}}}
+      ]
+    },
+    "ReadingSenseStatus": {"enum": ["resolved", "ambiguous", "unresolved"]},
+    "ReadingDerivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromCategoryId", "toCategoryId"],
+      "properties": {
+        "fromCategoryId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "toCategoryId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]}
+      }
+    },
+    "ReadingFeatureValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "featurePath", "valueIds"],
+      "properties": {
+        "role": {
+          "enum": ["stem", "inflection", "derivation-input", "derivation-output", "derivational-step"]
+        },
+        "featurePath": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}
+        },
+        "valueIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}
+        }
+      }
+    },
     "ReadingRow": {
       "type": "object",
       "properties": {
@@ -3070,6 +3131,7 @@
             "type": "string"
           }
         },
+        "signature": { "$ref": "#/$defs/ReadingSignature" },
         "sourceRefs": {
           "type": "array",
           "items": {

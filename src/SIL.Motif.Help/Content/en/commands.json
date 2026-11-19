@@ -1824,6 +1824,11 @@
     "description": "Reads the saved report of a Proposal's Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.",
     "source": "Authored from ADR 0021 and the typed command contract."
   },
+  "proposal trial export": {
+    "title": "Read a Trial export",
+    "description": "Finds the retained evidence file for an exact Trial job. The file contains the observed forms and Readings on both sides, the completion counts and the provenance used to measure the Trial.",
+    "source": "Authored from the typed command contract."
+  },
   "trial --wait": {
     "title": "Read Trial progress",
     "description": "Waits for a Trial job and reads its state. Read the stored review report after the Trial completes.",

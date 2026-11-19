@@ -285,6 +285,8 @@ public static class CommandCatalog
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("difference produce", typeof(ProposalDifferenceProduceRequest), typeof(ProposalDifferenceResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("difference show", typeof(ProposalDifferenceShowRequest), typeof(ProposalDifferenceResponse), CommandSurface.AdvancedAi, AgentClass.Read),
+        new CommandDescriptor("proposal trial export", typeof(ReadTrialExportRequest), typeof(TrialExportReceipt),
+            CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("proposal trial", typeof(ReadTrialRequest), typeof(TrialRecord), CommandSurface.Released, AgentClass.Read)
             { ExposeAsAgentTool = false },
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released, AgentClass.Read),

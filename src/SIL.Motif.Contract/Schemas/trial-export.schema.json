@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Motif Trial evidence export v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "jobId", "denominators", "provenance", "interruptions", "words"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "jobId": {"type": "string", "minLength": 1},
+    "denominators": {"$ref": "#/$defs/Denominators"},
+    "provenance": {"$ref": "#/$defs/Provenance"},
+    "interruptions": {"type": "array", "items": {"$ref": "#/$defs/Interruption"}},
+    "words": {"type": "array", "items": {"$ref": "#/$defs/Word"}}
+  },
+  "$defs": {
+    "Denominators": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["submitted", "expanded", "finished", "before", "after"],
+      "properties": {
+        "submitted": {"type": "integer", "minimum": 0},
+        "expanded": {"type": "integer", "minimum": 0},
+        "finished": {"type": "integer", "minimum": 0},
+        "before": {"$ref": "#/$defs/SideCounts"},
+        "after": {"$ref": "#/$defs/SideCounts"}
+      }
+    },
+    "SideCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dispatched", "finished"],
+      "properties": {
+        "dispatched": {"type": "integer", "minimum": 0},
+        "finished": {"type": "integer", "minimum": 0}
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["buildSha", "proposalId", "proposalRevision", "projectKey", "intent", "baseline", "baselineSourceSha256", "baselineSidecarSha256", "panGlossVersion", "panGlossExecutableSha256", "gateDeclaration"],
+      "properties": {
+        "buildSha": {
+          "anyOf": [{"type": "string", "pattern": "^([0-9a-fA-F]{40}|[0-9a-fA-F]{64})$"}, {"type": "null"}]
+        },
+        "proposalId": {"type": "string", "minLength": 1},
+        "proposalRevision": {"type": "string", "minLength": 1},
+        "projectKey": {"type": "string", "minLength": 1},
+        "intent": {"$ref": "#/$defs/Intent"},
+        "baseline": {"$ref": "#/$defs/Baseline"},
+        "baselineSourceSha256": {"anyOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}]},
+        "baselineSidecarSha256": {"anyOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}]},
+        "panGlossVersion": {"$ref": "#/$defs/PanGlossVersions"},
+        "panGlossExecutableSha256": {"$ref": "#/$defs/PanGlossDigests"},
+        "gateDeclaration": {"anyOf": [{"$ref": "#/$defs/Gate"}, {"type": "null"}]}
+      }
+    },
+    "Baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectIdentity", "semanticSnapshotDigest", "projectionVersion", "capturedUtc", "bundleDigest", "capturedHostSessionId", "capturedEditGeneration"],
+      "properties": {
+        "projectIdentity": {"type": "string", "minLength": 1},
+        "semanticSnapshotDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "projectionVersion": {"type": "string", "minLength": 1},
+        "capturedUtc": {"type": "string", "format": "date-time"},
+        "bundleDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "capturedHostSessionId": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "capturedEditGeneration": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
+      }
+    },
+    "Intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": {"const": "motif-intent-v1/rfc8785/sha256"},
+        "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "PanGlossDigests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after"],
+      "properties": {
+        "before": {"anyOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}]},
+        "after": {"anyOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}]}
+      }
+    },
+    "PanGlossVersions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after"],
+      "properties": {
+        "before": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "after": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}
+      }
+    },
+    "Gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policyDigest", "scopeDigest", "wordSets"],
+      "properties": {
+        "policyDigest": {"type": "string", "minLength": 1},
+        "scopeDigest": {"type": "string", "minLength": 1},
+        "wordSets": {"type": "array", "items": {"$ref": "#/$defs/GateSet"}}
+      }
+    },
+    "GateSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourceDigest", "membershipDigest", "expectationDigest"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "sourceDigest": {"type": "string", "minLength": 1},
+        "membershipDigest": {"type": "string", "minLength": 1},
+        "expectationDigest": {"type": "string", "minLength": 1}
+      }
+    },
+    "Word": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caseKey", "writingSystemId", "submittedForm", "explicitInput", "memberships", "expandedForms", "status", "reasonCode", "parserCauses"],
+      "properties": {
+        "caseKey": {"type": "string", "minLength": 1},
+        "writingSystemId": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "submittedForm": {"type": "string", "minLength": 1},
+        "explicitInput": {"anyOf": [{"$ref": "#/$defs/ExplicitInput"}, {"type": "null"}]},
+        "memberships": {"type": "array", "items": {"$ref": "#/$defs/Membership"}},
+        "expandedForms": {"type": "array", "items": {"$ref": "#/$defs/Form"}},
+        "status": {"$ref": "#/$defs/Status"},
+        "reasonCode": {"$ref": "#/$defs/ReasonCode"},
+        "parserCauses": {"type": "array", "items": {"$ref": "#/$defs/Cause"}}
+      }
+    },
+    "ExplicitInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ordinal", "submittedForm"],
+      "properties": {
+        "ordinal": {"type": "integer", "minimum": 1},
+        "submittedForm": {"type": "string", "minLength": 1}
+      }
+    },
+    "Membership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["setId", "caseId", "role"],
+      "properties": {
+        "setId": {"type": "string", "minLength": 1},
+        "caseId": {"type": "string", "minLength": 1},
+        "role": {"type": "string", "minLength": 1}
+      }
+    },
+    "Form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "formKey", "expansionKind", "status", "reasonCode", "parserCauses", "before", "after", "lostReadingIds"],
+      "properties": {
+        "form": {"type": "string", "minLength": 1},
+        "formKey": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "expansionKind": {"enum": ["submitted", "lowercase"]},
+        "status": {"$ref": "#/$defs/Status"},
+        "reasonCode": {"$ref": "#/$defs/ReasonCode"},
+        "parserCauses": {"type": "array", "items": {"$ref": "#/$defs/Cause"}},
+        "before": {"$ref": "#/$defs/Side"},
+        "after": {"$ref": "#/$defs/Side"},
+        "lostReadingIds": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+      }
+    },
+    "Side": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "dispatched", "complete", "status", "reasonCode", "parserCauses", "readings"],
+      "properties": {
+        "outcome": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "dispatched": {"type": "boolean"},
+        "complete": {"type": "boolean"},
+        "status": {"$ref": "#/$defs/Status"},
+        "reasonCode": {"$ref": "#/$defs/ReasonCode"},
+        "parserCauses": {"type": "array", "items": {"$ref": "#/$defs/Cause"}},
+        "readings": {"type": "array", "items": {"$ref": "#/$defs/Reading"}}
+      }
+    },
+    "Cause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "details"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "details": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "Interruption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["side", "cause"],
+      "properties": {"side": {"enum": ["before", "after"]}, "cause": {"$ref": "#/$defs/Cause"}}
+    },
+    "Status": {
+      "enum": ["accepted", "lost", "partial", "stopped", "invalid-evidence", "skipped", "capped", "timeout", "killed"]
+    },
+    "ReasonCode": {
+      "enum": ["parsed", "no-parse", "reading-lost", "incomplete-comparison", "parser-stopped", "invalid-evidence", "not-measured", "work-limit", "memory-limit", "time-limit", "parser-killed", "inventory-rejected"]
+    },
+    "Reading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "signature", "acceptance", "morphemeAcceptance"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "signature": {"$ref": "#/$defs/ReadingSignature"},
+        "acceptance": {"$ref": "#/$defs/ReadingAcceptance"},
+        "morphemeAcceptance": {"type": "array", "items": {"$ref": "#/$defs/ReadingAcceptance"}}
+      }
+    },
+    "ReadingAcceptance": {"enum": ["lexicon-backed", "guessed", "unresolved"]},
+    "ReadingSignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["morphemes"],
+      "properties": {
+        "morphemes": {"type": "array", "items": {"$ref": "#/$defs/ReadingMorpheme"}}
+      }
+    },
+    "ReadingMorpheme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryId", "senseId", "senseCandidates", "senseStatus", "msaId", "allomorphId", "inflectionTypeId", "isStem", "derivation", "featureValues"],
+      "properties": {
+        "entryId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "senseId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "senseCandidates": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}},
+        "senseStatus": {"$ref": "#/$defs/ReadingSenseStatus"},
+        "msaId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "allomorphId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "inflectionTypeId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "isStem": {"type": "boolean"},
+        "derivation": {"anyOf": [{"$ref": "#/$defs/ReadingDerivation"}, {"type": "null"}]},
+        "featureValues": {"type": "array", "items": {"$ref": "#/$defs/ReadingFeatureValue"}}
+      },
+      "oneOf": [
+        {"properties": {"senseStatus": {"const": "resolved"}, "senseId": {"type": "string"}, "senseCandidates": {"maxItems": 0}}},
+        {"properties": {"senseStatus": {"const": "ambiguous"}, "senseId": {"type": "null"}, "senseCandidates": {"minItems": 2}}},
+        {"properties": {"senseStatus": {"const": "unresolved"}, "senseId": {"type": "null"}, "senseCandidates": {"maxItems": 0}}}
+      ]
+    },
+    "ReadingSenseStatus": {"enum": ["resolved", "ambiguous", "unresolved"]},
+    "ReadingDerivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromCategoryId", "toCategoryId"],
+      "properties": {
+        "fromCategoryId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]},
+        "toCategoryId": {"anyOf": [{"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}, {"type": "null"}]}
+      }
+    },
+    "ReadingFeatureValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "featurePath", "valueIds"],
+      "properties": {
+        "role": {
+          "enum": ["stem", "inflection", "derivation-input", "derivation-output", "derivational-step"]
+        },
+        "featurePath": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}
+        },
+        "valueIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^(?!AAAAAAAAAAAAAAAAAAAAAA$)[A-Za-z0-9_-]{21}[AQgw]$"}
+        }
+      }
+    }
+  }
+}

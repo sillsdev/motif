@@ -85,6 +85,12 @@ public static class ReviewCaseClassifier
         (IReadOnlyList<ParseAnalysis> Readings, bool Complete) after)
     {
         if (!before.Complete || !after.Complete) return null;
+        if (before.Readings.Concat(after.Readings).All(reading => reading.Signature is not null))
+        {
+            var other = after.Readings.Select(reading => reading.Signature!.Id).Order(StringComparer.Ordinal);
+            return !before.Readings.Select(reading => reading.Signature!.Id).Order(StringComparer.Ordinal)
+                .SequenceEqual(other, StringComparer.Ordinal);
+        }
         static string Identity(ParseAnalysis reading) => JsonSerializer.Serialize(reading.Morphs.Select(morph => new
         {
             Form = Guid.Parse(morph.Form!).ToString("D"), Msa = Guid.Parse(morph.Msa!).ToString("D"),
@@ -143,11 +149,11 @@ public static class ReviewCaseClassifier
         return details;
     }
 
-    private static bool InventoryRejected(ParseWordEvidence? evidence, string word) =>
+    internal static bool InventoryRejected(ParseWordEvidence? evidence, string word) =>
         evidence is { InvalidShape: true, Refusal: null, Analyses.Count: 0 } &&
         Observe(evidence with { InvalidShape = false }, word).Complete;
 
-    private static (IReadOnlyList<ParseAnalysis> Readings, bool Complete) Observe(ParseWordEvidence? evidence, string word)
+    internal static (IReadOnlyList<ParseAnalysis> Readings, bool Complete) Observe(ParseWordEvidence? evidence, string word)
     {
         if (evidence is null || evidence.Schema != "fieldworks-parse-analysis/v1" || evidence.ElapsedMs < 0 ||
             evidence.Attempts is < 0 || evidence.Word is null || word is null || evidence.Analyses is null || evidence.Unavailable is null ||

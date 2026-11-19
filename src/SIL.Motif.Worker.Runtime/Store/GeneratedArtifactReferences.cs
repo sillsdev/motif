@@ -537,8 +537,9 @@ internal static class GeneratedArtifactReferences
                     builder.Incomplete(ArtifactReferenceFamily.Reports, store.StoreIdentity,
                         "report-direct-assessment-missing", recordId);
             }
-            else builder.Incomplete(ArtifactReferenceFamily.Reports, store.StoreIdentity,
-                "report-kind-unrecognized", recordId);
+            else if (kind != TrialExportArtifact.BindingKind)
+                builder.Incomplete(ArtifactReferenceFamily.Reports, store.StoreIdentity,
+                    "report-kind-unrecognized", recordId);
         }
     }
 

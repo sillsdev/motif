@@ -19,6 +19,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Jobs;
 
 namespace SIL.Motif.Commands.Diagnostics;
 
@@ -937,6 +938,8 @@ public static class ArtifactRetentionCommands
                 case DifferenceReportProducer.KindName:
                     if (assessmentId is null)
                         references.IncompleteReasons.Add("report-assessment-missing");
+                    break;
+                case TrialExportArtifact.BindingKind:
                     break;
                 case null:
                     if (assessmentId is null && (reportJson is not null || evidenceJson is not null))

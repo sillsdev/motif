@@ -83,6 +83,20 @@ public sealed class ParseMorphEvidenceTests
         Assert.Throws<InvalidDataException>(() => ParseMorphEvidence.Read(wire.Replace("\"capped\":false", "\"capped\":false,\"invented\":true"), ["word"]));
     }
 
+    [Fact]
+    public void TrialReadingFactsStayOutsideTheParserWireContract()
+    {
+        var analysis = Analysis(Form, Msa);
+        var captured = analysis with { Signature = new([]), MorphemeAcceptance = [ReadingAcceptance.Unresolved] };
+        var wire = JsonSerializer.Serialize(Row(analysis), ParseMorphEvidence.JsonOptions);
+        Assert.Equal(wire, JsonSerializer.Serialize(Row(captured), ParseMorphEvidence.JsonOptions));
+        foreach (var property in new[] { "signature", "morphemeAcceptance" })
+        {
+            var extra = wire.Replace("\"morphs\":[", "\"" + property + "\":null,\"morphs\":[");
+            Assert.Throws<InvalidDataException>(() => ParseMorphEvidence.Read(extra, ["word"]));
+        }
+    }
+
     private static ParseAnalysis Analysis(string form, string msa) => new([new(form, msa, null, null)]);
     private static ApprovedMorphology Expected(ParseAnalysis analysis) => new(analysis.Morphs
         .Select(morph => new ApprovedMorph(morph.Form, morph.Msa, morph.InflType, [])).ToArray());

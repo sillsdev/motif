@@ -279,6 +279,18 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
         }
     }
 
+    [Fact]
+    public void TrialExportBindingLeavesTheReferenceDomainComplete()
+    {
+        RecordReport("trial-export-binding-fixture", "trial-export-binding", null, "{}", null);
+
+        var result = RunInventory();
+
+        Assert.Equal(0, result.ExitCode);
+        using var inventory = JsonDocument.Parse(result.Output);
+        Assert.True(inventory.RootElement.GetProperty("referenceDomainComplete").GetBoolean());
+    }
+
     [Theory]
     [InlineData("missing-required", "frozen-report-reference-unresolved")]
     [InlineData("missing-evidence-field", "frozen-report-reference-unresolved")]

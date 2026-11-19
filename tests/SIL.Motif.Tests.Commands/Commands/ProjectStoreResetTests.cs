@@ -44,6 +44,25 @@ public sealed class ProjectStoreResetTests : IDisposable
     }
 
     [Fact]
+    public void ResetAlsoRemovesThePairedTrialExports()
+    {
+        var project = Project("trial-export-reset");
+        var storePath = StorePathOf(project);
+        Open(project);
+        var exports = Directory.CreateDirectory(storePath + ".trial-exports");
+        File.WriteAllText(Path.Combine(exports.FullName, "retained.json"), "{}");
+        var neighbour = Directory.CreateDirectory(storePath + ".other");
+        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema + 1};");
+
+        var outcome = ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(project), "1.0");
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.True(outcome.Value!.Deleted);
+        Assert.False(Directory.Exists(exports.FullName));
+        Assert.True(Directory.Exists(neighbour.FullName));
+    }
+
+    [Fact]
     public void AStoreANewerMotifRequiresIsDeletedToo()
     {
         var project = Project("newer-worker");

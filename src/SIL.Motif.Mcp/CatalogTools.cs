@@ -142,6 +142,8 @@ internal static class CatalogTools
             limit["maximum"] = page.Maximum;
             limit["default"] = page.Default;
         }
+        if (command.RequestType == typeof(ReadTrialExportRequest))
+            schema["properties"]!["page"]!["minimum"] = 1;
         if (command.RequestType == typeof(GdrShowRequest))
         {
             var format = Schema.String("json returns rich text runs; fw-md returns the whole record as FieldWorks Markdown.", "json", "fw-md");
@@ -155,6 +157,7 @@ internal static class CatalogTools
             Requests = [command.RequestType],
             NeedsProject = command.RequestType.GetProperties().Any(p => p.Name is "ProjectPath" or "FwDataPath"),
             Title = command.Name == "list requests" ? Help.Find(HelpEntryKind.Command, command.Name)?.Title : null,
+            OutputSchema = command.ResponseType == typeof(TrialExportReceipt) ? TrialExportToolSchema.Output : null,
         };
     }
 

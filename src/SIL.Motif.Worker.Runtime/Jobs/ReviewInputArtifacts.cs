@@ -19,6 +19,14 @@ public sealed record ReviewInputReference(string Sha256);
 /// <summary>The frozen inputs and exact source bytes used to produce them.</summary>
 public sealed record ReviewInputArtifact(FrozenReviewInputs Inputs, IReadOnlyDictionary<string, byte[]> Sources)
 {
+    /// <summary>The submitted spelling of each case before parser normalization.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? SubmittedForms { get; init; }
+
+    /// <summary>Lowercase forms associated with the frozen Baseline scope, by case key.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? BeforeExpansionForms { get; init; }
+
     /// <summary>The Baseline whose project and decisions were captured.</summary>
     public BaselineToken? Baseline { get; init; }
     /// <summary>The writing-system file digest measured with the captured Baseline.</summary>

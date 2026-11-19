@@ -1,3 +1,4 @@
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
@@ -71,6 +72,83 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
                 SIL.Motif.Contract.Ids.CanonicalId.Mint("job/").Value,
                 SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(project), "{}", null);
             Assert.False(atomic.Succeeded);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void TrialExportRetainsAnExplicitWitnessAlreadyInAConfiguredSet()
+    {
+        const string alpha = "ÉAlpha";
+        const string beta = "Beta";
+        string path;
+        using (var cache = pristine.NewScratch())
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var factory = cache.ServiceLocator.GetInstance<IWfiWordformFactory>();
+                foreach (var word in new[] { alpha, beta })
+                    factory.Create(TsStringUtils.MakeString(word, cache.DefaultVernWs));
+            });
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var root = Directory.CreateTempSubdirectory("motif-review-witness-").FullName;
+        try
+        {
+            var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+            Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+            var draft = ProposalCommands.New(new(path, "1.0", "capture-revision", null));
+            Assert.True(draft.Succeeded, draft.Refusal?.Message);
+            var project = new ProjectLocator(path, Path.GetFileNameWithoutExtension(path));
+            File.WriteAllText(ProjectConfigurationReader.PathFor(project),
+                "[[review-word-set]]\nid = \"gold\"\nname = \"Gold\"\nrole = \"regression\"\nselection = \"Gold words\"\n");
+            using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+                MotifSchema.CurrentSchema, new Version(1, 0));
+            new NamedSelectionRepository(database).SetDefault("Gold words", [],
+                [alpha.Normalize(System.Text.NormalizationForm.FormD), beta],
+                new SelectionParsingLimits(SIL.Motif.Contract.Assess.ParserWorkLimit.Default,
+                    SelectionTimeLimitMode.Estimated, null), null);
+            AddWordChange(new ProposalRepository(database), "unrelated");
+
+            (TrialExportReceipt Receipt, JsonElement[] Rows, string InputDigest) Run(string list)
+            {
+                var wordsPath = Path.Combine(root, "words.txt");
+                File.WriteAllText(wordsPath, list);
+                var words = SIL.Motif.Commands.Assess.WordListFile.Resolve(null, wordsPath);
+                Assert.True(words.Succeeded, words.Refusal?.Message);
+                var request = new EnqueueTrialRequest(path, "1.0", draft.Value!.ProposalId, Words: words.Value);
+                var job = TrialBaselines.EnqueueWithBaseline(request, (_, _, _, _, _, _) =>
+                    SIL.Motif.Contract.Commands.CommandOutcome<AssessCommandResponse>.Refused(new(
+                        SIL.Motif.Contract.Commands.RefusalCodes.AssessmentStoppedByBudget,
+                        SIL.Motif.Contract.Responses.FailureReason.StoppedByBudget, "Stopped")));
+                Assert.True(job.Succeeded, job.Refusal?.Message);
+                var outcome = TrialExportReads.Read(new(path, job.Value!.JobId));
+                Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+                var receipt = outcome.Value!;
+                Assert.NotNull(receipt.ReportDigest);
+                using var document = JsonDocument.Parse(File.ReadAllBytes(receipt.Path));
+                var saved = new JobRepository(database).Get(job.Value.JobId)!;
+                var input = TrialJobInput.Parse(saved.InputJson);
+                var evidence = ReviewInputArtifacts.Read(database, input.ReviewInputs!);
+                return (receipt, document.RootElement.GetProperty("words").EnumerateArray()
+                    .Select(row => row.Clone()).ToArray(), evidence.Inputs.EvidenceManifestDigest);
+            }
+
+            var first = Run("  " + alpha + "\n\n" + alpha.Normalize(System.Text.NormalizationForm.FormD) + "\n");
+            var second = Run(beta + "\n");
+            Assert.Equal(first.Rows.Select(row => row.GetProperty("caseKey").GetString()),
+                second.Rows.Select(row => row.GetProperty("caseKey").GetString()));
+            Assert.NotEqual(first.InputDigest, second.InputDigest);
+            Assert.NotEqual(first.Receipt.ReportDigest, second.Receipt.ReportDigest);
+            foreach (var (run, explicitForm) in new[] { (first, alpha), (second, beta) })
+            {
+                var marked = Assert.Single(run.Rows, row => row.GetProperty("explicitInput").ValueKind != JsonValueKind.Null);
+                Assert.Equal(explicitForm, marked.GetProperty("explicitInput").GetProperty("submittedForm").GetString());
+                Assert.Equal(1, marked.GetProperty("explicitInput").GetProperty("ordinal").GetInt32());
+                Assert.Equal("gold", Assert.Single(marked.GetProperty("memberships").EnumerateArray())
+                    .GetProperty("setId").GetString());
+            }
         }
         finally { Directory.Delete(root, recursive: true); }
     }

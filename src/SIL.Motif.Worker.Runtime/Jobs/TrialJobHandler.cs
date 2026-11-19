@@ -64,10 +64,26 @@ public sealed record TrialJobInput(
     [JsonPropertyName("expectedLosses")]
     public IReadOnlyList<string>? ExpectedLosses { get; init; }
 
+    /// <summary>The frozen revision of the measured Proposal or Draft, for durable export.</summary>
+    [JsonPropertyName("exportRevision"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ExportRevision { get; init; }
+
+    /// <summary>The exact input references for Baseline batches whose dispatch was observed.</summary>
+    [JsonPropertyName("reviewBeforeDispatches"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TrialBeforeDispatch>? ReviewBeforeDispatches { get; init; }
+
     /// <exception cref="InvalidOperationException">The input is not a well-formed Trial job input.</exception>
     public static TrialJobInput Parse(string inputJson) =>
         JsonSerializer.Deserialize<TrialJobInput>(inputJson, MotifJson.CreateOptions())
         ?? throw new InvalidOperationException("A Trial job's input could not be read.");
+}
+
+/// <summary>Identifies the words and parser for one observed Baseline batch dispatch.</summary>
+public sealed record TrialBeforeDispatch(string? WritingSystemId, string? ExecutableSha256, JobWordList? WordList = null)
+{
+    /// <summary>The observed callback words, before the producer stores them with the job's input lists.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IReadOnlyList<string>? Words { get; init; }
 }
 
 /// <summary>
@@ -171,19 +187,30 @@ internal sealed class TrialJobHandler
         ReviewEvidenceState? review = null;
         if (input.ReviewInputs is { } reference)
         {
-            var frozen = ReviewInputArtifacts.Read(claim.Database, reference).Inputs;
+            var artifact = ReviewInputArtifacts.Read(claim.Database, reference);
+            var frozen = artifact.Inputs;
+            var export = new TrialExportCapture(claim.Database, artifact, input);
             var ledger = TrialReviewEvidence.Open(claim.Database, claim.JobId, reference);
             if (input.ReviewBeforePartial is { } partial)
-                ledger = ledger with { Before = TrialReviewEvidence.ReadBefore(claim.Database, partial) };
+            {
+                var observations = TrialReviewEvidence.ReadBefore(claim.Database, partial);
+                ledger = ledger with { Before = observations };
+                export.BeforePartial(observations);
+            }
             foreach (var partition in input.ReviewBaselines ?? [])
             {
-                var words = partition.AssessmentIds.SelectMany(id => _assessments.Get(id).Words ?? []);
+                var records = partition.AssessmentIds.Select(id => _assessments.Get(id)).ToArray();
+                var words = records.SelectMany(item => item.Words ?? []).ToArray();
+                export.Before(partition.WritingSystemId, words, records.Select(item => item.Invocation));
                 ledger = ledger with { Before = ledger.Before.Concat(TrialReviewEvidence.Observe(frozen, partition.CaseKeys, words))
                     .GroupBy(item => item.CaseKey, StringComparer.Ordinal).Select(group => group.Last()).ToArray() };
             }
             if (input.ReviewBeforeStopCode is { } beforeStop)
+            {
                 ledger = TrialReviewEvidence.Interrupt(ledger, frozen, "before", beforeStop);
-            review = new ReviewEvidenceState(claim.Database, claim.CapturedClaimToken, frozen, ledger);
+                export.BeforeInterrupted(beforeStop);
+            }
+            review = new ReviewEvidenceState(claim.Database, claim.CapturedClaimToken, frozen, ledger, export);
             review.Save();
         }
         var seconds = new NamedSelectionRepository(claim.Database).GetDefault()?.Limits.AssessBudgetSeconds ?? SIL.Motif.Contract.Requests.SelectionParsingLimits.DefaultAssessBudgetSeconds;
@@ -194,13 +221,15 @@ internal sealed class TrialJobHandler
         else budget.CancelAfter(remaining);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, budget.Token);
         var progress = new BudgetProgress { Total = review?.Inputs.Cases.Count ?? 0 };
+        string CancellationCode() => cancellationToken.IsCancellationRequested ? "cancelled" : RefusalCodes.AssessmentStoppedByBudget;
         try
         {
-            return await RunBudgetedAsync(claim, project, progress, review, linked.Token).ConfigureAwait(false);
+            return await RunBudgetedAsync(claim, project, progress, review, CancellationCode, linked.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            review?.Interrupt(cancellationToken.IsCancellationRequested ? "cancelled" : RefusalCodes.AssessmentStoppedByBudget);
+            review?.Interrupt(CancellationCode());
+            review?.PublishExport();
             if (!budget.IsCancellationRequested || cancellationToken.IsCancellationRequested)
                 return new JobOutcome(JobStatus.Cancelled, JobFailureCategory.Cancellation);
             var completed = Volatile.Read(ref progress.Done);
@@ -218,10 +247,30 @@ internal sealed class TrialJobHandler
     private sealed class BudgetProgress { public int Done; public int Total; }
 
     private sealed class ReviewEvidenceState(MotifDatabase database, string? claimToken, Contract.Review.FrozenReviewInputs inputs,
-        TrialReviewLedger ledger)
+        TrialReviewLedger ledger, TrialExportCapture export)
     {
         public Contract.Review.FrozenReviewInputs Inputs { get; } = inputs;
         public TrialReviewLedger Ledger { get; private set; } = ledger;
+        public TrialExportCapture Export { get; } = export;
+        public string? BaselinePath { get; set; }
+        private bool _exportPublished;
+
+        public void PublishExport()
+        {
+            if (_exportPublished || string.IsNullOrWhiteSpace(claimToken)) return;
+            try
+            {
+                Ledger = Export.FreezeLedgerReadings(Ledger, BaselinePath);
+                Save();
+                Export.Publish(database, Ledger.JobId, claimToken);
+                _exportPublished = true;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                ReportTrialMaintenanceFailure(Ledger.JobId, "publish Trial evidence export", exception);
+            }
+        }
+
         public void Save() => TrialReviewEvidence.SaveForClaim(database, Ledger, claimToken);
         public void Add(IReadOnlyCollection<string> keys, IEnumerable<AssessedWord> words)
         {
@@ -247,15 +296,17 @@ internal sealed class TrialJobHandler
             Ledger = Ledger with { CandidateFileDigest = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(stream)) };
             Save();
         }
-        public void Interrupt(string code)
+        public void Interrupt(string code, string? detail = null)
         {
+            Export.AfterInterrupted(code, detail);
             Ledger = TrialReviewEvidence.Interrupt(Ledger, Inputs, "after", code);
             Save();
         }
     }
 
     private async Task<JobOutcome?> RunBudgetedAsync(ClaimedJob claim, ProjectLocator project,
-        BudgetProgress progress, ReviewEvidenceState? review, CancellationToken cancellationToken)
+        BudgetProgress progress, ReviewEvidenceState? review, Func<string> cancellationCode,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(claim);
@@ -282,6 +333,7 @@ internal sealed class TrialJobHandler
             ? ReviewInputArtifacts.Read(claim.Database, reviewInputs) : null;
         if (reviewArtifact is not null && reviewArtifact.Baseline != baseline.Token)
             throw new InvalidOperationException("The Trial's captured review Baseline is no longer current.");
+        if (review is not null) review.BaselinePath = baseline.FwDataPath;
         progress.Total = review?.Inputs.Cases.Count ?? input.Words?.Count ?? 0;
         var proposal = ProposalJsonParser.Parse(input.ProposalJson);
         var scopeConfiguration = reviewArtifact?.Scope ?? ResolveScope(_configuration.Read(project), input.Scope);
@@ -292,6 +344,19 @@ internal sealed class TrialJobHandler
         claim.Transition(JobStatus.WaitingForBaseline);
 
         var scratchRoot = TrialScratchPath.ForJob(claim.Job.JobId);
+        var export = review?.Export;
+        void PublishEvidence()
+        {
+            if (review is not null) review.PublishExport();
+            else if (export is not null)
+            {
+                try { export.Publish(claim.Database, claim.JobId, claim.CapturedClaimToken); }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    ReportTrialMaintenanceFailure(claim.JobId, "publish Trial evidence export", exception);
+                }
+            }
+        }
         using var scratchLease = TrialScratchRetention.Lock(scratchRoot);
         while (!scratchLease.TryAcquire())
             await Task.Delay(50, cancellationToken).ConfigureAwait(false);
@@ -306,11 +371,21 @@ internal sealed class TrialJobHandler
                 scopeConfiguration, words, input.AllWords, input.Limits, baseline.FwDataPath,
                 scratchRoot, reviewArtifact is null ? null : ReviewInputPartitions.Create(reviewArtifact.Inputs),
                 cancellationToken).ConfigureAwait(false);
+            if (export is null && input.ExportRevision is not null)
+            {
+                export = TrialExportCapture.Unpartitioned(claim.Database, input, workspaceKey, proposal.ProposalId.Value, baseline.Token,
+                    baseline.FwDataPath, candidate.Scope.WordForms);
+                var records = (input.BaselineAssessmentIds ?? []).Select(id => _assessments.Get(id)).ToArray();
+                export.Before(null, records.SelectMany(item => item.Words ?? []), records.Select(item => item.Invocation));
+            }
+            export?.BindCandidate(candidate.GrammarPath);
             review?.BindCandidate(candidate.GrammarPath);
             review?.SetGdrSync(candidate.GdrSync);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            export?.AfterInterrupted(JobFailureDetail.Code(exception) ?? RefusalCodes.AssessUnavailable, exception.Message);
+            PublishEvidence();
             if (!preserveScratch) TryDeleteDirectory(scratchRoot);
             var detail = JobFailureDetail.Serialize(exception);
             // A successful terminal status may not carry a failure category, so only Failed gets one here.
@@ -389,7 +464,7 @@ internal sealed class TrialJobHandler
                 _grammarHealth is null ? 1 : 2, "assessment");
             var batchWait = claim.ObserveParserWait(batchPhase);
             var artifactLeases = new List<AssessmentArtifactLease>();
-            var producedGroups = new List<(CandidatePartition Partition, IReadOnlyList<ProducedAssessment> Produced)>();
+            var groups = new List<(CandidatePartition Partition, IReadOnlyList<NewAssessmentRecord> Records)>();
             var published = false;
             var preserveArtifacts = false;
             try
@@ -403,37 +478,54 @@ internal sealed class TrialJobHandler
                         Interlocked.Exchange(ref progress.Done, completed);
                         claim.PublishTrialProgress(wordProgress with { Completed = completed, Total = totalWords, PerWordLimitMs = limitMs });
                     }
+                    if (assessor is PanGlossAssessor)
+                        export?.PlanAfter(partition.WritingSystemId, partition.Scope.WordForms, partition.Scope.Casing);
                     var produced = assessor is PanGlossAssessor panGloss
                         ? await panGloss.ProduceAsync(partition.Scope, candidate.ExportedDirectory, WordProgress,
                             batchWait.Observe, cancellationToken, importedSnapshot, rows =>
                             {
-                                if (review is null) return;
-                                review.Add(partition.CaseKeys, rows.Select(row => new AssessedWord(row.Word,
-                                    row.InvalidShape ? "skipped" : row.TimedOut ? "timed-out" : row.Capped ? "stopped" :
-                                    row.Analyses.Count > 0 || row.Unavailable.Count > 0 ? "analysed" : "no-analysis", [])
-                                    { Morphology = row }));
-                            }).ConfigureAwait(false)
+                                if (export is null) return;
+                                var partial = rows.Select(TrialExportCapture.PartialWord).ToArray();
+                                export.After(partition.WritingSystemId, partial, []);
+                                review?.Add(partition.CaseKeys, partial);
+                            }, (forms, executable) => export?.AfterDispatched(partition.WritingSystemId, forms, executable))
+                            .ConfigureAwait(false)
                         : await assessor.ProduceAsync(partition.Scope, candidate.ExportedDirectory, WordProgress,
                             batchWait.Observe, cancellationToken).ConfigureAwait(false);
-                    producedGroups.Add((partition, produced));
-                    if (review is not null)
-                    {
-                        var measured = PrepareAll(produced, proposal, candidate.DryRun, partition.Selection, partition.Scope,
-                            scopeConfiguration, assessor.Name, baseline.Token, candidate.ProjectStandings);
-                        review.Add(partition.CaseKeys, measured.SelectMany(record => record.Words));
-                    }
                     artifactLeases.AddRange(produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>()
                         .Where(lease => !artifactLeases.Contains(lease)));
+                    var measured = PrepareAll(produced, proposal, candidate.DryRun, partition.Selection, partition.Scope,
+                        scopeConfiguration, assessor.Name, baseline.Token, candidate.ProjectStandings);
+                    groups.Add((partition, measured));
+                    if (export is not null)
+                    {
+                        var measuredWords = measured.SelectMany(record => record.Words).ToArray();
+                        export.After(partition.WritingSystemId, measuredWords, produced.Select(item => item.Invocation));
+                        review?.Add(partition.CaseKeys, measuredWords);
+                    }
                     completedEarlier += partition.Scope.ParsedWords.Count;
                 }
                 cancellationToken.ThrowIfCancellationRequested();
+                PublishEvidence();
                 var records = new List<NewAssessmentRecord>();
                 var reviewAfter = new List<ReviewAfterPartition>();
-                foreach (var group in producedGroups)
+                foreach (var group in groups)
                 {
-                    var part = PrepareAll(group.Produced, proposal, candidate.DryRun,
-                        group.Partition.Selection, group.Partition.Scope, scopeConfiguration, assessor.Name, baseline.Token,
-                        candidate.ProjectStandings);
+                    var part = export is null ? group.Records : group.Records.Select(record =>
+                    {
+                        var material = record.RequireWordMaterial();
+                        return record with
+                        {
+                            Material = material with
+                            {
+                                Rows = material.Rows.Select(word => word with
+                                {
+                                    Morphology = export.Morphology(false, group.Partition.WritingSystemId, word.Word)
+                                        ?? word.Morphology,
+                                }).ToArray(),
+                            },
+                        };
+                    }).ToArray();
                     records.AddRange(part);
                     reviewAfter.Add(new(group.Partition.WritingSystemId, group.Partition.CaseKeys,
                         part.Select(record => record.AssessmentId).ToArray()));
@@ -506,10 +598,18 @@ internal sealed class TrialJobHandler
                 }
             }
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException)
+        {
+            export?.AfterInterrupted(cancellationCode());
+            PublishEvidence();
+            throw;
+        }
         catch (Exception exception)
         {
-            review?.Interrupt(JobFailureDetail.Code(exception) ?? RefusalCodes.AssessUnavailable);
+            var code = JobFailureDetail.Code(exception) ?? RefusalCodes.AssessUnavailable;
+            if (review is not null) review.Interrupt(code, exception.Message);
+            else export?.AfterInterrupted(code, exception.Message);
+            PublishEvidence();
             var detail = JobFailureDetail.Serialize(exception);
             if (JobFailureDetail.Category(exception) is { } category)
                 return new JobOutcome(JobStatus.Failed, category, detail);

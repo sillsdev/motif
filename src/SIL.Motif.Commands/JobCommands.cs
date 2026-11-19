@@ -22,6 +22,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Model.DryRun;
@@ -276,7 +277,15 @@ public static class JobCommands
                     ? TrialReviewEvidence.StoreBefore(database, partial) : null,
                 ReviewRevision: record.DraftName is null ? IntentDigest.Compute(proposal) : null,
                 ReviewCounterSemantics: request.ReviewInputs is null ? null : SIL.Motif.Host.PanGloss.PanGlossInterfaceVersions.StatsCounterSemanticsVersion)
-                { ExpectedLosses = request.ExpectedLosses?.ToArray() };
+                {
+                    ExpectedLosses = request.ExpectedLosses?.ToArray(),
+                    ExportRevision = record.DraftName is null ? record.IntentDigest : DraftRevision.Compute(record.ProposalJson),
+                    ReviewBeforeDispatches = request.ReviewBeforeDispatches?.Select(batch => batch with
+                    {
+                        WordList = JobWordLists.Store(database, batch.Words!),
+                        Words = null,
+                    }).ToArray(),
+                };
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var stamped = JobParserPin.Stamp(inputJson, parserPath);
             if (stop is null)
@@ -300,6 +309,11 @@ public static class JobCommands
                     });
                 if (input.ReviewInputs is not null)
                 {
+                    try { TrialExportCapture.PublishInterrupted(database, stopped, Side.Before, stop.Code, stop.Message); }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        System.Diagnostics.Trace.TraceError("Could not publish the interrupted Trial export: {0}", exception.Message);
+                    }
                     try
                     {
                         new SIL.Motif.Worker.Runtime.Review.TrialReviewPublisher(database).PublishAsync(
@@ -908,6 +922,14 @@ public static class JobCommands
             if (changed.Kind == TrialKind && changed.Status == JobStatus.Cancelled &&
                 TrialJobInput.Parse(changed.InputJson).ReviewInputs is not null)
             {
+                try
+                {
+                    TrialExportCapture.PublishInterrupted(database, changed, Side.After, "cancelled", "The candidate was cancelled before dispatch.");
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    System.Diagnostics.Trace.TraceError("Could not publish the cancelled Trial export: {0}", exception.Message);
+                }
                 try
                 {
                     new SIL.Motif.Worker.Runtime.Review.TrialReviewPublisher(database).PublishAsync(

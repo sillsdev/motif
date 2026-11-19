@@ -18,6 +18,55 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class TrialReviewReportAcceptanceTests
 {
     [Fact]
+    public async Task TrialExportReturnsTheSameBoundedReceiptThroughCliAndMcp()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var receipt = fixture.CreateInterruptedTrialExport();
+        var root = Path.Combine(fixture.Root, "worker");
+        Directory.CreateDirectory(root);
+        using var managed = PrivateManagedRoot.Use(root);
+        var managedRoot = RunnerOptions.ResolveRoot();
+        using (var machine = MachineDatabase.Open(managedRoot))
+            new KnownProjectRegistry(machine).Record(fixture.ProjectKey, fixture.Project, DateTimeOffset.UtcNow);
+        var context = new ServerContext(fixture.Project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)),
+            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+        var args = new Dictionary<string, JsonElement>
+        {
+            ["project"] = JsonSerializer.SerializeToElement(fixture.Project),
+            ["jobId"] = JsonSerializer.SerializeToElement(receipt.JobId),
+        };
+        var mcp = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+            "motif_proposal_trial_export", args, CancellationToken.None);
+        Assert.NotEqual(true, mcp.IsError);
+        var cli = await CliProcess.RunAsync(managedRoot, null, false,
+            "proposal", "trial", "export", receipt.JobId, "--project", fixture.Project, "--json");
+        Assert.True(cli.ExitCode == 0, cli.Error);
+        using var json = JsonDocument.Parse(cli.Output);
+        var cliReceipt = json.RootElement;
+        Assert.True(JsonElement.DeepEquals(cliReceipt, mcp.StructuredContent!.Value.GetProperty("result")));
+        Assert.Equal(receipt.Path, cliReceipt.GetProperty("path").GetString());
+        Assert.Equal(receipt.Sha256, cliReceipt.GetProperty("sha256").GetString());
+        Assert.Equal(fixture.Report, cliReceipt.GetProperty("reportId").GetString());
+        Assert.NotEmpty(cliReceipt.GetProperty("reportDigest").GetString()!);
+        var brief = await CliProcess.RunAsync(managedRoot, null, false,
+            "proposal", "trial", "export", receipt.JobId, "--project", fixture.Project);
+        Assert.True(brief.ExitCode == 0, brief.Error);
+        Assert.Contains(receipt.Path, brief.Output);
+        Assert.InRange(System.Text.Encoding.UTF8.GetByteCount(brief.Output), 1, 2000);
+
+        args["at"] = cliReceipt.GetProperty("reportDigest").Clone();
+        args["page"] = JsonSerializer.SerializeToElement(1);
+        var mcpPage = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+            "motif_proposal_trial_export", args, CancellationToken.None);
+        Assert.NotEqual(true, mcpPage.IsError);
+        var cliPage = await CliProcess.RunAsync(managedRoot, null, false, "proposal", "trial", "export",
+            receipt.JobId, "--project", fixture.Project, "--at", args["at"].GetString()!, "--page", "1", "--json");
+        Assert.True(cliPage.ExitCode == 0, cliPage.Error);
+        using var pageJson = JsonDocument.Parse(cliPage.Output);
+        Assert.True(JsonElement.DeepEquals(pageJson.RootElement, mcpPage.StructuredContent!.Value.GetProperty("result")));
+    }
+
+    [Fact]
     public async Task EveryDisclosureLevelKeepsSameFactsAndReachesEveryCase()
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-acceptance-machine-" + Guid.NewGuid().ToString("N"));

@@ -104,7 +104,12 @@ public sealed partial class MotifDatabase : IDisposable
         TimeSpan? ownershipPatience = null,
         Action? onWaitingForOwnership = null) =>
         MotifSqliteStore.DeleteIfOtherVersion(path, Describe(path, project, supportedSchema, workerVersion),
-            ownershipPatience, onWaitingForOwnership);
+            ownershipPatience, onWaitingForOwnership, fullPath =>
+            {
+                var evidence = TrialExportDirectory(fullPath);
+                if (Directory.Exists(evidence))
+                    Directory.Delete(evidence, recursive: (File.GetAttributes(evidence) & FileAttributes.ReparsePoint) == 0);
+            });
 
     private static MotifSqliteStoreDescriptor Describe(
         string path, ProjectLocator project, int supportedSchema, Version workerVersion,
@@ -147,6 +152,9 @@ public sealed partial class MotifDatabase : IDisposable
             }
         };
     }
+
+    /// <summary>Returns the store-owned directory for durable Trial evidence.</summary>
+    public static string TrialExportDirectory(string storePath) => storePath + ".trial-exports";
 
     /// <summary>Opens a configured connection while this worker owns the database.</summary>
     public SqliteConnection OpenConnection() => _store.OpenConnection();

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Contract.Responses;
 
@@ -9,7 +10,8 @@ namespace SIL.Motif.Host.Parser;
 public static class ParseMorphEvidence
 {
     public const string Schema = "fieldworks-parse-analysis/v1";
-    public static JsonSerializerOptions JsonOptions { get; } = new()
+    /// <summary>Preserves the canonical Reading facts when Motif stores captured morphology.</summary>
+    public static JsonSerializerOptions StoredJsonOptions { get; } = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
@@ -17,6 +19,19 @@ public static class ParseMorphEvidence
         RespectNullableAnnotations = true,
         AllowDuplicateProperties = false,
     };
+
+    /// <summary>Serializes the closed parser wire, independently of evidence Motif derives from it.</summary>
+    public static JsonSerializerOptions JsonOptions { get; } = new(StoredJsonOptions)
+    {
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { ExcludeTrialFields } },
+    };
+
+    private static void ExcludeTrialFields(JsonTypeInfo info)
+    {
+        if (info.Type != typeof(ParseAnalysis)) return;
+        foreach (var property in info.Properties.Where(item => item.Name is "signature" or "morphemeAcceptance").ToArray())
+            info.Properties.Remove(property);
+    }
 
     public static IReadOnlyList<ParseWordEvidence> Read(string jsonl, IReadOnlyList<string> words)
     {

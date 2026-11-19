@@ -77,6 +77,24 @@ public sealed record BatchInvocationEvidence(
         return "sha256:" + Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
     }
 
+    /// <summary>Reads the exact parser input rows when their retained bytes still match the invocation.</summary>
+    public static IReadOnlyList<string>? ReadVerifiedWords(BatchInvocationEvidence invocation)
+    {
+        try
+        {
+            var snapshot = ReadTextWithDigest(invocation.WordsPath);
+            if (snapshot.Sha256 != invocation.WordsSha256) return null;
+            using var reader = new StringReader(snapshot.Text);
+            var words = new List<string>();
+            while (reader.ReadLine() is { } word) words.Add(word);
+            return words;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
     internal static TextSnapshot ReadTextWithDigest(string path)
     {
         using var stream = new DigestingReadStream(File.OpenRead(path));

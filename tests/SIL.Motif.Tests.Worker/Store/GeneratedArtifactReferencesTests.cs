@@ -33,6 +33,20 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
     public GeneratedArtifactReferencesTests() => Directory.CreateDirectory(_root);
 
     [Fact]
+    public void TrialExportBindingLeavesTheReportInventoryCompleteWithoutHoldingAnAssessment()
+    {
+        using var database = OpenDatabase("trial.fwdata");
+        const string bindingId = "trial-export-binding-fixture";
+        new ReportRepository(database).Save(new(bindingId, null, null, "{}", null, "trial-export-binding"));
+
+        var references = Capture(database);
+
+        Assert.True(references.FamilyCompleteness.Single(item => item.Family == ArtifactReferenceFamily.Reports).IsComplete);
+        Assert.Contains(references.RetentionRecords, item => item.RecordId == "Reports/" + bindingId);
+        Assert.DoesNotContain(references.References, item => item.RetainingRecordId == "Reports/" + bindingId);
+    }
+
+    [Fact]
     public void CapturesFrozenParsimonyCitationsAndNoEdgesFromASavedDifferenceInADeclaredPrivateSnapshot()
     {
         using var database = OpenDatabase("one.fwdata");

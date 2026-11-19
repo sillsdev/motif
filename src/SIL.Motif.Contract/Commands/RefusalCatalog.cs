@@ -498,6 +498,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.TrialNothingPending, FailureReason.Refused),
         Spec(RefusalCodes.TrialProposalGone, FailureReason.NotFound),
         Spec(RefusalCodes.TrialReviewBaselineChanged, FailureReason.Refused),
+        Spec(RefusalCodes.TrialExportUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.TrialReviewInputUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.TrialTraceUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.TrialUpdateInProgress, FailureReason.Busy),

@@ -307,7 +307,7 @@ internal sealed class MotifSqliteStore : IDisposable
     /// </summary>
     /// <returns><c>true</c> when the file was deleted; <c>false</c> when it is absent, empty, or usable.</returns>
     public static bool DeleteIfOtherVersion(string path, MotifSqliteStoreDescriptor descriptor,
-        TimeSpan? ownershipPatience = null, Action? onWaitingForOwnership = null)
+        TimeSpan? ownershipPatience = null, Action? onWaitingForOwnership = null, Action<string>? resetArtifacts = null)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         var fullPath = Path.GetFullPath(path);
@@ -336,6 +336,7 @@ internal sealed class MotifSqliteStore : IDisposable
         }
 
         using var useLease = AcquireExclusiveUseLease(fullPath);
+        resetArtifacts?.Invoke(fullPath);
         File.Delete(fullPath);
         return true;
     }

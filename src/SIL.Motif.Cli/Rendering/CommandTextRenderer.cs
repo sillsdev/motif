@@ -101,6 +101,7 @@ public static class CommandTextRenderer
             ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
             FindComposerResponse r => RenderFindComposer(r),
+            TrialExportReceipt r => RenderTrialExport(r),
             TrialRecord r => RenderTrial(r),
             TrialReviewResult r => TrialReviewTextRenderer.Render(r),
             ReviewNumbersResponse r => RenderReviewNumbers(r),
@@ -694,6 +695,18 @@ public static class CommandTextRenderer
                 $"segment {occurrence.SegmentId}, position {occurrence.Index}.");
         AppendTextListOverflow(text, response.SkippedOccurrences.Count, TextListLimit);
         return text.ToString();
+    }
+
+    private static string RenderTrialExport(TrialExportReceipt receipt)
+    {
+        var counts = receipt.Denominators;
+        var location = receipt.PathIsStoreSuffix ? "Trial evidence next to the paired store" : "Trial evidence";
+        var comparison = receipt.ComparisonComplete ? "Comparison complete" : "Comparison incomplete";
+        var summary = $"{location}: {receipt.Path} ({receipt.Bytes:N0} bytes, {receipt.PublishMilliseconds:N0} ms to write and hash)\n" +
+            $"Submitted: {counts.Submitted:N0}  Expanded: {counts.Expanded:N0}\n" +
+            $"Before: {counts.Before.Dispatched:N0} dispatched, {counts.Before.Finished:N0} finished\n" +
+            $"After: {counts.After.Dispatched:N0} dispatched, {counts.After.Finished:N0} finished\n" + comparison;
+        return receipt.Page is null ? summary : summary + "\n" + ProjectionJson.Serialize(receipt.Page);
     }
 
     private static string RenderTrial(TrialRecord trial)

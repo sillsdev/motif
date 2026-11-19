@@ -111,6 +111,9 @@ public abstract record PanGlossRequest
         /// <summary>Receives validated, attributable morphology rows from an interrupted batch.</summary>
         public Action<IReadOnlyList<SIL.Motif.Contract.Responses.ParseWordEvidence>>? OnPartial { get; init; }
 
+        /// <summary>Receives the exact words and any available executable digest when the batch child starts.</summary>
+        public Action<IReadOnlyList<string>, string?>? OnDispatched { get; init; }
+
         public override string Subcommand => "batch";
 
         internal override void Validate()

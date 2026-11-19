@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
@@ -11,6 +12,10 @@ namespace SIL.Motif.Worker.Jobs;
 /// <summary>One attributed observation for a planned Trial case.</summary>
 public sealed record TrialReviewObservation(string CaseKey, string Word, string Outcome, ParseWordEvidence? Morphology)
 {
+    /// <summary>Lowercase observations attributed to this input before an interrupted batch stopped.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<ParseWordEvidence>? ExpandedForms { get; init; }
+
     /// <summary>Independent producer-attributed reasons that this case did not complete.</summary>
     public IReadOnlyList<string> StopReasons =>
         (Morphology?.TimedOut == true || Outcome == "timed-out" ? new[] { "time-limit" } : [])
@@ -87,13 +92,14 @@ public static class TrialReviewEvidence
         var inputs = ReviewInputArtifacts.Read(database, reference).Inputs;
         var ledger = Open(database, jobId, reference);
         if (input.ReviewBeforePartial is { } partial)
-            ledger = ledger with { Before = ReadBefore(database, partial) };
+            ledger = ledger with { Before = ledger.Before.Concat(ReadBefore(database, partial))
+                .DistinctBy(item => item.CaseKey, StringComparer.Ordinal).ToArray() };
         var repository = new AssessmentRepository(database);
         foreach (var partition in input.ReviewBaselines ?? [])
         {
             var words = partition.AssessmentIds.SelectMany(id => repository.Get(id).Words ?? []);
             ledger = ledger with { Before = ledger.Before.Concat(Observe(inputs, partition.CaseKeys, words))
-                .GroupBy(item => item.CaseKey, StringComparer.Ordinal).Select(group => group.Last()).ToArray() };
+                .DistinctBy(item => item.CaseKey, StringComparer.Ordinal).ToArray() };
         }
         if (input.ReviewBeforeStopCode is { } stop && !ledger.Interruptions.Any(item => item.Side == "before" && item.Code == stop))
             ledger = Interrupt(ledger, inputs, "before", stop);
@@ -126,7 +132,14 @@ public static class TrialReviewEvidence
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 
-    internal static void SaveForClaim(MotifDatabase database, TrialReviewLedger ledger, string? claimToken)
+    internal static void SaveForClaim(MotifDatabase database, TrialReviewLedger ledger, string? claimToken) =>
+        WithClaim(database, ledger.JobId, claimToken, () => Save(database, ledger));
+
+    internal static void WithClaim(MotifDatabase database, string jobId, string? claimToken, Action publish) =>
+        WithClaim(database, jobId, claimToken, (_, _) => publish());
+
+    internal static void WithClaim(MotifDatabase database, string jobId, string? claimToken,
+        Action<SqliteConnection, SqliteTransaction> publish)
     {
         if (string.IsNullOrWhiteSpace(claimToken))
             throw new OperationCanceledException("The Trial has no active claim for review evidence publication.");
@@ -135,11 +148,11 @@ public static class TrialReviewEvidence
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = "SELECT COUNT(*) FROM Jobs WHERE JobId = $id AND ClaimToken IS $token;";
-        command.Parameters.AddWithValue("$id", ledger.JobId);
+        command.Parameters.AddWithValue("$id", jobId);
         command.Parameters.AddWithValue("$token", (object?)claimToken ?? DBNull.Value);
         if (Convert.ToInt64(command.ExecuteScalar()) != 1)
             throw new OperationCanceledException("The Trial claim no longer owns review evidence publication.");
-        Save(database, ledger);
+        publish(connection, transaction);
         transaction.Commit();
     }
 

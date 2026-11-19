@@ -71,9 +71,12 @@ public sealed class ReportRepository
             throw new ArgumentException("Report id and report JSON are required.", nameof(report));
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
-        Write(connection, transaction, report, immutable: false);
+        Save(connection, transaction, report);
         transaction.Commit();
     }
+
+    internal static void Save(SqliteConnection connection, SqliteTransaction transaction, ReportRecord report) =>
+        Write(connection, transaction, report, immutable: false);
 
     internal static void SaveImmutable(SqliteConnection connection, SqliteTransaction transaction, ReportRecord report)
     {

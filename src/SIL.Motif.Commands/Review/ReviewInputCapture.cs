@@ -22,7 +22,8 @@ public static class ReviewInputCapture
         IReadOnlyList<ReviewCaptureSet> sets, IReadOnlyList<string>? selectedSetIds,
         IReadOnlyList<string> touchedWords, IReadOnlyList<ReviewProjectWordIdentity> identities,
         IReadOnlyList<ReviewAssertion> assertions, IReadOnlyList<ReviewNegativeExpectation> negatives,
-        CancellationToken cancellationToken = default, string? policyDigest = null)
+        CancellationToken cancellationToken = default, string? policyDigest = null,
+        IReadOnlyList<string>? explicitWords = null)
     {
         ArgumentNullException.ThrowIfNull(sets);
         ArgumentNullException.ThrowIfNull(touchedWords);
@@ -103,7 +104,17 @@ public static class ReviewInputCapture
                 Array.AsReadOnly(set.Members.Select(member => member.Source.Citation).Distinct(StringComparer.Ordinal)
                     .Order(StringComparer.Ordinal).ToArray())));
         }
-        foreach (var word in touchedWords.Select(word => word.Normalize(NormalizationForm.FormD)).Distinct(StringComparer.Ordinal))
+        var explicitInputs = new Dictionary<string, ExplicitTrialInput>(StringComparer.Ordinal);
+        foreach (var submitted in explicitWords ?? [])
+        {
+            var spelling = submitted.Trim();
+            if (spelling.Length > 0)
+                explicitInputs.TryAdd(spelling.Normalize(NormalizationForm.FormD), new(explicitInputs.Count + 1, spelling));
+        }
+        var ordinaryWords = explicitWords is null
+            ? touchedWords.Select(word => word.Normalize(NormalizationForm.FormD)).Distinct(StringComparer.Ordinal)
+            : explicitInputs.Keys;
+        foreach (var word in ordinaryWords)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var matches = identities.Where(item => item.Word == word).ToArray();
@@ -125,7 +136,8 @@ public static class ReviewInputCapture
                     item.Assertions.TryAdd(assertion.Id, FreezeAssertion(assertion));
             }
         }
-        var rows = cases.Values.Select(item => item.Freeze()).OrderBy(item => item.CaseKey, StringComparer.Ordinal).ToArray();
+        var rows = cases.Values.Select(item => item.Freeze() with { ExplicitInput = explicitInputs.GetValueOrDefault(item.Word) })
+            .OrderBy(item => item.CaseKey, StringComparer.Ordinal).ToArray();
         var scopeDigest = Hash(new
         {
             policyDigest,

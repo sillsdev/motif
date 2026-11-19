@@ -40,6 +40,8 @@ public sealed record EnqueueTrialRequest(
     internal SIL.Motif.Contract.Review.FrozenReviewInputs? ReviewSnapshot { get; init; }
     internal IReadOnlyList<SIL.Motif.Worker.Jobs.ReviewBaselinePartition>? ReviewBaselines { get; init; }
     internal string? ReviewBeforeStopCode { get; init; }
+    internal IReadOnlyDictionary<string, string>? ReviewBeforeExpansions { get; init; }
+    internal IReadOnlyList<SIL.Motif.Worker.Jobs.TrialBeforeDispatch>? ReviewBeforeDispatches { get; init; }
     internal IReadOnlyList<SIL.Motif.Worker.Jobs.TrialReviewObservation>? ReviewBeforePartial { get; init; }
 }
 

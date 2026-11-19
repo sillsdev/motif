@@ -1,0 +1,58 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "jobId", "path", "bytes", "sha256", "reportId", "reportDigest", "denominators", "proposalRevision", "baselineBundle", "publishMilliseconds", "pages", "comparisonComplete", "pathIsStoreSuffix"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "jobId": {"type": "string", "minLength": 1},
+    "path": {"type": "string", "minLength": 1},
+    "bytes": {"type": "integer", "minimum": 1},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "reportId": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+    "reportDigest": {"anyOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"type": "null"}]},
+    "proposalRevision": {"type": "string", "minLength": 1},
+    "baselineBundle": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "publishMilliseconds": {"type": "integer", "minimum": 0},
+    "pages": {"type": "integer", "minimum": 0},
+    "comparisonComplete": {"type": "boolean"},
+    "pathIsStoreSuffix": {"type": "boolean"},
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["number", "nextPage", "words"],
+      "properties": {
+        "number": {"type": "integer", "minimum": 1},
+        "nextPage": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "words": {"type": "array", "maxItems": 100, "items": {"$ref": "trial-export.schema.json#/$defs/Word"}}
+      }
+    },
+    "denominators": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["submitted", "expanded", "finished", "before", "after"],
+      "properties": {
+        "submitted": {"type": "integer", "minimum": 0},
+        "expanded": {"type": "integer", "minimum": 0},
+        "finished": {"type": "integer", "minimum": 0},
+        "before": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dispatched", "finished"],
+          "properties": {
+            "dispatched": {"type": "integer", "minimum": 0},
+            "finished": {"type": "integer", "minimum": 0}
+          }
+        },
+        "after": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dispatched", "finished"],
+          "properties": {
+            "dispatched": {"type": "integer", "minimum": 0},
+            "finished": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    }
+  }
+}

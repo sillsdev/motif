@@ -126,10 +126,18 @@ public sealed record ReviewSetBinding(
     string Id, string Name, string Role, string MembershipDigest, string ExpectationDigest,
     string SourceDigest, IReadOnlyList<string> SourceRefs);
 
+/// <summary>The first submitted spelling and its one-based position among distinct explicit Trial inputs.</summary>
+public sealed record ExplicitTrialInput(int Ordinal, string SubmittedForm);
+
 /// <summary>A planned case and its memberships, captured even when a search never starts.</summary>
 public sealed record ReviewPlannedCase(
     string CaseKey, string WordKey, string Word, string? WritingSystemId, string? WordformId,
-    IReadOnlyList<ReviewMembership> Memberships, IReadOnlyList<ReviewAssertion> Assertions);
+    IReadOnlyList<ReviewMembership> Memberships, IReadOnlyList<ReviewAssertion> Assertions)
+{
+    /// <summary>Identifies a caller-supplied witness even when a configured set also covers this case.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ExplicitTrialInput? ExplicitInput { get; init; }
+}
 
 /// <summary>The content-bound inputs used on both sides of one Trial.</summary>
 public sealed record FrozenReviewInputs(

@@ -3,13 +3,17 @@ using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using Json.Schema;
 using Microsoft.Data.Sqlite;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.HandAnalysis;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
@@ -1007,6 +1011,17 @@ public sealed class TrialJobHandlerTests : IDisposable
         var interruption = Assert.Single(ledger.Interruptions);
         Assert.Equal("assess.out-of-memory", interruption.Code);
         Assert.Equal("case-b", Assert.Single(interruption.PendingCaseKeys));
+        var export = Assert.IsType<TrialExportReceipt>(TrialExportArtifact.Read(_database, job.JobId));
+        Assert.Equal(new TrialExportDenominators(2, 2, 1, new(0, 0), new(1, 1)), export.Denominators);
+        using var evidence = JsonDocument.Parse(File.ReadAllBytes(export.Path));
+        var pending = Assert.Single(evidence.RootElement.GetProperty("words").EnumerateArray(),
+            item => item.GetProperty("caseKey").GetString() == "case-b");
+        Assert.Equal("skipped", pending.GetProperty("status").GetString());
+        Assert.Equal("not-measured", pending.GetProperty("reasonCode").GetString());
+        Assert.False(pending.GetProperty("expandedForms")[0].GetProperty("after").GetProperty("dispatched").GetBoolean());
+        var runCause = Assert.Single(evidence.RootElement.GetProperty("interruptions").EnumerateArray());
+        Assert.Equal("after", runCause.GetProperty("side").GetString());
+        Assert.Equal("assess.out-of-memory", runCause.GetProperty("cause").GetProperty("code").GetString());
     }
 
     [Fact]
@@ -1219,6 +1234,359 @@ public sealed class TrialJobHandlerTests : IDisposable
             Assert.Equal(expectedDigest, assessment.ProposalIntentDigest);
             Assert.Equal(proposalId, assessment.ProposalId);
         }
+    }
+
+    [Fact]
+    public void ReadingIdentityPreservesAuthoredFeatureNestingAndDerivationalDirection()
+    {
+        var source = _baselines.GetCurrent(ProjectWorkspaceKey.Compute(_project))!.FwDataPath;
+        using var project = BaselineReadCache.Open(source);
+        var cache = project.Cache;
+        var services = cache.ServiceLocator;
+        var entry = services.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+        var sense = services.GetInstance<ILexSenseRepository>().GetObject(_seed.FirstSenseId);
+        var stem = Assert.IsAssignableFrom<IMoStemMsa>(sense.MorphoSyntaxAnalysisRA);
+        var stemReading = new ParseAnalysis([new(_seed.FirstLexemeFormId.ToString("D"), stem.Guid.ToString("D"), null, null)]);
+        ReadingSignature Capture(ParseAnalysis reading) => new ReadingSignatureReader(cache).Read(reading);
+        string Id(ICmObject value) => CanonicalId.FromGuid(value.Guid).Value;
+        void Edit(Action action) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, action);
+        IFsFeatStruc Structure() => services.GetInstance<IFsFeatStrucFactory>().Create();
+        IFsClosedFeature feature = null!;
+        IFsSymFeatVal value = null!;
+        IFsComplexFeature outer = null!;
+        IFsComplexFeature inner = null!;
+        void SetValue(IFsFeatStruc structure)
+        {
+            var spec = services.GetInstance<IFsClosedValueFactory>().Create();
+            structure.FeatureSpecsOC.Add(spec);
+            spec.FeatureRA = feature;
+            spec.ValueRA = value;
+        }
+        IFsFeatStruc Nest(IFsFeatStruc structure, IFsComplexFeature component)
+        {
+            var spec = services.GetInstance<IFsComplexValueFactory>().Create();
+            structure.FeatureSpecsOC.Add(spec);
+            spec.FeatureRA = component;
+            var nestedStructure = Structure();
+            spec.ValueOA = nestedStructure;
+            return nestedStructure;
+        }
+        Edit(() =>
+        {
+            feature = services.GetInstance<IFsClosedFeatureFactory>().Create();
+            value = services.GetInstance<IFsSymFeatValFactory>().Create();
+            outer = services.GetInstance<IFsComplexFeatureFactory>().Create();
+            inner = services.GetInstance<IFsComplexFeatureFactory>().Create();
+            cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(feature);
+            cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(outer);
+            cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(inner);
+            feature.ValuesOC.Add(value);
+            SetValue(stem.MsFeaturesOA = Structure());
+        });
+        var flat = Capture(stemReading);
+        Edit(() => SetValue(Nest(Nest(stem.MsFeaturesOA = Structure(), outer), inner)));
+        var nested = Capture(stemReading);
+        Assert.NotEqual(flat.Id, nested.Id);
+        Assert.Equal(new[] { Id(outer), Id(inner), Id(feature) }, Assert.Single(nested.FeatureValues).FeaturePath);
+
+        ILexSense shared = null!;
+        Edit(() =>
+        {
+            shared = services.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(shared);
+            shared.MorphoSyntaxAnalysisRA = stem;
+        });
+        Assert.Null(Capture(stemReading).SenseId);
+        Assert.Equal(new[] { Id(sense), Id(shared) }.Order(StringComparer.Ordinal),
+            Assert.Single(Capture(stemReading).Morphemes).SenseCandidates);
+
+        ILexEntry affix = null!;
+        IMoDerivAffMsa derivation = null!;
+        IPartOfSpeech to = null!;
+        var from = services.GetInstance<IPartOfSpeechRepository>().GetObject(_seed.PartOfSpeechId);
+        Edit(() =>
+        {
+            var prefix = services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphPrefix);
+            affix = services.GetInstance<ILexEntryFactory>().Create(prefix,
+                TsStringUtils.MakeString("rer", cache.DefaultVernWs), "derivation",
+                new SandboxGenericMSA { MsaType = MsaType.kDeriv });
+            derivation = Assert.IsAssignableFrom<IMoDerivAffMsa>(Assert.Single(affix.MorphoSyntaxAnalysesOC));
+            to = services.GetInstance<IPartOfSpeechFactory>().Create();
+            cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(to);
+            derivation.FromPartOfSpeechRA = from;
+            derivation.ToPartOfSpeechRA = to;
+            SetValue(derivation.FromMsFeaturesOA = Structure());
+        });
+        var affixReading = new ParseAnalysis([new(affix.LexemeFormOA!.Guid.ToString("D"), derivation.Guid.ToString("D"), null, null)]);
+        var forward = Capture(affixReading);
+        Assert.Equal(new ReadingDerivation(Id(from), Id(to)), Assert.Single(forward.Morphemes).Derivation);
+        Assert.Equal(ReadingFeatureRole.DerivationInput, Assert.Single(forward.FeatureValues).Role);
+        Edit(() =>
+        {
+            derivation.FromPartOfSpeechRA = to;
+            derivation.ToPartOfSpeechRA = from;
+        });
+        var reverse = Capture(affixReading);
+        Assert.Equal(new ReadingDerivation(Id(to), Id(from)), Assert.Single(reverse.Morphemes).Derivation);
+        Assert.NotEqual(forward.Id, reverse.Id);
+        Edit(() =>
+        {
+            derivation.FromMsFeaturesOA = null;
+            SetValue(derivation.ToMsFeaturesOA = Structure());
+        });
+        var output = Capture(affixReading);
+        Assert.Equal(ReadingFeatureRole.DerivationOutput, Assert.Single(output.FeatureValues).Role);
+        Assert.NotEqual(reverse.Id, output.Id);
+
+        var withStem = Capture(new ParseAnalysis([.. affixReading.Morphs, .. stemReading.Morphs]));
+        Assert.Equal(Id(entry), withStem.EntryId);
+        Assert.Equal(Id(stem), withStem.MsaId);
+        Assert.Equal(ReadingSenseStatus.Ambiguous, withStem.SenseStatus);
+        Assert.Equal(withStem.Morphemes[1].SenseCandidates, withStem.SenseCandidates);
+        Assert.Equal(withStem.Morphemes[1].FeatureValues, withStem.FeatureValues);
+        Assert.Equal(ReadingFeatureRole.DerivationOutput, Assert.Single(withStem.Morphemes[0].FeatureValues).Role);
+        var identityJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var wire = JsonSerializer.SerializeToNode(withStem, identityJson)!.AsObject();
+        Assert.Equal("morphemes", Assert.Single(wire).Key);
+        var decoded = wire.Deserialize<ReadingSignature>(identityJson);
+        Assert.NotNull(decoded);
+        Assert.Equal(withStem.EntryId, decoded.EntryId);
+        Assert.Equal(withStem, decoded);
+        var compounds = Capture(new ParseAnalysis([.. stemReading.Morphs, .. stemReading.Morphs]));
+        Assert.Null(compounds.EntryId);
+        Assert.Null(compounds.MsaId);
+        Assert.Empty(compounds.FeatureValues);
+    }
+
+    [Fact]
+    public void TrialExportKeepsFiveThousandCasesAndTheSecondReadingAfterPruning()
+    {
+        string source = _baselines.GetCurrent(ProjectWorkspaceKey.Compute(_project))!.FwDataPath;
+        string msa;
+        string secondMsa;
+        ReadingFeatureValue featureValue = null!;
+        using (var baseline = new FwDataProjectLoader().LoadScratchCache(source))
+        {
+            var services = baseline.ServiceLocator;
+            var senses = services.GetInstance<ILexSenseRepository>();
+            var stem = Assert.IsAssignableFrom<IMoStemMsa>(senses.GetObject(_seed.FirstSenseId).MorphoSyntaxAnalysisRA);
+            msa = stem.Guid.ToString("D");
+            secondMsa = senses.GetObject(_seed.SecondSenseId).MorphoSyntaxAnalysisRA!.Guid.ToString("D");
+            NonUndoableUnitOfWorkHelper.Do(baseline.ActionHandlerAccessor, () =>
+            {
+                var feature = services.GetInstance<IFsClosedFeatureFactory>().Create();
+                baseline.LangProject.MsFeatureSystemOA.FeaturesOC.Add(feature);
+                var value = services.GetInstance<IFsSymFeatValFactory>().Create();
+                feature.ValuesOC.Add(value);
+                stem.MsFeaturesOA = services.GetInstance<IFsFeatStrucFactory>().Create();
+                var spec = services.GetInstance<IFsClosedValueFactory>().Create();
+                stem.MsFeaturesOA.FeatureSpecsOC.Add(spec);
+                spec.FeatureRA = feature;
+                spec.ValueRA = value;
+                featureValue = new(ReadingFeatureRole.Stem, [CanonicalId.FromGuid(feature.Guid).Value],
+                    [CanonicalId.FromGuid(value.Guid).Value]);
+            });
+            new FwDataProjectLoader().Save(baseline);
+        }
+        var kept = new ParseAnalysis([new(_seed.FirstLexemeFormId.ToString("D"), msa, null, null)]);
+        var removed = new ParseAnalysis([new(_seed.SecondLexemeFormId.ToString("D"), secondMsa, null, null)]);
+        const string submitted = "Motifa";
+        const string duplicate = "probe0000";
+        const string rejected = "probe0001";
+        var words = Enumerable.Range(0, 5000).Select(i => $"probe{i:D4}").Append(submitted).ToArray();
+        using var fixtureStream = typeof(TrialJobHandlerTests).Assembly.GetManifestResourceStream(
+            "TrialExport.ReadingSignatureVectors.json")!;
+        using var fixture = JsonDocument.Parse(fixtureStream);
+        static string? SourceGuid(string? id) => id is null ? null : CanonicalId.Parse(id).ToGuid().ToString("D");
+        static ParseAnalysis WithSignature(ReadingSignature signature) => new(signature.Morphemes.Select(morpheme =>
+            new ParseMorph(SourceGuid(morpheme.AllomorphId), SourceGuid(morpheme.MsaId),
+                SourceGuid(morpheme.InflectionTypeId), null)).ToArray())
+        {
+            Signature = signature,
+            MorphemeAcceptance = signature.Morphemes.Select(morpheme => morpheme.SenseStatus == ReadingSenseStatus.Resolved
+                ? ReadingAcceptance.LexiconBacked : ReadingAcceptance.Unresolved).ToArray(),
+        };
+        var vectors = fixture.RootElement.EnumerateArray().Select((vector, index) =>
+        {
+            var explicitSense = vector.GetProperty("name").GetString() == "explicit";
+            return (Word: words[index + 2], Expected: vector,
+                Before: WithSignature(new(ReadingSignatureFixture.NativeFacts(explicitSense))),
+                After: WithSignature(new(ReadingSignatureFixture.ParserFacts(explicitSense))));
+        }).ToDictionary(vector => vector.Word, StringComparer.Ordinal);
+        Assert.Equal(2, vectors.Count);
+        ParseWordEvidence Word(string form, IReadOnlyList<ParseAnalysis> analyses) =>
+            new("fieldworks-parse-analysis/v1", 0, form, 1, false, false, false, analyses, []);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.SecondSenseId, "an unrelated edit");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var workspace = ProjectWorkspaceKey.Compute(_project);
+        var inputs = new FrozenReviewInputs(workspace, proposalId.Value, "scope", "evidence", null, [], [],
+            words.Select(word => new ReviewPlannedCase(word, word, word, null, null,
+                word == rejected ? [new("controls", "control-case", "regression", 1, null, null, [])] : [], [])).ToArray())
+        {
+            DeclaredGate = new("gate-policy", "gate-scope", [new("controls", "source", "membership", "expectation")]),
+        };
+        var sourceSha256 = BatchInvocationEvidence.DigestFile(source);
+        var sidecarDigest = ProgressSourceIdentity.CaptureSidecars(source)!.Digest;
+        var reference = ReviewInputArtifacts.Store(_database, new(inputs, new Dictionary<string, byte[]>())
+        {
+            Baseline = _token, BaselineFile = source, BaselineFileDigest = sourceSha256, BaselineSidecarDigest = sidecarDigest,
+        });
+        var partial = TrialReviewEvidence.StoreBefore(_database,
+        [
+            new(submitted, submitted, "analysed", Word(submitted, [kept, removed])),
+            new(duplicate, duplicate, "analysed", Word(duplicate, [kept, kept])),
+            new(rejected, rejected, "analysed", Word(rejected, [kept])),
+            .. vectors.Values.Select(vector => new TrialReviewObservation(vector.Word, vector.Word,
+                "analysed", Word(vector.Word, [vector.Before]))),
+        ]);
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new FakeAssessor("pangloss", [AssessmentKind.Correctness], rawForScope: (scope, _, _) =>
+            new AssessmentRaw.WordMeasurements(scope.ParsedWords.Select(word =>
+            {
+                IReadOnlyList<ParseAnalysis> readings = vectors.TryGetValue(word, out var vector) ? [vector.After]
+                    : word is submitted or duplicate ? [kept] : [];
+                return new AssessedWord(word, readings.Count > 0 ? "analysed" : word == rejected ? "skipped" : "no-analysis", [])
+                {
+                    Morphology = Word(word, readings) with { InvalidShape = word == rejected },
+                    LowercaseOf = word == "motifa" ? submitted : null,
+                };
+            }).ToArray()));
+        var handler = BuildHandler(lanes, assessor);
+
+        var first = RunAndFinish(handler, CreateTrialJob(proposalJson, words, reviewInputs: reference, beforePartial: partial));
+        Assert.Equal(JobStatus.Completed, first.Status);
+        var firstAssessment = Assert.Single(_assessments.ListByProposal(proposalId)).AssessmentId;
+        var frozenReading = Assert.Single(_assessments.Get(firstAssessment).Words!, item => item.Word == submitted)
+            .Morphology!.Analyses.Single().Signature;
+        Assert.NotNull(frozenReading);
+        var frozenFeature = Assert.Single(frozenReading.FeatureValues);
+        Assert.Equal(featureValue.Role, frozenFeature.Role);
+        Assert.Equal((IEnumerable<string>)featureValue.FeaturePath, frozenFeature.FeaturePath);
+        Assert.Equal((IEnumerable<string>)featureValue.ValueIds, frozenFeature.ValueIds);
+        var second = RunAndFinish(handler, CreateTrialJob(proposalJson, words, reviewInputs: reference, beforePartial: partial,
+            createdUtc: "2026-08-29T00:00:02Z"));
+        Assert.Equal(JobStatus.Completed, second.Status);
+        Assert.Throws<KeyNotFoundException>(() => _assessments.Get(firstAssessment));
+
+        var receipt = Assert.IsType<TrialExportReceipt>(TrialExportArtifact.Read(_database, first.JobId));
+        Assert.Equal(new TrialExportDenominators(5001, 5002, 5002, new(3 + vectors.Count, 3 + vectors.Count),
+            new(5002, 5002)), receipt.Denominators);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(receipt.Path), receipt.Sha256);
+        using var document = JsonDocument.Parse(File.ReadAllBytes(receipt.Path));
+        var provenance = document.RootElement.GetProperty("provenance");
+        Assert.Equal(proposalId.Value, provenance.GetProperty("proposalId").GetString());
+        Assert.Equal(IntentDigest.Compute(ProposalJsonParser.Parse(proposalJson)), provenance.GetProperty("intent").GetProperty("digest").GetString());
+        Assert.Equal("gate-scope", provenance.GetProperty("gateDeclaration").GetProperty("scopeDigest").GetString());
+        Assert.Equal(sourceSha256, provenance.GetProperty("baselineSourceSha256").GetString());
+        Assert.Equal("sha256:" + sidecarDigest.ToLowerInvariant(), provenance.GetProperty("baselineSidecarSha256").GetString());
+        var rows = document.RootElement.GetProperty("words");
+        Assert.Equal(5001, rows.GetArrayLength());
+        var input = Assert.Single(rows.EnumerateArray(), row => row.GetProperty("submittedForm").GetString() == submitted);
+        var forms = input.GetProperty("expandedForms");
+        Assert.Equal(new[] { submitted, "motifa" }, forms.EnumerateArray().Select(form => form.GetProperty("form").GetString()));
+        Assert.Equal("lowercase", forms[1].GetProperty("expansionKind").GetString());
+        var exact = forms[0];
+        Assert.Equal("lost", exact.GetProperty("status").GetString());
+        var before = exact.GetProperty("before").GetProperty("readings");
+        Assert.Equal(2, before.GetArrayLength());
+        var after = Assert.Single(exact.GetProperty("after").GetProperty("readings").EnumerateArray());
+        Assert.True(JsonElement.DeepEquals(before[0], after));
+        Assert.Equal(before[1].GetProperty("id").GetString(), exact.GetProperty("lostReadingIds")[0].GetString());
+        var signatureJson = after.GetProperty("signature");
+        Assert.Equal("morphemes", Assert.Single(signatureJson.EnumerateObject()).Name);
+        var morpheme = Assert.Single(signatureJson.GetProperty("morphemes").EnumerateArray());
+        Assert.Equal(CanonicalId.FromGuid(_seed.FirstEntryId).Value, morpheme.GetProperty("entryId").GetString());
+        Assert.Equal(CanonicalId.FromGuid(_seed.FirstSenseId).Value, morpheme.GetProperty("senseId").GetString());
+        Assert.Empty(morpheme.GetProperty("senseCandidates").EnumerateArray());
+        Assert.Equal(frozenReading.Id, after.GetProperty("id").GetString());
+        var canonicalSignature = CanonicalJson.CanonicalizeToUtf8(signatureJson.GetRawText());
+        Assert.Equal(IntentDigest.Sha256Of(canonicalSignature), after.GetProperty("id").GetString());
+        var readSignature = signatureJson.Deserialize<ReadingSignature>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Equal(frozenReading, readSignature);
+        Assert.NotNull(readSignature);
+        Assert.Equal(frozenReading.Id, readSignature.Id);
+        Assert.Equal(canonicalSignature, readSignature.GetCanonicalBytes());
+        Assert.Equal("lexicon-backed", after.GetProperty("acceptance").GetString());
+        var multiset = Assert.Single(rows.EnumerateArray(), row => row.GetProperty("caseKey").GetString() == duplicate)
+            .GetProperty("expandedForms")[0];
+        Assert.Equal(2, multiset.GetProperty("before").GetProperty("readings").GetArrayLength());
+        Assert.Equal(frozenReading.Id, Assert.Single(multiset.GetProperty("lostReadingIds").EnumerateArray()).GetString());
+        var control = Assert.Single(rows.EnumerateArray(), row => row.GetProperty("caseKey").GetString() == rejected);
+        Assert.Equal("regression", control.GetProperty("memberships")[0].GetProperty("role").GetString());
+        var rejectedForm = control.GetProperty("expandedForms")[0];
+        Assert.Equal("inventory-rejected", rejectedForm.GetProperty("after").GetProperty("reasonCode").GetString());
+        Assert.Equal(frozenReading.Id, Assert.Single(rejectedForm.GetProperty("lostReadingIds").EnumerateArray()).GetString());
+        var checkedRows = new JsonArray(JsonNode.Parse(input.GetRawText()));
+        foreach (var vector in vectors.Values)
+        {
+            var row = Assert.Single(rows.EnumerateArray(), item => item.GetProperty("caseKey").GetString() == vector.Word);
+            var form = row.GetProperty("expandedForms")[0];
+            foreach (var side in new[] { "before", "after" })
+            {
+                var reading = Assert.Single(form.GetProperty(side).GetProperty("readings").EnumerateArray());
+                Assert.Equal(vector.Expected.GetProperty("id").GetString(), reading.GetProperty("id").GetString());
+                Assert.True(JsonElement.DeepEquals(vector.Expected.GetProperty("signature"), reading.GetProperty("signature")));
+            }
+            checkedRows.Add(JsonNode.Parse(row.GetRawText()));
+        }
+        var example = new JsonObject
+        {
+            ["schemaVersion"] = 1,
+            ["jobId"] = receipt.JobId,
+            ["denominators"] = JsonNode.Parse(document.RootElement.GetProperty("denominators").GetRawText()),
+            ["provenance"] = JsonNode.Parse(document.RootElement.GetProperty("provenance").GetRawText()),
+            ["interruptions"] = new JsonArray(),
+            ["words"] = checkedRows,
+        };
+        using var schemaStream = typeof(ReadingSignature).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.trial-export.schema.json")!;
+        using var schemaText = new StreamReader(schemaStream);
+        var schema = JsonSchema.FromText(schemaText.ReadToEnd());
+        Assert.True(schema.Evaluate(JsonSerializer.SerializeToElement(example)).IsValid);
+        var serializedReading = example["words"]![0]!["expandedForms"]![0]!["before"]!["readings"]![0]!["signature"]!;
+        serializedReading["entryId"] = CanonicalId.FromGuid(_seed.SecondEntryId).Value;
+        Assert.False(schema.Evaluate(JsonSerializer.SerializeToElement(example)).IsValid);
+        serializedReading.AsObject().Remove("entryId");
+        var serializedMorpheme = serializedReading["morphemes"]![0]!;
+        serializedMorpheme["senseStatus"] = "ambiguous";
+        Assert.False(schema.Evaluate(JsonSerializer.SerializeToElement(example)).IsValid);
+        serializedMorpheme["senseStatus"] = "resolved";
+        example["words"]![0]!["other"] = true;
+        Assert.False(schema.Evaluate(JsonSerializer.SerializeToElement(example)).IsValid);
+
+        var applied = ProposalJsonParser.Parse(proposalJson);
+        var liveRoot = Path.Combine(_root, "applied");
+        var loader = new FwDataProjectLoader();
+        SIL.Motif.Host.Texts.TextWordsProjection projection;
+        string appliedSource;
+        using (var live = new ScratchCacheFactory(loader).CreateFromFileCopy(source, liveRoot))
+        {
+            var dryRun = ScratchDryRun.Of(live, applied);
+            SIL.Motif.Runner.Apply.ProposalApplier.Apply(live, applied, dryRun.Anchor, "export-reading-identity");
+            loader.Save(live);
+            appliedSource = live.ProjectId.Path;
+            projection = TextWordsProjectionBuilder.Build(live, CancellationToken.None);
+        }
+        var newToken = new BaselineToken(_token.ProjectIdentity, "sha256:" + new string('f', 64),
+            _token.ProjectionVersion, "2026-08-29T00:00:03Z", BatchInvocationEvidence.DigestFile(appliedSource));
+        _baselines.Record(workspace, new BaselinePublication(liveRoot, appliedSource, newToken),
+            DateTimeOffset.Parse("2026-08-29T00:00:03Z"), DateTimeOffset.Parse("2026-08-29T00:00:03Z"), projection);
+        var laterId = CanonicalId.Mint("proposal/");
+        var laterJson = BuildSetGlossProposalJson(laterId, _seed.SecondSenseId, "another unrelated edit");
+        SaveCommittedProposal(laterId, laterJson);
+        var laterInputs = inputs with { ProposalId = laterId.Value, Cases = [new(submitted, submitted, submitted, null, null, [], [])] };
+        var laterReference = ReviewInputArtifacts.Store(_database, new(laterInputs, new Dictionary<string, byte[]>())
+            { Baseline = newToken, BaselineFile = appliedSource });
+        var laterBefore = TrialReviewEvidence.StoreBefore(_database, [new(submitted, submitted, "analysed", Word(submitted, [kept]))]);
+        var later = RunAndFinish(handler, CreateTrialJob(laterJson, [submitted], reviewInputs: laterReference,
+            beforePartial: laterBefore, createdUtc: "2026-08-29T00:00:04Z"));
+        Assert.Equal(JobStatus.Completed, later.Status);
+        var laterReceipt = Assert.IsType<TrialExportReceipt>(TrialExportArtifact.Read(_database, later.JobId));
+        using var laterDocument = JsonDocument.Parse(File.ReadAllBytes(laterReceipt.Path));
+        var laterExact = laterDocument.RootElement.GetProperty("words")[0].GetProperty("expandedForms")[0];
+        Assert.True(JsonElement.DeepEquals(after, laterExact.GetProperty("before").GetProperty("readings")[0]));
+        Assert.True(JsonElement.DeepEquals(after, laterExact.GetProperty("after").GetProperty("readings")[0]));
     }
 
     [Fact]
@@ -2043,9 +2411,10 @@ public sealed class TrialJobHandlerTests : IDisposable
 
     private JobRecord CreateTrialJob(string proposalJson, IReadOnlyList<string>? words = null, bool allWords = false,
         string? createdUtc = null, bool startRunning = true, JobWordList? wordList = null,
-        ReviewInputReference? reviewInputs = null)
+        ReviewInputReference? reviewInputs = null, string? beforePartial = null)
     {
-        var inputJson = JsonSerializer.Serialize(new { proposalJson, scope = (string?)null, words, allWords, wordList, reviewInputs },
+        var inputJson = JsonSerializer.Serialize(new
+            { proposalJson, scope = (string?)null, words, allWords, wordList, reviewInputs, reviewBeforePartial = beforePartial },
             SIL.Motif.Contract.MotifJson.CreateOptions());
         var job = _jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(_project),
             TrialJobHandler.TrialKind, inputJson, createdUtc ?? "2026-08-29T00:00:00Z");

@@ -195,6 +195,18 @@ public sealed class ReviewAcceptanceFixture : IDisposable
         return result.Value!;
     }
 
+    public TrialExportReceipt CreateInterruptedTrialExport()
+    {
+        var result = ProjectStoreCommand.Run<TrialExportReceipt>(Project, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            var job = new JobRepository(database).Get("job/acceptance")!;
+            TrialExportCapture.PublishInterrupted(database, job, Side.Before, "test-interruption", "The candidate was not measured.");
+            return CommandOutcome<TrialExportReceipt>.Success(TrialExportArtifact.Read(database, job.JobId)!);
+        });
+        if (!result.Succeeded) throw new InvalidOperationException(result.Refusal?.Message);
+        return result.Value!;
+    }
+
     public string ProposalState()
     {
         var result = ProjectStoreCommand.Run<string>(Project, MotifProductVersion.CurrentText, (database, _) =>

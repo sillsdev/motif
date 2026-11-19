@@ -1914,6 +1914,22 @@ try
                     markContent, markEvidence, !flags.ContainsKey("clear"))));
                 break;
             }
+            if (positionals is ["trial", "export", ..])
+            {
+                if (positionals.Count != 3 || !flags.TryGetValue("project", out var exportProject) ||
+                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "page" or "at")))
+                    return Usage(UsageLineFor("proposal trial export"), asJson);
+                int? page = null;
+                if (flags.TryGetValue("page", out var trialExportPage))
+                {
+                    if (!int.TryParse(trialExportPage, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1)
+                        return Usage("--page must be a positive integer.", asJson);
+                    page = number;
+                }
+                result = RenderCommand(TrialExportReads.Read(new ReadTrialExportRequest(exportProject, positionals[2],
+                    flags.GetValueOrDefault("at"), page)));
+                break;
+            }
             if (positionals.Count != 2 || positionals[0] != "trial" ||
                 !flags.TryGetValue("project", out var trialReadProject))
                 return Usage("Usage: motif proposal trial --project <fwdata> <proposalId> [--json] [--word-results]", asJson);

@@ -604,7 +604,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             [
                 null, assessment.AssessmentId, wordIndex, word.Word, word.Outcome, word.ElapsedMs, word.ElapsedNs,
                 word.RawSignature,
-                word.Morphology is null ? null : Compress(JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions)),
+                word.Morphology is null ? null : Compress(JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.StoredJsonOptions)),
                 word.Correctness is null ? null : Compress(JsonSerializer.Serialize(word.Correctness, ParseMorphEvidence.JsonOptions)),
                 word.ProjectStanding, word.OccurrenceCount,
                 word.ReadingGrades is null ? null : Compress(JsonSerializer.Serialize(word.ReadingGrades)),
@@ -1416,7 +1416,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 currentElapsedNs = reader.IsDBNull(4) ? null : reader.GetInt64(4);
                 currentSignature = reader.IsDBNull(9) ? null : reader.GetString(9);
                 currentMorphology = reader.IsDBNull(10) ? null
-                    : JsonSerializer.Deserialize<ParseWordEvidence>(Decompress(reader, 10), ParseMorphEvidence.JsonOptions);
+                    : JsonSerializer.Deserialize<ParseWordEvidence>(Decompress(reader, 10), ParseMorphEvidence.StoredJsonOptions);
                 currentCorrectness = reader.IsDBNull(11) ? null
                     : JsonSerializer.Deserialize<WordCorrectness>(Decompress(reader, 11), ParseMorphEvidence.JsonOptions);
                 currentStanding = reader.IsDBNull(13) ? null : reader.GetString(13);
