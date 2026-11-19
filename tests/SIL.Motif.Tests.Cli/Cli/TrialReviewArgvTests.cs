@@ -6,6 +6,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.HandAnalysis;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Review;
@@ -132,8 +133,18 @@ public sealed class TrialReviewArgvTests
         return (project, proposal, job, root);
     }
 
-    private static ParseWordEvidence AnalysedAs(string word, string form) => new("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false,
-        [new ParseAnalysis([new ParseMorph(form, Msa, null, null)])], []);
+    private static ParseWordEvidence AnalysedAs(string word, string form, bool signed = false)
+    {
+        var reading = new ParseAnalysis([new ParseMorph(form, Msa, null, null)]);
+        if (signed)
+        {
+            var formId = CanonicalId.FromGuid(Guid.Parse(form)).Value;
+            var msaId = CanonicalId.FromGuid(Guid.Parse(Msa)).Value;
+            reading = reading with { Signature = new ReadingSignature([new ReadingMorpheme(formId, null, [],
+                ReadingSenseStatus.Unresolved, msaId, formId, null, true, null, [])]) };
+        }
+        return Analysed(word) with { Analyses = [reading] };
+    }
 
     private static ParseWordEvidence TimedOut(string word) => new("fieldworks-parse-analysis/v1", 0, word, 0, false, true, false, [], []);
 
@@ -395,18 +406,21 @@ public sealed class TrialReviewArgvTests
     }
 
     [Theory]
-    [InlineData(1, true, false)]
-    [InlineData(5100, true, false)]
-    [InlineData(1, false, false)]
-    [InlineData(1, true, true)]
-    public void ANewSecondReadingOnAnAttestedWordIsHeldUntilReviewed(int count, bool attested, bool reviewed)
+    [InlineData(1, true, false, true)]
+    [InlineData(5100, true, false, true)]
+    [InlineData(1, false, false, true)]
+    [InlineData(1, true, true, true)]
+    [InlineData(1, true, false, false)]
+    public void ANewSecondReadingOnAnAttestedWordIsHeldUntilReviewed(int count, bool attested, bool reviewed, bool signed)
     {
         var words = Enumerable.Range(0, count).Select(index => "word-" + index.ToString("D4")).ToArray();
-        var second = AnalysedAs(words[0], OtherForm).Analyses[0];
+        var first = AnalysedAs(words[0], Form, signed);
+        var second = AnalysedAs(words[0], OtherForm, signed).Analyses[0];
+        ParseWordEvidence Before(string word) => first with { Word = word };
         var seed = SeedTrial(_ => (
-            words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Analysed(word))).ToArray(),
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Before(word))).ToArray(),
             words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", word == words[0]
-                ? Analysed(word) with { Analyses = [Analysed(word).Analyses[0], second] } : Analysed(word))).ToArray()), words,
+                ? first with { Analyses = [first.Analyses[0], second] } : Before(word))).ToArray()), words,
             attested ? reviewed ? [Approved(Form), Approved(OtherForm)] : [Approved(Form)] : []);
         try
         {
@@ -419,9 +433,56 @@ public sealed class TrialReviewArgvTests
             var saved = TrialReviewReads.ReadStored(seed.Project, new ReviewReadRequest("", seed.Proposal));
             var available = Assert.IsType<AvailableTrialResult>(saved.Value);
             using var json = JsonDocument.Parse(JsonSerializer.Serialize(available, ReviewJson.Options));
-            Assert.Equal(held ? new[] { words[0] } : Array.Empty<string>(), json.RootElement.GetProperty("report")
+            Assert.Equal(held && signed ? new[] { words[0] } : Array.Empty<string>(), json.RootElement.GetProperty("report")
                 .GetProperty("heldWords").EnumerateArray().Select(item => item.GetString()));
-            if (held) Assert.Contains(words[0], SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(available));
+            if (held && signed) Assert.Contains(words[0], SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(available));
+            if (held && !signed)
+            {
+                Assert.Contains("identity", result.Gate.Reason);
+                Assert.Equal(result.Gate.State, available.Gate!.State);
+                Assert.Equal(result.Gate.Reason, available.Gate.Reason);
+            }
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("duplicate-candidate", TrialGateState.Green)]
+    [InlineData("duplicate-unsigned-candidate", TrialGateState.Green)]
+    [InlineData("duplicate-mixed-candidate", TrialGateState.Green)]
+    [InlineData("distinct-baseline", TrialGateState.Green)]
+    [InlineData("distinct-mixed-baseline", TrialGateState.Green)]
+    [InlineData("known-reading", TrialGateState.Green)]
+    [InlineData("possible-new-reading", TrialGateState.Unmeasured)]
+    public void AttestedGateUsesDistinctReadingsWithIncompleteIdentity(string scenario, TrialGateState expected)
+    {
+        const string word = "word";
+        var known = AnalysedAs(word, Form, signed: true).Analyses[0];
+        var other = AnalysedAs(word, OtherForm, signed: true).Analyses[0];
+        var unsigned = known with { Signature = null };
+        var unsignedOther = other with { Signature = null };
+        (ParseAnalysis[] Before, ParseAnalysis[] After, ReviewAssertion Approval) evidence = scenario switch
+        {
+            "duplicate-candidate" => ([unsigned], [other, other], Approved(Msa)),
+            "duplicate-unsigned-candidate" => ([unsigned], [unsignedOther, unsignedOther], Approved(Msa)),
+            "duplicate-mixed-candidate" => ([unsigned], [other, unsignedOther], Approved(Msa)),
+            "distinct-baseline" => ([known, other], [known, unsignedOther], Approved(Form)),
+            "distinct-mixed-baseline" => ([known, unsignedOther], [known, unsignedOther], Approved(Form)),
+            "known-reading" => ([known, unsigned], [known, other], Approved(OtherForm)),
+            "possible-new-reading" => ([known, unsigned], [known, unsignedOther], Approved(Form)),
+            _ => throw new ArgumentOutOfRangeException(nameof(scenario))
+        };
+        TrialReviewObservation Observe(ParseAnalysis[] readings) =>
+            new("case-" + word, word, "analysed", Analysed(word) with { Analyses = readings });
+        var seed = SeedTrial(_ => ([Observe(evidence.Before)], [Observe(evidence.After)]), [word], [evidence.Approval]);
+        try
+        {
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            var result = Assert.IsType<AvailableTrialResult>(read.Value);
+            Assert.Equal(expected, result.Gate!.State);
+            Assert.Empty(result.Report.HeldWords!);
+            Assert.Contains(result.Report.Limitations, limitation => limitation.Code == "reading-identity-unavailable");
         }
         finally { Directory.Delete(seed.Root, recursive: true); }
     }

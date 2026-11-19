@@ -1,3 +1,5 @@
+using SIL.Motif.Contract.HandAnalysis;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Worker.Runtime.Review;
@@ -10,6 +12,36 @@ public sealed class ReviewCaseClassifierTests
     private const string Form1 = "11111111-1111-1111-1111-111111111111";
     private const string Form2 = "22222222-2222-2222-2222-222222222222";
     private const string Msa = "33333333-3333-3333-3333-333333333333";
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CanonicalReadingChangesWhenOnlyTheSenseOrFeatureValueChanges(bool changeSense)
+    {
+        var facts = Facts([Form1], [Form1], []);
+        var firstId = CanonicalId.FromGuid(Guid.Parse(Form1)).Value;
+        var secondId = CanonicalId.FromGuid(Guid.Parse(Form2)).Value;
+        var msaId = CanonicalId.FromGuid(Guid.Parse(Msa)).Value;
+        var feature = new ReadingFeatureValue(ReadingFeatureRole.Stem, [msaId], [firstId]);
+        var morph = new ReadingMorpheme(firstId, firstId, [], ReadingSenseStatus.Resolved,
+            msaId, firstId, null, true, null, [feature]);
+        var changed = changeSense ? morph with { SenseId = secondId }
+            : morph with { FeatureValues = [feature with { ValueIds = [secondId] }] };
+        var beforeEvidence = facts.Before!;
+        var afterEvidence = facts.After!;
+        var before = beforeEvidence with
+        {
+            Analyses = [beforeEvidence.Analyses[0] with { Signature = new ReadingSignature([morph]) }],
+        };
+        var after = afterEvidence with
+        {
+            Analyses = [afterEvidence.Analyses[0] with { Signature = new ReadingSignature([changed]) }],
+        };
+
+        Assert.True(ReviewCaseClassifier.Compare(facts with { Before = before, After = after }).Changed);
+        Assert.False(ReviewCaseClassifier.Compare(facts with { Before = before, After = before }).Changed);
+        Assert.Null(ReviewCaseClassifier.Compare(facts with { Before = before }).Changed);
+    }
 
     [Fact]
     public void MatchedCountUnchangedStillDetectsReplacedApprovedReading()
@@ -161,23 +193,54 @@ public sealed class ReviewCaseClassifierTests
     [Fact]
     public void ReadingChangeRequiresCompleteComparableIdentities()
     {
-        Assert.False(ReviewCaseClassifier.Compare(Facts([Form1, Form2], [Form2, Form1], [])).Changed);
-        Assert.True(ReviewCaseClassifier.Compare(Facts([Form1], [Form2], [])).Changed);
-        var incomplete = Facts([Form1], [], []) with { After = Evidence([], true) };
+        Assert.False(ReviewCaseClassifier.Compare(Facts([Form1, Form2], [Form2, Form1], [], signed: true)).Changed);
+        Assert.True(ReviewCaseClassifier.Compare(Facts([Form1], [Form2], [], signed: true)).Changed);
+        Assert.True(ReviewCaseClassifier.Compare(Facts([Form1, Form1], [Form1], [], signed: true)).Changed);
+        var incomplete = Facts([Form1], [], [], signed: true) with { After = Evidence([], true) };
         Assert.Null(ReviewCaseClassifier.Compare(incomplete).Changed);
     }
 
-    private static ReviewCaseFacts Facts(string[] before, string[] after, ReviewAssertion[] assertions) =>
-        new("case", "word", "word", "ws", Evidence(before), Evidence(after), assertions,
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void MissingReadingSignaturesLeaveCanonicalComparisonUnknown(bool signBefore, bool signAfter)
+    {
+        var facts = Facts([Form1, Form1], [Form1, Form1], []);
+        var result = ReviewCaseClassifier.Compare(facts with
+        {
+            Before = Evidence([Form1, Form1], signed: signBefore),
+            After = Evidence([Form1, Form1], signed: signAfter),
+        });
+
+        Assert.Null(result.Changed);
+        Assert.Contains("reading-identity-unavailable", result.Limitations);
+        Assert.Equal(Completion.Complete, result.Before.Completion);
+        Assert.Equal(Completion.Complete, result.After.Completion);
+        Assert.True(result.Before.Parsed);
+        Assert.True(result.After.Parsed);
+    }
+
+    private static ReviewCaseFacts Facts(string[] before, string[] after, ReviewAssertion[] assertions, bool signed = false) =>
+        new("case", "word", "word", "ws", Evidence(before, signed: signed), Evidence(after, signed: signed), assertions,
             assertions.Where(a => !a.Approved && !a.WholeWordNegative && a.Eligible)
                 .Select(a => new ReviewMembership("references", "case", "reference", 1, null, null, [a.Id]))
                 .Concat(assertions.Any(a => a.WholeWordNegative)
                     ? [new ReviewMembership("negative-set", "case", "negative", 1, null, null, ["negative"])] : [])
                 .ToArray()) { IdentityAvailable = true };
 
-    private static ParseWordEvidence Evidence(string[] forms, bool capped = false) =>
+    private static ParseWordEvidence Evidence(string[] forms, bool capped = false, bool signed = false) =>
         new("fieldworks-parse-analysis/v1", 0, "word", 0, capped, false, false,
-            forms.Select(form => new ParseAnalysis([new ParseMorph(form, Msa, null, null)])).ToArray(), []);
+            forms.Select(form => new ParseAnalysis([new ParseMorph(form, Msa, null, null)])
+                { Signature = signed ? Sign(form) : null }).ToArray(), []);
+
+    private static ReadingSignature Sign(string form)
+    {
+        var formId = CanonicalId.FromGuid(Guid.Parse(form)).Value;
+        var msaId = CanonicalId.FromGuid(Guid.Parse(Msa)).Value;
+        return new ReadingSignature([new ReadingMorpheme(formId, null, [], ReadingSenseStatus.Unresolved,
+            msaId, formId, null, true, null, [])]);
+    }
 
     private static ReviewAssertion Assertion(string form, bool approved) => new(form, form,
         new ApprovedMorphology([new ApprovedMorph(form, Msa, null, [])]),

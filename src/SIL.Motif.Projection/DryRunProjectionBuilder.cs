@@ -50,11 +50,8 @@ public static class DryRunProjectionBuilder
             foreach (var operation in ready)
             {
                 remaining.Remove(operation.OperationId);
-                emitted.Add(new ProposalOperationView(operation.OperationId.Value, operation.Kind,
-                    operation.Target?.Value, operation.EntityId?.Value,
-                    operation.DependsOn.Select(dependency => dependency.OperationId.Value)
-                        .OrderBy(id => id, System.StringComparer.Ordinal).ToArray(),
-                    operation.After?.GetRawText(), CitationView.Of(operation)));
+                var view = ProposalOperationView.From(operation);
+                emitted.Add(view with { DependsOn = view.DependsOn.Order(System.StringComparer.Ordinal).ToArray() });
             }
         }
         return emitted;

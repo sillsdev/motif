@@ -87,11 +87,40 @@ public sealed class ReviewReportExpandedTests
     }
 
     [Fact]
+    public void UnavailableReadingIdentityRoundTripsWithAnExplicitNullDigest()
+    {
+        ReviewRow row = new ReadingRow(null, Side.Before, IdentityState.Unavailable,
+            [new Morph("form", "msa", [], "", "")], true, [], []);
+        var json = JsonSerializer.Serialize(row, ReviewJson.Options);
+        var fields = JsonNode.Parse(json)!.AsObject();
+        Assert.True(fields.ContainsKey("identityDigest"));
+        Assert.Null(fields["identityDigest"]);
+        Assert.Equal("unavailable", fields["identityState"]!.GetValue<string>());
+        Assert.Equal(IdentityState.Unavailable,
+            Assert.IsType<ReadingRow>(JsonSerializer.Deserialize<ReviewRow>(json, ReviewJson.Options)).IdentityState);
+        AssertSchema(json, "ReadingRow");
+    }
+
+    [Fact]
     public void AffectedPositionCountsMatchTheSchema()
     {
         var group = new CauseGroup("no-parse", 1, "words", [], 1,
             new ReadTarget(TargetKind.Resource, "detail", "motif://detail", null, null)) { SamplePositionsTotal = 6 };
         AssertSchema(JsonSerializer.Serialize(group, ReviewJson.Options), "CauseGroup");
+    }
+
+    [Theory]
+    [InlineData(IdentityState.Exact)]
+    [InlineData(IdentityState.Guessed)]
+    public void SchemaAndRuntimeRequireADigestForKnownReadingIdentity(IdentityState state)
+    {
+        ReviewRow row = new ReadingRow("digest", Side.Before, state, [], true, [], []);
+        var fields = JsonSerializer.SerializeToNode(row, ReviewJson.Options)!.AsObject();
+        AssertSchema(fields.ToJsonString(), "ReadingRow");
+        fields["identityDigest"] = null;
+        var invalid = fields.ToJsonString();
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ReviewRow>(invalid, ReviewJson.Options));
+        AssertSchema(invalid, "ReadingRow", expectedValid: false);
     }
 
     [Fact]
@@ -290,6 +319,7 @@ public sealed class ReviewReportExpandedTests
         if (type == typeof(EvidencePin)) return Create(typeof(SetEvidencePin));
         if (type == typeof(FlagFacts)) return new WorkChange(null, 0, "test", WorkComparison.NotComparable, []);
         if (type == typeof(WorkChange)) return new WorkChange(null, 0, "test", WorkComparison.NotComparable, []);
+        if (type == typeof(ReadingRow)) return new ReadingRow("test", Side.Before, IdentityState.Exact, [], true, [], []);
         if (type == typeof(RuleWorkRow)) return new RuleWorkRow("rule", "id", "authored", null, "name", "paired", 25, null);
         var constructor = type.GetConstructors().Single();
         return constructor.Invoke(constructor.GetParameters().Select(p =>
@@ -305,13 +335,13 @@ public sealed class ReviewReportExpandedTests
         return JsonNode.Parse(stream)!.AsObject();
     }
 
-    private static void AssertSchema(string json, string definition)
+    private static void AssertSchema(string json, string definition, bool expectedValid = true)
     {
         var schema = ReadSchema();
         schema["$id"] = "https://example.test/review-schema/" + Guid.NewGuid();
         schema["$ref"] = "#/$defs/" + definition;
         using var doc = JsonDocument.Parse(json);
         var result = JsonSchema.FromText(schema.ToJsonString()).Evaluate(doc.RootElement);
-        Assert.True(result.IsValid, result.ToString());
+        Assert.True(result.IsValid == expectedValid, result.ToString());
     }
 }

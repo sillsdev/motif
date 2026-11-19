@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.HandAnalysis;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
@@ -15,6 +16,7 @@ using SIL.Motif.Worker.Runtime.Review;
 using SIL.Motif.Worker.Parsimony;
 using SIL.Motif.Worker.Store;
 using Xunit;
+using ReviewWordRow = SIL.Motif.Contract.Review.WordRow;
 
 namespace SIL.Motif.Tests.Commands.Review;
 
@@ -174,6 +176,63 @@ public sealed class TrialReviewCommandsTests : IDisposable
         var target = Assert.Single(empty.Next);
         Assert.Equal("motif_trial", target.Tool);
         Assert.Equal("run", target.Arguments!.Action);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RetainedReportKeepsReadingsWithUnavailableIdentityInReview(bool signBefore)
+    {
+        const string form = "11111111-1111-1111-1111-111111111111";
+        const string msa = "33333333-3333-3333-3333-333333333333";
+        var formId = CanonicalId.FromGuid(Guid.Parse(form)).Value;
+        var msaId = CanonicalId.FromGuid(Guid.Parse(msa)).Value;
+        var signature = new ReadingSignature([new ReadingMorpheme(formId, null, [], ReadingSenseStatus.Unresolved,
+            msaId, formId, null, true, null, [])]);
+        var unsigned = new ParseAnalysis([new ParseMorph(form, msa, null, null)]);
+        var signed = unsigned with { Signature = signature };
+        var keys = new[] { "unavailable", "unchanged", "loss" };
+        var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [], [],
+            keys.Select(key => new ReviewPlannedCase(key, key, key, "ws", null, [], [])).ToArray());
+        var digest = "sha256:" + new string('a', 64);
+        var baseline = new BaselineToken("project", digest, "v1", "2026-01-01T00:00:00Z", digest);
+        var reference = ReviewInputArtifacts.Store(_database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
+        var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = _proposal.Value, operations = Array.Empty<object>() });
+        var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference);
+        new JobRepository(_database).RecordInterrupted(Job, "project", "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
+            "{}", "2026-01-01T00:00:00Z", JobStatus.Failed);
+
+        TrialReviewObservation Observe(string key, params ParseAnalysis[] readings) => new(key, key, "complete",
+            new ParseWordEvidence("fieldworks-parse-analysis/v1", 0, key, 0, false, false, false, readings, []));
+        var before = signBefore ? signed : unsigned;
+        TrialReviewEvidence.Save(_database, new TrialReviewLedger(Job, reference,
+            [Observe("unavailable", before, before), Observe("unchanged", signed), Observe("loss", unsigned)],
+            [Observe("unavailable", unsigned, unsigned), Observe("unchanged", signed), Observe("loss")], []));
+
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var repository = new ReviewReportRepository(_database);
+        var children = repository.ReadChildren(new ReviewChildPageRequest("project", id, "readings", "unavailable"));
+        var rows = children.Items.Cast<ReadingRow>().ToArray();
+        Assert.Equal([Side.Before, Side.Before, Side.After, Side.After], rows.Select(row => row.Side));
+        foreach (var row in rows)
+        {
+            var exact = signBefore && row.Side == Side.Before;
+            Assert.Equal(exact ? IdentityState.Exact : IdentityState.Unavailable, row.IdentityState);
+            Assert.Equal(exact ? signature.Id : null, row.Signature?.Id);
+            Assert.Equal(exact ? signature.Id : null, row.IdentityDigest);
+            Assert.True(row.Observed);
+            Assert.Equal(form, Assert.Single(row.Morphs).FormId);
+        }
+
+        string[] Cases(string filter) => repository.ReadPage(new ReviewPageRequest("project", id, "wordforms", Filter: filter))
+            .Items.Cast<ReviewWordRow>().Select(row => row.CaseKey).ToArray();
+        Assert.Contains("unavailable", Cases("all"));
+        Assert.Equal(["unchanged"], Cases("unchanged"));
+        Assert.Empty(Cases("changed"));
+        Assert.Equal(["loss", "unavailable"], Cases("review"));
+        var report = repository.ReadManifest(id)!.Summary;
+        Assert.Contains(report.Limitations, limitation => limitation.Code == "reading-identity-unavailable");
+        Assert.Contains("loss", report.Losses!.NewNoParseWords);
     }
 
     [Fact]

@@ -28,7 +28,8 @@ public sealed class TrialDryRunExemptionTests : IDisposable
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
         fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", []);
-        fixture.RecordBaseline("sha256:" + new string('c', 64), "2026-09-24T13:00:00Z");
+        fixture.RecordBaseline("sha256:" + new string('c', 64), "2026-09-24T13:00:00Z",
+            semanticDigest: "sha256:" + new string('2', 64));
 
         Assert.Null(ProposalCommands.TrialDryRun(fixture.Database, fixture.Project, proposal.Id));
     }

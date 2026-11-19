@@ -5,13 +5,17 @@ namespace SIL.Motif.Contract.Review;
 /// <summary>The shared verdict over a Trial's captured facts, independent of retained detail pages.</summary>
 public static class TrialGateEvaluation
 {
+    /// <summary>Identifies reports that cannot determine whether an attested word gained an unapproved second Reading.</summary>
+    public const string HoldIdentityUnavailable = "reading-hold-identity-unavailable";
+
     /// <summary>Named losses and Baseline-parsed words whose candidate search stopped.</summary>
     public sealed record GateWords(IReadOnlyList<string>? LostWords, IReadOnlyList<string>? StoppedWords);
 
     /// <summary>
     /// The gate of a report. <c>loss</c> when a measured word lost its analysis or a confirmed reading and is not in
     /// <paramref name="expectedLosses"/>; otherwise <c>unmeasured</c> when evidence is incomplete, no words were
-    /// measured, or a word that had a Baseline analysis stopped before it finished; otherwise <c>green</c>.
+    /// measured, a word that had a Baseline analysis stopped before it finished, or an attested word has a
+    /// confirmed or unresolved hold for an unapproved second Reading. Otherwise the gate is <c>green</c>.
     /// </summary>
     /// <param name="result">The report to judge.</param>
     /// <param name="expectedLosses">Words the author intends to lose.</param>
@@ -52,6 +56,8 @@ public static class TrialGateEvaluation
         if (result.Report.HeldWords is { Count: > 0 } held)
             return new TrialGate(TrialGateState.Unmeasured,
                 held.Count + " attested word(s) have a new second reading held for review.", lostCount, matched, [], stopped);
+        if (result.Report.Limitations.FirstOrDefault(limitation => limitation.Code == HoldIdentityUnavailable) is { } unmeasuredHold)
+            return new TrialGate(TrialGateState.Unmeasured, unmeasuredHold.Text, lostCount, matched, [], stopped);
         return new TrialGate(TrialGateState.Green, null, lostCount, matched, [], []);
     }
 

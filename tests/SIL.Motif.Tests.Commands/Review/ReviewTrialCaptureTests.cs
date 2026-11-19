@@ -17,6 +17,7 @@ using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Jobs;
@@ -211,6 +212,7 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
         var readings = new List<ParseAnalysis>();
         using (var cache = pristine.NewScratch())
         {
+            var signatureReader = new ReadingSignatureReader(cache);
             writingSystem = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             {
@@ -231,8 +233,11 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
                     bundle.MsaRA = sense.MorphoSyntaxAnalysisRA;
                     if (readings.Count == 0 || approveSecond)
                         cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.approves);
-                    readings.Add(new ParseAnalysis([new ParseMorph(bundle.MorphRA.Guid.ToString("D"),
-                        bundle.MsaRA.Guid.ToString("D"), null, null)]));
+                    var reading = new ParseAnalysis([new ParseMorph(bundle.MorphRA.Guid.ToString("D"),
+                        bundle.MsaRA.Guid.ToString("D"), null, null)]);
+                    var signature = signatureReader.Read(reading);
+                    Assert.NotNull(signature);
+                    readings.Add(reading with { Signature = signature });
                 }
             });
             new FwDataProjectLoader().Save(cache);

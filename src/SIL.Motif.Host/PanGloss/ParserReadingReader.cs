@@ -30,7 +30,10 @@ public static class ParserReadingReader
         ArgumentNullException.ThrowIfNull(evidence);
         var objects = cache.ServiceLocator.ObjectRepository;
         var mapped = evidence.Analyses
-            .Select(analysis => new ParserReading(ReadMorphs(cache, objects, projectName, analysis.Morphs, liveLink)))
+            .Select(analysis => new ParserReading(ReadMorphs(cache, objects, projectName, analysis.Morphs, liveLink))
+            {
+                Signature = analysis.Signature,
+            })
             .ToArray();
         return ReadingOrder.Order(cache, evidence.Analyses, mapped, closedCategories ?? ReadingOrder.ClosedCategories(cache));
     }

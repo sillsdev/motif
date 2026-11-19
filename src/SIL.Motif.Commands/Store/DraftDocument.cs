@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SIL.Motif.Contract.Model;
 
 namespace SIL.Motif.Commands.Store;
@@ -60,6 +61,10 @@ public sealed class DraftOperation
     public string? EntityId { get; set; }
 
     public DraftPlacement? Placement { get; set; }
+
+    /// <summary>The authored override of the operation's storage identity, preserved across finalize and reopen.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StorageIdOverride { get; set; }
 
     /// <summary>
     /// Explicit intra-Proposal ordering dependencies: operation ids (within this same draft) this

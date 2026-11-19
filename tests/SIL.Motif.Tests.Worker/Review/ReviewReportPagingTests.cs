@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.HandAnalysis;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
@@ -377,6 +379,26 @@ public sealed class ReviewReportPagingTests : IDisposable
         Assert.NotNull(child.NextCursor);
         var remainder = _repository.ReadChildren(new ReviewChildPageRequest("project", id, "readings", row.CaseKey, child.NextCursor, 200));
         Assert.Equal(100, remainder.Returned);
+    }
+
+    [Fact]
+    public async Task OversizedReadingSignatureFallsBackToTheDigestWithinThePageBound()
+    {
+        var features = Enumerable.Range(0, 3600).Select(i => new ReadingFeatureValue(ReadingFeatureRole.Stem,
+            [ReadingSignatureFixture.Id(1000 + i)], [ReadingSignatureFixture.Id(5000 + i)])).ToArray();
+        var signature = new ReadingSignature([new ReadingMorpheme(ReadingSignatureFixture.StemEntryId, null, [],
+            ReadingSenseStatus.Unresolved, ReadingSignatureFixture.StemMsaId, ReadingSignatureFixture.Id(5), null, true, null,
+            [.. features])]);
+        var reading = new ReadingRow(signature.Id, Side.Before, IdentityState.Exact, [], true, [], []) { Signature = signature };
+        Assert.True(JsonSerializer.SerializeToUtf8Bytes<ReviewRow>(reading, ReviewJson.Options).Length > 192 * 1024);
+        var id = await Publish("large-signature", Sample(0, 0) with { Readings = [reading] });
+        var child = _repository.ReadChildren(new ReviewChildPageRequest("project", id, "readings", "case-0000", null, 200));
+        var row = Assert.IsType<ReadingRow>(Assert.Single(child.Items));
+        Assert.Equal(signature.Id, row.IdentityDigest);
+        Assert.Equal(IdentityState.Exact, row.IdentityState);
+        Assert.Null(row.Signature);
+        Assert.Equal(ListAvailability.Partial, child.ListAvailability);
+        Assert.True(JsonSerializer.SerializeToUtf8Bytes(child, ReviewJson.Options).Length <= 192 * 1024);
     }
 
     [Fact]

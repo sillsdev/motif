@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
+using SIL.Motif.Contract.Model;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -19,7 +20,30 @@ public sealed record ProposalOperationView(
     string? EntityId,
     IReadOnlyList<string> DependsOn,
     string? AfterJson,
-    CitationView? Citation = null);
+    CitationView? Citation = null)
+{
+    /// <summary>The intended sequence position, or null for an operation with no relative anchor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public OperationPlacementView? Placement { get; init; }
+
+    /// <summary>The authored storage identity when it differs from the default realization.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public string? StorageIdOverride { get; init; }
+
+    /// <summary>Projects the operation's authored intent into the shared response.</summary>
+    public static ProposalOperationView From(OperationEnvelope operation) =>
+        new(operation.OperationId.Value, operation.Kind, operation.Target?.Value, operation.EntityId?.Value,
+            operation.DependsOn.Select(dependency => dependency.OperationId.Value).ToArray(),
+            operation.After?.GetRawText(), CitationView.Of(operation))
+        {
+            Placement = operation.Placement is { } placement
+                ? new OperationPlacementView(placement.After?.Value, placement.Before?.Value) : null,
+            StorageIdOverride = operation.StorageIdOverride?.Value,
+        };
+}
+
+/// <summary>The portable identities of the preceding and following neighbors of an operation.</summary>
+public sealed record OperationPlacementView(string? After, string? Before);
 
 /// <summary>The source an operation cites: a grammar section, a dictionary entry, a corpus passage.</summary>
 /// <param name="Source">The work cited.</param>

@@ -22,6 +22,7 @@ public sealed record ReviewPublishRequest(string JobId);
 /// <summary>Produces a frozen report from the exact input and evidence retained by one Trial.</summary>
 public sealed class TrialReviewPublisher(MotifDatabase database)
 {
+    private const string Algorithm = "review-v4";
     private readonly MotifDatabase _database = database ?? throw new ArgumentNullException(nameof(database));
 
     /// <summary>Classifies the retained observations and atomically publishes their summary and detail.</summary>
@@ -84,7 +85,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         }
         var facts = accumulator.Snapshot();
         var manifestBytes = JsonSerializer.SerializeToUtf8Bytes(new { input = reference.Sha256, job.JobId,
-            job.InputJson, job.ResultJson, ledger, parsimony = parsimony?.ResultDigest, algorithm = "review-v3" }, MotifJson.CreateOptions());
+            job.InputJson, job.ResultJson, ledger, parsimony = parsimony?.ResultDigest, algorithm = Algorithm }, MotifJson.CreateOptions());
         var digest = "sha256:" + Convert.ToHexStringLower(SHA256.HashData(manifestBytes));
         var beforeAssessmentIds = (input.BaselineAssessmentIds ?? []).Concat(input.ReviewBaselines?.SelectMany(part => part.AssessmentIds) ?? [])
             .Distinct(StringComparer.Ordinal).ToArray();
@@ -96,7 +97,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             (input.Prerequisites ?? []).Select(item => new PrerequisitePin(item.ProposalId, item.IntentDigest)).ToArray(),
             job.JobId, baseline, new CandidatePin(job.JobId, ledger.CandidateFileDigest, null), dryRun?.Pin, checkpoints, inputs.Sets.Count,
             Digest(inputs.Sets), Digest(inputs.Cases.Select(item => item.Assertions)), new WarningCheckPins(null, null),
-            parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, "review-v3");
+            parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, Algorithm);
         var summary = BuildSummary(facts, inputs, ledger, overlappingLosses.Count, negativeSets.Order(StringComparer.Ordinal).ToArray(), hasWarnings)
             with { Gains = BuildGains(facts, inputs, proposal.Operations), RuleAttempts = BuildRuleAttempts(inputs, proposal.Operations, new HypothesisRuleAttemptLedger(new HypothesisRepository(_database))), GdrSync = ledger.GdrSync };
         summary = summary with { SectionCounts = summary.SectionCounts.Select(section => section.Section == "parser-work"
@@ -105,7 +106,11 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         if (dryRun is not null) summary = summary with { Effects = new EffectsSummary(dryRun.Value.Count, true) };
         var limitations = facts.Limitations.Select(code => new Limitation(code,
             code == "negative-context-unavailable" ? ["negative-controls"] :
-            code == "expectation-identity-unavailable" ? ["wordforms", "controls"] : [], code, [])).ToList();
+            code == "expectation-identity-unavailable" ? ["wordforms", "controls"] :
+            code == ReviewCaseClassifier.ReadingIdentityUnavailable ? ["wordforms"] : [], code, [])).ToList();
+        if (named.HoldIdentityUnavailable)
+            limitations.Add(new Limitation(TrialGateEvaluation.HoldIdentityUnavailable, ["wordforms"],
+                "Reading identity is unavailable for a possible new second reading on an attested word.", []));
         foreach (var code in facts.Findings?.Limitations.Where(code => code is not ("warnings-unavailable" or "parsimony-unavailable")) ?? [])
             limitations.Add(new Limitation(code, ["warnings", "parsimony"], code, []));
         if (inputs.OmittedSetIds.Count > 0)
@@ -294,16 +299,15 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         if (observation?.Morphology is not { InvalidShape: false, Refusal: null, Analyses: { } analyses }) yield break;
         foreach (var analysis in analyses.Where(ReviewCaseClassifier.Exact))
         {
-            var identity = analysis.Signature?.Id ?? "sha256:" + Convert.ToHexStringLower(SHA256.HashData(
-                JsonSerializer.SerializeToUtf8Bytes(analysis.Morphs, MotifJson.CreateOptions())));
+            var signature = analysis.Signature;
             var matches = assertions.Where(assertion => assertion.Eligible && assertion.Morphology is not null &&
                 ReviewCaseClassifier.Exact(assertion.Morphology) && AnalysisMorphologyMatcher.Matches(analysis, assertion.Morphology)).ToArray();
-            yield return new ReadingRow(identity, side, IdentityState.Exact,
+            yield return new ReadingRow(signature?.Id, side, signature is null ? IdentityState.Unavailable : IdentityState.Exact,
                 analysis.Morphs.Select(morph => new Morph(morph.Form, morph.Msa,
                     morph.InflType is null ? [] : [morph.InflType], morph.GuessedString ?? "", "")).ToArray(),
                 true, matches.Select(assertion => assertion.Id).ToArray(),
                 matches.SelectMany(assertion => assertion.SourceRefs).Distinct(StringComparer.Ordinal).ToArray())
-                { Signature = analysis.Signature };
+                { Signature = signature };
         }
     }
 

@@ -315,6 +315,49 @@ public sealed class ProposalWorkflowTests : IDisposable
                 operation.EntityId, operation.Citation)));
     }
 
+    [Fact]
+    public void ShowJsonDistinguishesPlacementAndStorageIdentity()
+    {
+        const string name = "show-operation-intent";
+        var created = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, name, null));
+        Assert.True(created.Succeeded, created.Refusal?.Message);
+        var added = ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion, name,
+            CanonicalId.FromGuid(_seed.FirstSenseId).Value, NewLangProjFixture.AnalysisTag, "same edit"));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        var original = ReadDraftJson(name);
+        var anchor = CanonicalId.FromGuid(_seed.SecondSenseId).Value;
+        var storageId = CanonicalId.Mint().Value;
+
+        JsonElement Show(JsonObject? placement, string? storageOverride)
+        {
+            var draft = JsonNode.Parse(original)!;
+            var operation = draft["operations"]![0]!.AsObject();
+            if (placement is not null) operation["placement"] = placement;
+            if (storageOverride is not null) operation["storageIdOverride"] = storageOverride;
+            using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+                new ProposalRepository(database).SaveDraft(name, draft.ToJsonString());
+
+            var shown = CliInProcess.Run(_workerRoot, null, false,
+                "show", name, "--project", _fwDataPath, "--json");
+            Assert.True(shown.ExitCode == 0, shown.FailureDetails);
+            using var json = JsonDocument.Parse(shown.Output);
+            return json.RootElement.GetProperty("operations")[0].Clone();
+        }
+
+        var independent = Show(null, null);
+        var after = Show(new JsonObject { ["after"] = anchor }, null);
+        var before = Show(new JsonObject { ["before"] = anchor }, null);
+        var overridden = Show(null, storageId);
+
+        Assert.Equal(JsonValueKind.Null, independent.GetProperty("placement").ValueKind);
+        Assert.Equal(JsonValueKind.Null, independent.GetProperty("storageIdOverride").ValueKind);
+        Assert.Equal(anchor, after.GetProperty("placement").GetProperty("after").GetString());
+        Assert.Equal(anchor, before.GetProperty("placement").GetProperty("before").GetString());
+        Assert.Equal(storageId, overridden.GetProperty("storageIdOverride").GetString());
+        Assert.NotEqual(independent.GetRawText(), overridden.GetRawText());
+        Assert.NotEqual(after.GetRawText(), before.GetRawText());
+    }
+
     private string ReadDraftJson(string draftName)
     {
         using var database = ProjectMotifDatabase.Open(_fwDataPath);

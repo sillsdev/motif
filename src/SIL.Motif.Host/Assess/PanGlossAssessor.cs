@@ -250,20 +250,36 @@ public sealed class PanGlossAssessor : IAssessor
                             }
                             : row).ToArray();
                 }
-                if (wanted.Contains(AssessmentKind.Correctness))
+                var collectCorrectness = wanted.Contains(AssessmentKind.Correctness);
+                if (collectCorrectness || rows.Any(row => row.Morphology!.Analyses.Count > 0))
                 {
-                    IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> expected;
                     using var sourceScratch = AssessmentSourceScratch.Create(evidence.SourcePath, evidence.SourceBytesSha256);
-                    using (var cache = new FwDataProjectLoader().LoadScratchCache(sourceScratch.Path))
-                        expected = ApprovedMorphologyReader.Read(cache, ApprovedMorphologyReader.FormsOf(rows.Select(row => row.Word)));
-                    evidence = evidence with { ApprovedExpectationsSha256 = ApprovedExpectationsDigest.Compute(expected) };
-                    rows = rows.Select(row => row with
+                    using var cache = new FwDataProjectLoader().LoadScratchCache(sourceScratch.Path);
+                    var signatures = new ReadingSignatureReader(cache);
+                    var expected = collectCorrectness
+                        ? ApprovedMorphologyReader.Read(cache, ApprovedMorphologyReader.FormsOf(rows.Select(row => row.Word)))
+                        : null;
+                    if (expected is not null)
+                        evidence = evidence with { ApprovedExpectationsSha256 = ApprovedExpectationsDigest.Compute(expected) };
+                    rows = rows.Select(row =>
                     {
-                        Correctness = MorphologyCorrectness.Compare(row.Morphology!,
-                            expected.TryGetValue(row.Word, out var approved) ? approved : []),
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var item = row.Morphology!;
+                        if (item.Analyses.Count > 0)
+                            item = item with
+                            {
+                                Analyses = item.Analyses.Select(analysis => analysis with
+                                    { Signature = signatures.ReadVerified(analysis) }).ToArray(),
+                            };
+                        return row with
+                        {
+                            Morphology = item,
+                            Correctness = expected is null ? null : MorphologyCorrectness.Compare(item,
+                                expected.TryGetValue(row.Word, out var approved) ? approved : []),
+                        };
                     }).ToArray();
                     if (_sourceDigest(evidence.SourcePath) != evidence.SourceBytesSha256)
-                        throw new InvalidDataException("The source changed while reading approved expectations.");
+                        throw new InvalidDataException("The source changed while reading Assessment identity.");
                 }
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)

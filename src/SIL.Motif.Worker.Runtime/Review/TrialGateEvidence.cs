@@ -18,16 +18,7 @@ internal sealed class TrialGateEvidence
             (item.Memberships.Any(member => member.Role == "sampled-tokens") ||
              item.Assertions.Any(assertion => assertion.Eligible && assertion.Approved && !assertion.WholeWordNegative)) &&
             item.Readings is { } readings)
-        {
-            var before = readings.Where(reading => reading.Side == Side.Before).Select(reading => reading.IdentityDigest)
-                .ToHashSet(StringComparer.Ordinal);
-            var after = readings.Where(reading => reading.Side == Side.After).DistinctBy(reading => reading.IdentityDigest).ToArray();
-            var approved = item.Assertions.Where(assertion => assertion.Eligible && assertion.Approved && !assertion.WholeWordNegative)
-                .Select(assertion => assertion.Id).ToHashSet(StringComparer.Ordinal);
-            if (before.Count == 1 && after.Length > 1 && after.Any(reading => !before.Contains(reading.IdentityDigest) &&
-                    !reading.ExpectationIds.Any(approved.Contains)))
-                _held.Add(item.Word);
-        }
+            AddSecondReadingEvidence(item, readings);
         if (item.NewNoParse) _noParse.Add(item.Word);
         if (item.NewApprovedLoss) _approved.Add(item.Word);
         foreach (var reading in item.ReadingLosses)
@@ -41,7 +32,48 @@ internal sealed class TrialGateEvidence
             _blockingStopped.Add(item.Word);
     }
 
+    private void AddSecondReadingEvidence(ReviewCaseDelta item, IReadOnlyList<ReadingRow> readings)
+    {
+        var before = readings.Where(reading => reading.Side == Side.Before).ToArray();
+        var after = readings.Where(reading => reading.Side == Side.After).ToArray();
+        if (before.Length == 0 || after.Length < 2) return;
+
+        var exactBaseline = before.FirstOrDefault(HasExactIdentity);
+        var baseline = exactBaseline ?? before[0];
+        if (before.Any(reading => HasExactIdentity(reading)
+                ? reading.IdentityDigest != baseline.IdentityDigest
+                : !SameMorphology(baseline, reading)))
+            return;
+
+        var exactAfter = after.Where(HasExactIdentity).DistinctBy(reading => reading.IdentityDigest).ToArray();
+        var unsignedAfter = after.Where(reading => !HasExactIdentity(reading)).ToArray();
+        // Same ordered morphology as a signed observation: a duplicate.
+        var novelUnsigned = unsignedAfter.Where(reading => !exactAfter.Any(exact => SameMorphology(exact, reading))).ToArray();
+        var possibleUnsignedSecond = novelUnsigned.Length > 0 &&
+            (exactAfter.Length > 0 || novelUnsigned.Skip(1).Any(reading => !SameMorphology(novelUnsigned[0], reading)));
+        if (exactAfter.Length < 2 && !possibleUnsignedSecond) return;
+
+        var approved = item.Assertions.Where(assertion => assertion.Eligible && assertion.Approved && !assertion.WholeWordNegative)
+            .Select(assertion => assertion.Id).ToHashSet(StringComparer.Ordinal);
+        bool Unapproved(ReadingRow reading) => !reading.ExpectationIds.Any(approved.Contains);
+        var newUnapprovedExact = exactAfter.Any(reading => reading.IdentityDigest != exactBaseline?.IdentityDigest && Unapproved(reading));
+        if (newUnapprovedExact && exactAfter.Length > 1 && before.All(HasExactIdentity))
+            _held.Add(item.Word);
+        else if (newUnapprovedExact || novelUnsigned.Any(Unapproved))
+            HoldIdentityUnavailable = true;
+    }
+
+    private static bool HasExactIdentity(ReadingRow reading) => reading.IdentityState == IdentityState.Exact;
+
+    // Authoritative morph IDs can rule out equality when a Reading lacks a signature.
+    private static bool SameMorphology(ReadingRow left, ReadingRow right) =>
+        left.Morphs.Count == right.Morphs.Count && left.Morphs.Zip(right.Morphs).All(pair =>
+            Guid.Parse(pair.First.FormId!) == Guid.Parse(pair.Second.FormId!) &&
+            Guid.Parse(pair.First.MsaId!) == Guid.Parse(pair.Second.MsaId!) &&
+            pair.First.InflTypeIds.Select(Guid.Parse).SequenceEqual(pair.Second.InflTypeIds.Select(Guid.Parse)));
+
     internal IReadOnlyList<string> HeldWords => _held.Order(StringComparer.Ordinal).ToArray();
+    internal bool HoldIdentityUnavailable { get; private set; }
 
     internal TrialLosses Losses => new(_noParse.Order(StringComparer.Ordinal).ToArray(),
         _approved.Order(StringComparer.Ordinal).ToArray(),

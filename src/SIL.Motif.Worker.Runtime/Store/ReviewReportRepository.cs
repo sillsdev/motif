@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Runtime.Review;
 
 namespace SIL.Motif.Worker.Store;
 
@@ -95,8 +96,9 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
                         ReadingsAvailable = item.Readings is not null,
                         ExpectationsAvailable = item.AssertionsCaptured || item.Assertions.Count > 0,
                         SourcesAvailable = item.Sources is not null,
-                        Changed = item.Changed ?? (item.NewNoParse || item.NewApprovedLoss || item.NewlyAcceptedNegative ||
-                            item.ReadingLosses.Count > 0 ? true : null) }, ReviewJson.Options);
+                        Changed = item.Limitations.Contains(ReviewCaseClassifier.ReadingIdentityUnavailable) ? null :
+                            item.Changed ?? (item.NewNoParse || item.NewApprovedLoss || item.NewlyAcceptedNegative ||
+                                item.ReadingLosses.Count > 0 ? true : null) }, ReviewJson.Options);
                     detailBytes = checked(detailBytes + Cost(item.CaseKey, item.WordKey, item.Word, item.WritingSystemId, facts));
                     if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) { available = false; break; }
                     Execute(connection, transaction, "INSERT INTO ReviewReportCases VALUES ($id,$case,$wordkey,$word,$ws,$wordSort,$wsSort,$facts);",

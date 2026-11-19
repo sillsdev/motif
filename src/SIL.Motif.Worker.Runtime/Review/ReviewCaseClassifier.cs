@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Analysis;
@@ -9,6 +8,8 @@ namespace SIL.Motif.Worker.Runtime.Review;
 /// <summary>Compares one case against its frozen reading and whole-word assertions.</summary>
 public static class ReviewCaseClassifier
 {
+    internal const string ReadingIdentityUnavailable = "reading-identity-unavailable";
+
     /// <summary>Returns only observed losses; an unfinished search cannot prove an absence.</summary>
     public static ReviewCaseDelta Compare(ReviewCaseFacts facts)
     {
@@ -27,6 +28,8 @@ public static class ReviewCaseClassifier
         if (!facts.IdentityAvailable) limitations.Add("assertion-identity-unavailable");
         if (!before.Complete) limitations.Add("before-incomplete");
         if (!after.Complete) limitations.Add("after-incomplete");
+        var readingIdentityAvailable = before.Readings.Concat(after.Readings).All(reading => reading.Signature is not null);
+        if (!readingIdentityAvailable) limitations.Add(ReadingIdentityUnavailable);
         if (facts.Assertions.Any(item => item.WholeWordNegative && item.Context is not null && !item.Eligible))
             limitations.Add("negative-context-unavailable");
 
@@ -77,29 +80,14 @@ public static class ReviewCaseClassifier
             After = SideFacts(facts.After, after, facts.Assertions, inventoryRejected),
             Assertions = facts.Assertions,
             AssertionsCaptured = true,
-            Changed = CompareReadings(before, after),
+            Changed = before.Complete && after.Complete && readingIdentityAvailable
+                ? !ReadingIds(before.Readings).SequenceEqual(ReadingIds(after.Readings), StringComparer.Ordinal)
+                : null,
         };
     }
 
-    private static bool? CompareReadings((IReadOnlyList<ParseAnalysis> Readings, bool Complete) before,
-        (IReadOnlyList<ParseAnalysis> Readings, bool Complete) after)
-    {
-        if (!before.Complete || !after.Complete) return null;
-        if (before.Readings.Concat(after.Readings).All(reading => reading.Signature is not null))
-        {
-            var other = after.Readings.Select(reading => reading.Signature!.Id).Order(StringComparer.Ordinal);
-            return !before.Readings.Select(reading => reading.Signature!.Id).Order(StringComparer.Ordinal)
-                .SequenceEqual(other, StringComparer.Ordinal);
-        }
-        static string Identity(ParseAnalysis reading) => JsonSerializer.Serialize(reading.Morphs.Select(morph => new
-        {
-            Form = Guid.Parse(morph.Form!).ToString("D"), Msa = Guid.Parse(morph.Msa!).ToString("D"),
-            InflType = morph.InflType is null ? null : Guid.Parse(morph.InflType).ToString("D"),
-            Guess = morph.GuessedString?.Normalize(NormalizationForm.FormD),
-        }));
-        var previous = before.Readings.Select(Identity).ToHashSet(StringComparer.Ordinal);
-        return !previous.SetEquals(after.Readings.Select(Identity));
-    }
+    private static IEnumerable<string> ReadingIds(IEnumerable<ParseAnalysis> readings) =>
+        readings.Select(reading => reading.Signature!.Id).Order(StringComparer.Ordinal);
 
     private static ReviewCaseSideFacts SideFacts(ParseWordEvidence? evidence,
         (IReadOnlyList<ParseAnalysis> Readings, bool Complete) observed, IReadOnlyList<ReviewAssertion> assertions, bool inventoryRejected = false)

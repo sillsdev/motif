@@ -337,7 +337,8 @@ public sealed record EvidenceRow(
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ReadingRow(
-    [property: JsonRequired] string IdentityDigest,
+    [property: JsonRequired]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? IdentityDigest,
     [property: JsonRequired] Side Side,
     [property: JsonRequired] IdentityState IdentityState,
     [property: JsonRequired] IReadOnlyList<Morph> Morphs,
@@ -348,8 +349,8 @@ public sealed record ReadingRow(
     [JsonRequired]
     public string RowKind { get; init; } = "reading";
 
-    /// <summary>The canonical Reading identity frozen against this side of the Trial.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    /// <summary>The canonical Reading identity frozen against this side of the Trial; null when it is unavailable.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public ReadingSignature? Signature { get; init; }
 
     void IJsonOnDeserialized.OnDeserialized() => Validate();
@@ -357,7 +358,7 @@ public sealed record ReadingRow(
 
     private void Validate()
     {
-        if (IdentityDigest is null ||
+        if ((IdentityState != IdentityState.Unavailable && IdentityDigest is null) ||
             Morphs is null ||
             Morphs.Any(item => item is null) ||
             ExpectationIds is null ||

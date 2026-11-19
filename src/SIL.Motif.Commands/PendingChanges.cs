@@ -1320,7 +1320,10 @@ public static class PendingChanges
                 new MorphBundleContent(morph.Form, morph.Msa, morph.InflType)).ToArray());
             var opinion = wordform.HumanApprovedAnalyses.Contains(analysis) ? ReadingGrade.Approved :
                 wordform.HumanDisapprovedParses.Contains(analysis) ? ReadingGrade.Disapproved : ReadingGrade.Candidate;
-            var reading = new ParserReading(ParserReadingReader.ReadMorphs(cache, projectName, morphs));
+            var reading = new ParserReading(ParserReadingReader.ReadMorphs(cache, projectName, morphs))
+            {
+                Signature = ReadingSignatureReader.Read(analysis),
+            };
             return (key, CanonicalId.FromGuid(analysis.Guid).Value,
                 new ReviewAnalysis(reading, opinion, false, true));
         }).ToArray();

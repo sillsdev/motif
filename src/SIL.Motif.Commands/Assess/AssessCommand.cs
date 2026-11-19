@@ -918,11 +918,15 @@ public static class AssessCommand
     {
         var morphs = analysis.Morphs.Select(morph =>
             new ParseMorph(morph.Form, morph.Msa, morph.InflType, GuessedString: null)).ToArray();
+        var objects = cache.ServiceLocator.ObjectRepository;
+        var stored = CanonicalId.TryParse(analysis.SourceAnalysisId, out var id) &&
+            objects.TryGetObject(id.ToGuid(), out var found) ? found as IWfiAnalysis : null;
         return new ParserReading(ParserReadingReader.ReadMorphs(cache, projectName, morphs, liveLink))
         {
             StoredAnalysisId = analysis.SourceAnalysisId,
             StoredAnalysisOpinion = opinion,
             Identity = analysis,
+            Signature = stored is null ? null : ReadingSignatureReader.Read(stored),
         };
     }
 

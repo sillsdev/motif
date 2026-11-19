@@ -162,8 +162,38 @@ public sealed class TrialJobHandlerTests : IDisposable
             new PanGlossRequest.Batch(source, ["pabago", "bago"], null) { CollectAnalyses = true },
             "applied prohibitions", CancellationToken.None));
         foreach (var word in ParseMorphEvidence.Read(afterApply.MorphologyOutput!, ["pabago", "bago"]))
-            Assert.Equal(JsonSerializer.Serialize(candidateWords[word.Word].Analyses),
-                JsonSerializer.Serialize(word.Analyses));
+            AssertSameAnalyses(candidateWords[word.Word].Analyses, word.Analyses);
+    }
+
+    /// <summary>Compares whole analyses; Signature and acceptance count wherever both sides carry them.</summary>
+    private static void AssertSameAnalyses(IReadOnlyList<ParseAnalysis> expected, IReadOnlyList<ParseAnalysis> actual)
+    {
+        Assert.Equal(expected.Count, actual.Count);
+        for (var index = 0; index < expected.Count; index++)
+        {
+            var (left, right) = (expected[index], actual[index]);
+            var signed = left.Signature is not null && right.Signature is not null;
+            var accepted = left.MorphemeAcceptance is not null && right.MorphemeAcceptance is not null;
+            ParseAnalysis Comparable(ParseAnalysis item) => item with
+            {
+                Signature = signed ? item.Signature : null,
+                MorphemeAcceptance = accepted ? item.MorphemeAcceptance : null,
+            };
+            Assert.Equal(JsonSerializer.Serialize(Comparable(left)), JsonSerializer.Serialize(Comparable(right)));
+        }
+    }
+
+    [Fact]
+    public void AnalysisComparisonCatchesASignatureMismatch()
+    {
+        var morph = new ParseMorph(Guid.NewGuid().ToString(), Guid.NewGuid().ToString(), null, null);
+        ReadingMorpheme Of(string id) => new(id, null, [], ReadingSenseStatus.Unresolved, id, id, null, true, null, []);
+        var first = new ParseAnalysis([morph]) { Signature = new([Of(CanonicalId.FromGuid(Guid.NewGuid()).Value)]) };
+        var second = new ParseAnalysis([morph]) { Signature = new([Of(CanonicalId.FromGuid(Guid.NewGuid()).Value)]) };
+        AssertSameAnalyses([first], [first with { }]);
+        AssertSameAnalyses([first], [new ParseAnalysis([morph])]);
+        Assert.ThrowsAny<Exception>(() => AssertSameAnalyses([first], [second]));
+        Assert.ThrowsAny<Exception>(() => AssertSameAnalyses([first], [new ParseAnalysis([morph with { Form = null }])]));
     }
 
     private (CanonicalId ProposalId, string Json, Guid[] Targets) PrepareDisabledProhibitions()
@@ -1390,6 +1420,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         }
         var kept = new ParseAnalysis([new(_seed.FirstLexemeFormId.ToString("D"), msa, null, null)]);
         var removed = new ParseAnalysis([new(_seed.SecondLexemeFormId.ToString("D"), secondMsa, null, null)]);
+        var unverifiable = new ParseAnalysis([new(Guid.NewGuid().ToString("D"), Guid.NewGuid().ToString("D"), null, null)]);
         const string submitted = "Motifa";
         const string duplicate = "probe0000";
         const string rejected = "probe0001";
@@ -1445,7 +1476,7 @@ public sealed class TrialJobHandlerTests : IDisposable
             new AssessmentRaw.WordMeasurements(scope.ParsedWords.Select(word =>
             {
                 IReadOnlyList<ParseAnalysis> readings = vectors.TryGetValue(word, out var vector) ? [vector.After]
-                    : word is submitted or duplicate ? [kept] : [];
+                    : word is submitted ? [kept] : word == duplicate ? [kept, unverifiable] : [];
                 return new AssessedWord(word, readings.Count > 0 ? "analysed" : word == rejected ? "skipped" : "no-analysis", [])
                 {
                     Morphology = Word(word, readings) with { InvalidShape = word == rejected },
@@ -1456,6 +1487,7 @@ public sealed class TrialJobHandlerTests : IDisposable
 
         var first = RunAndFinish(handler, CreateTrialJob(proposalJson, words, reviewInputs: reference, beforePartial: partial));
         Assert.Equal(JobStatus.Completed, first.Status);
+        AssertReviewReadingsFrozenOnBothSides(first.JobId, unverifiable);
         var firstAssessment = Assert.Single(_assessments.ListByProposal(proposalId)).AssessmentId;
         var frozenReading = Assert.Single(_assessments.Get(firstAssessment).Words!, item => item.Word == submitted)
             .Morphology!.Analyses.Single().Signature;
@@ -2938,5 +2970,19 @@ public sealed class TrialJobHandlerTests : IDisposable
             LoadScratchCacheCount++;
             return base.LoadScratchCache(fwDataFilePath, templatesFolder);
         }
+    }
+
+    private void AssertReviewReadingsFrozenOnBothSides(string jobId, ParseAnalysis unverifiable)
+    {
+        var ledger = TrialReviewEvidence.ReadJob(_database, jobId)!;
+        var readings = ledger.Before.Concat(ledger.After).SelectMany(row => row.Morphology?.Analyses ?? []).ToArray();
+        Assert.NotEmpty(ledger.Before.SelectMany(row => row.Morphology?.Analyses ?? []));
+        Assert.NotEmpty(ledger.After.SelectMany(row => row.Morphology?.Analyses ?? []));
+        // A Reading that cannot be verified keeps no Signature, so review reports it Unavailable.
+        bool IsUnverifiable(ParseAnalysis reading) => reading.Morphs[0].Form == unverifiable.Morphs[0].Form;
+        Assert.All(readings.Where(reading => !IsUnverifiable(reading)), reading => Assert.NotNull(reading.Signature));
+        var unsigned = Assert.Single(readings, IsUnverifiable);
+        Assert.Null(unsigned.Signature);
+        Assert.NotNull(unsigned.MorphemeAcceptance);
     }
 }

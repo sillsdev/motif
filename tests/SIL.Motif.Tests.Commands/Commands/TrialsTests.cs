@@ -120,7 +120,7 @@ public sealed class TrialsTests : IDisposable
     }
 
     [Fact]
-    public void FreshnessIsBaselineMovedWhenTheCurrentBaselineTokenDiffers()
+    public void FreshnessRemainsCurrentAfterRecapturingTheSameSemanticBaseline()
     {
         using var fixture = new ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
@@ -129,7 +129,7 @@ public sealed class TrialsTests : IDisposable
 
         var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value);
 
-        Assert.Equal(TrialFreshness.BaselineMoved, trial!.Freshness);
+        Assert.Equal(TrialFreshness.Current, trial!.Freshness);
     }
 
     [Fact]
@@ -255,7 +255,8 @@ public sealed class TrialsTests : IDisposable
         var proposal = fixture.SaveProposal();
         fixture.RecordAssessment(proposal, "parse-time", AssessmentKinds.ParseTime);
         fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["parse-time"]);
-        fixture.RecordBaseline("sha256:" + new string('c', 64), "2026-09-24T13:00:00Z");
+        fixture.RecordBaseline("sha256:" + new string('c', 64), "2026-09-24T13:00:00Z",
+            semanticDigest: "sha256:" + new string('2', 64));
 
         var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value);
 

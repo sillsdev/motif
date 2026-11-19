@@ -3131,7 +3131,7 @@
           "const": "reading"
         },
         "identityDigest": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "side": {
           "$ref": "#/$defs/Side"
@@ -3154,7 +3154,7 @@
             "type": "string"
           }
         },
-        "signature": { "$ref": "#/$defs/ReadingSignature" },
+        "signature": { "anyOf": [{ "$ref": "#/$defs/ReadingSignature" }, { "type": "null" }] },
         "sourceRefs": {
           "type": "array",
           "items": {
@@ -3172,7 +3172,18 @@
         "expectationIds",
         "sourceRefs"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "identityState": { "enum": ["exact", "guessed"] }
+        },
+        "required": ["identityState"]
+      },
+      "then": {
+        "properties": {
+          "identityDigest": { "type": "string" }
+        }
+      }
     },
     "Morph": {
       "type": "object",

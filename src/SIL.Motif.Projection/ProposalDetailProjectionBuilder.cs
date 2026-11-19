@@ -29,14 +29,7 @@ public static class ProposalDetailProjectionBuilder
     public static ProposalDetailProjection Build(string proposalId, ManifestDocument manifest, Proposal envelope,
         bool rationaleLookedAt = false, Func<string, Proposal?>? revisionOf = null)
     {
-        var operations = envelope.Operations.Select(op => new ProposalOperationView(
-            OperationId: op.OperationId.Value,
-            Kind: op.Kind,
-            Target: op.Target?.Value,
-            EntityId: op.EntityId?.Value,
-            DependsOn: op.DependsOn.Select(d => d.OperationId.Value).ToList(),
-            AfterJson: op.After?.GetRawText(),
-            Citation: CitationView.Of(op))).ToList();
+        var operations = envelope.Operations.Select(ProposalOperationView.From).ToArray();
 
         var current = IntentDigest.Compute(envelope);
         RationaleView? rationale = manifest.Rationale is null ? null : new RationaleView(

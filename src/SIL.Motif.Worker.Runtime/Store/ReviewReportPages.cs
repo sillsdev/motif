@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Review;
+using SIL.Motif.Worker.Runtime.Review;
 using ReviewWordRow = SIL.Motif.Contract.Review.WordRow;
 
 namespace SIL.Motif.Worker.Store;
@@ -804,6 +805,7 @@ public sealed partial class ReviewReportRepository
         if (request.Filter == "changed") filter += " AND json_extract(c.FactsJson,'$.changed')=1";
         if (request.Filter == "unchanged") filter += " AND json_extract(c.FactsJson,'$.changed')=0";
         if (request.Filter == "review") filter += " AND (json_extract(c.FactsJson,'$.changed')=1 OR json_array_length(c.FactsJson,'$.flags')>0" +
+            $" OR EXISTS (SELECT 1 FROM json_each(c.FactsJson,'$.limitations') WHERE value='{ReviewCaseClassifier.ReadingIdentityUnavailable}')" +
             " OR (json_extract(c.FactsJson,'$.after.completion')='complete' AND json_extract(c.FactsJson,'$.after.parsed')=0)" +
             " OR json_array_length(c.FactsJson,'$.after.missingExpectationIds')>0" +
             " OR json_extract(c.FactsJson,'$.before.completion')!='complete' OR json_extract(c.FactsJson,'$.after.completion')!='complete')";
@@ -884,7 +886,7 @@ public sealed partial class ReviewReportRepository
         FindingRow finding => finding with { Group = Clip(finding.Group), Tier = Clip(finding.Tier) },
         EffectRow effect => effect with { Summary = Clip(effect.Summary) },
         EvidenceRow evidence => evidence with { Limitations = [] },
-        ReadingRow reading => reading with { Morphs = [], ExpectationIds = [], SourceRefs = [] },
+        ReadingRow reading => reading with { Morphs = [], ExpectationIds = [], SourceRefs = [], Signature = null },
         ExpectationRow expectation => expectation with { SourceRefs = [] },
         SourceRow source => source with { Excerpt = source.Excerpt is null ? null : Clip(source.Excerpt), ExcerptComplete = false },
         SetRow set => set with { Name = Clip(set.Name), Links = [] },

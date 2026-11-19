@@ -74,6 +74,12 @@ public sealed record ParserReading(IReadOnlyList<ParserReadingMorph> Morphs)
     /// <summary>The project's opinion of this stored analysis, or <see langword="null"/> when it is not known.</summary>
     public string? StoredAnalysisOpinion { get; init; }
 
+    /// <summary>
+    /// Canonical identity from the measured source or stored native analysis. Null means identity is unavailable.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public ReadingSignature? Signature { get; init; }
+
     /// <summary>The stored source morphology used by the ADR 0020 analysis matcher.</summary>
     public ApprovedMorphology? Identity { get; init; }
 

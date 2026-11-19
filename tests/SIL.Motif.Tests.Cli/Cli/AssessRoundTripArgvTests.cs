@@ -1,10 +1,17 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using SIL.LCModel;
+using SIL.LCModel.Core.Text;
+using SIL.LCModel.Infrastructure;
+using SIL.Motif.Contract.HandAnalysis;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Host;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
@@ -25,6 +32,135 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         _pristine = pristine;
         _workerRoot = Path.Combine(_root, "worker");
         Directory.CreateDirectory(_workerRoot);
+    }
+
+    [Fact]
+    public async Task AssessJsonPreservesReadingIdentityAcrossAChangeInFeatureValue()
+    {
+        var project = _pristine.CopyProjectFile();
+        var seed = _pristine.Seed;
+        var loader = new FwDataProjectLoader();
+        Guid msaId = default, otherMsaId = default, otherSenseId = default;
+        Guid featureId = default, oldValueId = default, newValueId = default, specId = default;
+        using (var cache = loader.LoadCache(project))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var services = cache.ServiceLocator;
+                var entry = services.GetInstance<ILexEntryRepository>().GetObject(seed.FirstEntryId);
+                var sense = entry.SensesOS[0];
+                var msa = (IMoStemMsa)sense.MorphoSyntaxAnalysisRA;
+                msaId = msa.Guid;
+                var otherSense = services.GetInstance<ILexSenseFactory>().Create();
+                entry.SensesOS.Add(otherSense);
+                otherSense.MorphoSyntaxAnalysisRA = msa;
+                otherSense.Gloss.set_String(cache.DefaultAnalWs, SeededProject.FirstGloss);
+                otherSenseId = otherSense.Guid;
+                var wordform = services.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString(SeededProject.FirstForm, cache.DefaultVernWs));
+                foreach (var selected in new[] { sense, otherSense })
+                {
+                    var analysis = services.GetInstance<IWfiAnalysisFactory>().Create();
+                    wordform.AnalysesOC.Add(analysis);
+                    var bundle = services.GetInstance<IWfiMorphBundleFactory>().Create();
+                    analysis.MorphBundlesOS.Add(bundle);
+                    bundle.MorphRA = entry.LexemeFormOA;
+                    bundle.MsaRA = msa;
+                    bundle.SenseRA = selected;
+                }
+                otherMsaId = services.GetInstance<ILexSenseRepository>().GetObject(seed.SecondSenseId)
+                    .MorphoSyntaxAnalysisRA.Guid;
+
+                var feature = services.GetInstance<IFsClosedFeatureFactory>().Create();
+                cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(feature);
+                var oldValue = services.GetInstance<IFsSymFeatValFactory>().Create();
+                var newValue = services.GetInstance<IFsSymFeatValFactory>().Create();
+                feature.ValuesOC.Add(oldValue);
+                feature.ValuesOC.Add(newValue);
+                msa.MsFeaturesOA = services.GetInstance<IFsFeatStrucFactory>().Create();
+                var spec = services.GetInstance<IFsClosedValueFactory>().Create();
+                msa.MsFeaturesOA.FeatureSpecsOC.Add(spec);
+                spec.FeatureRA = feature;
+                spec.ValueRA = oldValue;
+                (featureId, oldValueId, newValueId, specId) = (feature.Guid, oldValue.Guid, newValue.Guid, spec.Guid);
+            });
+            loader.Save(cache);
+        }
+
+        var first = new { form = seed.FirstLexemeFormId, msa = msaId, inflType = (string?)null, guessedString = (string?)null };
+        var second = first with { form = seed.SecondLexemeFormId, msa = otherMsaId };
+        var parser = CopyFakeParser(new
+        {
+            words = new[]
+            {
+                new { word = SeededProject.FirstForm, outcome = "complete", analyses = new[]
+                {
+                    new { morphs = new[] { first, second } },
+                    new { morphs = new[] { first, second } },
+                    new { morphs = new[] { second, first } },
+                    new { morphs = new[] { first with { form = Guid.NewGuid() } } },
+                } },
+            },
+        });
+        var words = Path.Combine(_root, "identity-words.txt");
+        File.WriteAllText(words, SeededProject.FirstForm + "\n");
+
+        async Task<ReadingSignature?[]> Assess()
+        {
+            await CaptureBaseline(project);
+            var result = await CliInProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--words", words, "--json");
+            Assert.True(result.ExitCode == 0, result.FailureDetails);
+            using var json = JsonDocument.Parse(result.Output);
+            var word = json.RootElement.GetProperty("words")[0];
+            var readings = word.GetProperty("readings").EnumerateArray()
+                .Select((reading, index) => (Index: reading.TryGetProperty("sourceIndex", out var source)
+                    ? source.GetInt32() : index, Signature: reading.GetProperty("signature").Deserialize<ReadingSignature>()))
+                .OrderBy(reading => reading.Index).Select(reading => reading.Signature).ToArray();
+            var stored = word.GetProperty("storedAnalyses").EnumerateArray().ToArray();
+            Assert.Equal(2, stored.Length);
+            Assert.Equal(stored[0].GetProperty("morphs")[0].GetProperty("gloss").GetString(),
+                stored[1].GetProperty("morphs")[0].GetProperty("gloss").GetString());
+            var native = stored.Select(reading => reading.GetProperty("signature").Deserialize<ReadingSignature>()!).ToArray();
+            Assert.NotEqual(native[0], native[1]);
+            Assert.Equal(new[] { Id(seed.FirstSenseId), Id(otherSenseId) }.Order(StringComparer.Ordinal),
+                native.Select(reading => reading.SenseId).Order(StringComparer.Ordinal));
+            return readings;
+        }
+
+        var before = await Assess();
+        using (var cache = loader.LoadCache(project))
+        {
+            var objects = cache.ServiceLocator.ObjectRepository;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                ((IFsClosedValue)objects.GetObject(specId)).ValueRA = (IFsSymFeatVal)objects.GetObject(newValueId));
+            loader.Save(cache);
+        }
+        var after = await Assess();
+
+        Assert.Equal(4, before.Length);
+        Assert.Equal(4, after.Length);
+        Assert.Null(before[3]);
+        Assert.Null(after[3]);
+        Assert.Equal(before[0], before[1]);
+        Assert.Equal(after[0], after[1]);
+        Assert.NotEqual(before[0], before[2]);
+        Assert.NotEqual(before[0], after[0]);
+        var morph = Assert.IsType<ReadingSignature>(before[0]).Morphemes[0];
+        Assert.Equal(Id(seed.FirstEntryId), morph.EntryId);
+        Assert.Equal(Id(seed.FirstLexemeFormId), morph.AllomorphId);
+        Assert.Equal(Id(msaId), morph.MsaId);
+        Assert.Equal(ReadingSenseStatus.Ambiguous, morph.SenseStatus);
+        Assert.Null(morph.SenseId);
+        Assert.Equal(new[] { Id(seed.FirstSenseId), Id(otherSenseId) }.Order(StringComparer.Ordinal), morph.SenseCandidates);
+        Assert.Equal(Id(seed.SecondSenseId), before[0]!.Morphemes[1].SenseId);
+        Assert.Empty(before[0]!.Morphemes[1].FeatureValues);
+        var featureValue = Assert.Single(morph.FeatureValues);
+        Assert.Equal(ReadingFeatureRole.Stem, featureValue.Role);
+        Assert.Equal(Id(featureId), Assert.Single(featureValue.FeaturePath));
+        Assert.Equal(Id(oldValueId), Assert.Single(featureValue.ValueIds));
+        Assert.Equal(Id(newValueId), Assert.Single(Assert.Single(after[0]!.Morphemes[0].FeatureValues).ValueIds));
+
+        static string Id(Guid guid) => CanonicalId.FromGuid(guid).Value;
     }
 
     [Theory]

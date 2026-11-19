@@ -156,7 +156,12 @@ public sealed class TrialReviewReportAcceptanceTests
         var readings = word.GetProperty("readings").GetProperty("items").EnumerateArray().ToArray();
         Assert.True(readings.Length >= 3);
         foreach (var reading in readings)
-            Assert.Contains(reading.GetProperty("identityDigest").GetString()!, output);
+        {
+            Assert.Equal("unavailable", reading.GetProperty("identityState").GetString());
+            Assert.Equal(JsonValueKind.Null, reading.GetProperty("identityDigest").ValueKind);
+            Assert.Equal(JsonValueKind.Null, reading.GetProperty("signature").ValueKind);
+        }
+        Assert.Contains("reading (Unavailable)", output);
         Assert.Contains("Before:", output);
         Assert.Contains("After:", output);
         foreach (var expectation in word.GetProperty("expectations").GetProperty("items").EnumerateArray())

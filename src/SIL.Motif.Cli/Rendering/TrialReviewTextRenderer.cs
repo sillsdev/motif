@@ -171,7 +171,8 @@ public static class TrialReviewTextRenderer
             (word.Work.PercentChange is { } change ? " " + change.ToString("+0.##;-0.##;0", CultureInfo.InvariantCulture) + "%" : "") +
             (word.SamplePositions is { } positions ? $"; {Count(word.SamplePositionsTotal)} positions: " +
                 string.Join(", ", positions.Select(position => position.OccurrenceId + " " + position.SourceLocator)) : ""),
-        ReadingRow reading => $"{reading.Side} reading {reading.IdentityDigest} ({reading.IdentityState}): " +
+        ReadingRow reading => $"{reading.Side} reading" + (reading.IdentityDigest is { } id ? " " + id : "") +
+            $" ({reading.IdentityState}): " +
             string.Join("; ", reading.Morphs.Select(morph => $"{morph.Form} [{morph.FormId}, {morph.MsaId}] {morph.Gloss}")) +
             " expectations: " + string.Join(", ", reading.ExpectationIds) + " sources: " + string.Join(", ", reading.SourceRefs),
         ExpectationRow expectation => $"{expectation.Id} ({expectation.Assertion}, {expectation.Reference}; " +

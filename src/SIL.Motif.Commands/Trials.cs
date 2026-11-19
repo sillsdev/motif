@@ -306,7 +306,7 @@ public static class Trials
     private static TrialFreshness GetFreshness(BaselineToken source, string intentDigest,
         CurrentBaselineEvidence? current, string? currentIntentDigest)
     {
-        if (current is null || current.Baseline.Token != source) return TrialFreshness.BaselineMoved;
+        if (current is null || !current.Baseline.Token.HasSameSemanticIdentity(source)) return TrialFreshness.BaselineMoved;
         return currentIntentDigest == intentDigest ? TrialFreshness.Current : TrialFreshness.ProposalChanged;
     }
 

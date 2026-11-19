@@ -369,13 +369,13 @@ public sealed class TrialExportCapture
                 {
                     Morphology = morphology with
                     {
-                        Analyses = morphology.Analyses.Select(item => NeedsCapture(item) ? reader.Capture(item) : item).ToArray(),
+                        Analyses = morphology.Analyses.Select(item => NeedsCapture(item) ? reader.CaptureVerified(item) : item).ToArray(),
                     },
                 };
             }
         }
 
         private static bool NeedsCapture(ParseAnalysis analysis) => HasMorphemes(analysis) &&
-            (analysis.Signature is null || analysis.MorphemeAcceptance is null);
+            analysis.MorphemeAcceptance is null;
     }
 }
