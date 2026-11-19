@@ -118,7 +118,7 @@ public static partial class RecordImportCommand
             break;
         }
         if (schema is null) return null;
-        var plan = ProjectRecordImporter.Plan(cache, schema, text, new CatalogWritableFields());
+        var plan = ProjectRecordImporter.Plan(cache, schema, text, new CatalogWritableFields(schema));
         var lowering = new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
         return new(schema, plan, lowering);
     }
