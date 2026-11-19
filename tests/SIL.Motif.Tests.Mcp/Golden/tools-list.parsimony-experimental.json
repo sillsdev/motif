@@ -1427,7 +1427,7 @@
   },
   {
     "name": "motif_dry_run",
-    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nRead a Dry Run. Waits for a Draft or finalized Proposal\u0027s Dry Run and prints operation counts, warnings, the Baseline hash and the effects-file path. Add --effects for the full terminal list; --json keeps the full operations and effects arrays with an effectsSummary.\nCommand: dry-run --wait. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
+    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nno_background: True queues no Parsimony Baseline bundle job when the Dry Run runs, so nothing commits after the command returns.\nRead a Dry Run. Waits for a Draft or finalized Proposal\u0027s Dry Run and prints operation counts, warnings, the Baseline hash and the effects-file path. Add --effects for the full terminal list; --json keeps the full operations and effects arrays with an effectsSummary.\nCommand: dry-run --wait. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1452,6 +1452,10 @@
         "effects": {
           "type": "boolean",
           "description": "Include the complete operation and effects lists in the result."
+        },
+        "no_background": {
+          "type": "boolean",
+          "description": "True queues no Parsimony Baseline bundle job when the Dry Run runs, so nothing commits after the tool returns."
         },
         "detail": {
           "type": "string",

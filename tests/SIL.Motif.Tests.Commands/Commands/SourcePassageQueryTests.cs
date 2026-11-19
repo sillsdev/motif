@@ -184,6 +184,27 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
     }
 
     [Fact]
+    public void AForegroundDeferredSourceIndexRefusesNamingTheCaptureThatRecoversIt()
+    {
+        var project = Project();
+        using var database = Open(project);
+        Publish(database, 1);
+        using (var connection = database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            SourceIndexRepository.MarkAllDeferred(connection, transaction);
+            transaction.Commit();
+        }
+
+        var refused = Query(project).Refusal;
+
+        Assert.Equal(RefusalCodes.SourceIndexStale, refused?.Code);
+        Assert.Contains("foreground-only", refused!.Message, StringComparison.Ordinal);
+        Assert.Contains("without --no-background", refused.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("running worker rebuilds", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void FieldWorksTextsPagesAndTotalsUseTheSameQueriesWithoutAFolderOrKindBranching()
     {
         var project = Project();

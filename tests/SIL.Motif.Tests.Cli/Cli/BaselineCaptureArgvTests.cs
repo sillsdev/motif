@@ -1,6 +1,10 @@
 using System;
 using System.Diagnostics;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -55,6 +59,68 @@ public sealed class BaselineCaptureArgvTests : IDisposable
         Assert.False(response!.ReusedExistingBytes);
         Assert.False(response.FieldWorksHeldProject);
         Assert.True(File.Exists(response.FwDataPath));
+    }
+
+    // Issue 296: no Source index or Parsimony job may exist, and no runner may be woken, once the command returns.
+    [Fact]
+    public void NoBackgroundCapturesAUsableBaselineAndLeavesNoJobBehind()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+
+        var result = Run($"baseline capture --project \"{fwDataPath}\" --no-background --json");
+
+        Assert.True(result.ExitCode == 0, $"exit {result.ExitCode}: {result.Error}{result.Output}");
+        Assert.Equal(string.Empty, result.Error);
+        Assert.NotNull(ProjectionJson.Deserialize<BaselineCaptureResponse>(result.Output));
+        var kinds = ProjectStoreCommand.Run(fwDataPath, MotifProductVersion.CurrentText, (database, project) =>
+            SIL.Motif.Contract.Commands.CommandOutcome<string[]>.Success(
+                new JobRepository(database).ListActive(ProjectWorkspaceKey.Compute(project))
+                    .Select(job => job.Kind).ToArray())).Value!;
+        Assert.Empty(kinds);
+    }
+
+    [Fact]
+    public void UsageNamesTheNoBackgroundSwitch()
+    {
+        var result = Run("baseline capture");
+
+        Assert.Contains("[--no-background]", result.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("baseline capture --project x.fwdata --no-background=false")]
+    [InlineData("assess --project x.fwdata --no-background=false")]
+    [InlineData("dry-run --project x.fwdata P --wait --no-background=false")]
+    [InlineData("trial --project x.fwdata P --wait --no-background=0")]
+    [InlineData("apply --project x.fwdata --no-background=false")]
+    [InlineData("baseline refresh-please --project x.fwdata --no-background")]
+    public void ANoBackgroundValueIsRefusedNotTreatedAsTrue(string command)
+    {
+        var result = Run(command);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("--no-background is a switch without a value", result.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("dry-run --project x.fwdata P --no-background")]
+    [InlineData("trial --project x.fwdata P --no-background")]
+    public void ForegroundDryRunAndTrialNeedWait(string command)
+    {
+        var result = Run(command);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("--no-background needs --wait", result.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("assess --project x.fwdata --no-background")]
+    [InlineData("apply --project x.fwdata --no-background")]
+    public void TheNoBackgroundSwitchPassesTheGateOnAssessAndApply(string command)
+    {
+        var result = Run(command);
+
+        Assert.DoesNotContain("--no-background is a switch without a value", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]

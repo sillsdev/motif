@@ -24,8 +24,8 @@ internal static class TrialResults
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     internal static CommandOutcome<AssessCommandResponse> Assess(ServerContext context, IReadOnlyList<string> words,
-        CancellationToken cancellation) => TrialBaselines.Assess(context.ProjectPath, words,
-            RunnerOptions.ResolveRoot(), context.ParserPath, cancellation);
+        CancellationToken cancellation, bool noBackground = false) => TrialBaselines.Assess(context.ProjectPath, words,
+            RunnerOptions.ResolveRoot(), context.ParserPath, cancellation, noBackground);
 
     internal static ToolOutcome Complete(ServerContext context, string jobId, string proposalId) => ToolOutcome.From(
         ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, project) =>

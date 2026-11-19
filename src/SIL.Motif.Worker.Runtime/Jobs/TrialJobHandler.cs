@@ -60,6 +60,11 @@ public sealed record TrialJobInput(
     [property: JsonPropertyName("reviewRevision")] string? ReviewRevision = null,
     [property: JsonPropertyName("reviewCounterSemantics")] int? ReviewCounterSemantics = null)
 {
+    /// <summary>True when the Trial was queued foreground-only: it queues no Parsimony job after it commits.</summary>
+    [JsonPropertyName("noBackground")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool NoBackground { get; init; }
+
     /// <summary>The expected losses frozen when this Trial was queued.</summary>
     [JsonPropertyName("expectedLosses")]
     public IReadOnlyList<string>? ExpectedLosses { get; init; }

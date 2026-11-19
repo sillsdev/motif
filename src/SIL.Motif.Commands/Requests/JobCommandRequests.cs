@@ -10,7 +10,8 @@ public sealed record EnqueueBaselineRefreshRequest(string FwDataPath, string Pro
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The exact canonical Proposal identity.</param>
-public sealed record EnqueueDryRunRequest(string FwDataPath, string ProductVersion, string ProposalId);
+/// <param name="NoBackground">True queues no Parsimony Baseline bundle job when the Dry Run runs, so nothing commits after the command returns.</param>
+public sealed record EnqueueDryRunRequest(string FwDataPath, string ProductVersion, string ProposalId, bool NoBackground = false);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
@@ -22,11 +23,12 @@ public sealed record EnqueueDryRunRequest(string FwDataPath, string ProductVersi
 /// <param name="Limits">Optional per-word limits copied from the earlier Assessment being compared.</param>
 /// <param name="BaselineAssessmentIds">The project Assessments used as the before side of a Trial Difference.</param>
 /// <param name="NegativeWords">Attested counterexamples that should not parse.</param>
+/// <param name="NoBackground">True runs any Baseline recapture this Trial needs in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.</param>
 public sealed record EnqueueTrialRequest(
     string FwDataPath, string ProductVersion, string ProposalId, string? Scope = null,
     IReadOnlyList<string>? Words = null, bool AllWords = false, string? ExpectedDraftRevision = null,
     TrialLimits? Limits = null, IReadOnlyList<string>? BaselineAssessmentIds = null,
-    IReadOnlyList<string>? NegativeWords = null)
+    IReadOnlyList<string>? NegativeWords = null, bool NoBackground = false)
 {
     /// <summary>Words the author declares as intended losses before this Trial is queued.</summary>
     public IReadOnlyList<string>? ExpectedLosses { get; init; }

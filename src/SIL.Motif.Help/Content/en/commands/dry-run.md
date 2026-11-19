@@ -18,3 +18,8 @@ With an ordinary wait, poll a job that is still running with `motif jobs show <j
 
 
 The summary shows at most ten warnings, each limited to 240 characters, with total and omitted counts. Complete warnings remain in the effects list. Effects files expire after seven days; a per-project 64 MiB budget may remove files older than one day sooner.
+
+## Foreground-only
+
+`--no-background` (MCP `no_background`) needs `--wait`. The Dry Run itself runs on the job runner, but no Parsimony Baseline bundle job is queued around it, so nothing commits after the command returns.
+

@@ -20,6 +20,7 @@ namespace SIL.Motif.Contract.Requests;
 /// leaves the choice to the toml or the default. A non-null list is an explicit collect: the pre-flight row estimate that
 /// skips per-object timing does not apply (the row budget still bounds the detail), an unknown name is refused with
 /// <c>assess.unsupported-kind</c>, and an empty list is refused with <c>assess.collect-empty</c>.</param>
+/// <param name="NoBackground">True runs any Baseline recapture this needs in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.</param>
 public sealed record AssessRequest(
     string ProjectPath,
     SelectionRequest? Selection = null,
@@ -28,4 +29,5 @@ public sealed record AssessRequest(
     string? ReplaceAssessmentId = null,
     bool FullObjectTimingDetail = false,
     int? BudgetSeconds = null,
-    IReadOnlyList<string>? Collect = null);
+    IReadOnlyList<string>? Collect = null,
+    bool NoBackground = false);

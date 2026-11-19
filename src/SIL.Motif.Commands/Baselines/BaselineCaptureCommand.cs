@@ -20,8 +20,10 @@ using SIL.Motif.Worker.Projects;
 
 namespace SIL.Motif.Commands.Baselines;
 
-/// <summary>The one field a Baseline capture needs: which project's saved file to read.</summary>
-public sealed record BaselineCaptureRequest(string ProjectPath);
+/// <summary>Which project's saved file to read, and whether the capture may leave deferred work behind.</summary>
+/// <param name="ProjectPath">The project's saved <c>.fwdata</c> path.</param>
+/// <param name="NoBackground">True captures in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.</param>
+public sealed record BaselineCaptureRequest(string ProjectPath, bool NoBackground = false);
 
 /// <summary>
 /// Captures a Baseline from a project's saved <c>.fwdata</c> — the file on disk, never the live model —
@@ -35,8 +37,10 @@ public sealed record BaselineCaptureRequest(string ProjectPath);
 /// live project or touches its <c>.fwdata.lock</c> or <c>.bak</c> — see <see cref="SavedProjectFileCopier"/>.
 /// </para>
 /// <para>
-/// This command is deliberately synchronous and enqueues nothing durable: it captures, publishes, and
-/// returns within one call, for a caller who wants to wait on the result rather than poll a job.
+/// This command is synchronous: it captures, publishes, and returns within one call. By default it also
+/// queues the Source index refresh, and each front end then queues the Parsimony Baseline bundle prebuild and
+/// wakes the runner. With <see cref="BaselineCaptureRequest.NoBackground"/> it queues nothing, and the front ends
+/// queue and wake nothing, so no job commits after the call returns.
 /// </para>
 /// </remarks>
 public static class BaselineCaptureCommand
@@ -151,7 +155,9 @@ public static class BaselineCaptureCommand
                         "baseline.busy", FailureReason.Busy, ex.Message, facts));
                 }
 
-                SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
+                // Foreground-only: mark the Source index pending, queue nothing.
+                if (request.NoBackground) SIL.Motif.Worker.Sources.SourceIndexRefresh.MarkPending(database, sources);
+                else SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
                 var registrationFailure = RecordKnownProject(managedRoot, project);
 
                 var held = File.Exists(project.FullFwDataPath + ".lock");

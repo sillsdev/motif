@@ -364,6 +364,52 @@ public sealed class BaselineCaptureCommandTests : IDisposable
         Assert.Equal(outcome.Value.ReusedExistingBytes, bound.ReusedExistingBytes);
     }
 
+    // Issue 296: an admitted workflow's gate lock ends when the command returns, so nothing may commit after it.
+    [Fact]
+    public void ANoBackgroundCaptureLeavesNoJobAfterFreshReuseAndRecapture()
+    {
+        using var cache = _pristine.NewScratch();
+        var fwDataPath = cache.ProjectId.Path;
+        var managedRoot = NewManagedRoot();
+        var request = new BaselineCaptureRequest(fwDataPath, NoBackground: true);
+
+        var fresh = BaselineCaptureCommand.Capture(request, managedRoot);
+        Assert.True(fresh.Succeeded, fresh.Refusal?.Message);
+        Assert.False(fresh.Value!.ReusedExistingBytes);
+        Assert.Empty(ActiveJobs(fwDataPath));
+
+        var reused = BaselineCaptureCommand.Capture(request, managedRoot);
+        Assert.True(reused.Succeeded, reused.Refusal?.Message);
+        Assert.True(reused.Value!.ReusedExistingBytes);
+        Assert.Empty(ActiveJobs(fwDataPath));
+
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
+            () => cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create());
+        new FwDataProjectLoader().Save(cache);
+        var recaptured = BaselineCaptureCommand.Capture(request, managedRoot);
+        Assert.True(recaptured.Succeeded, recaptured.Refusal?.Message);
+        Assert.False(recaptured.Value!.ReusedExistingBytes);
+        Assert.Empty(ActiveJobs(fwDataPath));
+        Assert.Equal(recaptured.Value.Token, CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath)).Value!.Token);
+    }
+
+    // The default capture still queues the Source index refresh, so the foreground-only mode is the difference.
+    [Fact]
+    public void ADefaultCaptureStillQueuesTheSourceIndexRefresh()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot()).Succeeded);
+
+        Assert.Contains("source-index", ActiveJobs(fwDataPath));
+    }
+
+    private static string[] ActiveJobs(string fwDataPath) =>
+        ProjectStoreCommand.Run(fwDataPath, MotifProductVersion.CurrentText, (database, project) =>
+            SIL.Motif.Contract.Commands.CommandOutcome<string[]>.Success(
+                new JobRepository(database).ListActive(ProjectWorkspaceKey.Compute(project))
+                    .Select(job => job.Kind).ToArray())).Value!;
+
     private string NewManagedRoot()
     {
         var root = Path.Combine(_managedRootsParent, Guid.NewGuid().ToString("N"));

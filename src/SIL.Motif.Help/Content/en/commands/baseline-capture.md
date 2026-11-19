@@ -12,6 +12,14 @@ Use this when a later Dry Run or Assessment should be measured against the lates
 motif baseline capture --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
 ```
 
+## Foreground-only capture
+
+By default a capture also queues a Source index refresh and a Parsimony Baseline bundle job, and wakes the job runner, so work can commit after the command returns. Add `--no-background` (MCP `no_background`) to publish the same Baseline and queue nothing: no Source index job, no Parsimony job, no runner wake. Use it when a workflow holds a lock or an admission that ends when the command returns. The Source index is marked pending, not refreshed; a later `baseline capture` or Apply without the switch brings it current. A runner start does not. Assess, Dry Run, Trial and Apply take the same switch, so a gate sequence can stay foreground to its last command.
+
+```powershell
+motif baseline capture --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --no-background --json
+```
+
 ## What it prints
 
 The response identifies the project, Baseline digest, capture time, source save time, and whether the published bytes were reused. JSON returns the Baseline token and capture facts.

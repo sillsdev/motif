@@ -35,10 +35,14 @@
   },
   {
     "name": "motif_capture_baseline",
-    "description": "Capture a Baseline. Reads the saved .fwdata project to create or reuse a file-backed Baseline. Use it when the latest FieldWorks save should be the point of comparison for later work.\nCommand: baseline capture. Agent class: Evaluate.\n",
+    "description": "Capture a Baseline. Reads the saved .fwdata project to create or reuse a file-backed Baseline. Use it when the latest FieldWorks save should be the point of comparison for later work.\nCommand: baseline capture. Agent class: Evaluate.\nno_background: True captures in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.",
     "inputSchema": {
       "type": "object",
       "properties": {
+        "no_background": {
+          "type": "boolean",
+          "description": "True captures in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns."
+        },
         "project": {
           "type": "string",
           "description": "Known project name or recorded .fwdata path."
@@ -9628,7 +9632,7 @@
   },
   {
     "name": "motif_dry_run",
-    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nRead a Dry Run. Waits for a Draft or finalized Proposal\u0027s Dry Run and prints operation counts, warnings, the Baseline hash and the effects-file path. Add --effects for the full terminal list; --json keeps the full operations and effects arrays with an effectsSummary.\nCommand: dry-run --wait. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
+    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nno_background: True queues no Parsimony Baseline bundle job when the Dry Run runs, so nothing commits after the command returns.\nRead a Dry Run. Waits for a Draft or finalized Proposal\u0027s Dry Run and prints operation counts, warnings, the Baseline hash and the effects-file path. Add --effects for the full terminal list; --json keeps the full operations and effects arrays with an effectsSummary.\nCommand: dry-run --wait. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -9653,6 +9657,10 @@
         "effects": {
           "type": "boolean",
           "description": "Include the complete operation and effects lists in the result."
+        },
+        "no_background": {
+          "type": "boolean",
+          "description": "True queues no Parsimony Baseline bundle job when the Dry Run runs, so nothing commits after the tool returns."
         },
         "detail": {
           "type": "string",
@@ -9685,7 +9693,7 @@
   },
   {
     "name": "motif_trial",
-    "description": "Read a Trial report. Reads the saved report of a Proposal\u0027s Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.\nCommand: proposal trial. Agent class: Read.\nproposal: The Proposal ID.\njob: Exact Trial job to resume or read.\nreport: Exact stored report to read.\ndetail: Report disclosure level.\nsection: Report section to read.\nset: Review set to select.\noutcome: Include only rows with this outcome.\nflag: Include only rows with this Review flag.\nfilter: Filter full-detail rows.\nword: Select one reported word.\ncase: Select one reported case.\ntrace: Read a trace for the selected word or case.\nside: Select the before or after readings.\ncursor: Continuation from the same report and filters.\nlimit: Maximum page items. Default 50.\npage: Page of the retirement signature rows of a saved report. Default 1.\nlatest: Read the newest Trial job and its report identity when available.\nTrial a Proposal. Measures a Proposal on a throwaway copy and records review evidence, always including declared gate word sets. Read named losses, incomplete cases and new second readings held for review before deciding what to do.\nCommand: trial. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nwords: The explicit words to measure, or the configured Selection when omitted.\nnegative_words: Attested counterexamples that should not parse.\nexpect_loss: Words the author declares as intended losses before this Trial is queued.\nRead Trial progress. Waits for a Trial job and reads its state. Read the stored review report after the Trial completes.\nCommand: trial --wait. Agent class: Evaluate.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
+    "description": "Read a Trial report. Reads the saved report of a Proposal\u0027s Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.\nCommand: proposal trial. Agent class: Read.\nproposal: The Proposal ID.\njob: Exact Trial job to resume or read.\nreport: Exact stored report to read.\ndetail: Report disclosure level.\nsection: Report section to read.\nset: Review set to select.\noutcome: Include only rows with this outcome.\nflag: Include only rows with this Review flag.\nfilter: Filter full-detail rows.\nword: Select one reported word.\ncase: Select one reported case.\ntrace: Read a trace for the selected word or case.\nside: Select the before or after readings.\ncursor: Continuation from the same report and filters.\nlimit: Maximum page items. Default 50.\npage: Page of the retirement signature rows of a saved report. Default 1.\nlatest: Read the newest Trial job and its report identity when available.\nTrial a Proposal. Measures a Proposal on a throwaway copy and records review evidence, always including declared gate word sets. Read named losses, incomplete cases and new second readings held for review before deciding what to do.\nCommand: trial. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nwords: The explicit words to measure, or the configured Selection when omitted.\nnegative_words: Attested counterexamples that should not parse.\nno_background: True runs any Baseline recapture this Trial needs in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.\nexpect_loss: Words the author declares as intended losses before this Trial is queued.\nRead Trial progress. Waits for a Trial job and reads its state. Read the stored review report after the Trial completes.\nCommand: trial --wait. Agent class: Evaluate.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -9729,6 +9737,10 @@
             "type": "string"
           },
           "description": "Words the change intends to lose, frozen when the Trial is queued. They are reported in the saved gate and do not make it a loss; any other lost word does. A resumed Trial cannot change them."
+        },
+        "no_background": {
+          "type": "boolean",
+          "description": "True keeps the Trial foreground only: any Baseline recapture runs inline and no Parsimony job is queued after the Trial commits, so nothing commits after the tool returns. Not with job."
         },
         "wait_seconds": {
           "type": "integer",
@@ -10105,7 +10117,7 @@
   },
   {
     "name": "motif_assess",
-    "description": "Measure a Selection. Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them. A word whose lowercase form differs and is not listed is also parsed as an extra row marked lowercaseOf, so the result reports inputWords and lowercaseWords separately.\nCommand: assess. Agent class: Evaluate.\nSelection: The words or Texts to measure; null uses the saved Default Selection.\nPerWordLimitMs: The per-word duration limit in milliseconds; null keeps the configured limit.\nPerWordParserWorkLimit: The per-word parser work limit; null keeps the configured cap.\nReplaceAssessmentId: The prior complete Assessment to replace for an explicit reparse.\nFullObjectTimingDetail: Retain object detail for every word in a bounded explicit Selection.\nBudgetSeconds: Whole-run time limit in seconds; null uses the saved Parsing setting.\nCollect: The collector names (ParseTime, Correctness, ObjectTiming, ...) as the scope\u0027s collect in .motif.toml takes them. The request\u0027s list wins over the toml scope, which wins over the built-in default; null leaves the choice to the toml or the default. A non-null list is an explicit collect: the pre-flight row estimate that skips per-object timing does not apply (the row budget still bounds the detail), an unknown name is refused with assess.unsupported-kind, and an empty list is refused with assess.collect-empty.",
+    "description": "Measure a Selection. Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them. A word whose lowercase form differs and is not listed is also parsed as an extra row marked lowercaseOf, so the result reports inputWords and lowercaseWords separately.\nCommand: assess. Agent class: Evaluate.\nno_background: True runs any Baseline recapture this needs in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -10129,6 +10141,10 @@
           "description": "Words to skip when paging. Default 0.",
           "minimum": 0,
           "maximum": 10000000
+        },
+        "no_background": {
+          "type": "boolean",
+          "description": "True runs any Baseline recapture in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the tool returns."
         },
         "detail": {
           "type": "string",

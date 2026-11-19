@@ -19,3 +19,8 @@ A new second reading on an attested word is held for review: `report.heldWords` 
 Older saved reports without compact gate facts are explicitly `unmeasured`. Use `--refresh-report` to rebuild named facts from the original retained evidence, or rerun the Trial when those inputs are unavailable. Motif never guesses lost-word names from counts.
 
 Autonomous Apply also requires a [declared gate](cmd:config%20show), the current declaration and exact required word-set scope, a green newest Trial, and unchanged live project and writing-system state.
+
+## Foreground-only
+
+`--no-background` (MCP `no_background`) needs `--wait`. A Baseline recapture the Trial needs runs inline, and no Parsimony job is queued after the Trial completes, so nothing commits after the command returns.
+

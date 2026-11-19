@@ -502,9 +502,10 @@ public sealed record ShowProposalRequest(string FwDataPath, string ProductVersio
 /// <param name="ProposalId">The exact canonical Proposal identity.</param>
 /// <param name="Force">Whether to override the requested command constraint.</param>
 /// <param name="Attribution">The mode, message and note choice; <see langword="null"/> is a person with no message.</param>
+/// <param name="NoBackground">True applies in the foreground only: no Source index job is queued, so nothing commits after the command returns; the Source index reads as pending until a later default-mode command refreshes it.</param>
 public sealed record ApplyRequest(
     string FwDataPath, string ProductVersion, string ProposalId, bool Force = false,
-    ApplyAttribution? Attribution = null);
+    ApplyAttribution? Attribution = null, bool NoBackground = false);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

@@ -59,7 +59,7 @@ public static class PendingChangesWorkflow
         if (request.DraftId is { } expectedDraft && expectedDraft != current.DraftId)
             return RefuseApply("apply.changes-changed", ChangesChanged(isPending: true));
         return ApplyOne(new ApplyTarget(request.ProjectPath, current.DraftId, request.Revision, Force: false,
-            DryRunSource.Fresh, request.Attribution), cancellationToken, dryRunTimeout, runnerLauncher);
+            DryRunSource.Fresh, request.Attribution, request.NoBackground), cancellationToken, dryRunTimeout, runnerLauncher);
     }
 
     /// <summary>
@@ -82,7 +82,7 @@ public static class PendingChangesWorkflow
             [PanGlossExecutable.PathVariable] = parserPath,
         });
         return ApplyOne(new ApplyTarget(request.ProjectPath, request.ProposalId, request.ExpectedRevision,
-            Force: false, DryRunSource.Trial, request.Attribution), cancellationToken, null, null);
+            Force: false, DryRunSource.Trial, request.Attribution, request.NoBackground), cancellationToken, null, null);
     }
 
     /// <summary>
@@ -94,14 +94,14 @@ public static class PendingChangesWorkflow
     {
         ArgumentNullException.ThrowIfNull(request);
         return ApplyOne(new ApplyTarget(request.FwDataPath, request.ProposalId, null, request.Force,
-            DryRunSource.Bound, request.Attribution), CancellationToken.None, null, null);
+            DryRunSource.Bound, request.Attribution, request.NoBackground), CancellationToken.None, null, null);
     }
 
     // Lets a test run a second Apply between this one's reads and its Finalize, the window two processes share.
     internal static readonly AsyncLocal<Action?> BeforeFinalizeForTests = new();
 
     private sealed record ApplyTarget(string ProjectPath, string ProposalId, string? ExpectedRevision, bool Force,
-        DryRunSource DryRun, ApplyAttribution? Attribution);
+        DryRunSource DryRun, ApplyAttribution? Attribution, bool NoBackground = false);
 
     // Where the Dry Run Apply binds comes from; it is the only thing the front doors choose.
     private enum DryRunSource
@@ -172,7 +172,7 @@ public static class PendingChangesWorkflow
         if (released.Value!.AlreadyInAppliedLog)
         {
             var retry = ProposalCommands.ApplyWithinLease(new ApplyRequest(target.ProjectPath, version,
-                identity.ProposalId, target.Force, target.Attribution));
+                identity.ProposalId, target.Force, target.Attribution, target.NoBackground));
             return retry.Succeeded
                 ? CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(retry.Value!, identity.Summary!))
                 : CommandOutcome<ApplyPendingResult>.Refused(retry.Refusal!);
@@ -209,14 +209,14 @@ public static class PendingChangesWorkflow
         var unbound = target.DryRun switch
         {
             DryRunSource.Fresh => RunFreshDryRun(target.ProjectPath, version, proposalId, cancellationToken,
-                dryRunTimeout, runnerLauncher),
+                dryRunTimeout, runnerLauncher, target.NoBackground),
             DryRunSource.Trial => BindTrialDryRun(target.ProjectPath, version, proposalId, runnerLauncher?.Options.ParserPath),
             _ => null,
         };
         if (unbound is not null) return ReopenAfterRefusal(target.ProjectPath, identity, unbound);
 
         var applied = ProposalCommands.ApplyWithinLease(new ApplyRequest(target.ProjectPath, version, proposalId, target.Force,
-            target.Attribution));
+            target.Attribution, target.NoBackground));
         if (applied.Succeeded)
             return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(applied.Value!,
                 identity.Summary!));
@@ -274,9 +274,10 @@ public static class PendingChangesWorkflow
     }
 
     private static Refusal? RunFreshDryRun(string projectPath, string version, string proposalId,
-        CancellationToken cancellationToken, TimeSpan? dryRunTimeout, IJobRunnerLauncher? runnerLauncher)
+        CancellationToken cancellationToken, TimeSpan? dryRunTimeout, IJobRunnerLauncher? runnerLauncher,
+        bool noBackground)
     {
-        var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(projectPath, version, proposalId));
+        var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(projectPath, version, proposalId, noBackground));
         if (!queued.Succeeded) return queued.Refusal!;
         var launcher = runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment();
         launcher.Start(projectPath);

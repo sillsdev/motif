@@ -106,22 +106,25 @@ internal static class AgentTools
         new("motif_capture_baseline",
             string.Empty,
             AgentClass.Evaluate,
-            Schema.Object(),
+            Schema.Object([("no_background", Schema.Boolean(
+                "True captures in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns."), false)]),
             false,
             true,
             false,
             true,
             (c, a, ct) =>
             {
-                var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(c.ProjectPath));
-                if (captured.Succeeded)
+                var noBackground = a.Flag("no_background");
+                var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(c.ProjectPath, noBackground));
+                if (captured.Succeeded && !noBackground)
                 {
                     _ = BaselineBundlePrebuild.QueueAfterCapture(c.ProjectPath, c.JobParserPath);
                     c.StartRunner();
                 }
                 return Task.FromResult(ToolOutcome.From(captured,
                     _ => "Now read with motif_grammar, motif_lexicon or motif_overview."));
-            }) { Requests = [typeof(BaselineCaptureRequest)] },
+            }) { Requests = [typeof(BaselineCaptureRequest)],
+                FieldNames = new Dictionary<string, string?> { ["NoBackground"] = "no_background" } },
 
         new("motif_findings",
             string.Empty,
@@ -866,6 +869,7 @@ internal static class AgentTools
                 ("wait_seconds", Schema.Integer("How long to wait for the result. Default 40.", 1, 300), false),
                 ("wait_terminal", Schema.Boolean("Cancel the job on timeout and wait for its execution to end."), false),
                 ("effects", Schema.Boolean("Include the complete operation and effects lists in the result."), false),
+                ("no_background", Schema.Boolean("True queues no Parsimony Baseline bundle job when the Dry Run runs, so nothing commits after the tool returns."), false),
                 ..Schema.Verbosity()]),
             false,
             false,
@@ -876,6 +880,7 @@ internal static class AgentTools
                 {
                     ["ProposalId"] = "proposal", ["JobId"] = "job", ["Timeout"] = "wait_seconds",
                     ["WaitForTerminal"] = "wait_terminal",
+                    ["NoBackground"] = "no_background",
                 } },
 
         new("motif_trial",
@@ -887,6 +892,7 @@ internal static class AgentTools
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("review_sets", Schema.StringArray("Named review sets to include."), false),
                 ("expect_loss", Schema.StringArray("Words the change intends to lose, frozen when the Trial is queued. They are reported in the saved gate and do not make it a loss; any other lost word does. A resumed Trial cannot change them."), false),
+                ("no_background", Schema.Boolean("True keeps the Trial foreground only: any Baseline recapture runs inline and no Parsimony job is queued after the Trial commits, so nothing commits after the tool returns. Not with job."), false),
                 ("wait_seconds", Schema.Integer("How long to wait. Default 40.", 1, 300), false),
                 ("wait_terminal", Schema.Boolean("Cancel the job on timeout and wait for its execution to end."), false),
                 ..TrialReviewTools.ReadArgumentSchema()]),
@@ -901,7 +907,7 @@ internal static class AgentTools
                     ["Timeout"] = "wait_seconds", ["WaitForTerminal"] = "wait_terminal",
                     ["Scope"] = null, ["AllWords"] = null,
                     ["ExpectedDraftRevision"] = null, ["Limits"] = null, ["BaselineAssessmentIds"] = null,
-                    ["ReviewSetIds"] = null, ["ExpectedLosses"] = "expect_loss",
+                    ["ReviewSetIds"] = null, ["ExpectedLosses"] = "expect_loss", ["NoBackground"] = "no_background",
                     ["ProjectKey"] = null, ["EffectiveDetail"] = null, ["EffectiveSide"] = null,
                 } },
 
@@ -1036,9 +1042,16 @@ internal static class AgentTools
                 ("assessment", Schema.String(
                     "A stored Assessment id from an earlier result: page its words instead of measuring again."), false),
                 ("offset", Schema.Integer("Words to skip when paging. Default 0.", 0, 10000000), false),
+                ("no_background", Schema.Boolean("True runs any Baseline recapture in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the tool returns."), false),
                 ..Schema.Verbosity()]), false, false, true, true,
             (c, a, ct) => Task.Run(() => AssessWords(c, a, ct), ct))
-            { Requests = [typeof(AssessRequest)] },
+            { Requests = [typeof(AssessRequest)],
+                FieldNames = new Dictionary<string, string?>
+                {
+                    ["Selection"] = null, ["PerWordLimitMs"] = null, ["PerWordParserWorkLimit"] = null,
+                    ["ReplaceAssessmentId"] = null, ["FullObjectTimingDetail"] = null, ["BudgetSeconds"] = null,
+                    ["Collect"] = null, ["NoBackground"] = "no_background",
+                } },
         new("motif_difference", string.Empty, AgentClass.Read,
             Schema.Object(("difference", Schema.String("Stored legacy Difference id."), false),
                 ("category", Schema.String("Legacy Difference category.", TrialResults.Categories), false),
@@ -1673,7 +1686,8 @@ internal static class AgentTools
         var job = args.Optional("job");
         if (job is null)
         {
-            var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(context.ProjectPath, context.ProductVersion, proposal));
+            var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(context.ProjectPath, context.ProductVersion, proposal,
+                args.Flag("no_background")));
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             job = queued.Value!.JobId;
         }
@@ -1736,7 +1750,7 @@ internal static class AgentTools
                     AssessSummary.PageStored(stored, record.Words, offset, limit, detailed));
             }), AssessNext(stored, offset, limit));
         }
-        var outcome = TrialResults.Assess(context, named.Value!, cancellation);
+        var outcome = TrialResults.Assess(context, named.Value!, cancellation, args.Flag("no_background"));
         if (!outcome.Succeeded) return ToolOutcome.Refused(outcome.Refusal!);
         if (outcome.Value!.InvocationId.Length == 0 && outcome.Value.AssessmentIds.FirstOrDefault() is { } reused)
         {
@@ -1771,7 +1785,7 @@ internal static class AgentTools
         var waitForTerminal = args.Flag("wait_terminal");
         var wait = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         var job = args.Optional("job");
-        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss")))
+        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss") || args.Has("no_background")))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "A resumed Trial cannot change its inputs.");
         if (job is null)
         {
@@ -1780,7 +1794,7 @@ internal static class AgentTools
             if (!named.Succeeded) return ToolOutcome.Refused(named.Refusal!);
             var words = named.Value!.Concat(negatives).Distinct(StringComparer.Ordinal).ToArray();
             var request = new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion, proposal,
-                Words: words.Length == 0 ? null : words, NegativeWords: negatives)
+                Words: words.Length == 0 ? null : words, NegativeWords: negatives, NoBackground: args.Flag("no_background"))
                 { ReviewSetIds = args.Has("review_sets") ? args.List("review_sets") : null, ExpectedLosses = args.List("expect_loss") };
             var queued = await Task.Run(() => TrialWorkflow.Enqueue(request,
                 RunnerOptions.ResolveRoot(), context.JobParserPath, BaselineMode.Required, cancellation), cancellation);

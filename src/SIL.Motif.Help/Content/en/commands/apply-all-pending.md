@@ -13,7 +13,7 @@ When Apply is refused with `apply.not-ready`, the current evidence does not sati
 ## Example
 
 ```text
-motif apply --all-pending --project <project> [--revision <r>] [--autonomous] [--message <text>] [--note] [--effects] [--json]
+motif apply --all-pending --project <project> [--revision <r>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]
 ```
 
 ## Mode, message and note

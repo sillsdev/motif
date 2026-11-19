@@ -29,17 +29,18 @@ public static class TrialBaselines
 
     /// <summary>Assesses the words, or the project's default Selection when none are named.</summary>
     public static CommandOutcome<AssessCommandResponse> Assess(string projectPath, IReadOnlyList<string> words,
-        string managedRoot, string? parserPath, CancellationToken cancellationToken) =>
-        Assess(projectPath, words, managedRoot, parserPath, cancellationToken, null);
+        string managedRoot, string? parserPath, CancellationToken cancellationToken, bool noBackground = false) =>
+        Assess(projectPath, words, managedRoot, parserPath, cancellationToken, null, noBackground: noBackground);
 
     /// <summary>Measures the before words under the deterministic limits chosen for their Trial.</summary>
     internal static CommandOutcome<AssessCommandResponse> Assess(string projectPath, IReadOnlyList<string> words,
         string managedRoot, string? parserPath, CancellationToken cancellationToken, TrialLimits? limits,
         ProjectParseLease? admission = null, string? writingSystemId = null,
         Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null, IReadOnlyCollection<string>? alsoProtect = null,
-        Action<IReadOnlyList<string>, string?>? onDispatched = null, bool requireExplicitRefresh = false) =>
+        Action<IReadOnlyList<string>, string?>? onDispatched = null, bool requireExplicitRefresh = false,
+        bool noBackground = false) =>
         AssessCommand.AssessWithLimits(new AssessRequest(projectPath,
-            words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null)),
+            words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null), NoBackground: noBackground),
             managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits, recordBudgetStop: false,
             admission: admission, reuseBefore: true, writingSystemId: writingSystemId, onPartial: onPartial,
             alsoProtect: alsoProtect, onDispatched: onDispatched, requireExplicitRefresh: requireExplicitRefresh);
@@ -85,7 +86,7 @@ public static class TrialBaselines
             }
             return EnqueueWithBaseline(request,
                 (words, limits, writingSystem, onPartial, earlier, onDispatched) => busy is null
-                    ? Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial, earlier, onDispatched)
+                    ? Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial, earlier, onDispatched, request.NoBackground)
                     : CommandOutcome<AssessCommandResponse>.Refused(busy),
                 onBaselineUnavailable, parserPath ?? PanGlossExecutable.TryLocate(), admission);
         });
@@ -95,7 +96,7 @@ public static class TrialBaselines
         ProjectStoreCommand.Run(request.FwDataPath, MotifProductVersion.CurrentText, (database, project) =>
             AssessCommand.EnsureBaseline(request.FwDataPath, managedRoot, project,
                 ProjectWorkspaceKey.Compute(project), new SIL.Motif.Worker.Baselines.BaselineRepository(database),
-                requireExplicitRefresh));
+                requireExplicitRefresh, request.NoBackground));
 
     internal static Refusal? RequireDefault(EnqueueTrialRequest request)
     {

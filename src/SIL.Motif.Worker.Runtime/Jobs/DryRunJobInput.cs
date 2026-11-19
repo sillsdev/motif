@@ -16,6 +16,11 @@ public sealed record DryRunJobInput(
 {
     public const int CurrentSchemaVersion = 1;
 
+    /// <summary>True when the Dry Run was queued foreground-only: it queues no Parsimony Baseline bundle job.</summary>
+    [JsonPropertyName("noBackground")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool NoBackground { get; init; }
+
     public static DryRunJobInput Parse(string inputJson)
     {
         try
@@ -23,7 +28,7 @@ public sealed record DryRunJobInput(
             using var document = JsonDocument.Parse(inputJson);
             if (document.RootElement.ValueKind != JsonValueKind.Object ||
                 document.RootElement.EnumerateObject().Any(property => property.Name is not
-                    ("schemaVersion" or "proposal" or "prerequisites" or "sourceBaseline")))
+                    ("schemaVersion" or "proposal" or "prerequisites" or "sourceBaseline" or "noBackground")))
                 throw new InvalidDataException("The Dry Run job input contains unsupported fields.");
             var input = JsonSerializer.Deserialize<DryRunJobInput>(inputJson, MotifJson.CreateOptions())
                 ?? throw new InvalidDataException("The Dry Run job input is empty.");

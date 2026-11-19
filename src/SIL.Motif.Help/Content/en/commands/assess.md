@@ -66,6 +66,10 @@ An agent reads the same summary through the `motif_assess` tool. It returns the 
 
 Word files must be at most 8 MiB of valid UTF-8 text without NUL bytes; an initial UTF-8 signature is accepted. A larger file is refused with `assess.words-file-too-large`; invalid UTF-8 or NUL bytes with `assess.words-file-not-text`. Split a large list into smaller files, or save a non-text file as UTF-8 with one word per line, then repeat the call.
 
+## Foreground-only
+
+`--no-background` (MCP `no_background`) makes any Baseline recapture Assess needs run inline and queues no Source index or Parsimony job, so nothing commits after the command returns. The Source index then reads as pending until a later `baseline capture` or Apply without the switch refreshes it. A runner start does not. The switch takes no value; `--no-background=false` is refused.
+
 ## Related commands
 
 - [Show the Default Selection](cmd:selection%20show) reads the usual word list.

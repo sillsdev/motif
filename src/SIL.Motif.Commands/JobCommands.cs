@@ -130,7 +130,7 @@ public static class JobCommands
                 // The copy vanished after the check; the job then waits for a fresh capture.
             }
             var input = new DryRunJobInput(DryRunJobInput.CurrentSchemaVersion,
-                FrozenProposalRevision.Create(proposalJson), prerequisites, source);
+                FrozenProposalRevision.Create(proposalJson), prerequisites, source) { NoBackground = request.NoBackground };
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
@@ -279,6 +279,7 @@ public static class JobCommands
                 ReviewCounterSemantics: request.ReviewInputs is null ? null : SIL.Motif.Host.PanGloss.PanGlossInterfaceVersions.StatsCounterSemanticsVersion)
                 {
                     ExpectedLosses = request.ExpectedLosses?.ToArray(),
+                    NoBackground = request.NoBackground,
                     ExportRevision = record.DraftName is null ? record.IntentDigest : DraftRevision.Compute(record.ProposalJson),
                     ReviewBeforeDispatches = request.ReviewBeforeDispatches?.Select(batch => batch with
                     {

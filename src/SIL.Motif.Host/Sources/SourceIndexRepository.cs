@@ -54,6 +54,18 @@ public sealed class SourceIndexRepository(MotifDatabase database)
         command.ExecuteNonQuery();
     }
 
+    /// <summary>The status a foreground-only command leaves: stale like pending, but no runner sweep may queue a refresh for it.</summary>
+    public const string DeferredStatus = "pending-foreground";
+
+    /// <summary>Marks every Source projection deferred, so only a later default-mode command refreshes it.</summary>
+    public static void MarkAllDeferred(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "UPDATE SourceIndexState SET Status='" + DeferredStatus + "';";
+        command.ExecuteNonQuery();
+    }
+
     /// <summary>Invalidates all Source projections in the caller's write transaction.</summary>
     public static void MarkAllPending(SqliteConnection connection, SqliteTransaction transaction)
     {

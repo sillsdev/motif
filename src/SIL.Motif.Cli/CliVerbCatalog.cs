@@ -279,7 +279,7 @@ public static class CliVerbCatalog
             new[] { "dry-run --project <fwdata> <proposalId> [--wait] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "dry-run", "dry-run --wait",
-            new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-terminal] [--wait-timeout-ms <ms>] [--effects] [--json]" }),
+            new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--effects] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
             new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--review-set <ids>|none] [--wait] [--json]" }),
@@ -288,7 +288,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] --wait " +
-                "[--wait-terminal] [--wait-timeout-ms <ms>] [--expect-loss <file>] [--json]",
+                "[--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--json]",
             }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --pending",
@@ -299,10 +299,10 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply",
-            new[] { "apply <proposalId> --project <fwdata> [--force] [--autonomous] [--message <text>] [--note] [--effects] [--json]" }),
+            new[] { "apply <proposalId> --project <fwdata> [--force] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply --all-pending",
-            new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--effects] [--json]" }),
+            new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
         new CliVerbDescriptor("Commands", "log", "log", new[] { "log --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "citations", "citations",
             new[] { "citations --project <fwdata> [--uncited] [--json]" }),
@@ -392,7 +392,7 @@ public static class CliVerbCatalog
 
         new CliVerbDescriptor(
             "Baseline", "baseline", "baseline capture",
-            new[] { "baseline capture --project <fwdata> [--json]" }),
+            new[] { "baseline capture --project <fwdata> [--no-background] [--json]" }),
 
         new CliVerbDescriptor(
             "Assess", "assess", "assess",
@@ -401,7 +401,7 @@ public static class CliVerbCatalog
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
                 "[--retry-failed] [--retry-work-over <parser-work>] [--retry-source-assessment <id>] " +
                 "[--replaces <assessment-id>] [--full-object-timing] " +
-                "[--collect <name>[,<name>...]] [--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--json]",
+                "[--collect <name>[,<name>...]] [--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--no-background] [--json]",
                 "The default per-word limit is 20,000,000 parser work.",
                 "--collect names the collectors for this run and wins over the project's .motif.toml collect, which wins over the built-in default; ParseTime is always collected.",
                 "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
@@ -687,7 +687,7 @@ public static class CliVerbCatalog
                 "--evidence-digest <digest>] [--clear] [--json]",
             }),
         new CliVerbDescriptor("Commands", "apply", "apply --proposal",
-            new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--effects] [--json]" }),
+            new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
     }.Concat(SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Select(composer =>
         new CliVerbDescriptor("Commands", composer.Verb, composer.Verb, new[] { ComposerUsage(composer.Verb) })))
         .ToArray());

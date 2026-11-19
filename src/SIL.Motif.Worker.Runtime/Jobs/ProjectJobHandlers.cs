@@ -38,10 +38,11 @@ public static class ProjectJobHandlers
     /// for a Baseline captured before the prebuild existed), then runs the Dry Run. The queueing is advisory: a store or file error never fails the Dry Run, and the
     /// automatic job builds its own Baseline side when none is stored.
     /// </summary>
-    internal static JobRunnerLoop.Handler WithBaselineBundlePrebuild(JobRunnerLoop.Handler dryRun, Action enqueue) =>
+    internal static JobRunnerLoop.Handler WithBaselineBundlePrebuild(JobRunnerLoop.Handler dryRun, Action enqueue,
+        Func<ClaimedJob, bool>? foregroundOnly = null) =>
         (job, token) =>
         {
-            try { enqueue(); }
+            try { if (foregroundOnly?.Invoke(job) != true) enqueue(); }
             catch (Exception exception) when (exception is Microsoft.Data.Sqlite.SqliteException or IOException or
                                                   InvalidOperationException) { }
             return dryRun(job, token);
@@ -89,7 +90,9 @@ public static class ProjectJobHandlers
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(lanes);
-        _ = SIL.Motif.Worker.Sources.SourceIndexRefresh.Reconcile(database);
+        // A foreground Dry Run or Trial is waiting: reconciling now would commit jobs after it returns.
+        var foreground = HasActiveForegroundJob(database, workspaceKey);
+        if (!foreground) _ = SIL.Motif.Worker.Sources.SourceIndexRefresh.Reconcile(database);
         var publish = new BaselineRefresh(baselines, options.Root);
         var refresh = new BaselineRefreshJobHandler(
             new BaselineRefreshBarrier(publish.LoadProject),
@@ -119,7 +122,7 @@ public static class ProjectJobHandlers
             [BaselineRefreshKind] = WithBaselineBundlePrebuildAfter((_, token) => refresh.RunAsync(project, token),
                 enqueuePrebuild),
             [DryRunKind] = WithBaselineBundlePrebuild((job, token) => dryRun.RunAsync(job, project, token),
-                enqueuePrebuild),
+                enqueuePrebuild, job => IsForeground(job.Job.InputJson)),
             [ParsimonyKind] = (job, token) => new ParsimonyJobHandler(database, baselines, workspaceKey,
                 project, options, invoker).RunAsync(job, token),
             [PhonologyCheckJobHandler.JobKind] = (job, token) =>
@@ -133,9 +136,12 @@ public static class ProjectJobHandlers
                 defaultChecks ?? FileDefaultProposalChecksStore.ForInstallation()) is { } trial)
         {
             trial.AfterCommit = (claim, baseline) =>
+            {
+                if (IsForeground(claim.Job.InputJson)) return;
                 _ = ParsimonyAutoRun.Enqueue(database, claim.Job, baseline, retryFailed: true);
+            };
             handlers[TrialJobHandler.TrialKind] = (job, token) => trial.RunAsync(job, project, token);
-            if (Reconciled.TryAdd(workspaceKey, 0)) _ = TryReconcile(database, baselines, workspaceKey);
+            if (!foreground && Reconciled.TryAdd(workspaceKey, 0)) _ = TryReconcile(database, baselines, workspaceKey);
         }
 
         var loop = new JobRunnerLoop(new JobClaims(database, parserKey: ParserIdentity.KeyOf(options.ParserPath)), workspaceKey, ownerId: ownerId,
@@ -148,6 +154,22 @@ public static class ProjectJobHandlers
             await new TrialReviewPublisher(database).PublishAsync(new ReviewPublishRequest(job.JobId), CancellationToken.None).ConfigureAwait(false);
         };
         return loop;
+    }
+
+    private static bool HasActiveForegroundJob(MotifDatabase database, string workspaceKey) =>
+        new JobRepository(database).ListActive(workspaceKey).Any(job => IsForeground(job.InputJson));
+
+    /// <summary>Whether a queued Dry Run or Trial carries the foreground-only marker, which keeps it from queuing child jobs.</summary>
+    internal static bool IsForeground(string inputJson)
+    {
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(inputJson);
+            return document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                document.RootElement.TryGetProperty("noBackground", out var marker) &&
+                marker.ValueKind == System.Text.Json.JsonValueKind.True;
+        }
+        catch (System.Text.Json.JsonException) { return false; }
     }
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> Reconciled = new();

@@ -1711,7 +1711,8 @@ public static partial class ProposalCommands
 
     internal static CommandOutcome<ApplyProjection> ApplyWithinLease(ApplyRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-            BuildApplyProjection(database, project, request.ProposalId, request.Force, request.Attribution));
+            BuildApplyProjection(database, project, request.ProposalId, request.Force, request.Attribution,
+                request.NoBackground));
 
     /// <summary>Lets a test give the calling flow its own loader to control the save; other flows are unaffected.</summary>
     internal static AsyncLocal<Func<FwDataProjectLoader>?> ApplyLoaderOverride { get; } = new();
@@ -1954,7 +1955,7 @@ public static partial class ProposalCommands
 
     internal static CommandOutcome<ApplyProjection> BuildApplyProjection(
         MotifDatabase database, ProjectLocator project, string proposalId, bool force = false,
-        ApplyAttribution? attribution = null)
+        ApplyAttribution? attribution = null, bool noBackground = false)
     {
         LcmCache? cache = null;
         var receiptRecorded = false;
@@ -2163,7 +2164,9 @@ public static partial class ProposalCommands
                     IReadOnlyList<SIL.Motif.Scripture.SourceListEntry> sources;
                     try { sources = SIL.Motif.Scripture.SourceList.Read(cache); }
                     catch (SIL.Motif.Scripture.SourceListAmbiguousException) { sources = []; }
-                    SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
+                    // Foreground-only: mark the Source index pending, queue nothing.
+                    if (noBackground) SIL.Motif.Worker.Sources.SourceIndexRefresh.MarkPending(database, sources);
+                    else SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
                 });
                 TryPostApplyStep("Progress publication", () =>
                 {

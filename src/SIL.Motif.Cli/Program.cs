@@ -181,6 +181,14 @@ try
         : verb == "open" && positionals.Count == 1 ? positionals[0] : null;
     var commandName = CliCommandNames.Resolve(verb, flags, positionals);
     var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
+    // A switch that promises nothing commits after the command returns must never be ignored or half-read.
+    if (flags.Keys.Any(key => key.StartsWith("no-background", StringComparison.Ordinal)) &&
+        (flags.Keys.Any(key => key.StartsWith("no-background", StringComparison.Ordinal) && key != "no-background") ||
+         verb is not ("baseline" or "assess" or "dry-run" or "trial" or "apply") ||
+         (verb == "baseline" && positionals.FirstOrDefault() != "capture") ||
+         (verb == "trial" && flags.ContainsKey("pending"))))
+        return Usage("--no-background is a switch without a value, taken by baseline capture, assess, dry-run, " +
+            "trial and apply.", flags.ContainsKey("json") || asJson);
     if (command is not null && !commandPolicy.IsAvailable(command))
         return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"), error, command);
 
@@ -1022,20 +1030,25 @@ try
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var dryRunProject))
             {
                 return Usage(
-                    "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] [--json]", asJson);
+                    "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] [--no-background] [--json]", asJson);
             }
             if (flags.ContainsKey("effects") && !flags.ContainsKey("wait"))
                 return Usage("Usage: motif dry-run --project <fwdata> <proposalId> --wait [--effects] [--json]", asJson);
+            if (flags.ContainsKey("no-background") && !flags.ContainsKey("wait"))
+                return Usage("--no-background needs --wait: the Dry Run is the foreground work, and the command " +
+                    "returns only once it has ended. Usage: motif dry-run --project <fwdata> <proposalId> --wait " +
+                    "[--no-background] [--json]", asJson);
             var dryRunWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                 "Usage: motif dry-run --project <fwdata> <proposalId> --wait " +
-                "[--wait-terminal] [--wait-timeout-ms <ms>] [--effects] [--json]", asJson, out dryRunWaitTimeout) is { } dryRunUsage)
+                "[--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--effects] [--json]", asJson, out dryRunWaitTimeout) is { } dryRunUsage)
                 return dryRunUsage;
             var shouldWaitForDryRun = flags.ContainsKey("wait");
             result = WaitWithConsoleCancellation(shouldWaitForDryRun, token =>
             {
                 var enqueued = JobCommands.EnqueueDryRun(
-                    new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0]));
+                    new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0],
+                        flags.ContainsKey("no-background")));
                 if (!enqueued.Succeeded) return RenderCommand(enqueued, successAsJson: false);
                 if (!shouldWaitForDryRun)
                 {
@@ -1088,7 +1101,7 @@ try
             {
                 return Usage(
                     "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
-                    "[--words <file>|--all-words] [--wait] [--expect-loss <file>] [--json]", asJson);
+                    "[--words <file>|--all-words] [--wait] [--no-background] [--expect-loss <file>] [--json]", asJson);
             }
             IReadOnlyList<string>? trialWords = null;
             IReadOnlyList<string>? reviewSets = null;
@@ -1122,11 +1135,14 @@ try
                 }
                 expectedLosses = expectedList.Value!;
             }
+            if (flags.ContainsKey("no-background") && !flags.ContainsKey("wait"))
+                return Usage("--no-background needs --wait: the Trial is the foreground work, and the command " +
+                    "returns only once it has ended.", asJson);
             var trialWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                 "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
                 "[--words <file>|--all-words] " +
-                "--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--expect-loss <file>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
+                "--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
             var trialResultExit = 0;
             result = RunWithConsoleCancellation(cancellationToken =>
@@ -1134,8 +1150,8 @@ try
                 var queued = TrialWorkflow.Enqueue(
                     new EnqueueTrialRequest(
                         trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
-                        Words: trialWords, AllWords: flags.ContainsKey("all-words"))
-                        { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses },
+                        Words: trialWords, AllWords: flags.ContainsKey("all-words"),
+                        NoBackground: flags.ContainsKey("no-background")) { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses },
                     ResolveRoot(), null, BaselineMode.BestEffort, cancellationToken);
                 if (!queued.Succeeded)
                     return RenderCommand(CommandOutcome<JobEnqueuedResponse>.Refused(queued.Refusal!), successAsJson: false);
@@ -1181,6 +1197,7 @@ try
 
         case "apply":
             var applyAttribution = ApplyAttributionFromFlags(flags, environment);
+            var applyNoBackground = flags.ContainsKey("no-background");
             if (ApplyAttributionCheck.Refusal(applyAttribution, flags.ContainsKey("force")) is { } applyAttributionRefusal)
             {
                 result = RenderProposal(CommandOutcome<ApplyPendingResult>.Refused(applyAttributionRefusal));
@@ -1192,14 +1209,14 @@ try
                     !flags.TryGetValue("project", out var pendingApplyProject))
                     return Usage(
                         "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] " +
-                        "[--autonomous] [--message <text>] [--note] [--effects] [--json]", asJson);
+                        "[--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]", asJson);
                 var pendingRequest = new ApplyPendingRequest(pendingApplyProject,
                     DraftId: null, Revision: flags.GetValueOrDefault("revision"),
-                    Attribution: applyAttribution);
+                    Attribution: applyAttribution, NoBackground: applyNoBackground);
                 result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
                     WriteApplyEffectsArtifact(PendingChangesWorkflow.Apply(pendingRequest, cancellationToken),
                         pendingApplyProject), includeEffects: flags.ContainsKey("effects")));
-                if (result.ExitCode == 0) startRunner(pendingApplyProject, error.WriteLine);
+                if (result.ExitCode == 0 && !applyNoBackground) startRunner(pendingApplyProject, error.WriteLine);
                 break;
             }
             if (flags.ContainsKey("proposal"))
@@ -1209,11 +1226,11 @@ try
                     string.IsNullOrWhiteSpace(flags["proposal"]))
                     return Usage(UsageLineFor("apply --proposal"), asJson);
                 var proposalRequest = new ApplyProposalRequest(proposalApplyProject, flags["proposal"],
-                    flags.GetValueOrDefault("revision"), applyAttribution);
+                    flags.GetValueOrDefault("revision"), applyAttribution, applyNoBackground);
                 result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
                     WriteApplyEffectsArtifact(PendingChangesWorkflow.Apply(proposalRequest, cancellationToken),
                         proposalApplyProject), includeEffects: flags.ContainsKey("effects")));
-                if (result.ExitCode == 0) startRunner(proposalApplyProject, error.WriteLine);
+                if (result.ExitCode == 0 && !applyNoBackground) startRunner(proposalApplyProject, error.WriteLine);
                 break;
             }
             if (positionals.Count != 1 ||
@@ -1222,15 +1239,15 @@ try
             {
                 return Usage(
                     "Usage: motif apply <proposalId> --project <fwdata> " +
-                    "[--force] [--autonomous] [--message <text>] [--note] [--effects] [--json]", asJson);
+                    "[--force] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]", asJson);
             }
             var applyForce = flags.ContainsKey("force");
             result = RenderProposal(WriteApplyEffectsArtifact(
                     PendingChangesWorkflow.Apply(
                         new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyForce,
-                            applyAttribution)), applyProject),
+                            applyAttribution, applyNoBackground)), applyProject),
                 includeEffects: flags.ContainsKey("effects"));
-            if (result.ExitCode == 0) startRunner(applyProject, error.WriteLine);
+            if (result.ExitCode == 0 && !applyNoBackground) startRunner(applyProject, error.WriteLine);
             break;
 
         case "log":
@@ -1759,8 +1776,9 @@ try
                     if (positionals.Count != 1 || !flags.TryGetValue("project", out var captureProject) ||
                         string.IsNullOrWhiteSpace(captureProject))
                         return Usage(BaselineUsage(), asJson);
-                    result = RenderCommand(CaptureBaseline(captureProject, ResolveRoot()));
-                    if (result.ExitCode == 0)
+                    var captureNoBackground = flags.ContainsKey("no-background");
+                    result = RenderCommand(CaptureBaseline(captureProject, ResolveRoot(), captureNoBackground));
+                    if (result.ExitCode == 0 && !captureNoBackground)
                     {
                         _ = BaselineBundlePrebuild.QueueAfterCapture(
                             captureProject, JobRunnerLaunchOptions.FromEnvironment().ParserPath);
@@ -2931,7 +2949,7 @@ try
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
             if (flags.Keys.Any(flag => flag is not ("texts" or "all-wordforms" or "words" or "retry-failed" or
                     "retry-work-over" or "retry-source-assessment" or "replaces" or "time-limit-ms" or "parser-work-limit" or
-                    "summary" or "offset" or "limit" or "full-object-timing" or "max-seconds" or "collect" or "json"))) return Usage(AssessUsage(), asJson);
+                    "summary" or "offset" or "limit" or "full-object-timing" or "max-seconds" or "collect" or "no-background" or "json"))) return Usage(AssessUsage(), asJson);
             flags.TryGetValue("replaces", out var assessReplaces);
             if (assessReplaces is not null && !CanonicalId.TryParse(assessReplaces, out _))
                 return Usage(AssessUsage(), asJson);
@@ -3027,7 +3045,7 @@ try
                 {
                     var request = new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs,
                         assessParserWorkLimit, assessReplaces, flags.ContainsKey("full-object-timing"),
-                        assessBudgetSeconds, assessCollect);
+                        assessBudgetSeconds, assessCollect, flags.ContainsKey("no-background"));
                     var assessed = assess is null
                         ? AssessCommand.Assess(request, asJson ? null : progress => error.WriteLine(progress.Message),
                             cancellationToken)
@@ -3283,17 +3301,17 @@ static string CompareUsage() => UsageLineFor("compare");
 
 static string BaselineUsage() => "Usage: motif " + UsageLineFor("baseline capture");
 
-static CommandOutcome<BaselineCaptureResponse> CaptureBaseline(string selector, string managedRoot)
+static CommandOutcome<BaselineCaptureResponse> CaptureBaseline(string selector, string managedRoot, bool noBackground)
 {
     var selectorIsPath = Path.IsPathRooted(selector) || selector.EndsWith(".fwdata", StringComparison.OrdinalIgnoreCase) ||
                          selector.Contains(Path.DirectorySeparatorChar) || selector.Contains(Path.AltDirectorySeparatorChar);
     if (selectorIsPath)
-        return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(selector));
+        return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(selector, noBackground));
 
     try
     {
         var projectPath = ProjectResolver.Resolve(selector, managedRoot);
-        return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath));
+        return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath, noBackground));
     }
     catch (ProfileException exception)
     {
@@ -3685,7 +3703,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background")
             {
                 flags[name] = "true";
                 continue;

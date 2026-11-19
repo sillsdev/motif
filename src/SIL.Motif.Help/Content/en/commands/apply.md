@@ -33,3 +33,8 @@ Apply is not available to MCP clients. The other Released paths are [Apply one P
 Apply does not report before/after project hashes. Its save check verifies the applied-log entry; the effect digest identifies the effects list.
 
 The summary shows at most ten warnings, each limited to 240 characters, with total and omitted counts. Complete warnings remain in the effects list. Effects files expire after seven days; a per-project 64 MiB budget may remove files older than one day sooner.
+
+## Foreground-only
+
+`--no-background` applies without queuing the Source index refresh and without waking the job runner. The Source index reads as pending until a later `baseline capture` or Apply without the switch refreshes it. A runner start does not.
+

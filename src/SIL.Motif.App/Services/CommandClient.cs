@@ -80,7 +80,7 @@ public sealed partial class CommandClient : ICommandClient
             var captured = BaselineCaptureCommand.Capture(
                 request, _managedRoot, _options.TimeProvider ?? TimeProvider.System);
             // The Baseline-side prebuild builds while the owner composes; wake the runner only if one was queued.
-            if (captured.Succeeded && BaselineBundlePrebuild.QueueAfterCapture(request.ProjectPath, _options.ParserPath))
+            if (captured.Succeeded && !request.NoBackground && BaselineBundlePrebuild.QueueAfterCapture(request.ProjectPath, _options.ParserPath))
             {
                 try { _options.RunnerLauncher.Start(request.ProjectPath); }
                 catch (Exception exception) when (exception is InvalidOperationException or IOException) { }

@@ -10,8 +10,8 @@ namespace SIL.Motif.Commands.Baselines;
 /// Queues the Baseline-side Parsimony bundle right after a Capture, so it builds while the owner composes and reads.
 /// </summary>
 /// <remarks>
-/// A Capture itself is synchronous and runs no job, so each front end calls this after a successful one and then
-/// wakes the runner. The job waits behind every Trial and candidate job in the claim order, is queued once per
+/// A Capture itself runs no job, so each front end calls this after a successful one and then
+/// wakes the runner, except after a <see cref="BaselineCaptureRequest.NoBackground"/> capture, which queues nothing. The job waits behind every Trial and candidate job in the claim order, is queued once per
 /// Baseline token, and is advisory: a store error leaves the Dry Run to queue it later, as before.
 /// </remarks>
 public static class BaselineBundlePrebuild

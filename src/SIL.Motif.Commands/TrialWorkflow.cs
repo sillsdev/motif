@@ -62,7 +62,8 @@ public static class TrialWorkflow
             return EnqueueCore(request,
                 (words, limits, writingSystem, onPartial, earlier, onDispatched) => busy is null
                     ? TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken,
-                        limits, admission, writingSystem, onPartial, earlier, onDispatched, requireExplicitRefresh)
+                        limits, admission, writingSystem, onPartial, earlier, onDispatched, requireExplicitRefresh,
+                        request.NoBackground)
                     : CommandOutcome<AssessCommandResponse>.Refused(busy),
                 mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate(), admission);
         }));

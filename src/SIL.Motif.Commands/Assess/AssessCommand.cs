@@ -259,7 +259,7 @@ public static class AssessCommand
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.Capturing, 0, null, "Ensuring a current Baseline exists..."));
             var baselineOutcome = EnsureBaseline(request.ProjectPath, managedRoot, project, workspaceKey, baselines,
-                requireExplicitRefresh);
+                requireExplicitRefresh, request.NoBackground);
             if (!baselineOutcome.Succeeded)
                 return CommandOutcome<AssessCommandResponse>.Refused(baselineOutcome.Refusal!);
             var baseline = baselineOutcome.Value!;
@@ -859,7 +859,8 @@ public static class AssessCommand
 
     // No Baseline yet: capture and publish one. One already current: reuse it rather than recapturing.
     internal static CommandOutcome<BaselineCaptureResponse> EnsureBaseline(string projectPath, string managedRoot,
-        ProjectLocator project, string workspaceKey, BaselineRepository baselines, bool requireExplicitRefresh = false)
+        ProjectLocator project, string workspaceKey, BaselineRepository baselines, bool requireExplicitRefresh = false,
+        bool noBackground = false)
     {
         var current = baselines.GetCurrentPublished(workspaceKey);
         if (requireExplicitRefresh && JobCommands.StaleBaselineRefusal(project, current, "Trial") is { } stale)
@@ -868,7 +869,7 @@ public static class AssessCommand
         var savedSince = !requireExplicitRefresh && current is not null && File.Exists(project.FullFwDataPath) &&
             File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks != current.SourceLastWriteUtc.UtcDateTime.Ticks;
         if (current is null || savedSince)
-            return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath), managedRoot);
+            return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath, noBackground), managedRoot);
 
         var held = File.Exists(project.FullFwDataPath + ".lock");
         return CommandOutcome<BaselineCaptureResponse>.Success(new BaselineCaptureResponse(

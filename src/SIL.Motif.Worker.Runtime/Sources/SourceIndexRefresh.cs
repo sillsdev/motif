@@ -26,6 +26,19 @@ public static class SourceIndexRefresh
     /// <summary>Marks old generations pending and queues a durable refresh without reading or tokenizing Source text.</summary>
     public static void Enqueue(MotifDatabase database, IReadOnlyList<SourceListEntry>? sources = null)
     {
+        MarkPending(database, sources, deferred: false);
+        var now = JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
+        new JobRepository(database).Create(CanonicalId.FromGuid(Guid.NewGuid()).Value, ProjectWorkspaceKey.Compute(database.Project),
+            JobKind, "{}", now);
+    }
+
+    /// <summary>
+    /// Marks every Source index generation pending without queuing a job, for a foreground-only command: the index
+    /// reads as stale (pending-foreground) until a later default-mode capture or Apply refreshes it; a runner start never does.
+    /// </summary>
+    public static void MarkPending(MotifDatabase database, IReadOnlyList<SourceListEntry>? sources = null,
+        bool deferred = true)
+    {
         using (var connection = database.OpenConnection())
         using (var transaction = connection.BeginTransaction())
         {
@@ -55,11 +68,9 @@ public static class SourceIndexRefresh
                 texts.Parameters.AddWithValue("$anchor", FieldWorksTextsIndex.AnchorVersion);
                 texts.ExecuteNonQuery();
             }
+            if (deferred) SourceIndexRepository.MarkAllDeferred(connection, transaction);
             transaction.Commit();
         }
-        var now = JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
-        new JobRepository(database).Create(CanonicalId.FromGuid(Guid.NewGuid()).Value, ProjectWorkspaceKey.Compute(database.Project),
-            JobKind, "{}", now);
     }
 
     /// <summary>Builds from a private copy of saved project files and validates their identity before publication.</summary>
@@ -168,6 +179,8 @@ public static class SourceIndexRefresh
         using (var rows = command.ExecuteReader())
             while (rows.Read()) states.Add((rows.GetString(0), rows.GetString(1), rows.GetString(2), rows.GetString(3), rows.GetString(4), rows.GetString(5)));
         var workspace = ProjectWorkspaceKey.Compute(database.Project);
+        // A foreground-only command left the index deferred: only a later default-mode command may queue its refresh.
+        if (states.Any(state => state.Status == SourceIndexRepository.DeferredStatus)) return false;
         foreach (var state in states)
         {
             var identity = SourceIndexIdentity.Parse(state.Identity);
