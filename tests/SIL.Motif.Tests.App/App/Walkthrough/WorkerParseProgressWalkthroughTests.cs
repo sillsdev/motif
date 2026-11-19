@@ -45,18 +45,21 @@ public sealed class WorkerParseProgressWalkthroughTests(PristineProjectFixture p
                 await window.Workspace.Context.Changes.PutAsync(new ChangeIntent(CanonicalId.Mint().Value,
                     "incorrect-spelling", CanonicalId.FromGuid(identities[index]).Value, words[index], OriginPage: "Texts"));
             Assert.Equal(3, window.Workspace.Context.Changes.Count);
-            FakeParser.BehaveBesideExecutable(parser, new
+            var held = new
             {
                 streamProgress = true, holdEachWordUntil = release,
                 words = new[] { new { word = words[0], outcome = "complete", elapsedMs = 2500 },
                     new { word = words[1], outcome = "complete", elapsedMs = 54000 } },
-            });
+            };
+            // Measuring parses the words once for the Baseline before it queues the Trial, so only the worker holds them.
+            FakeParser.BehaveBesideExecutable(parser, new { streamProgress = true });
             window.ShowPage(WorkspacePage.Proposals);
             var measurement = window.Workspace.Context.PendingMeasurement;
             var running = measurement.MeasureCommand.ExecuteAsync(null);
             window.WaitUntil(() => JobProgress.LatestJobId(project.FwDataPath, JobCommands.TrialKind) is not null,
                 TimeSpan.FromSeconds(30), "the App did not queue the worker parse");
             var jobId = JobProgress.LatestJobId(project.FwDataPath, JobCommands.TrialKind)!;
+            FakeParser.BehaveBesideExecutable(parser, held);
             var start = CliProcess.Start(options, ProcessRunnerLauncher.LaunchArguments(options)
                 .Concat([RunnerOptions.WakeProjectArgument, project.FwDataPath]).ToArray());
             start.FileName = BuildOutput.Worker;

@@ -107,9 +107,12 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests
             dryRunJob.Value!.JobId, TimeSpan.FromMinutes(1)));
         Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
 
-        var trial = JobCommands.EnqueueTrial(new EnqueueTrialRequest(projectPath, productVersion, proposalId,
-            AssessmentScopeConfiguration.DefaultName, words));
-        Assert.True(trial.Succeeded, trial.Refusal?.Message);
+        // Queued with its Baseline Assessments, so the Trial has a before side.
+        var queuedTrial = TrialWorkflow.Enqueue(new EnqueueTrialRequest(projectPath, productVersion, proposalId,
+            AssessmentScopeConfiguration.DefaultName, words), workerRoot, parserPath, BaselineMode.Required,
+            CancellationToken.None);
+        Assert.True(queuedTrial.Succeeded, queuedTrial.Refusal?.Message);
+        var trial = new { Value = queuedTrial.Value!.Job };
         runner.Start(projectPath);
         await runner.WhenIdleAsync().WaitAsync(TimeSpan.FromMinutes(5));
         var trialStatus = JobCommands.WaitForJob(new WaitForJobRequest(projectPath, trial.Value!.JobId,
@@ -189,7 +192,8 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests
         Assert.Equal(beforeHash, SHA256.HashData(File.ReadAllBytes(projectPath)));
 
         // Apply through the one Apply path, as `motif apply --proposal <id>` does, from the Proposal's Trial.
-        var applied = PendingChangesWorkflow.Apply(new ApplyProposalRequest(projectPath, proposalId, null));
+        var applied = PendingChangesWorkflow.Apply(new ApplyProposalRequest(projectPath, proposalId, null),
+            parserPath: parserPath);
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
         Assert.True(applied.Value!.Applied);
         Assert.NotEqual(beforeHash, SHA256.HashData(File.ReadAllBytes(projectPath)));
