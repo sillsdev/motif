@@ -17,6 +17,7 @@ public sealed partial class ProgressPageModel : PageModel
     private CancellationTokenSource? _activeRead;
     private readonly List<Task> _reads = [];
     private IReadOnlyList<Guid> _readTexts = [];
+    private string? _readProject;
     private string _readWords = string.Empty;
 
     public ProgressPageModel(WorkspaceContext context) : base(context)
@@ -34,7 +35,7 @@ public sealed partial class ProgressPageModel : PageModel
         {
             if (e.PropertyName == nameof(WorkspaceContext.HasProject)) TryAgainCommand.NotifyCanExecuteChanged();
             if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) &&
-                context.CurrentPage == WorkspacePage.Progress && !context.IsOpeningProject)
+                context.CurrentPage == WorkspacePage.Progress && !context.IsOpeningProject && !IsReadingForCurrentState())
                 _ = RefreshCurrentAsync(CancellationToken.None);
         };
     }
@@ -246,6 +247,7 @@ public sealed partial class ProgressPageModel : PageModel
     private Task RefreshAsync(string project, CancellationToken cancellationToken)
     {
         Invalidate();
+        _readProject = project;
         _readTexts = Context.Selection.ChosenTextIds.ToArray();
         _readWords = Context.Selection.PastedWords;
         HasUnavailableNext = Context.Evidence.IsStale;
@@ -274,6 +276,10 @@ public sealed partial class ProgressPageModel : PageModel
             linked.Dispose();
         }
     }
+
+    /// <summary>Whether a running read started for the state now shown.</summary>
+    private bool IsReadingForCurrentState() => IsReading && _activeRead is not null && _readProject == Context.ProjectPath &&
+        !Context.Evidence.IsStale && SelectionMatches();
 
     private bool SelectionMatches() => Context.Selection.ChosenTextIds.SequenceEqual(_readTexts) &&
         Context.Selection.PastedWords == _readWords;

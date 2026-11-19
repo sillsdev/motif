@@ -56,6 +56,40 @@ public sealed class ProgressPageModelTests
     }
 
     [Fact]
+    public async Task ComingBackToProgressWaitsForTheReadAlreadyRunningInsteadOfStartingOver()
+    {
+        var fake = new FakeCommandClient();
+        fake.OverviewCompletesWith(SampleOverview.Populated());
+        var pending = new TaskCompletionSource<CommandOutcome<ProposalStandings>>();
+        var standingsRequests = 0;
+        fake.OnProposalStandings((_, _) =>
+        {
+            Interlocked.Increment(ref standingsRequests);
+            return pending.Task;
+        });
+        var context = WorkspaceContextTests.NewContext(fake);
+        var model = new ProgressPageModel(context);
+        context.CurrentPage = WorkspacePage.Texts;
+
+        var opening = context.OpenProjectAsync("project.fwdata");
+        Assert.True(model.IsReading);
+        Assert.Equal(1, standingsRequests);
+
+        context.CurrentPage = WorkspacePage.Progress;
+        context.CurrentPage = WorkspacePage.Texts;
+        context.CurrentPage = WorkspacePage.Progress;
+        Assert.True(model.IsReading);
+        Assert.Equal(1, standingsRequests);
+        Assert.Single(fake.OverviewRequests);
+
+        pending.SetResult(CommandOutcome<ProposalStandings>.Success(new ProposalStandings([], 0)));
+        await opening;
+        Assert.False(model.IsReading);
+        Assert.Equal(1, standingsRequests);
+        await context.StopProjectWorkAsync();
+    }
+
+    [Fact]
     public async Task ReplacingEvidenceHidesTheOldHealthWhileItsReplacementIsRead()
     {
         var fake = new FakeCommandClient();
