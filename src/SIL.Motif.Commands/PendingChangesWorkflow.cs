@@ -14,6 +14,7 @@ using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.AppliedLog;
@@ -67,14 +68,19 @@ public static class PendingChangesWorkflow
     /// </summary>
     /// <param name="request">The project, the Proposal, and the revision the caller reviewed.</param>
     /// <param name="cancellationToken">Cancels the wait for the project to be released.</param>
+    /// <param name="parserPath">The caller's parser, or null for the configured executable.</param>
     /// <remarks>
     /// The Proposal, the pending changes included, takes the Dry Run of its current Trial and is refused when it
     /// has none; only <c>apply --all-pending</c>, at FieldWorks' save boundary, queues a fresh one.
     /// </remarks>
     public static CommandOutcome<ApplyPendingResult> Apply(
-        ApplyProposalRequest request, CancellationToken cancellationToken = default)
+        ApplyProposalRequest request, CancellationToken cancellationToken = default, string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
+        using var parser = parserPath is null ? null : AmbientEnvironment.Push(new Dictionary<string, string?>
+        {
+            [PanGlossExecutable.PathVariable] = parserPath,
+        });
         return ApplyOne(new ApplyTarget(request.ProjectPath, request.ProposalId, request.ExpectedRevision,
             Force: false, DryRunSource.Trial, request.Attribution), cancellationToken, null, null);
     }
@@ -145,7 +151,7 @@ public static class PendingChangesWorkflow
     {
         var version = MotifProductVersion.CurrentText;
         var read = ProjectStoreCommand.Run(target.ProjectPath, version, (database, project) =>
-            ReadApplyIdentity(database, project, target));
+            ReadApplyIdentity(database, project, target, runnerLauncher?.Options.ParserPath));
         if (!read.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(read.Refusal!);
         var identity = read.Value!;
         if (identity.NothingToApply) return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending);
@@ -204,7 +210,7 @@ public static class PendingChangesWorkflow
         {
             DryRunSource.Fresh => RunFreshDryRun(target.ProjectPath, version, proposalId, cancellationToken,
                 dryRunTimeout, runnerLauncher),
-            DryRunSource.Trial => BindTrialDryRun(target.ProjectPath, version, proposalId),
+            DryRunSource.Trial => BindTrialDryRun(target.ProjectPath, version, proposalId, runnerLauncher?.Options.ParserPath),
             _ => null,
         };
         if (unbound is not null) return ReopenAfterRefusal(target.ProjectPath, identity, unbound);
@@ -220,7 +226,7 @@ public static class PendingChangesWorkflow
     }
 
     private static CommandOutcome<ApplyIdentity> ReadApplyIdentity(MotifDatabase database, ProjectLocator project,
-        ApplyTarget target)
+        ApplyTarget target, string? parserPath)
     {
         var repository = new ProposalRepository(database);
         ProposalRecord record;
@@ -257,7 +263,7 @@ public static class PendingChangesWorkflow
         if (draft.Operations.Count == 0)
             return CommandOutcome<ApplyIdentity>.Success(new ApplyIdentity(id, record.DraftName, revision, null,
                 true, isPending, record.ProposalJson));
-        if (target.DryRun == DryRunSource.Trial && CheckTrial(database, project, record.ProposalId) is { } refusal)
+        if (target.DryRun == DryRunSource.Trial && CheckTrial(database, project, record.ProposalId, parserPath) is { } refusal)
             return CommandOutcome<ApplyIdentity>.Refused(refusal);
         var changes = PendingChanges.ReadChanges(draft);
         var summary = changes.Length > 0 || isPending ? SummaryOf(changes)
@@ -280,13 +286,13 @@ public static class PendingChangesWorkflow
         return dryRun.Succeeded ? null : dryRun.Refusal!;
     }
 
-    private static Refusal? BindTrialDryRun(string projectPath, string version, string proposalId) =>
+    private static Refusal? BindTrialDryRun(string projectPath, string version, string proposalId, string? parserPath) =>
         ProjectStoreCommand.Run(projectPath, version, (database, project) =>
         {
             var canonical = CanonicalId.Parse(proposalId);
-            var refusal = CheckTrial(database, project, canonical);
+            var refusal = CheckTrial(database, project, canonical, parserPath);
             if (refusal is not null) return CommandOutcome<string>.Refused(refusal);
-            var trial = Trials.LatestFor(database, project, proposalId)!;
+            var trial = Trials.LatestFor(database, project, proposalId, parserPath)!;
             var job = new JobRepository(database).Get(trial.JobId);
             if (job?.DryRunJson is null)
                 return CommandOutcome<string>.Refused(TrialMissing());
@@ -297,9 +303,9 @@ public static class PendingChangesWorkflow
             return CommandOutcome<string>.Success("bound");
         }).Refusal;
 
-    private static Refusal? CheckTrial(MotifDatabase database, ProjectLocator project, CanonicalId canonical)
+    private static Refusal? CheckTrial(MotifDatabase database, ProjectLocator project, CanonicalId canonical, string? parserPath)
     {
-        var trial = Trials.LatestFor(database, project, canonical.Value);
+        var trial = Trials.LatestFor(database, project, canonical.Value, parserPath);
         if (trial is null || trial.Status != JobStatus.Completed) return TrialMissing();
         return trial.Freshness == TrialFreshness.Current ? null : TrialStale();
     }
@@ -324,12 +330,14 @@ public static class PendingChangesWorkflow
     /// Starts the runner for the queued Trial, or <see langword="null"/> for
     /// <see cref="ProcessRunnerLauncher.FromEnvironment"/>, the command line's own.
     /// </param>
+    /// <param name="waitForTerminal">Cancel the Trial at the deadline and wait for its execution to end.</param>
     public static async Task<CommandOutcome<MeasurePendingResult>> Measure(
         MeasurePendingRequest request,
         IProgress<MeasureProgress> progress,
         CancellationToken cancellationToken,
         TimeSpan? waitTimeout = null,
-        IJobRunnerLauncher? runnerLauncher = null)
+        IJobRunnerLauncher? runnerLauncher = null,
+        bool waitForTerminal = false)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(progress);
@@ -359,14 +367,15 @@ public static class PendingChangesWorkflow
         }
 
         var launcher = runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment();
-        var queued = await Task.Run(() => JobCommands.EnqueueTrial(new EnqueueTrialRequest(
+        var queued = await Task.Run(() => TrialWorkflow.Enqueue(new EnqueueTrialRequest(
             request.ProjectPath, version, current.DraftId, Words: request.Words,
-            ExpectedDraftRevision: current.Revision, Limits: limits), launcher.Options.ParserPath)).ConfigureAwait(false);
+            ExpectedDraftRevision: current.Revision, Limits: limits), launcher.Options.Root, launcher.Options.ParserPath,
+            BaselineMode.BestEffort, cancellationToken, requireExplicitRefresh: true)).ConfigureAwait(false);
         if (queued.Refusal?.Code == "draft.revision-conflict")
             return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
         if (!queued.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(queued.Refusal!);
-        var jobId = queued.Value!.JobId;
-        launcher.Start(request.ProjectPath);
+        var jobId = queued.Value!.Job.JobId;
+        if (!waitForTerminal) launcher.Start(request.ProjectPath);
 
         MeasureProgress? lastProgress = null;
         var jobProgress = new JobStatusProgress(status =>
@@ -381,7 +390,8 @@ public static class PendingChangesWorkflow
         });
         var waited = await JobWait.WaitAsync(
             request.ProjectPath, jobId, jobProgress, cancellationToken, waitTimeout, version,
-            cancelOnTimeout: true, wakeRunner: () => launcher.Start(request.ProjectPath))
+            cancelOnTimeout: true, wakeRunner: () => launcher.Start(request.ProjectPath), waitForTerminal: waitForTerminal,
+            expectedKind: JobCommands.TrialKind, expectedProposal: current.DraftId, wakeImmediately: waitForTerminal)
             .ConfigureAwait(false);
         if (!waited.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(waited.Refusal!);
         if (waited.Value!.Status != JobStatus.Completed)
@@ -399,7 +409,7 @@ public static class PendingChangesWorkflow
         if (!numbers.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(numbers.Refusal!);
         var trial = await Task.Run(() => ProjectStoreCommand.Run(request.ProjectPath, version, (database, project) =>
         {
-            var record = Trials.LatestFor(database, project, current.DraftId);
+            var record = Trials.LatestFor(database, project, current.DraftId, launcher.Options.ParserPath);
             return record is null
                 ? CommandOutcome<TrialRecord>.Refused(new Refusal("trial.measurement-incomplete",
                     FailureReason.Refused, "The Trial record could not be read. Try it again."))

@@ -33,12 +33,28 @@
     "source": "Hand-written from the Motif MCP refusal advice."
   },
   "job.wait-timeout": {
-    "why": "The job is still running, so its result is not ready. Keep waiting.",
+    "why": "The wait ended before a result was available.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
   "job.wait-cancelled": {
-    "why": "The wait was cancelled before the job finished. Wait again.",
+    "why": "The caller stopped waiting before the outcome was confirmed.",
     "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "job-wait-ended-cancelled": {
+    "why": "The job was cancelled. Start a new job if the work is still wanted.",
+    "source": "Hand-written from the terminal wait outcomes."
+  },
+  "job-wait-ended": {
+    "why": "The job ended as {status}. Inspect the saved status or result for {jobId}.",
+    "source": "Hand-written from the terminal wait outcomes."
+  },
+  "job-wait-cleanup": {
+    "why": "The job ended as {status}. Ask the person to check its cleanup before starting replacement work.",
+    "source": "Hand-written from the terminal wait outcomes."
+  },
+  "job-wait-unconfirmed": {
+    "why": "Motif could not confirm that {jobId} ended. Use the job status tool to check its status before starting replacement work.",
+    "source": "Hand-written from the terminal wait outcomes."
   },
   "proposal.not-found": {
     "why": "No Proposal has that id, so it cannot be used. List the Proposals that exist, then use one of those ids.",

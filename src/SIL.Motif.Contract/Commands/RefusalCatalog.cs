@@ -208,6 +208,18 @@ public static class RefusalCatalog
         return specs;
     }
 
+    /// <summary>Selects outcome-specific Help for a wait that stopped or could not confirm cleanup.</summary>
+    public static string? WaitOutcomeHelp(Refusal refusal)
+    {
+        if (refusal.Code is not (RefusalCodes.JobWaitTimeout or RefusalCodes.JobWaitCancelled or
+            RefusalCodes.JobWaitCleanupUnconfirmed)) return null;
+        var status = refusal.Facts.GetValueOrDefault("status") ?? refusal.Facts.GetValueOrDefault("jobStatus");
+        if (refusal.Facts.GetValueOrDefault("cleanup") == "incomplete")
+            return refusal.Facts.GetValueOrDefault("terminal") == "true" ? "job-wait-cleanup" : "job-wait-unconfirmed";
+        if (status == "cancelled") return "job-wait-ended-cancelled";
+        return refusal.Facts.GetValueOrDefault("terminal") == "true" ? "job-wait-ended" : null;
+    }
+
     private static RefusalSpec Spec(string code, FailureReason reason, NextStep? next = null) =>
         new(code, reason, next);
 
@@ -406,6 +418,9 @@ public static class RefusalCatalog
         Spec(RefusalCodes.HandoffStatisticsUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.HandoffTextNotFound, FailureReason.InvalidArgument),
         Spec(RefusalCodes.JobParserUnavailable, FailureReason.Refused),
+        Spec(RefusalCodes.JobWaitIdentityMismatch, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.JobWaitKindUnsupported, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.JobWaitCleanupUnconfirmed, FailureReason.Busy),
         Spec(RefusalCodes.JobWaitCancelled, FailureReason.Cancelled,
             NextStep.Repeat(("job", NextArg.Fact("jobId")))),
         Spec(RefusalCodes.JobWaitTimeout, FailureReason.Busy,
@@ -495,6 +510,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.ReviewDetailUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.TrialChangesChanged, FailureReason.Refused),
         Spec(RefusalCodes.TrialMeasurementIncomplete, FailureReason.Refused),
+        Spec(RefusalCodes.TrialLatestTooLarge, FailureReason.Refused),
         Spec(RefusalCodes.TrialNothingPending, FailureReason.Refused),
         Spec(RefusalCodes.TrialProposalGone, FailureReason.NotFound),
         Spec(RefusalCodes.TrialReviewBaselineChanged, FailureReason.Refused),

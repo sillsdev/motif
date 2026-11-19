@@ -32,7 +32,8 @@ public sealed class InProcessRunnerLauncherTests(PristineProjectFixture pristine
         var root = Path.Combine(directory, "in-process-root");
         var heartbeat = Path.Combine(directory, "held-trial-heartbeat");
         var parser = FakeParser.Copy(Path.Combine(directory, "held-parser"));
-        FakeParser.BehaveBesideExecutable(parser, new { heartbeatPath = heartbeat });
+        FakeParser.BehaveInPhasesBesideExecutable(parser, "batch", new { mode = "succeed" },
+            new { heartbeatPath = heartbeat });
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
         var version = MotifProductVersion.CurrentText;
         var initial = PendingChanges.Load(new PendingChangesRequest(path, version)).Value!;

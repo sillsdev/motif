@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using Microsoft.Data.Sqlite;
@@ -39,6 +40,45 @@ public sealed class PanGlossInvokerTests : IDisposable
         {
             _output.WriteLine($"Temporary parser cleanup refused (HRESULT 0x{exception.HResult:X8}): {exception.Message}");
         }
+    }
+
+    [Fact]
+    public async Task TerminalWaitReportsWhenContainmentCannotConfirmRootExit()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var containment = new StalledContainment();
+        using var child = new PanGlossChildProcess(new StalledChild(release.Task));
+        var confirmation = containment.TerminateAndConfirmAsync(child);
+        try
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                confirmation.WaitAsync(Wait.Scaled(TimeSpan.FromSeconds(15))));
+        }
+        finally
+        {
+            release.TrySetResult();
+            try { await confirmation; }
+            catch (OperationCanceledException) { }
+        }
+    }
+
+    private sealed class StalledContainment() : PanGlossContainmentJob(new(null, null, false, "", "", "", []))
+    {
+        public override PanGlossChildProcess Start(ProcessStartInfo startInfo) => throw new NotSupportedException();
+        public override void Terminate(PanGlossChildProcess process) { }
+        public override void Dispose() { }
+    }
+
+    private sealed class StalledChild(Task release) : IPanGlossChildProcess
+    {
+        public int Id => 1;
+        public int ExitCode => 0;
+        public PanGlossMemoryKill? MemoryKill => null;
+        public Task WaitForExitAsync(CancellationToken cancellationToken) => release.WaitAsync(cancellationToken);
+        public Task<string> ReadStandardOutputAsync() => Task.FromResult("");
+        public Task<string> ReadStandardErrorAsync() => Task.FromResult("");
+        public void KillProcessTree() { }
+        public void Dispose() { }
     }
 
     [Fact]

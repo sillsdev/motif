@@ -90,8 +90,12 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         var beforeAssessmentIds = (input.BaselineAssessmentIds ?? []).Concat(input.ReviewBaselines?.SelectMany(part => part.AssessmentIds) ?? [])
             .Distinct(StringComparer.Ordinal).ToArray();
         var afterAssessmentIds = AfterAssessments(job.ResultJson).Distinct(StringComparer.Ordinal).ToArray();
-        var checkpoints = new[] { Checkpoint(Side.Before, beforeAssessmentIds, input, inputs),
-            Checkpoint(Side.After, afterAssessmentIds, input, inputs) };
+        var assessments = new AssessmentRepository(_database);
+        var checkpoints = new[]
+        {
+            Checkpoint(assessments, Side.Before, beforeAssessmentIds, input, inputs.ScopeDigest),
+            Checkpoint(assessments, Side.After, afterAssessmentIds, input, inputs.ScopeDigest),
+        };
         var dryRun = ReadDryRun(job.JobId, job.DryRunJson, IntentDigest.Compute(proposal));
         var pins = new ReportPins(inputs.ProjectKey, inputs.ProposalId, null, IntentDigest.Compute(proposal), input.ReviewRevision,
             (input.Prerequisites ?? []).Select(item => new PrerequisitePin(item.ProposalId, item.IntentDigest)).ToArray(),
@@ -230,10 +234,10 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or KeyNotFoundException) { return null; }
     }
 
-    private CheckpointPin Checkpoint(Side side, IReadOnlyList<string> ids, TrialJobInput input, FrozenReviewInputs inputs)
+    internal static CheckpointPin Checkpoint(AssessmentRepository repository, Side side, IReadOnlyList<string> ids,
+        TrialJobInput input, string? scopeDigest = null)
     {
         var records = new List<AssessmentRecord>();
-        var repository = new AssessmentRepository(_database);
         foreach (var id in ids)
         {
             try { records.Add(repository.Get(id)); }
@@ -250,7 +254,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         var tokeniser = Common(records.Select(item => item.TokeniserName));
         var tokeniserVersion = Common(records.Select(item => item.TokeniserVersion));
         return new CheckpointPin(side, ids, assessor, version, parser, input.ReviewCounterSemantics?.ToString(),
-            inputs.ScopeDigest, tokeniser is null || tokeniserVersion is null ? null : new TokeniserPin(tokeniser, tokeniserVersion));
+            scopeDigest, tokeniser is null || tokeniserVersion is null ? null : new TokeniserPin(tokeniser, tokeniserVersion));
     }
 
     private static string Digest<T>(T value) => "sha256:" + Convert.ToHexStringLower(SHA256.HashData(

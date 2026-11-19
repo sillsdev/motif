@@ -146,6 +146,20 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         foreach (var processGroup in _processGroups) KillProcessGroup(processGroup);
     }
 
+    internal override async Task WaitForTerminatedDescendantsAsync(int processId, CancellationToken cancellationToken)
+    {
+        while (HasLiveDescendants(processId))
+            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken).ConfigureAwait(false);
+    }
+
+    private bool HasLiveDescendants(int processId)
+    {
+        if (_cgroup?.IsPopulated == true) return true;
+        if (UnixNative.Kill(-processId, 0) != 0 && UnixNative.LastError == 3) return false;
+        if (OperatingSystem.IsLinux()) return LinuxProcessGroupMemory.HasLiveMember(processId);
+        return OperatingSystem.IsMacOS() && MacProcessGroupMemory.Instance.ListProcessIds(processId).Length != 0;
+    }
+
     public override void Dispose()
     {
         if (_disposed) return;
@@ -337,6 +351,8 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     public Task WaitForContainmentAsync(CancellationToken cancellationToken) =>
         _memoryWatchdog?.WaitForCompletionAsync(cancellationToken) ?? Task.CompletedTask;
 
+    internal Task StopContainmentMonitoringAsync() => _memoryWatchdog?.StopAsync() ?? Task.CompletedTask;
+
     public Task<string> ReadStandardOutputAsync() => ReadAsync(_stdout);
     public async Task<string> ReadStandardErrorAsync()
     {
@@ -420,6 +436,8 @@ internal sealed class UnixCgroup(string path) : IDisposable
             return null;
         }
     }
+
+    internal bool IsPopulated => File.ReadLines(System.IO.Path.Combine(Path, "cgroup.events")).Contains("populated 1");
 
     internal void Kill()
     {

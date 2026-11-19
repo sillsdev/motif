@@ -26,6 +26,31 @@ public abstract class PanGlossContainmentJob : IDisposable
     /// <summary>Stops the process and the descendants covered by this job's controls.</summary>
     public abstract void Terminate(PanGlossChildProcess process);
 
+    internal static readonly TimeSpan TerminationBudget = TimeSpan.FromSeconds(5);
+
+    internal async Task TerminateAndConfirmAsync(PanGlossChildProcess process, Task? outputDrained = null)
+    {
+        var scope = PanGlossCleanupScope.Current;
+        using var deadline = new CancellationTokenSource(scope?.Limit(TerminationBudget) ?? TerminationBudget);
+        try
+        {
+            Terminate(process);
+            await process.WaitForExitAsync(deadline.Token).WaitAsync(deadline.Token).ConfigureAwait(false);
+            await WaitForTerminatedDescendantsAsync(process.Id, deadline.Token)
+                .WaitAsync(deadline.Token).ConfigureAwait(false);
+            await process.StopContainmentMonitoringAsync().WaitAsync(deadline.Token).ConfigureAwait(false);
+            if (outputDrained is not null) await outputDrained.WaitAsync(deadline.Token).ConfigureAwait(false);
+        }
+        catch
+        {
+            scope?.MarkUnconfirmed();
+            throw;
+        }
+    }
+
+    internal virtual Task WaitForTerminatedDescendantsAsync(int processId, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+
     /// <inheritdoc />
     public abstract void Dispose();
 }
@@ -72,6 +97,10 @@ public sealed class PanGlossChildProcess : IDisposable
         _process is UnixPanGlossChildProcess unixProcess
             ? unixProcess.WaitForContainmentAsync(cancellationToken)
             : Task.CompletedTask;
+
+    internal Task StopContainmentMonitoringAsync() => _process is UnixPanGlossChildProcess unixProcess
+        ? unixProcess.StopContainmentMonitoringAsync()
+        : Task.CompletedTask;
 
     /// <inheritdoc />
     public void Dispose() => _process.Dispose();

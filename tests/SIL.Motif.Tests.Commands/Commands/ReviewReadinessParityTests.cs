@@ -10,14 +10,17 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -197,7 +200,7 @@ public sealed class ReviewReadinessParityTests : IDisposable
     }
 
     [Fact]
-    public void ReviewProjectsCurrentDryRunEvidenceAsCurrentOnTheSavedTrial()
+    public void ReviewKeepsDryRunEvidenceCurrentWhenTrialParserPinsAreUnknown()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var id = Arrange(fixture, "ready");
@@ -205,7 +208,7 @@ public sealed class ReviewReadinessParityTests : IDisposable
         var review = ProposalReview.Read(fixture.Database, fixture.Project, id.Value).Value!;
 
         Assert.True(review.Readiness!.IsReady);
-        Assert.Equal(TrialFreshness.Current, review.Trial!.Freshness);
+        Assert.Equal(TrialFreshness.Unknown, review.Trial!.Freshness);
         Assert.True(review.Trial.DryRun!.EvidenceCurrent);
     }
 
@@ -254,6 +257,7 @@ public sealed class ReviewReadinessParityTests : IDisposable
     [InlineData("no-anchor", false)]
     public void ReviewReadinessIsApplyAuthorizationInEveryCase(string scenario, bool expected)
     {
+        using var parser = UseParser();
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var id = Arrange(fixture, scenario);
 
@@ -276,6 +280,7 @@ public sealed class ReviewReadinessParityTests : IDisposable
     [InlineData("no-anchor", NoDryRunBound)]
     public void ReviewGivesTheExactReasonForEachNotReadyCase(string scenario, string expected)
     {
+        using var parser = UseParser();
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var id = Arrange(fixture, scenario);
 
@@ -366,9 +371,13 @@ public sealed class ReviewReadinessParityTests : IDisposable
         {
             var (json, effects) = JudgmentProposal();
             var judgment = ProposalJsonParser.Parse(json);
-            proposals.SaveRevision(new ProposalRevisionRecord(judgment.ProposalId, IntentDigest.Compute(judgment),
-                json, "proposed", null, null, null));
-            fixture.CreateJob(json, "2026-09-24T11:00:00Z", "trial", [], effects: effects);
+            var digest = IntentDigest.Compute(judgment);
+            proposals.SaveRevision(new ProposalRevisionRecord(judgment.ProposalId, digest, json,
+                "proposed", null, null, null));
+            var before = fixture.RecordPinnedAssessmentPair(new TrialsTests.SavedProposal(judgment.ProposalId, json, digest),
+                "trial-after", AssessmentKinds.ParseTime);
+            fixture.CreateJob(json, "2026-09-24T11:00:00Z", "trial", ["trial-after"], effects: effects,
+                baselineAssessmentIds: [before]);
             Bind(fixture, judgment.ProposalId, mismatched: scenario.EndsWith("mismatch", StringComparison.Ordinal));
             return judgment.ProposalId;
         }
@@ -413,12 +422,23 @@ public sealed class ReviewReadinessParityTests : IDisposable
     private static BaselineToken CurrentToken(TrialsTests.ProjectFixture fixture) =>
         new BaselineRepository(fixture.Database).GetCurrent(ProjectWorkspaceKey.Compute(fixture.Project))!.Token;
 
+    private static IDisposable UseParser() => AmbientEnvironment.Push(new Dictionary<string, string?>
+    {
+        [PanGlossExecutable.PathVariable] = FakeParser.ExecutablePath,
+    });
+
+    private static SIL.Motif.Model.DryRun.DryRun PublishedDryRun(TrialsTests.ProjectFixture fixture, CanonicalId id)
+    {
+        var job = Trials.SelectJob(fixture.Database, ProjectWorkspaceKey.Compute(fixture.Project), id.Value);
+        return JobCommands.ParsePublishedDryRun(job!.DryRunJson!);
+    }
+
     private static string TrialAnchorJson(TrialsTests.ProjectFixture fixture, CanonicalId id) =>
-        JsonSerializer.Serialize(ProposalCommands.TrialDryRun(fixture.Database, fixture.Project, id)!.Anchor);
+        JsonSerializer.Serialize(PublishedDryRun(fixture, id).Anchor);
 
     private static void Bind(TrialsTests.ProjectFixture fixture, CanonicalId id, bool mismatched = false)
     {
-        var anchor = ProposalCommands.TrialDryRun(fixture.Database, fixture.Project, id)!.Anchor;
+        var anchor = PublishedDryRun(fixture, id).Anchor;
         if (mismatched) anchor = anchor with { EffectDigest = "sha256:" + new string('9', 64) };
         new ProposalRepository(fixture.Database).SetAnchor(id, JsonSerializer.Serialize(anchor));
     }

@@ -1,5 +1,8 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Worker.Jobs;
@@ -155,7 +158,12 @@ public sealed class JobClaims : IJobClaimProtocol
 
     /// <summary>Reads whether a cancellation has been requested for one job, by id rather than by token.</summary>
     /// <remarks>This is what the loop's heartbeat polls to cancel a running handler's token.</remarks>
-    public bool IsCancellationRequested(string jobId) => _jobs.Get(jobId)?.CancellationRequested ?? false;
+    public bool IsCancellationRequested(string jobId) => ReadCancellation(jobId).Requested;
+
+    public (bool Requested, long? CleanupDeadline) ReadCancellation(string jobId) =>
+        _jobs.Get(jobId) is { CancellationRequested: true } job
+            ? (true, JobCleanupProgress.Deadline(job.ProgressJson))
+            : (false, null);
 
     /// <summary>Wraps an already-claimed row so a handler can drive it without ever seeing its version.</summary>
     internal ClaimedJob Wrap(JobRecord claimed) => new(_jobs, claimed);
@@ -214,7 +222,7 @@ public sealed class JobClaims : IJobClaimProtocol
         command.CommandText =
             "UPDATE Jobs SET OwnerId = NULL, ClaimToken = NULL, LeaseUntilUtc = NULL, HeartbeatUtc = NULL " +
             "WHERE JobId = $id AND ClaimToken = $token " +
-            "AND Status IN ('waiting-for-baseline', 'waiting-for-project-host');";
+            "AND Status IN ('waiting-for-baseline', 'waiting-for-project-host') AND CancellationRequested = 0;";
         command.Parameters.AddWithValue("$id", jobId);
         command.Parameters.AddWithValue("$token", claimToken);
         var released = command.ExecuteNonQuery() == 1;
@@ -245,19 +253,28 @@ public sealed class JobClaims : IJobClaimProtocol
             if (current is null || current.Status is not (JobStatus.Running or JobStatus.WaitingForBaseline or
                     JobStatus.WaitingForProjectHost)) return false;
             if (!string.Equals(current.ClaimToken, claimToken, StringComparison.Ordinal)) return false;
-            var cancelled = status == JobStatus.StoppedByBudget && current.CancellationRequested;
+            var cancelled = current.CancellationRequested;
             try
             {
                 _jobs.Transition(jobId, cancelled ? JobStatus.Cancelled : status, current.Version,
                     cancelled ? JobFailureCategory.Cancellation : category, cancelled ? null : resultJson);
                 return true;
             }
-            catch (InvalidOperationException) when (status == JobStatus.StoppedByBudget && attempt < 2 &&
+            catch (InvalidOperationException) when (attempt < 2 &&
                 _jobs.Get(jobId) is { CancellationRequested: true } changed && changed.Version != current.Version)
             {
             }
         }
         return false;
+    }
+
+    internal static bool TracksExecution(string? kind) => kind is ProjectJobHandlers.DryRunKind or TrialJobHandler.TrialKind;
+
+    internal static WorkerMutexOwner ExecutionLock(string databasePath, string jobId)
+    {
+        var path = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? databasePath.ToUpperInvariant() : databasePath;
+        var key = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(path + "\n" + jobId)));
+        return WorkerMutexOwner.ForTransientRoot("Global\\Motif.JobExecution." + key);
     }
 
     private static string Normalize(string value) => JobTimestamp.FormatUtc(DateTimeOffset.Parse(value,
@@ -275,6 +292,9 @@ internal interface IJobClaimProtocol
     JobRecord? Claim(string projectKey, string ownerId, string nowUtc, TimeSpan lease);
 
     bool IsCancellationRequested(string jobId);
+
+    (bool Requested, long? CleanupDeadline) ReadCancellation(string jobId) =>
+        (IsCancellationRequested(jobId), null);
 
     ClaimedJob Wrap(JobRecord claimed);
 

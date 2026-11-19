@@ -410,26 +410,63 @@ public sealed class JobRepository
         return changed;
     }
 
-    public JobRecord CancelActive(string jobId)
+    public JobRecord CancelActive(string jobId, CancellationToken deadline = default,
+        long? terminalCleanupDeadline = null)
     {
         using var connection = _database.OpenConnection();
+        if (deadline.CanBeCanceled)
+        {
+            connection.DefaultTimeout = 1;
+            using var configure = connection.CreateCommand();
+            configure.CommandText = "PRAGMA busy_timeout = 100;";
+            configure.ExecuteNonQuery();
+        }
+        deadline.ThrowIfCancellationRequested();
         using var transaction = connection.BeginTransaction();
         var current = ReadRequired(connection, transaction, jobId);
         if (JobStateMachine.IsTerminal(current.Status)) return current;
-        var changed = current.Status == JobStatus.Running
+        var requiresAcknowledgement = current.ClaimToken is not null
+            ? current.IsHeldAt(JobTimestamp.FormatUtc(_clock.UtcNow))
+            : current.Status == JobStatus.Running;
+        var changed = requiresAcknowledgement
             ? _stateMachine.RequestCancellation(current)
             : PrepareTransition(current, _stateMachine.Transition(current, JobStatus.Cancelled)) with
             {
                 FailureCategory = JobFailureCategory.Cancellation,
             };
+        if (requiresAcknowledgement && terminalCleanupDeadline is { } cleanupDeadline &&
+            (JobCleanupProgress.Deadline(current.ProgressJson) is not { } prior || cleanupDeadline < prior))
+        {
+            changed = changed with
+            {
+                Version = checked(current.Version + 1),
+                ProgressJson = JobCleanupProgress.WithDeadline(current.ProgressJson, cleanupDeadline),
+            };
+        }
         if (changed == current) return current;
-        if (current.Status == JobStatus.Running)
+        if (requiresAcknowledgement)
             UpdateCancellation(connection, transaction, changed);
         else
             UpdateTransition(connection, transaction, changed);
+        deadline.ThrowIfCancellationRequested();
         transaction.Commit();
-        if (JobStateMachine.IsTerminal(changed.Status)) TrialScratchRetention.TrySweepReviewInputs(_database);
+        if (!deadline.CanBeCanceled && JobStateMachine.IsTerminal(changed.Status)) TrialScratchRetention.TrySweepReviewInputs(_database);
         return changed;
+    }
+
+    internal void MarkCleanupUnconfirmed(string jobId)
+    {
+        using var connection = _database.OpenConnection();
+        connection.DefaultTimeout = 1;
+        using var transaction = connection.BeginTransaction();
+        var job = ReadRequired(connection, transaction, jobId);
+        if (JobCleanupProgress.Unconfirmed(job.ProgressJson)) return;
+        UpdateProgressRow(connection, transaction, job with
+        {
+            Version = checked(job.Version + 1),
+            ProgressJson = JobCleanupProgress.WithUnconfirmedCleanup(job.ProgressJson),
+        });
+        transaction.Commit();
     }
 
     public JobRecord UpdateProgress(string jobId, string progressJson, long expectedVersion)
@@ -551,7 +588,8 @@ public sealed class JobRepository
         using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = SelectSql + " WHERE Status = 'running' AND CancellationRequested = 1 " +
+        command.CommandText = SelectSql + " WHERE Status IN ('running','waiting-for-baseline','waiting-for-project-host') " +
+            "AND CancellationRequested = 1 " +
             "AND ArchivedUtc IS NULL AND (LeaseUntilUtc IS NULL OR LeaseUntilUtc <= $now) ORDER BY JobId;";
         command.Parameters.AddWithValue("$now", JobTimestamp.FormatUtc(now.ToUniversalTime()));
         using var reader = command.ExecuteReader();
@@ -916,7 +954,7 @@ public sealed class JobRepository
 
     private static void UpdateCancellation(SqliteConnection connection, SqliteTransaction transaction, JobRecord record) =>
         ExecuteConcurrencyUpdate(connection, transaction, record,
-            "CancellationRequested = $cancel, UpdatedUtc = $updated, Version = $version");
+            "CancellationRequested = $cancel, ProgressJson = $progress, UpdatedUtc = $updated, Version = $version");
 
     private static void UpdateProgressRow(SqliteConnection connection, SqliteTransaction transaction, JobRecord record) =>
         ExecuteConcurrencyUpdate(connection, transaction, record,

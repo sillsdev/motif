@@ -121,6 +121,18 @@ public sealed class ProposalStandingsUnreadableTests : IDisposable
     }
 
     [Fact]
+    public void ANewerTrialWithoutAReadableIdentityIsNotSilentlySkippedByBulkSelection()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var good = fixture.SaveProposal();
+        fixture.CreateJob(good.Json, "2026-09-24T11:00:00Z", "older", []);
+        fixture.CreateRunningJob("{}", "2026-09-24T12:00:00Z", "unreadable");
+
+        Assert.Throws<InvalidDataException>(() => Trials.LatestFor(fixture.Database, fixture.Project, good.Id.Value));
+        Assert.Throws<InvalidDataException>(() => Trials.LatestForAll(fixture.Database, fixture.Project));
+    }
+
+    [Fact]
     public void AStoreFailureWhileLoadingProposalsIsNotMistakenForAnUnreadableProposal()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);

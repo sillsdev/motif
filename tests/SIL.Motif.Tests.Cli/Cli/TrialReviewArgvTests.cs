@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Review;
@@ -11,6 +13,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
@@ -75,6 +78,225 @@ public sealed class TrialReviewArgvTests
         finally { Directory.Delete(root, recursive: true); }
     }
 
+    [Theory]
+    [InlineData("no-execute")]
+    [InlineData("wrong-format")]
+    [InlineData("missing")]
+    public async Task UnavailableParserDoesNotEstablishCurrentEvidenceEvenWithMatchingPins(string problem)
+    {
+        if (OperatingSystem.IsWindows() && problem == "no-execute") return;
+        var seed = SeedTrial(_ => ([], []), []);
+        try
+        {
+            var parser = Path.Combine(seed.Root, Path.GetFileName(FakeParser.ExecutablePath));
+            var (database, report) = await PublishSavedTrial(seed);
+            using var store = database;
+            if (problem == "wrong-format")
+            {
+                File.WriteAllText(parser, "not an executable");
+                if (!OperatingSystem.IsWindows())
+                    File.SetUnixFileMode(parser, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+            }
+            else parser = FakeParser.Copy(Path.Combine(seed.Root, "parser"));
+
+            var pins = new[] { Side.Before, Side.After }.Select(side => new CheckpointPin(
+                side, [], "pangloss", "1.0.0", FileDigest(parser), null, null, null)).ToArray();
+            using var connection = database.OpenConnection();
+            using var update = connection.CreateCommand();
+            var json = JsonSerializer.Serialize(report with { Pins = report.Pins with { Checkpoints = pins } }, ReviewJson.Options);
+            update.CommandText = "UPDATE ReviewReports SET SummaryJson=$json,SummaryDigest=$digest WHERE ReportId=$id;";
+            update.Parameters.AddWithValue("$json", json);
+            update.Parameters.AddWithValue("$digest", Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(json))));
+            update.Parameters.AddWithValue("$id", report.ReportId);
+            Assert.Equal(1, update.ExecuteNonQuery());
+            if (problem == "missing") File.Delete(parser);
+            if (problem == "no-execute" && !OperatingSystem.IsWindows())
+                File.SetUnixFileMode(parser, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+
+            var read = ReadTrial(seed.Project, seed.Proposal, parser).GetProperty("report");
+            Assert.Equal("unknown", read.GetProperty("freshness").GetProperty("relation").GetString());
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(Side.Before)]
+    [InlineData(Side.After)]
+    public async Task CurrentReportChecksEachParserCheckpoint(Side changedSide)
+    {
+        var seed = SeedTrial(_ => ([], []), []);
+        try
+        {
+            var parser = FakeParser.Copy(Path.Combine(seed.Root, "active-parser"));
+            using (var append = new FileStream(parser, FileMode.Append)) append.WriteByte(1);
+            var active = FileDigest(parser);
+            var manifest = await PublishSavedTrial(seed);
+            using var database = manifest.Database;
+            var report = manifest.Report;
+            var checkpoints = new[] { Side.Before, Side.After }
+                .Select(side => new CheckpointPin(side, [], "pangloss", "1.0.0", active, null, null, null)).ToArray();
+            StoreReport(report with { Pins = report.Pins with { Checkpoints = checkpoints } });
+            Assert.Equal("current", ReadTrial(seed.Project, seed.Proposal, parser).GetProperty("report")
+                .GetProperty("freshness").GetProperty("relation").GetString());
+
+            var stamp = File.GetLastWriteTimeUtc(parser);
+            using (var executable = new FileStream(parser, FileMode.Open, FileAccess.Write))
+            {
+                executable.Seek(-1, SeekOrigin.End);
+                executable.WriteByte(2);
+            }
+            File.SetLastWriteTimeUtc(parser, stamp);
+            StoreReport(report with { Pins = report.Pins with { Checkpoints = checkpoints
+                .Select(pin => pin.Side == changedSide ? pin : pin with { ParserDigest = FileDigest(parser) }).ToArray() } });
+
+            var current = ReadTrial(seed.Project, seed.Proposal, parser).GetProperty("report");
+            Assert.Equal("historical", current.GetProperty("freshness").GetProperty("relation").GetString());
+            Assert.Contains(current.GetProperty("freshness").GetProperty("reasons").EnumerateArray(),
+                reason => reason.GetString() == "parser-changed");
+            var historical = ReadTrial(seed.Project, seed.Proposal, parser, "--report", report.ReportId).GetProperty("report");
+            Assert.Equal(report.ReportId, historical.GetProperty("reportId").GetString());
+            Assert.Equal(report.ReportDigest, historical.GetProperty("reportDigest").GetString());
+
+            StoreReport(report with { Pins = report.Pins with { Checkpoints = checkpoints
+                .Select(pin => pin with { ParserDigest = pin.Side == changedSide ? null : FileDigest(parser) }).ToArray() } });
+            Assert.Equal("unknown", ReadTrial(seed.Project, seed.Proposal, parser).GetProperty("report")
+                .GetProperty("freshness").GetProperty("relation").GetString());
+
+            File.Delete(parser);
+            var unavailable = ReadTrial(seed.Project, seed.Proposal, parser, "--report", report.ReportId).GetProperty("report");
+            Assert.Equal("unknown", unavailable.GetProperty("freshness").GetProperty("relation").GetString());
+
+            void StoreReport(ReportView updated)
+            {
+                using var connection = database.OpenConnection();
+                using var command = connection.CreateCommand();
+                var json = JsonSerializer.Serialize(updated, ReviewJson.Options);
+                command.CommandText = "UPDATE ReviewReports SET SummaryJson=$json,SummaryDigest=$digest WHERE ReportId=$id;";
+                command.Parameters.AddWithValue("$json", json);
+                command.Parameters.AddWithValue("$digest", Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(json))));
+                command.Parameters.AddWithValue("$id", updated.ReportId);
+                Assert.Equal(1, command.ExecuteNonQuery());
+            }
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(JobStatus.Failed, "failed")]
+    [InlineData(JobStatus.Cancelled, "cancelled")]
+    public async Task LatestTrialIncludesNewerStoppedJobsAndKeepsHistoricalReports(JobStatus status, string wireStatus)
+    {
+        var seed = SeedTrial(_ => ([], []), []);
+        try
+        {
+            var (database, report) = await PublishSavedTrial(seed);
+            using var store = database;
+            var latestWithReport = ReadTrial(seed.Project, seed.Proposal, null, "--latest");
+            Assert.Equal(seed.Job, latestWithReport.GetProperty("jobId").GetString());
+            Assert.Equal("completed", latestWithReport.GetProperty("jobStatus").GetString());
+            Assert.Equal(report.ReportId, latestWithReport.GetProperty("reportId").GetString());
+            Assert.Equal(report.ReportDigest, latestWithReport.GetProperty("reportDigest").GetString());
+
+            var jobs = new JobRepository(database);
+            var original = jobs.Get(seed.Job)!;
+            const string stopped = "job/stopped";
+            jobs.RecordInterrupted(stopped, original.ProjectKey, "trial", original.InputJson, "{}",
+                "2026-01-02T00:00:00Z", status);
+            var unrelated = original.InputJson.Replace(seed.Proposal, CanonicalId.Mint("proposal/").Value, StringComparison.Ordinal);
+            jobs.RecordInterrupted("job/unrelated", original.ProjectKey, "trial", unrelated, "{}",
+                "2026-01-03T00:00:00Z", JobStatus.Failed);
+
+            foreach (var read in new[] { ReadTrial(seed.Project, seed.Proposal, null),
+                         ReadTrial(seed.Project, seed.Proposal, null, "--latest") })
+            {
+                Assert.Equal(stopped, read.GetProperty("jobId").GetString());
+                Assert.Equal(wireStatus, read.GetProperty("jobStatus").GetString());
+                Assert.Equal(JsonValueKind.Null, read.GetProperty("reportId").ValueKind);
+                Assert.Equal(JsonValueKind.Null, read.GetProperty("reportDigest").ValueKind);
+            }
+            var historical = ReadTrial(seed.Project, seed.Proposal, null, "--report", report.ReportId);
+            Assert.Equal(report.ReportId, historical.GetProperty("report").GetProperty("reportId").GetString());
+            Assert.Contains(historical.GetProperty("report").GetProperty("freshness").GetProperty("reasons").EnumerateArray(),
+                reason => reason.GetString() == "newer-trial");
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task LatestDoesNotReturnAnIdentityLargerThanTwoKiB()
+    {
+        var seed = SeedTrial(_ => ([], []), []);
+        try
+        {
+            var (database, _) = await PublishSavedTrial(seed);
+            using var store = database;
+            var jobs = new JobRepository(database);
+            var older = jobs.Get(seed.Job)!;
+            jobs.Create("job/" + new string('x', 2048), older.ProjectKey, older.Kind, older.InputJson,
+                "2026-01-03T00:00:00Z");
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+
+            var exit = SIL.Motif.Cli.Program.Run(["proposal", "trial", "--project", seed.Project,
+                seed.Proposal, "--json", "--latest"], output, error, new Dictionary<string, string?>(), (_, _) => { });
+
+            Assert.NotEqual(0, exit);
+            Assert.Contains("trial.latest-too-large", error.ToString(), StringComparison.Ordinal);
+            Assert.Empty(output.ToString());
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    private static string FileDigest(string path) =>
+        "sha256:" + Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path)));
+
+    private static async Task<(SIL.Motif.Host.Store.MotifDatabase Database, ReportView Report)> PublishSavedTrial(
+        (string Project, string Proposal, string Job, string Root) seed)
+    {
+        var database = ProjectMotifDatabase.Open(seed.Project);
+        var id = await new TrialReviewPublisher(database).PublishAsync(new ReviewPublishRequest(seed.Job));
+        var report = new ReviewReportRepository(database).ReadManifest(id)!.Summary;
+        var baseline = report.Pins.BaselineToken;
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE Jobs SET Status='completed',FailureCategory='none' WHERE JobId=$job;
+            INSERT INTO Baselines (ProjectKey, ProjectIdentity, SemanticSnapshotDigest, ProjectionVersion, CapturedUtc,
+                BundleDigest, RootDirectory, FwDataPath, PublishedUtc, SourceLastWriteUtc)
+                VALUES ($project, $identity, $semantic, $version, $time, $bundle, $root, $fwdata,
+                    $published, $published);
+            INSERT INTO BaselineSummaries (ProjectKey, SummaryJson) VALUES ($project, $summary);
+            """;
+        command.Parameters.AddWithValue("$project", report.Pins.ProjectKey);
+        command.Parameters.AddWithValue("$identity", baseline.ProjectIdentity);
+        command.Parameters.AddWithValue("$semantic", baseline.SemanticSnapshotDigest);
+        command.Parameters.AddWithValue("$version", baseline.ProjectionVersion);
+        command.Parameters.AddWithValue("$time", baseline.CapturedUtc);
+        command.Parameters.AddWithValue("$published", "2026-01-01T00:00:00.0000000+00:00");
+        command.Parameters.AddWithValue("$bundle", baseline.BundleDigest);
+        command.Parameters.AddWithValue("$root", seed.Root);
+        command.Parameters.AddWithValue("$fwdata", seed.Project);
+        command.Parameters.AddWithValue("$summary", JsonSerializer.Serialize(ProjectSummarySnapshot.Empty, MotifJson.CreateOptions()));
+        command.Parameters.AddWithValue("$job", seed.Job);
+        Assert.Equal(3, command.ExecuteNonQuery());
+        return (database, report);
+    }
+
+    private static JsonElement ReadTrial(string project, string proposal, string? parser, params string[] selectors)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var exit = SIL.Motif.Cli.Program.Run(["proposal", "trial", "--project", project, proposal, "--json", .. selectors],
+            output, error, new Dictionary<string, string?>
+            {
+                ["MOTIF_PANGLOSS_EXE"] = parser,
+                [SIL.Motif.Worker.RunnerOptions.RootVariable] = Path.GetDirectoryName(project),
+            }, static (_, _) => { });
+        Assert.True(exit == 0, error.ToString());
+        using var json = JsonDocument.Parse(output.ToString());
+        return json.RootElement.Clone();
+    }
+
     private const string Form = "11111111-1111-1111-1111-111111111111";
     private const string Msa = "33333333-3333-3333-3333-333333333333";
 
@@ -97,13 +319,6 @@ public sealed class TrialReviewArgvTests
         var seeded = ProjectStoreCommand.Run<string>(project, MotifProductVersion.CurrentText, (database, locator) =>
         {
             var key = ProjectWorkspaceKey.Compute(locator);
-            using (var connection = database.OpenConnection())
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = "INSERT INTO Proposals (ProposalId,CurrentIntentDigest,Status) VALUES ($id,'intent','proposed');";
-                command.Parameters.AddWithValue("$id", proposal);
-                command.ExecuteNonQuery();
-            }
             var inputs = new FrozenReviewInputs(key, proposal, "scope", "manifest", null,
                 declaredGate ? [new ReviewSetBinding("gold", "Gold", "regression", "members", "expectations", "source", [])] : [], [],
                 words.Select(word => new ReviewPlannedCase("case-" + word, "key-" + word, word, "ws", null,
@@ -120,6 +335,9 @@ public sealed class TrialReviewArgvTests
                     ? new Dictionary<string, string> { ["lexical"] = "1.0" } : new Dictionary<string, string>(), proposalId = proposal,
                 operations = addsObject ? new object[] { new { operationId = CanonicalId.Mint("x/").Value,
                     kind = "lexical/lexDb/createEntries", entityId = CanonicalId.Mint("x/").Value, after = new { } } } : Array.Empty<object>() });
+            var revision = FrozenProposalRevision.Create(proposalJson);
+            new ProposalRepository(database).SaveRevision(new ProposalRevisionRecord(CanonicalId.Parse(proposal),
+                revision.IntentDigest, revision.ProposalJson, "proposed", null, null, null));
             var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference);
             var inputNode = JsonSerializer.SerializeToNode(input, MotifJson.CreateOptions())!.AsObject();
             inputNode["expectedLosses"] = JsonSerializer.SerializeToNode(expectedLosses);

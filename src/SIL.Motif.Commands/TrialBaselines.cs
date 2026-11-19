@@ -37,11 +37,12 @@ public static class TrialBaselines
         string managedRoot, string? parserPath, CancellationToken cancellationToken, TrialLimits? limits,
         ProjectParseLease? admission = null, string? writingSystemId = null,
         Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null, IReadOnlyCollection<string>? alsoProtect = null,
-        Action<IReadOnlyList<string>, string?>? onDispatched = null) =>
+        Action<IReadOnlyList<string>, string?>? onDispatched = null, bool requireExplicitRefresh = false) =>
         AssessCommand.AssessWithLimits(new AssessRequest(projectPath,
             words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null)),
             managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits, recordBudgetStop: false,
-            admission: admission, reuseBefore: true, writingSystemId: writingSystemId, onPartial: onPartial, alsoProtect: alsoProtect, onDispatched: onDispatched);
+            admission: admission, reuseBefore: true, writingSystemId: writingSystemId, onPartial: onPartial,
+            alsoProtect: alsoProtect, onDispatched: onDispatched, requireExplicitRefresh: requireExplicitRefresh);
 
     internal static CommandOutcome<T> WithAdmission<T>(EnqueueTrialRequest request,
         Func<ProjectParseLease?, Refusal?, CommandOutcome<T>> enqueue) where T : class?
@@ -89,10 +90,12 @@ public static class TrialBaselines
                 onBaselineUnavailable, parserPath ?? PanGlossExecutable.TryLocate(), admission);
         });
 
-    internal static CommandOutcome<BaselineCaptureResponse> EnsureCurrentBaseline(EnqueueTrialRequest request, string managedRoot) =>
+    internal static CommandOutcome<BaselineCaptureResponse> EnsureCurrentBaseline(EnqueueTrialRequest request,
+        string managedRoot, bool requireExplicitRefresh = false) =>
         ProjectStoreCommand.Run(request.FwDataPath, MotifProductVersion.CurrentText, (database, project) =>
             AssessCommand.EnsureBaseline(request.FwDataPath, managedRoot, project,
-                ProjectWorkspaceKey.Compute(project), new SIL.Motif.Worker.Baselines.BaselineRepository(database)));
+                ProjectWorkspaceKey.Compute(project), new SIL.Motif.Worker.Baselines.BaselineRepository(database),
+                requireExplicitRefresh));
 
     internal static Refusal? RequireDefault(EnqueueTrialRequest request)
     {
@@ -185,7 +188,9 @@ public static class TrialBaselines
             }
             if (!before.Succeeded)
             {
-                if (before.Refusal!.Code is RefusalCodes.AssessParserKilled or RefusalCodes.AssessOutOfMemory)
+                if (before.Refusal!.Code == RefusalCodes.ChangeRefreshRequired)
+                    return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal);
+                if (before.Refusal.Code is RefusalCodes.AssessParserKilled or RefusalCodes.AssessOutOfMemory)
                     return JobCommands.EnqueueStoppedTrial(RetainBefore(before.Refusal.Code) with { Words = words }, expectedParserPath, before.Refusal);
                 if (before.Refusal.Reason == FailureReason.StoppedByBudget)
                     return JobCommands.EnqueueStoppedTrial(RetainBefore(before.Refusal.Code) with { Words = words }, expectedParserPath, before.Refusal);

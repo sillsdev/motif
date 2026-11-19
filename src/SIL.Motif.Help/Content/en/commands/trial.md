@@ -10,6 +10,8 @@ Use `--job` or `--report` to select a particular Trial or saved report. `--refre
 
 For one exact case, use `--case <caseKey> --trace --side before` or `--side after`. Tracing may run a diagnostic against the report’s recorded grammar, parser and settings; a missing input requires a new Trial. A diagnostic can differ from the saved batch evidence and does not change the report.
 
+Add `--wait-terminal` when running a Trial to cancel its job at the wait limit or on Ctrl+C. Motif allows up to eight more seconds to record cancellation and confirm cleanup. The refusal includes the job ID, the last observed status and whether cleanup was confirmed.
+
 After Motif's own Apply, the next Trial captures a new Baseline. After a save made outside Motif, measuring pending changes is refused with `change.refresh-required` until you capture a new Baseline with `motif baseline capture`.
 
 A new second reading on an attested word is held for review: `report.heldWords` lists the words and the gate is `unmeasured` until the added reading is independently approved and a fresh Trial captures that approval. The named holds, losses and attributed stops survive the detail budget, including stops with no morphology packet. An undispatched case remains not measured and has no invented per-word stop.

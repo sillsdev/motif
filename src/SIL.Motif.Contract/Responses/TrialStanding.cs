@@ -10,11 +10,11 @@ public enum TrialStandingKind
     NotTried,
     /// <summary>A Trial is queued or running.</summary>
     Trying,
-    /// <summary>The chosen Trial stopped without a complete result, and no earlier Trial completed.</summary>
+    /// <summary>The newest Trial stopped without a complete result.</summary>
     Failed,
-    /// <summary>The chosen Trial completed against today's project and the Proposal's current content.</summary>
+    /// <summary>The chosen Trial completed against the current project, Proposal and parser.</summary>
     Current,
-    /// <summary>The chosen Trial completed, but the project or the Proposal changed since.</summary>
+    /// <summary>The chosen Trial completed and its evidence needs to be checked again.</summary>
     NeedsAnotherTry,
 }
 
@@ -27,6 +27,10 @@ public enum TrialStaleReason
     ProposalChanged,
     /// <summary>The Trial's check for dropped grammar did not run or was not recorded, so only another Trial can settle it.</summary>
     DroppedGrammarNotChecked,
+    /// <summary>The selected parser differs from the Trial's parser.</summary>
+    ParserChanged,
+    /// <summary>The current inputs could not all be matched to the Trial's evidence.</summary>
+    EvidenceUnverified,
 }
 
 /// <summary>
@@ -36,8 +40,7 @@ public enum TrialStaleReason
 /// <remarks>
 /// It is derived from the chosen Trial's job status and freshness and nothing else, so a record built anywhere,
 /// including a test double, reports the same standing. Which Trial is chosen is the reader's rule: the newest
-/// completed or active Trial, else the newest one that stopped. A retry that failed after an earlier Trial
-/// completed therefore leaves the earlier Trial chosen, and the standing describes that one.
+/// job across all Trial states.
 /// </remarks>
 /// <param name="Kind">What the person can do next.</param>
 /// <param name="Reason">Why the Trial needs another try; set only for <see cref="TrialStandingKind.NeedsAnotherTry"/>.</param>
@@ -88,6 +91,10 @@ public sealed record TrialStanding(
                 NeedsAnotherTry(TrialStaleReason.BaselineMoved),
             TrialFreshness.ProposalChanged when status == JobStatus.Completed =>
                 NeedsAnotherTry(TrialStaleReason.ProposalChanged),
+            TrialFreshness.ParserChanged when status == JobStatus.Completed =>
+                NeedsAnotherTry(TrialStaleReason.ParserChanged),
+            TrialFreshness.Historical or TrialFreshness.Unknown when status == JobStatus.Completed =>
+                NeedsAnotherTry(TrialStaleReason.EvidenceUnverified),
             TrialFreshness.None => NotTried,
             _ => Failed,
         };

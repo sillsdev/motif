@@ -180,6 +180,9 @@
           "$ref": "#/$defs/PendingTrialResult"
         },
         {
+          "$ref": "#/$defs/TrialJobResult"
+        },
+        {
           "$ref": "#/$defs/AvailableTrialResult"
         }
       ]
@@ -3622,6 +3625,27 @@
         "jobState",
         "report",
         "next"
+      ],
+      "additionalProperties": false
+    },
+    "TrialJobResult": {
+      "type": "object",
+      "properties": {
+        "state": { "const": "job" },
+        "proposalId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "jobStatus": {
+          "enum": ["queued", "waiting-for-baseline", "waiting-for-project-host", "running", "completed",
+            "completed-dry-run-only", "completed-with-assessment-failure", "failed", "cancelled", "interrupted",
+            "stopped-by-budget"]
+        },
+        "reportId": { "type": ["string", "null"] },
+        "reportDigest": { "type": ["string", "null"] }
+      },
+      "required": ["state", "proposalId", "jobId", "jobStatus", "reportId", "reportDigest"],
+      "oneOf": [
+        { "properties": { "reportId": { "type": "null" }, "reportDigest": { "type": "null" } } },
+        { "properties": { "reportId": { "type": "string" }, "reportDigest": { "type": "string" } } }
       ],
       "additionalProperties": false
     },

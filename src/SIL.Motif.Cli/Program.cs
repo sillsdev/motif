@@ -171,6 +171,12 @@ string? namedProject = null;
 try
 {
     var (flags, positionals, forwardedArguments) = ParseArgs(rest);
+    var waitForTerminal = flags.ContainsKey("wait-terminal");
+    if (waitForTerminal && !(verb is "dry-run" or "trial" && flags.ContainsKey("wait")) &&
+        !(verb == "jobs" && positionals.FirstOrDefault() == "wait"))
+        return Usage("Use --wait-terminal with dry-run --wait, trial --wait, or jobs wait.", asJson);
+    if (flags.ContainsKey("latest") && !(verb == "proposal" && positionals.FirstOrDefault() == "trial"))
+        return Usage("Use --latest with proposal trial.", asJson);
     namedProject = flags.TryGetValue("project", out var flaggedProject) ? flaggedProject
         : verb == "open" && positionals.Count == 1 ? positionals[0] : null;
     var commandName = CliCommandNames.Resolve(verb, flags, positionals);
@@ -1022,26 +1028,30 @@ try
                 return Usage("Usage: motif dry-run --project <fwdata> <proposalId> --wait [--effects] [--json]", asJson);
             var dryRunWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
-                "Usage: motif dry-run --project <fwdata> <proposalId> [--wait] " +
-                "[--wait-timeout-ms <ms>] [--effects] [--json]", asJson, out dryRunWaitTimeout) is { } dryRunUsage)
+                "Usage: motif dry-run --project <fwdata> <proposalId> --wait " +
+                "[--wait-terminal] [--wait-timeout-ms <ms>] [--effects] [--json]", asJson, out dryRunWaitTimeout) is { } dryRunUsage)
                 return dryRunUsage;
-            result = RenderCommand(
-                JobCommands.EnqueueDryRun(
-                    new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0])),
-                successAsJson: false);
-            // A job just entered the queue: wake the runner before anything below waits on it.
-            if (result.ExitCode == 0) startRunner(dryRunProject, error.WriteLine);
-            if (result.ExitCode == 0 && flags.ContainsKey("wait"))
+            var shouldWaitForDryRun = flags.ContainsKey("wait");
+            result = WaitWithConsoleCancellation(shouldWaitForDryRun, token =>
             {
-                var dryRunJobId = result.Output.Trim();
-                var dryRunWakeWarnings = RunnerWarnings.Once(error.WriteLine);
-                var waitedDryRun = JobCommands.WaitForDryRun(new WaitForDryRunRequest(
-                    dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, dryRunWaitTimeout),
-                    wakeRunner: () => startRunner(dryRunProject, dryRunWakeWarnings),
-                    reportStall: error.WriteLine);
-                result = RenderCommand(WriteDryRunEffectsArtifact(waitedDryRun, dryRunProject, dryRunJobId),
+                var enqueued = JobCommands.EnqueueDryRun(
+                    new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0]));
+                if (!enqueued.Succeeded) return RenderCommand(enqueued, successAsJson: false);
+                if (!shouldWaitForDryRun)
+                {
+                    startRunner(dryRunProject, error.WriteLine);
+                    return RenderCommand(enqueued, successAsJson: false);
+                }
+                var dryRunJobId = enqueued.Value!.JobId;
+                var warnings = RunnerWarnings.Once(error.WriteLine);
+                var waited = JobCommands.WaitForDryRun(
+                    new WaitForDryRunRequest(dryRunProject, CliProductVersion(), positionals[0], dryRunJobId,
+                        dryRunWaitTimeout, waitForTerminal), token,
+                    wakeRunner: () => startRunner(dryRunProject, warnings), reportStall: error.WriteLine,
+                    wakeImmediately: true);
+                return RenderCommand(WriteDryRunEffectsArtifact(waited, dryRunProject, dryRunJobId),
                     includeEffects: flags.ContainsKey("effects"));
-            }
+            });
             break;
 
         case "trial":
@@ -1053,7 +1063,7 @@ try
                 {
                     return Usage(
                         "Usage: motif trial --pending --project <fwdata> [--draft <id>] [--revision <r>] " +
-                        "--words <w,…> --wait [--wait-timeout-ms <ms>] " +
+                        "--words <w,…> --wait [--wait-terminal] [--wait-timeout-ms <ms>] " +
                         "[--before-correctness <assessmentId>] [--json]", asJson);
                 }
                 var words = pendingTrialWords.Split(',',
@@ -1062,7 +1072,7 @@ try
                     return Usage("Usage: motif trial --pending requires at least one --words value.", asJson);
                 if (ParseWaitTimeout(flags,
                     "Usage: motif trial --pending --project <fwdata> [--draft <id>] [--revision <r>] " +
-                    "--words <w,…> --wait [--wait-timeout-ms <ms>] " +
+                    "--words <w,…> --wait [--wait-terminal] [--wait-timeout-ms <ms>] " +
                     "[--before-correctness <assessmentId>] [--json]", asJson, out var pendingWaitTimeout)
                     is { } pendingTrialUsage)
                     return pendingTrialUsage;
@@ -1071,7 +1081,7 @@ try
                         pendingTrialProject, flags.GetValueOrDefault("draft"),
                         flags.GetValueOrDefault("revision"), words,
                         flags.GetValueOrDefault("before-correctness")), new Progress<MeasureProgress>(),
-                        cancellationToken, pendingWaitTimeout).GetAwaiter().GetResult()));
+                        cancellationToken, pendingWaitTimeout, waitForTerminal: waitForTerminal).GetAwaiter().GetResult()));
                 break;
             }
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var trialProject))
@@ -1116,59 +1126,56 @@ try
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                 "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
                 "[--words <file>|--all-words] " +
-                "[--wait] [--wait-timeout-ms <ms>] [--expect-loss <file>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
+                "--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--expect-loss <file>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
-            // The workflow assesses the Baseline and takes the update lease, as the MCP tool and the window do.
+            var trialResultExit = 0;
             result = RunWithConsoleCancellation(cancellationToken =>
             {
                 var queued = TrialWorkflow.Enqueue(
                     new EnqueueTrialRequest(
                         trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
-                        Words: trialWords, AllWords: flags.ContainsKey("all-words")) { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses },
+                        Words: trialWords, AllWords: flags.ContainsKey("all-words"))
+                        { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses },
                     ResolveRoot(), null, BaselineMode.BestEffort, cancellationToken);
-                if (queued.Value?.BaselineWarning is { } reason)
+                if (!queued.Succeeded)
+                    return RenderCommand(CommandOutcome<JobEnqueuedResponse>.Refused(queued.Refusal!), successAsJson: false);
+                if (queued.Value!.BaselineWarning is { } reason)
                     error.WriteLine(
                         "warning: the Trial has no Baseline Assessment, so `difference produce` will refuse it: " + reason);
-                return RenderCommand(queued.Succeeded
-                    ? CommandOutcome<JobEnqueuedResponse>.Success(queued.Value!.Job)
-                    : CommandOutcome<JobEnqueuedResponse>.Refused(queued.Refusal!), successAsJson: false);
-            });
-            // A job just entered the queue: wake the runner before anything below waits on it.
-            if (result.ExitCode == 0) startRunner(trialProject, error.WriteLine);
-            if (result.ExitCode == 0 && flags.ContainsKey("wait"))
-            {
-                var trialJobId = result.Output.Trim();
-                var trialWakeWarnings = RunnerWarnings.Once(error.WriteLine);
-                var trialWaited = JobCommands.WaitForJob(
-                    new WaitForJobRequest(trialProject, trialJobId, CliProductVersion(), trialWaitTimeout),
-                    () => startRunner(trialProject, trialWakeWarnings), error.WriteLine);
-                // A finished Trial returns its summary report, as motif_trial does, not just the job's progress.
-                if (trialWaited.Value is { Status: SIL.Motif.Contract.Jobs.JobStatus.Completed })
+                if (!flags.ContainsKey("wait"))
+                {
+                    startRunner(trialProject, error.WriteLine);
+                    return RenderCommand(CommandOutcome<JobEnqueuedResponse>.Success(queued.Value.Job), successAsJson: false);
+                }
+                var trialJobId = queued.Value.Job.JobId;
+                var warnings = RunnerWarnings.Once(error.WriteLine);
+                var waited = JobCommands.WaitForJob(
+                    new WaitForJobRequest(trialProject, trialJobId, CliProductVersion(), trialWaitTimeout, waitForTerminal),
+                    () => startRunner(trialProject, warnings), error.WriteLine, cancellationToken,
+                    trialProposal: positionals[0], wakeImmediately: true);
+                if (waited.Value is { Status: SIL.Motif.Contract.Jobs.JobStatus.Completed })
                 {
                     var trialReview = TrialReviewReads.ReadJob(trialProject, CliProductVersion(), positionals[0], trialJobId);
-                    result = RenderCommand(trialReview);
-                    // The summary still prints; the exit code lets a script gate on the Trial.
-                    if (result.ExitCode == 0 && trialReview.Value is AvailableTrialResult { Gate: { } gate } &&
+                    var rendered = RenderCommand(trialReview);
+                    if (rendered.ExitCode == 0 && trialReview.Value is AvailableTrialResult { Gate: { } gate } &&
                         gate.State != TrialGateState.Green)
                     {
                         error.WriteLine("error: " + gate.Reason);
-                        // The summary is the result, so it stays on stdout beside the non-zero exit code.
-                        output.Write(result.Output);
-                        return TrialGateExitCode(gate);
+                        trialResultExit = TrialGateExitCode(gate);
                     }
+                    return rendered;
                 }
-                else
+                if (waited.Value is { } trialEnded && TrialReviewReads.UnfinishedReason(trialEnded) is { } unfinished)
                 {
-                    result = RenderCommand(trialWaited);
-                    // The terminal job remains readable on stdout even when its failure sets a nonzero exit.
-                    if (result.ExitCode == 0 && trialWaited.Value is { } trialEnded &&
-                        TrialReviewReads.UnfinishedReason(trialEnded) is { } unfinished)
-                    {
-                        error.WriteLine("error: " + unfinished);
-                        output.Write(result.Output);
-                        return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
-                    }
+                    error.WriteLine("error: " + unfinished);
+                    trialResultExit = FailureEnvelope.ExitCodeFor(FailureReason.Refused);
                 }
+                return RenderCommand(waited);
+            });
+            if (trialResultExit != 0)
+            {
+                output.Write(result.Output);
+                return trialResultExit;
             }
             break;
 
@@ -1966,18 +1973,20 @@ try
             var reviewRequest = new ReviewReadRequest("project", positionals[1], flags.GetValueOrDefault("job"),
                 flags.GetValueOrDefault("report"), reviewDetail, flags.GetValueOrDefault("section"), flags.GetValueOrDefault("set"),
                 flags.GetValueOrDefault("outcome"), reviewFlag, flags.GetValueOrDefault("filter"), flags.GetValueOrDefault("word"),
-                flags.GetValueOrDefault("case"), flags.ContainsKey("trace"), reviewSide, flags.GetValueOrDefault("cursor"), reviewLimit, reviewPage);
+                flags.GetValueOrDefault("case"), flags.ContainsKey("trace"), reviewSide, flags.GetValueOrDefault("cursor"), reviewLimit, reviewPage,
+                Latest: flags.ContainsKey("latest"));
             if (reviewRequest.Validate() is { } reviewProblem) return Usage(reviewProblem, asJson);
             var refresh = flags.ContainsKey("refresh-report");
-            if (refresh && (reviewRequest.Section is not null || reviewRequest.Set is not null || reviewRequest.Outcome is not null ||
+            if (refresh && (reviewRequest.Latest || reviewRequest.Section is not null || reviewRequest.Set is not null || reviewRequest.Outcome is not null ||
                 reviewRequest.Flag is not null || reviewRequest.Filter is not null || reviewRequest.Word is not null || reviewRequest.Case is not null ||
                 reviewRequest.Trace || reviewRequest.Side is not null || reviewRequest.Cursor is not null || reviewRequest.Limit is not null ||
                 reviewRequest.Detail is not null)) return Usage("Refresh cannot be combined with detail selectors.", asJson);
             var reviewRead = !refresh && !reviewRequest.Trace
-                ? TrialReviewReads.ReadStored(trialReadProject, reviewRequest with { ProjectKey = "project" })
+                ? TrialReviewReads.ReadStored(trialReadProject, reviewRequest with { ProjectKey = "project" },
+                    JobRunnerLaunchOptions.ResolveParserPath())
                 : ProjectStoreCommand.Run<TrialReviewResult>(trialReadProject, CliProductVersion(), (database, project) =>
             {
-                var commands = new TrialReviewCommands(database);
+                var commands = new TrialReviewCommands(database, JobRunnerLaunchOptions.ResolveParserPath());
                 var key = ProjectWorkspaceKey.Compute(project);
                 return refresh ? commands.ProduceAsync(new ReviewProduceRequest(key, positionals[1], reviewRequest.JobId,
                         reviewRequest.ReportId)).GetAwaiter().GetResult() : commands.Read(reviewRequest with { ProjectKey = key });
@@ -3077,13 +3086,15 @@ try
             switch (positionals[0])
             {
                 case "wait":
-                    const string jobsWaitUsage = "Usage: motif jobs wait <jobId> --project <fwdata> [--wait-timeout-ms <ms>] [--json]";
+                    const string jobsWaitUsage = "Usage: motif jobs wait <jobId> --project <fwdata> [--wait-terminal] [--wait-timeout-ms <ms>] [--json]";
                     if (positionals.Count != 2 || !flags.TryGetValue("project", out var jobsWaitProject))
                         return Usage(jobsWaitUsage, asJson);
                     if (ParseWaitTimeout(flags, jobsWaitUsage, asJson, out var jobsWaitTimeout) is { } jobsWaitError)
                         return jobsWaitError;
-                    result = RenderCommand(JobCommands.Wait(
-                        new JobsWaitRequest(jobsWaitProject, positionals[1], CliProductVersion(), jobsWaitTimeout)));
+                    var jobWaitWarnings = RunnerWarnings.Once(error.WriteLine);
+                    result = RenderCommand(WaitWithConsoleCancellation(waitForTerminal, token => JobCommands.Wait(
+                        new JobsWaitRequest(jobsWaitProject, positionals[1], CliProductVersion(), jobsWaitTimeout, waitForTerminal),
+                        token, waitForTerminal ? () => startRunner(jobsWaitProject, jobWaitWarnings) : null)));
                     break;
 
                 case "show":
@@ -3361,7 +3372,10 @@ static string JobsUsage() =>
     "motif jobs cancel <jobId> --project <fwdata> [--json] OR motif jobs requeue <jobId> --project <fwdata> " +
     "[--json] OR " + JobsMoveUsage();
 
-static CommandResult RunWithConsoleCancellation(Func<CancellationToken, CommandResult> run)
+static T WaitWithConsoleCancellation<T>(bool waitForTerminal, Func<CancellationToken, T> wait) =>
+    waitForTerminal ? RunWithConsoleCancellation(wait) : wait(CancellationToken.None);
+
+static T RunWithConsoleCancellation<T>(Func<CancellationToken, T> run)
 {
     using var cancellation = new CancellationTokenSource();
     ConsoleCancelEventHandler handler = (_, eventArgs) =>
@@ -3671,7 +3685,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects")
             {
                 flags[name] = "true";
                 continue;

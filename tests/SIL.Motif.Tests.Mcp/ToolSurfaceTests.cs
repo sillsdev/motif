@@ -198,7 +198,6 @@ public sealed class ToolSurfaceTests
             "hypothesis report",
             "list hypotheses",
             "project tag",
-            "proposal trial",
             "store artifacts",
             "store prune",
             "store relocate",

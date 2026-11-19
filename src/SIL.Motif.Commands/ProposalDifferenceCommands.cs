@@ -89,6 +89,7 @@ public static class ProposalDifferenceCommands
                 return Refuse("difference.invalid-text", FailureReason.InvalidArgument,
                     "The Text id is not a GUID. Use an id that `motif texts list` shows.");
 
+            // An explicit historical comparison can use completed evidence after a stopped retry.
             var trial = Trials.ListFor(database, project, request.ProposalId)
                 .FirstOrDefault(record => request.JobId is null
                     ? record.Status == JobStatus.Completed : record.JobId == request.JobId);

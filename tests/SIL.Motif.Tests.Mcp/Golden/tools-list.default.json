@@ -9628,7 +9628,7 @@
   },
   {
     "name": "motif_dry_run",
-    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nRead a Dry Run. Waits for a Draft or finalized Proposal\u0027s Dry Run and prints operation counts, warnings, the Baseline hash and the effects-file path. Add --effects for the full terminal list; --json keeps the full operations and effects arrays with an effectsSummary.\nCommand: dry-run --wait. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nJobId: The exact job identity returned when evidence was queued.\nTimeout: The maximum wait for a result before returning progress.",
+    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nRead a Dry Run. Waits for a Draft or finalized Proposal\u0027s Dry Run and prints operation counts, warnings, the Baseline hash and the effects-file path. Add --effects for the full terminal list; --json keeps the full operations and effects arrays with an effectsSummary.\nCommand: dry-run --wait. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -9645,6 +9645,10 @@
           "description": "How long to wait for the result. Default 40.",
           "minimum": 1,
           "maximum": 300
+        },
+        "wait_terminal": {
+          "type": "boolean",
+          "description": "Cancel the job on timeout and wait for its execution to end."
         },
         "effects": {
           "type": "boolean",
@@ -9681,14 +9685,10 @@
   },
   {
     "name": "motif_trial",
-    "description": "Trial a Proposal. Measures a Proposal on a throwaway copy and records review evidence, always including declared gate word sets. Read named losses, incomplete cases and new second readings held for review before deciding what to do.\nCommand: trial. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nwords: The explicit words to measure, or the configured Selection when omitted.\nnegative_words: Attested counterexamples that should not parse.\nexpect_loss: Words the author declares as intended losses before this Trial is queued.\nRead Trial progress. Waits for a Trial job and reads its state. Read the stored review report after the Trial completes.\nCommand: trial --wait. Agent class: Evaluate.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The maximum wait for a result before returning progress.",
+    "description": "Read a Trial report. Reads the saved report of a Proposal\u0027s Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.\nCommand: proposal trial. Agent class: Read.\nproposal: The Proposal ID.\njob: Exact Trial job to resume or read.\nreport: Exact stored report to read.\ndetail: Report disclosure level.\nsection: Report section to read.\nset: Review set to select.\noutcome: Include only rows with this outcome.\nflag: Include only rows with this Review flag.\nfilter: Filter full-detail rows.\nword: Select one reported word.\ncase: Select one reported case.\ntrace: Read a trace for the selected word or case.\nside: Select the before or after readings.\ncursor: Continuation from the same report and filters.\nlimit: Maximum page items. Default 50.\npage: Page of the retirement signature rows of a saved report. Default 1.\nlatest: Read the newest Trial job and its report identity when available.\nTrial a Proposal. Measures a Proposal on a throwaway copy and records review evidence, always including declared gate word sets. Read named losses, incomplete cases and new second readings held for review before deciding what to do.\nCommand: trial. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nwords: The explicit words to measure, or the configured Selection when omitted.\nnegative_words: Attested counterexamples that should not parse.\nexpect_loss: Words the author declares as intended losses before this Trial is queued.\nRead Trial progress. Waits for a Trial job and reads its state. Read the stored review report after the Trial completes.\nCommand: trial --wait. Agent class: Evaluate.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "proposal": {
-          "type": "string",
-          "description": "The proposal id."
-        },
         "action": {
           "type": "string",
           "description": "Run, read or explicitly refresh a report.",
@@ -9730,6 +9730,20 @@
           },
           "description": "Words the change intends to lose, frozen when the Trial is queued. They are reported in the saved gate and do not make it a loss; any other lost word does. A resumed Trial cannot change them."
         },
+        "wait_seconds": {
+          "type": "integer",
+          "description": "How long to wait. Default 40.",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "wait_terminal": {
+          "type": "boolean",
+          "description": "Cancel the job on timeout and wait for its execution to end."
+        },
+        "proposal": {
+          "type": "string",
+          "description": "The Proposal ID."
+        },
         "job": {
           "type": "string",
           "description": "Exact Trial job to resume or read."
@@ -9738,11 +9752,9 @@
           "type": "string",
           "description": "Exact stored report to read."
         },
-        "wait_seconds": {
-          "type": "integer",
-          "description": "How long to wait. Default 40.",
-          "minimum": 1,
-          "maximum": 300
+        "latest": {
+          "type": "boolean",
+          "description": "Read the newest Trial job and its report identity when available."
         },
         "detail": {
           "type": "string",
@@ -9760,6 +9772,45 @@
         "set": {
           "type": "string",
           "description": "Review set to select."
+        },
+        "outcome": {
+          "type": "string",
+          "description": "Include only rows with this outcome."
+        },
+        "flag": {
+          "type": "string",
+          "description": "Include only rows with this Review flag.",
+          "enum": [
+            "new-word-failures",
+            "confirmed-readings-lost",
+            "known-nonwords-now-accepted",
+            "parser-work-increase",
+            "new-warnings-or-parsimony"
+          ]
+        },
+        "filter": {
+          "type": "string",
+          "description": "Filter full-detail rows."
+        },
+        "word": {
+          "type": "string",
+          "description": "Select one reported word."
+        },
+        "case": {
+          "type": "string",
+          "description": "Select one reported case."
+        },
+        "trace": {
+          "type": "boolean",
+          "description": "Read a trace for the selected word or case."
+        },
+        "side": {
+          "type": "string",
+          "description": "Select the before or after readings.",
+          "enum": [
+            "before",
+            "after"
+          ]
         },
         "cursor": {
           "type": "string",

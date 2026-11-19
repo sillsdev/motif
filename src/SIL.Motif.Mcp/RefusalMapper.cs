@@ -41,7 +41,9 @@ internal static class RefusalMapper
     public static string NextFor(Refusal refusal, IReadOnlyList<ExposedTool>? exposed = null, JsonObject? callerArgs = null)
     {
         var policy = exposed is null ? DefaultPolicy.Value : ExposurePolicy.ForExposed(exposed);
-        var hint = RefusalCatalog.Specs.GetValueOrDefault(refusal.Code)?.Next is { } step
+        var outcomeHelp = RefusalCatalog.WaitOutcomeHelp(refusal);
+        var hint = outcomeHelp is not null ? Help.RefusalWhy(outcomeHelp) ?? ReasonHints[refusal.Reason] :
+            RefusalCatalog.Specs.GetValueOrDefault(refusal.Code)?.Next is { } step
             && Help.RefusalWhy(refusal.Code) is { } why
                 ? why + RenderStep(step, refusal, policy, callerArgs)
                 : ReasonHints[refusal.Reason];

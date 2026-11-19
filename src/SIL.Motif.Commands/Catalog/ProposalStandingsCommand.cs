@@ -29,22 +29,25 @@ public static class ProposalStandingsCommand
     private static readonly JsonSerializerOptions DraftJsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     /// <summary>Groups the project's Proposals by what the person should do with each.</summary>
-    public static CommandOutcome<ProposalStandings> Read(ProposalStandingsRequest request)
+    public static CommandOutcome<ProposalStandings> Read(ProposalStandingsRequest request) => Read(request, parserPath: null);
+
+    /// <summary>Groups the project's Proposals using the caller's selected parser for Trial freshness.</summary>
+    public static CommandOutcome<ProposalStandings> Read(ProposalStandingsRequest request, string? parserPath)
     {
         ArgumentNullException.ThrowIfNull(request);
         return ProjectStoreCommand.ReadExisting(request.ProjectPath, CommandOutcome<ProposalStandings>.Success(new([], 0)),
-            (database, project) => Read(database, project, request.IncludeSetAside));
+            (database, project) => Read(database, project, request.IncludeSetAside, parserPath));
     }
 
     /// <summary>Reads the standings from an open store.</summary>
     public static CommandOutcome<ProposalStandings> Read(MotifDatabase database, ProjectLocator project,
-        bool includeSetAside)
+        bool includeSetAside, string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
         OperationRegistryBootstrap.Initialize();
         var repository = new ProposalRepository(database);
-        var latestTrials = Trials.LatestForAll(database, project);
+        var latestTrials = Trials.LatestForAll(database, project, parserPath);
         var candidates = new List<Candidate>();
         var unreadable = new List<UnreadableProposal>();
         foreach (var record in repository.List(new ProposalListFilter(IncludeArchived: true)).Where(IsListed))

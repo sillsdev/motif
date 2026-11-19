@@ -171,6 +171,71 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
         Assert.Contains("jobs wait " + jobId, waited.Refusal.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TerminalWaitReportsIncompleteCleanupWhenTheExecutionLeaseStaysHeld(bool callerCancels)
+    {
+        var id = CreateRunningTrial(out var project, leaveQueued: true);
+        using var database = OpenStore(project);
+        using var lease = JobClaims.ExecutionLock(database.FullPath, id);
+        Assert.True(lease.TryAcquire());
+        using var cancellation = new CancellationTokenSource();
+        if (callerCancels) cancellation.Cancel();
+
+        var wait = JobWait.WaitAsync(project, id, null, cancellation.Token,
+            callerCancels ? TimeSpan.FromMinutes(1) : TimeSpan.Zero, waitForTerminal: true);
+        var result = await wait.WaitAsync(Wait.Scaled(TimeSpan.FromSeconds(15)));
+
+        Assert.Equal(callerCancels ? "job.wait-cancelled" : "job.wait-timeout", result.Refusal?.Code);
+        Assert.Equal("cancelled", result.Refusal!.Facts["status"]);
+        Assert.Equal("true", result.Refusal.Facts["terminal"]);
+        Assert.Equal("incomplete", result.Refusal.Facts["cleanup"]);
+    }
+
+    [Fact]
+    public async Task TerminalWaitReportsUnconfirmedContainmentEvenAfterTheExecutionLeaseReleases()
+    {
+        var id = CreateRunningTrial(out var project, leaveQueued: true);
+        using var database = OpenStore(project);
+        using (var connection = database.OpenConnection())
+        using (var update = connection.CreateCommand())
+        {
+            update.CommandText = "UPDATE Jobs SET Status='cancelled', FailureCategory='cancellation', " +
+                "ArchivedUtc=UpdatedUtc, ProgressJson=$progress WHERE JobId=$id";
+            update.Parameters.AddWithValue("$progress", """{"StatusProgress":null,"TerminalCleanupUnconfirmed":true}""");
+            update.Parameters.AddWithValue("$id", id);
+            Assert.Equal(1, update.ExecuteNonQuery());
+        }
+
+        var outcome = await JobWait.WaitAsync(project, id, null, CancellationToken.None,
+            TimeSpan.Zero, waitForTerminal: true);
+        Assert.Equal("job.wait-timeout", outcome.Refusal?.Code);
+        Assert.Equal("true", outcome.Refusal?.Facts?["terminal"]);
+        Assert.Equal("incomplete", outcome.Refusal?.Facts?["cleanup"]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TerminalWaitReportsWhenBusyStorePreventsCancellingTheJob(bool callerCancels)
+    {
+        var id = CreateRunningTrial(out var project, leaveQueued: true);
+        using var database = OpenStore(project);
+        using var writer = database.OpenConnection();
+        using var transaction = writer.BeginTransaction(deferred: false);
+        using var cancellation = new CancellationTokenSource();
+        if (callerCancels) cancellation.Cancel();
+
+        var wait = JobWait.WaitAsync(project, id, null, cancellation.Token,
+            callerCancels ? TimeSpan.FromMinutes(1) : TimeSpan.Zero, waitForTerminal: true);
+        var result = await wait.WaitAsync(Wait.Scaled(TimeSpan.FromSeconds(15)));
+
+        Assert.Equal(callerCancels ? "job.wait-cancelled" : "job.wait-timeout", result.Refusal?.Code);
+        Assert.Equal("incomplete", result.Refusal!.Facts["cleanup"]);
+        Assert.Equal("false", result.Refusal.Facts["jobCancelled"]);
+    }
+
     [Fact]
     public void ShowLeavesBothProgressViewsNullWhenTheJobHasNoProgress()
     {

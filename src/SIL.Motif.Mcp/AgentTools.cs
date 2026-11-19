@@ -13,6 +13,7 @@ using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
 
@@ -863,44 +864,45 @@ internal static class AgentTools
             Schema.Object([("proposal", Schema.String("The proposal id."), true),
                 ("job", Schema.String("A job id from an earlier 'running' result, to keep waiting for it."), false),
                 ("wait_seconds", Schema.Integer("How long to wait for the result. Default 40.", 1, 300), false),
+                ("wait_terminal", Schema.Boolean("Cancel the job on timeout and wait for its execution to end."), false),
                 ("effects", Schema.Boolean("Include the complete operation and effects lists in the result."), false),
                 ..Schema.Verbosity()]),
             false,
             false,
             true,
             false,
-            DryRun) { Requests = [typeof(EnqueueDryRunRequest), typeof(WaitForDryRunRequest)] },
+            DryRun) { Requests = [typeof(EnqueueDryRunRequest), typeof(WaitForDryRunRequest)],
+                FieldNames = new Dictionary<string, string?>
+                {
+                    ["ProposalId"] = "proposal", ["JobId"] = "job", ["Timeout"] = "wait_seconds",
+                    ["WaitForTerminal"] = "wait_terminal",
+                } },
 
         new("motif_trial",
             string.Empty,
             AgentClass.Evaluate,
-            Schema.Object([("proposal", Schema.String("The proposal id."), true),
-                ("action", Schema.String("Run, read or explicitly refresh a report.", "run", "read", "refresh-report"), false),
+            Schema.Object([("action", Schema.String("Run, read or explicitly refresh a report.", "run", "read", "refresh-report"), false),
                 ("words", Schema.StringArray("Words to parse."), false),
                 ("wordsFile", Schema.String("Path to a UTF-8 word list."), false),
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("review_sets", Schema.StringArray("Named review sets to include."), false),
                 ("expect_loss", Schema.StringArray("Words the change intends to lose, frozen when the Trial is queued. They are reported in the saved gate and do not make it a loss; any other lost word does. A resumed Trial cannot change them."), false),
-                ("job", Schema.String("Exact Trial job to resume or read."), false),
-                ("report", Schema.String("Exact stored report to read."), false),
                 ("wait_seconds", Schema.Integer("How long to wait. Default 40.", 1, 300), false),
-                ("detail", Schema.String("Report disclosure level.", "summary", "failures", "full"), false),
-                ("section", Schema.String("Report section to read."), false),
-                ("set", Schema.String("Review set to select."), false),
-                ("cursor", Schema.String("Continuation from the same report and filters."), false),
-                ("limit", Schema.Integer("Maximum page items. Default 50.", 1, 200), false),
-                ("page", Schema.Integer("Page of the retirement signature rows of a saved report, filled to a byte bound. Default 1; see losses.retirementAttestation.pageCount.", 1, 1000000), false)]),
+                ("wait_terminal", Schema.Boolean("Cancel the job on timeout and wait for its execution to end."), false),
+                ..TrialReviewTools.ReadArgumentSchema()]),
             false,
             false,
             false,
             false,
-            Trial) { Requests = [typeof(EnqueueTrialRequest), typeof(WaitForJobRequest)], OutputSchema = TrialReviewTools.OutputSchema,
-                FieldNames = new Dictionary<string, string?>
+            Trial) { Requests = [typeof(EnqueueTrialRequest), typeof(WaitForJobRequest), typeof(ReviewReadRequest)], OutputSchema = TrialReviewTools.OutputSchema,
+                FieldNames = new Dictionary<string, string?>(TrialReviewTools.ReadFieldNames)
                 {
-                    ["ProposalId"] = "proposal", ["Words"] = "words", ["NegativeWords"] = "negative_words",
-                    ["JobId"] = "job", ["Timeout"] = "wait_seconds", ["Scope"] = null, ["AllWords"] = null,
+                    ["Words"] = "words", ["NegativeWords"] = "negative_words",
+                    ["Timeout"] = "wait_seconds", ["WaitForTerminal"] = "wait_terminal",
+                    ["Scope"] = null, ["AllWords"] = null,
                     ["ExpectedDraftRevision"] = null, ["Limits"] = null, ["BaselineAssessmentIds"] = null,
                     ["ReviewSetIds"] = null, ["ExpectedLosses"] = "expect_loss",
+                    ["ProjectKey"] = null, ["EffectiveDetail"] = null, ["EffectiveSide"] = null,
                 } },
 
         new("motif_try_word",
@@ -1008,7 +1010,7 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(a.Optional("proposal") is { } id
                 ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id)))
                 : ToolOutcome.From(ProposalStandingsCommand.Read(
-                    new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside")))))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
+                    new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside")), c.JobParserPath)))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
 
         new("motif_activity",
             string.Empty,
@@ -1666,6 +1668,7 @@ internal static class AgentTools
     private static async Task<ToolOutcome> DryRun(ServerContext context, ToolArgs args, CancellationToken cancellation)
     {
         var proposal = args.Required("proposal");
+        var waitForTerminal = args.Flag("wait_terminal");
         var wait = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         var job = args.Optional("job");
         if (job is null)
@@ -1674,12 +1677,11 @@ internal static class AgentTools
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             job = queued.Value!.JobId;
         }
-        // Wake on a resumed wait too: a queued job whose runner idled out or never started runs again.
-        context.StartRunner();
         var waited = await Task.Run(() => JobCommands.WaitForDryRun(new WaitForDryRunRequest(
-            context.ProjectPath, context.ProductVersion, proposal, job, wait), cancellation,
-            wakeRunner: context.StartRunner), cancellation);
-        if (!waited.Succeeded) return StillRunning(context, waited.Refusal!, job) ?? ToolOutcome.Refused(waited.Refusal!);
+            context.ProjectPath, context.ProductVersion, proposal, job, wait, waitForTerminal), cancellation,
+            wakeRunner: context.StartRunner, wakeImmediately: true));
+        if (!waited.Succeeded)
+            return (waitForTerminal ? null : StillRunning(context, waited.Refusal!, job)) ?? ToolOutcome.Refused(waited.Refusal!);
         var projection = waited.Value!;
         try
         {
@@ -1764,9 +1766,9 @@ internal static class AgentTools
         if (action == "read") return TrialReviewTools.Read(context, proposal, args);
         if (action == "refresh-report") return TrialReviewTools.Refresh(context, proposal, args);
         if (action != "run") return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Unknown Trial action.");
-        if (args.Has("report") || args.Has("section") || args.Has("set") || args.Has("cursor") || args.Has("limit") ||
-            args.Optional("detail") is not (null or "summary"))
+        if (args.Has("report") || TrialReviewTools.HasReadSelectors(args))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Run cannot use report selectors.");
+        var waitForTerminal = args.Flag("wait_terminal");
         var wait = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         var job = args.Optional("job");
         if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss")))
@@ -1785,10 +1787,11 @@ internal static class AgentTools
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             job = queued.Value!.Job.JobId;
         }
-        context.StartRunner();
         var waited = await Task.Run(() => JobCommands.WaitForJob(
-            new WaitForJobRequest(context.ProjectPath, job, context.ProductVersion, wait), context.StartRunner), cancellation);
-        if (!waited.Succeeded && waited.Refusal!.Code is not ("job.wait-timeout" or "job.wait-cancelled"))
+            new WaitForJobRequest(context.ProjectPath, job, context.ProductVersion, wait, waitForTerminal), context.StartRunner,
+            cancellationToken: cancellation, trialProposal: proposal,
+            wakeImmediately: true));
+        if (!waited.Succeeded && (waitForTerminal || waited.Refusal!.Code is not ("job.wait-timeout" or "job.wait-cancelled")))
             return ToolOutcome.Refused(waited.Refusal!);
         return TrialReviewTools.ReadJob(context, proposal, job);
     }
@@ -1796,7 +1799,7 @@ internal static class AgentTools
     // A wait that ran out is progress, not a failure: say where the job is and how to keep waiting.
     private static ToolOutcome? StillRunning(ServerContext context, Refusal refusal, string job)
     {
-        if (refusal.Code is not ("job.wait-timeout" or "job.wait-cancelled")) return null;
+        if (refusal.Code != "job.wait-timeout" || RefusalCatalog.WaitOutcomeHelp(refusal) is not null) return null;
         var running = new JsonObject
         {
             ["status"] = "running",

@@ -64,7 +64,8 @@ public sealed class ReadStoreAccessContractTests
         [StoreWritingTools["motif_parsimony_view"]] = "Maintains a persisted artifact reader lease.",
         [Identity(typeof(ReadStateCommands), "Change", typeof(WordReadStateRequest))] =
             "Explicit IsRead requests change saved occurrence marks.",
-        [Identity(typeof(JobWait), "CancelJobAsync", typeof(string), typeof(string), typeof(string))] =
+        [Identity(typeof(JobWait), "CancelJob", typeof(string), typeof(string), typeof(string),
+            typeof(CancellationToken), typeof(long?))] =
             "A cancelled wait explicitly cancels its durable job.",
         [Identity(typeof(TrialReviewTools), "ReadTrace", typeof(ServerContext), typeof(ReviewReadRequest))] =
             "Explicit trace=true retains a new diagnostic trace.",

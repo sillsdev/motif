@@ -31,7 +31,7 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
         var (path, pending) = await TriedPendingChange("finalize-then-apply");
 
         var applied = await Task.Run(() => PendingChangesWorkflow.Apply(
-            new ApplyProposalRequest(path, pending.DraftId!, pending.Revision))).WaitAsync(StepBound);
+            new ApplyProposalRequest(path, pending.DraftId!, pending.Revision), parserPath: FakeParser.ExecutablePath)).WaitAsync(StepBound);
 
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
         Assert.True(applied.Value!.Applied);
@@ -48,7 +48,7 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
             PendingChanges.DraftName, pending.Revision)).Succeeded);
 
         var applied = await Task.Run(() => PendingChangesWorkflow.Apply(
-            new ApplyProposalRequest(path, pending.DraftId!, null))).WaitAsync(StepBound);
+            new ApplyProposalRequest(path, pending.DraftId!, null), parserPath: FakeParser.ExecutablePath)).WaitAsync(StepBound);
 
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
         Assert.True(applied.Value!.Applied);
@@ -60,7 +60,7 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
         const string word = "reuse-after-apply";
         var (path, pending) = await TriedPendingChange(word);
         var applied = await Task.Run(() => PendingChangesWorkflow.Apply(
-            new ApplyProposalRequest(path, pending.DraftId!, pending.Revision))).WaitAsync(StepBound);
+            new ApplyProposalRequest(path, pending.DraftId!, pending.Revision), parserPath: FakeParser.ExecutablePath)).WaitAsync(StepBound);
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path));
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
@@ -93,7 +93,7 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
         Assert.True(reopened.Succeeded, reopened.Refusal?.Message);
 
         var applied = await Task.Run(() => PendingChangesWorkflow.Apply(
-            new ApplyProposalRequest(path, pending.DraftId!, null))).WaitAsync(StepBound);
+            new ApplyProposalRequest(path, pending.DraftId!, null), parserPath: FakeParser.ExecutablePath)).WaitAsync(StepBound);
 
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
         Assert.Equal(pending.DraftId, applied.Value!.Receipt!.ProposalId);
@@ -134,7 +134,8 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
             PendingChanges.DraftName, CanonicalId.Mint().Value, "en", "a gloss added after the Trial"));
         Assert.True(added.Succeeded, added.Refusal?.Message);
 
-        var outcome = PendingChangesWorkflow.Apply(new ApplyProposalRequest(path, pending.DraftId!, null));
+        var outcome = PendingChangesWorkflow.Apply(new ApplyProposalRequest(path, pending.DraftId!, null),
+            parserPath: FakeParser.ExecutablePath);
 
         Assert.Equal("apply.trial-stale", outcome.Refusal?.Code);
         Assert.NotEmpty(PendingChanges.Load(new PendingChangesRequest(path, ProductVersion)).Value!.Changes);

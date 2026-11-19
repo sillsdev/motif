@@ -1,6 +1,14 @@
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Assess;
+using SIL.Motif.Tests.Commands;
+using SIL.Motif.Tests.TestFixtures;
+using System.Text.Json;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Query;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parsimony;
@@ -38,6 +46,33 @@ public sealed class FormsQueryCommandTests
         finally { Directory.Delete(root, recursive: true); }
     }
     [Fact]
+    public void AQuerySnapshotIsSupersededOnlyByANewerTrialOfItsOwnProposal()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(Path.GetTempPath());
+        var proposal = fixture.SaveProposal();
+        var other = fixture.SaveProposal();
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "after", AssessmentKinds.Correctness);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "source", ["after"], baselineAssessmentIds: [before]);
+        fixture.CreateJob(other.Json, "2026-09-24T12:00:00Z", "other-proposal", []);
+        var input = JsonSerializer.Serialize(new TrialJobInput(proposal.Json, null), MotifJson.CreateOptions());
+        var jobs = new JobRepository(fixture.Database);
+        jobs.Create("other-project", "unrelated-project", "trial", input, "2026-09-24T13:00:00Z");
+        using (var connection = fixture.Database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            QuerySnapshotStore.Replace(connection, transaction, new("source", "grammar", "bundle", "ws",
+                new QueryFactsReader.Snapshot([], [], 0), File.GetLastWriteTimeUtc(fixture.Project.FullFwDataPath).Ticks));
+            transaction.Commit();
+        }
+        var request = new FormsQueryRequest(fixture.Project.FullFwDataPath, "1.0", new QueryRecord("forms", [], []));
+        Assert.False(FormsQueryCommand.Run(request, parserPath: FakeParser.ExecutablePath).Value!.IsStale);
+
+        jobs.RecordInterrupted("newer-failed", ProjectWorkspaceKey.Compute(fixture.Project),
+            "trial", input, "{}", "2026-09-24T14:00:00Z", JobStatus.Failed);
+        Assert.True(FormsQueryCommand.Run(request, parserPath: FakeParser.ExecutablePath).Value!.IsStale);
+    }
+
+    [Fact]
     public void RefusesAbsentRowsReplacesCachedTrialAndReportsStaleness()
     {
         var root = Path.Combine(Path.GetTempPath(), nameof(FormsQueryCommandTests), Guid.NewGuid().ToString("N"));
@@ -69,7 +104,7 @@ public sealed class FormsQueryCommandTests
             Publish("first", File.GetLastWriteTimeUtc(path).Ticks);
             var first = FormsQueryCommand.Run(request, cache);
             Assert.True(first.Succeeded, first.Refusal?.Message);
-            Assert.False(first.Value!.IsStale);
+            Assert.True(first.Value!.IsStale);
             Assert.Equal("first", Assert.Single(first.Value.Result.Rows).Id);
             var unavailable = FormsQueryCommand.Run(request with
                 { Query = request.Query with { Where = [new("tokens", ">", "0")] } }, cache);

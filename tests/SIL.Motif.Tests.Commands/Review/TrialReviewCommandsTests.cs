@@ -486,26 +486,25 @@ public sealed class TrialReviewCommandsTests : IDisposable
         var json = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = prerequisite.Value,
             operations = Array.Empty<object>() });
         var frozen = FrozenProposalRevision.Create(json);
-        using (var connection = _database.OpenConnection())
-        using (var command = connection.CreateCommand())
-        {
-            command.CommandText = "INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status) VALUES ($id, $digest, 'proposed');";
-            command.Parameters.AddWithValue("$id", prerequisite.Value);
-            command.Parameters.AddWithValue("$digest", frozen.IntentDigest);
-            command.ExecuteNonQuery();
-        }
+        var proposals = new ProposalRepository(_database);
+        proposals.SaveRevision(new ProposalRevisionRecord(prerequisite, frozen.IntentDigest, json,
+            "proposed", null, null, null));
         CreateInterrupted([frozen]);
         var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job), CancellationToken.None);
         var commands = new TrialReviewCommands(_database);
         var request = new ReviewReadRequest("project", _proposal.Value, ReportId: id.Value);
         var before = Assert.IsType<AvailableTrialResult>(commands.Read(request).Value).Report;
-        using (var connection = _database.OpenConnection())
-        using (var command = connection.CreateCommand())
+        Assert.DoesNotContain("prerequisite-unavailable", before.Freshness.Reasons);
+        Assert.DoesNotContain("prerequisite-changed", before.Freshness.Reasons);
+        var changed = FrozenProposalRevision.Create(JsonSerializer.Serialize(new
         {
-            command.CommandText = "UPDATE Proposals SET CurrentIntentDigest='changed' WHERE ProposalId=$id;";
-            command.Parameters.AddWithValue("$id", prerequisite.Value);
-            command.ExecuteNonQuery();
-        }
+            contractVersions = new Dictionary<string, string> { ["lexical"] = "1.0" },
+            proposalId = prerequisite.Value,
+            operations = new[] { new { operationId = CanonicalId.Mint("operation/").Value, kind = "lexical/lexSense/setGloss",
+                target = CanonicalId.FromGuid(Guid.NewGuid()).Value, after = new { ws = "en", text = "changed" } } },
+        }));
+        proposals.SaveRevision(new ProposalRevisionRecord(prerequisite, changed.IntentDigest, changed.ProposalJson,
+            "proposed", null, null, null));
         var after = Assert.IsType<AvailableTrialResult>(commands.Read(request).Value).Report;
         Assert.Equal(FreshnessRelation.Historical, after.Freshness.Relation);
         Assert.Contains("prerequisite-changed", after.Freshness.Reasons);

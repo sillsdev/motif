@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using Json.Schema;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Jobs;
 using Xunit;
 
 namespace SIL.Motif.Tests.Contract.Review;
@@ -141,7 +142,13 @@ public sealed class ReviewReportExpandedTests
     public void EveryResultStateValidatesAgainstSchema()
     {
         var report = CreateReport();
-        TrialReviewResult[] values = [new NoTrialResult("p", []), new PendingTrialResult("p", "j", "running", null, []), new AvailableTrialResult(report)];
+        TrialReviewResult[] values =
+        [
+            new NoTrialResult("p", []), new PendingTrialResult("p", "j", "running", null, []),
+            new TrialJobResult("p", "j", JobStatus.Cancelled, null, null),
+            new TrialJobResult("p", "j", JobStatus.Completed, report.ReportId, report.ReportDigest),
+            new AvailableTrialResult(report),
+        ];
         foreach (var value in values)
         {
             var json = JsonSerializer.Serialize(value, ReviewJson.Options);

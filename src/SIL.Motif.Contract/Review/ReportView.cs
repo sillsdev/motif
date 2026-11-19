@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Jobs;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.Motif.Contract.Baselines;
@@ -1261,6 +1262,32 @@ public sealed record PendingTrialResult(
             Next.Any(item => item is null) ||
             State != "pending")
             throw new JsonException("Invalid PendingTrialResult.");
+    }
+}
+
+/// <summary>The selected Trial job and the identity of its saved report, when available.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record TrialJobResult(
+    [property: JsonRequired] string ProposalId,
+    [property: JsonRequired] string JobId,
+    [property: JsonRequired] JobStatus JobStatus,
+    [property: JsonRequired]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? ReportId,
+    [property: JsonRequired]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? ReportDigest)
+    : TrialReviewResult, IJsonOnDeserialized, IJsonOnSerializing
+{
+    [JsonRequired]
+    public string State { get; init; } = "job";
+
+    void IJsonOnDeserialized.OnDeserialized() => Validate();
+    void IJsonOnSerializing.OnSerializing() => Validate();
+
+    private void Validate()
+    {
+        if (ProposalId is null || JobId is null || !Enum.IsDefined(JobStatus) || State != "job" ||
+            (ReportId is null) != (ReportDigest is null))
+            throw new JsonException("Invalid TrialJobResult.");
     }
 }
 

@@ -49,21 +49,24 @@ public sealed record EnqueueTrialRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The exact canonical Proposal identity.</param>
 /// <param name="JobId">The exact job identity returned when evidence was queued.</param>
-/// <param name="Timeout">The maximum wait for a result before returning progress.</param>
+/// <param name="Timeout">The deadline for normal completion.</param>
+/// <param name="WaitForTerminal">Cancel the job at the deadline and wait for its execution to end.</param>
 public sealed record WaitForDryRunRequest(
-    string FwDataPath, string ProductVersion, string ProposalId, string JobId, TimeSpan Timeout);
+    string FwDataPath, string ProductVersion, string ProposalId, string JobId, TimeSpan Timeout, bool WaitForTerminal = false);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="JobId">The exact job identity returned when evidence was queued.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
-/// <param name="Timeout">The maximum wait for a result before returning progress.</param>
-public sealed record WaitForJobRequest(string FwDataPath, string JobId, string ProductVersion, TimeSpan Timeout);
+/// <param name="Timeout">The deadline for normal completion.</param>
+/// <param name="WaitForTerminal">Cancel the job at the deadline and wait for its execution to end.</param>
+public sealed record WaitForJobRequest(string FwDataPath, string JobId, string ProductVersion, TimeSpan Timeout, bool WaitForTerminal = false);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="JobId">The exact job identity returned when evidence was queued.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
-/// <param name="Timeout">The maximum wait for a result before returning progress.</param>
-public sealed record JobsWaitRequest(string FwDataPath, string JobId, string ProductVersion, TimeSpan Timeout);
+/// <param name="Timeout">The deadline for normal completion.</param>
+/// <param name="WaitForTerminal">Cancel the job at the deadline and wait for its execution to end.</param>
+public sealed record JobsWaitRequest(string FwDataPath, string JobId, string ProductVersion, TimeSpan Timeout, bool WaitForTerminal = false);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="JobId">The exact job identity returned when evidence was queued.</param>

@@ -51,6 +51,9 @@ public static class TrialStandingWords
     public static TrialStandingText DroppedGrammarNotChecked { get; } = new(MotifAppStrings.TrialNeedsAnotherTryStatus,
         MotifAppStrings.TrialDroppedGrammarNotCheckedSentence, MotifAppStrings.TryAgain);
 
+    private static readonly TrialStandingText Unverified = new(MotifAppStrings.TrialNeedsAnotherTryStatus,
+        MotifAppStrings.TrialNeedsAnotherTryStatus, MotifAppStrings.TryAgain);
+
     /// <summary>The window's words for <paramref name="standing"/>.</summary>
     public static TrialStandingText For(TrialStanding standing)
     {
@@ -64,7 +67,8 @@ public static class TrialStandingWords
             {
                 TrialStaleReason.BaselineMoved => BaselineMoved,
                 TrialStaleReason.DroppedGrammarNotChecked => DroppedGrammarNotChecked,
-                _ => ProposalChanged,
+                TrialStaleReason.ProposalChanged => ProposalChanged,
+                _ => Unverified,
             },
             _ => NotTried,
         };

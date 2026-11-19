@@ -41,8 +41,9 @@ public sealed class TrialAtomicCompletionProjectionTests(PristineProjectFixture 
             "en", "measured gloss"));
         Assert.True(edited.Succeeded, edited.Refusal?.Message);
 
-        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(projectFiles.FwDataPath,
-            MotifProductVersion.CurrentText, created.Value!.ProposalId, Words: [SeededProject.FirstForm]), parserPath);
+        var queued = TrialWorkflow.Enqueue(new EnqueueTrialRequest(projectFiles.FwDataPath,
+            MotifProductVersion.CurrentText, created.Value!.ProposalId, Words: [SeededProject.FirstForm]),
+            projectFiles.ManagedRoot, parserPath, BaselineMode.Required, CancellationToken.None);
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
 
         var project = new ProjectLocator(Path.GetFullPath(projectFiles.FwDataPath),
@@ -60,11 +61,11 @@ public sealed class TrialAtomicCompletionProjectionTests(PristineProjectFixture 
         await loop.RunUntilIdleAsync(CancellationToken.None);
 
         var jobs = new JobRepository(database);
-        var savedJob = jobs.Get(queued.Value!.JobId)!;
+        var savedJob = jobs.Get(queued.Value!.Job.JobId)!;
         Assert.Equal(JobStatus.Completed, savedJob.Status);
         Assert.NotNull(savedJob.ResultJson);
-        var trial = Trials.LatestFor(database, project, created.Value.ProposalId);
-        var listed = Assert.Single(Trials.ListFor(database, project, created.Value.ProposalId));
+        var trial = Trials.LatestFor(database, project, created.Value.ProposalId, parserPath);
+        var listed = Assert.Single(Trials.ListFor(database, project, created.Value.ProposalId, parserPath));
         var projected = Assert.IsType<TrialRecord>(trial);
         Assert.Equal(projected.JobId, listed.JobId);
         Assert.Equal(projected.Status, listed.Status);
@@ -95,7 +96,7 @@ public sealed class TrialAtomicCompletionProjectionTests(PristineProjectFixture 
             .Distinct(StringComparer.Ordinal));
 
         var fullRead = Trials.Read(new ReadTrialRequest(projectFiles.FwDataPath, created.Value.ProposalId,
-            IncludeWordResults: true));
+            IncludeWordResults: true), parserPath);
         Assert.True(fullRead.Succeeded, fullRead.Refusal?.Message);
         Assert.Equal(projected.AssessmentIds, fullRead.Value!.AssessmentIds);
         Assert.Equal(TrialFreshness.Current, fullRead.Value.Freshness);

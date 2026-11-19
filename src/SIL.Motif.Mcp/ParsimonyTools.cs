@@ -84,7 +84,7 @@ internal static class ParsimonyTools
                     var record = JsonSerializer.Deserialize<QueryRecord>(input, options);
                     if (record is null) throw new JsonException("A query is required.");
                     return Task.FromResult(ToolOutcome.From(FormsQueryCommand.Run(
-                        new FormsQueryRequest(c.ProjectPath, c.ProductVersion, record), c.QueryCache)));
+                        new FormsQueryRequest(c.ProjectPath, c.ProductVersion, record), c.QueryCache, c.JobParserPath)));
                 }
                 catch (JsonException error)
                 {

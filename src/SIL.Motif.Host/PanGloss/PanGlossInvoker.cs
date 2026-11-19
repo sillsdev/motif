@@ -67,11 +67,13 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         try { _ = PanGlossMemoryLimit.FromEnvironment(); }
         catch (PanGlossMemoryLimitSettingException exception) { return new PanGlossOutcome.Unavailable(exception.Message); }
 
+        var cleanup = PanGlossCleanupScope.Current;
         try
         {
             return await _queue.RunAsync(label,
                 async (containment, token) =>
                 {
+                    using var cleanupScope = PanGlossCleanupScope.Use(cleanup);
                     try
                     {
                         var surface = await VerifySurfaceAsync(_executable, containment, token).ConfigureAwait(false);
@@ -264,24 +266,23 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 var stdErrTask = process.ReadStandardErrorAsync();
                 var stdOutTask = process.ReadStandardOutputAsync();
 
+                var outputDrained = Task.WhenAll(stdOutTask, stdErrTask);
                 using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 deadline.CancelAfter(cap);
                 try
                 {
                     await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+                    await containment.WaitForTerminatedDescendantsAsync(process.Id, deadline.Token).ConfigureAwait(false);
                     await process.WaitForContainmentAsync(deadline.Token).ConfigureAwait(false);
+                    await outputDrained.WaitAsync(deadline.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
-                    containment.Terminate(process);
-                    using var stopped = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                     try
                     {
-                        await process.WaitForExitAsync(stopped.Token).ConfigureAwait(false);
-                        await process.WaitForContainmentAsync(stopped.Token).ConfigureAwait(false);
-                        await Task.WhenAll(stdOutTask, stdErrTask).WaitAsync(stopped.Token).ConfigureAwait(false);
+                        await containment.TerminateAndConfirmAsync(process, outputDrained).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException)
+                    catch (Exception exception) when (exception is OperationCanceledException or Win32Exception or IOException)
                     {
                         return new PanGlossOutcome.Incomplete(
                             "Parser termination could not be confirmed after requesting cancellation.", string.Empty)

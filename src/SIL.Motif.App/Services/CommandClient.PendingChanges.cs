@@ -78,7 +78,7 @@ public sealed partial class CommandClient
 
     public Task<CommandOutcome<ProposalReviewResponse>> ReadProposalReviewAsync(
         ProposalReviewRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => ProposalReview.Read(request), cancellationToken);
+        OneAtATime(() => ProposalReview.Read(request, _options.ParserPath), cancellationToken);
 
     public Task<CommandOutcome<ProposalReviewEntryCountResponse>> ReadProposalReviewEntryCountAsync(
         ProposalReviewRequest request, CancellationToken cancellationToken) =>
@@ -100,7 +100,7 @@ public sealed partial class CommandClient
         ApplyProposalRequest request, CancellationToken cancellationToken) =>
         cancellationToken.IsCancellationRequested
             ? Task.FromResult(WaitCancelled<ApplyPendingResult>())
-            : OneAtATime(() => PendingChangesWorkflow.Apply(request, cancellationToken), cancellationToken);
+            : OneAtATime(() => PendingChangesWorkflow.Apply(request, cancellationToken, _options.ParserPath), cancellationToken);
 
     public Task<CommandOutcome<ProposalStatusChangedResponse>> DeclineProposalAsync(
         DeclineProposalRequest request, CancellationToken cancellationToken) =>

@@ -97,6 +97,10 @@ public sealed class CommandResponseTextRenderingCoverageTests
             .Select(attribute => attribute.DerivedType)
             .Where(candidate => candidate.IsClass && !candidate.IsAbstract && responseType.IsAssignableFrom(candidate))
             .ToArray();
+        if (concreteTypes.Length == 0 && responseType.GetCustomAttribute<JsonConverterAttribute>() is not null)
+            concreteTypes = responseType.Assembly.GetTypes()
+                .Where(candidate => candidate.IsClass && !candidate.IsAbstract && responseType.IsAssignableFrom(candidate))
+                .ToArray();
         if (concreteTypes.Length == 0)
             throw new InvalidOperationException(
                 $"Abstract CLI response '{responseType.FullName}' has no explicit concrete response types.");

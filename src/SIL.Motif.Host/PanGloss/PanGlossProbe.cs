@@ -33,24 +33,28 @@ internal static class PanGlossProbe
             var elapsed = Stopwatch.StartNew();
             var output = process.ReadStandardOutputAsync();
             var error = process.ReadStandardErrorAsync();
+            var outputDrained = Task.WhenAll(output, error);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(cap);
             try
             {
                 await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+                await containment.WaitForTerminatedDescendantsAsync(process.Id, deadline.Token).ConfigureAwait(false);
                 await process.WaitForContainmentAsync(deadline.Token).ConfigureAwait(false);
+                await outputDrained.WaitAsync(deadline.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
-                containment.Terminate(process);
-                using var stopped = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 try
                 {
-                    await process.WaitForExitAsync(stopped.Token).ConfigureAwait(false);
-                    await process.WaitForContainmentAsync(stopped.Token).ConfigureAwait(false);
-                    await Task.WhenAll(output, error).WaitAsync(stopped.Token).ConfigureAwait(false);
+                    await containment.TerminateAndConfirmAsync(process, outputDrained).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) { }
+                catch (Exception exception) when (exception is OperationCanceledException or Win32Exception or IOException)
+                {
+                    return new PanGlossOutcome.Incomplete(
+                        "Parser termination could not be confirmed after requesting cancellation.", string.Empty)
+                    { Cause = PanGlossIncompleteCause.Infrastructure };
+                }
                 cancellationToken.ThrowIfCancellationRequested();
                 var seconds = cap.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
                 var unit = cap == TimeSpan.FromSeconds(1) ? "second" : "seconds";
@@ -72,6 +76,7 @@ internal static class PanGlossProbe
     internal static PanGlossOutcome? FatalFailure(PanGlossOutcome outcome) => outcome switch
     {
         PanGlossOutcome.MemoryLimit => outcome,
+        PanGlossOutcome.Incomplete { Cause: PanGlossIncompleteCause.Infrastructure } => outcome,
         PanGlossOutcome.Refused { FailureCategory: JobFailureCategory.ParserKilled or JobFailureCategory.OutOfMemory }
             => outcome,
         _ => null,

@@ -1,4 +1,9 @@
 using SIL.Motif.Commands;
+using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
+using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -14,22 +19,42 @@ public sealed class TrialDryRunExemptionTests : IDisposable
     public void ACurrentTrialsDryRunIsWhatTheJudgmentOnlyExemptionReads()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
+        using var parser = AmbientEnvironment.Push(new Dictionary<string, string?>
+        {
+            [PanGlossExecutable.PathVariable] = FakeParser.ExecutablePath,
+        });
         var proposal = fixture.SaveProposal();
-        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", []);
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "after", AssessmentKinds.Correctness);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["after"], baselineAssessmentIds: [before]);
 
         var dryRun = ProposalCommands.TrialDryRun(fixture.Database, fixture.Project, proposal.Id);
 
-        Assert.Equal(proposal.Digest, dryRun!.IntentDigest);
+        Assert.NotNull(dryRun);
+        Assert.Equal(proposal.Digest, dryRun.IntentDigest);
     }
 
-    [Fact]
-    public void AStaleTrialsDryRunIsNotUsed()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AnUnverifiedOrStaleTrialsDryRunIsNotUsed(bool baselineMoved)
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
+        using var parser = AmbientEnvironment.Push(new Dictionary<string, string?>
+        {
+            [PanGlossExecutable.PathVariable] = FakeParser.ExecutablePath,
+        });
         var proposal = fixture.SaveProposal();
-        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", []);
-        fixture.RecordBaseline("sha256:" + new string('c', 64), "2026-09-24T13:00:00Z",
-            semanticDigest: "sha256:" + new string('2', 64));
+        if (baselineMoved)
+        {
+            var before = fixture.RecordPinnedAssessmentPair(proposal, "after", AssessmentKinds.Correctness);
+            fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["after"], baselineAssessmentIds: [before]);
+            fixture.RecordBaseline("sha256:" + new string('c', 64), "2026-09-24T13:00:00Z",
+                semanticDigest: "sha256:" + new string('2', 64));
+        }
+        else
+        {
+            fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", []);
+        }
 
         Assert.Null(ProposalCommands.TrialDryRun(fixture.Database, fixture.Project, proposal.Id));
     }

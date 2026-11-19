@@ -13,12 +13,13 @@ namespace SIL.Motif.Commands.Review;
 public static class TrialReviewReads
 {
     /// <summary>Reads a saved report without creating or upgrading the project's store.</summary>
-    public static CommandOutcome<TrialReviewResult> ReadStored(string projectPath, ReviewReadRequest request)
+    public static CommandOutcome<TrialReviewResult> ReadStored(string projectPath, ReviewReadRequest request,
+        string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         return ProjectStoreCommand.ReadExisting(projectPath, Absent(request), (database, project) =>
             TrialRetirementPaging.Apply(
-                new TrialReviewCommands(database).Read(request with { ProjectKey = ProjectWorkspaceKey.Compute(project) }), request.Page));
+                new TrialReviewCommands(database, parserPath).Read(request with { ProjectKey = ProjectWorkspaceKey.Compute(project) }), request.Page));
     }
 
     /// <summary>The outcome of a read when the project has no Motif store yet.</summary>
@@ -33,9 +34,10 @@ public static class TrialReviewReads
                 RefusalCodes.DifferenceNoTrial, FailureReason.NotFound,
                 request.ReportId.StartsWith("legacy/", StringComparison.Ordinal)
                     ? "The legacy Trial was not found for this Proposal." : "The report was not found for this Proposal."));
-        return CommandOutcome<TrialReviewResult>.Success(new NoTrialResult(request.ProposalId,
+        var missing = new NoTrialResult(request.ProposalId,
             [new ReadTarget(TargetKind.Tool, "Start a Trial", null, "motif_trial",
-                new ReadArguments(Proposal: request.ProposalId, Action: "run"))]));
+                new ReadArguments(Proposal: request.ProposalId, Action: "run"))]);
+        return request.Latest ? TrialReviewCommands.BoundLatest(missing) : CommandOutcome<TrialReviewResult>.Success(missing);
     }
 
     /// <summary>
@@ -46,14 +48,15 @@ public static class TrialReviewReads
     /// <param name="productVersion">The running product version.</param>
     /// <param name="proposal">The proposal id.</param>
     /// <param name="job">The finished Trial job id.</param>
+    /// <param name="parserPath">The active parser override, when supplied by the caller.</param>
     public static CommandOutcome<TrialReviewResult> ReadJob(
-        string projectPath, string productVersion, string proposal, string job) =>
+        string projectPath, string productVersion, string proposal, string job, string? parserPath = null) =>
         ProjectStoreCommand.Run<TrialReviewResult>(projectPath, productVersion, (database, project) =>
         {
-            var commands = new TrialReviewCommands(database);
+            var commands = new TrialReviewCommands(database, parserPath);
             var key = ProjectWorkspaceKey.Compute(project);
             var read = commands.Read(new ReviewReadRequest(key, proposal, JobId: job));
-            if (read.Refusal?.Code == RefusalCodes.DifferenceNoBefore)
+            if (read.Value is TrialJobResult { ReportId: null })
                 read = commands.ProduceAsync(new ReviewProduceRequest(key, proposal, job, null)).GetAwaiter().GetResult();
             if (!read.Succeeded || read.Value is not AvailableTrialResult available) return read;
             return TrialRetirementPaging.Apply(CommandOutcome<TrialReviewResult>.Success(available with

@@ -43,6 +43,35 @@ public sealed class RefusalMappingTests
         Assert.Contains("job set to job/abc", RefusalMapper.NextFor(refusal));
     }
 
+    [Theory]
+    [InlineData("job.wait-timeout", FailureReason.Busy, "true", "cancelled", "complete", "start a new job")]
+    [InlineData("job.wait-cancelled", FailureReason.Cancelled, "true", "cancelled", "incomplete", "check its cleanup")]
+    [InlineData("job.wait-timeout", FailureReason.Busy, "false", "running", "incomplete", "check its status")]
+    public void TerminalWaitRefusalExplainsTheObservedOutcomeInBothEnvelopeForms(string code,
+        FailureReason reason, string terminal, string status, string cleanup, string advice)
+    {
+        var facts = new Dictionary<string, string>
+        {
+            ["jobId"] = "job/exact", ["terminal"] = terminal, ["status"] = status, ["cleanup"] = cleanup,
+        };
+        var result = RefusalMapper.ToResult(new Refusal(code, reason, "Wait ended.", facts));
+
+        Assert.True(result.IsError);
+        var body = result.StructuredContent!.Value;
+        Assert.False(body.GetProperty("ok").GetBoolean());
+        Assert.Equal(code, body.GetProperty("code").GetString());
+        Assert.Equal(reason.ToString(), body.GetProperty("reason").GetString());
+        Assert.Equal("Wait ended.", body.GetProperty("message").GetString());
+        foreach (var (key, value) in facts) Assert.Equal(value, body.GetProperty("facts").GetProperty(key).GetString());
+        var next = body.GetProperty("next").GetString()!;
+        Assert.Contains(advice, next, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("repeat this call", next, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("call again", next, StringComparison.OrdinalIgnoreCase);
+        var text = Assert.IsType<ModelContextProtocol.Protocol.TextContentBlock>(Assert.Single(result.Content)).Text;
+        Assert.EndsWith("Next: " + next, text);
+        Assert.True(Json.Schema.JsonSchema.FromText(TrialReviewTools.OutputSchema.ToJsonString()).Evaluate(body).IsValid);
+    }
+
     [Fact]
     public void AMissingBaselineSaysHowToTakeOne()
     {

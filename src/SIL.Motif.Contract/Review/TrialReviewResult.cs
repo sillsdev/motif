@@ -31,6 +31,7 @@ public sealed class TrialReviewResultConverter : JsonConverter<TrialReviewResult
         return kind.GetString() switch
         {
             "no-trial" => JsonSerializer.Deserialize<NoTrialResult>(doc.RootElement, options)!,
+            "job" => JsonSerializer.Deserialize<TrialJobResult>(doc.RootElement, options)!,
             "pending" => JsonSerializer.Deserialize<PendingTrialResult>(doc.RootElement, options)!,
             "report" => JsonSerializer.Deserialize<AvailableTrialResult>(doc.RootElement, options)!,
             _ => throw new JsonException("Unknown review discriminator."),
@@ -42,6 +43,7 @@ public sealed class TrialReviewResultConverter : JsonConverter<TrialReviewResult
         switch (value)
         {
             case NoTrialResult item: JsonSerializer.Serialize(writer, item, options); break;
+            case TrialJobResult item: JsonSerializer.Serialize(writer, item, options); break;
             case PendingTrialResult item: JsonSerializer.Serialize(writer, item, options); break;
             case AvailableTrialResult item: JsonSerializer.Serialize(writer, item, options); break;
             default: throw new JsonException("Unknown review variant.");

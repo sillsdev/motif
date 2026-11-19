@@ -1,3 +1,4 @@
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Contract.Jobs;
 using System.Text.Json;
 using SIL.Motif.Commands;
@@ -48,8 +49,8 @@ public sealed class ProposalStandingsCommandTests : IDisposable
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
-        fixture.RecordAssessment(proposal, "trial-root", AssessmentKinds.ParseTime);
-        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["trial-root"], allWords: true);
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "trial-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["trial-root"], allWords: true, baselineAssessmentIds: [before]);
 
         var card = Assert.Single(Read(fixture).Proposals);
 
@@ -64,8 +65,8 @@ public sealed class ProposalStandingsCommandTests : IDisposable
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
-        fixture.RecordAssessment(proposal, "trial-root", AssessmentKinds.ParseTime);
-        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["trial-root"], recordDroppedGrammar: false);
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "trial-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["trial-root"], recordDroppedGrammar: false, baselineAssessmentIds: [before]);
 
         var card = Assert.Single(Read(fixture).Proposals);
 
@@ -186,8 +187,8 @@ public sealed class ProposalStandingsCommandTests : IDisposable
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var current = fixture.SaveProposal();
         var failed = fixture.SaveProposal();
-        fixture.RecordAssessment(current, "trial-root", AssessmentKinds.ParseTime);
-        fixture.CreateJob(current.Json, "2026-09-24T11:00:00Z", "ok", ["trial-root"]);
+        var before = fixture.RecordPinnedAssessmentPair(current, "trial-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(current.Json, "2026-09-24T11:00:00Z", "ok", ["trial-root"], baselineAssessmentIds: [before]);
         fixture.CreateTerminalJob(failed.Json, "2026-09-24T11:00:00Z", "bad", JobStatus.Failed,
             JobFailureCategory.Unknown);
 
@@ -420,7 +421,7 @@ public sealed class ProposalStandingsCommandTests : IDisposable
 
     private static ProposalStandings Read(TrialsTests.ProjectFixture fixture, bool includeSetAside = false)
     {
-        var result = ProposalStandingsCommand.Read(fixture.Database, fixture.Project, includeSetAside);
+        var result = ProposalStandingsCommand.Read(fixture.Database, fixture.Project, includeSetAside, FakeParser.ExecutablePath);
         Assert.True(result.Succeeded, result.Refusal?.Message);
         return result.Value!;
     }

@@ -1,4 +1,8 @@
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Review;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Parsimony;
@@ -24,7 +28,8 @@ public sealed record FormsQueryResponse(string TrialId, string GrammarHash, stri
 public static class FormsQueryCommand
 {
     /// <summary>Reads the current Trial and evaluates a closed query record.</summary>
-    public static CommandOutcome<FormsQueryResponse> Run(FormsQueryRequest request, FormsQuerySnapshotCache? cache = null) =>
+    public static CommandOutcome<FormsQueryResponse> Run(FormsQueryRequest request, FormsQuerySnapshotCache? cache = null,
+        string? parserPath = null) =>
         ProjectStoreCommand.ReadExisting(request.FwDataPath,
             CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryNoTrialRows, FailureReason.NotFound, "Query rows are built by the Parsimony evidence job; run a Trial and wait for evidence.")),
             (database, project) =>
@@ -87,12 +92,11 @@ public static class FormsQueryCommand
                             shape.Change, "", "", "");
                         result = result with { Evidence = result.Evidence with { SameShape = shape with { Ledger = ledger } } };
                     }
-                    using var latest = connection.CreateCommand();
-                    latest.Transaction = transaction;
-                    latest.CommandText = "SELECT JobId FROM Jobs WHERE Kind='trial' AND Status='completed' " +
-                        "ORDER BY CreatedUtc DESC, QueueOrder DESC, JobId DESC LIMIT 1";
-                    var latestTrial = latest.ExecuteScalar() as string;
-                    var stale = (latestTrial is not null && latestTrial != snapshot.TrialId) ||
+                    var trial = new JobRepository(database).Get(snapshot.TrialId);
+                    var stale = trial is null || trial.ProjectKey != ProjectWorkspaceKey.Compute(project) ||
+                        trial.Kind != TrialJobHandler.TrialKind ||
+                        new TrialReviewCommands(database, parserPath).EvidenceFreshness(trial, Trials.ProposalOf(trial))
+                            .Relation != FreshnessRelation.Current ||
                         (File.Exists(project.FullFwDataPath) &&
                          File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks > snapshot.SourceWriteTicks);
                     return CommandOutcome<FormsQueryResponse>.Success(new(snapshot.TrialId, snapshot.GrammarHash,

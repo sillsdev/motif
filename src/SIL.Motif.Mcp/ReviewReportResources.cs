@@ -31,7 +31,8 @@ internal static class ReviewReportResources
         return new ListResourceTemplatesResult { ResourceTemplates = templates };
     }
 
-    internal static ReadResourceResult Read(string uri, string productVersion, string managedRoot, bool allowDrillDown = true)
+    internal static ReadResourceResult Read(string uri, string productVersion, string managedRoot,
+        bool allowDrillDown = true, string? parserPath = null)
     {
         if (!Uri.TryCreate(uri, UriKind.Absolute, out var parsed) || parsed.Scheme != "motif" || parsed.Host != "projects")
             throw Invalid("Invalid report resource URI.");
@@ -63,13 +64,13 @@ internal static class ReviewReportResources
                 return CommandOutcome<object>.Refused(new Refusal("difference.no-trial", FailureReason.NotFound, "The report was not found."));
             object value;
             if (parts.Length == 3)
-                value = new TrialReviewCommands(database).Read(new ReviewReadRequest(projectKey, stored.Summary.Pins.ProposalId,
+                value = new TrialReviewCommands(database, parserPath).Read(new ReviewReadRequest(projectKey, stored.Summary.Pins.ProposalId,
                     ReportId: reportId.Value)).Value!;
             else if (parts.Length == 5 && parts[3] == "sections")
                 value = repository.ReadPage(new ReviewPageRequest(projectKey, reportId, parts[4], Cursor: cursor, Limit: limit));
             else if (parts.Length == 5 && parts[3] == "cases")
             {
-                var read = new TrialReviewCommands(database).Read(new ReviewReadRequest(projectKey, stored.Summary.Pins.ProposalId,
+                var read = new TrialReviewCommands(database, parserPath).Read(new ReviewReadRequest(projectKey, stored.Summary.Pins.ProposalId,
                     ReportId: reportId.Value, Detail: DetailLevel.Full, Case: parts[4], Limit: limit));
                 if (!read.Succeeded) return CommandOutcome<object>.Refused(read.Refusal!);
                 value = ((AvailableTrialResult)read.Value!).Report.Word!;

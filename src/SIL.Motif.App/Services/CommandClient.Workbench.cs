@@ -24,7 +24,7 @@ public sealed partial class CommandClient
         ProposalStandingsRequest request, CancellationToken cancellationToken) =>
         cancellationToken.IsCancellationRequested
             ? Task.FromResult(WaitCancelled<ProposalStandings>())
-            : Task.Run(() => ProposalStandingsCommand.Read(request));
+            : Task.Run(() => ProposalStandingsCommand.Read(request, _options.ParserPath));
 
     public Task<CommandOutcome<ProposalParsimonyStatus>> ReadProposalParsimonyStatusAsync(
         ReadProposalParsimonyStatusRequest request, CancellationToken cancellationToken) =>
@@ -69,7 +69,7 @@ public sealed partial class CommandClient
         ReadTrialRequest request, CancellationToken cancellationToken) =>
         cancellationToken.IsCancellationRequested
             ? Task.FromResult(WaitCancelled<TrialRecord?>())
-            : Task.Run(() => Trials.Read(request));
+            : Task.Run(() => Trials.Read(request, _options.ParserPath));
 
     public async Task<CommandOutcome<TrialEnqueued>> EnqueueTrialAsync(
         SIL.Motif.Commands.Requests.EnqueueTrialRequest request, CancellationToken cancellationToken)

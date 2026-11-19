@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Worker.Jobs;
 
@@ -105,23 +106,47 @@ public sealed class JobRunnerLoop
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var claimLost = 0;
         var parked = false;
-        var heartbeat = HeartbeatAsync(claimed, beating.Token, linked,
+        var cleanup = JobClaims.TracksExecution(claimed.Kind) ? new PanGlossCleanupScope() : null;
+        using var cleanupScope = PanGlossCleanupScope.Use(cleanup);
+        var heartbeat = HeartbeatAsync(claimed, beating.Token, linked, cleanup,
             () => Interlocked.Exchange(ref claimLost, 1));
+        WorkerMutexOwner? execution = null;
+        ClaimedJob? job = null;
         try
         {
-            var outcome = await handler(_claims.Wrap(claimed), linked.Token).ConfigureAwait(false);
+            job = _claims.Wrap(claimed);
+            if (JobClaims.TracksExecution(claimed.Kind))
+            {
+                execution = JobClaims.ExecutionLock(job.Database.FullPath, claimed.JobId);
+                while (!execution.TryAcquire())
+                    await Task.Delay(TimeSpan.FromMilliseconds(200), linked.Token).ConfigureAwait(false);
+                var current = new JobRepository(job.Database).Get(claimed.JobId);
+                if (current is null || current.ClaimToken != claimed.ClaimToken || JobStateMachine.IsTerminal(current.Status))
+                {
+                    Interlocked.Exchange(ref claimLost, 1);
+                    return;
+                }
+                if (current.CancellationRequested)
+                {
+                    cleanup?.SetDeadline(JobCleanupProgress.Deadline(current.ProgressJson));
+                    linked.Cancel();
+                }
+            }
+            linked.Token.ThrowIfCancellationRequested();
+            var outcome = await handler(job, linked.Token).ConfigureAwait(false);
+            if (!PersistCleanup()) return;
             if (outcome is not null && Volatile.Read(ref claimLost) == 0)
                 Finish(claimed, outcome.Status, outcome.Category, outcome.ResultJson);
             else if (outcome is null) parked = true;
         }
         catch (OperationCanceledException)
         {
-            if (Volatile.Read(ref claimLost) == 0)
+            if (Volatile.Read(ref claimLost) == 0 && PersistCleanup())
                 FinishWithDetail(claimed, JobStatus.Cancelled, JobFailureCategory.Cancellation, "The runner stopped.");
         }
         catch (Exception exception)
         {
-            if (Volatile.Read(ref claimLost) == 0)
+            if (Volatile.Read(ref claimLost) == 0 && PersistCleanup())
                 Finish(claimed, JobStatus.Failed, JobFailureDetail.Category(exception) ?? JobFailureCategory.Unknown,
                     JobFailureDetail.Serialize(exception));
         }
@@ -130,8 +155,27 @@ public sealed class JobRunnerLoop
             beating.Cancel();
             try { await heartbeat.ConfigureAwait(false); } catch (OperationCanceledException) { }
             catch (Exception exception) { ReportHeartbeatFailure(claimed, exception); }
-            if (parked && Volatile.Read(ref claimLost) == 0) ReleaseParkedClaim(claimed);
-            if (Volatile.Read(ref claimLost) == 0) await NotifyTerminal(claimed).ConfigureAwait(false);
+            try
+            {
+                if (parked && Volatile.Read(ref claimLost) == 0) ReleaseParkedClaim(claimed);
+                if (Volatile.Read(ref claimLost) == 0) await NotifyTerminal(claimed).ConfigureAwait(false);
+            }
+            finally { execution?.Dispose(); }
+        }
+
+        bool PersistCleanup()
+        {
+            if (cleanup?.Unconfirmed != true || job is null) return true;
+            try
+            {
+                new JobRepository(job.Database).MarkCleanupUnconfirmed(claimed.JobId);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                ReportHeartbeatFailure(claimed, exception);
+                return false;
+            }
         }
     }
 
@@ -148,13 +192,17 @@ public sealed class JobRunnerLoop
 
     private void ReleaseParkedClaim(JobRecord claimed)
     {
-        try { _claims.ReleaseParked(claimed.JobId, claimed.ClaimToken!); }
+        try
+        {
+            if (!_claims.ReleaseParked(claimed.JobId, claimed.ClaimToken!) && _claims.IsCancellationRequested(claimed.JobId))
+                Finish(claimed, JobStatus.Cancelled, JobFailureCategory.Cancellation, null);
+        }
         catch (Exception exception) { ReportHeartbeatFailure(claimed, exception); }
     }
 
     /// Cancels <paramref name="cancelIfRequested"/> the first heartbeat after <c>jobs cancel</c> sets the flag.
     private async Task HeartbeatAsync(JobRecord claimed, CancellationToken stopping,
-        CancellationTokenSource cancelIfRequested, Action claimLost)
+        CancellationTokenSource cancelIfRequested, PanGlossCleanupScope? cleanup, Action claimLost)
     {
         var interval = _lease < HeartbeatShare * 3 ? _lease / 3 : HeartbeatShare;
         while (!stopping.IsCancellationRequested)
@@ -170,7 +218,12 @@ public sealed class JobRunnerLoop
                     cancelIfRequested.Cancel();
                     return;
                 }
-                if (_claims.IsCancellationRequested(claimed.JobId)) cancelIfRequested.Cancel();
+                var cancellation = _claims.ReadCancellation(claimed.JobId);
+                if (cancellation.Requested)
+                {
+                    cleanup?.SetDeadline(cancellation.CleanupDeadline);
+                    cancelIfRequested.Cancel();
+                }
             }
             catch (Exception exception)
             {

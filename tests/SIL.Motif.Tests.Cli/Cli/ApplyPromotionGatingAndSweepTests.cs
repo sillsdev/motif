@@ -21,6 +21,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.LcmUtils;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
@@ -109,6 +110,9 @@ public sealed class ApplyPromotionGatingAndSweepTests
     [InlineData("old-revision")]
     [InlineData("old-baseline")]
     [InlineData("failed-latest")]
+    [InlineData("cancelled-latest")]
+    [InlineData("parser-changed")]
+    [InlineData("parser-missing")]
     [InlineData("pending-latest")]
     public void AutonomousApplyRequiresTheNewestTrialsCurrentGreenGate(string scenario)
     {
@@ -128,6 +132,11 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.Contains("Trial", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Contains("--expect-loss", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
+        if (scenario is "failed-latest" or "cancelled-latest" or "pending-latest")
+        {
+            var latest = TrialReviewReads.ReadStored(_fwDataPath, new ReviewReadRequest("project", proposalId, Latest: true));
+            Assert.Equal(result.Refusal.Facts["jobId"], Assert.IsType<TrialJobResult>(latest.Value).JobId);
+        }
     }
 
     [Fact]
@@ -592,7 +601,12 @@ public sealed class ApplyPromotionGatingAndSweepTests
         jobs.Transition(job.JobId, JobStatus.Running);
         var completion = JsonSerializer.Serialize(new { baselineToken = baseline, assessmentIds = Array.Empty<string>(),
             allWords = false, droppedGrammar = new DroppedGrammar([], 0) }, MotifJson.CreateOptions());
-        jobs.Transition(job.JobId, scenario == "failed-latest" ? JobStatus.Failed : JobStatus.Completed, completion);
+        jobs.Transition(job.JobId, scenario switch
+        {
+            "failed-latest" => JobStatus.Failed,
+            "cancelled-latest" => JobStatus.Cancelled,
+            _ => JobStatus.Completed,
+        }, completion);
         ParseWordEvidence Before(string word) => new("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false,
             [new ParseAnalysis([new ParseMorph("11111111-1111-1111-1111-111111111111",
                 "33333333-3333-3333-3333-333333333333", null, null)])], []);
@@ -608,9 +622,17 @@ public sealed class ApplyPromotionGatingAndSweepTests
             File.AppendAllText(Path.ChangeExtension(_fwDataPath, ".motif.toml"), "\n[gain-gate]\nmode = \"hold\"\n");
         if (scenario == "changed-gold-list")
             File.AppendAllText(Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "gold.jsonl"), "\n");
-        if (scenario == "legacy")
         {
-            var report = new ReviewReportRepository(database).ReadManifest(reportId)!.Summary with { Gate = null, Losses = null, DeclaredGate = null };
+            var report = new ReviewReportRepository(database).ReadManifest(reportId)!.Summary;
+            var parser = ParserIdentity.ReadFreshKey(PanGlossExecutable.TryLocate());
+            report = report with { Pins = report.Pins with { Checkpoints = report.Pins.Checkpoints
+                .Select(pin => pin with { ParserDigest = pin.Side == Side.After ? scenario switch
+                {
+                    "parser-changed" => "sha256:" + new string('0', 64),
+                    "parser-missing" => null,
+                    _ => parser,
+                } : parser }).ToArray() } };
+            if (scenario == "legacy") report = report with { Gate = null, Losses = null, DeclaredGate = null };
             var json = JsonSerializer.Serialize(report, ReviewJson.Options);
             using var connection = database.OpenConnection();
             using var command = connection.CreateCommand();

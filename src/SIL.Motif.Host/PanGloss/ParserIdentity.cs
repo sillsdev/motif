@@ -1,4 +1,8 @@
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
+using System.Reflection.PortableExecutable;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 
@@ -29,11 +33,7 @@ public sealed record ParserIdentity(string Version, string Sha256, string Path)
         {
             var file = new FileInfo(path);
             if (!file.Exists) return null;
-            var sha = Hashes.GetOrAdd((file.FullName, file.LastWriteTimeUtc.Ticks, file.Length), key =>
-            {
-                using var stream = File.OpenRead(key.Path);
-                return "sha256:" + Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
-            });
+            var sha = Hashes.GetOrAdd((file.FullName, file.LastWriteTimeUtc.Ticks, file.Length), key => HashFile(key.Path));
             return new ParserIdentity(ParserExecutableIdentity.CachedVersion(file.FullName) ?? "unknown", sha, file.FullName);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
@@ -45,6 +45,84 @@ public sealed record ParserIdentity(string Version, string Sha256, string Path)
 
     /// <summary>The key of the executable at <paramref name="path"/>, or null when there is none.</summary>
     public static string? KeyOf(string? path) => Read(path)?.Key;
+
+    /// <summary>
+    /// Reads a launchable executable's hash now, even when a replacement preserved its file metadata.
+    /// Checks the platform's executable format and permissions without running the parser.
+    /// </summary>
+    public static string? ReadFreshKey(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        try
+        {
+            using var file = File.OpenRead(path);
+            if (!LooksExecutable(file, path)) return null;
+            file.Position = 0;
+            return "sha256:" + Convert.ToHexStringLower(SHA256.HashData(file));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            ArgumentException or BadImageFormatException)
+        {
+            return null;
+        }
+    }
+
+    private static bool LooksExecutable(FileStream file, string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            using var executable = OpenExecutable(path, 0x20, FileShare.ReadWrite | FileShare.Delete,
+                IntPtr.Zero, FileMode.Open, 0, IntPtr.Zero);
+            if (executable.IsInvalid) return false;
+            using var reader = new PEReader(file, PEStreamOptions.LeaveOpen);
+            var headers = reader.PEHeaders;
+            var flags = headers.CoffHeader.Characteristics;
+            return headers.PEHeader is { AddressOfEntryPoint: > 0 } && flags.HasFlag(Characteristics.ExecutableImage) &&
+                !flags.HasFlag(Characteristics.Dll) && headers.CoffHeader.Machine is Machine.Amd64 or Machine.Arm64;
+        }
+
+        if ((!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS()) || Access(path, 1) != 0) return false;
+        Span<byte> header = stackalloc byte[64];
+        var read = file.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
+        if (read >= 2 && header[0] == '#' && header[1] == '!')
+        {
+            file.Position = 2;
+            using var script = new StreamReader(file, leaveOpen: true);
+            Span<char> line = stackalloc char[256];
+            var length = script.ReadBlock(line);
+            var end = line[..length].IndexOf('\n');
+            if (end < 0 && length == line.Length) return false;
+            ReadOnlySpan<char> text = end < 0 ? line[..length] : line[..end];
+            var interpreter = text.Trim(" \t");
+            var space = interpreter.IndexOfAny(' ', '\t');
+            if (space >= 0) interpreter = interpreter[..space];
+            return !interpreter.IsEmpty && interpreter[0] == '/' && Access(interpreter.ToString(), 1) == 0;
+        }
+
+        if (OperatingSystem.IsMacOS())
+            return read >= 32 && BinaryPrimitives.ReadUInt32BigEndian(header) is 0xfeedfacf or 0xcffaedfe or
+                0xcafebabe or 0xbebafeca or 0xcafebabf or 0xbfbafeca;
+
+        return read == header.Length && header[0] == 0x7f && header[1] == 'E' && header[2] == 'L' && header[3] == 'F' &&
+            header[4] == 2 && header[5] == 1 && header[6] == 1 &&
+            BinaryPrimitives.ReadUInt64LittleEndian(header[24..]) != 0 &&
+            BinaryPrimitives.ReadUInt16LittleEndian(header[16..]) is 2 or 3 &&
+            BinaryPrimitives.ReadUInt16LittleEndian(header[18..]) ==
+                (RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? 183 : 62);
+    }
+
+    [DllImport("kernel32.dll", EntryPoint = "CreateFileW", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    private static extern SafeFileHandle OpenExecutable(string path, uint access, FileShare sharing,
+        IntPtr security, FileMode mode, uint flags, IntPtr template);
+
+    [DllImport("libc", EntryPoint = "access", CharSet = CharSet.Ansi)]
+    private static extern int Access(string path, int mode);
+
+    private static string HashFile(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return "sha256:" + Convert.ToHexStringLower(SHA256.HashData(stream));
+    }
 
     /// <summary>A short human form for warnings: the version and the start of the hash.</summary>
     public static string Describe(string? version, string? sha256) =>

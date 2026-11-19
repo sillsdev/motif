@@ -28,7 +28,6 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.SkipSetupAsync)] = "setup skip",
             [nameof(ICommandClient.ShowConfigAsync)] = "config show",
             [nameof(ICommandClient.MeasurePendingAsync)] = "trial --pending",
-            [nameof(ICommandClient.ReadTrialAsync)] = "proposal trial",
             [nameof(ICommandClient.WaitForJobAsync)] = "trial --wait",
             [nameof(ICommandClient.ApplyPendingAsync)] = "apply --all-pending",
             [nameof(ICommandClient.ApplyProposalAsync)] = "apply --proposal",
@@ -101,6 +100,8 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.ReadLatestParsimonyReportSetAsync),
         nameof(ICommandClient.ReadParsimonyReportAsync),
         nameof(ICommandClient.ReadProposalParsimonyStatusAsync),
+        // The window reads the stored Trial record; "proposal trial" is the agent-facing review of it.
+        nameof(ICommandClient.ReadTrialAsync),
     };
 
     private static readonly IReadOnlyDictionary<string, string> ReadsViaCataloguedCommand =

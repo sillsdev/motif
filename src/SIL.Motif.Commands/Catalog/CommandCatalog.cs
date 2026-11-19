@@ -7,6 +7,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;
 
@@ -287,8 +288,7 @@ public static class CommandCatalog
         new CommandDescriptor("difference show", typeof(ProposalDifferenceShowRequest), typeof(ProposalDifferenceResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("proposal trial export", typeof(ReadTrialExportRequest), typeof(TrialExportReceipt),
             CommandSurface.Released, AgentClass.Read),
-        new CommandDescriptor("proposal trial", typeof(ReadTrialRequest), typeof(TrialRecord), CommandSurface.Released, AgentClass.Read)
-            { ExposeAsAgentTool = false },
+        new CommandDescriptor("proposal trial", typeof(ReviewReadRequest), typeof(TrialReviewResult), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("grammar check", typeof(GrammarCheckRequest), typeof(GrammarCheckResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("grammar read", typeof(GrammarReadRequest), typeof(GrammarReadResponse), CommandSurface.AdvancedAi, AgentClass.Read),

@@ -41,6 +41,10 @@ public static class TrialWorkflow
     /// <param name="cancellationToken">Cancels the Baseline measurement.</param>
     public static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request, string managedRoot,
         string? parserPath, BaselineMode mode, CancellationToken cancellationToken) =>
+        Enqueue(request, managedRoot, parserPath, mode, cancellationToken, requireExplicitRefresh: false);
+
+    internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request, string managedRoot,
+        string? parserPath, BaselineMode mode, CancellationToken cancellationToken, bool requireExplicitRefresh) =>
         EnqueueWithUpdateGate(() => TrialBaselines.WithAdmission(request, (admission, busy) =>
         {
             var resolved = JobCommands.ResolveTrialWords(request);
@@ -50,13 +54,15 @@ public static class TrialWorkflow
                 return CommandOutcome<TrialEnqueued>.Refused(missing);
             if (busy is null && request.BaselineAssessmentIds is null)
             {
-                var baseline = TrialBaselines.EnsureCurrentBaseline(request, managedRoot);
-                if (!baseline.Succeeded && mode == BaselineMode.Required)
+                var baseline = TrialBaselines.EnsureCurrentBaseline(request, managedRoot, requireExplicitRefresh);
+                if (!baseline.Succeeded &&
+                    (mode == BaselineMode.Required || baseline.Refusal!.Code == RefusalCodes.ChangeRefreshRequired))
                     return CommandOutcome<TrialEnqueued>.Refused(baseline.Refusal!);
             }
             return EnqueueCore(request,
                 (words, limits, writingSystem, onPartial, earlier, onDispatched) => busy is null
-                    ? TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial, earlier, onDispatched)
+                    ? TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken,
+                        limits, admission, writingSystem, onPartial, earlier, onDispatched, requireExplicitRefresh)
                     : CommandOutcome<AssessCommandResponse>.Refused(busy),
                 mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate(), admission);
         }));

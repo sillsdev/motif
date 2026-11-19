@@ -1,7 +1,12 @@
+using System.Text.Json;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
-using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Baselines;
@@ -11,9 +16,11 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Commands.Review;
 
 /// <summary>Reads and explicitly produces the shared report for one Trial.</summary>
-public sealed class TrialReviewCommands(MotifDatabase database)
+public sealed class TrialReviewCommands(MotifDatabase database, string? parserPath = null)
 {
     private readonly MotifDatabase _database = database ?? throw new ArgumentNullException(nameof(database));
+
+    private readonly Lazy<string?> _parserKey = new(() => ParserIdentity.ReadFreshKey(parserPath ?? JobRunnerLaunchOptions.ResolveParserPath()));
 
     /// <summary>Reads frozen report facts without starting a parser or opening a live project.</summary>
     public CommandOutcome<TrialReviewResult> Read(ReviewReadRequest request)
@@ -37,34 +44,44 @@ public sealed class TrialReviewCommands(MotifDatabase database)
         if (request.ReportId?.StartsWith("legacy/", StringComparison.Ordinal) == true)
         {
             var legacyJob = SelectJob(request.ProjectKey, request.ProposalId, request.ReportId[7..]);
-            var projection = legacyJob is null ? null : LegacyTrialReviewProjection.Read(legacyJob);
+            var projection = legacyJob is null ? null : LegacyTrialReviewProjection.Read(legacyJob, new AssessmentRepository(_database));
             return projection is null ? Refused(RefusalCodes.DifferenceNoTrial, FailureReason.NotFound,
                 "The legacy Trial was not found for this Proposal.") :
                 CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(projection with
-                { Detail = request.EffectiveDetail, Freshness = Freshness(projection) }));
+                { Detail = request.EffectiveDetail, Freshness = Freshness(projection.Pins) }));
         }
         var job = request.ReportId is null ? SelectJob(request.ProjectKey, request.ProposalId, request.JobId) : null;
         if (request.ReportId is null && job is null)
-            return CommandOutcome<TrialReviewResult>.Success(NoTrial(request.ProposalId));
+            return request.Latest ? BoundLatest(NoTrial(request.ProposalId))
+                : CommandOutcome<TrialReviewResult>.Success(NoTrial(request.ProposalId));
+        if (request.Latest)
+        {
+            var identity = LatestReport(request.ProjectKey, request.ProposalId, job!.JobId);
+            return BoundLatest(new TrialJobResult(request.ProposalId, job.JobId, job.Status, identity?.Id, identity?.Digest));
+        }
         if (job is not null && !JobStateMachine.IsTerminal(job.Status))
             return CommandOutcome<TrialReviewResult>.Success(new PendingTrialResult(request.ProposalId, job.JobId,
                 job.Status.ToString(), null, []));
-        var reportId = request.ReportId ?? LatestReport(request.ProjectKey, request.ProposalId, job!.JobId);
+        var reportId = request.ReportId ?? LatestReport(request.ProjectKey, request.ProposalId, job!.JobId)?.Id;
         if (reportId is null)
         {
-            var legacy = LegacyTrialReviewProjection.Read(job!);
+            var legacy = LegacyTrialReviewProjection.Read(job!, new AssessmentRepository(_database));
             if (legacy is not null)
                 return CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(legacy with
-                { Detail = request.EffectiveDetail, Freshness = Freshness(legacy) }));
-            return Refused(RefusalCodes.DifferenceNoBefore, FailureReason.Refused,
-                "The selected Trial has no retained review report; produce one from its captured evidence.");
+                { Detail = request.EffectiveDetail, Freshness = Freshness(legacy.Pins, request.JobId is null ? job : null) }));
+            return CommandOutcome<TrialReviewResult>.Success(new TrialJobResult(
+                request.ProposalId, job!.JobId, job.Status, null, null));
         }
         var repository = new ReviewReportRepository(_database);
         var stored = repository.ReadManifest(new ReviewReportId(reportId));
         if (stored is null || stored.Summary.Pins.ProjectKey != request.ProjectKey ||
             stored.Summary.Pins.ProposalId != request.ProposalId)
             return Refused(RefusalCodes.DifferenceNoTrial, FailureReason.NotFound, "The report was not found for this Proposal.");
-        var report = stored.Summary with { Detail = request.EffectiveDetail, Freshness = Freshness(stored.Summary) };
+        var report = stored.Summary with
+        {
+            Detail = request.EffectiveDetail,
+            Freshness = Freshness(stored.Summary.Pins, request.JobId is null && request.ReportId is null ? job : null),
+        };
         if (request.EffectiveDetail == DetailLevel.Failures)
         {
             try { report = report with { Sections = FailureSections(repository, report, request.Section, request.Set) }; }
@@ -348,68 +365,93 @@ public sealed class TrialReviewCommands(MotifDatabase database)
         return sections;
     }
 
-    private SIL.Motif.Contract.Jobs.JobRecord? SelectJob(string project, string proposal, string? id)
-    {
-        var jobs = new JobRepository(_database).ListByProjectAndKind(project, TrialJobHandler.TrialKind)
-            .Where(job => id is null || job.JobId == id).OrderByDescending(job => job.CreatedUtc, StringComparer.Ordinal)
-            .ThenByDescending(job => job.JobId, StringComparer.Ordinal);
-        foreach (var job in jobs.OrderBy(job => id is null && JobStateMachine.IsTerminal(job.Status) &&
-            job.Status != SIL.Motif.Contract.Jobs.JobStatus.Completed ? 1 : 0))
-        {
-            var input = TrialJobInput.Parse(job.InputJson);
-            if (ProposalJsonParser.Parse(input.ProposalJson).ProposalId.Value == proposal) return job;
-        }
-        return null;
-    }
+    private JobRecord? SelectJob(string project, string proposal, string? id) =>
+        Trials.SelectJob(_database, project, proposal, id);
 
-    private string? LatestReport(string project, string proposal, string job)
+    private (string Id, string Digest)? LatestReport(string project, string proposal, string job)
     {
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT ReportId FROM ReviewReports WHERE ProjectKey=$project AND ProposalId=$proposal AND TrialJobId=$job ORDER BY CreatedUtc DESC,ReportId DESC LIMIT 1;";
+        command.CommandText = """
+            SELECT ReportId, ManifestDigest FROM ReviewReports
+            WHERE ProjectKey=$project AND ProposalId=$proposal AND TrialJobId=$job
+            ORDER BY CreatedUtc DESC, ReportId DESC LIMIT 1;
+            """;
         command.Parameters.AddWithValue("$project", project);
         command.Parameters.AddWithValue("$proposal", proposal);
         command.Parameters.AddWithValue("$job", job);
-        return command.ExecuteScalar() as string;
+        using var row = command.ExecuteReader();
+        return row.Read() ? (row.GetString(0), row.GetString(1)) : null;
     }
 
-    private Freshness Freshness(ReportView report)
+    internal Freshness EvidenceFreshness(JobRecord job, string proposal, JobRecord? newest = null,
+        Func<string, string?>? currentIntent = null, Func<BaselineToken?>? currentBaseline = null)
+    {
+        if (LatestReport(job.ProjectKey, proposal, job.JobId) is { } identity)
+        {
+            var saved = new ReviewReportRepository(_database).ReadManifest(new ReviewReportId(identity.Id));
+            if (saved is not null) return Freshness(saved.Summary.Pins, newest, currentIntent, currentBaseline);
+        }
+        var pins = LegacyTrialReviewProjection.ReadPins(job, TrialJobInput.Parse(job.InputJson), new AssessmentRepository(_database));
+        return pins is null ? new Freshness(FreshnessRelation.Unknown, ["freshness-unavailable"])
+            : Freshness(pins, newest, currentIntent, currentBaseline);
+    }
+
+    private Freshness Freshness(ReportPins pins, JobRecord? newest = null,
+        Func<string, string?>? currentIntent = null, Func<BaselineToken?>? currentBaseline = null)
     {
         var reasons = new List<string>();
-        var unknown = false;
-        using (var connection = _database.OpenConnection())
-        using (var command = connection.CreateCommand())
+        try { newest ??= SelectJob(pins.ProjectKey, pins.ProposalId, null); }
+        catch (Exception exception) when (Trials.IsUnreadableStoredProposal(exception) || exception is ArgumentException) { }
+        var unknown = newest is null || newest.Status != JobStatus.Completed;
+        if (newest is not null && newest.JobId != pins.TrialJobId) reasons.Add("newer-trial");
+        currentIntent ??= CurrentIntentDigest;
+        var current = currentIntent(pins.ProposalId);
+        if (current is null) unknown = true;
+        else if (current != pins.IntentDigest) reasons.Add("proposal-changed");
+        foreach (var prerequisite in pins.Prerequisites)
         {
-            command.CommandText = "SELECT CurrentIntentDigest,DraftName,DraftJson FROM Proposals WHERE ProposalId=$id;";
-            var id = command.Parameters.Add("$id", Microsoft.Data.Sqlite.SqliteType.Text);
-            string? Current(string proposalId)
-            {
-                id.Value = proposalId;
-                using var reader = command.ExecuteReader();
-                if (!reader.Read()) return null;
-                if (reader.IsDBNull(1)) return reader.IsDBNull(0) ? null : reader.GetString(0);
-                if (reader.IsDBNull(2)) return null;
-                try { return SIL.Motif.Contract.Canonicalization.IntentDigest.Compute(ProposalJsonParser.Parse(reader.GetString(2))); }
-                catch (Exception exception) when (exception is SIL.Motif.Contract.Parsing.ContractParseException or ArgumentException)
-                { return null; }
-            }
-            var current = Current(report.Pins.ProposalId);
-            if (current is null) unknown = true;
-            else if (current != report.Pins.IntentDigest) reasons.Add("proposal-changed");
-            foreach (var prerequisite in report.Pins.Prerequisites)
-            {
-                current = Current(prerequisite.ProposalId);
-                if (current is null) reasons.Add("prerequisite-unavailable");
-                else if (current != prerequisite.IntentDigest) reasons.Add("prerequisite-changed");
-            }
+            current = currentIntent(prerequisite.ProposalId);
+            if (current is null) reasons.Add("prerequisite-unavailable");
+            else if (current != prerequisite.IntentDigest) reasons.Add("prerequisite-changed");
         }
-        var baseline = new BaselineRepository(_database).GetCurrentEvidence(report.Pins.ProjectKey)?.Baseline.Token;
+        var baseline = currentBaseline is null
+            ? new BaselineRepository(_database).GetCurrentEvidence(pins.ProjectKey)?.Baseline.Token
+            : currentBaseline();
         if (baseline is null) unknown = true;
-        else if (!baseline.HasSameSemanticIdentity(report.Pins.BaselineToken)) reasons.Add("baseline-changed");
+        else if (!baseline.HasSameSemanticIdentity(pins.BaselineToken)) reasons.Add("baseline-changed");
+        var parser = _parserKey.Value;
+        if (parser is not null && pins.Checkpoints.Any(pin =>
+            !string.IsNullOrWhiteSpace(pin.ParserDigest) && pin.ParserDigest != parser))
+            reasons.Add("parser-changed");
+        if (parser is null || pins.Checkpoints.Any(pin => string.IsNullOrWhiteSpace(pin.ParserDigest)) ||
+            !pins.Checkpoints.Any(pin => pin.Side == Side.Before) || !pins.Checkpoints.Any(pin => pin.Side == Side.After))
+            unknown = true;
         if (reasons.Count != 0) return new Freshness(FreshnessRelation.Historical, reasons.Distinct().ToArray());
         return unknown ? new Freshness(FreshnessRelation.Unknown, ["freshness-unavailable"]) :
             new Freshness(FreshnessRelation.Current, []);
     }
+
+    private string? CurrentIntentDigest(string proposalId)
+    {
+        if (!CanonicalId.TryParse(proposalId, out var id)) return null;
+        try
+        {
+            var record = new ProposalRepository(_database).Get(id);
+            return Trials.ReadCurrentIntentDigest(record);
+        }
+        catch (Exception exception) when (Trials.IsUnreadableStoredProposal(exception) ||
+            exception is ArgumentException or KeyNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    internal static CommandOutcome<TrialReviewResult> BoundLatest(TrialReviewResult result) =>
+        JsonSerializer.SerializeToUtf8Bytes(new { ok = true, result }, ReviewJson.Options).Length <= ReviewReadRequest.LatestMaximumUtf8Bytes
+            ? CommandOutcome<TrialReviewResult>.Success(result)
+            : Refused(RefusalCodes.TrialLatestTooLarge, FailureReason.Refused,
+                "The latest Trial identity exceeds 2 KiB. Use the stored report read for this Proposal.");
 
     private static CommandOutcome<TrialReviewResult> Invalid(string message) =>
         Refused(RefusalCodes.DifferenceInvalidPage, FailureReason.InvalidArgument, message);

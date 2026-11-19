@@ -2,7 +2,9 @@ using SIL.Motif.Tests.TestFixtures;
 using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Cli;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using Xunit;
@@ -84,6 +86,100 @@ public sealed class JobVerbArgvTests : IDisposable
         Assert.Equal(3, result.ExitCode);
         Assert.Equal("job.wait-timeout", Envelope(result.Error).Code);
         Assert.Equal(FailureReason.Busy, Envelope(result.Error).Reason);
+    }
+
+    [Theory]
+    [InlineData("dry-run")]
+    [InlineData("trial")]
+    public void TerminalWaitCancelsTheExactQueuedJobBeforeReturning(string verb)
+    {
+        var unrelated = Enqueue();
+        var proposal = FinalizeOneOperationProposal();
+        var result = Run($"{verb} --project \"{Project}\" {proposal} --wait --wait-terminal --wait-timeout-ms 0 --json");
+
+        Assert.Equal(3, result.ExitCode);
+        var refusal = Envelope(result.Error[result.Error.IndexOf('{')..]);
+        Assert.Equal("job.wait-timeout", refusal.Code);
+        using var database = ProjectMotifDatabase.Open(Project);
+        var jobs = new JobRepository(database);
+        Assert.Equal(JobStatus.Cancelled, jobs.Get(refusal.Detail!["jobId"])!.Status);
+        Assert.Equal("cancelled", refusal.Detail["status"]);
+        Assert.Equal(JobStatus.Queued, jobs.Get(unrelated)!.Status);
+    }
+
+    [Fact]
+    public void TerminalWaitRefusesAnUntrackedJobWithoutCancellingIt()
+    {
+        var id = Enqueue();
+
+        var result = Run($"jobs wait {id} --project \"{Project}\" --wait-terminal --wait-timeout-ms 0 --json");
+
+        Assert.Equal("job.wait-kind-unsupported", Envelope(result.Error).Code);
+        using var database = ProjectMotifDatabase.Open(Project);
+        Assert.Equal(JobStatus.Queued, new JobRepository(database).Get(id)!.Status);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TerminalWaitReturnsAfterTheClaimedJobReleasesItsResources(bool parked)
+    {
+        var original = Enqueue();
+        using var database = ProjectMotifDatabase.Open(Project);
+        var jobs = new JobRepository(database);
+        var key = jobs.Get(original)!.ProjectKey;
+        jobs.CancelActive(original);
+        const string id = "job/active-trial";
+        jobs.Create(id, key, "trial", "{}", JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+
+        var heartbeat = Path.Combine(_root, "heartbeat");
+        var processIdPath = Path.Combine(_root, "parser-pid");
+        FakeParser.Behave(_root, new { heartbeatPath = heartbeat, processIdPath });
+        using var queue = new MachinePanGlossQueue(["Local\\MotifTrialWaitTest-" + Guid.NewGuid().ToString("N")]);
+        using var invoker = new PanGlossInvoker(FakeParser.ExecutablePath, queue);
+        using var deadline = new CancellationTokenSource(Wait.Scaled(TimeSpan.FromMinutes(2)));
+        var exitedParser = new TaskCompletionSource<PanGlossOutcome>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var loop = new JobRunnerLoop(new JobClaims(database), key, "test-runner",
+            TimeSpan.FromSeconds(20), TimeSpan.Zero, new Dictionary<string, JobRunnerLoop.Handler>
+            {
+                ["trial"] = async (job, cancellation) =>
+                {
+                    if (parked) job.Transition(JobStatus.WaitingForBaseline);
+                    var outcome = await invoker.RunAsync(new PanGlossRequest.Import(Project, Path.Combine(_root, "parser-output")),
+                        "terminal-wait-test", cancellation);
+                    // A terminal row can become visible before the handler releases its remaining resources.
+                    job.Transition(JobStatus.Cancelled, JobFailureCategory.Cancellation);
+                    exitedParser.SetResult(outcome);
+                    await release.Task.WaitAsync(deadline.Token);
+                    return null;
+                },
+            });
+        var worker = loop.RunUntilIdleAsync(deadline.Token);
+        Task<CliRun>? waiter = null;
+        try
+        {
+            Assert.True(await Wait.ForAsync(() => File.Exists(heartbeat), TimeSpan.FromSeconds(30)));
+            using var process = Process.GetProcessById(int.Parse(File.ReadAllText(processIdPath)));
+            Assert.False(process.HasExited);
+            waiter = Task.Run(() => Run($"jobs wait {id} --project \"{Project}\" --wait-terminal --wait-timeout-ms 0 --json"));
+            var first = await Task.WhenAny(waiter, exitedParser.Task).WaitAsync(deadline.Token);
+            Assert.NotSame(waiter, first);
+            Assert.IsType<PanGlossOutcome.Cancelled>(await exitedParser.Task);
+            Assert.Equal(JobStatus.Cancelled, jobs.Get(id)!.Status);
+            Assert.True(process.HasExited);
+            Assert.False(waiter.IsCompleted);
+        }
+        finally
+        {
+            release.TrySetResult();
+            await deadline.CancelAsync();
+            await worker;
+        }
+        var refusal = Envelope((await waiter!.WaitAsync(Wait.Scaled(TimeSpan.FromSeconds(30)))).Error);
+        Assert.Equal("job.wait-timeout", refusal.Code);
+        Assert.Equal(id, refusal.Detail!["jobId"]);
+        Assert.Equal("cancelled", refusal.Detail["status"]);
     }
 
     [Theory]

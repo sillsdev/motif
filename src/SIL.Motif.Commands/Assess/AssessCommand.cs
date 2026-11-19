@@ -102,7 +102,8 @@ public static class AssessCommand
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits, bool recordBudgetStop = true,
         ProjectParseLease? admission = null, bool reuseBefore = false, string? writingSystemId = null,
         Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null, IReadOnlyCollection<string>? alsoProtect = null,
-        Action<IReadOnlyList<string>, string?>? onDispatched = null)
+        Action<IReadOnlyList<string>, string?>? onDispatched = null,
+        bool requireExplicitRefresh = false)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
@@ -110,7 +111,7 @@ public static class AssessCommand
             new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker),
             onPartial, onDispatched);
         return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission, limits, recordBudgetStop,
-            reuseBefore ? parserPath : null, writingSystemId, alsoProtect, onDispatched);
+            reuseBefore ? parserPath : null, writingSystemId, alsoProtect, onDispatched, requireExplicitRefresh);
     }
 
     /// <summary>
@@ -136,13 +137,14 @@ public static class AssessCommand
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission,
         TrialLimits? frozenLimits = null, bool recordBudgetStop = true, string? reuseParserPath = null, string? writingSystemId = null,
-        IReadOnlyCollection<string>? alsoProtect = null, Action<IReadOnlyList<string>, string?>? onDispatched = null)
+        IReadOnlyCollection<string>? alsoProtect = null, Action<IReadOnlyList<string>, string?>? onDispatched = null,
+        bool requireExplicitRefresh = false)
     {
         ArgumentNullException.ThrowIfNull(request);
         try
         {
             return RunMeasured(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission,
-                frozenLimits, recordBudgetStop, reuseParserPath, writingSystemId, alsoProtect, onDispatched);
+                frozenLimits, recordBudgetStop, reuseParserPath, writingSystemId, alsoProtect, onDispatched, requireExplicitRefresh);
         }
         // Memory pressure is no corruption: nothing was saved, and a cheaper run is the cure.
         catch (OutOfMemoryException)
@@ -156,7 +158,8 @@ public static class AssessCommand
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission,
         TrialLimits? frozenLimits, bool recordBudgetStop, string? reuseParserPath, string? writingSystemId,
-        IReadOnlyCollection<string>? alsoProtect, Action<IReadOnlyList<string>, string?>? onDispatched)
+        IReadOnlyCollection<string>? alsoProtect, Action<IReadOnlyList<string>, string?>? onDispatched,
+        bool requireExplicitRefresh)
     {
         ArgumentNullException.ThrowIfNull(assessor);
         ArgumentNullException.ThrowIfNull(invoker);
@@ -255,7 +258,8 @@ public static class AssessCommand
 
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.Capturing, 0, null, "Ensuring a current Baseline exists..."));
-            var baselineOutcome = EnsureBaseline(request.ProjectPath, managedRoot, project, workspaceKey, baselines);
+            var baselineOutcome = EnsureBaseline(request.ProjectPath, managedRoot, project, workspaceKey, baselines,
+                requireExplicitRefresh);
             if (!baselineOutcome.Succeeded)
                 return CommandOutcome<AssessCommandResponse>.Refused(baselineOutcome.Refusal!);
             var baseline = baselineOutcome.Value!;
@@ -855,11 +859,13 @@ public static class AssessCommand
 
     // No Baseline yet: capture and publish one. One already current: reuse it rather than recapturing.
     internal static CommandOutcome<BaselineCaptureResponse> EnsureBaseline(string projectPath, string managedRoot,
-        ProjectLocator project, string workspaceKey, BaselineRepository baselines)
+        ProjectLocator project, string workspaceKey, BaselineRepository baselines, bool requireExplicitRefresh = false)
     {
         var current = baselines.GetCurrentPublished(workspaceKey);
+        if (requireExplicitRefresh && JobCommands.StaleBaselineRefusal(project, current, "Trial") is { } stale)
+            return CommandOutcome<BaselineCaptureResponse>.Refused(stale);
         // A store that never saw an Apply cannot call its Baseline old; a different save time does.
-        var savedSince = current is not null && File.Exists(project.FullFwDataPath) &&
+        var savedSince = !requireExplicitRefresh && current is not null && File.Exists(project.FullFwDataPath) &&
             File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks != current.SourceLastWriteUtc.UtcDateTime.Ticks;
         if (current is null || savedSince)
             return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath), managedRoot);

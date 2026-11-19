@@ -8,7 +8,9 @@ motif proposal trial --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" <propos
 
 Use `--job` or `--report` to pick a particular Trial or saved report, and `--detail failures` or `--detail full` for more of its cases. [Trial a Proposal](cmd:trial) describes every selector.
 
-A Proposal with no Trial returns a "no Trial" result that names the command to start one.
+With no selector, the command reads the newest Trial job for this Proposal, even if it failed or was cancelled. The Autonomous Apply gate uses the same job. Use `--latest` by itself to read the job ID, status and, when saved, `reportId` and `reportDigest` without expanding the report. This live identity response is bounded to 2 KiB in JSON, including the MCP success envelope. An identity above the limit is refused. A Proposal with no Trial returns a "no Trial" result that names the command to start one.
+
+A report is current when it belongs to the newest completed Trial, its Proposal and Baseline identities match, and the active parser executable matches both checkpoint digests. A known parser mismatch marks it historical. A missing or unlaunchable parser, or a missing checkpoint pin, leaves freshness unknown unless another check establishes staleness. An exact report read keeps its saved ID, digest and gate verdict.
 
 Every stopped word is retained in `report.stoppedWords` with its before or after side, reason codes and specific cause. The same cause appears on the word’s full review page when detail is available. An invalid shape means the parser could not segment the spelling with the phoneme inventory; inspect the recorded explanation before changing the grammar.
 

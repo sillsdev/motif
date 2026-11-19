@@ -33,12 +33,15 @@ public static class ProposalReview
     private static readonly JsonSerializerOptions OperationJson = new(JsonSerializerDefaults.Web);
 
     /// <summary>Reads the list for the named Proposal, or for the pending Draft when no id is given.</summary>
-    public static CommandOutcome<ProposalReviewResponse> Read(ProposalReviewRequest request)
+    public static CommandOutcome<ProposalReviewResponse> Read(ProposalReviewRequest request) => Read(request, parserPath: null);
+
+    /// <summary>Reads a Proposal's changes using the caller's selected parser for Trial freshness.</summary>
+    public static CommandOutcome<ProposalReviewResponse> Read(ProposalReviewRequest request, string? parserPath)
     {
         ArgumentNullException.ThrowIfNull(request);
         return ProjectStoreCommand.ReadExisting(request.ProjectPath,
             request.ProposalId is null ? CommandOutcome<ProposalReviewResponse>.Success(Empty) : CommandOutcome<ProposalReviewResponse>.Refused(ProposalCommands.ProposalLoadRefusal(new KeyNotFoundException($"Proposal '{request.ProposalId}' was not found."))),
-            (database, project) => Read(database, project, request.ProposalId));
+            (database, project) => Read(database, project, request.ProposalId, parserPath));
     }
 
     /// <summary>Counts a Proposal's Draft entries using only its Motif store.</summary>
@@ -52,7 +55,7 @@ public static class ProposalReview
 
     /// <summary>Reads the list inside a store session the caller already holds.</summary>
     public static CommandOutcome<ProposalReviewResponse> Read(
-        MotifDatabase database, ProjectLocator project, string? proposalId)
+        MotifDatabase database, ProjectLocator project, string? proposalId, string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
@@ -73,7 +76,7 @@ public static class ProposalReview
 
         try
         {
-            return CommandOutcome<ProposalReviewResponse>.Success(Build(database, project, repository, record));
+            return CommandOutcome<ProposalReviewResponse>.Success(Build(database, project, repository, record, parserPath));
         }
         catch (Exception exception) when (exception is InvalidDataException or JsonException or
                                               NotSupportedException or ContractParseException)
@@ -164,7 +167,7 @@ public static class ProposalReview
     }
 
     private static ProposalReviewResponse Build(MotifDatabase database, ProjectLocator project,
-        ProposalRepository repository, ProposalRecord record)
+        ProposalRepository repository, ProposalRecord record, string? parserPath)
     {
         var isDraft = record.DraftName is not null;
         var id = record.ProposalId.Value;
@@ -187,7 +190,7 @@ public static class ProposalReview
         }
         var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
         var intentDigest = IntentDigest.Compute(proposal);
-        var trial = Trials.LatestFor(database, project, id);
+        var trial = Trials.LatestFor(database, project, id, parserPath);
         var evidenceDigest = EvidenceDigestOf(trial);
         var marks = ReviewMarks.Read(database, id);
 
@@ -275,7 +278,7 @@ public static class ProposalReview
         }
 
         return new ProposalReviewResponse(id, intentDigest, revision, entries, trial,
-            ReadinessOf(database, project, record, stored ?? proposal, trial), fits, entries.Count(entry => entry.LookedAt))
+            ReadinessOf(database, project, record, stored ?? proposal, trial, parserPath), fits, entries.Count(entry => entry.LookedAt))
         {
             Label = label,
             EvidenceDigest = evidenceDigest,
@@ -287,7 +290,7 @@ public static class ProposalReview
 
     // A Draft has no bound Dry Run yet; the Trial's is what Apply binds, so Review asks as though it were bound.
     private static ReadinessProjection? ReadinessOf(MotifDatabase database, ProjectLocator project,
-        ProposalRecord record, SIL.Motif.Contract.Model.Proposal content, TrialRecord? trial)
+        ProposalRecord record, SIL.Motif.Contract.Model.Proposal content, TrialRecord? trial, string? parserPath)
     {
         if (trial is null) return null;
         var manifest = record.DraftName is null
@@ -297,9 +300,9 @@ public static class ProposalReview
                 ProposalId = record.ProposalId.Value,
                 Status = record.Status,
                 CurrentIntentDigest = IntentDigest.Compute(content),
-                Anchor = ProposalCommands.TrialDryRun(database, project, record.ProposalId)?.Anchor,
+                Anchor = ProposalCommands.TrialDryRun(database, project, record.ProposalId, parserPath)?.Anchor,
             };
-        return ApplyAuthorization.Evaluate(database, project, record, content, manifest).ToProjection(false);
+        return ApplyAuthorization.Evaluate(database, project, record, content, manifest, parserPath).ToProjection(false);
     }
 
     private static RetirementProposalReviewProjection? ReadRetirement(MotifDatabase database,

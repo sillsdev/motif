@@ -41,7 +41,7 @@ public static class ProposalParsimonyStatusCommand
         if (!CanonicalId.TryParse(request.ProposalId, out var proposalId))
             return CommandOutcome<ProposalParsimonyStatus>.Refused(new Refusal(RefusalCodes.ProposalNotFound,
                 FailureReason.Refused, $"'{request.ProposalId}' is not a Proposal id."));
-        var parserKey = ParserIdentity.Read(parserPath)?.Key;
+        var parserKey = ParserIdentity.ReadFreshKey(parserPath ?? JobRunnerLaunchOptions.ResolveParserPath());
         var absent = new ProposalParsimonyStatus(ProposalParsimonyStatus.CurrentSchemaVersion,
             proposalId.Value, null, null,
             parserKey is null ? ProposalParsimonyState.NotSetUp : ProposalParsimonyState.NotYetRun,
@@ -62,7 +62,7 @@ public static class ProposalParsimonyStatusCommand
     {
         var projectKey = ProjectWorkspaceKey.Compute(project);
         var hasSelection = new NamedSelectionRepository(database).GetParsimony() is not null;
-        var trial = LatestCompletedTrial(database, projectKey, proposalId);
+        var trial = Trials.SelectJob(database, projectKey, proposalId);
         var job = ParsimonyAutoRun.LatestJob(database, projectKey, proposalId);
         var intentDigest = trial is null ? null : TryIntentDigest(trial);
 
@@ -79,6 +79,13 @@ public static class ProposalParsimonyStatusCommand
         if (trial is null)
             return Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("status-no-trial",
                 "Parsimony runs after the Proposal's Trial finishes, and no Trial has finished."));
+        if (trial.Status != JobStatus.Completed)
+            return job is null
+                ? Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("status-no-completed-trial",
+                    "Parsimony runs after the newest Trial completes."))
+                : Make(ProposalParsimonyState.Stale, new ProposalParsimonyReason("status-newer-trial",
+                    "The latest Trial has no completed candidate. These Parsimony results describe an older Trial."),
+                    new ProposalParsimonyStale([], ParsimonyCandidateJobInputKey(job)?.ToKey() ?? "", ""), grammar: ReadGrammar(job));
         if (job is null && SkippedForTimeout(database, trial, parserKey) is { } skipped)
             return Make(ProposalParsimonyState.Failed, new ProposalParsimonyReason("status-skipped-timeout",
                 "Parsimony already timed out on this grammar with this PanGloss, so it is not queued again by itself."),
@@ -156,23 +163,6 @@ public static class ProposalParsimonyStatusCommand
         if (recorded.Schema != current.Schema) reasons.Add(ProposalParsimonyStaleReason.SchemaChanged);
         if (recorded.Measures != current.Measures) reasons.Add(ProposalParsimonyStaleReason.MeasuresChanged);
         return reasons;
-    }
-
-    private static JobRecord? LatestCompletedTrial(MotifDatabase database, string projectKey, string proposalId)
-    {
-        var id = CanonicalId.Parse(proposalId);
-        return new JobRepository(database).ListByProjectAndKind(projectKey, "trial")
-            .Where(trial => trial.Status == JobStatus.Completed && Names(trial, id.Value))
-            .OrderByDescending(trial => trial.UpdatedUtc, StringComparer.Ordinal).FirstOrDefault();
-    }
-
-    private static bool Names(JobRecord trial, string proposalId)
-    {
-        try { return FrozenProposalRevision.Create(TrialJobInput.Parse(trial.InputJson).ProposalJson).ProposalId == proposalId; }
-        catch (Exception exception) when (exception is InvalidOperationException or JsonException or ArgumentException)
-        {
-            return false;
-        }
     }
 
     private static string? TryIntentDigest(JobRecord trial)

@@ -2,7 +2,6 @@ using SIL.Motif.Host.Config;
 using SIL.LCModel;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Worker.Baselines;
-using System.Globalization;
 using System.Text.Json;
 using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract;
@@ -45,13 +44,8 @@ internal static class AutonomousTrialGate
                     ":\n" + declaration + "\nSupply the named word-set manifest (or use selection = \"Your saved Selection\" instead of manifest), " +
                     "then run a fresh Trial. The gate reuses [gain-gate] and [parsimony] block-on.");
             }
-            var jobs = new JobRepository(database).ListByProjectAndKind(key, "trial")
-                .OrderByDescending(job => DateTimeOffset.Parse(job.CreatedUtc, CultureInfo.InvariantCulture))
-                .ThenByDescending(job => job.JobId, StringComparer.Ordinal);
-            foreach (var job in jobs)
+            if (Trials.SelectJob(database, key, proposal.ProposalId.Value) is { } job)
             {
-                var input = TrialJobInput.Parse(job.InputJson);
-                if (ProposalJsonParser.Parse(input.ProposalJson).ProposalId != proposal.ProposalId) continue;
                 jobId = job.JobId;
                 if (job.Status != JobStatus.Completed)
                     return Refuse("The newest Trial is " + JobStatusJson.ToWire(job.Status) + ".");
@@ -67,6 +61,7 @@ internal static class AutonomousTrialGate
                 if (live is not null)
                 {
                     var baseline = available.Report.Pins.BaselineToken;
+                    var input = TrialJobInput.Parse(job.InputJson);
                     var captured = input.ReviewInputs is { } reference ? ReviewInputArtifacts.Read(database, reference) : null;
                     if (baseline.ProjectionVersion != BaselineSemanticDigest.ProjectionVersion ||
                         baseline.ProjectIdentity != live.LangProject.Guid.ToString("D") ||

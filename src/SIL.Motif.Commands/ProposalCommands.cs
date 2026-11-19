@@ -1837,18 +1837,19 @@ public static partial class ProposalCommands
 
     /// <summary>The Dry Run of the Proposal's current Trial, when it is the one the bound anchor names.</summary>
     internal static SIL.Motif.Model.DryRun.DryRun? FindTrialBoundDryRun(
-        MotifDatabase database, ProjectLocator project, CanonicalId proposalId, ManifestDocument manifest)
+        MotifDatabase database, ProjectLocator project, CanonicalId proposalId, ManifestDocument manifest,
+        string? parserPath = null)
     {
         if (manifest.Anchor is not { } anchor) return null;
-        var dryRun = TrialDryRun(database, project, proposalId);
+        var dryRun = TrialDryRun(database, project, proposalId, parserPath);
         return dryRun is not null && dryRun.Anchor == anchor ? dryRun : null;
     }
 
     /// <summary>The Dry Run a current Trial of this Proposal published, or null without one.</summary>
     internal static SIL.Motif.Model.DryRun.DryRun? TrialDryRun(
-        MotifDatabase database, ProjectLocator project, CanonicalId proposalId)
+        MotifDatabase database, ProjectLocator project, CanonicalId proposalId, string? parserPath = null)
     {
-        var trial = Trials.LatestFor(database, project, proposalId.Value);
+        var trial = Trials.LatestFor(database, project, proposalId.Value, parserPath);
         if (trial is not { Freshness: TrialFreshness.Current }) return null;
         var job = new JobRepository(database).Get(trial.JobId);
         return job?.DryRunJson is null ? null : JobCommands.ParsePublishedDryRun(job.DryRunJson);

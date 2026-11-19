@@ -75,7 +75,7 @@ public static class JobCommands
     }
 
     // A Dry Run or Trial measures the stored Baseline; one older than the saved project would test the old grammar.
-    private static Refusal? StaleBaselineRefusal(ProjectLocator project, BaselineRecord? baseline, string measure) =>
+    internal static Refusal? StaleBaselineRefusal(ProjectLocator project, BaselineRecord? baseline, string measure) =>
         baseline is not null && File.Exists(project.FullFwDataPath) &&
         File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks > baseline.SourceLastWriteUtc.UtcDateTime.Ticks
             ? new Refusal(RefusalCodes.ChangeRefreshRequired, FailureReason.Refused,
@@ -475,10 +475,13 @@ public static class JobCommands
     /// </summary>
     public static CommandOutcome<DryRunProjection> WaitForDryRun(
         WaitForDryRunRequest request, CancellationToken cancellationToken = default,
-        bool cancelOnTimeout = false, Action? wakeRunner = null, Action<string>? reportStall = null)
+        bool cancelOnTimeout = false, Action? wakeRunner = null, Action<string>? reportStall = null,
+        bool wakeImmediately = false)
     {
         var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellationToken,
-            request.Timeout, request.ProductVersion, cancelOnTimeout, wakeRunner, reportStall: reportStall)
+            request.Timeout, request.ProductVersion, cancelOnTimeout, wakeRunner, reportStall: reportStall,
+            waitForTerminal: request.WaitForTerminal, expectedKind: DryRunKind, expectedProposal: request.ProposalId,
+            wakeImmediately: wakeImmediately)
             .GetAwaiter().GetResult();
         if (!waited.Succeeded) return CommandOutcome<DryRunProjection>.Refused(waited.Refusal!);
 
@@ -536,10 +539,13 @@ public static class JobCommands
     /// so a waiting command reports the same failure as a direct Assessment.
     /// </summary>
     public static CommandOutcome<JobStatusResponse> WaitForJob(
-        WaitForJobRequest request, Action? wakeRunner = null, Action<string>? reportStall = null)
+        WaitForJobRequest request, Action? wakeRunner = null, Action<string>? reportStall = null,
+        CancellationToken cancellationToken = default, string? trialProposal = null, bool wakeImmediately = false)
     {
-        var result = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, CancellationToken.None,
-            request.Timeout, request.ProductVersion, wakeRunner: wakeRunner, reportStall: reportStall)
+        var result = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellationToken,
+            request.Timeout, request.ProductVersion, wakeRunner: wakeRunner, reportStall: reportStall,
+            waitForTerminal: request.WaitForTerminal, expectedKind: trialProposal is null ? null : TrialKind,
+            expectedProposal: trialProposal, wakeImmediately: wakeImmediately)
             .GetAwaiter().GetResult();
         if (result.Value is not { Status: JobStatus.StoppedByBudget } stopped) return result;
         return CommandOutcome<JobStatusResponse>.Refused(new Refusal(RefusalCodes.AssessmentStoppedByBudget,
@@ -550,11 +556,22 @@ public static class JobCommands
     }
 
     /// <summary>Waits for a queued job to reach a terminal state.</summary>
-    public static CommandOutcome<JobStatusResponse> Wait(JobsWaitRequest request) =>
-        WaitForJob(new WaitForJobRequest(request.FwDataPath, request.JobId, request.ProductVersion, request.Timeout));
+    public static CommandOutcome<JobStatusResponse> Wait(JobsWaitRequest request,
+        CancellationToken cancellationToken = default, Action? wakeRunner = null) =>
+        WaitForJob(new WaitForJobRequest(request.FwDataPath, request.JobId, request.ProductVersion, request.Timeout,
+            request.WaitForTerminal), wakeRunner, cancellationToken: cancellationToken,
+            wakeImmediately: request.WaitForTerminal);
 
     /// <summary>Reports what the durable store currently says about one job.</summary>
-    public static CommandOutcome<JobStatusResponse> Show(ShowJobRequest request)
+    public static CommandOutcome<JobStatusResponse> Show(ShowJobRequest request) =>
+        ReadStatus(request, validateOwner: false, expectedKind: null, expectedProposal: null, trackExecution: false);
+
+    internal static CommandOutcome<JobStatusResponse> ShowForWait(ShowJobRequest request, string? expectedKind,
+        string? expectedProposal, bool trackExecution) =>
+        ReadStatus(request, validateOwner: true, expectedKind, expectedProposal, trackExecution);
+
+    private static CommandOutcome<JobStatusResponse> ReadStatus(ShowJobRequest request, bool validateOwner,
+        string? expectedKind, string? expectedProposal, bool trackExecution)
     {
         if (string.IsNullOrWhiteSpace(request.JobId))
             return CommandOutcome<JobStatusResponse>.Refused(JobIdRequired());
@@ -567,11 +584,21 @@ public static class JobCommands
             if (entry is null) return CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId));
 
             var job = entry.Value.Job;
-            var (trialProgress, stageProgress) = DecodeProgress(job.ProgressJson);
+            if (validateOwner && (job.ProjectKey != ProjectWorkspaceKey.Compute(project) ||
+                (expectedKind is not null && job.Kind != expectedKind) ||
+                (expectedProposal is not null && !JobNamesProposal(job, expectedProposal))))
+                return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+                    RefusalCodes.JobWaitIdentityMismatch, FailureReason.InvalidArgument,
+                    "The job does not match the project, job kind or Proposal requested for this wait."));
+            if (trackExecution && !JobClaims.TracksExecution(job.Kind))
+                return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
+                    RefusalCodes.JobWaitKindUnsupported, FailureReason.InvalidArgument,
+                    "Terminal wait supports only Dry Run and Trial jobs."));
+            var (trialProgress, stageProgress) = DecodeProgress(JobCleanupProgress.PublicProgress(job.ProgressJson));
             if (JobStateMachine.IsTerminal(job.Status) && stageProgress?.Stage == "waiting-for-parser-slot")
                 stageProgress = null;
             var lost = HasLostItsClaim(job);
-            var shown = lost ? StatusAfterRecovery(job, new BaselineRepository(database)) : job.Status;
+            var shown = lost && !trackExecution ? StatusAfterRecovery(job, new BaselineRepository(database)) : job.Status;
             return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(job.JobId, job.ProjectKey, true,
                 job.Kind, shown, job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory,
                 job.Version, entry.Value.QueueOrder)
@@ -587,6 +614,25 @@ public static class JobCommands
                 Warnings = lost ? [ClaimLostWarning(job.Status, shown)] : null,
             });
         });
+    }
+
+    private static bool JobNamesProposal(JobRecord job, string supplied)
+    {
+        try
+        {
+            var expected = ProposalCommands.NormalizeId(supplied);
+            return job.Kind switch
+            {
+                TrialKind => FrozenProposalRevision.Create(TrialJobInput.Parse(job.InputJson).ProposalJson).ProposalId == expected,
+                DryRunKind => DryRunJobInput.Parse(job.InputJson).Proposal.ProposalId == expected,
+                _ => false,
+            };
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or JsonException or
+            ContractParseException or InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private static Refusal? ReadDryRunRefusal(JobRecord job)
@@ -895,7 +941,10 @@ public static class JobCommands
     /// only has its cancellation flag set; the runner that holds it reads the flag on its own heartbeat
     /// and cancels the handler's token from there, landing in the same terminal state.
     /// </summary>
-    public static CommandOutcome<JobStatusResponse> Cancel(CancelJobRequest request)
+    public static CommandOutcome<JobStatusResponse> Cancel(CancelJobRequest request) => CancelForWait(request, default);
+
+    internal static CommandOutcome<JobStatusResponse> CancelForWait(CancelJobRequest request, CancellationToken deadline,
+        long? terminalCleanupDeadline = null)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
@@ -911,7 +960,7 @@ public static class JobCommands
                     Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(current.Status)))));
             }
 
-            var changed = jobs.CancelActive(request.JobId);
+            var changed = jobs.CancelActive(request.JobId, deadline, terminalCleanupDeadline);
             if (JobStateMachine.IsTerminal(changed.Status) && changed.Status != JobStatus.Cancelled)
                 return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
                     "job.already-finished", FailureReason.Refused,
@@ -933,7 +982,7 @@ public static class JobCommands
                 try
                 {
                     new SIL.Motif.Worker.Runtime.Review.TrialReviewPublisher(database).PublishAsync(
-                        new SIL.Motif.Worker.Runtime.Review.ReviewPublishRequest(changed.JobId), CancellationToken.None)
+                        new SIL.Motif.Worker.Runtime.Review.ReviewPublishRequest(changed.JobId), deadline)
                         .GetAwaiter().GetResult();
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
@@ -945,7 +994,7 @@ public static class JobCommands
             return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(changed.JobId, changed.ProjectKey,
                 true, changed.Kind, changed.Status, changed.Attempt, changed.UpdatedUtc,
                 changed.CancellationRequested, changed.FailureCategory, changed.Version));
-        });
+        }, ownershipPatience: deadline.CanBeCanceled ? TimeSpan.Zero : null);
     }
 
     /// <summary>Starts a fresh attempt of a terminal job's lineage, claimable exactly like a new job.</summary>

@@ -250,6 +250,12 @@ public static class RefusalCodes
     public const string HandoffTextNotFound = "handoff.text-not-found";
 
     public const string JobWaitCancelled = "job.wait-cancelled";
+    /// <summary>The supplied job is outside the wait's project, kind or Proposal.</summary>
+    public const string JobWaitIdentityMismatch = "job.wait-identity-mismatch";
+    /// <summary>The job kind has no execution lease for a terminal wait to confirm.</summary>
+    public const string JobWaitKindUnsupported = "job.wait-kind-unsupported";
+
+    public const string JobWaitCleanupUnconfirmed = "job.wait-cleanup-unconfirmed";
     public const string JobWaitTimeout = "job.wait-timeout";
     public const string PreflightUnavailable = "preflight.unavailable";
 
@@ -398,6 +404,8 @@ public static class RefusalCodes
 
     public const string TrialChangesChanged = "trial.changes-changed";
     public const string TrialMeasurementIncomplete = "trial.measurement-incomplete";
+    /// <summary>The newest Trial identity cannot fit the compact live response.</summary>
+    public const string TrialLatestTooLarge = "trial.latest-too-large";
     public const string TrialNothingPending = "trial.nothing-pending";
     /// <summary>The Baseline changed after the Trial's review inputs were captured.</summary>
     public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";

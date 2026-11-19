@@ -144,7 +144,8 @@ public static class MotifMcpServer
                     ? ReviewReportResources.Templates(includeReviewDrillDown) : new ListResourceTemplatesResult { ResourceTemplates = [] }),
                 ReadResourceHandler = (request, _) => ValueTask.FromResult(
                     request.Params?.Uri is { } uri && uri.StartsWith(ReviewReportResources.Prefix, StringComparison.Ordinal)
-                        ? includeReviewResources ? ReviewReportResources.Read(uri, context.ProductVersion, SIL.Motif.Worker.RunnerOptions.ResolveRoot(), includeReviewDrillDown)
+                        ? includeReviewResources ? ReviewReportResources.Read(uri, context.ProductVersion, SIL.Motif.Worker.RunnerOptions.ResolveRoot(),
+                            includeReviewDrillDown, context.JobParserPath)
                             : throw new McpProtocolException("Report resources are unavailable.", McpErrorCode.InvalidParams)
                         : includeParsimonyResources && request.Params?.Uri == ParsimonyTools.MeasuresResourceUri
                             ? ParsimonyTools.ReadMeasuresResource(string.Empty, MotifProductVersion.CurrentText)
@@ -311,7 +312,10 @@ public static class MotifMcpServer
         {
             if (!args.TryGetPropertyValue("detail", out var detailNode))
             {
-                if (tool.Tool.Name is not ("motif_trial" or "motif_difference" or "motif_progress") || tool.DefaultDetail != "summary")
+                var latestTrial = tool.Tool.Name == "motif_trial" && args["latest"] is JsonValue latest &&
+                    latest.TryGetValue<bool>(out var enabled) && enabled;
+                if (!latestTrial && (tool.Tool.Name is not ("motif_trial" or "motif_difference" or "motif_progress") ||
+                    tool.DefaultDetail != "summary"))
                     args["detail"] = tool.DefaultDetail;
             }
             else

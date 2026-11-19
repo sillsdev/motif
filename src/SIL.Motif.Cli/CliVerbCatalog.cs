@@ -279,7 +279,7 @@ public static class CliVerbCatalog
             new[] { "dry-run --project <fwdata> <proposalId> [--wait] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "dry-run", "dry-run --wait",
-            new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-timeout-ms <ms>] [--effects] [--json]" }),
+            new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-terminal] [--wait-timeout-ms <ms>] [--effects] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
             new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--review-set <ids>|none] [--wait] [--json]" }),
@@ -288,14 +288,14 @@ public static class CliVerbCatalog
             new[]
             {
                 "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] --wait " +
-                "[--wait-timeout-ms <ms>] [--expect-loss <file>] [--json]",
+                "[--wait-terminal] [--wait-timeout-ms <ms>] [--expect-loss <file>] [--json]",
             }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --pending",
             new[]
             {
                 "trial --pending --project <fwdata> [--draft <id>] [--revision <r>] --words <w,…> " +
-                "--wait [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]",
+                "--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--before-correctness <assessmentId>] [--json]",
             }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply",
@@ -472,7 +472,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "proposal trial export", "proposal trial export",
             new[] { "proposal trial export <jobId> --project <fwdata> [--at <digest>] [--page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",
-            new[] { "proposal trial --project <fwdata> <proposalId> [--job <id>|--report <id>] [--detail summary|failures|full] [--section <id>] [--page <N>] [--json]" }),
+            new[] { "proposal trial --project <fwdata> <proposalId> [--job <id>|--report <id>] [--detail summary|failures|full] [--section <id>] [--page <N>] [--json]",
+                "proposal trial --project <fwdata> <proposalId> --latest [--json]" }),
         new CliVerbDescriptor(
             "Project", "warnings", "warnings",
             new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--json]" }),
@@ -585,7 +586,7 @@ public static class CliVerbCatalog
             "Jobs", "baseline-refresh", "baseline-refresh",
             new[] { "baseline-refresh --project <fwdata>" }),
         new CliVerbDescriptor(
-            "Jobs", "jobs", "jobs wait", new[] { "jobs wait <jobId> --project <fwdata> [--wait-timeout-ms <ms>] [--json]" }),
+            "Jobs", "jobs", "jobs wait", new[] { "jobs wait <jobId> --project <fwdata> [--wait-terminal] [--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor(
             "Jobs", "jobs", "jobs show", new[] { "jobs show <jobId> --project <fwdata> [--json]" }),
         new CliVerbDescriptor(

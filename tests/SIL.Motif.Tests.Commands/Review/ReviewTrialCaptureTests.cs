@@ -2,22 +2,26 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
+using System.Collections;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
+using SIL.Motif.Host;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Jobs;
@@ -285,7 +289,14 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
             var jobs = new JobRepository(database);
             var proposal = new ProposalRepository(database).Get(SIL.Motif.Contract.Ids.CanonicalId.Parse(draft.Value.ProposalId));
             var assessmentId = SIL.Motif.Contract.Ids.CanonicalId.Mint("assessment/").Value;
-            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+            var beforeId = SIL.Motif.Contract.Ids.CanonicalId.Mint("assessment/").Value;
+            var parser = FakeParser.ExecutablePath;
+            var invocation = new BatchInvocationEvidence("manifest-approval-after", path, "sha256:source",
+                BatchInvocationEvidence.DigestFile(parser), "words", "sha256:words", "tsv", "sha256:tsv",
+                "err", "sha256:err", null, ParserWorkLimit.Default, 1, false);
+            var material = new AssessmentRecordMaterial.Words([CorrectnessFixture.Word("ordinary", true)], null, null, [])
+                { Invocation = invocation };
+            var assessment = new NewAssessmentRecord(
                 AssessmentId: assessmentId, ProposalId: proposal.ProposalId, ProposalIntentDigest: proposal.IntentDigest,
                 Assessor: "pangloss", Kind: "Correctness",
                 ScopeJson: """{"perWordLimitMs":1000,"perWordParserWorkLimit":{"steps":200000,"isUnbounded":false}}""",
@@ -294,9 +305,16 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
                 BaselineToken: JsonSerializer.Serialize(artifact.Baseline, MotifJson.CreateOptions()),
                 OutcomeDigest: "outcome", SemanticDigest: "semantic", GrammarSourceSha256: "grammar",
                 ModelFingerprint: "model", Pipeline: "pipeline", DiagnosticCount: 0,
-                Material: new AssessmentRecordMaterial.Words([CorrectnessFixture.Word("ordinary", true)], null, null, [])));
+                Material: material);
+            var assessments = new AssessmentRepository(database);
+            assessments.Record(assessment);
+            assessments.Record(assessment with
+            {
+                AssessmentId = beforeId, ProposalId = null, ProposalIntentDigest = null,
+                Material = material with { Invocation = invocation with { InvocationId = "manifest-approval-before" } },
+            });
             var input = new TrialJobInput(SIL.Motif.Commands.JobCommands.CanonicalProposalJson(proposal), null,
-                ReviewInputs: captured.Value.ReviewInputs);
+                BaselineAssessmentIds: [beforeId], ReviewInputs: captured.Value.ReviewInputs);
             var job = jobs.Create("manifest-approval", ProjectWorkspaceKey.Compute(project), "trial",
                 JsonSerializer.Serialize(input, MotifJson.CreateOptions()), JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
             jobs.Transition(job.JobId, JobStatus.Running);
@@ -316,6 +334,10 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
             var secondApproved = approveSecond && identity != "exact";
             var green = secondApproved && !loseFirst;
             var bytes = File.ReadAllBytes(path);
+            var variables = Environment.GetEnvironmentVariables().Cast<DictionaryEntry>()
+                .ToDictionary(entry => (string)entry.Key, entry => (string?)entry.Value, StringComparer.OrdinalIgnoreCase);
+            variables[PanGlossExecutable.PathVariable] = parser;
+            using var environment = AmbientEnvironment.Push(variables);
             var applied = SIL.Motif.Commands.ProposalCommands.Apply(new(path, "1.0", draft.Value.ProposalId,
                 Attribution: new ApplyAttribution(ApplyModes.Autonomous, "Review confirmed")));
             if (green)

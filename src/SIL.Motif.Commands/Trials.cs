@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
@@ -13,6 +15,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Parser;
@@ -34,20 +37,20 @@ namespace SIL.Motif.Commands;
 public static class Trials
 {
     /// <summary>
-    /// Reads the chosen Trial for <paramref name="proposalId"/>: the newest completed or active one, else the newest
-    /// that stopped; null when none is recorded.
+    /// Reads the newest Trial job for <paramref name="proposalId"/> across all job states, or null if none is recorded.
     /// </summary>
-    public static TrialRecord? LatestFor(MotifDatabase database, ProjectLocator project, string proposalId) =>
-        ReadLatest(database, project, proposalId, includeWordResults: false);
+    public static TrialRecord? LatestFor(MotifDatabase database, ProjectLocator project, string proposalId,
+        string? parserPath = null) =>
+        ReadLatest(database, project, proposalId, includeWordResults: false, parserPath);
 
     /// <summary>Reads the latest Trial for a Proposal, returning a successful null when none exists.</summary>
-    public static CommandOutcome<TrialRecord?> Read(ReadTrialRequest request)
+    public static CommandOutcome<TrialRecord?> Read(ReadTrialRequest request, string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         return ProjectStoreCommand.ReadExisting(request.ProjectPath, CommandOutcome<TrialRecord?>.Success(null),
             (database, project) =>
             CommandOutcome<TrialRecord?>.Success(ReadLatest(database, project, request.ProposalId,
-                request.IncludeWordResults)));
+                request.IncludeWordResults, parserPath)));
     }
 
     /// <summary>
@@ -55,20 +58,19 @@ public static class Trials
     /// Proposal with no readable Trial is absent; <see cref="TrialStanding.Of"/> reads that as not tried.
     /// </summary>
     public static IReadOnlyDictionary<string, TrialRecord> LatestForAll(MotifDatabase database,
-        ProjectLocator project)
+        ProjectLocator project, string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
-        var context = CreateReadContext(database, project);
+        var context = CreateReadContext(database, project, parserPath);
         var latest = new Dictionary<string, TrialRecord>(StringComparer.Ordinal);
-        foreach (var group in ReadCandidates(context.Jobs, proposalId: null)
-            .GroupBy(candidate => candidate.Proposal.ProposalId))
+        foreach (var group in IdentifyJobs(context.Jobs, proposalId: null, requireIdentity: true).GroupBy(candidate => candidate.ProposalId))
         {
             context.LoadProposals();
             // A Proposal whose own content cannot be read has no standing; the Proposals listing reports it.
             try { _ = context.CurrentIntentDigest(group.Key); }
             catch (Exception exception) when (IsUnreadableStoredProposal(exception)) { continue; }
-            if (Choose(group, context, includeWordResults: false) is { } record)
+            if (ReadSelected(group.First(), context, includeWordResults: false) is { } record)
                 latest[record.ProposalId] = record;
         }
         return latest;
@@ -76,14 +78,15 @@ public static class Trials
 
     /// <summary>Lists this Proposal's Trials newest first.</summary>
     public static IReadOnlyList<TrialRecord> ListFor(MotifDatabase database, ProjectLocator project,
-        string proposalId)
+        string proposalId, string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
         var id = CanonicalId.Parse(proposalId);
-        var context = CreateReadContext(database, project);
-        return ReadCandidates(context.Jobs, id)
-            .Select(candidate => TryBuildRecord(candidate, context, includeWordResults: false))
+        var context = CreateReadContext(database, project, parserPath);
+        var identified = IdentifyJobs(context.Jobs, id.Value, requireIdentity: true).ToArray();
+        return identified.Select(item => ReadCandidate(item.Job)).OfType<TrialCandidate>()
+            .Select(candidate => TryBuildRecord(candidate, context, includeWordResults: false, identified[0].Job))
             .Where(record => record is not null)
             .Cast<TrialRecord>()
             .ToArray();
@@ -100,8 +103,8 @@ public static class Trials
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
         var byAssessment = new Dictionary<string, DroppedGrammar>(StringComparer.Ordinal);
-        foreach (var candidate in ReadCandidates(new JobRepository(database)
-            .ListByProjectAndKind(ProjectWorkspaceKey.Compute(project), TrialJobHandler.TrialKind), proposalId))
+        foreach (var candidate in ReadCandidates(OrderedJobs(database, ProjectWorkspaceKey.Compute(project)),
+            proposalId.Value))
         {
             if (candidate.Job.Status != JobStatus.Completed) continue;
             TrialCompletion? completion;
@@ -119,82 +122,103 @@ public static class Trials
     internal static IReadOnlyList<JobRecord> JobsFor(MotifDatabase database, ProjectLocator project,
         CanonicalId proposalId) =>
         ReadCandidates(new JobRepository(database).ListByProjectAndKind(ProjectWorkspaceKey.Compute(project),
-            TrialJobHandler.TrialKind), proposalId).Select(candidate => candidate.Job).ToArray();
+            TrialJobHandler.TrialKind), proposalId.Value).Select(candidate => candidate.Job).ToArray();
 
     private static TrialRecord? ReadLatest(MotifDatabase database, ProjectLocator project, string proposalId,
-        bool includeWordResults)
+        bool includeWordResults, string? parserPath)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
         var id = CanonicalId.Parse(proposalId);
-        var context = CreateReadContext(database, project);
-        return Choose(ReadCandidates(context.Jobs, id), context, includeWordResults);
+        var context = CreateReadContext(database, project, parserPath);
+        var newest = IdentifyJobs(context.Jobs, id.Value, requireIdentity: true).FirstOrDefault();
+        return newest is null ? null : ReadSelected(newest, context, includeWordResults);
     }
 
-    // The one Trial-selection rule: the newest completed or active Trial, else the newest that stopped.
-    private static TrialRecord? Choose(IEnumerable<TrialCandidate> newestFirst, TrialReadContext context,
-        bool includeWordResults)
+    private static TrialRecord? ReadSelected(IdentifiedTrial selected, TrialReadContext context, bool includeWordResults)
     {
-        var candidates = newestFirst.ToArray();
-        var preferred = candidates.Where(candidate => candidate.Job.Status == JobStatus.Completed ||
-                !JobStateMachine.IsTerminal(candidate.Job.Status))
-            .Concat(candidates.Where(candidate => candidate.Job.Status != JobStatus.Completed &&
-                JobStateMachine.IsTerminal(candidate.Job.Status)));
-        // Only the first choice counts, so an older Trial's verdict never shows as current (ADR 0023).
-        var first = preferred.FirstOrDefault();
-        if (first is null) return null;
-        var record = TryBuildRecord(first, context, includeWordResults);
+        var candidate = ReadCandidate(selected.Job);
+        var record = candidate is null ? null : TryBuildRecord(candidate, context, includeWordResults, selected.Job);
         if (record is null)
             System.Diagnostics.Trace.TraceWarning("The newest Trial '{0}' of a Proposal could not be read; it reads as not tried.",
-                first.Job.JobId);
+                selected.Job.JobId);
         return record;
     }
 
-    private static TrialReadContext CreateReadContext(MotifDatabase database, ProjectLocator project)
+    private static TrialReadContext CreateReadContext(MotifDatabase database, ProjectLocator project, string? parserPath = null)
     {
         OperationRegistryBootstrap.Initialize();
         var workspaceKey = ProjectWorkspaceKey.Compute(project);
         var proposals = new ProposalRepository(database);
         return new TrialReadContext(database,
             () => new BaselineRepository(database).GetCurrentEvidence(workspaceKey), proposals,
-            new AssessmentRepository(database), new JobRepository(database)
-                .ListByProjectAndKind(workspaceKey, TrialJobHandler.TrialKind)
-                .OrderByDescending(job => job.CreatedUtc, StringComparer.Ordinal)
-                .ThenByDescending(job => job.JobId, StringComparer.Ordinal).ToArray());
+            new AssessmentRepository(database), OrderedJobs(database, workspaceKey), parserPath);
     }
 
-    private static IEnumerable<TrialCandidate> ReadCandidates(IReadOnlyList<JobRecord> jobs,
-        CanonicalId? proposalId)
+    private static IReadOnlyList<JobRecord> OrderedJobs(MotifDatabase database, string projectKey) =>
+        new JobRepository(database).ListByProjectAndKind(projectKey, TrialJobHandler.TrialKind)
+            .OrderByDescending(job => DateTimeOffset.Parse(job.CreatedUtc, CultureInfo.InvariantCulture))
+            .ThenByDescending(job => job.JobId, StringComparer.Ordinal).ToArray();
+
+    internal static string ProposalOf(JobRecord job) =>
+        IdentifyJobs([job], proposalId: null, requireIdentity: true).Single().ProposalId.Value;
+
+    internal static JobRecord? SelectJob(MotifDatabase database, string projectKey, string proposalId, string? jobId = null) =>
+        IdentifyJobs(OrderedJobs(database, projectKey).Where(job => jobId is null || job.JobId == jobId),
+            proposalId, requireIdentity: true).FirstOrDefault()?.Job;
+
+    private static IEnumerable<IdentifiedTrial> IdentifyJobs(IEnumerable<JobRecord> jobs, string? proposalId,
+        bool requireIdentity = false)
     {
         foreach (var job in jobs)
         {
-            TrialCandidate? candidate;
+            CanonicalId id;
             try
             {
-                var (readJob, input, proposal) = ReadInput(job);
-                candidate = proposalId is null || proposal.ProposalId == proposalId
-                    ? new TrialCandidate(readJob, input, proposal)
-                    : null;
+                using var input = JsonDocument.Parse(job.InputJson);
+                if (input.RootElement.ValueKind != JsonValueKind.Object ||
+                    !input.RootElement.TryGetProperty("proposalJson", out var document) ||
+                    document.ValueKind != JsonValueKind.String)
+                    throw new InvalidDataException("The stored Trial has no Proposal document.");
+                using var proposal = JsonDocument.Parse(document.GetString()!);
+                if (proposal.RootElement.ValueKind != JsonValueKind.Object ||
+                    !proposal.RootElement.TryGetProperty("proposalId", out var identity) ||
+                    identity.ValueKind != JsonValueKind.String || !CanonicalId.TryParse(identity.GetString(), out id))
+                    throw new InvalidDataException("The stored Trial has no readable Proposal identity.");
             }
-            catch (Exception exception) when (exception is JsonException or InvalidDataException or
-                ArgumentException or ContractParseException)
+            catch (Exception exception) when (!requireIdentity && exception is (JsonException or InvalidDataException))
             {
-                candidate = null;
+                continue;
             }
-            if (candidate is not null) yield return candidate;
+            if (proposalId is null || id.Value == proposalId) yield return new IdentifiedTrial(job, id);
+        }
+    }
+
+    private static IEnumerable<TrialCandidate> ReadCandidates(IEnumerable<JobRecord> jobs, string? proposalId) =>
+        IdentifyJobs(jobs, proposalId).Select(job => ReadCandidate(job.Job)).OfType<TrialCandidate>();
+
+    private static TrialCandidate? ReadCandidate(JobRecord job)
+    {
+        try
+        {
+            var input = TrialJobInput.Parse(job.InputJson);
+            return new TrialCandidate(job, input, ProposalJsonParser.Parse(input.ProposalJson));
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException or ArgumentException or ContractParseException)
+        {
+            return null;
         }
     }
 
     private static TrialRecord? TryBuildRecord(TrialCandidate candidate, TrialReadContext context,
-        bool includeWordResults)
+        bool includeWordResults, JobRecord newest)
     {
         // Outside the catch below: a damaged stored Draft must not read as a Proposal never tried.
         var currentIntentDigest = context.CurrentIntentDigest(candidate.Proposal.ProposalId);
         try
         {
-            return BuildRecord(candidate.Job, candidate.Input, candidate.Proposal, context.Current,
-                context.Database, context.Proposals, context.Assessments,
-                currentIntentDigest, includeWordResults);
+            return BuildRecord(candidate.Job, candidate.Input, candidate.Proposal, context,
+                currentIntentDigest, includeWordResults, newest);
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException or KeyNotFoundException)
         {
@@ -202,16 +226,12 @@ public static class Trials
         }
     }
 
-    private static (JobRecord Job, TrialJobInput Input, Contract.Model.Proposal Proposal) ReadInput(JobRecord job)
-    {
-        var input = TrialJobInput.Parse(job.InputJson);
-        return (job, input, ProposalJsonParser.Parse(input.ProposalJson));
-    }
-
     private static TrialRecord? BuildRecord(JobRecord job, TrialJobInput input, Contract.Model.Proposal proposal,
-        CurrentBaselineEvidence? current, MotifDatabase database, ProposalRepository proposals,
-        AssessmentRepository assessments, string? currentIntentDigest, bool includeWordResults)
+        TrialReadContext context, string? currentIntentDigest, bool includeWordResults, JobRecord newest)
     {
+        var current = context.Current;
+        var database = context.Database;
+        var assessments = context.Assessments;
         var completion = ReadCompletion(job.ResultJson);
         var sourceBaseline = completion?.BaselineToken ?? current?.Baseline.Token;
         if (sourceBaseline is null) return null;
@@ -248,7 +268,8 @@ public static class Trials
             };
         var freshness = !completed
             ? TrialFreshness.Incomplete
-            : GetFreshness(sourceBaseline, intentDigest, current, currentIntentDigest);
+            : ToTrialFreshness(context.Review.EvidenceFreshness(job, proposalId, newest, context.ReadIntentDigest,
+                () => current?.Baseline.Token));
         DateTimeOffset? completedUtc = JobStateMachine.IsTerminal(job.Status)
             ? DateTimeOffset.Parse(job.UpdatedUtc, System.Globalization.CultureInfo.InvariantCulture)
             : null;
@@ -271,7 +292,7 @@ public static class Trials
             : "trial:" + proposalId + ":" + intentDigest;
 
         string? label;
-        try { label = proposals.Get(proposal.ProposalId).Label; }
+        try { label = context.Proposals.Get(proposal.ProposalId).Label; }
         catch (KeyNotFoundException) { label = null; }
 
         var allWords = completion?.AllWords ?? input.AllWords;
@@ -303,20 +324,25 @@ public static class Trials
             : FeatureRemovalReadingProof.Prove(RecipeVerificationTrialProjection.From(before),
                 RecipeVerificationTrialProjection.From(after), after.Selection.Words);
 
-    private static TrialFreshness GetFreshness(BaselineToken source, string intentDigest,
-        CurrentBaselineEvidence? current, string? currentIntentDigest)
-    {
-        if (current is null || !current.Baseline.Token.HasSameSemanticIdentity(source)) return TrialFreshness.BaselineMoved;
-        return currentIntentDigest == intentDigest ? TrialFreshness.Current : TrialFreshness.ProposalChanged;
-    }
+    private static TrialFreshness ToTrialFreshness(Freshness freshness) =>
+        freshness.Relation switch
+        {
+            FreshnessRelation.Current => TrialFreshness.Current,
+            FreshnessRelation.Historical when freshness.Reasons.Contains("baseline-changed") => TrialFreshness.BaselineMoved,
+            FreshnessRelation.Historical when freshness.Reasons.Contains("proposal-changed") => TrialFreshness.ProposalChanged,
+            FreshnessRelation.Historical when freshness.Reasons.Contains("parser-changed") => TrialFreshness.ParserChanged,
+            FreshnessRelation.Historical => TrialFreshness.Historical,
+            _ => TrialFreshness.Unknown,
+        };
 
     /// <summary>Whether a failure came from stored Proposal or Draft content that cannot be parsed.</summary>
     internal static bool IsUnreadableStoredProposal(Exception exception) =>
         exception is ContractParseException or JsonException or InvalidDataException;
 
-    private static string? ReadCurrentIntentDigest(ProposalRecord? record)
+    internal static string? ReadCurrentIntentDigest(ProposalRecord? record)
     {
-        if (record?.ProposalJson is null) return null;
+        if (record is null) return null;
+        if (record.ProposalJson is null) return record.DraftName is null ? record.IntentDigest : null;
         return IntentDigest.Compute(ProposalJsonParser.Parse(JobCommands.CanonicalProposalJson(record)));
     }
 
@@ -339,16 +365,19 @@ public static class Trials
         [property: JsonPropertyName("droppedGrammar")] DroppedGrammar? DroppedGrammar = null,
         [property: JsonPropertyName("reviewAfter")] IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null);
 
+    private sealed record IdentifiedTrial(JobRecord Job, CanonicalId ProposalId);
+
     private sealed record TrialCandidate(JobRecord Job, TrialJobInput Input, Contract.Model.Proposal Proposal);
 
     // Each Proposal's current content is digested at most once per read, from one listing of the Proposals.
     private sealed class TrialReadContext(MotifDatabase database, Func<CurrentBaselineEvidence?> current,
-        ProposalRepository proposals, AssessmentRepository assessments, IReadOnlyList<JobRecord> jobs)
+        ProposalRepository proposals, AssessmentRepository assessments, IReadOnlyList<JobRecord> jobs, string? parserPath)
     {
         private Dictionary<CanonicalId, ProposalRecord>? _records;
         private readonly Dictionary<CanonicalId, string?> _digests = [];
 
         public MotifDatabase Database { get; } = database;
+        public TrialReviewCommands Review { get; } = new(database, parserPath);
         // A project with no Trial job never needs the Baseline summary, so it is read on first use.
         private readonly Lazy<CurrentBaselineEvidence?> _current = new(current);
 
@@ -359,6 +388,15 @@ public static class Trials
 
         public void LoadProposals() => _records ??= Proposals.List(new ProposalListFilter(IncludeArchived: true))
             .GroupBy(record => record.ProposalId).ToDictionary(group => group.Key, group => group.First());
+
+        public string? ReadIntentDigest(string proposalId)
+        {
+            try { return CurrentIntentDigest(CanonicalId.Parse(proposalId)); }
+            catch (Exception exception) when (IsUnreadableStoredProposal(exception) || exception is ArgumentException)
+            {
+                return null;
+            }
+        }
 
         public string? CurrentIntentDigest(CanonicalId proposalId)
         {

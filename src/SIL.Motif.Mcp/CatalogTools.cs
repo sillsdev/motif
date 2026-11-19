@@ -96,6 +96,12 @@ internal static class CatalogTools
             if (argument is null) return string.Empty;
             shownAs = argument;
         }
+        var text = RequestFieldDescription(type, property);
+        return text is null ? string.Empty : shownAs + ": " + text;
+    }
+
+    private static string? RequestFieldDescription(Type type, PropertyInfo property)
+    {
         var document = FieldDocs.GetOrAdd(type.Assembly, LoadFieldDocs);
         var member = document.Descendants("member").FirstOrDefault(element =>
             (string?)element.Attribute("name") == "T:" + type.FullName);
@@ -103,7 +109,7 @@ internal static class CatalogTools
             (string?)element.Attribute("name") == property.Name)?.Value;
         text ??= document.Descendants("member").FirstOrDefault(element =>
             (string?)element.Attribute("name") == "P:" + type.FullName + "." + property.Name)?.Element("summary")?.Value;
-        return text is null ? string.Empty : shownAs + ": " + Regex.Replace(text.Trim(), @"\s+", " ");
+        return text is null ? null : Regex.Replace(text.Trim(), @"\s+", " ");
     }
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Assembly, XDocument> FieldDocs = new();
@@ -166,6 +172,21 @@ internal static class CatalogTools
         .OrderByDescending(constructor => constructor.GetParameters().Length).First().GetParameters()
         .FirstOrDefault(parameter => string.Equals(parameter.Name, property.Name, StringComparison.OrdinalIgnoreCase))
         is { HasDefaultValue: false };
+
+    internal static (string Name, JsonObject Schema, bool Required) RequestArgument<TRequest>(string member,
+        string name, JsonSerializerOptions wire)
+    {
+        var property = typeof(TRequest).GetProperty(member) ?? throw new ArgumentException("Unknown request field.", nameof(member));
+        var description = RequestFieldDescription(typeof(TRequest), property) ??
+            throw new InvalidOperationException("Missing request documentation for '" + member + "'.");
+        var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+        var schema = type.IsEnum
+            ? Schema.String(description, Enum.GetValues(type).Cast<object>()
+                .Select(value => JsonSerializer.SerializeToElement(value, type, wire).GetString()!).ToArray())
+            : FieldSchema(type);
+        schema["description"] = description;
+        return (name, schema, Required(typeof(TRequest), property));
+    }
 
     private static JsonObject FieldSchema(Type type)
     {

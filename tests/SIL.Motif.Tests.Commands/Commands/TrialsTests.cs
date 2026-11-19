@@ -65,13 +65,13 @@ public sealed class TrialsTests : IDisposable
     {
         using var fixture = new ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
-        fixture.RecordAssessment(proposal, "correctness", AssessmentKinds.Correctness);
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "correctness", AssessmentKinds.Correctness);
         var first = fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "first",
-            ["correctness"], allWords: false);
+            ["correctness"], allWords: false, baselineAssessmentIds: [before]);
         var latest = fixture.CreateJob(proposal.Json, "2026-09-24T12:00:00Z", "latest",
-            ["correctness"], allWords: true);
+            ["correctness"], allWords: true, baselineAssessmentIds: [before]);
 
-        var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value);
+        var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value, FakeParser.ExecutablePath);
 
         Assert.NotNull(trial);
         Assert.Equal(latest, trial.JobId);
@@ -87,20 +87,20 @@ public sealed class TrialsTests : IDisposable
     [Theory]
     [InlineData(JobStatus.Failed, JobFailureCategory.Unknown)]
     [InlineData(JobStatus.Cancelled, JobFailureCategory.Cancellation)]
-    public void LatestForKeepsTheLastCompletedTrialAfterANewerFailure(JobStatus terminalStatus,
+    public void LatestForSelectsTheNewestJobEvenWhenItStopped(JobStatus terminalStatus,
         JobFailureCategory failureCategory)
     {
         using var fixture = new ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
         fixture.RecordAssessment(proposal, "parse-time", AssessmentKinds.ParseTime);
-        var completed = fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "completed", ["parse-time"]);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "completed", ["parse-time"]);
         fixture.CreateTerminalJob(proposal.Json, "2026-09-24T12:00:00Z", "newer", terminalStatus,
             failureCategory);
 
         var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value);
 
-        Assert.Equal(completed, trial!.JobId);
-        Assert.Equal(JobStatus.Completed, trial.Status);
+        Assert.Equal("newer", trial!.JobId);
+        Assert.Equal(terminalStatus, trial.Status);
     }
 
     [Fact]
@@ -124,12 +124,27 @@ public sealed class TrialsTests : IDisposable
     {
         using var fixture = new ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
-        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", []);
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "parse-time", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["parse-time"], baselineAssessmentIds: [before]);
         fixture.RecordBaseline("sha256:" + new string('c', 64), "2026-09-24T13:00:00Z");
+
+        var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value, FakeParser.ExecutablePath);
+
+        Assert.Equal(TrialFreshness.Current, trial!.Freshness);
+    }
+
+    [Fact]
+    public void FreshnessIsBaselineMovedWhenTheCurrentBaselineSemanticsDiffer()
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", []);
+        fixture.RecordBaseline("sha256:" + new string('c', 64), "2026-09-24T13:00:00Z",
+            semanticDigest: "sha256:" + new string('2', 64));
 
         var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value);
 
-        Assert.Equal(TrialFreshness.Current, trial!.Freshness);
+        Assert.Equal(TrialFreshness.BaselineMoved, trial!.Freshness);
     }
 
     [Fact]
@@ -208,7 +223,7 @@ public sealed class TrialsTests : IDisposable
     }
 
     [Fact]
-    public void AFailedRetryAfterAGoodTrialKeepsTheGoodTrialAndItsStandingInBothReads()
+    public void AFailedRetryAfterAGoodTrialSupersedesItsStandingInBothReads()
     {
         using var fixture = new ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
@@ -220,10 +235,143 @@ public sealed class TrialsTests : IDisposable
         var one = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value);
         var all = Trials.LatestForAll(fixture.Database, fixture.Project)[proposal.Id.Value];
 
-        Assert.Equal("good", one!.JobId);
-        Assert.Equal("good", all.JobId);
-        Assert.Equal(TrialStanding.Current, one.Standing);
+        Assert.Equal("retry", one!.JobId);
+        Assert.Equal("retry", all.JobId);
+        Assert.Equal(TrialStanding.Failed, one.Standing);
         Assert.Equal(one.Standing, all.Standing);
+    }
+
+    [Fact]
+    public void StatusReadersCannotPreferAnOlderDroppedGrammarResultForAnAssessment()
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.RecordAssessment(proposal, "parse-time", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial-a", ["parse-time"]);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial-z", ["parse-time"],
+            droppedGrammar: DroppedGrammar.NotChecked("The newest recorded check was not available."));
+        fixture.CreateTerminalJob(proposal.Json, "2026-09-24T12:00:00Z", "retry", JobStatus.Failed,
+            JobFailureCategory.Infrastructure);
+
+        var index = Trials.DroppedGrammarByAssessment(fixture.Database, fixture.Project, proposal.Id);
+
+        Assert.False(index["parse-time"].Checked);
+    }
+
+    [Fact]
+    public void StatusReadersCannotCallUnpinnedTrialEvidenceCurrent()
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.RecordAssessment(proposal, "parse-time", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["parse-time"]);
+
+        var single = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!;
+        var bulk = Trials.LatestForAll(fixture.Database, fixture.Project)[proposal.Id.Value];
+
+        Assert.NotEqual(TrialFreshness.Current, single.Freshness);
+        Assert.Equal(single.Freshness, bulk.Freshness);
+        Assert.True(single.Standing.CanTryAgain);
+    }
+
+    [Fact]
+    public void TheWindowReadAndTheReviewReadAgreeOnTheJobAndTheParserFreshness()
+    {
+        var changedParser = FakeParser.Copy(Path.Combine(_root, "changed-parser"));
+        using (var append = new FileStream(changedParser, FileMode.Append)) append.WriteByte(1);
+
+        foreach (var newer in new[] { "completed", "cancelled" })
+        foreach (var parser in new[] { FakeParser.ExecutablePath, changedParser })
+        {
+            using var fixture = new ProjectFixture(Path.Combine(_root, newer + "-" + Path.GetFileName(Path.GetDirectoryName(parser))));
+            var proposal = fixture.SaveProposal();
+            var firstBefore = fixture.RecordPinnedAssessmentPair(proposal, "first", AssessmentKinds.ParseTime);
+            fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "first-job", ["first"],
+                baselineAssessmentIds: [firstBefore]);
+            if (newer == "completed")
+            {
+                var secondBefore = fixture.RecordPinnedAssessmentPair(proposal, "second", AssessmentKinds.ParseTime);
+                fixture.CreateJob(proposal.Json, "2026-09-24T12:00:00Z", "second-job", ["second"],
+                    baselineAssessmentIds: [secondBefore]);
+            }
+            else
+                fixture.CreateTerminalJob(proposal.Json, "2026-09-24T12:00:00Z", "second-job", JobStatus.Cancelled,
+                    JobFailureCategory.Cancellation);
+
+            var record = Trials.Read(new ReadTrialRequest(fixture.Project.FullFwDataPath, proposal.Id.Value), parser).Value!;
+            var review = new SIL.Motif.Commands.Review.TrialReviewCommands(fixture.Database, parser).Read(
+                new SIL.Motif.Contract.Review.ReviewReadRequest(ProjectWorkspaceKey.Compute(fixture.Project),
+                    proposal.Id.Value)).Value;
+
+            var label = $"{newer} newer job, parser {Path.GetFileName(Path.GetDirectoryName(parser))}";
+            Assert.Equal("second-job", record.JobId);
+            var reviewJob = review switch
+            {
+                SIL.Motif.Contract.Review.AvailableTrialResult available => available.Report.ReportId.Split('/').Last(),
+                SIL.Motif.Contract.Review.TrialJobResult job => job.JobId,
+                _ => throw new Xunit.Sdk.XunitException(label + ": unexpected " + review?.GetType().Name),
+            };
+            Assert.Equal(record.JobId, reviewJob);
+            if (review is not SIL.Motif.Contract.Review.AvailableTrialResult shown) continue;
+            var freshness = shown.Report.Freshness;
+            var parserChanged = freshness.Reasons.Contains("parser-changed");
+            Assert.Equal(parser == changedParser, parserChanged);
+            Assert.Equal(parserChanged, record.Freshness == TrialFreshness.ParserChanged);
+            Assert.Equal(freshness.Relation == SIL.Motif.Contract.Review.FreshnessRelation.Current,
+                record.Freshness == TrialFreshness.Current);
+        }
+    }
+
+    [Fact]
+    public void WithNoParserNamedBothReadsUseTheRunnersResolverAndSoAgreeWhenItsParserChanges()
+    {
+        var configured = FakeParser.Copy(Path.Combine(_root, "configured-parser"));
+        using (var append = new FileStream(configured, FileMode.Append)) append.WriteByte(1);
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "only", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "only-job", ["only"], baselineAssessmentIds: [before]);
+
+        using var _ = SIL.Motif.Host.AmbientEnvironment.Push(new Dictionary<string, string?>
+            { [PanGlossExecutable.PathVariable] = configured });
+        Assert.Equal(configured, JobRunnerLaunchOptions.ResolveParserPath());
+        Assert.Equal(configured, JobRunnerLaunchOptions.FromEnvironment().ParserPath);
+
+        var unnamed = Trials.Read(new ReadTrialRequest(fixture.Project.FullFwDataPath, proposal.Id.Value)).Value!;
+        var named = Trials.Read(new ReadTrialRequest(fixture.Project.FullFwDataPath, proposal.Id.Value),
+            JobRunnerLaunchOptions.ResolveParserPath()).Value!;
+        var review = new SIL.Motif.Commands.Review.TrialReviewCommands(fixture.Database).Read(
+            new SIL.Motif.Contract.Review.ReviewReadRequest(ProjectWorkspaceKey.Compute(fixture.Project),
+                proposal.Id.Value)).Value;
+
+        Assert.Equal(TrialFreshness.ParserChanged, unnamed.Freshness);
+        Assert.Equal(named.Freshness, unnamed.Freshness);
+        var shown = Assert.IsType<SIL.Motif.Contract.Review.AvailableTrialResult>(review);
+        Assert.Contains("parser-changed", shown.Report.Freshness.Reasons);
+    }
+
+    [Fact]
+    public void WithNoParserFoundBothReadsReportTheSameTypedUnknownFreshness()
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "only", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "only-job", ["only"], baselineAssessmentIds: [before]);
+
+        // A configured parser that does not exist is authoritative: discovery stops and finds none.
+        using var _ = SIL.Motif.Host.AmbientEnvironment.Push(new Dictionary<string, string?>
+            { [PanGlossExecutable.PathVariable] = Path.Combine(_root, "no-such-parser") });
+        Assert.Null(JobRunnerLaunchOptions.ResolveParserPath());
+
+        var record = Trials.Read(new ReadTrialRequest(fixture.Project.FullFwDataPath, proposal.Id.Value)).Value!;
+        var review = new SIL.Motif.Commands.Review.TrialReviewCommands(fixture.Database).Read(
+            new SIL.Motif.Contract.Review.ReviewReadRequest(ProjectWorkspaceKey.Compute(fixture.Project),
+                proposal.Id.Value)).Value;
+
+        Assert.Equal(TrialFreshness.Unknown, record.Freshness);
+        var shown = Assert.IsType<SIL.Motif.Contract.Review.AvailableTrialResult>(review);
+        Assert.Equal(SIL.Motif.Contract.Review.FreshnessRelation.Unknown, shown.Report.Freshness.Relation);
+        Assert.Equal(["freshness-unavailable"], shown.Report.Freshness.Reasons);
     }
 
     [Theory]
@@ -233,14 +381,14 @@ public sealed class TrialsTests : IDisposable
     {
         using var fixture = new ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
-        fixture.RecordAssessment(proposal, "parse-time", AssessmentKinds.ParseTime);
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "parse-time", AssessmentKinds.ParseTime);
         fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["parse-time"],
-            droppedGrammar: how == "timed-out"
+            baselineAssessmentIds: [before], droppedGrammar: how == "timed-out"
                 ? DroppedGrammar.NotChecked("The grammar check did not finish within 10 minutes.") : null,
             recordDroppedGrammar: how == "timed-out");
 
-        var one = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!;
-        var all = Trials.LatestForAll(fixture.Database, fixture.Project)[proposal.Id.Value];
+        var one = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value, FakeParser.ExecutablePath)!;
+        var all = Trials.LatestForAll(fixture.Database, fixture.Project, FakeParser.ExecutablePath)[proposal.Id.Value];
 
         Assert.Equal(TrialFreshness.Current, one.Freshness);
         Assert.Equal(TrialStanding.NeedsAnotherTry(TrialStaleReason.DroppedGrammarNotChecked), one.Standing);
@@ -615,8 +763,19 @@ public sealed class TrialsTests : IDisposable
             return _jobs.Transition(job.JobId, terminalStatus, job.Version, failureCategory);
         }
 
+        public string RecordPinnedAssessmentPair(SavedProposal proposal, string assessmentId, string kind)
+        {
+            var before = "before-" + assessmentId;
+            var parser = ParserIdentity.KeyOf(FakeParser.ExecutablePath)!;
+            BatchInvocationEvidence Invocation(string id) => new("invocation-" + id, "source", "source-hash", parser,
+                "words", "words-hash", "tsv", "tsv-hash", "stderr", "stderr-hash", null, ParserWorkLimit.Default, 1, false);
+            RecordAssessment(proposal, assessmentId, kind, invocation: Invocation(assessmentId));
+            RecordProjectAssessment(before, kind, Invocation(before), [new AssessedWord("cat", "analysed", [])]);
+            return before;
+        }
+
         public void RecordAssessment(SavedProposal proposal, string assessmentId, string kind,
-            string outcome = "analysed", string? projectStanding = null)
+            string outcome = "analysed", string? projectStanding = null, BatchInvocationEvidence? invocation = null)
         {
             _assessments.Record(new NewAssessmentRecord(
             AssessmentId: assessmentId,
@@ -634,7 +793,8 @@ public sealed class TrialsTests : IDisposable
             ModelFingerprint: "fingerprint",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Material: new AssessmentRecordMaterial.Words([new AssessedWord("cat", outcome, []) { ProjectStanding = projectStanding }], null, null, []),
+            Material: new AssessmentRecordMaterial.Words([new AssessedWord("cat", outcome, []) { ProjectStanding = projectStanding }], null, null, [])
+                { Invocation = invocation },
             SavedUtc: "2026-09-24T11:00:00Z"
         ));
         }
@@ -661,7 +821,11 @@ public sealed class TrialsTests : IDisposable
         public void RecordProjectAssessment(string assessmentId, string kind, string outcome)
             => RecordProjectAssessment(assessmentId, kind, new AssessedWord("cat", outcome, []));
 
-        public void RecordProjectAssessment(string assessmentId, string kind, params AssessedWord[] words)
+        public void RecordProjectAssessment(string assessmentId, string kind, params AssessedWord[] words) =>
+            RecordProjectAssessment(assessmentId, kind, null, words);
+
+        private void RecordProjectAssessment(string assessmentId, string kind, BatchInvocationEvidence? invocation,
+            AssessedWord[] words)
         {
             _assessments.Record(new NewAssessmentRecord(
             AssessmentId: assessmentId,
@@ -679,7 +843,7 @@ public sealed class TrialsTests : IDisposable
             ModelFingerprint: "fingerprint",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Material: new AssessmentRecordMaterial.Words(words, null, null, []),
+            Material: new AssessmentRecordMaterial.Words(words, null, null, []) { Invocation = invocation },
             SavedUtc: "2026-09-24T10:45:00Z"
         ));
         }

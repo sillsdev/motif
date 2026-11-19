@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Review;
 
 namespace SIL.Motif.Cli.Rendering;
@@ -14,6 +15,8 @@ public static class TrialReviewTextRenderer
     {
         NoTrialResult => "No Trial is recorded for this Proposal.\n",
         PendingTrialResult pending => $"Trial {pending.JobId}: {pending.JobState}\n",
+        TrialJobResult job => $"Trial {job.JobId}: {JobStatusJson.ToWire(job.JobStatus)}" +
+            (job.ReportId is null ? "\n" : $", report {job.ReportId} ({job.ReportDigest})\n"),
         AvailableTrialResult available => RenderReport(available.Report),
         _ => throw new ArgumentException("Unknown Trial review result.", nameof(result))
     };
@@ -71,6 +74,8 @@ public static class TrialReviewTextRenderer
         text.AppendLine("Parser work: " + (report.Summary.ParserWork.PercentChange is { } change
             ? change.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture) + "%" : "not comparable"));
         text.AppendLine($"Trial {report.Pins.TrialJobId}; report {report.ReportId}; {report.Freshness.Relation}");
+        if (report.Freshness.Reasons.Count > 0)
+            text.AppendLine("Freshness: " + string.Join(", ", report.Freshness.Reasons));
         foreach (var section in report.Sections)
         {
             text.AppendLine(section.Label + ":");

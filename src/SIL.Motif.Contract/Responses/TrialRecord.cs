@@ -8,7 +8,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>How a Proposal's latest Trial relates to the project and Proposal now.</summary>
 public enum TrialFreshness
 {
-    /// <summary>The completed Trial used the current Baseline and Proposal content.</summary>
+    /// <summary>The completed Trial matches the current Baseline, Proposal, prerequisites and parser.</summary>
     Current,
     /// <summary>The project published a different Baseline after the Trial.</summary>
     BaselineMoved,
@@ -18,6 +18,12 @@ public enum TrialFreshness
     Incomplete,
     /// <summary>No Trial exists for this Proposal.</summary>
     None,
+    /// <summary>The selected parser executable differs from the Trial's recorded parser.</summary>
+    ParserChanged,
+    /// <summary>Newer Trial evidence exists or another pinned input changed.</summary>
+    Historical,
+    /// <summary>Some of the evidence required to check freshness is unavailable.</summary>
+    Unknown,
 }
 
 /// <summary>Which words a Trial was asked to measure.</summary>

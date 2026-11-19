@@ -864,6 +864,10 @@ public static class CommandTextRenderer
             "Needs another try because the project changed",
         TrialStandingKind.NeedsAnotherTry when standing.Reason == TrialStaleReason.DroppedGrammarNotChecked =>
             "Needs another try because the check for dropped grammar did not finish",
+        TrialStandingKind.NeedsAnotherTry when standing.Reason == TrialStaleReason.ParserChanged =>
+            "Needs another try because the parser changed",
+        TrialStandingKind.NeedsAnotherTry when standing.Reason == TrialStaleReason.EvidenceUnverified =>
+            "Needs another try because the evidence could not establish current results",
         TrialStandingKind.NeedsAnotherTry => "Needs another try because the Proposal changed",
         _ => throw new ArgumentOutOfRangeException(nameof(standing), standing.Kind, null),
     };

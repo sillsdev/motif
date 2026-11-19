@@ -29,12 +29,19 @@ public sealed record JobRunnerLaunchOptions(string Root, string? ParserPath)
     public TimeSpan? Lease { get; init; }
 
     /// <summary>
+    /// The one place the parser identity of a Trial is resolved when no parser is named: the runner's launch
+    /// settings, the window, the command line and every Trial read (<c>Trials</c>, <c>TrialReviewCommands</c>)
+    /// call it, so one project reads the same parser identity and freshness whichever surface asks.
+    /// </summary>
+    public static string? ResolveParserPath() => PanGlossExecutable.TryLocate();
+
+    /// <summary>
     /// The settings a process's environment selects: the root <see cref="RunnerOptions.ResolveRoot"/> reads,
     /// the parser <see cref="PanGlossExecutable.TryLocate()"/> finds, and any configured runner executable.
     /// The command line and the installed window both start from these.
     /// </summary>
     public static JobRunnerLaunchOptions FromEnvironment() => new(
-        RunnerOptions.ResolveRoot(), PanGlossExecutable.TryLocate())
+        RunnerOptions.ResolveRoot(), ResolveParserPath())
     {
         WorkerExecutable = ProcessRunnerLauncher.ConfiguredExecutable(),
     };

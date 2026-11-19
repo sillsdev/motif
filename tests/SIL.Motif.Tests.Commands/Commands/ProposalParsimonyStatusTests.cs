@@ -1,3 +1,4 @@
+using SIL.Motif.Tests.TestFixtures;
 using System.Text.Json;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
@@ -31,6 +32,7 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
     private readonly ProjectLocator _project;
     private readonly string _projectKey;
     private readonly string _proposalId = CanonicalId.Mint("proposal/").Value;
+    private int _trialSequence;
     private readonly BaselineToken _token = new("project", "sha256:" + new string('1', 64), "projection-v1",
         "2026-10-05T00:00:00Z", "sha256:" + new string('2', 64));
 
@@ -39,8 +41,7 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
         Directory.CreateDirectory(_root);
         _fwData = Path.Combine(_root, "project.fwdata");
         File.WriteAllText(_fwData, "project marker");
-        _parser = Path.Combine(_root, "pangloss");
-        File.WriteAllText(_parser, "parser one");
+        _parser = FakeParser.Copy(Path.Combine(_root, "parser-one"));
         _project = new ProjectLocator(Path.GetFullPath(_fwData), "project");
         _projectKey = ProjectWorkspaceKey.Compute(_project);
         using (OpenDatabase()) { }
@@ -79,8 +80,9 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
     {
         var jobs = new JobRepository(database);
         var input = new TrialJobInput(proposalJson ?? ProposalJson(), null, ["word"], false, []);
+        var created = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero).AddTicks(++_trialSequence);
         var trial = jobs.Create(CanonicalId.Mint("job/").Value, _projectKey, TrialJobHandler.TrialKind,
-            JobParserPin.Stamp(JsonSerializer.Serialize(input, Options), _parser), "2026-11-01T00:00:00Z");
+            JobParserPin.Stamp(JsonSerializer.Serialize(input, Options), _parser), JobTimestamp.FormatUtc(created));
         Finish(jobs, trial, JobStatus.Completed, JsonSerializer.Serialize(new
         {
             baselineToken = token ?? _token,
@@ -135,6 +137,9 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
     [Fact]
     public void WithoutAParserParsimonyIsNotSetUpAndTheTextGroupSaysWhyItWillNotRun()
     {
+        // No parser named means the shared resolver; a configured parser that does not exist leaves it none.
+        using var none = SIL.Motif.Host.AmbientEnvironment.Push(new Dictionary<string, string?>
+            { [SIL.Motif.Host.Parser.PanGlossExecutable.PathVariable] = "/no/such/pangloss" });
         var status = Read(parser: null);
 
         Assert.Equal(ProposalParsimonyState.NotSetUp, status.State);
@@ -181,8 +186,13 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
         {
             _ = QueueParsimony(database, CommitTrial(database));
             if (otherKind is not null)
+            {
+                var input = otherKind == JobCommands.TrialKind
+                    ? JsonSerializer.Serialize(new TrialJobInput(ProposalJson(proposalId: CanonicalId.Mint("proposal/").Value), null), Options)
+                    : "{}";
                 _ = new JobRepository(database).Create(CanonicalId.Mint("job/").Value, _projectKey, otherKind,
-                    "{}", "2026-11-01T00:00:02.0000000Z");
+                    input, "2026-11-01T00:00:02.0000000Z");
+            }
         }
 
         var status = Read(_parser);
@@ -262,8 +272,8 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
             var job = QueueParsimony(database, CommitTrial(database));
             Finish(new JobRepository(database), job, JobStatus.Completed, Response(job));
         }
-        var replacement = Path.Combine(_root, "pangloss-two");
-        File.WriteAllText(replacement, "parser two");
+        var replacement = FakeParser.Copy(Path.Combine(_root, "parser-two"));
+        using (var append = new FileStream(replacement, FileMode.Append)) append.WriteByte(2);
 
         var status = Read(replacement);
 
@@ -286,6 +296,24 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
 
         Assert.Equal(ProposalParsimonyState.Stale, status.State);
         Assert.Equal([ProposalParsimonyStaleReason.ProposalChanged], status.Stale!.Reasons);
+    }
+
+    [Fact]
+    public void ANewerFailedTrialSupersedesTheEvidenceForAnOlderParsimonyRun()
+    {
+        using var database = OpenDatabase();
+        var earlier = CommitTrial(database);
+        var job = QueueParsimony(database, earlier);
+        var jobs = new JobRepository(database);
+        Finish(jobs, job, JobStatus.Completed, Response(job));
+        const string failed = "job/newer-failed";
+        jobs.RecordInterrupted(failed, _projectKey, "trial", earlier.InputJson, "{}",
+            "2026-12-01T00:00:00Z", JobStatus.Failed);
+
+        var status = Read(_parser);
+
+        Assert.Equal(failed, status.TrialJobId);
+        Assert.Equal(ProposalParsimonyState.Stale, status.State);
     }
 
     [Theory]

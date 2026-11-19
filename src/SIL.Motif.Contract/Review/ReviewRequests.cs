@@ -12,12 +12,39 @@ public readonly record struct ReviewReportId
 }
 
 /// <summary>The stored report to read and the requested disclosure and selectors.</summary>
+/// <param name="ProjectKey">The project that owns the Trial.</param>
+/// <param name="ProposalId">The Proposal ID.</param>
+/// <param name="JobId">Exact Trial job to resume or read.</param>
+/// <param name="ReportId">Exact stored report to read.</param>
+/// <param name="Latest">Read the newest Trial job and its report identity when available.</param>
+/// <param name="Detail">Report disclosure level.</param>
+/// <param name="Section">Report section to read.</param>
+/// <param name="Set">Review set to select.</param>
+/// <param name="Outcome">Include only rows with this outcome.</param>
+/// <param name="Flag">Include only rows with this Review flag.</param>
+/// <param name="Filter">Filter full-detail rows.</param>
+/// <param name="Word">Select one reported word.</param>
+/// <param name="Case">Select one reported case.</param>
+/// <param name="Trace">Read a trace for the selected word or case.</param>
+/// <param name="Side">Select the before or after readings.</param>
+/// <param name="Cursor">Continuation from the same report and filters.</param>
+/// <param name="Limit">Maximum page items. Default 50.</param>
+/// <param name="Page">Page of the retirement signature rows of a saved report. Default 1.</param>
 public sealed record ReviewReadRequest(
     string ProjectKey, string ProposalId, string? JobId = null, string? ReportId = null,
     DetailLevel? Detail = null, string? Section = null, string? Set = null, string? Outcome = null,
     ReviewFlagId? Flag = null, string? Filter = null, string? Word = null, string? Case = null,
-    bool Trace = false, Side? Side = null, string? Cursor = null, int? Limit = null, int? Page = null)
+    bool Trace = false, Side? Side = null, string? Cursor = null, int? Limit = null, int? Page = null, bool Latest = false)
 {
+    /// <summary>Maximum UTF-8 bytes for the compact live identity response, including its success envelope.</summary>
+    public const int LatestMaximumUtf8Bytes = 2048;
+
+    /// <summary>Minimum page size for a stored report read.</summary>
+    public const int MinimumPageSize = 1;
+
+    /// <summary>Maximum page size for a stored report read.</summary>
+    public const int MaximumPageSize = 200;
+
     /// <summary>Returns an argument problem before a stored read or diagnostic can do work.</summary>
     public string? Validate()
     {
@@ -39,6 +66,10 @@ public sealed record ReviewReadRequest(
         if (Page is not null && (Section is not null || Trace || Cursor is not null || Word is not null || Case is not null))
             return "page reads the retirement rows of the report summary only";
         if (JobId is not null && ReportId is not null) return "job and report are exclusive";
+        if (Latest && (JobId is not null || ReportId is not null || Detail is not null || Section is not null ||
+            Set is not null || Outcome is not null || Flag is not null || Filter is not null || Word is not null ||
+            Case is not null || Trace || Side is not null || Cursor is not null || Limit is not null || Page is not null))
+            return "latest selects only the newest Trial job and cannot use report selectors";
         if (Word is not null && Case is not null) return "word and case are exclusive";
         if (Trace && Word is null && Case is null) return "trace requires a word or case";
         if (!Trace && Cursor is not null && (Word is not null || Case is not null) &&
@@ -50,7 +81,7 @@ public sealed record ReviewReadRequest(
             return "word, case and trace require full detail";
         if ((Cursor is not null || Limit is not null || Filter is not null || Outcome is not null || Flag is not null) &&
             EffectiveDetail != DetailLevel.Full) return "cursor and list filters require full detail";
-        if (Limit is < 1 or > 200) return "limit must be between 1 and 200";
+        if (Limit is < MinimumPageSize or > MaximumPageSize) return "limit must be between 1 and 200";
         if (Filter is not null and not ("all" or "changed" or "unchanged" or "review" or "incomplete"))
             return "unknown filter";
         return null;

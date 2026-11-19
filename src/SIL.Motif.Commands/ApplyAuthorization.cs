@@ -106,7 +106,8 @@ internal static class ApplyAuthorization
 
     /// <summary>Weighs the Proposal's evidence the way Apply does, without refusing or changing anything.</summary>
     public static ApplyAuthorizationDecision Evaluate(MotifDatabase database, ProjectLocator project,
-        ProposalRecord record, SIL.Motif.Contract.Model.Proposal content, ManifestDocument manifest)
+        ProposalRecord record, SIL.Motif.Contract.Model.Proposal content, ManifestDocument manifest,
+        string? parserPath = null)
     {
         var pendingRefusal = PendingChangesRefusal(database, record.ProposalId);
         if (manifest.Anchor is null)
@@ -122,7 +123,7 @@ internal static class ApplyAuthorization
         var baseline = baselines.GetCurrent(projectKey);
 
         var boundDryRun = ProposalCommands.FindCurrentBoundDryRun(database, project, record.ProposalJson!, manifest,
-                content) ?? ProposalCommands.FindTrialBoundDryRun(database, project, record.ProposalId, manifest);
+                content) ?? ProposalCommands.FindTrialBoundDryRun(database, project, record.ProposalId, manifest, parserPath);
         var gdrTitles = new Lazy<HashSet<string>>(() => ProjectReadCache.ReadSaved(project, (_, cache) =>
             GdrReader.List(cache).Select(item => item.Id).ToHashSet(StringComparer.Ordinal)));
         var exemptionReason = boundDryRun is null
