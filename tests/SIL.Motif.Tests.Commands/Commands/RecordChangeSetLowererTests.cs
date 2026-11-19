@@ -42,6 +42,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             _entry.SensesOS.Add(_sense);
             _sense.Gloss.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzgloss", _cache.DefaultAnalWs));
             _sense.Definition.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzdef", _cache.DefaultAnalWs));
+            var sub = services.GetInstance<ILexSenseFactory>().Create();
+            _sense.SensesOS.Add(sub);
+            sub.Gloss.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzsub", _cache.DefaultAnalWs));
             _second = services.GetInstance<ILexSenseFactory>().Create();
             _entry.SensesOS.Add(_second);
             _second.Gloss.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzother", _cache.DefaultAnalWs));
@@ -88,28 +91,103 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         return ScratchDryRun.Of(_cache, Proposal(lowering.Operations));
     }
 
+    /// <summary>Why a covered pair is not offered: the Decision A families, each with its reason.</summary>
+    private static readonly Dictionary<string, string> DecisionA = new()
+    {
+        ["bespoke-payload"] = "the kind's payload carries more than the verb and field (digests, paragraph keys, a census), so only its own composer authors it",
+        ["create-composer"] = "the create kind takes its own payload (morph type, reference, forms), which only its composer authors",
+        ["delete-composer"] = "the delete is built from the project by its own composer, which the lowerer calls only for senses",
+    };
+
+    private static string? DecisionAFamily(RecordWriteVerb verb, FieldWriteCapability write) => verb switch
+    {
+        RecordWriteVerb.AddObject => "create-composer",
+        RecordWriteVerb.RemoveObject => "delete-composer",
+        _ when write.Payload == FieldWritePayload.Bespoke => "bespoke-payload",
+        _ => null,
+    };
+
+    private static IEnumerable<(string Kind, FieldWriteCapability Write)> Declarations(
+        (string DeclaringClass, string Field, bool IsCustom) binding, RecordWriteVerb verb) =>
+        OperationHandlerRegistry.RegisteredKinds.SelectMany(kind => OperationHandlerRegistry.FieldWrites(kind)
+            .Where(write => write.DeclaringClass == binding.DeclaringClass && write.Field == binding.Field && write.Verb == verb)
+            .Select(write => (kind, write)));
+
+    private static readonly RecordWriteVerb[] WriteVerbs =
+    [
+        RecordWriteVerb.Set, RecordWriteVerb.Clear, RecordWriteVerb.SetAlternative, RecordWriteVerb.ClearAlternative,
+        RecordWriteVerb.SetPlainRich, RecordWriteVerb.SetRich, RecordWriteVerb.ClearRich, RecordWriteVerb.MoveObject,
+        RecordWriteVerb.AddReference, RecordWriteVerb.InsertReference, RecordWriteVerb.RemoveReference, RecordWriteVerb.MoveReference,
+    ];
+
     [Fact]
-    public void CatalogWritableFieldsAgreesWithPhaseThreesResolution()
+    public void CatalogWritableFieldsAgreesExactlyWithPhaseThreesCoverage()
     {
         var catalog = new CatalogWritableFields();
         var resolver = new RecordWritableFields(_schema);
+        var failures = new List<string>();
+        var familiesSeen = new HashSet<string>();
+        // Every (declaring class, field) phase 3 covers on some verb, gathered across the schema types that bind to it.
+        var covered = resolver.Entries.Where(entry => entry.Value is WritableFieldResolution.Covered)
+            .Select(entry => (Entry: entry.Key, Binding: _schema.FieldBinding(entry.Key.Class, entry.Key.Field)!.Value))
+            .GroupBy(item => (item.Binding.DeclaringClass, item.Binding.Field)).ToArray();
+        foreach (var group in covered)
+        {
+            var (declaring, name) = group.Key;
+            var offeredWrite = false;
+            foreach (var item in group)
+            {
+                var verb = item.Entry.Verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : item.Entry.Verb;
+                var declared = Declarations(item.Binding, verb).ToArray();
+                var subject = $"{item.Entry.Class}.{item.Entry.Field} {item.Entry.Verb}";
+                if (declared.Length == 0)
+                {
+                    failures.Add($"{subject}: phase 3 covers it but no kind declares it.");
+                    continue;
+                }
+                var lowerable = declared.Any(d => RecordLoweringRules.Lowers(d.Kind, d.Write));
+                if (verb == RecordWriteVerb.AddObject || verb == RecordWriteVerb.RemoveObject)
+                {
+                    var children = (_schema.Schema.ObjectType(item.Entry.Class)!.Field(item.Entry.Field)!.Item ??
+                        _schema.Schema.ObjectType(item.Entry.Class)!.Field(item.Entry.Field)!).ObjectTypes.Select(t => t.Name);
+                    foreach (var child in children)
+                    {
+                        var accepting = declared.Where(d => RecordLoweringRules.Lowers(d.Kind, d.Write) &&
+                            (d.Write.ChildClasses.Count == 0 || d.Write.ChildClasses.Contains(child))).Any();
+                        var offered = verb == RecordWriteVerb.AddObject ? catalog.CanCreate(declaring, name, child) : catalog.CanDelete(declaring, name, child);
+                        if (offered != accepting)
+                            failures.Add($"{subject} / {child}: the adapter says {offered}, the lowerable declarations say {accepting}.");
+                    }
+                }
+                else if (lowerable)
+                    offeredWrite = true;
+                if (!lowerable)
+                {
+                    var family = declared.Select(d => DecisionAFamily(verb, d.Write)).FirstOrDefault(f => f is not null);
+                    if (family is null)
+                        failures.Add($"{subject}: not offered, and no Decision A family explains it.");
+                    else
+                        familiesSeen.Add(family);
+                }
+            }
+            if (group.Any(item => WriteVerbs.Contains(item.Entry.Verb)) && catalog.CanWrite(declaring, name) != offeredWrite)
+                failures.Add($"{declaring}.{name}: CanWrite is {catalog.CanWrite(declaring, name)}, the covered lowerable verbs say {offeredWrite}.");
+        }
+        // The other way: whatever the adapter offers phase 3 covers and the lowerer lowers.
         foreach (var type in _schema.Schema.ObjectTypes)
             foreach (var field in type.Fields)
             {
-                var binding = _schema.FieldBinding(type.Name, field.Name);
-                if (binding is null) continue;
-                var (declaring, name, _) = binding.Value;
-                var writable = new[] { RecordWriteVerb.Set, RecordWriteVerb.Clear, RecordWriteVerb.SetAlternative,
-                        RecordWriteVerb.ClearAlternative, RecordWriteVerb.SetPlainRich, RecordWriteVerb.SetRich,
-                        RecordWriteVerb.ClearRich, RecordWriteVerb.AddReference, RecordWriteVerb.RemoveReference,
-                        RecordWriteVerb.MoveReference, RecordWriteVerb.MoveObject }
-                    .Any(verb => resolver.Resolve(type.Name, field.Name, verb) is WritableFieldResolution.Covered);
-                // The catalog offers no more than phase 3 covers, for the types phase 3 reaches; the agreement test holds the rest.
-                var reached = resolver.Entries.Any(e => e.Key.Class == type.Name && e.Key.Field == field.Name);
-                if (reached && catalog.CanWrite(declaring, name) && !writable)
-                    Assert.True(field.Kind is RecordFieldKind.Object or RecordFieldKind.Sequence or RecordFieldKind.Collection,
-                        $"{type.Name}.{field.Name}");
+                if (_schema.FieldBinding(type.Name, field.Name) is not { } binding ||
+                    !resolver.Entries.Any(e => e.Key.Class == type.Name && e.Key.Field == field.Name))
+                    continue;
+                if (catalog.CanWrite(binding.DeclaringClass, binding.Field) &&
+                    !WriteVerbs.Any(verb => resolver.Entries.TryGetValue((type.Name, field.Name, verb), out var r) &&
+                        r is WritableFieldResolution.Covered && Declarations(binding, verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb)
+                            .Any(d => RecordLoweringRules.Lowers(d.Kind, d.Write))))
+                    failures.Add($"{type.Name}.{field.Name}: the adapter offers a write phase 3 does not cover and the lowerer does not lower.");
             }
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures.Distinct()));
+        Assert.All(familiesSeen, family => Assert.Contains(family, DecisionA.Keys));
         Assert.True(catalog.CanWrite("LexSense", "Gloss"));
         Assert.False(catalog.CanWrite("LexEntry", "HomographNumber"));
         Assert.True(catalog.CanCreate("LexEntry", "Senses", "LexSense"));
@@ -254,12 +332,41 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     private static void Put(RecordChange change, string property, object? value) =>
         typeof(RecordChange).GetProperty(property)!.GetSetMethod(true)!.Invoke(change, [value]);
 
-    /// <summary>The changes a covered (type, field, verb) pair is made of in a record file, aimed at a made-up object.</summary>
-    private static IEnumerable<RecordChange> ChangesFor(RecordObjectType type, RecordField field, RecordWriteVerb verb,
+    private static readonly RecordAnchor StartAnchor = (RecordAnchor)typeof(RecordAnchor).GetField("Start",
+        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.GetValue(null)!;
+
+    /// <summary>A real object of the class (or a subclass) in the project, or null when the fixture has none.</summary>
+    private Guid? RealObject(string className)
+    {
+        var metadata = (IFwMetaDataCacheManaged)_cache.MetaDataCacheAccessor;
+        var id = metadata.GetClassId(className);
+        var classes = metadata.GetAllSubclasses(id).Append(id).ToHashSet();
+        return _cache.ServiceLocator.GetInstance<ICmObjectRepository>().AllInstances()
+            .Where(item => classes.Contains(item.ClassID)).Select(item => (Guid?)item.Guid).FirstOrDefault();
+    }
+
+    private List<Guid> Members(Guid owner, (string DeclaringClass, string Field, bool IsCustom) binding)
+    {
+        var repository = _cache.ServiceLocator.GetInstance<ICmObjectRepository>();
+        var instance = repository.GetObject(owner);
+        var flid = _cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true);
+        var data = _cache.DomainDataByFlid;
+        return Enumerable.Range(0, data.get_VecSize(instance.Hvo, flid))
+            .Select(position => repository.GetObject(data.get_VecItem(instance.Hvo, flid, position)).Guid).ToList();
+    }
+
+    /// <summary>
+    /// The changes a covered (type, field, verb) pair is made of in a record file, aimed at a real object of the type, or the
+    /// reason this fixture cannot aim at one.
+    /// </summary>
+    private (List<RecordChange> Changes, string? Gap) ChangesFor(RecordObjectType type, RecordField field, RecordWriteVerb verb,
         WritableFields catalog, (string DeclaringClass, string Field, bool IsCustom) binding)
     {
-        var owner = Guid.NewGuid();
-        var other = Guid.NewGuid();
+        var changes = new List<RecordChange>();
+        if (RealObject(type.Name) is not { } owner)
+            return (changes, "no fixture object of class " + type.Name);
+        var members = Members(owner, binding);
+        var fresh = Guid.NewGuid();
         RecordChange Make(RecordChangeKind kind, Action<RecordChange>? more = null) => NewChange(kind, change =>
         {
             Put(change, "ObjectGuid", owner);
@@ -271,43 +378,66 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         switch (verb)
         {
             case RecordWriteVerb.Set:
-                yield return Make(RecordChangeKind.Set, change =>
+                changes.Add(Make(RecordChangeKind.Set, change =>
                 {
                     Put(change, "New", field.Kind == RecordFieldKind.Boolean ? "true" : field.Kind == RecordFieldKind.Integer ? "1" : "x");
-                    Put(change, "NewTarget", other);
-                });
+                    Put(change, "NewTarget", fresh);
+                }));
                 break;
-            case RecordWriteVerb.Clear: yield return Make(RecordChangeKind.Clear); break;
+            case RecordWriteVerb.Clear: changes.Add(Make(RecordChangeKind.Clear)); break;
             case RecordWriteVerb.SetAlternative:
-                yield return Make(RecordChangeKind.SetAlternative, c => { Put(c, "WritingSystem", "en"); Put(c, "New", "x"); });
+                changes.Add(Make(RecordChangeKind.SetAlternative, c => { Put(c, "WritingSystem", "en"); Put(c, "New", "x"); }));
                 break;
             case RecordWriteVerb.ClearAlternative:
-                yield return Make(RecordChangeKind.ClearAlternative, c => Put(c, "WritingSystem", "en"));
+                changes.Add(Make(RecordChangeKind.ClearAlternative, c => Put(c, "WritingSystem", "en")));
                 break;
             case RecordWriteVerb.SetPlainRich or RecordWriteVerb.SetRich:
-                yield return Make(RecordChangeKind.SetRich, c => { Put(c, "WritingSystem", ws); Put(c, "New", "x"); });
+                changes.Add(Make(RecordChangeKind.SetRich, c => { Put(c, "WritingSystem", ws); Put(c, "New", "x"); }));
                 break;
             case RecordWriteVerb.ClearRich:
-                yield return Make(RecordChangeKind.ClearRich, c => Put(c, "WritingSystem", ws));
+                changes.Add(Make(RecordChangeKind.ClearRich, c => Put(c, "WritingSystem", ws)));
                 break;
             case RecordWriteVerb.AddObject:
                 foreach (var child in (field.Item ?? field).ObjectTypes.Where(t => catalog.CanCreate(binding.DeclaringClass, binding.Field, t.Name)))
-                    yield return Make(RecordChangeKind.AddObject, c => Put(c, "Subtree", new RecordObject { Class = child.Name }));
+                    changes.Add(Make(RecordChangeKind.AddObject, c =>
+                    {
+                        Put(c, "Subtree", new RecordObject { Class = child.Name });
+                        if (members.Count > 0) Put(c, "Anchor", StartAnchor);
+                    }));
                 break;
-            case RecordWriteVerb.MoveObject:
-                yield return Make(RecordChangeKind.MoveObject, c => Put(c, "ItemGuid", other));
+            case RecordWriteVerb.MoveObject or RecordWriteVerb.MoveReference:
+                if (members.Count == 0)
+                    return (changes, $"the real {type.Name} holds nothing in {field.Name} to move");
+                changes.Add(Make(verb == RecordWriteVerb.MoveObject ? RecordChangeKind.MoveObject : RecordChangeKind.MoveReference, c =>
+                {
+                    Put(c, verb == RecordWriteVerb.MoveObject ? "ItemGuid" : "NewTarget", members[0]);
+                    Put(c, "Anchor", StartAnchor);
+                }));
                 break;
             case RecordWriteVerb.AddReference or RecordWriteVerb.InsertReference:
-                yield return Make(RecordChangeKind.AddReference, c => Put(c, "NewTarget", other));
+                changes.Add(Make(RecordChangeKind.AddReference, c =>
+                {
+                    Put(c, "NewTarget", fresh);
+                    if (members.Count > 0 && verb == RecordWriteVerb.InsertReference) Put(c, "Anchor", StartAnchor);
+                }));
                 break;
             case RecordWriteVerb.RemoveReference:
-                yield return Make(RecordChangeKind.RemoveReference, c => Put(c, "OldTarget", other));
+                if (members.Count == 0)
+                    return (changes, $"the real {type.Name} holds nothing in {field.Name} to remove");
+                changes.Add(Make(RecordChangeKind.RemoveReference, c => Put(c, "OldTarget", members[0])));
                 break;
-            case RecordWriteVerb.MoveReference:
-                yield return Make(RecordChangeKind.MoveReference, c => Put(c, "NewTarget", other));
+            case RecordWriteVerb.RemoveObject:
+                // The one authored delete is the sense's, so it is aimed at a sense the project really holds.
+                if (members.Count == 0)
+                    return (changes, $"the real {type.Name} holds nothing in {field.Name} to remove");
+                changes.Add(Make(RecordChangeKind.RemoveObject, c => Put(c, "ItemGuid", members[^1])));
                 break;
         }
+        return (changes, null);
     }
+
+    /// <summary>Pairs this fixture cannot aim at a real object, each with its reason: a gap in the fixture, not in the lowerer.</summary>
+    private static readonly string[] KnownFixtureGaps = [];
 
     [Fact]
     public void EveryCoveredPairIsLoweredOrRefusedByARegisteredCode_AndEveryOfferedPairIsLowered()
@@ -316,8 +446,8 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var resolver = new RecordWritableFields(_schema);
         var lowerer = new RecordChangeSetLowerer(_schema, resolver);
         var failures = new List<string>();
+        var gaps = new SortedSet<string>(StringComparer.Ordinal);
         var lowered = 0;
-        var refused = 0;
         foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
         {
             if (resolution is not WritableFieldResolution.Covered)
@@ -326,58 +456,43 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             var field = type.Field(fieldName)!;
             var binding = _schema.FieldBinding(typeName, fieldName)!.Value;
             var handlerVerb = verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb;
-            var declared = OperationHandlerRegistry.RegisteredKinds.SelectMany(kind =>
-                OperationHandlerRegistry.FieldWrites(kind).Where(write => write.DeclaringClass == binding.DeclaringClass &&
-                    write.Field == binding.Field && write.Verb == handlerVerb).Select(write => (Kind: kind, Write: write))).ToArray();
-            var offered = declared.Any(item => RecordLoweringRules.Lowers(item.Kind, item.Write));
+            var offered = Declarations(binding, handlerVerb).Any(d => RecordLoweringRules.Lowers(d.Kind, d.Write));
             var subject = $"{typeName}.{fieldName} {verb}";
-            var catalogOffers = verb switch
+            var (changes, gap) = ChangesFor(type, field, verb, catalog, binding);
+            if (gap is not null)
             {
-                RecordWriteVerb.AddObject => (field.Item ?? field).ObjectTypes.Any(child =>
-                    catalog.CanCreate(binding.DeclaringClass, binding.Field, child.Name)),
-                RecordWriteVerb.RemoveObject => (field.Item ?? field).ObjectTypes.Any(child =>
-                    catalog.CanDelete(binding.DeclaringClass, binding.Field, child.Name)),
-                _ => catalog.CanWrite(binding.DeclaringClass, binding.Field),
-            };
-            if (offered && !catalogOffers)
-                failures.Add($"{subject}: the lowerer authors it but the catalog does not offer it.");
-            if (verb == RecordWriteVerb.RemoveObject)
-            {
-                // A delete is built from the project's object, so only the sense delete (the one kind that is authored) is run here.
-                if (offered && fieldName != "senses")
-                    failures.Add($"{subject}: offered, but only a sense delete is authored.");
+                if (offered)
+                    gaps.Add($"{subject}: {gap}");
                 continue;
             }
-            foreach (var change in ChangesFor(type, field, verb, catalog, binding))
+            foreach (var change in changes)
             {
                 var result = lowerer.LowerChanges(_cache, "agreement", [change]);
-                var unaccounted = result.Operations.Count + result.Refusals.Count != 1;
-                if (unaccounted)
+                if (result.Operations.Count + result.Refusals.Count != 1)
                     failures.Add($"{subject}: neither an operation nor a refusal.");
                 foreach (var refusal in result.Refusals)
                 {
-                    refused++;
                     if (!RefusalCatalog.Specs.ContainsKey(refusal.Code))
                         failures.Add($"{subject}: refused by unregistered code {refusal.Code}.");
-                    // Refusals about the project's state (the made-up object is not in it) and the anchor a made-up move lacks
-                    // are about the input; a coverage or shape refusal of an offered pair is the bug this test is for.
-                    var aboutInput = refusal.Code == RefusalCodes.RecordImportNotExecutable || refusal.Reason.Contains("MissingPlacement") ||
-                        refusal.Reason.Contains("MissingChildClass");
-                    if (offered && !aboutInput)
-                        failures.Add($"{subject}: offered by the catalog but refused: {refusal.Code} {refusal.Reason}");
+                    // Against a real object, any refusal of an offered pair is the bug: not-executable and value-stale included.
+                    if (offered)
+                        failures.Add($"{subject}: offered by the adapter but refused: {refusal.Code} {refusal.Reason}");
                 }
                 foreach (var operation in result.Operations)
                 {
                     lowered++;
-                    var accepts = OperationHandlerRegistry.FieldWrites(operation.Kind).Any(write =>
-                        write.DeclaringClass == binding.DeclaringClass && write.Field == binding.Field);
-                    if (!accepts)
+                    if (!OperationHandlerRegistry.FieldWrites(operation.Kind).Any(write =>
+                            write.DeclaringClass == binding.DeclaringClass && write.Field == binding.Field))
                         failures.Add($"{subject}: lowered to {operation.Kind}, which does not declare the field.");
+                    if (!offered)
+                        failures.Add($"{subject}: lowered although the adapter does not offer it.");
                 }
             }
         }
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures.Distinct()));
-        Assert.True(lowered > 50, $"only {lowered} lowered, {refused} refused");
+        Assert.True(lowered > 50, $"only {lowered} lowered");
+        // An offered pair the fixture cannot reach is named here with its reason; a stale or new entry fails the test.
+        Assert.True(gaps.SequenceEqual(KnownFixtureGaps), string.Join(Environment.NewLine, gaps.Select(g => "\"" + g + "\",")));
     }
 
     [Fact]
