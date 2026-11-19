@@ -44,7 +44,15 @@ public static class TrialReviewTextRenderer
             if (losses.NewNoParseWords.Count > 0) text.AppendLine("New no-parse words: " + string.Join(", ", losses.NewNoParseWords));
             if (losses.NewApprovedLossWords.Count > 0) text.AppendLine("New Approved losses: " + string.Join(", ", losses.NewApprovedLossWords));
             foreach (var reading in losses.NewlyLostReadings)
-                text.AppendLine("Lost reading: " + reading.Word + "; " + reading.ReadingIdentity);
+                text.AppendLine("Lost reading: " + reading.Word + "; " + reading.ReadingIdentity +
+                    (reading.Count is { } copies ? "; " + copies + " lost, " + reading.RemainingReadingCount + " lexicon-backed remaining" : ""));
+            if (losses.RetirementAttestation is { } attestation)
+                text.AppendLine("Retirement multiset of " + attestation.WaivedWords.Count + " waived word(s): " +
+                    (attestation.Complete ? "complete" : "incomplete (" + string.Join(", ", attestation.Limitations) + ")") +
+                    "; " + attestation.LostCopies + " lost copies across " + attestation.CaseCount + " case(s)");
+            if (losses.RetirementAttestation is { Page: { } shown, PageCount: { } of })
+                text.AppendLine("Retirement rows: page " + shown + " of " + of + " (" + losses.RetirementAttestation.RowCount +
+                    " in all); read the others with --page <N>.");
         }
         if (report.HeldWords is { Count: > 0 } held)
             text.AppendLine("New second readings held for review: " + string.Join(", ", held));

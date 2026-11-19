@@ -11,6 +11,62 @@ namespace SIL.Motif.Tests.Contract.Review;
 public sealed class ReviewReportExpandedTests
 {
     [Fact]
+    public void RetirementRowsAndAttestationRoundTripStrictlyAndMatchTheSchema()
+    {
+        var signature = new SIL.Motif.Contract.HandAnalysis.ReadingSignature(
+            SIL.Motif.Tests.TestFixtures.ReadingSignatureFixture.NativeFacts(true));
+        var losses = new TrialLosses([], [], [new TrialLostReading("w", "c", signature.Id, false, false, [])
+            { Signature = signature, Count = 2, RemainingReadingCount = 1 }])
+        { RetirementAttestation = new TrialRetirementAttestation("sha256:r", true, ["w"], 1, 2, 1, []) { Page = 1, PageCount = 3 } };
+        var json = JsonSerializer.Serialize(losses, ReviewJson.Options);
+        AssertSchema(json, "TrialLosses");
+        var back = JsonSerializer.Deserialize<TrialLosses>(json, ReviewJson.Options)!;
+        Assert.Equal(signature, back.NewlyLostReadings.Single().Signature);
+        Assert.Equal(2, back.NewlyLostReadings.Single().Count);
+        Assert.True(back.RetirementAttestation!.Complete);
+        Assert.Equal(1, back.RetirementAttestation.RowCount);
+        Assert.Equal(3, back.RetirementAttestation.PageCount);
+        var extra = JsonNode.Parse(json)!.AsObject();
+        extra["retirementAttestation"]!["extra"] = 1;
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<TrialLosses>(extra.ToJsonString(), ReviewJson.Options));
+        var bare = JsonSerializer.Serialize(new TrialLosses([], [], []), ReviewJson.Options);
+        Assert.DoesNotContain("retirementAttestation", bare);
+        AssertSchema(bare, "TrialLosses");
+    }
+
+    [Fact]
+    public void RetirementRowCountsRequireASignatureAndRejectInvalidValues()
+    {
+        var signature = new SIL.Motif.Contract.HandAnalysis.ReadingSignature(
+            SIL.Motif.Tests.TestFixtures.ReadingSignatureFixture.NativeFacts(true));
+        foreach (var row in new[]
+        {
+            new TrialLostReading("w", "c", "r", false, false, []) { Count = 1 },
+            new TrialLostReading("w", "c", "r", false, false, []) { Signature = signature },
+            new TrialLostReading("w", "c", "r", false, false, []) { Signature = signature, Count = 0, RemainingReadingCount = 0 },
+            new TrialLostReading("w", "c", "r", false, false, []) { Signature = signature, Count = 1, RemainingReadingCount = -1 },
+        })
+            Assert.Throws<JsonException>(() => JsonSerializer.Serialize(row, ReviewJson.Options));
+        Assert.Throws<JsonException>(() => JsonSerializer.Serialize(
+            new TrialRetirementAttestation("d", true, ["w"], -1, 0, 0, []), ReviewJson.Options));
+        foreach (var attestation in new[]
+        {
+            new TrialRetirementAttestation("d", true, ["w"], 0, 0, 0, []) { Page = 1 },
+            new TrialRetirementAttestation("d", true, ["w"], 0, 0, 0, []) { Page = 0, PageCount = 1 },
+            new TrialRetirementAttestation("d", true, ["w"], 0, 0, 0, []) { Page = 3, PageCount = 2 },
+            new TrialRetirementAttestation("d", true, ["w"], 0, 0, -1, []),
+        })
+            Assert.Throws<JsonException>(() => JsonSerializer.Serialize(attestation, ReviewJson.Options));
+    }
+
+    [Fact]
+    public void TheSchemaTellsAGateNotToSumAssertionRowsAndSignatureRows()
+    {
+        var description = ReadSchema()["$defs"]!["TrialLostReading"]!["description"]!.GetValue<string>();
+        Assert.Contains("must not sum across the two kinds", description);
+    }
+
+    [Fact]
     public void EveryRowKindRoundTripsStrictly()
     {
         Type[] types = [typeof(WordRow), typeof(TokenRow), typeof(CellRow), typeof(DiagnosticRow),

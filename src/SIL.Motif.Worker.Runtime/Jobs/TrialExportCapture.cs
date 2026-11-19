@@ -270,13 +270,19 @@ public sealed class TrialExportCapture
     private static TrialExportReading ProjectReading(ParseAnalysis reading)
     {
         var signature = reading.Signature ?? new ReadingSignatureReader(null).Read(reading);
-        var morphs = reading.MorphemeAcceptance ?? reading.Morphs.Select(morph => morph.GuessedString is not null
-            ? ReadingAcceptance.Guessed : ReadingAcceptance.Unresolved).ToArray();
-        var acceptance = morphs.Contains(ReadingAcceptance.Guessed) ? ReadingAcceptance.Guessed :
-            morphs.Count == 0 || morphs.Contains(ReadingAcceptance.Unresolved) ? ReadingAcceptance.Unresolved :
-            ReadingAcceptance.LexiconBacked;
-        return new(signature.Id, signature, acceptance, morphs);
+        var morphs = MorphemeAcceptance(reading);
+        return new(signature.Id, signature, Acceptance(morphs), morphs);
     }
+
+    internal static IReadOnlyList<ReadingAcceptance> MorphemeAcceptance(ParseAnalysis reading) =>
+        reading.MorphemeAcceptance ?? reading.Morphs.Select(morph => morph.GuessedString is not null
+            ? ReadingAcceptance.Guessed : ReadingAcceptance.Unresolved).ToArray();
+
+    /// <summary>The Reading-level verdict: guessed if any morpheme was guessed, lexicon-backed only when all resolve.</summary>
+    internal static ReadingAcceptance Acceptance(IReadOnlyList<ReadingAcceptance> morphs) =>
+        morphs.Contains(ReadingAcceptance.Guessed) ? ReadingAcceptance.Guessed :
+        morphs.Count == 0 || morphs.Contains(ReadingAcceptance.Unresolved) ? ReadingAcceptance.Unresolved :
+        ReadingAcceptance.LexiconBacked;
 
     private static bool HasMorphemes(ParseAnalysis? reading) =>
         reading?.Morphs is { Count: > 0 } && reading.Morphs.All(morph => morph is not null);

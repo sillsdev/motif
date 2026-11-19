@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SIL.Motif.Contract.HandAnalysis;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Contract.Review;
@@ -75,6 +76,24 @@ public sealed record TrialLostReading(
     [property: JsonRequired] bool ReferenceConfirmed,
     [property: JsonRequired] IReadOnlyList<string> AssertionIds) : IJsonOnDeserialized, IJsonOnSerializing
 {
+    /// <summary>
+    /// The canonical Reading that lost copies, shared with the export. Present on a retirement row for a waived word,
+    /// where <see cref="ReadingIdentity"/> is its <see cref="ReadingSignature.Id"/> and the assertion fields name any
+    /// frozen expectation the lost Reading matched. Rows with a signature (the retirement multiset) and rows without
+    /// one (confirmed losses of frozen expectations) describe the same loss from two sides: a gate must read each kind
+    /// on its own and must not sum across the two kinds.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReadingSignature? Signature { get; init; }
+
+    /// <summary>The copies of <see cref="Signature"/> the parser emitted before this case and no longer emits after it.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? Count { get; init; }
+
+    /// <summary>The lexicon-backed Reading copies the case still emits after the change, whatever their signature.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? RemainingReadingCount { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 
@@ -82,6 +101,48 @@ public sealed record TrialLostReading(
     {
         if (Word is null || CaseKey is null || ReadingIdentity is null || AssertionIds is null ||
             AssertionIds.Any(item => item is null)) throw new JsonException("Invalid TrialLostReading.");
+        var counted = Signature is not null;
+        if (counted != (Count is not null) || counted != (RemainingReadingCount is not null) ||
+            Count is < 1 or > 9007199254740991L || RemainingReadingCount is < 0 or > 9007199254740991L)
+            throw new JsonException("Invalid TrialLostReading retirement counts.");
+    }
+}
+
+/// <summary>
+/// States, bound to one saved report, whether the signature rows of <see cref="TrialLosses.NewlyLostReadings"/> cover the
+/// full retirement multiset of the waived words across every measured case. A script may rely on the rows only when
+/// <see cref="Complete"/> is true.
+/// </summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record TrialRetirementAttestation(
+    [property: JsonRequired] string ReportDigest,
+    [property: JsonRequired] bool Complete,
+    [property: JsonRequired] IReadOnlyList<string> WaivedWords,
+    [property: JsonRequired] long CaseCount,
+    [property: JsonRequired] long LostCopies,
+    [property: JsonRequired] long RowCount,
+    [property: JsonRequired] IReadOnlyList<string> Limitations) : IJsonOnDeserialized, IJsonOnSerializing
+{
+    /// <summary>The one-based page of signature rows a read returned. Absent on the stored report; set by a read.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? Page { get; init; }
+
+    /// <summary>The number of pages the signature rows fill at the read's byte bound. Set with <see cref="Page"/>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? PageCount { get; init; }
+
+    void IJsonOnDeserialized.OnDeserialized() => Validate();
+    void IJsonOnSerializing.OnSerializing() => Validate();
+
+    private void Validate()
+    {
+        if (ReportDigest is null || WaivedWords is null || WaivedWords.Any(item => item is null) ||
+            Limitations is null || Limitations.Any(item => item is null) ||
+            CaseCount is < 0 or > 9007199254740991L || LostCopies is < 0 or > 9007199254740991L ||
+            RowCount is < 0 or > 9007199254740991L || (Page is null) != (PageCount is null) ||
+            Page is < 1 or > 9007199254740991L || PageCount is < 1 or > 9007199254740991L || Page > PageCount ||
+            Complete && Limitations.Count > 0)
+            throw new JsonException("Invalid TrialRetirementAttestation.");
     }
 }
 
@@ -92,10 +153,18 @@ public sealed record TrialLosses(
     [property: JsonRequired] IReadOnlyList<string> NewApprovedLossWords,
     [property: JsonRequired] IReadOnlyList<TrialLostReading> NewlyLostReadings) : IJsonOnDeserialized, IJsonOnSerializing
 {
-    /// <summary>The distinct spellings affected by any measured loss.</summary>
+    /// <summary>Present when the Trial waived words; see <see cref="TrialRetirementAttestation"/>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TrialRetirementAttestation? RetirementAttestation { get; init; }
+
+    /// <summary>
+    /// The distinct spellings affected by any measured loss. A retirement row that matched no frozen expectation records
+    /// a waived word's lost copy; it is not itself a confirmed loss and adds no word.
+    /// </summary>
     [JsonIgnore]
     public IReadOnlyList<string> Words => NewNoParseWords.Concat(NewApprovedLossWords)
-        .Concat(NewlyLostReadings.Select(reading => reading.Word)).Distinct(StringComparer.Ordinal)
+        .Concat(NewlyLostReadings.Where(reading => reading.Signature is null || reading.Approved || reading.ReferenceConfirmed)
+            .Select(reading => reading.Word)).Distinct(StringComparer.Ordinal)
         .Order(StringComparer.Ordinal).ToArray();
 
     void IJsonOnDeserialized.OnDeserialized() => Validate();

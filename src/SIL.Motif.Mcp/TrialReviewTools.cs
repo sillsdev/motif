@@ -64,7 +64,7 @@ internal static class TrialReviewTools
         if (refresh && job is null && report is null)
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Refresh requires a job or report.");
         if (refresh && (args.Has("detail") && args.Optional("detail") != "summary" || args.Has("section") ||
-            args.Has("set") || args.Has("cursor") || args.Has("limit")))
+            args.Has("set") || args.Has("cursor") || args.Has("limit") || args.Has("page")))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Refresh cannot use detail selectors.");
         return null;
     }
@@ -88,7 +88,7 @@ internal static class TrialReviewTools
             args.Optional("job"), args.Optional("report"), detail, args.Optional("section"), args.Optional("set"),
             Outcome: args.Optional("outcome"), Flag: flag, Filter: args.Optional("filter"), Word: args.Optional("word"),
             Case: args.Optional("case"), Trace: args.Flag("trace"), Side: side, Cursor: args.Optional("cursor"),
-            Limit: args.OptionalInt("limit")));
+            Limit: args.OptionalInt("limit"), Page: args.OptionalInt("page")));
     }
 
     internal static ToolOutcome ReadJob(ServerContext context, string proposal, string job)

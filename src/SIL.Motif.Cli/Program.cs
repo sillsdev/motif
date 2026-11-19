@@ -1949,6 +1949,13 @@ try
             }
             Side? reviewSide = flags.GetValueOrDefault("side") switch
             { null => null, "before" => Side.Before, "after" => Side.After, _ => (Side)(-1) };
+            int? reviewPage = null;
+            if (flags.TryGetValue("page", out var reviewPageText))
+            {
+                if (!int.TryParse(reviewPageText, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedPage) || parsedPage < 1)
+                    return Usage("--page must be a positive integer.", asJson);
+                reviewPage = parsedPage;
+            }
             int? reviewLimit = null;
             if (flags.TryGetValue("limit", out var reviewLimitText))
             {
@@ -1959,7 +1966,7 @@ try
             var reviewRequest = new ReviewReadRequest("project", positionals[1], flags.GetValueOrDefault("job"),
                 flags.GetValueOrDefault("report"), reviewDetail, flags.GetValueOrDefault("section"), flags.GetValueOrDefault("set"),
                 flags.GetValueOrDefault("outcome"), reviewFlag, flags.GetValueOrDefault("filter"), flags.GetValueOrDefault("word"),
-                flags.GetValueOrDefault("case"), flags.ContainsKey("trace"), reviewSide, flags.GetValueOrDefault("cursor"), reviewLimit);
+                flags.GetValueOrDefault("case"), flags.ContainsKey("trace"), reviewSide, flags.GetValueOrDefault("cursor"), reviewLimit, reviewPage);
             if (reviewRequest.Validate() is { } reviewProblem) return Usage(reviewProblem, asJson);
             var refresh = flags.ContainsKey("refresh-report");
             if (refresh && (reviewRequest.Section is not null || reviewRequest.Set is not null || reviewRequest.Outcome is not null ||

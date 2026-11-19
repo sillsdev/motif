@@ -60,6 +60,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         var overlappingLosses = new HashSet<(string Word, string Reading)>();
         var negativeSets = new HashSet<string>(StringComparer.Ordinal);
         var named = new TrialGateEvidence();
+        var retirement = new TrialRetirementEvidence(input.ExpectedLosses ?? []);
         var requiredIncomplete = false;
         var required = inputs.DeclaredGate?.WordSets.Select(set => set.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var item in Classify(inputs, before, after))
@@ -67,6 +68,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             ct.ThrowIfCancellationRequested();
             accumulator.Add(item);
             named.Add(item);
+            retirement.Add(item, before.GetValueOrDefault(item.CaseKey)?.Morphology, after.GetValueOrDefault(item.CaseKey)?.Morphology);
             if (required is not null && item.Memberships.Any(member => required.Contains(member.SetId)) &&
                 (item.Before.Completion != Completion.Complete || item.After.Completion != Completion.Complete))
                 requiredIncomplete = true;
@@ -139,7 +141,11 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
                 ReviewFlagId.ParserWorkIncrease => facts.Flags.Contains(ReviewFlagId.ParserWorkIncrease) ? 1 : 0,
                 ReviewFlagId.NewWarningsOrParsimony => (facts.Findings?.AddedWarnings.Count ?? 0) +
                     (facts.Findings?.Measures.Sum(measure => measure.Limitation is null ? measure.Added.Count : 0) ?? 0), _ => 0 })).ToArray();
-        var losses = named.Losses;
+        var losses = named.Losses with { RetirementAttestation = retirement.Attestation(digest) };
+        if (retirement.Rows.Count > 0)
+            losses = losses with { NewlyLostReadings = losses.NewlyLostReadings.Concat(retirement.Rows)
+                .OrderBy(item => item.Word, StringComparer.Ordinal).ThenBy(item => item.ReadingIdentity, StringComparer.Ordinal)
+                .ThenBy(item => item.CaseKey, StringComparer.Ordinal).ToArray() };
         var report = new ReportView("motif.proposal-review-report", 1, "pending", digest, DetailLevel.Summary,
             pins, new Freshness(FreshnessRelation.Unknown, ["freshness-not-checked"]), summary, evidence,
             limitations, DetailAvailability.Available, [], null, null, null, [])

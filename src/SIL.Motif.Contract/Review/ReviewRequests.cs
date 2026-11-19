@@ -16,7 +16,7 @@ public sealed record ReviewReadRequest(
     string ProjectKey, string ProposalId, string? JobId = null, string? ReportId = null,
     DetailLevel? Detail = null, string? Section = null, string? Set = null, string? Outcome = null,
     ReviewFlagId? Flag = null, string? Filter = null, string? Word = null, string? Case = null,
-    bool Trace = false, Side? Side = null, string? Cursor = null, int? Limit = null)
+    bool Trace = false, Side? Side = null, string? Cursor = null, int? Limit = null, int? Page = null)
 {
     /// <summary>Returns an argument problem before a stored read or diagnostic can do work.</summary>
     public string? Validate()
@@ -35,6 +35,9 @@ public sealed record ReviewReadRequest(
             if (Word is null && Case is null) return "child section requires a word or case";
             if (Trace) return "child section cannot select a trace";
         }
+        if (Page is < 1) return "page must be a positive integer";
+        if (Page is not null && (Section is not null || Trace || Cursor is not null || Word is not null || Case is not null))
+            return "page reads the retirement rows of the report summary only";
         if (JobId is not null && ReportId is not null) return "job and report are exclusive";
         if (Word is not null && Case is not null) return "word and case are exclusive";
         if (Trace && Word is null && Case is null) return "trace requires a word or case";

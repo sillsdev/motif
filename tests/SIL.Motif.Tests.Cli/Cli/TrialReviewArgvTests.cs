@@ -225,6 +225,151 @@ public sealed class TrialReviewArgvTests
         finally { Directory.Delete(seed.Root, recursive: true); }
     }
 
+    [Fact]
+    public void ASavedTrialNamesTheCanonicalReadingsAndCopiesRetiredFromEachWaivedWord()
+    {
+        const string other = "22222222-2222-2222-2222-222222222222";
+        var reader = new SIL.Motif.Host.PanGloss.ReadingSignatureReader(null);
+        ParseAnalysis Backed(string form) => reader.Capture(new ParseAnalysis([new ParseMorph(form, Msa, null, null)]))
+            with { MorphemeAcceptance = [ReadingAcceptance.LexiconBacked] };
+        ParseWordEvidence Parsed(string word, params ParseAnalysis[] readings) =>
+            new("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false, readings, []);
+        var a = Backed(Form);
+        var b = Backed(other);
+        var seed = SeedTrial(_ => (
+            [new("case-cat", "cat", "analysed", Parsed("cat", a, a)), new("case-dog", "dog", "analysed", Parsed("dog", a, b)),
+                new("case-fox", "fox", "analysed", Parsed("fox", a, b))],
+            [new("case-cat", "cat", "analysed", Parsed("cat", a)), new("case-dog", "dog", "analysed", Parsed("dog", a)),
+                new("case-fox", "fox", "analysed", Parsed("fox", a, b))]), ["cat", "dog", "fox"],
+            expectedLosses: ["cat", "dog"]);
+        try
+        {
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+            var exit = SIL.Motif.Cli.Program.Run(["proposal", "trial", "--project", seed.Project, seed.Proposal, "--json"],
+                output, error, new Dictionary<string, string?>(StringComparer.Ordinal), static (_, _) => { });
+            Assert.True(exit == 0, error.ToString());
+            using var json = JsonDocument.Parse(output.ToString());
+            var report = json.RootElement.GetProperty("report");
+            var losses = report.GetProperty("losses");
+            var rows = losses.GetProperty("newlyLostReadings").EnumerateArray().ToArray();
+            Assert.Equal(["cat", "dog"], rows.Select(row => row.GetProperty("word").GetString()));
+            Assert.Equal(1, rows[0].GetProperty("count").GetInt64());
+            Assert.Equal(1, rows[1].GetProperty("count").GetInt64());
+            Assert.Equal(1, rows[0].GetProperty("remainingReadingCount").GetInt64());
+            Assert.Equal(a.Signature!.Id, rows[0].GetProperty("readingIdentity").GetString());
+            Assert.Equal(b.Signature!.Id, rows[1].GetProperty("readingIdentity").GetString());
+            Assert.Equal(a.Signature.Morphemes[0].AllomorphId, rows[0].GetProperty("signature").GetProperty("morphemes")[0].GetProperty("allomorphId").GetString());
+            var attestation = losses.GetProperty("retirementAttestation");
+            Assert.True(attestation.GetProperty("complete").GetBoolean());
+            Assert.Equal(report.GetProperty("reportDigest").GetString(), attestation.GetProperty("reportDigest").GetString());
+            Assert.Equal(2, attestation.GetProperty("lostCopies").GetInt64());
+            Assert.Equal(["cat", "dog"], attestation.GetProperty("waivedWords").EnumerateArray().Select(item => item.GetString()));
+            var saved = Assert.IsType<AvailableTrialResult>(
+                TrialReviewReads.ReadStored(seed.Project, new ReviewReadRequest("project", seed.Proposal)).Value);
+            Assert.Empty(saved.Gate!.UnexpectedLosses);
+            Assert.NotEqual(TrialGateState.Loss, saved.Gate.State);
+            Assert.Contains("Retirement multiset of 2 waived word(s): complete; 2 lost copies",
+                SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(saved));
+            Assert.Contains("; 1 lost, 1 lexicon-backed remaining", SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(saved));
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    private static JsonElement RunTrialJson(string project, string proposal, params string[] extra)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var exit = SIL.Motif.Cli.Program.Run(["proposal", "trial", "--project", project, proposal, .. extra, "--json"],
+            output, error, new Dictionary<string, string?>(StringComparer.Ordinal), static (_, _) => { });
+        Assert.True(exit == 0, error + output.ToString());
+        return JsonDocument.Parse(output.ToString()).RootElement.Clone();
+    }
+
+    [Theory]
+    [InlineData("capped-after", "case-incomplete")]
+    [InlineData("unsignatured", "reading-signature-unavailable")]
+    [InlineData("unmeasured-waived", "waived-word-not-measured")]
+    public void AnIncompleteRetirementAttestationSaysSoAndNamesWhy(string scenario, string reason)
+    {
+        var reader = new SIL.Motif.Host.PanGloss.ReadingSignatureReader(null);
+        var a = reader.Capture(new ParseAnalysis([new ParseMorph(Form, Msa, null, null)]))
+            with { MorphemeAcceptance = [ReadingAcceptance.LexiconBacked] };
+        ParseWordEvidence Parsed(string word, params ParseAnalysis[] readings) =>
+            new("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false, readings, []);
+        var bare = new ParseAnalysis([new ParseMorph(Form, Msa, null, null)]);
+        var seed = SeedTrial(_ => (
+            [new("case-cat", "cat", "analysed", Parsed("cat", scenario == "unsignatured" ? bare : a))],
+            [new("case-cat", "cat", scenario == "capped-after" ? "capped" : "no-analysis",
+                scenario == "capped-after" ? Parsed("cat", a) with { Capped = true } : Parsed("cat"))]), ["cat"],
+            expectedLosses: scenario == "unmeasured-waived" ? ["cat", "ghost"] : ["cat"]);
+        try
+        {
+            Assert.True(TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job).Succeeded);
+            var attestation = RunTrialJson(seed.Project, seed.Proposal).GetProperty("report").GetProperty("losses")
+                .GetProperty("retirementAttestation");
+            Assert.False(attestation.GetProperty("complete").GetBoolean());
+            Assert.Contains(reason, attestation.GetProperty("limitations").EnumerateArray().Select(item => item.GetString()));
+            var saved = Assert.IsType<AvailableTrialResult>(
+                TrialReviewReads.ReadStored(seed.Project, new ReviewReadRequest("project", seed.Proposal)).Value);
+            Assert.Contains("incomplete (", SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(saved));
+            Assert.Contains(reason, SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(saved));
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Fact]
+    public void RetirementRowsPageByByteBoundWithoutRefusalAndEveryPageReachesTheWholeMultiset()
+    {
+        var reader = new SIL.Motif.Host.PanGloss.ReadingSignatureReader(null);
+        var a = reader.Capture(new ParseAnalysis([new ParseMorph(Form, Msa, null, null)]))
+            with { MorphemeAcceptance = [ReadingAcceptance.LexiconBacked] };
+        ParseWordEvidence Parsed(string word, params ParseAnalysis[] readings) =>
+            new("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false, readings, []);
+        var words = Enumerable.Range(0, 150).Select(index => "w" + index.ToString("D4")).ToArray();
+        var seed = SeedTrial(_ => (
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Parsed(word, a))).ToArray(),
+            words.Select(word => new TrialReviewObservation("case-" + word, word, "no-analysis", Parsed(word))).ToArray()), words,
+            expectedLosses: words);
+        try
+        {
+            Assert.True(TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job).Succeeded);
+            var firstRead = RunTrialJson(seed.Project, seed.Proposal);
+            var first = firstRead.GetProperty("report").GetProperty("losses");
+            var attestation = first.GetProperty("retirementAttestation");
+            Assert.True(attestation.GetProperty("complete").GetBoolean());
+            Assert.Equal(150, attestation.GetProperty("rowCount").GetInt64());
+            Assert.Equal(150, attestation.GetProperty("lostCopies").GetInt64());
+            var pages = attestation.GetProperty("pageCount").GetInt64();
+            Assert.True(pages > 1, "150 signature rows must not all travel inline.");
+            Assert.Equal(1, attestation.GetProperty("page").GetInt64());
+            var seen = new List<string>();
+            for (var page = 1; page <= pages; page++)
+            {
+                var read = page == 1 ? firstRead : RunTrialJson(seed.Project, seed.Proposal, "--page", page.ToString());
+                var rows = read.GetProperty("report").GetProperty("losses").GetProperty("newlyLostReadings").EnumerateArray().ToArray();
+                Assert.Equal(page, read.GetProperty("report").GetProperty("losses").GetProperty("retirementAttestation")
+                    .GetProperty("page").GetInt64());
+                Assert.InRange(rows.Sum(row => row.GetRawText().Length), 1, 20_000);
+                seen.AddRange(rows.Select(row => row.GetProperty("word").GetString()!));
+            }
+            Assert.Equal(words, seen);
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+            var beyond = SIL.Motif.Cli.Program.Run(["proposal", "trial", "--project", seed.Project, seed.Proposal, "--page",
+                (pages + 1).ToString(), "--json"], output, error,
+                new Dictionary<string, string?>(StringComparer.Ordinal), static (_, _) => { });
+            Assert.NotEqual(0, beyond);
+            Assert.Contains("difference.invalid-page", output.ToString() + error);
+            var saved = Assert.IsType<AvailableTrialResult>(
+                TrialReviewReads.ReadStored(seed.Project, new ReviewReadRequest("project", seed.Proposal)).Value);
+            Assert.Contains("page 1 of " + pages, SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(saved));
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
     [Theory]
     [InlineData(false, GainGateMode.Hold, false, TrialGateState.Green)]
     [InlineData(true, GainGateMode.Hold, false, TrialGateState.Unmeasured)]

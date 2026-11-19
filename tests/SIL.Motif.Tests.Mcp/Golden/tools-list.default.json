@@ -9771,6 +9771,12 @@
           "minimum": 1,
           "maximum": 200
         },
+        "page": {
+          "type": "integer",
+          "description": "Page of the retirement signature rows of a saved report, filled to a byte bound. Default 1; see losses.retirementAttestation.pageCount.",
+          "minimum": 1,
+          "maximum": 1000000
+        },
         "project": {
           "type": "string",
           "description": "Known project name or recorded .fwdata path."

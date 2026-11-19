@@ -17,7 +17,8 @@ public static class TrialReviewReads
     {
         ArgumentNullException.ThrowIfNull(request);
         return ProjectStoreCommand.ReadExisting(projectPath, Absent(request), (database, project) =>
-            new TrialReviewCommands(database).Read(request with { ProjectKey = ProjectWorkspaceKey.Compute(project) }));
+            TrialRetirementPaging.Apply(
+                new TrialReviewCommands(database).Read(request with { ProjectKey = ProjectWorkspaceKey.Compute(project) }), request.Page));
     }
 
     /// <summary>The outcome of a read when the project has no Motif store yet.</summary>
@@ -55,10 +56,10 @@ public static class TrialReviewReads
             if (read.Refusal?.Code == RefusalCodes.DifferenceNoBefore)
                 read = commands.ProduceAsync(new ReviewProduceRequest(key, proposal, job, null)).GetAwaiter().GetResult();
             if (!read.Succeeded || read.Value is not AvailableTrialResult available) return read;
-            return CommandOutcome<TrialReviewResult>.Success(available with
+            return TrialRetirementPaging.Apply(CommandOutcome<TrialReviewResult>.Success(available with
             {
                 Gate = available.Report.Gate ?? GateOf(available, [], ReadGateWords(commands, key, proposal, available)),
-            });
+            }), null);
         });
 
     /// <summary>The words a report's rows name, when the report can list them.</summary>
