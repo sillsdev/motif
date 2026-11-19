@@ -76,6 +76,11 @@ public sealed class WorkspaceSelection : ObservableObject
     /// <summary>Whether the latest requested Selection is still being opened or summarized.</summary>
     public bool IsLoading => _isLoading;
 
+    /// <summary>Whether the Selection being read names no Text and no added word, so there is nothing to wait for.</summary>
+    public bool IsLoadingNothingChosen => _isLoading && _loadingNothingChosen;
+
+    private bool _loadingNothingChosen;
+
     /// <summary>Notifies model owners to release registrations and detail before the old reader is disposed.</summary>
     internal event Action? Replacing;
 
@@ -127,7 +132,9 @@ public sealed class WorkspaceSelection : ObservableObject
     {
         var generation = ++_generation;
         _isLoading = true;
+        _loadingNothingChosen = textIds.Count == 0 && addedWords.Count == 0;
         OnPropertyChanged(nameof(IsLoading));
+        OnPropertyChanged(nameof(IsLoadingNothingChosen));
         Cancel(_cancellation);
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _cancellation = cancellation;

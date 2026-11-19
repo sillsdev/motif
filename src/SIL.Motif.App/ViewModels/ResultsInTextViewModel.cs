@@ -270,7 +270,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public string ChosenTextsRemovalPreview => NativeRemovalPreview(AnalysisOperationScope.ChosenTexts);
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
-    public string? Message => _selectionOwner.IsLoading == true && !_suspended ? "Reading selected Texts…" :
+    public string? Message => _selectionOwner is { IsLoading: true, IsLoadingNothingChosen: false } && !_suspended ? "Reading selected Texts…" :
         HasStandaloneSelectedWord ? null : Texts.Count == 0
             ? _assess.Result is null ? null : _texts.HasAvailableTexts
                 ? "Choose a text in Texts to read the results in place."

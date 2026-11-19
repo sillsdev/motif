@@ -2182,6 +2182,35 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ItSaysItIsReadingSelectedTextsOnlyWhenSomeTextIsSelected()
+    {
+        var fake = new FakeCommandClient();
+        var gate = new TaskCompletionSource();
+        fake.SelectionReaderHandler = async (_, _) =>
+        {
+            await gate.Task;
+            return CommandOutcome<SelectionReader>.Refused(new Refusal("selection-reader.no-baseline",
+                FailureReason.Refused, "Not available in this test."));
+        };
+        var selection = new SelectionViewModel(fake);
+        var inText = new ResultsInTextViewModel(
+            new TextWordsViewModel(fake, selection, fake.ReaderOwner), new AssessViewModel(fake, selection), _ => { },
+            new ChangesViewModel(fake), fake, fake.ReaderOwner);
+        try
+        {
+            var nothingChosen = fake.ReaderOwner.ReloadAsync(ProjectPath, [], []);
+            Assert.True(fake.ReaderOwner.IsLoading);
+            Assert.Null(inText.Message);
+
+            var someChosen = fake.ReaderOwner.ReloadAsync(ProjectPath, [Guid.NewGuid()], []);
+            Assert.Equal("Reading selected Texts…", inText.Message);
+            gate.SetResult();
+            await Task.WhenAll(nothingChosen, someChosen);
+        }
+        finally { gate.TrySetResult(); }
+    }
+
+    [Fact]
     public void BeforeTheFirstParseTheReaderShowsTheTextWithItsFieldWorksLine()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
