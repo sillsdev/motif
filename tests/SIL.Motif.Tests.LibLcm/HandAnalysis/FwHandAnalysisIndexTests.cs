@@ -146,6 +146,37 @@ public sealed class FwHandAnalysisIndexTests : IDisposable, IHandAnalysisProject
     }
 
     [Fact]
+    public void ADifferentlyResolvedSenseOfTheSameMorphemeLosesTheApprovalAndAnAmbiguousOneKeepsIt()
+    {
+        var entry = Entry(_seed.FirstEntryId);
+        var first = entry.SensesOS[0];
+        ILexSense second = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            second = _cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(second);
+            second.MorphoSyntaxAnalysisRA = first.MorphoSyntaxAnalysisRA;
+        });
+        var approved = Analysis(Wordform("zzSenseApproved"), _seed.FirstEntryId, Opinions.approves);
+        var other = Analysis(Wordform("zzSenseOther"), _seed.FirstEntryId, Opinions.noopinion);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            approved.MorphBundlesOS[0].SenseRA = first;
+            other.MorphBundlesOS[0].SenseRA = second;
+        });
+        var set = ApprovedReadingSet.Read(_cache);
+        var reader = new ReadingSignatureReader(_cache);
+        var ambiguous = reader.Read(new ParseAnalysis([new ParseMorph(entry.LexemeFormOA.Guid.ToString(),
+            first.MorphoSyntaxAnalysisRA.Guid.ToString(), null, null)]));
+
+        Assert.Equal(ReadingSenseStatus.Resolved, Assert.Single(set.Analyses).Signature!.Morphemes[0].SenseStatus);
+        Assert.Equal(ReadingSenseStatus.Ambiguous, ambiguous.Morphemes[0].SenseStatus);
+        Assert.Single(set.KeptBy(ambiguous));
+        Assert.Empty(set.KeptBy(ReadingSignatureReader.Read(other)!));
+        Assert.Single(set.KeptBy(ReadingSignatureReader.Read(approved)!));
+    }
+
+    [Fact]
     public void TheIdentityMapResolvesAFrozenIdentityAndRefusesGuessesAndStrangers()
     {
         var entry = Entry(_seed.FirstEntryId);
