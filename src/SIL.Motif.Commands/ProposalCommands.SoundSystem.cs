@@ -1029,7 +1029,7 @@ public static partial class ProposalCommands
                 CollectIds(property.Value, ids, property.Name is "msa" or "featStruc" or "feature" or "value" or
                     "entry" or "form" or "inflType" or "morphType" or "sense" or "recordTypeId" or "wordformId" or
                     "analysisId" or "words" or "environments" or "members" or "phoneme" or
-                    "naturalClass" or "ref" or "member" or "variant" or "component" or "variantType" or "first" or "rest" or "replacement" or "allomorphs");
+                    "naturalClass" or "ref" or "member" or "variant" or "component" or "variantType" or "first" or "rest" or "replacement" or "allomorphs" or "left" or "right" or "result");
         else if (value.ValueKind == JsonValueKind.Array)
             foreach (var item in value.EnumerateArray()) CollectIds(item, ids, reference);
     }

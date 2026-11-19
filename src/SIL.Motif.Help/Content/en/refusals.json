@@ -260,6 +260,18 @@
     "why": "The project has no morphology data to hold an ad hoc prohibition. Open it once in FieldWorks, then compose again.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "compound-rule.invalid-category": {
+    "why": "Choose categories that exist: a part of speech in the project or created earlier in this Draft. Find ids with the grammar reading commands.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "compound-rule.duplicate": {
+    "why": "This compound rule already exists in the project or earlier in this Draft. To turn an existing one off or on, use compose-edit-compound-rule.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "compound-rule.no-morphology-data": {
+    "why": "The project has no morphology data to hold a compound rule. Open it once in FieldWorks, then compose again.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
   "variant.stale-reference": {
     "why": "The variant reference changed. Compose the link again against the current project.",
     "source": "Hand-written from the Motif MCP refusal advice."

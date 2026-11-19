@@ -15,5 +15,5 @@ Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the 
 
 ## When not to use this
 
-- It turns an existing compound rule off or on and builds nothing; it cannot repair a rule that builds the wrong words.
+- It turns an existing compound rule off or on and builds nothing; to create one use `compose-author-compound-rule`; it cannot repair a rule that builds the wrong words.
 - Turning a rule off removes real compounds too, so Trial known compounds first and ask the linguist before switching one off.

@@ -5685,6 +5685,84 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-author-compound-rule"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-compound-rule.",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "endocentric",
+                          "exocentric"
+                        ],
+                        "description": "endocentric when one member is the head and gives the compound its category, or exocentric when neither is and the result category is named."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Optional short name for the rule, written in the project\u0027s default analysis writing system."
+                      },
+                      "left": {
+                        "type": "string",
+                        "description": "Id of the category (part of speech) the left member must have; its subcategories also match."
+                      },
+                      "right": {
+                        "type": "string",
+                        "description": "Id of the category (part of speech) the right member must have; its subcategories also match."
+                      },
+                      "head": {
+                        "type": "string",
+                        "enum": [
+                          "left",
+                          "right"
+                        ],
+                        "description": "For an endocentric rule, which member is the head: right (the default, as in FieldWorks) or left. Not allowed for an exocentric rule."
+                      },
+                      "result": {
+                        "type": "string",
+                        "description": "Id of the category the compound has. Required for an exocentric rule; for an endocentric rule it optionally overrides the head\u0027s category."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "kind",
+                      "left",
+                      "right"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-edit-adhoc-prohibition-references"
                     ]
                   },

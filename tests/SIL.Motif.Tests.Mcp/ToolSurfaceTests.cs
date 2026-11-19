@@ -54,6 +54,7 @@ public sealed class ToolSurfaceTests
     [InlineData("motif_change_affix_kind", new[] { "draft", "msa", "kind", "toCategory", "slots", "project" })]
     [InlineData("motif_edit_clitic_attachment", new[] { "draft", "target", "expectedCategories", "categories", "project" })]
     [InlineData("motif_link_variant", new[] { "draft", "target", "component", "variantType", "project" })]
+    [InlineData("motif_author_compound_rule", new[] { "draft", "kind", "name", "left", "right", "head", "result", "project" })]
     [InlineData("motif_author_adhoc_prohibition", new[] { "draft", "kind", "first", "rest", "restAnyOf", "adjacency", "project" })]
     [InlineData("motif_edit_adhoc_prohibition_references", new[] { "draft", "target", "expected", "references", "project" })]
     [InlineData("motif_delete_adhoc_prohibition", new[] { "draft", "target", "expected", "project" })]
@@ -384,7 +385,7 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(80, verbs.Length);
+        Assert.Equal(81, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -396,6 +397,7 @@ public sealed class ToolSurfaceTests
             "compose-make-variants-of",
             "compose-merge-lexical-entries",
             "compose-author-adhoc-prohibition",
+            "compose-author-compound-rule",
             "compose-edit-adhoc-prohibition-references",
             "compose-delete-adhoc-prohibition",
             "compose-delete-affix-process",

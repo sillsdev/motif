@@ -585,6 +585,31 @@
     ],
     "redirect": "Last resort. Prefer a slot, template, feature or environment that removes the need before forbidding a combination (guides suffix-prefix-slots, feature-conditioned-slots)."
   },
+  "compose-author-compound-rule": {
+    "title": "Create a compound rule",
+    "description": "Creates an endocentric or exocentric compound rule that joins a left and a right stem category, FieldWorks' compounding rule. An endocentric rule takes its category from the head member (or an override); an exocentric rule names its result category. The Dry Run says plainly what the rule joins and makes, and only a person can Apply the Draft.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "kind": "endocentric when one member is the head and gives the compound its category, or exocentric when neither is and the result category is named.",
+      "name": "Optional short name for the rule, written in the project's default analysis writing system.",
+      "left": "Id of the category (part of speech) the left member must have; its subcategories also match.",
+      "right": "Id of the category (part of speech) the right member must have; its subcategories also match.",
+      "head": "For an endocentric rule, which member is the head: right (the default, as in FieldWorks) or left. Not allowed for an exocentric rule.",
+      "result": "Id of the category the compound has. Required for an exocentric rule; for an endocentric rule it optionally overrides the head's category."
+    },
+    "goals": [
+      "Author a compound rule so compounds parse",
+      "Add a noun-noun endocentric compound",
+      "Add an exocentric compound with its own result category",
+      "Keep compounds working after listed compound-initial allomorphs are removed"
+    ],
+    "guides": [
+      "workflow",
+      "ask-the-linguist"
+    ],
+    "redirect": "Creates the rule only; it sets no linker, features or stem allomorph. Trial known compounds and ask the linguist first (guide workflow)."
+  },
   "compose-edit-compound-rule": {
     "title": "Turn a compound rule off or on",
     "description": "Stages one explicit Disabled value for an endocentric or exocentric compound rule in a Draft. FieldWorks compound rules join any two stems, so a rule that builds non-words can be switched off; the expected value guards against stale evidence, and only a person can Apply.",

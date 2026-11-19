@@ -25,6 +25,7 @@ internal static class ComposerDefinitions
         new StripVariantSensesDefinition(),
         new AuthorVariantEntryDefinition(),
         new AuthorAdhocProhibitionDefinition(),
+        new AuthorCompoundRuleDefinition(),
         new EditAdhocProhibitionReferencesDefinition(),
         new DeleteAdhocProhibitionDefinition(),
         new DeleteAffixProcessDefinition(),
