@@ -117,7 +117,16 @@ create or snapshot. Identity fields 101/102/104/105 reconstruct from the create 
 The generic importer uses separate changes for the remaining scalar values, alternatives
 and list members. A packed import refuses a record missing a field that its shared
 initialization layout would supply. Each import publishes its commits, changes, snapshots,
-content, reference index and revision in one SQLite transaction.
+content, reference index and revision in one SQLite transaction. A killed import therefore
+leaves the store unpublished: it has no commits, refuses every read and accepts a fresh
+import. The packed writer drops the snapshot table's secondary indexes before its bulk rows
+and rebuilds them from sorted data inside that transaction, so the final schema is unchanged.
+Resource bytes are flushed to disk under a temporary name and renamed into
+`<store path>.resources/` before any record that references them is imported. Each open
+probes an index on `ChangeEntities.AuthoredModelVersion` for history from a newer model
+instead of scanning every change body; an older store gets the index on first open.
+The snapshot digest items are written straight into canonical bytes instead of through a JSON
+document; a test holds them equal to the JSON definition.
 
 The internal JSON bootstrap uses Harmony's ServerCommit shape to carry complete history to
 an empty Home. The sender checks the peer's supported model version, and the receiver checks

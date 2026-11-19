@@ -14,12 +14,12 @@ internal static class ReferencePersistence
         ) WITHOUT ROWID
         """);
 
-    public static async Task ReplaceAsync(RecordDatabase database, IEnumerable<NativeReference> edges)
+    public static Task ReplaceAsync(RecordDatabase database, IEnumerable<NativeReference> edges)
     {
-        await using var command = database.Database.GetDbConnection().CreateCommand();
+        using var command = database.Database.GetDbConnection().CreateCommand();
         command.Transaction = database.Database.CurrentTransaction!.GetDbTransaction();
         command.CommandText = "DELETE FROM IncomingReferences";
-        await command.ExecuteNonQueryAsync();
+        command.ExecuteNonQuery();
         command.CommandText = "INSERT INTO IncomingReferences(Target,Source,Field,Position,Owning,Occurrence) VALUES($target,$source,$field,$position,$owning,$occurrence)";
         foreach (var name in new[] { "$target", "$source", "$field", "$position", "$owning", "$occurrence" })
         {
@@ -29,16 +29,38 @@ internal static class ReferencePersistence
             command.Parameters.Add(parameter);
         }
         command.Prepare();
-        foreach (var edge in edges)
+        // Rows go in primary-key order so the WITHOUT ROWID tree fills left to right instead of splitting at random.
+        var ordered = edges.Select(edge => (Edge: edge, Target: Key(edge.Target), Source: Key(edge.Source))).ToArray();
+        Array.Sort(ordered, static (a, b) =>
         {
-            command.Parameters[0].Value = NetworkGuidConverter.Write(edge.Target);
-            command.Parameters[1].Value = NetworkGuidConverter.Write(edge.Source);
+            var order = a.Target.CompareTo(b.Target);
+            if (order == 0) order = a.Source.CompareTo(b.Source);
+            if (order == 0) order = a.Edge.Field.CompareTo(b.Edge.Field);
+            if (order == 0) order = a.Edge.Position.CompareTo(b.Edge.Position);
+            return order != 0 ? order : string.CompareOrdinal(a.Edge.Occurrence, b.Edge.Occurrence);
+        });
+        var target = new byte[16];
+        var source = new byte[16];
+        command.Parameters[0].Value = target;
+        command.Parameters[1].Value = source;
+        foreach (var (edge, _, _) in ordered)
+        {
+            edge.Target.TryWriteBytes(target, bigEndian: true, out _);
+            edge.Source.TryWriteBytes(source, bigEndian: true, out _);
             command.Parameters[2].Value = edge.Field;
             command.Parameters[3].Value = edge.Position;
             command.Parameters[4].Value = edge.Owning ? 1 : 0;
             command.Parameters[5].Value = edge.Occurrence;
-            await command.ExecuteNonQueryAsync();
+            command.ExecuteNonQuery();
         }
+        return Task.CompletedTask;
+    }
+
+    private static UInt128 Key(Guid value)
+    {
+        Span<byte> bytes = stackalloc byte[16];
+        value.TryWriteBytes(bytes, bigEndian: true, out _);
+        return System.Buffers.Binary.BinaryPrimitives.ReadUInt128BigEndian(bytes);
     }
 
     /// <summary>Applies one single-reference edit to the persisted index inside the caller's transaction.</summary>

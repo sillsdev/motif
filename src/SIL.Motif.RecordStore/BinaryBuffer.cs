@@ -21,6 +21,10 @@ internal sealed class BinaryOutput : IDisposable
     public void Bytes(byte[] value) { Unsigned((ulong)value.Length); stream.Write(value); }
     public void Text(string value) => Bytes(Encoding.UTF8.GetBytes(value));
     public byte[] Finish() => stream.ToArray();
+    /// <summary>The bytes written so far, without a copy; valid until the next write or reset.</summary>
+    public ReadOnlySpan<byte> Written => stream.GetBuffer().AsSpan(0, (int)stream.Length);
+    public void Reset() => stream.SetLength(0);
+    public void Append(ReadOnlySpan<byte> value) => stream.Write(value);
     public void Dispose() => stream.Dispose();
 }
 

@@ -89,6 +89,42 @@ internal static class RecordInitialization
             _ => false
         });
 
+    /// <summary>A layout's field types and initial values, parsed once for every record that shares the layout.</summary>
+    internal sealed class LayoutView
+    {
+        private readonly Dictionary<string, int> types = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, JsonElement> defaults = new(StringComparer.Ordinal);
+
+        public LayoutView(JsonElement layout)
+        {
+            foreach (var property in layout.GetProperty("types").EnumerateObject()) types[property.Name] = property.Value.GetInt32();
+            foreach (var property in layout.GetProperty("defaults").EnumerateObject()) defaults[property.Name] = property.Value;
+        }
+
+        public int Type(GenericRecord record, string field) => types.TryGetValue(field, out var value) ? value
+            : record.Kind == "lcm" && int.TryParse(field, out var id) ? BuiltInLayouts.TypeOf(id) ?? 0 : 0;
+
+        public bool IsInitial(GenericRecord record, string field, JsonElement value) =>
+            defaults.TryGetValue(field, out var initial) && JsonElement.DeepEquals(initial, value) || IdentityMatches(record, field, value);
+
+        private static bool IdentityMatches(GenericRecord record, string field, JsonElement value)
+        {
+            switch (field)
+            {
+                case "101" when (record.IdentityFields & 1) != 0:
+                    return value.ValueKind == JsonValueKind.String ? value.GetString() == record.Id.ToString("D")
+                        : JsonElement.DeepEquals(JsonSerializer.SerializeToElement(record.Id), value);
+                case "102" when (record.IdentityFields & 2) != 0: return Number(value, record.ClassId);
+                case "104" when (record.IdentityFields & 4) != 0: return Number(value, record.OwningField);
+                case "105" when (record.IdentityFields & 8) != 0: return Number(value, record.OwnOrdinal);
+                default: return false;
+            }
+        }
+
+        private static bool Number(JsonElement value, int expected) => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var actual)
+            ? actual == expected : JsonElement.DeepEquals(JsonSerializer.SerializeToElement(expected), value);
+    }
+
     public static GenericRecord Prepare(GenericRecord source, JsonElement layout, bool reuseValues = false)
     {
         var ordinal = source.Values.TryGetValue("105", out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) ? number : 0;
