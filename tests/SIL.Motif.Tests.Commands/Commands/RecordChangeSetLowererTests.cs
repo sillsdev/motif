@@ -3,6 +3,7 @@ using SIL.LCModel;
 using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Records;
 using SIL.Motif.Contract.Commands;
@@ -74,10 +75,15 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     {
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
         var possibility = metadata.GetClassId("CmPossibility");
+        var list = default(Guid);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => list = cache.LangProject.LexDbOA.PublicationTypesOA.Guid);
         foreach (var (name, type) in CustomFields)
+        {
+            var reference = type is CellarPropertyType.ReferenceAtomic or CellarPropertyType.ReferenceCollection;
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-                metadata.AddCustomField("LexEntry", name, type,
-                    type is CellarPropertyType.ReferenceAtomic or CellarPropertyType.ReferenceCollection ? possibility : 0));
+                metadata.AddCustomField("LexEntry", name, type, reference ? possibility : 0, string.Empty,
+                    name == "ZedString" ? WritingSystemServices.kwsAnal : 0, reference ? list : Guid.Empty));
+        }
     }
 
     public void Dispose()
@@ -970,13 +976,60 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     }
 
     [Fact]
-    public void ACustomKindRefusesAStockFieldAndAWrongType()
+    public void ClearingEveryCustomFieldShapeLowersToItsKindAndReadsBack()
     {
-        var stock = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "customField/setInteger",
-            target: CanonicalId.FromGuid(_entry.Guid), after: JsonSerializer.SerializeToElement(new { field = "HomographNumber", value = 1 }));
-        Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, Proposal([stock])));
-        var wrong = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "customField/setInteger",
-            target: CanonicalId.FromGuid(_entry.Guid), after: JsonSerializer.SerializeToElement(new { field = "ZedString", value = 1 }));
-        Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, Proposal([wrong])));
+        var held = UnheldPublication();
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var metadata = _cache.MetaDataCacheAccessor;
+            var data = _cache.DomainDataByFlid;
+            data.SetMultiStringAlt(_entry.Hvo, metadata.GetFieldId("LexEntry", "ZedMultiString", true), _cache.DefaultAnalWs,
+                TsStringUtils.MakeString("zzrichold", _cache.DefaultAnalWs));
+            data.SetString(_entry.Hvo, metadata.GetFieldId("LexEntry", "ZedString", true),
+                TsStringUtils.MakeString("zzstringold", _cache.DefaultAnalWs));
+            data.SetObjProp(_entry.Hvo, metadata.GetFieldId("LexEntry", "ZedReference", true), held.Hvo);
+            data.Replace(_entry.Hvo, metadata.GetFieldId("LexEntry", "ZedReferences", true), 0, 0, [held.Hvo], 1);
+        });
+        var rich = DryRunOf(Lower(PlanEdit(d => ((RecordAlternatives)d.Data[Custom("ZedMultiString")]!).Items.Clear())),
+            "customField/clearAlternative");
+        Assert.Contains(rich.ExpectedEffects, effect => effect.Field == "customField/ZedMultiString" &&
+            effect.Before.Values.Contains("zzrichold") && effect.After.Count == 0);
+        var text = DryRunOf(Lower(PlanEdit(d => d.Data[Custom("ZedString")] = null)), "customField/clearString");
+        Assert.Contains(text.ExpectedEffects, effect => effect.Before.Values.Contains("zzstringold") && effect.After.Count == 0);
+        var reference = DryRunOf(Lower(PlanEdit(d => d.Data[Custom("ZedReference")] = null)), "customField/clearReference");
+        Assert.Contains(reference.ExpectedEffects, effect => effect.Before.Count == 1 && effect.After.Count == 0);
+        var collection = DryRunOf(Lower(PlanEdit(d => ((RecordList)d.Data[Custom("ZedReferences")]!).Items.Clear())),
+            "customField/removeReference");
+        Assert.Contains(collection.ExpectedEffects, effect => effect.Before.Count == 1 && effect.After.Count == 0);
+    }
+
+    private void RefusedWith(string code, string kind, object after, Guid? target = null)
+    {
+        var operation = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), kind,
+            target: CanonicalId.FromGuid(target ?? _entry.Guid), after: JsonSerializer.SerializeToElement(after));
+        var refusal = Assert.ThrowsAny<SIL.Motif.Runner.Execution.ProposalRefusalException>(() => ScratchDryRun.Of(_cache, Proposal([operation])));
+        Assert.Equal(code, refusal.Code);
+        Assert.Contains(code, RefusalCatalog.Specs.Keys);
+    }
+
+    [Fact]
+    public void TheRunnerRefusesACustomFieldOperationThePlanCouldNotHaveSeenWithARegisteredCode()
+    {
+        RefusedWith(RefusalCodes.CustomFieldMissing, "customField/setInteger", new { field = "ZedGone", value = 1 });
+        RefusedWith(RefusalCodes.CustomFieldNotCustom, "customField/setInteger", new { field = "HomographNumber", value = 1 });
+        RefusedWith(RefusalCodes.CustomFieldWrongType, "customField/setInteger", new { field = "ZedString", value = 1 });
+        RefusedWith(RefusalCodes.CustomFieldWrongType, "customField/setString", new { field = "ZedInteger", ws = "en", text = "zz" });
+        RefusedWith(RefusalCodes.CustomFieldWrongClass, "customField/setReference",
+            new { field = "ZedReference", @ref = CanonicalId.FromGuid(_entry.Guid).Value });
+        RefusedWith(RefusalCodes.CustomFieldWrongList, "customField/setReference",
+            new { field = "ZedReference", @ref = CanonicalId.FromGuid(NewPartOfSpeech()).Value });
+        RefusedWith(RefusalCodes.CustomFieldWrongClass, "customField/addReference",
+            new { field = "ZedReferences", member = CanonicalId.FromGuid(_entry.Guid).Value });
+        RefusedWith(RefusalCodes.CustomFieldWrongList, "customField/addReference",
+            new { field = "ZedReferences", member = CanonicalId.FromGuid(NewPartOfSpeech()).Value });
+        RefusedWith(RefusalCodes.CustomFieldWritingSystem, "customField/setString", new { field = "ZedString", ws = "zz-nope", text = "zz" });
+        // The field's selector is analysis, so a vernacular tag is refused.
+        RefusedWith(RefusalCodes.CustomFieldWritingSystem, "customField/setString",
+            new { field = "ZedString", ws = _cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem.Id, text = "zz" });
     }
 }
