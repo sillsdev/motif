@@ -1939,6 +1939,23 @@ try
                     markContent, markEvidence, !flags.ContainsKey("clear"))));
                 break;
             }
+            if (positionals is ["compare", ..])
+            {
+                if (positionals.Count < 3 || !flags.TryGetValue("project", out var compareReadProject) ||
+                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "page" or "at" or "snapshot")))
+                    return Usage(UsageLineFor("proposal compare"), asJson);
+                int? proposalComparePage = null;
+                if (flags.TryGetValue("page", out var proposalCompareText))
+                {
+                    if (!int.TryParse(proposalCompareText, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1)
+                        return Usage("--page must be a positive integer.", asJson);
+                    proposalComparePage = number;
+                }
+                result = RenderCommand(ProposalCompareReads.Read(new CompareProposalsRequest(compareReadProject,
+                    positionals.Skip(1).ToArray(), flags.GetValueOrDefault("at"), proposalComparePage,
+                    flags.GetValueOrDefault("snapshot"))));
+                break;
+            }
             if (positionals is ["trial", "export", ..])
             {
                 if (positionals.Count != 3 || !flags.TryGetValue("project", out var exportProject) ||

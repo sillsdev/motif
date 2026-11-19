@@ -150,6 +150,12 @@ internal static class CatalogTools
         }
         if (command.RequestType == typeof(ReadTrialExportRequest))
             schema["properties"]!["page"]!["minimum"] = 1;
+        if (command.RequestType == typeof(CompareProposalsRequest))
+        {
+            schema["properties"]!["page"]!["minimum"] = 1;
+            schema["properties"]!["proposalIds"]!["minItems"] = 2;
+            schema["properties"]!["proposalIds"]!["maxItems"] = ProposalComparison.MaxProposals;
+        }
         if (command.RequestType == typeof(GdrShowRequest))
         {
             var format = Schema.String("json returns rich text runs; fw-md returns the whole record as FieldWorks Markdown.", "json", "fw-md");

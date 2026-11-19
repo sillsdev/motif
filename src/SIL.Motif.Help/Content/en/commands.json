@@ -1824,6 +1824,11 @@
     "description": "Reads the saved report of a Proposal's Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.",
     "source": "Authored from ADR 0021 and the typed command contract."
   },
+  "proposal compare": {
+    "title": "Compare Proposals",
+    "description": "Compares two to eight Proposals side by side from each one's Trial before and after, not against approved analyses. It reads retained Trial evidence and measures nothing.",
+    "source": "Authored from the typed command contract."
+  },
   "proposal trial export": {
     "title": "Read a Trial export",
     "description": "Finds the retained evidence file for an exact Trial job. The file contains the observed forms and Readings on both sides, the completion counts and the provenance used to measure the Trial.",

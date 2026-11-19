@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Proposal comparison from each Trial's own before and after, not against approved analyses",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "basis", "snapshot", "columns", "formsCompared", "formsDiverging", "rowsTotal", "pages", "complete", "limitations"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "basis": {"const": "trial-before-after"},
+    "snapshot": {"type": "string", "pattern": "^[0-9a-f]{12}$", "description": "Digest of the exact Trial job IDs read; pass it with --page so every page reads the same Trials."},
+    "columns": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["proposalId", "gained", "lost", "unchanged", "notMeasured", "incomplete"],
+        "properties": {
+          "proposalId": {"type": "string", "minLength": 1},
+          "gained": {"type": "integer", "minimum": 0},
+          "lost": {"type": "integer", "minimum": 0},
+          "unchanged": {"type": "integer", "minimum": 0},
+          "notMeasured": {"type": "integer", "minimum": 0},
+          "incomplete": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "formsCompared": {"type": "integer", "minimum": 0},
+    "formsDiverging": {"type": "integer", "minimum": 0},
+    "rowsTotal": {"type": "integer", "minimum": 0},
+    "pages": {"type": "integer", "minimum": 0},
+    "complete": {"type": "boolean"},
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "count"],
+        "properties": {
+          "code": {"enum": ["not-measured", "incomplete-trial"]},
+          "count": {"type": "integer", "minimum": 1, "description": "The number of columns (Proposals) the limitation touches; per-column form counts are in columns."}
+        }
+      }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["number", "nextPage", "rows"],
+      "properties": {
+        "number": {"type": "integer", "minimum": 1},
+        "nextPage": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "rows": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/Row"}}
+      }
+    }
+  },
+  "$defs": {
+    "Row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["writingSystemId", "form", "formKey", "diverges", "cells"],
+      "properties": {
+        "writingSystemId": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        "form": {"type": "string"},
+        "formKey": {"type": "string", "minLength": 1},
+        "diverges": {"type": "boolean"},
+        "cells": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["measured", "complete", "gainedIds", "lostIds"],
+            "properties": {
+              "measured": {"type": "boolean"},
+              "complete": {"type": "boolean"},
+              "gainedIds": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+              "lostIds": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+            }
+          }
+        }
+      }
+    }
+  }
+}

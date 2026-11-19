@@ -46,6 +46,18 @@ public sealed class CatalogExecutionTests
     }
 
     [Fact]
+    public void ProposalCompareAdvertisesItsCatalogRequestSchemaWithTheEightProposalLimit()
+    {
+        var command = CommandCatalog.All.Single(item => item.Name == "proposal compare");
+        var generated = CatalogTools.Prepare(CatalogTools.Create(command));
+        var actual = AgentTools.All.Single(tool => tool.Name == generated.Name);
+        Assert.Equal("motif_proposal_compare", actual.Name);
+        Assert.True(JsonNode.DeepEquals(generated.InputSchema, actual.InputSchema));
+        Assert.Equal(8, actual.InputSchema["properties"]!["proposalIds"]!["maxItems"]!.GetValue<int>());
+        Assert.Equal(2, actual.InputSchema["properties"]!["proposalIds"]!["minItems"]!.GetValue<int>());
+    }
+
+    [Fact]
     public async Task CatalogHandlerArgumentExceptionKeepsItsOriginalMessage()
     {
         var context = new ServerContext("", "1.0", new NoRunnerLauncher(
