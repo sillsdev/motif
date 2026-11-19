@@ -163,6 +163,27 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     }
 
     [Fact]
+    public void ARefusedCreateLeavesNoStateForWhatIsAnchoredOnIt()
+    {
+        var link = "[zzpub](/objects/" + _publication.Guid.ToString("D") + "){.name guid=" + _publication.Guid.ToString("D") + "}";
+        var plan = PlanEdit(d =>
+        {
+            var senses = (RecordList)d.Data["senses"]!;
+            // The first new sense carries a value no operation sets on a new object; the second is placed after it.
+            senses.Add(new RecordObject { Class = "LexSense" }.Set("semantic-domains", new RecordList().Add(new RecordScalar(link))));
+            senses.Add(new RecordObject { Class = "LexSense" }.Set("gloss", new RecordAlternatives().Add("en", new RecordScalar("zzsecond"))));
+        });
+        var creates = plan.ChangeSet.Changes.Where(c => c.Kind == RecordChangeKind.AddObject).ToArray();
+        Assert.Equal(2, creates.Length);
+        Assert.Equal(RecordAnchorKind.Added, creates[1].Anchor?.Kind);
+        var lowering = Lower(plan);
+        Assert.Equal(2, lowering.Refusals.Count);
+        Assert.Equal(RefusalCodes.RecordImportShapeUnsupported, lowering.Refusals[0].Code);
+        Assert.Equal(RefusalCodes.RecordImportNotExecutable, lowering.Refusals[1].Code);
+        Assert.DoesNotContain(lowering.Operations, op => op.Kind.EndsWith("createSenses"));
+    }
+
+    [Fact]
     public void LoweringTheSamePlanTwiceGivesOneIntentDigest()
     {
         var plan = PlanEdit(d =>

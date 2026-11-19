@@ -89,6 +89,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
     {
         private readonly string _seed = seed;
         private readonly Dictionary<int, CanonicalId> _added = [];
+        private readonly HashSet<int> _refused = [];
         private readonly Dictionary<(Guid Owner, string Field), List<Guid>> _lists = [];
         private List<OperationEnvelope> _pending = [];
 
@@ -98,6 +99,10 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         internal void Lower(int index, RecordChange change)
         {
             _pending = [];
+            // A change that is refused leaves no trace: not its operations, not the entity it would have created, not its edits
+            // to the cached lists. What is anchored on it is then refused too, not placed beside an object that never existed.
+            var added = new Dictionary<int, CanonicalId>(_added);
+            var lists = _lists.ToDictionary(pair => pair.Key, pair => pair.Value.ToList());
             try
             {
                 LowerChange(index, change);
@@ -105,6 +110,13 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             }
             catch (Stop stop)
             {
+                _added.Clear();
+                foreach (var pair in added)
+                    _added[pair.Key] = pair.Value;
+                _lists.Clear();
+                foreach (var pair in lists)
+                    _lists[pair.Key] = pair.Value;
+                _refused.Add(index);
                 Refusals.Add(stop.Refusal);
             }
         }
@@ -382,6 +394,9 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 case RecordAnchorKind.Object: at = rest.IndexOf(anchor.ItemGuid!.Value); break;
                 case RecordAnchorKind.Item when anchor is { Target: { } to, Occurrence: <= 1 }: at = rest.IndexOf(to); break;
                 case RecordAnchorKind.Added when _added.TryGetValue(anchor.ChangeIndex, out var added): at = rest.IndexOf(added.ToGuid()); break;
+                case RecordAnchorKind.Added when _refused.Contains(anchor.ChangeIndex):
+                    throw Refuse(RefusalCodes.RecordImportNotExecutable, change,
+                        "The placement is anchored on a change that was refused, so the object it follows does not exist.");
                 default:
                     throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change, $"A placement {anchor} cannot be named by identity.");
             }
