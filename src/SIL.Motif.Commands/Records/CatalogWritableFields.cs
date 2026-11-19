@@ -8,7 +8,7 @@ namespace SIL.Motif.Commands.Records;
 /// <summary>
 /// What the record importer may plan, read from the Runner's registered field-write declarations, which are the
 /// generated catalog the coverage report is made from. Names are FieldWorks metadata names: the class that declares
-/// the field, and the LibLCM field name. A custom field has no declaration, so it is not writable.
+/// the field, and the LibLCM field name. A custom field is writable when the schema passed to the constructor has it and a kind writes its type.
 /// </summary>
 /// <remarks>
 /// <see cref="CanWrite"/> is true when some kind sets, clears, adds to, removes from or reorders the field; it does not
@@ -32,8 +32,8 @@ public sealed class CatalogWritableFields : WritableFields
     private readonly ILookup<(string Class, string Field), FieldWriteCapability> _creates;
     private readonly ILookup<(string Class, string Field), FieldWriteCapability> _deletes;
 
-    /// <summary>Reads every registered declaration.</summary>
-    public CatalogWritableFields()
+    /// <summary>Reads every registered declaration; <paramref name="schema"/> adds the project's custom fields a kind writes.</summary>
+    public CatalogWritableFields(ProjectRecordSchemaResult? schema = null)
     {
         OperationRegistryBootstrap.Initialize();
         var all = OperationHandlerRegistry.RegisteredKinds.Where(OperationKindRegistry.IsKnown)
@@ -41,8 +41,15 @@ public sealed class CatalogWritableFields : WritableFields
             .Where(write => !RecordFieldAuthorability.IsReadOnly(
                 RecordFieldAuthorability.Classification(write.DeclaringClass, write.Field)))
             .ToArray();
+        var customTypes = all.Where(write => write.DeclaringClass == CustomFieldOperationKinds.DeclaringClass &&
+            WriteVerbs.Contains(write.Verb)).Select(write => write.Field).ToHashSet(StringComparer.Ordinal);
+        var customs = schema is null ? [] : schema.Schema.ObjectTypes.SelectMany(type => type.Fields.Select(field =>
+                (Field: field, Binding: schema.FieldBinding(type.Name, field.Name))))
+            .Where(item => item.Binding is { IsCustom: true } && !item.Field.Computed &&
+                CustomFieldCatalog.TypeOf(item.Field) is { } kind && customTypes.Contains(kind))
+            .Select(item => (item.Binding!.Value.DeclaringClass, item.Binding.Value.Field));
         _writable = all.Where(write => WriteVerbs.Contains(write.Verb))
-            .Select(write => (write.DeclaringClass, write.Field)).ToFrozenSet();
+            .Select(write => (write.DeclaringClass, write.Field)).Concat(customs).ToFrozenSet();
         _creates = all.Where(write => write.Verb == RecordWriteVerb.AddObject)
             .ToLookup(write => (write.DeclaringClass, write.Field));
         _deletes = all.Where(write => write.Verb == RecordWriteVerb.RemoveObject)

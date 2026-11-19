@@ -31,6 +31,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     public RecordChangeSetLowererTests()
     {
         _cache = NewLangProjFixture.CreateCache(_root);
+        AddCustomFields(_cache);
         _schema = ProjectRecordSchema.Generate(_cache, ProjectRecordSchema.LexiconEntryOverlay);
         _exporter = new ProjectRecordExporter(_cache, _schema);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
@@ -58,6 +59,25 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             held.Name.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzheld", _cache.DefaultAnalWs));
             _entry.DoNotPublishInRC.Add(held);
         });
+    }
+
+    /// <summary>One custom field of each type FieldWorks can create, one it can only hold, and one the record schema omits.</summary>
+    internal static readonly (string Name, CellarPropertyType Type)[] CustomFields =
+    [
+        ("ZedInteger", CellarPropertyType.Integer), ("ZedMultiUnicode", CellarPropertyType.MultiUnicode),
+        ("ZedMultiString", CellarPropertyType.MultiString), ("ZedString", CellarPropertyType.String),
+        ("ZedReference", CellarPropertyType.ReferenceAtomic), ("ZedReferences", CellarPropertyType.ReferenceCollection),
+        ("ZedBoolean", CellarPropertyType.Boolean), ("ZedDate", CellarPropertyType.GenDate),
+    ];
+
+    private static void AddCustomFields(LcmCache cache)
+    {
+        var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
+        var possibility = metadata.GetClassId("CmPossibility");
+        foreach (var (name, type) in CustomFields)
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                metadata.AddCustomField("LexEntry", name, type,
+                    type is CellarPropertyType.ReferenceAtomic or CellarPropertyType.ReferenceCollection ? possibility : 0));
     }
 
     public void Dispose()
@@ -109,11 +129,24 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         _ => null,
     };
 
-    private static IEnumerable<(string Kind, FieldWriteCapability Write)> Declarations(
-        (string DeclaringClass, string Field, bool IsCustom) binding, RecordWriteVerb verb) =>
-        OperationHandlerRegistry.RegisteredKinds.SelectMany(kind => OperationHandlerRegistry.FieldWrites(kind)
-            .Where(write => write.DeclaringClass == binding.DeclaringClass && write.Field == binding.Field && write.Verb == verb)
+    /// <summary>How the Runner declares the field: a custom one by its type.</summary>
+    private (string Class, string Field) DeclaredAs((string DeclaringClass, string Field, bool IsCustom) binding) =>
+        !binding.IsCustom ? (binding.DeclaringClass, binding.Field)
+            : (CustomFieldOperationKinds.DeclaringClass, (CellarPropertyType)_cache.MetaDataCacheAccessor.GetFieldType(
+                _cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true)) switch
+            {
+                CellarPropertyType.ReferenceAtomic => "ReferenceAtomic",
+                var other => other.ToString(),
+            });
+
+    private IEnumerable<(string Kind, FieldWriteCapability Write)> Declarations(
+        (string DeclaringClass, string Field, bool IsCustom) binding, RecordWriteVerb verb)
+    {
+        var (declaring, field) = DeclaredAs(binding);
+        return OperationHandlerRegistry.RegisteredKinds.SelectMany(kind => OperationHandlerRegistry.FieldWrites(kind)
+            .Where(write => write.DeclaringClass == declaring && write.Field == field && write.Verb == verb)
             .Select(write => (kind, write)));
+    }
 
     private static readonly RecordWriteVerb[] WriteVerbs =
     [
@@ -125,7 +158,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     [Fact]
     public void CatalogWritableFieldsAgreesExactlyWithPhaseThreesCoverage()
     {
-        var catalog = new CatalogWritableFields();
+        var catalog = new CatalogWritableFields(_schema);
         var resolver = new RecordWritableFields(_schema);
         var failures = new List<string>();
         var familiesSeen = new HashSet<string>();
@@ -645,6 +678,18 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var repository = _cache.ServiceLocator.GetInstance<ICmObjectRepository>();
         var hvo = repository.GetObject(owner).Hvo;
         var why = AbstractClass;
+        if (binding.IsCustom && !OwningTypes.Contains(fieldType))
+        {
+            var publication = UnheldPublication().Hvo;
+            NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            {
+                if (IsVector(fieldType))
+                    _cache.DomainDataByFlid.Replace(hvo, flid, 0, 0, [publication], 1);
+                else
+                    _cache.DomainDataByFlid.SetObjProp(hvo, flid, publication);
+            });
+            return null;
+        }
         foreach (var target in (field.Item ?? field).ObjectTypes)
         {
             if (OwningTypes.Contains(fieldType))
@@ -679,7 +724,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     [Fact]
     public void EveryCoveredPairIsLoweredOrRefusedByARegisteredCode_AndEveryOfferedPairIsLowered()
     {
-        var catalog = new CatalogWritableFields();
+        var catalog = new CatalogWritableFields(_schema);
         var resolver = new RecordWritableFields(_schema);
         var lowerer = new RecordChangeSetLowerer(_schema, resolver);
         var failures = new List<string>();
@@ -725,8 +770,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                 foreach (var operation in result.Operations)
                 {
                     lowered++;
+                    var (declaring, declaredField) = DeclaredAs(binding);
                     if (!OperationHandlerRegistry.FieldWrites(operation.Kind).Any(write =>
-                            write.DeclaringClass == binding.DeclaringClass && write.Field == binding.Field))
+                            write.DeclaringClass == declaring && write.Field == declaredField))
                         failures.Add($"{subject}: lowered to {operation.Kind}, which does not declare the field.");
                     if (!offered)
                         failures.Add($"{subject}: lowered although the adapter does not offer it.");
@@ -764,7 +810,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     [Fact]
     public void OneEachOfAReferenceSetAMoveAndAClassPropertyCreateExecuteInADryRun()
     {
-        var catalog = new CatalogWritableFields();
+        var catalog = new CatalogWritableFields(_schema);
         var resolver = new RecordWritableFields(_schema);
         var lowerer = new RecordChangeSetLowerer(_schema, resolver);
         var executed = new Dictionary<string, bool> { ["reference set"] = false, ["move"] = false, ["class-property create"] = false };
@@ -845,5 +891,92 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var operation = Assert.Single(lowering.Operations);
         Assert.EndsWith("DoNotUseForParsing", operation.Kind, StringComparison.OrdinalIgnoreCase);
         Assert.NotEmpty(DryRun(lowering).ExpectedEffects);
+    }
+
+    private static string Custom(string name) => "custom-LexEntry-" + name;
+
+    private SIL.Motif.Model.DryRun.DryRun DryRunOf(RecordLowering lowering, string kind)
+    {
+        Assert.Equal(kind, Assert.Single(lowering.Operations).Kind);
+        return DryRun(lowering);
+    }
+
+    [Fact]
+    public void CustomFieldsOfEveryWritableTypeLowerToOneKindAndReadBack()
+    {
+        var target = UnheldPublication();
+        var expectations = new (string Field, Action<RecordDocument> Edit, string Kind, string Reads)[]
+        {
+            ("ZedInteger", d => d.Data[Custom("ZedInteger")] = RecordScalar.Of(7), "customField/setInteger", "7"),
+            ("ZedMultiUnicode", d => d.Data[Custom("ZedMultiUnicode")] = new RecordAlternatives().Add("en", new RecordScalar("zzmulti")),
+                "customField/setAlternative", "zzmulti"),
+            ("ZedMultiString", d => d.Data[Custom("ZedMultiString")] = new RecordAlternatives().Add("en", new RecordScalar("zzrich")),
+                "customField/setAlternative", "zzrich"),
+            ("ZedString", d => d.Data[Custom("ZedString")] = new RecordScalar("zzstring"), "customField/setString", "zzstring"),
+        };
+        foreach (var (field, edit, kind, reads) in expectations)
+        {
+            var dryRun = DryRunOf(Lower(PlanEdit(edit)), kind);
+            Assert.Contains(dryRun.ExpectedEffects, effect => effect.Field == "customField/" + field && effect.After.Values.Contains(reads));
+        }
+
+        var reference = DryRunOf(Lower(PlanEdit(d => d.Data[Custom("ZedReference")] = new RecordScalar(Link(target)))),
+            "customField/setReference");
+        Assert.Contains(reference.ExpectedEffects, effect => effect.Field == "customField/ZedReference" &&
+            effect.After.Values.Any(value => CanonicalId.Parse(value).ToGuid() == target.Guid));
+        var collection = DryRunOf(Lower(PlanEdit(d => d.Data[Custom("ZedReferences")] = new RecordList().Add(new RecordScalar(Link(target))))),
+            "customField/addReference");
+        Assert.Contains(collection.ExpectedEffects, effect => effect.Field == "customField/ZedReferences" && effect.After.Count == 1);
+    }
+
+    [Fact]
+    public void ClearingACustomFieldLowersToItsClearKind()
+    {
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var flid = _cache.MetaDataCacheAccessor.GetFieldId("LexEntry", "ZedInteger", true);
+            _cache.DomainDataByFlid.SetInt(_entry.Hvo, flid, 5);
+            flid = _cache.MetaDataCacheAccessor.GetFieldId("LexEntry", "ZedMultiUnicode", true);
+            _cache.DomainDataByFlid.SetMultiStringAlt(_entry.Hvo, flid, _cache.DefaultAnalWs,
+                TsStringUtils.MakeString("zzold", _cache.DefaultAnalWs));
+        });
+        var integer = DryRunOf(Lower(PlanEdit(d => d.Data[Custom("ZedInteger")] = null)), "customField/clearInteger");
+        Assert.Contains(integer.ExpectedEffects, effect => effect.Before.Values.Contains("5") && effect.After.Values.Contains("0"));
+        var multi = DryRunOf(Lower(PlanEdit(d => ((RecordAlternatives)d.Data[Custom("ZedMultiUnicode")]!).Items.Clear())),
+            "customField/clearAlternative");
+        Assert.Contains(multi.ExpectedEffects, effect => effect.Before.Values.Contains("zzold") && effect.After.Count == 0);
+    }
+
+    [Fact]
+    public void ACustomFieldTypeNoKindWritesIsOfferedByNeitherLookupAndRefusedByCode()
+    {
+        var catalog = new CatalogWritableFields(_schema);
+        Assert.True(catalog.CanWrite("LexEntry", "ZedInteger"));
+        Assert.True(catalog.CanWrite("LexEntry", "ZedReferences"));
+        Assert.False(catalog.CanWrite("LexEntry", "ZedBoolean"));
+        Assert.Equal(new WritableFieldResolution.Uncovered(UncoveredFieldReason.CustomField),
+            new RecordWritableFields(_schema).Resolve("LexEntry", Custom("ZedBoolean"), RecordWriteVerb.Set));
+        Assert.Contains(_schema.OmittedCustomFields, omitted => omitted.Field == "ZedDate");
+        var change = NewChange(RecordChangeKind.Set, c =>
+        {
+            Put(c, "ObjectGuid", _entry.Guid);
+            Put(c, "ObjectType", "LexEntry");
+            Put(c, "Field", Custom("ZedBoolean"));
+            Put(c, "New", "true");
+        });
+        var lowering = new RecordChangeSetLowerer(_schema, new RecordWritableFields(_schema)).LowerChanges(_cache, "boolean", [change]);
+        Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(lowering.Refusals).Code);
+        Assert.Empty(lowering.Operations);
+    }
+
+    [Fact]
+    public void ACustomKindRefusesAStockFieldAndAWrongType()
+    {
+        var stock = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "customField/setInteger",
+            target: CanonicalId.FromGuid(_entry.Guid), after: JsonSerializer.SerializeToElement(new { field = "HomographNumber", value = 1 }));
+        Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, Proposal([stock])));
+        var wrong = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "customField/setInteger",
+            target: CanonicalId.FromGuid(_entry.Guid), after: JsonSerializer.SerializeToElement(new { field = "ZedString", value = 1 }));
+        Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, Proposal([wrong])));
     }
 }

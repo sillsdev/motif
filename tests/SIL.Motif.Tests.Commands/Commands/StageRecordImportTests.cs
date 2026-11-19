@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using SIL.LCModel;
+using SIL.LCModel.Core.Cellar;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Records;
@@ -85,6 +87,55 @@ public sealed class StageRecordImportTests(PristineProjectFixture pristine)
         Assert.Equal("zzgloss", sense2.Gloss.get_String(cache.DefaultAnalWs).Text);
         Assert.Equal(objectsBefore, cache.ServiceLocator.GetInstance<ICmObjectRepository>().AllInstances().Count());
         Assert.Equal(modifiedBefore, cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(entryId).DateModified);
+        Assert.Equal(fileBefore, SHA256.HashData(File.ReadAllBytes(path)));
+    }
+
+    [Fact]
+    public void AnEditedCustomFieldIsStagedAsOneCustomFieldOperationThatReadsBackAndAppliesNothing()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        Guid entryId = default;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            new FieldDescription(cache)
+            {
+                Class = cache.MetaDataCacheAccessor.GetClassId("LexEntry"), Name = "ZedRank", Type = CellarPropertyType.Integer,
+            }.UpdateCustomField();
+            var entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+            entryId = entry.Guid;
+            var form = cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = form;
+            form.Form.set_String(cache.DefaultVernWs, "zzword");
+        });
+        new FwDataProjectLoader().Save(cache);
+
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(cache, schema);
+        var read = RecordFileReader.Read(exporter.Export(entryId).Text!, schema.Schema, exporter.CreateReadOptions());
+        Assert.False(read.HasErrors);
+        read.Document!.Data["custom-LexEntry-ZedRank"] = RecordScalar.Of(9);
+        var plan = new ProjectRecordImporter(exporter)
+            .Plan(RecordFileWriter.Write(read.Document!, schema.Schema), new CatalogWritableFields(schema));
+        Assert.Empty(plan.ChangeSet.Refusals);
+
+        var fileBefore = SHA256.HashData(File.ReadAllBytes(path));
+        const string draft = "custom-import";
+        Assert.True(ProposalCommands.New(new(path, Version, draft, "Custom import")).Succeeded);
+        var staged = ProposalCommands.StageRecordImport(path, draft, schema, plan);
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Empty(staged.Value!.Lowering.Refusals);
+        var operation = Assert.Single(staged.Value.Lowering.Operations);
+        Assert.Equal("customField/setInteger", operation.Kind);
+        Assert.Equal(1, staged.Value.Composed.OperationCount);
+
+        var dryRun = ScratchDryRun.Of(cache, new Proposal(new Dictionary<string, string> { ["customField"] = "1.0" },
+            CanonicalId.FromGuid(new Guid("11111111-2222-3333-4444-555555555555")), null, staged.Value.Lowering.Operations));
+        var effect = Assert.Single(dryRun.ExpectedEffects);
+        Assert.Equal("customField/ZedRank", effect.Field);
+        Assert.Equal("9", effect.After["value"]);
+        var flid = cache.MetaDataCacheAccessor.GetFieldId("LexEntry", "ZedRank", true);
+        Assert.Equal(0, cache.DomainDataByFlid.get_IntProp(cache.ServiceLocator.GetObject(entryId).Hvo, flid));
         Assert.Equal(fileBefore, SHA256.HashData(File.ReadAllBytes(path)));
     }
 }

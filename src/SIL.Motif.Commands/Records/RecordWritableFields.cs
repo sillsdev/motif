@@ -44,7 +44,9 @@ public sealed class RecordWritableFields : IWritableFields
                 foreach (var verb in Verbs(field))
                 {
                     var handlerVerb = verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb;
-                    var candidates = catalog[(binding.DeclaringClass, binding.Field, handlerVerb)].ToArray();
+                    var candidates = (binding.IsCustom
+                        ? catalog[(CustomFieldOperationKinds.DeclaringClass, CustomFieldCatalog.TypeOf(field) ?? "", handlerVerb)]
+                        : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)]).ToArray();
                     entries.Add((type.Name, field.Name, verb), new FieldEntry(type.Name, field, verb, candidates, refusal));
                 }
                 foreach (var child in (field.Item ?? field).ObjectTypes)
@@ -92,7 +94,7 @@ public sealed class RecordWritableFields : IWritableFields
             return new(UncoveredFieldReason.NotUserEditable, classification);
         if (field.Computed)
             return new(UncoveredFieldReason.ComputedField);
-        return binding.IsCustom ? new(UncoveredFieldReason.CustomField) : null;
+        return binding.IsCustom && CustomFieldCatalog.TypeOf(field) is null ? new(UncoveredFieldReason.CustomField) : null;
     }
 
     private sealed record Candidate(string Kind, FieldWriteCapability Write);
@@ -181,4 +183,20 @@ public sealed class RecordWritableFields : IWritableFields
         private static bool AllowsChild(Candidate candidate, string child) =>
             candidate.Write.ChildClasses.Count == 0 || candidate.Write.ChildClasses.Contains(child, StringComparer.Ordinal);
     }
+}
+
+/// <summary>Which LibLCM property type a custom field of the record schema has, as the custom-field kinds declare it.</summary>
+internal static class CustomFieldCatalog
+{
+    /// <summary>The declared type name, or null for a type no kind writes (booleans, GUIDs, owned objects, reference sequences, single Unicode).</summary>
+    internal static string? TypeOf(RecordField field) => (field.Kind, field.Item?.Kind, field.IsList, field.MultiWritingSystem) switch
+    {
+        (RecordFieldKind.Text, _, false, true) => "MultiUnicode",
+        (RecordFieldKind.Rich, _, false, true) when !field.Paragraphs => "MultiString",
+        (RecordFieldKind.Rich, _, false, false) when !field.Paragraphs => "String",
+        (RecordFieldKind.Integer, _, false, _) => "Integer",
+        (RecordFieldKind.Reference, _, false, _) => "ReferenceAtomic",
+        (RecordFieldKind.Collection, RecordFieldKind.Reference, _, _) => "ReferenceCollection",
+        _ => null,
+    };
 }
