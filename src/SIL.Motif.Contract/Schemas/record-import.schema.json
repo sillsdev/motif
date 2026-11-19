@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "record-import.schema.json",
+  "description": "Record-file import request and response, shared by the CLI import --file --json and the MCP motif_import_record tool. Null members are omitted. The serialized response stays within 2048 bytes; the lists page.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Request"
+    },
+    {
+      "$ref": "#/$defs/Response"
+    }
+  ],
+  "$defs": {
+    "Request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectPath",
+        "filePath"
+      ],
+      "properties": {
+        "projectPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "filePath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "draftName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "Operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "kind"
+      ],
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "type": "string"
+        }
+      }
+    },
+    "Refusal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "field",
+        "reason"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "record-import.change-refused",
+            "record-import.field-uncovered",
+            "record-import.shape-unsupported",
+            "record-import.value-stale",
+            "record-import.not-executable"
+          ]
+        },
+        "class": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "object": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 90
+        }
+      }
+    },
+    "Response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "baseVerdict",
+        "changeCount",
+        "operationCount",
+        "refusalCount",
+        "page",
+        "pageCount",
+        "operations",
+        "refusals"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "dryRun",
+            "draft"
+          ]
+        },
+        "recordKind": {
+          "type": "string"
+        },
+        "recordId": {
+          "type": "string"
+        },
+        "baseVerdict": {
+          "enum": [
+            "fresh"
+          ]
+        },
+        "changeCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "operationCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refusalCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "operations": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/Operation"
+          }
+        },
+        "refusals": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/Refusal"
+          }
+        },
+        "draftName": {
+          "type": "string"
+        },
+        "proposalId": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "draft"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "draftName",
+              "proposalId"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "draftName"
+                  ]
+                },
+                {
+                  "required": [
+                    "proposalId"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

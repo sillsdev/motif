@@ -150,6 +150,7 @@ public static class CommandTextRenderer
                 (r.LookedAt ? "marked looked at." : "no longer marked looked at.") + Environment.NewLine,
             WordReadStateResponse r => RenderWordReadState(r),
             WritingSystemsResponse r => RenderWritingSystems(r),
+            RecordImportResponse r => RenderRecordImport(r),
             GdrListResponse r => RenderGdrList(r),
             GdrShowResponse r => RenderGdrShow(r),
             GdrCheckResponse r => RenderGdrCheck(r),
@@ -1511,6 +1512,22 @@ public static class CommandTextRenderer
             if (CandidateLine(touched.ByMembershipOnly, touched.BySpellingOnly) is { } candidates)
                 text.AppendLine($"           Not counted: {candidates}");
         }
+        return text.ToString();
+    }
+
+    private static string RenderRecordImport(RecordImportResponse r)
+    {
+        var text = new StringBuilder();
+        text.AppendLine(r.Mode == "draft"
+            ? $"Staged {r.OperationCount:N0} operation(s) from the {r.RecordKind} file in Draft {r.DraftName} ({r.ProposalId}). Nothing was applied."
+            : $"Dry run of the {r.RecordKind} file: {r.ChangeCount:N0} change(s) lower to {r.OperationCount:N0} operation(s). Nothing was written.");
+        text.AppendLine($"  record: {r.RecordId}; base: {r.BaseVerdict}; refused: {r.RefusalCount:N0}; page {r.Page} of {r.PageCount}");
+        foreach (var operation in r.Operations)
+            text.AppendLine($"  op {operation.OperationId}  {operation.Kind}  {operation.Target}");
+        foreach (var refusal in r.Refusals)
+            text.AppendLine($"  refused {refusal.Code}  {refusal.Class}.{refusal.Field}: {refusal.Reason}");
+        if (r.Page < r.PageCount)
+            text.AppendLine($"  More: --page {r.Page + 1}");
         return text.ToString();
     }
 

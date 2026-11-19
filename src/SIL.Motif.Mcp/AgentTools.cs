@@ -5,6 +5,7 @@ using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Records;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Commands;
@@ -241,6 +242,27 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(StartProposal(c, a)))
         {
             Requests = [typeof(NewDraftRequest)],
+        },
+
+        new("motif_import_record",
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object([("file", Schema.String("Path of the edited record file, exported from this project."), true),
+                ("draft", Schema.String("A new Draft name to stage the operations in. Leave it out for a dry run that writes nothing."), false),
+                ("page", Schema.Integer("Page of operations and refusals to list. Default 1.", 1, 100000), false)]),
+            false,
+            false,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(RecordImportCommand.Run(new RecordImportRequest(
+                c.ProjectPath, a.Required("file"), a.Optional("draft"), a.OptionalInt("page") ?? 1)))))
+        {
+            Requests = [typeof(RecordImportRequest)],
+            OutputSchema = RecordImportToolSchema.Output,
+            FieldNames = new Dictionary<string, string?>
+            {
+                ["FilePath"] = "file", ["DraftName"] = "draft", ["Page"] = "page",
+            },
         },
 
         new("motif_guide",

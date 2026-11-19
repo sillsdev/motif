@@ -120,6 +120,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "new", "new",
             new[] { "new --project <fwdata> --draft <name> [--label <text>] [--request <requestId>]" }),
+        new CliVerbDescriptor("Commands", "import", "import",
+            new[] { "import --project <fwdata> --file <path> [--draft <name>] [--page <n>] [--json]" }),
         new CliVerbDescriptor("Commands", "pending-changes", "pending-changes",
             new[] { "pending-changes --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "put-pending-change", "put-pending-change",
