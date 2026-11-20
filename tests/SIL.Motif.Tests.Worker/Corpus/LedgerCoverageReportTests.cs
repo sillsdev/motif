@@ -293,8 +293,8 @@ public sealed class LedgerCoverageReportTests : IDisposable
     public void StableIsUnmeasuredWithoutACompleteComparableCheckWithReadingIdentity()
     {
         var path = WriteProtected(A);
-        Assert.Equal(DoneVerdictKind.Unmeasured, Stable(path, new(CheckCompleteness.Partial, true, true, false, [A])).Verdict);
-        Assert.Equal(DoneVerdictKind.Unmeasured, Stable(path, new(CheckCompleteness.Complete, false, true, false, [A])).Verdict);
+        Assert.Equal(DoneVerdictKind.Unmeasured, Stable(path, new(CheckCompleteness.Partial, true, true, false, [A], Revision)).Verdict);
+        Assert.Equal(DoneVerdictKind.Unmeasured, Stable(path, new(CheckCompleteness.Complete, false, true, false, [A], Revision)).Verdict);
         Assert.Equal(["protected-set-digest-mismatch"], Stable(WriteProtected(A, "0"), Complete(true, A)).Reasons);
         Assert.Equal(["protected-set-revision-mismatch"], Stable(WriteProtected(A, revision: "x"), Complete(true, A)).Reasons);
     }

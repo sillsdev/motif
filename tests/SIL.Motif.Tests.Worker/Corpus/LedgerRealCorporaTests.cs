@@ -12,6 +12,7 @@ public sealed class LedgerRealCorporaTests(ITestOutputHelper output)
     public const string TamFrequencyVariable = "MOTIF_CORPUS_TAM_FREQUENCY";
     public const string SmeDirectoryVariable = "MOTIF_CORPUS_SME_DIR";
     public const string MetricsVariable = "MOTIF_CORPUS_LEDGER_METRICS";
+    public const string StoreVariablePrefix = "MOTIF_CORPUS_STORE_";
 
     [LedgerFixtureFact]
     public void CebJoinsItsFrozenFrequencyListWithNoRefusal() =>
@@ -57,12 +58,33 @@ public sealed class LedgerRealCorporaTests(ITestOutputHelper output)
         var frequency = kind == FrequencyKind.Json
             ? FrequencyListReader.ReadWordCountJson(frequencyBytes, sidecar)
             : FrequencyListReader.ReadTsv(frequencyBytes, sidecar, hasHeader);
-        var report = LedgerCoverage.Build(new(ledger, sidecar, frequency, null, declaredFrequency));
+        IReadOnlyDictionary<string, TypeCheck>? checks = null;
+        if (Environment.GetEnvironmentVariable(StoreVariablePrefix + lane.ToUpperInvariant()) is { Length: > 0 } storePath)
+        {
+            // A disposable copy of a project database, never the original; the registered path only names the project.
+            var registered = Environment.GetEnvironmentVariable(StoreVariablePrefix + lane.ToUpperInvariant() + "_FWDATA")
+                ?? Path.ChangeExtension(storePath, ".fwdata");
+            var project = new SIL.Motif.Contract.Projects.ProjectLocator(registered, Path.GetFileNameWithoutExtension(registered));
+            using var database = SIL.Motif.Host.Store.MotifDatabase.OpenOwned(storePath, project,
+                SIL.Motif.Host.Store.MotifSchema.CurrentSchema, new Version(1, 0));
+            checks = TypeCheckProducer.FromStore(new SIL.Motif.Worker.Store.AssessmentRepository(database), sidecar.GrammarRevision);
+        }
+        var report = LedgerCoverage.Build(new(ledger, sidecar, frequency, checks, declaredFrequency));
         var join = report.Join;
 
         var metrics = new
         {
-            lane, ledgerRows = ledger.Rows.Count, ledgerTokens = ledger.TokenSum, frequencyTypes = frequency.Entries.Count,
+            lane, checks = checks is null ? null : new
+            {
+                produced = checks.Count, comparable = checks.Values.Count(item => item.Comparable),
+                complete = checks.Values.Count(item => item.Completeness == CheckCompleteness.Complete),
+                partial = checks.Values.Count(item => item.Completeness == CheckCompleteness.Partial),
+                provedPresent = checks.Values.Count(item => item.ProvedPresent),
+                usedByJoin = report.Rows.Count(row => row.Check is not null),
+                usedComparable = report.Rows.Count(row => row.Check is { Comparable: true }),
+            },
+            accountedCounts = report.Done.Accounted.Counts,
+            ledgerRows = ledger.Rows.Count, ledgerTokens = ledger.TokenSum, frequencyTypes = frequency.Entries.Count,
             frequencyDigestDeclared = declaredFrequency is not null, frequencyDigestMatches = declaredFrequency is null || declaredFrequency == frequency.Digest,
             join.EligibleTypes, join.EligibleTokens, join.Blocks,
             missing = new { join.MissingTypes, join.MissingWeight }, extra = new { rows = join.Extra.Count, tokens = join.ExtraDeclaredTokens },

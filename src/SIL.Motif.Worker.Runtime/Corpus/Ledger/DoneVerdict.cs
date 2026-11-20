@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 
 namespace SIL.Motif.Worker.Corpus.Ledger;
@@ -98,8 +96,7 @@ internal static class DoneVerdict
             using var document = JsonDocument.Parse(line);
             selected.Add(document.RootElement.GetProperty("occurrenceId").GetString()!);
         }
-        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Concat(selected.Select(id => id + "\n")))))
-            .ToLowerInvariant();
+        var digest = LedgerArtifactDigests.Selection(selected);
         if (selected.Count != selected.Distinct(StringComparer.Ordinal).Count() ||
             !string.Equals(digest, Pin("selectionDigest"), StringComparison.OrdinalIgnoreCase))
             return DoneTest.Unmeasured("audit-selection-digest-mismatch");
@@ -150,13 +147,11 @@ internal static class DoneVerdict
         {
             using var document = JsonDocument.Parse(File.ReadAllBytes(path));
             var root = document.RootElement;
-            var pairs = root.GetProperty("pairs").EnumerateArray()
-                .Select(pair => (Type: LedgerJoiner.Key(pair.GetProperty("type").GetString()!), Reading: pair.GetProperty("reading").GetString()!))
-                .OrderBy(pair => pair.Type, StringComparer.Ordinal).ThenBy(pair => pair.Reading, StringComparer.Ordinal).ToArray();
-            var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-                string.Concat(pairs.Select(pair => pair.Type + "\t" + pair.Reading + "\n"))))).ToLowerInvariant();
-            if (!string.Equals(digest, root.GetProperty("digest").GetString(), StringComparison.OrdinalIgnoreCase) || pairs.Length == 0 ||
-                pairs.Distinct().Count() != pairs.Length)
+            var pairs = LedgerArtifactDigests.SortPairs(root.GetProperty("pairs").EnumerateArray()
+                .Select(pair => (LedgerJoiner.Key(pair.GetProperty("type").GetString()!), pair.GetProperty("reading").GetString()!)));
+            var digest = LedgerArtifactDigests.ProtectedSet(pairs);
+            if (!string.Equals(digest, root.GetProperty("digest").GetString(), StringComparison.OrdinalIgnoreCase) || pairs.Count == 0 ||
+                pairs.Distinct().Count() != pairs.Count)
                 return DoneTest.Unmeasured("protected-set-digest-mismatch");
             if (root.GetProperty("grammarRevision").GetString() != report.Stamp.GrammarRevision)
                 return DoneTest.Unmeasured("protected-set-revision-mismatch");
@@ -172,7 +167,7 @@ internal static class DoneVerdict
             }
             var counts = new Dictionary<string, long>
             {
-                ["pairs"] = pairs.Length, ["kept"] = kept, ["lost"] = lost, ["unmeasured"] = unmeasured,
+                ["pairs"] = pairs.Count, ["kept"] = kept, ["lost"] = lost, ["unmeasured"] = unmeasured,
             };
             return lost > 0 ? new(DoneVerdictKind.Fail, ["protected-reading-lost"], counts)
                 : unmeasured > 0 ? new(DoneVerdictKind.Unmeasured, ["protected-comparison-unmeasured"], counts)
