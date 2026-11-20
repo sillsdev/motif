@@ -3934,6 +3934,10 @@ public static class MotifAppStrings
     public static string ProposalRefreshEvidence => Text("MotifApp.ProposalRefreshEvidence");
     public static string ProposalCheckForComparison => Text("MotifApp.ProposalCheckForComparison");
     public static string ProposalReading => Text("MotifApp.ProposalReading");
+    public static string ProposalDryRunFieldCountPattern => Text("MotifApp.ProposalDryRunFieldCountPattern");
+    public static string ProposalDryRunWillChangeFormat => Text("MotifApp.ProposalDryRunWillChangeFormat");
+    public static string ProposalDryRunWillChangeMore => Text("MotifApp.ProposalDryRunWillChangeMore");
+    public static string ProposalDryRunWillChangeNothing => Text("MotifApp.ProposalDryRunWillChangeNothing");
     public static string ProposalReadStuck => Text("MotifApp.ProposalReadStuck");
     public static string ProposalReadAgain => Text("MotifApp.ProposalReadAgain");
     public static string ProposalReadingChanged => Text("MotifApp.ProposalReadingChanged");

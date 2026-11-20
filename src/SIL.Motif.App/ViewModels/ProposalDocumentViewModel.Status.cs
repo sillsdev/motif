@@ -39,7 +39,17 @@ public sealed partial class ProposalDocumentViewModel
     public string DifferenceCheckText => DifferenceChecked && Difference.Summary is { } summary
         ? FormatCheckDetail(MotifAppStrings.ProposalCheckDifference, DifferenceDetail(summary))
         : CheckText(MotifAppStrings.ProposalCheckDifference, DifferenceChecked);
-    public string DryRunCheckText => CheckText(MotifAppStrings.ProposalCheckDryRun, DryRunChecked);
+    public string DryRunCheckText => DryRunChecked && DryRunFound is { } found
+        ? FormatCheckDetail(MotifAppStrings.ProposalCheckDryRun, found)
+        : CheckText(MotifAppStrings.ProposalCheckDryRun, DryRunChecked);
+
+    /// <summary>What the bound Dry Run will change, from its recorded effects, or null when none are on hand.</summary>
+    public string? DryRunFound => DryRunChecked && Detail is { } detail && _review?.Trial is { } trial &&
+        trial.IntentDigest == detail.CurrentIntentDigest && trial.DryRun is { } dryRun
+        ? ProposalEffectText.WillChange(dryRun.Effects) : null;
+
+    /// <summary>The Dry Run's finding repeated in the Apply confirmation, or empty.</summary>
+    public string ApplyWillChangeText => DryRunFound ?? string.Empty;
     public bool ShowsDifferenceAction => ShowsReadiness && TriedChecked && Difference.ShowsMakeControls;
     public bool ShowsDryRunAction => ShowsReadiness && !DryRunChecked;
     public bool ShowsDryRunAdvice => ShowsDryRunAction && DifferenceChecked &&
@@ -71,7 +81,7 @@ public sealed partial class ProposalDocumentViewModel
         foreach (var name in new[] { nameof(StatusSentence), nameof(HasStatusSentence), nameof(StatusActionText),
                      nameof(StatusActionCommand), nameof(HasStatusAction), nameof(ShowsStatus), nameof(ShowsOutdatedNotice),
                      nameof(ShowsReadiness), nameof(ShowsReadySentence), nameof(ShowsTrialStatusSentence), nameof(ShowsLifecycleStatus), nameof(TriedChecked), nameof(DifferenceChecked), nameof(DryRunChecked),
-                     nameof(TriedCheckText), nameof(DifferenceCheckText), nameof(DryRunCheckText), nameof(ShowsDifferenceAction),
+                     nameof(TriedCheckText), nameof(DifferenceCheckText), nameof(DryRunCheckText), nameof(ApplyWillChangeText), nameof(ShowsDifferenceAction),
                      nameof(ShowsDryRunAction), nameof(ShowsDryRunAdvice), nameof(ShowsDifferenceAdvice), nameof(DifferenceAdvice) })
             OnPropertyChanged(name);
     }

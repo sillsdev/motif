@@ -15,6 +15,21 @@ internal static class ProposalEffectText
             change.Before ?? MotifAppStrings.ProposalChangeEmpty, change.After ?? MotifAppStrings.ProposalChangeEmpty);
     }
 
+    /// <summary>What a Dry Run found, as one sentence: how many fields it will change and the first few changes.</summary>
+    public static string WillChange(IReadOnlyList<EffectView> effects)
+    {
+        var transitions = effects.SelectMany(effect => effect.Changes.Select(change => Transition(effect, change))).ToArray();
+        if (transitions.Length == 0) return MotifAppStrings.ProposalDryRunWillChangeNothing;
+        var shown = string.Join("; ", transitions.Take(ShownChanges));
+        if (transitions.Length > ShownChanges)
+            shown += string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDryRunWillChangeMore,
+                transitions.Length - ShownChanges);
+        return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDryRunWillChangeFormat,
+            PluralText.Format(MotifAppStrings.ProposalDryRunFieldCountPattern, transitions.Length), shown);
+    }
+
+    private const int ShownChanges = 3;
+
     public static string Shared(EffectView effect) => string.Join(Environment.NewLine,
         effect.Changes.Select(change => Transition(effect, change)).Prepend(string.Format(CultureInfo.CurrentCulture,
             MotifAppStrings.ProposalSharedEffect, effect.CanonicalId)));

@@ -24,6 +24,8 @@
             IsVisible="{Binding ShowsPrepareApply}" HorizontalAlignment="Left" />
     <StackPanel IsVisible="{Binding IsConfirmingApply}" Spacing="{DynamicResource Intent.Space.Related}">
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalApplyConfirm}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock x:Name="ApplyWillChange" Text="{Binding ApplyWillChangeText}"
+                               IsVisible="{Binding !!ApplyWillChangeText}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalApplyDeferredNotice}"
                                IsVisible="{Binding ShowsDeferredApplyNotice}" TextWrapping="Wrap" />
       <views:CopyableTextBlock x:Name="ApplyBackupNotice" Text="{x:Static app:MotifAppStrings.ApplyBackupNotice}" TextWrapping="Wrap" />
