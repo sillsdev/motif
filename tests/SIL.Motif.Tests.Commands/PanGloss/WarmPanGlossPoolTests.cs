@@ -251,8 +251,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
 
         using var cancel = new CancellationTokenSource();
         var hung = pool.TryWordAsync(grammar, "t1", grammar, "hang", true, cancel.Token);
-        // A cancel is a kill only once the word is with the parser; before queue admission it abandons the wait and
-        // sends nothing, so wait until the fake parser has logged "hang" rather than guess how long admission takes.
+        // A cancel kills only once the word is with the parser, so wait until the fake parser logs "hang".
         await Wait.UntilAsync(() => Lines(requestLog).Contains("hang"), "Timed out waiting for the hung word to reach the parser");
         cancel.Cancel();
         Assert.IsType<WarmParseResult.Cancelled>(await hung);
