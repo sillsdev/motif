@@ -19,8 +19,10 @@
           <Button x:Name="OpenDraftButton" Content="{x:Static app:MotifAppStrings.ImportRecordOpenDraft}"
                   Command="{Binding OpenDraftCommand}"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordOpenDraftAccessibleName}" />
-          <Button x:Name="CancelButton" Content="{Binding CancelText}" Click="OnCancelClick" IsCancel="True"
-                  AutomationProperties.Name="{Binding CancelAccessibleName}" />
+          <Button x:Name="CancelButton" Click="OnCancelClick" IsCancel="True"
+                  AutomationProperties.Name="{Binding CancelAccessibleName}">
+            <TextBlock Text="{Binding CancelText}" />
+          </Button>
         </StackPanel>
       </StackPanel>
       <ScrollViewer HorizontalScrollBarVisibility="Disabled">

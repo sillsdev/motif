@@ -47,7 +47,9 @@
       <Button Classes="secondary" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalReceiptSeeInTexts}"
               Content="{x:Static app:MotifAppStrings.ProposalReceiptSeeInTexts}" Command="{Binding SeeInTextsCommand}" />
       <Button Classes="secondary" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalReceiptCopy}"
-              Content="{Binding ReceiptCopyLabel}" Command="{Binding CopyReceiptIdCommand}" />
+              Command="{Binding CopyReceiptIdCommand}">
+        <TextBlock Text="{Binding ReceiptCopyLabel}" />
+      </Button>
     </WrapPanel>
   </StackPanel>
 </UserControl>
