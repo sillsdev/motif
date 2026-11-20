@@ -31,3 +31,5 @@ The report and the saved Trial record `sample: "working-set"` (an ordinary Trial
 `--no-background` (MCP `no_background`) needs `--wait`. A Baseline recapture the Trial needs runs inline, and no Parsimony job is queued after the Trial completes, so nothing commits after the command returns.
 
 Add `--verbose` with `--wait` to print the Trial's phase timings (where the time went, and whether the before-side parse was reused) to standard error after the report.
+
+The default wait is 120 seconds (`--wait-timeout-ms 120000`). When it expires the job keeps running, and the command exits with code 3 and the `job.wait-timeout` refusal, which is not a failed Trial: its `jobId` fact names the job, and `motif jobs wait <jobId> --project <fwdata> --wait-timeout-ms <ms>` resumes the wait.

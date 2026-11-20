@@ -77,6 +77,22 @@ public sealed class JobVerbArgvTests : IDisposable
         Assert.DoesNotContain("cancellation", result.Error, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("dry-run")]
+    [InlineData("trial")]
+    public void AWaitThatTimesOutSaysTheJobKeepsRunningAndNamesTheCommandThatResumesTheWait(string verb)
+    {
+        var proposalId = FinalizeOneOperationProposal();
+
+        var result = Run($"{verb} --project \"{Project}\" {proposalId} --wait --wait-timeout-ms 0 --json");
+
+        Assert.Equal(3, result.ExitCode);
+        var refusal = Envelope(result.Error[result.Error.IndexOf('{')..]);
+        Assert.Equal("job.wait-timeout", refusal.Code);
+        Assert.Contains("not a failed", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("jobs wait " + refusal.Detail!["jobId"] + " --project", refusal.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void DryRunWaitWithZeroTimeoutReturnsATypedRefusal()
     {

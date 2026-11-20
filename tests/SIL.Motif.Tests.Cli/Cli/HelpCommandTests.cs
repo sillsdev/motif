@@ -576,6 +576,20 @@ public sealed class HelpCommandTests
         Assert.Empty(missing);
     }
 
+    [Theory]
+    [InlineData("trial")]
+    [InlineData("dry-run")]
+    public void WaitHelpStatesTheDefaultTimeoutAndWhatItsExpiryMeans(string command)
+    {
+        var result = Run(true, true, "help", command, "--full");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("120 seconds", result.Output, StringComparison.Ordinal);
+        Assert.Contains("job.wait-timeout", result.Output, StringComparison.Ordinal);
+        Assert.Contains("code 3", result.Output, StringComparison.Ordinal);
+        Assert.Contains("jobs wait", result.Output, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

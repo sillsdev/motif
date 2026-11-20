@@ -23,3 +23,4 @@ The summary shows at most ten warnings, each limited to 240 characters, with tot
 
 `--no-background` (MCP `no_background`) needs `--wait`. The Dry Run itself runs on the job runner, but no Parsimony Baseline bundle job is queued around it, so nothing commits after the command returns.
 
+The default wait is 120 seconds (`--wait-timeout-ms 120000`). When it expires the job keeps running, and the command exits with code 3 and the `job.wait-timeout` refusal, which is not a failed Dry Run: its `jobId` fact names the job, and `motif jobs wait <jobId> --project <fwdata> --wait-timeout-ms <ms>` resumes the wait.

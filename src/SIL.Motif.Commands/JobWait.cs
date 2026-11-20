@@ -360,6 +360,8 @@ public static class JobWait
         };
         var message = "Timed out after " + timeout + " waiting for job '" + jobId + "' to finish; ";
         var checkAgain = "Check again with 'jobs show " + jobId + " --project <fwdata>'.";
+        var resume = "This is a wait timeout, not a failed job: it keeps running. Resume the wait with " +
+            "'jobs wait " + jobId + " --project <fwdata> --wait-timeout-ms <ms>'.";
         AddObservedStage(status, facts);
         var unclaimed = false;
         if (status.ClaimLost) facts["claimLost"] = "true";
@@ -376,7 +378,7 @@ public static class JobWait
                 statusText = JobStatusJson.ToWire(fresh);
             }
             unclaimed = status.Status == JobStatus.Queued;
-            message += "it was " + statusText + ". " + checkAgain;
+            message += "it was " + statusText + ". " + checkAgain + " " + resume;
         }
         else
         {
@@ -390,7 +392,7 @@ public static class JobWait
             // Only a Queued job cancels straight to Cancelled; a job a runner just claimed stays Running.
             unclaimed = status.Status == JobStatus.Queued && cancelledStatus == JobStatus.Cancelled;
             message += !cancellation.Succeeded
-                ? "cancellation was refused, so the job keeps running. " + checkAgain
+                ? "cancellation was refused, so the job keeps running. " + checkAgain + " " + resume
                 : cancelledStatus == JobStatus.Cancelled
                     ? "Motif cancelled the job."
                     : "Motif requested cancellation of the job.";
