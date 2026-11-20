@@ -146,6 +146,60 @@ public sealed class ProposalApplyStepsTests
 
         Assert.True(opened.Document.IsOutdated);
         Assert.False(opened.Document.IsConfirmingApply);
+        Assert.Equal(MotifAppStrings.ProposalDocumentOutdated, opened.Document.ApplyRefusal?.Sentence);
+    }
+
+    [Fact]
+    public async Task ApplyStaysOffWhileTheChangesAreBeingCheckedSoAPressCannotBeLost()
+    {
+        await using var opened = await OpenMeasuredPendingAsync();
+        var gate = new TaskCompletionSource();
+        opened.Fake.MeasurePendingHandler = async (request, _) =>
+        {
+            await gate.Task;
+            return CommandOutcome<MeasurePendingResult>.Success(
+                SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/pending",
+                    request.Revision!, FakeCommandClient.CompleteNumbers));
+        };
+
+        var checking = opened.Document.MeasurePendingCommand.ExecuteAsync(null);
+        try
+        {
+            Assert.True(opened.Document.IsCheckingChanges);
+            Assert.False(opened.Document.CanPrepareApply);
+            Assert.False(opened.Document.PrepareApplyCommand.CanExecute(null));
+        }
+        finally
+        {
+            gate.TrySetResult();
+            await checking;
+        }
+
+        Assert.False(opened.Document.IsCheckingChanges);
+        Assert.True(opened.Document.PrepareApplyCommand.CanExecute(null));
+        await opened.Document.PrepareApplyCommand.ExecuteAsync(null);
+        Assert.True(opened.Document.IsConfirmingApply);
+    }
+
+    [Fact]
+    public async Task APressThatCannotOpenTheConfirmationSaysWhy()
+    {
+        await using var opened = await OpenMeasuredPendingAsync();
+        opened.Context.ProposalApply.ShowReconciliationNeeded();
+        var gate = new TaskCompletionSource();
+        var shown = await opened.Fake.ShowProposalAsync(new("project.fwdata", "1.0", "draft/one"), CancellationToken.None);
+        opened.Fake.ShowProposalHandler = async (_, _) =>
+        {
+            await gate.Task;
+            return shown;
+        };
+        _ = opened.Document.RefreshAsync();
+        var pressed = opened.Document.PrepareApplyCommand.ExecuteAsync(null);
+        gate.SetResult();
+        await pressed;
+
+        Assert.False(opened.Document.IsConfirmingApply);
+        Assert.False(string.IsNullOrWhiteSpace(opened.Document.ApplyRefusal?.Sentence));
     }
 
     [Fact]

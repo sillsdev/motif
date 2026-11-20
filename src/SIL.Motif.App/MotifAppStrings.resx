@@ -7405,6 +7405,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProgressReadingNext" xml:space="preserve"><value>Reading next actions…</value></data>
   <data name="MotifApp.ProgressNextUnavailable" xml:space="preserve"><value>Some next actions are unavailable. Refresh the project or try again.</value></data>
   <!-- W5 -->
+  <data name="MotifApp.ProposalApplyCouldNotStart" xml:space="preserve"><value>Apply could not start because the project or the open Proposal changed. Choose Refresh, then Apply… again.</value></data>
   <data name="MotifApp.ProposalApplyStillReading" xml:space="preserve"><value>Motif is still reading this Proposal. Try Apply again in a moment, or reopen the Proposal.</value></data>
   <data name="MotifApp.ProposalDocumentOutdated" xml:space="preserve"><value>The project or Proposal changed. Refresh its evidence before applying.</value></data>
   <data name="MotifApp.ProposalDocumentUnreadable" xml:space="preserve"><value>The Proposal could not be read. Your unsaved text is kept.</value></data>

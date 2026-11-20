@@ -3915,6 +3915,7 @@ public static class MotifAppStrings
     public static string ProgressNextUnavailable => Text("MotifApp.ProgressNextUnavailable");
 
     #region W5
+    public static string ProposalApplyCouldNotStart => Text("MotifApp.ProposalApplyCouldNotStart");
     public static string ProposalApplyStillReading => Text("MotifApp.ProposalApplyStillReading");
     public static string ProposalDocumentOutdated => Text("MotifApp.ProposalDocumentOutdated");
     public static string ProposalDocumentUnreadable => Text("MotifApp.ProposalDocumentUnreadable");

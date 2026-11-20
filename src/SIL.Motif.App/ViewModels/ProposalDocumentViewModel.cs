@@ -62,6 +62,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         _context.Changes.PropertyChanged += OnApplyChanged;
         _context.PendingMeasurement.PropertyChanged += OnApplyChanged;
         _context.PropertyChanged += OnApplyChanged;
+        MeasurePendingCommand.PropertyChanged += OnCheckRunningChanged;
     }
 
     public string ProjectPath { get; }
@@ -139,8 +140,10 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     public RationaleEditorModel? UnsavedEditor =>
         RationaleEditor is { HasUnsavedChanges: true } rationale ? rationale :
         Comments.FirstOrDefault(editor => editor.HasUnsavedChanges);
-    public bool CanPrepareApply => CanAddComment && !IsDryRunActive &&
+    public bool CanPrepareApply => CanAddComment && !IsDryRunActive && !IsCheckingChanges &&
         !_context.ProposalApply.IsApplying && PrepareBlockReason is null;
+    /// <summary>Whether Check These Changes is running, from its first step to its closing read.</summary>
+    public bool IsCheckingChanges => MeasurePendingCommand.IsRunning || _context.PendingMeasurement.IsMeasuring;
     /// <summary>
     /// Why Apply cannot start, or null when it can. A pending Draft is measured by Check These Changes.
     /// </summary>
@@ -500,11 +503,19 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         ApplyRefusal = null;
         // A press while the window is re-reading waits for the read rather than being dropped.
         if (!await SettleReadAsync().ConfigureAwait(true)) return;
-        if (IsLoading || !CanPrepareApply || _context.ProjectPath != ProjectPath) return;
+        if (IsLoading || !CanPrepareApply || _context.ProjectPath != ProjectPath)
+        {
+            RefusePrepare();
+            return;
+        }
         if (IsPending) await _context.LeaveProposalAsync().ConfigureAwait(true);
         else await _context.OpenProposalAsync(ProposalId, CancellationToken.None, Label).ConfigureAwait(true);
         if (_stopped || _context.ProjectPath != ProjectPath ||
-            (!IsPending && _context.Lens?.ProposalId != ProposalId)) return;
+            (!IsPending && _context.Lens?.ProposalId != ProposalId))
+        {
+            RefusePrepare();
+            return;
+        }
         await RefreshAsync().ConfigureAwait(true);
         if (!await SettleReadAsync().ConfigureAwait(true)) return;
         // An evidence change that superseded the read leaves it outdated with no read running: read once more.
@@ -514,6 +525,22 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             if (!await SettleReadAsync().ConfigureAwait(true)) return;
         }
         IsConfirmingApply = CanApply;
+        if (!IsConfirmingApply) RefusePrepare();
+    }
+
+    // A press that cannot open the confirmation always says why, so Apply… never looks like it did nothing.
+    private void RefusePrepare()
+    {
+        if (_stopped) return;
+        var reason = ApplyBlockReason;
+        ApplyRefusal = WindowRefusal.Plain(string.IsNullOrWhiteSpace(reason) ? MotifAppStrings.ProposalApplyCouldNotStart : reason);
+    }
+
+    private void OnCheckRunningChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(IAsyncRelayCommand.IsRunning)) return;
+        OnPropertyChanged(nameof(IsCheckingChanges));
+        RaiseApply();
     }
 
     /// <summary>How long a press waits for a read before saying it is still reading.</summary>
@@ -562,6 +589,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         _context.Changes.PropertyChanged -= OnApplyChanged;
         _context.PendingMeasurement.PropertyChanged -= OnApplyChanged;
         _context.PropertyChanged -= OnApplyChanged;
+        MeasurePendingCommand.PropertyChanged -= OnCheckRunningChanged;
         RationaleEditor?.Freeze();
         foreach (var editor in Comments) editor.Freeze();
         DiagnosticsContent = null;
