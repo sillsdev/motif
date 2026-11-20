@@ -151,13 +151,84 @@ public sealed class ImportRecordDialogModelTests
         await model.OpenTask;
 
         Assert.Equal(1, attempts);
-        Assert.Equal(MotifAppStrings.ImportRecordOpenFailed, model.StatusText);
+        Assert.Equal("nope", model.StatusText);
         Assert.True(model.OpenDraftCommand.CanExecute(null));
 
         await model.OpenDraftCommand.ExecuteAsync(null);
 
         Assert.Equal(2, attempts);
-        Assert.False(model.OpenDraftCommand.CanExecute(null) && model.StatusText == MotifAppStrings.ImportRecordOpenFailed);
+        Assert.NotEqual("nope", model.StatusText);
+    }
+
+    [Fact]
+    public async Task AnUnexpectedOpenFailureGetsTheGenericSentence()
+    {
+        var (model, _, _, _) = Make(open: (_, _) => Task.FromException(new IOException("disk")));
+        model.Import.FilePath = "edited.md";
+        model.Import.DraftName = "From file";
+        await model.Import.PreviewAsync();
+
+        await model.Import.StageAsync();
+        await model.OpenTask;
+
+        Assert.Equal(MotifAppStrings.ImportRecordOpenFailed, model.StatusText);
+    }
+
+    [Fact]
+    public async Task ClosingMidStageLetsTheStageFinishAndStillOpensItsDraft()
+    {
+        var gate = new TaskCompletionSource<CommandOutcome<RecordImportResponse>>();
+        var stageToken = CancellationToken.None;
+        var (model, _, _, opened) = Make((request, token) =>
+        {
+            if (request.DraftName is null) return Ok(Plan());
+            stageToken = token;
+            return gate.Task;
+        });
+        model.Import.FilePath = "edited.md";
+        model.Import.DraftName = "From file";
+        await model.Import.PreviewAsync();
+        var staging = model.Import.StageAsync();
+        Assert.True(model.Import.IsBusy);
+
+        model.Dispose();
+        Assert.False(stageToken.IsCancellationRequested);
+        gate.SetResult(CommandOutcome<RecordImportResponse>.Success(Plan(draft: "From file")));
+        await staging;
+        await model.OpenTask;
+
+        Assert.Equal(ImportRecordState.Staged, model.Import.State);
+        Assert.Equal("proposal-7", Assert.Single(opened));
+    }
+
+    [Fact]
+    public async Task ClosingMidPreviewCancelsIt()
+    {
+        var previewToken = CancellationToken.None;
+        var (model, _, _, _) = Make((_, token) =>
+        {
+            previewToken = token;
+            return new TaskCompletionSource<CommandOutcome<RecordImportResponse>>().Task;
+        });
+        model.Import.FilePath = "edited.md";
+
+        _ = model.Import.PreviewAsync();
+        model.Dispose();
+
+        Assert.True(previewToken.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void TypingAPathMakesPreviewAvailableAndTellsItsButton()
+    {
+        var (model, _, _, _) = Make();
+        var changed = 0;
+        model.Import.PreviewCommand.CanExecuteChanged += (_, _) => changed++;
+
+        model.Import.FilePath = "typed.md";
+
+        Assert.True(changed > 0);
+        Assert.True(model.Import.PreviewCommand.CanExecute(null));
     }
 
     [Fact]

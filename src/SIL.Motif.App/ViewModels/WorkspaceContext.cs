@@ -412,15 +412,20 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>
     /// Opens the review page of a Draft that was staged outside the Proposals list, such as by an import: the list reads
     /// again so the new Draft is in it, the Draft is selected and its evidence loaded, and the Proposals page shows.
+    /// Throws <see cref="InvalidOperationException"/> with a sentence for the person when the Draft is not listed or
+    /// its evidence cannot be read, so the caller can say so instead of closing as if it had opened.
     /// </summary>
     internal async Task OpenStagedProposalAsync(string proposalId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
+        var listed = true;
         if (_pages.OfType<ProposalsPageModel>().FirstOrDefault() is { } page)
-        {
-            await page.SelectStagedAsync(proposalId, cancellationToken).ConfigureAwait(true);
-        }
+            listed = await page.SelectStagedAsync(proposalId, cancellationToken).ConfigureAwait(true);
         await OpenProposalAsync(proposalId, cancellationToken).ConfigureAwait(true);
+        if (Lens is { } opened && opened.ProposalId == proposalId && opened.ReadRefusal is { } refusal)
+            throw new InvalidOperationException(string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                MotifAppStrings.ImportRecordOpenRefusedFormat, WindowRefusal.From(refusal).Sentence));
+        if (!listed) throw new InvalidOperationException(MotifAppStrings.ImportRecordOpenMissing);
         OpenPage(WorkspacePage.Proposals);
     }
 

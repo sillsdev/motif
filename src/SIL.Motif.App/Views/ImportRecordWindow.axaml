@@ -8,7 +8,7 @@
         Title="{x:Static app:MotifAppStrings.ImportRecordWindowTitle}"
         WindowStartupLocation="CenterOwner"
         Width="{DynamicResource Component.Shell.CrashWidth}"
-        Height="{DynamicResource Component.Shell.CrashWidth}"
+        Height="{DynamicResource Component.Shell.ImportRecordHeight}"
         MinWidth="{DynamicResource Component.Shell.CrashMinWidth}"
         MinHeight="{DynamicResource Component.Shell.CrashMinHeight}">
   <LayoutTransformControl LayoutTransform="{DynamicResource App.ZoomTransform}">
@@ -41,6 +41,17 @@
           </StackPanel>
           <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
           <StackPanel Spacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding HasPreview}">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding !IsStaged}">
+              <TextBlock Text="{x:Static app:MotifAppStrings.ImportRecordDraftNameLabel}" />
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                <TextBox x:Name="DraftNameBox" Text="{Binding Import.DraftName}"
+                         AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordDraftNameAccessibleName}" />
+                <Button x:Name="StageButton" Grid.Column="1" Classes="Primary" Theme="{DynamicResource SolidButton}"
+                        Content="{x:Static app:MotifAppStrings.ImportRecordStage}"
+                        Command="{Binding Import.StageCommand}"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordStageAccessibleName}" />
+              </Grid>
+            </StackPanel>
             <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding HasOperations}">
               <TextBlock Text="{x:Static app:MotifAppStrings.ImportRecordOperationsHeading}"
                          FontWeight="{DynamicResource Intent.Weight.Section}" />
@@ -80,17 +91,6 @@
               <Button x:Name="NextPageButton" Content="{x:Static app:MotifAppStrings.Next}"
                       Command="{Binding Import.NextPageCommand}"
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordNextAccessibleName}" />
-            </StackPanel>
-            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding !IsStaged}">
-              <TextBlock Text="{x:Static app:MotifAppStrings.ImportRecordDraftNameLabel}" />
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                <TextBox x:Name="DraftNameBox" Text="{Binding Import.DraftName}"
-                         AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordDraftNameAccessibleName}" />
-                <Button x:Name="StageButton" Grid.Column="1" Classes="Primary" Theme="{DynamicResource SolidButton}"
-                        Content="{x:Static app:MotifAppStrings.ImportRecordStage}"
-                        Command="{Binding Import.StageCommand}"
-                        AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordStageAccessibleName}" />
-              </Grid>
             </StackPanel>
           </StackPanel>
         </StackPanel>

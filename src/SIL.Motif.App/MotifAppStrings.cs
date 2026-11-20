@@ -32,6 +32,8 @@ public static class MotifAppStrings
     public static string ImportRecordSummaryFormat => Text("MotifApp.ImportRecordSummaryFormat");
     public static string ImportRecordStagedFormat => Text("MotifApp.ImportRecordStagedFormat");
     public static string ImportRecordOpenFailed => Text("MotifApp.ImportRecordOpenFailed");
+    public static string ImportRecordOpenMissing => Text("MotifApp.ImportRecordOpenMissing");
+    public static string ImportRecordOpenRefusedFormat => Text("MotifApp.ImportRecordOpenRefusedFormat");
     public static string ImportRecordOperationsHeading => Text("MotifApp.ImportRecordOperationsHeading");
     public static string ImportRecordRefusalsHeading => Text("MotifApp.ImportRecordRefusalsHeading");
     public static string ImportRecordOperationsAccessibleName => Text("MotifApp.ImportRecordOperationsAccessibleName");
@@ -39,15 +41,11 @@ public static class MotifAppStrings
     public static string ImportRecordPageFormat => Text("MotifApp.ImportRecordPageFormat");
     public static string ImportRecordPreviousAccessibleName => Text("MotifApp.ImportRecordPreviousAccessibleName");
     public static string ImportRecordNextAccessibleName => Text("MotifApp.ImportRecordNextAccessibleName");
-    public static string ImportRecordOperationFormat => Text("MotifApp.ImportRecordOperationFormat");
-    public static string ImportRecordRefusalFieldFormat => Text("MotifApp.ImportRecordRefusalFieldFormat");
-    public static string ImportRecordRefusalFormat => Text("MotifApp.ImportRecordRefusalFormat");
     public static string ImportRecordRefusalPlanRefused => Text("MotifApp.ImportRecordRefusalPlanRefused");
     public static string ImportRecordRefusalUnreadable => Text("MotifApp.ImportRecordRefusalUnreadable");
     public static string ImportRecordRefusalNothing => Text("MotifApp.ImportRecordRefusalNothing");
     public static string ImportRecordRefusalNameTaken => Text("MotifApp.ImportRecordRefusalNameTaken");
     public static string ImportRecordRefusalPage => Text("MotifApp.ImportRecordRefusalPage");
-    public static string ImportRecordNoProject => Text("MotifApp.ImportRecordNoProject");
     // round3-assistant-access
     public static string AssistantAccessHeading => Text("MotifApp.AssistantAccessHeading");
     public static string AssistantAccessExplanation => Text("MotifApp.AssistantAccessExplanation");

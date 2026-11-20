@@ -18,6 +18,7 @@
     <StaticResource x:Key="Component.Shell.DiagnosticMinHeight" ResourceKey="Primitive.Size.480" />
     <StaticResource x:Key="Component.Shell.CrashWidth" ResourceKey="Primitive.Size.640" />
     <StaticResource x:Key="Component.Shell.CrashHeight" ResourceKey="Primitive.Size.480" />
+    <StaticResource x:Key="Component.Shell.ImportRecordHeight" ResourceKey="Primitive.Size.780" />
     <StaticResource x:Key="Component.Shell.CrashMinWidth" ResourceKey="Primitive.Size.420" />
     <StaticResource x:Key="Component.Shell.CrashMinHeight" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.Shell.CrashDetailsMaxHeight" ResourceKey="Primitive.Size.240" />

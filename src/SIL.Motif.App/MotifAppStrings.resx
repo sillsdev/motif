@@ -7862,13 +7862,11 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ImportRecordPageFormat" xml:space="preserve"><value>Page {0} of {1}</value><comment>Page position of the preview lists.</comment></data>
   <data name="MotifApp.ImportRecordPreviousAccessibleName" xml:space="preserve"><value>Previous page of the preview</value><comment>Accessible name of the previous page button.</comment></data>
   <data name="MotifApp.ImportRecordNextAccessibleName" xml:space="preserve"><value>Next page of the preview</value><comment>Accessible name of the next page button.</comment></data>
-  <data name="MotifApp.ImportRecordOperationFormat" xml:space="preserve"><value>{0}: {1}</value><comment>One operation: its kind, then the object it changes.</comment></data>
-  <data name="MotifApp.ImportRecordRefusalFieldFormat" xml:space="preserve"><value>{0} {1}</value><comment>A refused change's class and field.</comment></data>
-  <data name="MotifApp.ImportRecordRefusalFormat" xml:space="preserve"><value>{0} ({1}): {2}</value><comment>A refused change: code, class and field, then why.</comment></data>
   <data name="MotifApp.ImportRecordRefusalPlanRefused" xml:space="preserve"><value>The file was made from an older state of this record. Export the record again and redo your edits.</value><comment>Sentence for a file whose base is not fresh.</comment></data>
   <data name="MotifApp.ImportRecordRefusalUnreadable" xml:space="preserve"><value>The file could not be read as a record file.</value><comment>Sentence for an unreadable file.</comment></data>
   <data name="MotifApp.ImportRecordRefusalNothing" xml:space="preserve"><value>The file makes no change that can be staged, so no Draft was made.</value><comment>Sentence for a file with no operations.</comment></data>
   <data name="MotifApp.ImportRecordRefusalNameTaken" xml:space="preserve"><value>A Draft with that name already exists. Choose another name.</value><comment>Sentence for a Draft name already used.</comment></data>
   <data name="MotifApp.ImportRecordRefusalPage" xml:space="preserve"><value>That page does not exist.</value><comment>Sentence for a page number outside the preview.</comment></data>
-  <data name="MotifApp.ImportRecordNoProject" xml:space="preserve"><value>Open a project before opening a record file.</value><comment>Status when no project is open.</comment></data>
+  <data name="MotifApp.ImportRecordOpenMissing" xml:space="preserve"><value>The Draft was staged but is not in the Proposals list yet. Find it on the Proposals page.</value><comment>Status when the staged Draft is missing from the Proposals list.</comment></data>
+  <data name="MotifApp.ImportRecordOpenRefusedFormat" xml:space="preserve"><value>The Draft was staged but its review could not be read: {0}</value><comment>Status when the staged Draft was found but could not be read; the argument is the reason.</comment></data>
 </root>

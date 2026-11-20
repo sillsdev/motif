@@ -95,6 +95,8 @@ public sealed partial class ImportRecordViewModel : ObservableObject, IDisposabl
         _running?.Cancel();
         IsBusy = false;
         Reset();
+        // Reset changes nothing when the state was already Idle, yet a typed path alone makes Preview available.
+        NotifyCommands();
     }
 
     partial void OnDraftNameChanged(string value) => NotifyCommands();
@@ -126,11 +128,11 @@ public sealed partial class ImportRecordViewModel : ObservableObject, IDisposabl
         if (!_staging) _running?.Cancel();
     }
 
-    /// <summary>Cancels any work in flight.</summary>
+    /// <summary>Cancels a preview in flight; a stage already started is left to finish, as <see cref="Cancel"/> does.</summary>
     public void Dispose()
     {
         _generation++;
-        _running?.Cancel();
+        if (!_staging) _running?.Cancel();
     }
 
     private async Task RunAsync(RecordImportRequest request, bool staging)

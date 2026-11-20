@@ -32,6 +32,7 @@ public sealed class ImportRecordDialogModel : ObservableObject, IDisposable
     private readonly Func<string, CancellationToken, Task> _openDraft;
     private bool _isPicking;
     private bool _isOpening;
+    private bool _disposed;
     private string? _openFailure;
 
     public ImportRecordDialogModel(ImportRecordViewModel import, IRecordFilePicker picker,
@@ -120,10 +121,15 @@ public sealed class ImportRecordDialogModel : ObservableObject, IDisposable
     /// <summary>Stops a preview in flight; the window then closes, and a stage already started finishes by itself.</summary>
     public void Cancel() => Import.Cancel();
 
+    /// <summary>
+    /// Closes the model. A preview in flight is cancelled; a stage already started finishes by itself and its Draft is
+    /// still opened, so closing the window never loses it.
+    /// </summary>
     public void Dispose()
     {
-        Import.PropertyChanged -= OnImportChanged;
+        _disposed = true;
         Import.Dispose();
+        if (!Import.IsBusy) Import.PropertyChanged -= OnImportChanged;
     }
 
     private async Task BrowseAsync()
@@ -156,6 +162,10 @@ public sealed class ImportRecordDialogModel : ObservableObject, IDisposable
             await _openDraft(id, CancellationToken.None).ConfigureAwait(true);
             opened = true;
         }
+        catch (InvalidOperationException exception)
+        {
+            _openFailure = exception.Message;
+        }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             _openFailure = MotifAppStrings.ImportRecordOpenFailed;
@@ -173,13 +183,9 @@ public sealed class ImportRecordDialogModel : ObservableObject, IDisposable
         if (e.PropertyName is nameof(ImportRecordViewModel.FilePath))
         {
             _openFailure = null;
-            // The import raises no command change when a typed path leaves its state as it was, so Preview would stay off.
-            Import.PreviewCommand.NotifyCanExecuteChanged();
-            Import.PreviousPageCommand.NotifyCanExecuteChanged();
-            Import.NextPageCommand.NotifyCanExecuteChanged();
-            Import.StageCommand.NotifyCanExecuteChanged();
         }
         NotifyAll();
+        if (_disposed && !Import.IsBusy) Import.PropertyChanged -= OnImportChanged;
         // A staged Draft opens by itself; the Open Draft button stays for when that fails.
         if (e.PropertyName is nameof(ImportRecordViewModel.State) && Import.State == ImportRecordState.Staged &&
             OpenDraftCommand.CanExecute(null))
