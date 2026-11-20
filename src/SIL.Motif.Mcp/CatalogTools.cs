@@ -4,8 +4,10 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Dispositions;
 using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Commands;
@@ -171,6 +173,15 @@ internal static class CatalogTools
             properties["minStem"]!["minimum"] = 1;
             properties["minStem"]!["default"] = WordGrouping.DefaultMinStem;
             properties["pattern"]!["maxLength"] = WordGrouping.MaxPatternLength;
+        }
+        if (command.RequestType == typeof(ListDispositionsRequest))
+        {
+            var properties = schema["properties"]!.AsObject();
+            properties["category"] = Schema.String("Only this category; leave out for all.", [.. DispositionCategories.Names]);
+            properties["limit"]!["minimum"] = 1;
+            properties["limit"]!["maximum"] = WordTypeDispositionCommands.MaxLimit;
+            properties["limit"]!["default"] = WordTypeDispositionCommands.DefaultLimit;
+            properties["page"]!["minimum"] = 1;
         }
         if (command.RequestType == typeof(GdrShowRequest))
         {

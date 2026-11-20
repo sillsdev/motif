@@ -1630,6 +1630,32 @@
     },
     {
       "kind": "command",
+      "code": "disposition list",
+      "slug": "disposition-list",
+      "title": "List word type dispositions",
+      "description": "Lists the word types that have a disposition in key order, with how many stand in each category, by page and optionally for one category. It reads and never writes.",
+      "helpPage": "# List word type dispositions\n\n\u0060disposition list\u0060 lists the word types that have a standing disposition, in word type key order, with the category and evidence of each and how many types stand in every category. It reads Motif\u0027s store and never writes. The MCP tool \u0060motif_disposition_list\u0060 takes \u0060category\u0060, \u0060limit\u0060 and \u0060page\u0060.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif disposition list --project \u003Cfwdata\u003E --as name --limit 100 --page 2\nmotif disposition list --project \u003Cfwdata\u003E --format json\n\u0060\u0060\u0060\n\n- \u0060--as \u003Ccategory\u003E\u0060 keeps one category: \u0060name\u0060, \u0060loan\u0060, \u0060other-language\u0060, \u0060abbreviation\u0060, \u0060numeral\u0060, \u0060non-word\u0060 or \u0060misspelling\u0060. The counts by category always cover the whole store.\n- \u0060--limit N\u0060 is the number per page, 50 by default and at most 200. \u0060--page N\u0060 reads the next page, starting at 1; the output says when more pages exist.\n- \u0060--format table|json\u0060 (or \u0060--json\u0060) chooses the output.\n\n## Related commands\n\n- [Show a word type\u0027s disposition](cmd:disposition%20show) shows one type with its history.\n- [Give word types a disposition](cmd:wordform%20dispose) records one.\n",
+      "usage": [
+        "Usage: motif disposition list --project \u003Cfwdata\u003E [--as \u003Ccategory\u003E] [--limit \u003C1-200\u003E] [--page \u003CN\u003E] [--format table|json] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/disposition-list/"
+    },
+    {
+      "kind": "command",
+      "code": "disposition show",
+      "slug": "disposition-show",
+      "title": "Show a word type\u0027s disposition",
+      "description": "Shows the disposition a word type stands under, who recorded it and why, and the dispositions it had before. It reads and never writes.",
+      "helpPage": "# Show a word type\u0027s disposition\n\n\u0060disposition show\u0060 reports the disposition a corpus word type stands under, who recorded it, when, and the evidence, then the dispositions it had before and how each ended (\u0060replaced\u0060 or \u0060cleared\u0060). A type with no disposition answers with none. It reads Motif\u0027s store and never writes. The MCP tool \u0060motif_disposition_show\u0060 takes \u0060form\u0060.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif disposition show Nairobi --project \u003Cfwdata\u003E\nmotif disposition show Nairobi --project \u003Cfwdata\u003E --json\n\u0060\u0060\u0060\n\nThe \u0060scope\u0060 in the JSON is always \u0060word-wide\u0060: a disposition covers every occurrence of the type, and none is kept for a single occurrence. Spellings that differ only in Unicode composition are one type.\n\n## Related commands\n\n- [Give word types a disposition](cmd:wordform%20dispose) records one.\n- [List word type dispositions](cmd:disposition%20list) pages through all of them.\n",
+      "usage": [
+        "Usage: motif disposition show \u003Cform\u003E --project \u003Cfwdata\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/disposition-show/"
+    },
+    {
+      "kind": "command",
       "code": "dry-run",
       "slug": "dry-run",
       "title": "Dry Run a Proposal",
@@ -3089,6 +3115,32 @@
       ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/word-context/"
+    },
+    {
+      "kind": "command",
+      "code": "wordform dispose",
+      "slug": "wordform-dispose",
+      "title": "Give word types a disposition",
+      "description": "Records that word types are names, loans, other-language words, abbreviations, numerals, non-words or misspellings, with the evidence, so Coverage can count them as accounted for. It writes Motif\u0027s store only, never the FieldWorks project.",
+      "helpPage": "# Give word types a disposition\n\n\u0060wordform dispose\u0060 records that a corpus word type is not a word to analyse: a name, a loan, a word of another language, an abbreviation, a numeral, a non-word, or a misspelling of another word. Each disposition carries the evidence for it, so Coverage can count the type as accounted for instead of leaving it open. It writes Motif\u0027s own store beside the project and never the FieldWorks project, so it needs no Proposal and no Apply.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif wordform dispose Nairobi Mombasa Kisumu --project \u003Cfwdata\u003E --as name --evidence \u0022place names in the Gazetteer\u0022\nmotif wordform dispose recieve --project \u003Cfwdata\u003E --as misspelling --intended receive --evidence \u0022typo for receive in the 1998 print\u0022\nmotif wordform dispose Kenya --project \u003Cfwdata\u003E --as loan --evidence \u0022English toponym\u0022 --replace\n\u0060\u0060\u0060\n\n\u0060--as\u0060 is one of \u0060name\u0060, \u0060loan\u0060, \u0060other-language\u0060, \u0060abbreviation\u0060, \u0060numeral\u0060, \u0060non-word\u0060 or \u0060misspelling\u0060 (\u0060artifact\u0060 is accepted for \u0060non-word\u0060). \u0060--evidence\u0060 is required. A \u0060misspelling\u0060 also needs \u0060--intended \u003Cform\u003E\u0060, and no other category accepts it.\n\n- A disposition belongs to a word type, not to one occurrence: it holds for every use of the word in the corpus. Spellings that differ only in Unicode composition are one type. Case is not folded, so give the form as the corpus word list spells it.\n- A type that already stands with the same category and intended form is left alone and reported as \u0060already-recorded\u0060.\n- A type that stands with a different category or intended form is refused with \u0060disposition.contradiction\u0060, and nothing in the call is written. Add \u0060--replace\u0060 to end the standing disposition and record the new one, or [clear it](cmd:wordform%20undispose) first. Either way the earlier disposition stays in the type\u0027s history.\n- A call writes every form or none. \u0060--by \u003Cname\u003E\u0060 records who made the call; it defaults to the signed-in user.\n- Only the command line writes dispositions. Assistants can read them with [disposition show](cmd:disposition%20show) and [disposition list](cmd:disposition%20list).\n\n## Related commands\n\n- [Clear word type dispositions](cmd:wordform%20undispose) removes one.\n- [Show a word type\u0027s disposition](cmd:disposition%20show) shows what stands and what stood before.\n- [List word type dispositions](cmd:disposition%20list) pages through everything recorded.\n",
+      "usage": [
+        "Usage: motif wordform dispose \u003Cform\u003E... --project \u003Cfwdata\u003E --as name|loan|other-language|abbreviation|numeral|non-word|misspelling --evidence \u003Ctext\u003E [--intended \u003Cform\u003E] [--replace] [--by \u003Cname\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/wordform-dispose/"
+    },
+    {
+      "kind": "command",
+      "code": "wordform undispose",
+      "slug": "wordform-undispose",
+      "title": "Clear word type dispositions",
+      "description": "Removes the standing disposition of each word type. The removed disposition stays in the type\u0027s history, and a type that had none is reported and left alone.",
+      "helpPage": "# Clear word type dispositions\n\n\u0060wordform undispose\u0060 removes the standing disposition of each word type you name, so the type is analysed like any other word again. The removed disposition is not deleted: it stays in the type\u0027s history with who cleared it, when, and the reason.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif wordform undispose Nairobi Mombasa --project \u003Cfwdata\u003E --reason \u0022attested as a common noun in the Gazetteer\u0022\n\u0060\u0060\u0060\n\nA type that has no disposition is reported as \u0060not-recorded\u0060 and left alone, so repeating the command is safe. \u0060--by \u003Cname\u003E\u0060 records who cleared it and defaults to the signed-in user. See the earlier dispositions of a type with [disposition show](cmd:disposition%20show).\n\n## Related commands\n\n- [Give word types a disposition](cmd:wordform%20dispose) records one.\n",
+      "usage": [
+        "Usage: motif wordform undispose \u003Cform\u003E... --project \u003Cfwdata\u003E [--reason \u003Ctext\u003E] [--by \u003Cname\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/wordform-undispose/"
     },
     {
       "kind": "command",

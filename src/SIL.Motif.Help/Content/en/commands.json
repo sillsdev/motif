@@ -2601,6 +2601,26 @@
     "description": "Forgets the Current chapter of a Source on this machine.",
     "source": "Hand-written from the SourceLocalCommand behavior."
   },
+  "wordform dispose": {
+    "title": "Give word types a disposition",
+    "description": "Records that word types are names, loans, other-language words, abbreviations, numerals, non-words or misspellings, with the evidence, so Coverage can count them as accounted for. It writes Motif's store only, never the FieldWorks project.",
+    "source": "Hand-written from command behavior."
+  },
+  "wordform undispose": {
+    "title": "Clear word type dispositions",
+    "description": "Removes the standing disposition of each word type. The removed disposition stays in the type's history, and a type that had none is reported and left alone.",
+    "source": "Hand-written from command behavior."
+  },
+  "disposition show": {
+    "title": "Show a word type's disposition",
+    "description": "Shows the disposition a word type stands under, who recorded it and why, and the dispositions it had before. It reads and never writes.",
+    "source": "Hand-written from command behavior."
+  },
+  "disposition list": {
+    "title": "List word type dispositions",
+    "description": "Lists the word types that have a disposition in key order, with how many stand in each category, by page and optionally for one category. It reads and never writes.",
+    "source": "Hand-written from command behavior."
+  },
   "hypothesis add": {
     "title": "State a hypothesis",
     "description": "Records a rule hypothesis in the ledger from a JSON file: statement, mechanism, change, the neighbour check and the predicted forms. It returns the permanent H-n id and the hypotheses already on the same shape.",

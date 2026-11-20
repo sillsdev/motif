@@ -66,6 +66,33 @@ public sealed class CatalogExecutionTests
     }
 
     [Fact]
+    public void DispositionsAreReadableByAgentsThroughTwoReadToolsAndNoToolWritesThem()
+    {
+        foreach (var name in new[] { "disposition show", "disposition list" })
+        {
+            var command = CommandCatalog.All.Single(item => item.Name == name);
+            Assert.Equal(AgentClass.Read, command.Agent);
+            var generated = CatalogTools.Prepare(CatalogTools.Create(command));
+            var actual = AgentTools.All.Single(tool => tool.Name == generated.Name);
+            Assert.True(JsonNode.DeepEquals(generated.InputSchema, actual.InputSchema));
+        }
+        var list = AgentTools.All.Single(tool => tool.Name == "motif_disposition_list").InputSchema["properties"]!;
+        Assert.Equal(["name", "loan", "other-language", "abbreviation", "numeral", "non-word", "misspelling"],
+            list["category"]!["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ToArray());
+        Assert.Equal((1, 200, 50), (list["limit"]!["minimum"]!.GetValue<int>(), list["limit"]!["maximum"]!.GetValue<int>(),
+            list["limit"]!["default"]!.GetValue<int>()));
+        Assert.Equal(["motif_disposition_list", "motif_disposition_show"],
+            AgentTools.All.Select(tool => tool.Name).Where(name => name.StartsWith("motif_disposition_", StringComparison.Ordinal)).Order().ToArray());
+        foreach (var name in new[] { "wordform dispose", "wordform undispose" })
+        {
+            var writer = CommandCatalog.All.Single(item => item.Name == name);
+            Assert.Equal(AgentClass.HumanOnly, writer.Agent);
+            Assert.False(writer.IsAgentTool);
+            Assert.DoesNotContain(AgentTools.All, tool => tool.Requests.Contains(writer.RequestType));
+        }
+    }
+
+    [Fact]
     public void ProposalCompareAdvertisesItsCatalogRequestSchemaWithTheEightProposalLimit()
     {
         var command = CommandCatalog.All.Single(item => item.Name == "proposal compare");

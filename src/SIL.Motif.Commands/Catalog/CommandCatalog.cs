@@ -390,6 +390,15 @@ public static class CommandCatalog
             CommandSurface.Released, AgentClass.Read) { ExposeAsAgentTool = false },
         new CommandDescriptor("list hypotheses", typeof(ListHypothesesRequest), typeof(HypothesisListResponse),
             CommandSurface.Released, AgentClass.Read) { ExposeAsAgentTool = false },
+        // WordTypeDispositionCommands: writes are CLI-only and HumanOnly; the two reads are MCP tools.
+        new CommandDescriptor("wordform dispose", typeof(DisposeWordFormsRequest), typeof(DisposeFormsResponse),
+            CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
+        new CommandDescriptor("wordform undispose", typeof(UndisposeWordFormsRequest), typeof(UndisposeFormsResponse),
+            CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
+        new CommandDescriptor("disposition show", typeof(ShowDispositionRequest), typeof(ShowDispositionResponse),
+            CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("disposition list", typeof(ListDispositionsRequest), typeof(ListDispositionsResponse),
+            CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("apply --proposal", typeof(ApplyProposalRequest), typeof(ApplyPendingResult),
             CommandSurface.Released, AgentClass.HumanOnly),
     };

@@ -11102,6 +11102,74 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_disposition_show",
+    "description": "Show a word type\u0027s disposition. Shows the disposition a word type stands under, who recorded it and why, and the dispositions it had before. It reads and never writes.\nCommand: disposition show. Agent class: Read.\nForm: The word form to look up, as it appears in the corpus word list.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "form": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "form",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_disposition_list",
+    "description": "List word type dispositions. Lists the word types that have a disposition in key order, with how many stand in each category, by page and optionally for one category. It reads and never writes.\nCommand: disposition list. Agent class: Read.\nCategory: Only this category: name, loan, other-language, abbreviation, numeral, non-word or misspelling. Leave out for all.\nLimit: The most dispositions on one page, from 1 to 200. The default is 50.\nPage: The one-based page. The default is 1.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Only this category; leave out for all.",
+          "enum": [
+            "name",
+            "loan",
+            "other-language",
+            "abbreviation",
+            "numeral",
+            "non-word",
+            "misspelling"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_add_affix_process",
     "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts, inserts phonemes, inserts a segment of a natural class, or copies a part with the features of a feature class laid over it: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
     "inputSchema": {

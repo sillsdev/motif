@@ -690,6 +690,15 @@ public static class CliVerbCatalog
             new[] { "hypothesis report --project <fwdata> --kind decisions|questions [--json]" }),
         new CliVerbDescriptor("Commands", "list", "list hypotheses",
             new[] { "list hypotheses --project <fwdata> [--id <H-n> | --status proposed|passed|failed|superseded] [--offset <n>] [--limit <n>] [--json]" }),
+        new CliVerbDescriptor("Commands", "wordform", "wordform dispose",
+            new[] { "wordform dispose <form>... --project <fwdata> --as name|loan|other-language|abbreviation|numeral|non-word|misspelling " +
+                "--evidence <text> [--intended <form>] [--replace] [--by <name>] [--json]" }),
+        new CliVerbDescriptor("Commands", "wordform", "wordform undispose",
+            new[] { "wordform undispose <form>... --project <fwdata> [--reason <text>] [--by <name>] [--json]" }),
+        new CliVerbDescriptor("Commands", "disposition", "disposition show",
+            new[] { "disposition show <form> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "disposition", "disposition list",
+            new[] { "disposition list --project <fwdata> [--as <category>] [--limit <1-200>] [--page <N>] [--format table|json] [--json]" }),
         new CliVerbDescriptor("Commands", "request", "request create",
             new[]
             {

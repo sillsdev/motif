@@ -2621,6 +2621,64 @@ try
             break;
         }
 
+        case "wordform":
+        {
+            var wordformCommand = positionals.Count > 0 ? positionals[0] : "";
+            if (wordformCommand is not ("dispose" or "undispose") || positionals.Count < 2 ||
+                !flags.TryGetValue("project", out var wordformProject))
+                return Usage("Usage: motif wordform (dispose | undispose) <form>... --project <fwdata>", asJson);
+            var wordformFlags = wordformCommand == "dispose"
+                ? new[] { "project", "json", "autonomous", "as", "evidence", "intended", "replace", "by" }
+                : new[] { "project", "json", "autonomous", "reason", "by" };
+            if (flags.Keys.Any(flag => !wordformFlags.Contains(flag)))
+                return Usage(UsageLineFor("wordform " + wordformCommand), asJson);
+            var wordForms = positionals.Skip(1).ToArray();
+            if (wordformCommand == "undispose")
+            {
+                result = RenderCommand(WordTypeDispositionCommands.Clear(new UndisposeWordFormsRequest(wordformProject,
+                    CliProductVersion(), wordForms, flags.GetValueOrDefault("reason"), flags.GetValueOrDefault("by"))));
+                break;
+            }
+            if (!flags.TryGetValue("as", out var wordformCategory) || !flags.TryGetValue("evidence", out var wordformEvidence))
+                return Usage(UsageLineFor("wordform dispose"), asJson);
+            result = RenderCommand(WordTypeDispositionCommands.Record(new DisposeWordFormsRequest(wordformProject,
+                CliProductVersion(), wordForms, wordformCategory, wordformEvidence, flags.GetValueOrDefault("intended"),
+                flags.ContainsKey("replace"), flags.GetValueOrDefault("by"))));
+            break;
+        }
+
+        case "disposition":
+        {
+            var dispositionCommand = positionals.Count > 0 ? positionals[0] : "";
+            if (dispositionCommand is not ("show" or "list") || !flags.TryGetValue("project", out var dispositionProject) ||
+                positionals.Count != (dispositionCommand == "show" ? 2 : 1) ||
+                flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "as" or "limit" or "page" or "format")) ||
+                dispositionCommand == "show" && flags.Keys.Any(flag => flag is "as" or "limit" or "page" or "format"))
+                return Usage("Usage: motif disposition (show <form> | list) --project <fwdata>", asJson);
+            if (dispositionCommand == "show")
+            {
+                result = RenderCommand(WordTypeDispositionCommands.Show(
+                    new ShowDispositionRequest(dispositionProject, CliProductVersion(), positionals[1])));
+                break;
+            }
+            if (flags.TryGetValue("format", out var dispositionFormat))
+            {
+                if (dispositionFormat is not ("table" or "json")) return Usage("--format must be table or json.", asJson);
+                if (dispositionFormat == "json") asJson = true;
+            }
+            var dispositionLimit = WordTypeDispositionCommands.DefaultLimit;
+            if (flags.TryGetValue("limit", out var dispositionLimitText) &&
+                !int.TryParse(dispositionLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out dispositionLimit))
+                return Usage("--limit must be a positive integer.", asJson);
+            var dispositionPage = 1;
+            if (flags.TryGetValue("page", out var dispositionPageText) &&
+                !int.TryParse(dispositionPageText, NumberStyles.None, CultureInfo.InvariantCulture, out dispositionPage))
+                return Usage("--page must be a positive integer.", asJson);
+            result = RenderCommand(WordTypeDispositionCommands.List(new ListDispositionsRequest(dispositionProject,
+                CliProductVersion(), flags.GetValueOrDefault("as"), dispositionLimit, dispositionPage)));
+            break;
+        }
+
         case "warnings":
             if (!flags.TryGetValue("project", out var warningsProject) ||
                 (flags.TryGetValue("kind", out var warningKind) && string.IsNullOrWhiteSpace(warningKind)))
@@ -3806,7 +3864,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose" or "replace")
             {
                 flags[name] = "true";
                 continue;
