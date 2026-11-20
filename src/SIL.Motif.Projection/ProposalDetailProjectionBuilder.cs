@@ -55,11 +55,11 @@ public static class ProposalDetailProjectionBuilder
     /// </summary>
     public static bool PersonCommentIsNewer(ManifestDocument manifest)
     {
-        var person = manifest.Comments.Where(comment => comment.AuthorLabel is null)
+        var person = manifest.Comments.Where(comment => comment.AuthorLabel is null && comment.Kind != "system")
             .Select(comment => Parse(comment.EditedUtc ?? comment.CreatedUtc)).Where(time => time is not null).ToList();
         if (person.Count == 0) return false;
         if (manifest.Rationale is null) return true;
-        var builder = manifest.Comments.Where(comment => comment.AuthorLabel is not null)
+        var builder = manifest.Comments.Where(comment => comment.AuthorLabel is not null && comment.Kind != "system")
             .Select(comment => Parse(comment.CreatedUtc)).Append(Parse(manifest.RationaleUpdatedUtc))
             .Where(time => time is not null).ToList();
         return builder.Count == 0 || person.Max() > builder.Max();

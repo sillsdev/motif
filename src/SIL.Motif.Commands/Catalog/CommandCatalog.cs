@@ -149,6 +149,7 @@ public static class CommandCatalog
             "remove-operations", typeof(RemoveOperationsRequest), typeof(OperationsRemovedResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("split", typeof(SplitRequest), typeof(ProposalSplitResponse), CommandSurface.Autonomous, AgentClass.Draft),
         new CommandDescriptor("defer", typeof(DeferRequest), typeof(ProposalStatusChangedResponse), CommandSurface.Autonomous, AgentClass.HumanOnly),
+        new CommandDescriptor("undefer", typeof(UndeferRequest), typeof(ProposalStatusChangedResponse), CommandSurface.Autonomous, AgentClass.HumanOnly),
         new CommandDescriptor("reject", typeof(RejectRequest), typeof(ProposalStatusChangedResponse), CommandSurface.Autonomous, AgentClass.HumanOnly),
         new CommandDescriptor("supersede", typeof(SupersedeRequest), typeof(ProposalStatusChangedResponse), CommandSurface.Autonomous, AgentClass.HumanOnly),
         new CommandDescriptor("list", typeof(ListProposalsRequest), typeof(ProposalListProjection), CommandSurface.AdvancedAi, AgentClass.Read),

@@ -47,6 +47,53 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void AnUndeferredProposalIsWaitingAgainAndTheConversationRecordsIt()
+    {
+        var (path, id) = Finalized("undeferred");
+        Assert.True(ProposalCommands.Defer(new DeferRequest(path, Version, id)).Succeeded);
+        Assert.Equal("deferred", Record(path, id).Status);
+
+        var back = ProposalCommands.Undefer(new UndeferRequest(path, Version, id));
+
+        Assert.True(back.Succeeded, back.Refusal?.Message);
+        Assert.Equal("proposed", back.Value!.Status);
+        Assert.Equal("proposed", Record(path, id).Status);
+        var shown = ProposalCommands.Show(new ShowProposalRequest(path, Version, id)).Value!;
+        var note = Assert.Single(shown.Comments!);
+        Assert.Equal(("system", ProposalCommands.UndeferNote), (note.Kind, note.Markdown));
+        Assert.False(shown.CommentsChanged);
+    }
+
+    [Fact]
+    public void AnUndeferNoteNeverHidesAPersonsNewerComment()
+    {
+        var (path, id) = Finalized("undefer-comment");
+        Assert.True(ProposalCommands.Defer(new DeferRequest(path, Version, id)).Succeeded);
+        Assert.True(ProposalComments.Add(new AddCommentRequest(path, Version, id, "Please look again", "")).Succeeded);
+
+        Assert.True(ProposalCommands.Undefer(new UndeferRequest(path, Version, id)).Succeeded);
+
+        Assert.True(ProposalCommands.Show(new ShowProposalRequest(path, Version, id)).Value!.CommentsChanged);
+    }
+
+    [Theory]
+    [InlineData("proposed")]
+    [InlineData("rejected")]
+    [InlineData("applied")]
+    public void OnlyADeferredProposalCanBeUndeferred(string status)
+    {
+        var (path, id) = Finalized("not-deferred-" + status);
+        using (var database = ProjectMotifDatabase.Open(path))
+            new ProposalRepository(database).SetStatus(CanonicalId.Parse(id), status, null);
+
+        var refused = ProposalCommands.Undefer(new UndeferRequest(path, Version, id));
+
+        Assert.False(refused.Succeeded);
+        Assert.Equal("proposal.invalid-status", refused.Refusal!.Code);
+        Assert.Equal(status, Record(path, id).Status);
+    }
+
+    [Fact]
     public void ARefusedDeclineDoesNotSaveItsReason()
     {
         var (path, id) = Finalized("already-applied");

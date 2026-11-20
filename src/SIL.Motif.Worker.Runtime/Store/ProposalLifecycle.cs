@@ -15,6 +15,7 @@ public enum ProposalStatus
 public enum ProposalTransition
 {
     Defer,
+    Undefer,
     Reject,
     Withdraw,
     Supersede,
@@ -61,6 +62,7 @@ public static class ProposalLifecycle
     public static IReadOnlyList<ProposalStatus> AllowedFrom(ProposalTransition transition) => transition switch
     {
         ProposalTransition.Defer => [ProposalStatus.Proposed],
+        ProposalTransition.Undefer => [ProposalStatus.Deferred],
         ProposalTransition.Reject or ProposalTransition.Withdraw => [ProposalStatus.Proposed, ProposalStatus.Deferred],
         ProposalTransition.Supersede => [ProposalStatus.Proposed, ProposalStatus.Deferred, ProposalStatus.Rejected],
         ProposalTransition.Reopen => [ProposalStatus.Rejected, ProposalStatus.Withdrawn, ProposalStatus.Superseded],

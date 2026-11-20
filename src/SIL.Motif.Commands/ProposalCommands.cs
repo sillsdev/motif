@@ -945,6 +945,7 @@ public static partial class ProposalCommands
     }
 
     private static readonly string[] DeferrableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Defer);
+    private static readonly string[] UndeferrableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Undefer);
     private static readonly string[] RejectableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Reject);
     private static readonly string[] WithdrawableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Withdraw);
     private static readonly string[] SupersedableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Supersede);
@@ -955,6 +956,19 @@ public static partial class ProposalCommands
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Deferred,
             DeferrableFrom, null,
             (repository, id, _) => repository.Transition(id, DeferrableFrom, ManifestStatus.Deferred));
+
+    /// <summary>The system Comment an undefer leaves, so the Proposal's conversation shows it came back.</summary>
+    public const string UndeferNote = "Brought back to Waiting.";
+
+    /// <summary>
+    /// Moves a Deferred Proposal back to <c>proposed</c>, the open state it was deferred from, and records a system
+    /// Comment saying so. Any evidence released at the Deferral is not restored; a new Trial measures again.
+    /// </summary>
+    public static CommandOutcome<ProposalStatusChangedResponse> Undefer(UndeferRequest request) =>
+        TransitionStatus(
+            request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Proposed,
+            UndeferrableFrom, null,
+            (repository, id, _) => repository.TransitionWithSystemNote(id, UndeferrableFrom, ManifestStatus.Proposed, UndeferNote));
 
     /// <summary>Moves a Proposal to <c>rejected</c>: not wanted, as opposed to wanted later.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Reject(RejectRequest request) =>

@@ -812,6 +812,14 @@ try
                 successAsJson: false);
             break;
 
+        case "undefer":
+            if (!flags.TryGetValue("project", out var undeferProject) || positionals.Count != 1)
+                return Usage("Usage: motif " + UsageLineFor("undefer"), asJson);
+            result = RenderProposal(
+                ProposalCommands.Undefer(new UndeferRequest(undeferProject, CliProductVersion(), positionals[0])),
+                successAsJson: false);
+            break;
+
         case "reject":
             if (!flags.TryGetValue("project", out var rejectProject) || positionals.Count != 1)
                 return Usage("Usage: motif reject --project <fwdata> <proposalId>", asJson);

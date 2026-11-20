@@ -935,13 +935,24 @@ public sealed class ProposalRepository : IProposalRepository
         return TransitionCore(proposalId, allowedFrom, to, null, comment);
     }
 
+    /// <summary>The label a Comment Motif wrote itself carries, so a reader sees it was not a person's.</summary>
+    public const string SystemAuthorLabel = "Motif";
+
+    /// <summary>Moves the Proposal and records a system Comment saying so in the same transaction.</summary>
+    public StatusTransitionOutcome TransitionWithSystemNote(
+        CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string note)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(note);
+        return TransitionCore(proposalId, allowedFrom, to, null, null, note);
+    }
+
     private StatusTransitionOutcome TransitionCore(CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom,
-        string to, string? supersededBy, string? comment)
+        string to, string? supersededBy, string? comment, string? systemNote = null)
     {
         ArgumentNullException.ThrowIfNull(allowedFrom);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
-        var outcome = MoveInTransaction(connection, transaction, proposalId, allowedFrom, to, supersededBy, comment);
+        var outcome = MoveInTransaction(connection, transaction, proposalId, allowedFrom, to, supersededBy, comment, systemNote);
         if (outcome.Moved)
         {
             transaction.Commit();
@@ -956,19 +967,21 @@ public sealed class ProposalRepository : IProposalRepository
 
     private StatusTransitionOutcome MoveInTransaction(SqliteConnection connection, SqliteTransaction transaction,
         CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string? supersededBy,
-        string? comment)
+        string? comment, string? systemNote = null)
     {
         var placeholders = string.Join(", ", allowedFrom.Select((_, i) => "$from" + i));
-        if (comment is not null)
+        if (comment is not null || systemNote is not null)
         {
             using var insert = connection.CreateCommand();
             insert.Transaction = transaction;
             insert.CommandText = $"""
                 INSERT INTO ProposalComments (ProposalId, Kind, AuthorLabel, PersonName, Text, IntentDigest, CreatedUtc)
-                SELECT ProposalId, 'standard', NULL, '', $text, CurrentIntentDigest, $now
+                SELECT ProposalId, $kind, $label, '', $text, CurrentIntentDigest, $now
                 FROM Proposals WHERE ProposalId = $id AND DraftName IS NULL AND Status IN ({placeholders});
                 """;
-            insert.Parameters.AddWithValue("$text", comment);
+            insert.Parameters.AddWithValue("$kind", systemNote is null ? "standard" : "system");
+            insert.Parameters.AddWithValue("$label", systemNote is null ? DBNull.Value : SystemAuthorLabel);
+            insert.Parameters.AddWithValue("$text", comment ?? systemNote!);
             insert.Parameters.AddWithValue("$now", Now());
             insert.Parameters.AddWithValue("$id", proposalId.Value);
             var fromIndex = 0;

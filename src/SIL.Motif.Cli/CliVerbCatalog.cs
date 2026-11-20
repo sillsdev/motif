@@ -263,6 +263,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "defer", "defer", new[] { "defer --project <fwdata> <proposalId>" }),
         new CliVerbDescriptor(
+            "Commands", "undefer", "undefer", new[] { "undefer --project <fwdata> <proposalId>" }),
+        new CliVerbDescriptor(
             "Commands", "reject", "reject", new[] { "reject --project <fwdata> <proposalId>" }),
         new CliVerbDescriptor(
             "Commands", "supersede", "supersede",

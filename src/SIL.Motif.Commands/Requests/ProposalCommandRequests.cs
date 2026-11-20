@@ -477,6 +477,11 @@ public sealed record DeferRequest(string FwDataPath, string ProductVersion, stri
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="ProposalId">The Deferred Proposal to bring back to Waiting (stored <c>proposed</c>).</param>
+public sealed record UndeferRequest(string FwDataPath, string ProductVersion, string ProposalId);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The exact canonical Proposal identity.</param>
 public sealed record RejectRequest(string FwDataPath, string ProductVersion, string ProposalId);
 
