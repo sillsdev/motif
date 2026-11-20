@@ -393,6 +393,8 @@ public static class CommandCatalog
         // WordTypeDispositionCommands: writes are CLI-only and HumanOnly; the two reads are MCP tools.
         new CommandDescriptor("wordform dispose", typeof(DisposeWordFormsRequest), typeof(DisposeFormsResponse),
             CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
+        new CommandDescriptor("wordform dispose --from-file", typeof(DisposeFromFileRequest), typeof(DisposeFromFileResponse),
+            CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("wordform undispose", typeof(UndisposeWordFormsRequest), typeof(UndisposeFormsResponse),
             CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("disposition show", typeof(ShowDispositionRequest), typeof(ShowDispositionResponse),

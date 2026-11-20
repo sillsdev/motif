@@ -693,6 +693,9 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "wordform", "wordform dispose",
             new[] { "wordform dispose <form>... --project <fwdata> --as name|loan|other-language|abbreviation|numeral|non-word|misspelling " +
                 "--evidence <text> [--intended <form>] [--replace] [--by <name>] [--json]" }),
+        new CliVerbDescriptor("Commands", "wordform", "wordform dispose --from-file",
+            new[] { "wordform dispose --from-file <path> --project <fwdata> [--format tsv|jsonl|ledger|json] [--replace] [--dry-run] " +
+                "[--skip-refused] [--by <name>] [--json]" }),
         new CliVerbDescriptor("Commands", "wordform", "wordform undispose",
             new[] { "wordform undispose <form>... --project <fwdata> [--reason <text>] [--by <name>] [--json]" }),
         new CliVerbDescriptor("Commands", "disposition", "disposition show",

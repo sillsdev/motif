@@ -61,8 +61,110 @@ public static class WordTypeDispositionCommands
             var results = outcome.Results;
             return CommandOutcome<DisposeFormsResponse>.Success(new(results,
                 results.Count(r => r.Result == "recorded"), results.Count(r => r.Result == "replaced"),
-                results.Count(r => r.Result == "already-recorded")));
+                results.Count(r => r.Result is "already-recorded" or "evidence-added")));
         });
+    }
+
+    /// <summary>
+    /// Gives the word types in a file a disposition: one transaction, per-row refusals with their line numbers, and
+    /// nothing written when any row is refused unless the refused rows are skipped. A dry run reports the same counts and writes nothing.
+    /// </summary>
+    public static CommandOutcome<DisposeFromFileResponse> RecordFromFile(DisposeFromFileRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.FilePath)) return Invalid<DisposeFromFileResponse>("Name the file with --from-file <path>.");
+        var inputFormat = request.InputFormat?.Trim();
+        if (inputFormat is { Length: > 0 } && !DispositionFileReader.Formats.Contains(inputFormat))
+            return Invalid<DisposeFromFileResponse>($"The file format must be one of: {string.Join(", ", DispositionFileReader.Formats)}.");
+        var (file, problem) = DispositionFileReader.Read(request.FilePath, string.IsNullOrEmpty(inputFormat) ? null : inputFormat);
+        if (file is null) return Invalid<DisposeFromFileResponse>(problem!);
+        if (file.Rows.Count == 0)
+            return Invalid<DisposeFromFileResponse>($"The file holds no rows to record ({file.Skipped} {file.Format} rows were not dispositions).");
+
+        var entries = new List<WordTypeDispositionRepository.Entry>(file.Rows.Count);
+        var refusals = new List<DisposeRowRefusal>();
+        foreach (var row in file.Rows)
+        {
+            var (entry, why) = CheckRow(row);
+            if (entry is not null) entries.Add(entry);
+            else refusals.Add(new(row.Row, row.Form, RefusalCodes.DispositionInvalid, why!));
+        }
+        var by = By(request.RecordedBy);
+        CommandOutcome<DisposeFromFileResponse> Summarise(WordTypeDispositionRepository.BulkOutcome outcome) =>
+            CommandOutcome<DisposeFromFileResponse>.Success(Summary(request, file, entries, refusals, outcome));
+        if (request.DryRun)
+            return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+                Summarise(WordTypeDispositionRepository.PlanOnEmptyStore(entries, by, request.Replace)),
+                (database, _) => Summarise(new WordTypeDispositionRepository(database)
+                    .RecordMany(entries, by, request.Replace, refusals.Count, request.SkipRefused, dryRun: true)));
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) => Summarise(
+            new WordTypeDispositionRepository(database)
+                .RecordMany(entries, by, request.Replace, refusals.Count, request.SkipRefused, dryRun: false)));
+    }
+
+    private static DisposeFromFileResponse Summary(DisposeFromFileRequest request, ParsedDispositionFile file,
+        List<WordTypeDispositionRepository.Entry> entries, List<DisposeRowRefusal> parseRefusals,
+        WordTypeDispositionRepository.BulkOutcome outcome)
+    {
+        var refusals = new List<DisposeRowRefusal>(parseRefusals);
+        var results = new List<DisposeRowResult>();
+        int added = 0, replaced = 0, unchanged = 0, extended = 0;
+        foreach (var row in outcome.Rows)
+        {
+            var entry = row.Entry;
+            switch (row.Status)
+            {
+                case WordTypeDispositionRepository.BulkStatus.Contradiction:
+                    refusals.Add(new(entry.Row, entry.Form, RefusalCodes.DispositionContradiction,
+                        $"{entry.Form} is already {row.Standing!.Category}" +
+                        (row.Standing.Intended is null ? "" : $" (intended {row.Standing.Intended})") + "; add --replace to end it."));
+                    results.Add(new(entry.Row, entry.Form, entry.Key, entry.Category, entry.Intended, "refused"));
+                    continue;
+                case WordTypeDispositionRepository.BulkStatus.ConflictsInCall:
+                    refusals.Add(new(entry.Row, entry.Form, RefusalCodes.DispositionInvalid,
+                        $"{entry.Form} appears again with another category or intended form than an earlier row."));
+                    results.Add(new(entry.Row, entry.Form, entry.Key, entry.Category, entry.Intended, "refused"));
+                    continue;
+                case WordTypeDispositionRepository.BulkStatus.Recorded: added++; break;
+                case WordTypeDispositionRepository.BulkStatus.Replaced: replaced++; break;
+                case WordTypeDispositionRepository.BulkStatus.EvidenceAdded: unchanged++; extended++; break;
+                default: unchanged++; break;
+            }
+            results.Add(new(entry.Row, entry.Form, entry.Key, entry.Category, entry.Intended, row.Status));
+        }
+        refusals.Sort((a, b) => a.Row.CompareTo(b.Row));
+        if (request.Detail)
+        {
+            foreach (var parsed in parseRefusals)
+                results.Add(new(parsed.Row, parsed.Form, WordTypeKey.Of(parsed.Form), "", null, "refused"));
+            results.Sort((a, b) => a.Row.CompareTo(b.Row));
+        }
+        var truncated = file.Rows.Count(row => row.Truncated);
+        return new(file.Format, file.Rows.Count, added, replaced, unchanged, extended, refusals.Count, file.Skipped,
+            truncated, request.DryRun, outcome.Written, refusals, request.Detail ? results : []);
+    }
+
+    private static (WordTypeDispositionRepository.Entry? Entry, string? Why) CheckRow(RawDispositionRow row)
+    {
+        if (row.Problem is not null) return (null, row.Problem);
+        var form = row.Form.Trim();
+        if (CleanForm(form) is { } formProblem) return (null, formProblem);
+        if (!DispositionCategories.TryParse(row.Category?.Trim(), out var category))
+            return (null, $"The category '{row.Category?.Trim()}' must be one of: {string.Join(", ", DispositionCategories.Names)}.");
+        var evidence = row.Evidence?.Trim();
+        if (string.IsNullOrEmpty(evidence)) return (null, "A disposition needs evidence.");
+        if (evidence.Length > MaxTextLength) return (null, $"The evidence can be at most {MaxTextLength} characters.");
+        var key = WordTypeKey.Of(form);
+        var intended = row.Intended?.Trim();
+        if (category == DispositionCategory.Misspelling)
+        {
+            if (string.IsNullOrEmpty(intended)) return (null, "A misspelling needs the intended form.");
+            if (CleanForm(intended) is { } intendedProblem) return (null, "The intended form: " + intendedProblem);
+            if (WordTypeKey.Of(intended) == key) return (null, "A misspelling cannot be its own intended form.");
+        }
+        else if (intended is { Length: > 0 }) return (null, "Only a misspelling names an intended form.");
+        else intended = null;
+        return (new(row.Row, form, key, DispositionCategories.Wire(category), intended, evidence), null);
     }
 
     /// <summary>Clears each form's standing disposition. The cleared rows stay in the type's history.</summary>

@@ -205,6 +205,7 @@ public sealed class ToolSurfaceTests
             "store relocate",
             "store upgrade",
             "wordform dispose",
+            "wordform dispose --from-file",
             "wordform undispose",
         }, optedOut);
 
@@ -241,7 +242,7 @@ public sealed class ToolSurfaceTests
             command.Name != "activity" && command.Name != "hand-analysis check" &&
             command.Name != "project tag" && command.Name != "proposal trial" && command.Name != "generate" &&
             command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
-            command.Name is not ("wordform dispose" or "wordform undispose") &&
+            command.Name is not ("wordform dispose" or "wordform dispose --from-file" or "wordform undispose") &&
             command.Name is not ("hypothesis neighbours" or "hypothesis report" or "list hypotheses")), command =>
             Assert.True(command.ExposeAsAgentTool));
         Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);

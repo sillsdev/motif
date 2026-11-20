@@ -2624,6 +2624,31 @@ try
         case "wordform":
         {
             var wordformCommand = positionals.Count > 0 ? positionals[0] : "";
+            if (wordformCommand == "dispose" && flags.ContainsKey("from-file"))
+            {
+                if (!flags.TryGetValue("project", out var bulkProject) || positionals.Count != 1 ||
+                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "from-file" or "format" or "input-format" or
+                        "replace" or "dry-run" or "skip-refused" or "by")) ||
+                    flags["from-file"] == "true" || flags.TryGetValue("dry-run", out var dryRunValue) && dryRunValue != "true")
+                    return Usage(UsageLineFor("wordform dispose --from-file"), asJson);
+                var inputFormat = flags.GetValueOrDefault("input-format");
+                var outputLines = false;
+                if (flags.TryGetValue("format", out var bulkFormat))
+                {
+                    if (bulkFormat == "json") outputLines = true;
+                    else if (bulkFormat is "tsv" or "jsonl" or "ledger" && inputFormat is null) inputFormat = bulkFormat;
+                    else return Usage("--format must be tsv, jsonl or ledger (the file's format) or json (one JSON object per row).", asJson);
+                }
+                var bulk = WordTypeDispositionCommands.RecordFromFile(new DisposeFromFileRequest(bulkProject, CliProductVersion(),
+                    flags["from-file"], inputFormat, flags.ContainsKey("replace"), flags.ContainsKey("dry-run"),
+                    flags.ContainsKey("skip-refused"), outputLines, flags.GetValueOrDefault("by")));
+                result = RenderCommand(bulk, successAsJson: !outputLines);
+                if (outputLines && bulk.Succeeded)
+                    result = result with { Output = DispositionRenderer.RenderFromFileLines(bulk.Value!) };
+                if (bulk.Value is { Refused: > 0, Written: false } && !flags.ContainsKey("skip-refused"))
+                    result = result with { ExitCode = FailureEnvelope.ExitCodeFor(FailureReason.Refused), Reason = FailureReason.Refused };
+                break;
+            }
             if (wordformCommand is not ("dispose" or "undispose") || positionals.Count < 2 ||
                 !flags.TryGetValue("project", out var wordformProject))
                 return Usage("Usage: motif wordform (dispose | undispose) <form>... --project <fwdata>", asJson);
@@ -3864,7 +3889,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose" or "replace")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose" or "replace" or "skip-refused")
             {
                 flags[name] = "true";
                 continue;

@@ -2606,6 +2606,11 @@
     "description": "Records that word types are names, loans, other-language words, abbreviations, numerals, non-words or misspellings, with the evidence, so Coverage can count them as accounted for. It writes Motif's store only, never the FieldWorks project.",
     "source": "Hand-written from command behavior."
   },
+  "wordform dispose --from-file": {
+    "title": "Dispose word types from a file",
+    "description": "Reads word types and their dispositions from a TSV, a JSONL file or a grammar lane ledger and records them in one transaction. Rows that cannot be recorded are refused with their line numbers and nothing is written unless --skip-refused is given; --dry-run reports what would change.",
+    "source": "Hand-written from command behavior."
+  },
   "wordform undispose": {
     "title": "Clear word type dispositions",
     "description": "Removes the standing disposition of each word type. The removed disposition stays in the type's history, and a type that had none is reported and left alone.",

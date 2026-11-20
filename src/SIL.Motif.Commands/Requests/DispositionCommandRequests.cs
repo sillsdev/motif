@@ -32,3 +32,16 @@ public sealed record ShowDispositionRequest(string FwDataPath, string ProductVer
 /// <param name="Page">The one-based page. The default is 1.</param>
 public sealed record ListDispositionsRequest(
     string FwDataPath, string ProductVersion, string? Category = null, int Limit = 50, int Page = 1);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="FilePath">A TSV (form, category, intended, evidence), a JSONL file of the same fields, or a grammar lane ledger whose Disposition rows are read.</param>
+/// <param name="InputFormat">tsv, jsonl or ledger; left out, the format is detected from the first line.</param>
+/// <param name="Replace">End a different disposition that already stands and put the row's in its place. Without it such a row is refused.</param>
+/// <param name="DryRun">Report what would change and write nothing.</param>
+/// <param name="SkipRefused">Write the rows that are accepted even when others are refused. Without it any refused row means nothing is written.</param>
+/// <param name="Detail">Return a result for every row, not only the counts and refusals.</param>
+/// <param name="RecordedBy">The person or agent recording them; defaults to the signed-in user.</param>
+public sealed record DisposeFromFileRequest(
+    string FwDataPath, string ProductVersion, string FilePath, string? InputFormat = null, bool Replace = false,
+    bool DryRun = false, bool SkipRefused = false, bool Detail = false, string? RecordedBy = null);

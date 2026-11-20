@@ -51,6 +51,8 @@ internal static class CliCommandNames
         if (verb == "list" && positionals.SequenceEqual(new[] { "requests" })) return "list requests";
         if (verb == "list" && positionals.SequenceEqual(new[] { "hypotheses" })) return "list hypotheses";
         if (verb == "hypothesis" && positionals.Count > 0) return "hypothesis " + positionals[0];
+        if (verb == "wordform" && positionals.FirstOrDefault() == "dispose" && flags.ContainsKey("from-file"))
+            return "wordform dispose --from-file";
         if (verb is "wordform" or "disposition" && positionals.Count > 0)
         {
             var candidate = verb + " " + positionals[0];

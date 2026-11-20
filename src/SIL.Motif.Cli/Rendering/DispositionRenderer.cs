@@ -15,6 +15,55 @@ internal static class DispositionRenderer
         return text.ToString();
     }
 
+    private const int RefusalsShown = 20;
+
+    public static string RenderFromFile(DisposeFromFileResponse response)
+    {
+        var text = new StringBuilder();
+        var extended = response.EvidenceExtended > 0 ? $" ({response.EvidenceExtended} gained evidence)" : "";
+        text.AppendLine($"Read {response.Rows:N0} {response.Format} rows: {response.Added:N0} added, {response.Replaced:N0} replaced, " +
+            $"{response.Unchanged:N0} unchanged{extended}, {response.Refused:N0} refused." +
+            (response.Skipped > 0 ? $" {response.Skipped:N0} rows were not Disposition rows and were left out." : "") +
+            (response.EvidenceTruncated > 0 ? $" {response.EvidenceTruncated:N0} rows had evidence cut to fit." : ""));
+        text.AppendLine(response.DryRun ? "Dry run: nothing was written."
+            : response.Written ? "Written."
+            : response.Refused > 0 ? "Nothing was written because rows were refused; fix them, or add --skip-refused to write the rest."
+            : "Nothing was written.");
+        foreach (var refusal in response.Refusals.Take(RefusalsShown))
+            text.AppendLine($"  row {refusal.Row}  {refusal.Form}  {refusal.Code}: {refusal.Message}");
+        if (response.Refusals.Count > RefusalsShown)
+            text.AppendLine($"  and {response.Refusals.Count - RefusalsShown:N0} more; --format json lists every row.");
+        return text.ToString();
+    }
+
+    /// <summary>One JSON object per row, then a last object with the counts.</summary>
+    public static string RenderFromFileLines(DisposeFromFileResponse response)
+    {
+        var options = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+        var reasons = response.Refusals.ToDictionary(refusal => refusal.Row);
+        var text = new StringBuilder();
+        foreach (var row in response.Results)
+        {
+            reasons.TryGetValue(row.Row, out var refusal);
+            text.AppendLine(System.Text.Json.JsonSerializer.Serialize(new
+            {
+                row = row.Row, form = row.Form, key = row.Key, category = row.Category, intended = row.Intended,
+                result = row.Result, code = refusal?.Code, message = refusal?.Message,
+            }, options));
+        }
+        text.AppendLine(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            summary = new
+            {
+                format = response.Format, rows = response.Rows, added = response.Added, replaced = response.Replaced,
+                unchanged = response.Unchanged, evidenceExtended = response.EvidenceExtended, refused = response.Refused,
+                skipped = response.Skipped, evidenceTruncated = response.EvidenceTruncated, dryRun = response.DryRun,
+                written = response.Written,
+            },
+        }, options));
+        return text.ToString();
+    }
+
     public static string RenderUndisposed(UndisposeFormsResponse response)
     {
         var text = new StringBuilder();

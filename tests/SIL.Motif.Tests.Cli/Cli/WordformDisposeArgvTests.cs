@@ -92,6 +92,37 @@ public sealed class WordformDisposeArgvTests : IDisposable
         Assert.Contains(CommandCatalog.All, command => command.Name == "wordform dispose");
     }
 
+    [Fact]
+    public void FromFileDryRunRefusalsSkipRefusedAndJsonLinesRunThroughTheReleasedExecutable()
+    {
+        var file = Path.Combine(_root, "d.tsv");
+        File.WriteAllLines(file, new[] { "form\tcategory\tevidence", "Nairobi\tname\ta town" }.Append("Bad\tplace\tx")
+            .Append("Kisumu\tloan\tborrowed"));
+
+        var dry = Run("wordform", "dispose", "--from-file", file, "--project", _project, "--dry-run", "--skip-refused", "--json");
+        var plan = Json(dry);
+        Assert.Equal((2, 1, false, true), (plan.GetProperty("added").GetInt32(), plan.GetProperty("refused").GetInt32(),
+            plan.GetProperty("written").GetBoolean(), plan.GetProperty("dryRun").GetBoolean()));
+
+        var refused = Run("wordform", "dispose", "--from-file", file, "--project", _project);
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), refused.ExitCode);
+        Assert.Contains("row 3  Bad  disposition.invalid", refused.Error, StringComparison.Ordinal);
+        Assert.Contains("Nothing was written", refused.Error, StringComparison.Ordinal);
+        Assert.Equal(0, Json(Run("disposition", "list", "--project", _project, "--json")).GetProperty("total").GetInt32());
+
+        var lines = Run("wordform", "dispose", "--from-file", file, "--project", _project, "--skip-refused", "--format", "json");
+        Assert.True(lines.ExitCode == 0, lines.Error + lines.Output);
+        var rows = lines.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => JsonDocument.Parse(line).RootElement).ToArray();
+        Assert.Equal(4, rows.Length);
+        Assert.Equal("refused", rows[1].GetProperty("result").GetString());
+        Assert.Equal("disposition.invalid", rows[1].GetProperty("code").GetString());
+        Assert.True(rows[3].GetProperty("summary").GetProperty("written").GetBoolean());
+        Assert.Equal(2, Json(Run("disposition", "list", "--project", _project, "--json")).GetProperty("total").GetInt32());
+
+        Assert.Equal(1, Run("wordform", "dispose", "--from-file", file, "--project", _project, "--format", "yaml").ExitCode);
+        Assert.Equal(1, Run("wordform", "dispose", "--from-file", file, "--project", _project, "extra").ExitCode);
+    }
+
     private static JsonElement Json(CliRun run)
     {
         Assert.True(run.ExitCode == 0, run.Error + run.Output);

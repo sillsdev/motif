@@ -180,6 +180,7 @@ public static class CommandTextRenderer
             HypothesisListResponse r => HypothesisRenderer.RenderList(r),
             HypothesisReportResponse r => r.Text,
             DisposeFormsResponse r => DispositionRenderer.RenderDisposed(r),
+            DisposeFromFileResponse r => DispositionRenderer.RenderFromFile(r),
             UndisposeFormsResponse r => DispositionRenderer.RenderUndisposed(r),
             ShowDispositionResponse r => DispositionRenderer.RenderShown(r),
             ListDispositionsResponse r => DispositionRenderer.RenderListed(r),

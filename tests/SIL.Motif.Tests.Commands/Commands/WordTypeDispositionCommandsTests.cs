@@ -72,17 +72,30 @@ public sealed class WordTypeDispositionCommandsTests : IDisposable
     }
 
     [Fact]
-    public void AnIdenticalWriteIsAnAlreadyRecordedNoOpThatKeepsTheFirstEvidenceAndWritesNoRow()
+    public void AnIdenticalWriteIsANoOpThatAppendsNewEvidenceAndKeepsWhoRecordedItAndWritesNoRow()
     {
         Recorded("loan", "first evidence", forms: ["kompyuta"]);
         var rows = Rows();
 
         var again = Recorded("loan", "second evidence", by: "ben", forms: ["kompyuta"]);
+        var repeated = Recorded("loan", "second evidence", by: "ben", forms: ["kompyuta"]);
 
         Assert.Equal((0, 0, 1), (again.Recorded, again.Replaced, again.AlreadyRecorded));
-        Assert.Equal("already-recorded", Assert.Single(again.Results).Result);
+        Assert.Equal("evidence-added", Assert.Single(again.Results).Result);
+        Assert.Equal("already-recorded", Assert.Single(repeated.Results).Result);
         Assert.Equal(rows, Rows());
-        Assert.Equal(("first evidence", "ana"), (Show("kompyuta").Current!.Evidence, Show("kompyuta").Current!.RecordedBy));
+        var current = Show("kompyuta").Current!;
+        Assert.Equal(("first evidence | second evidence", "ana"), (current.Evidence, current.RecordedBy));
+    }
+
+    [Fact]
+    public void AnIntendedFormIsStoredDecomposedSoAComposedSpellingIsTheSameDisposition()
+    {
+        Recorded("misspelling", "typo", intended: "caf\u00e9", forms: ["cafe"]);
+
+        Assert.Equal(WordTypeKey.Of("caf\u00e9"), Show("cafe").Current!.Intended);
+        Assert.Equal(1, Recorded("misspelling", "typo", intended: "cafe\u0301", forms: ["cafe"]).AlreadyRecorded);
+        Assert.Equal(1, Rows());
     }
 
     [Fact]

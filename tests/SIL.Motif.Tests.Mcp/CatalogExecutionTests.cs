@@ -83,7 +83,7 @@ public sealed class CatalogExecutionTests
             list["limit"]!["default"]!.GetValue<int>()));
         Assert.Equal(["motif_disposition_list", "motif_disposition_show"],
             AgentTools.All.Select(tool => tool.Name).Where(name => name.StartsWith("motif_disposition_", StringComparison.Ordinal)).Order().ToArray());
-        foreach (var name in new[] { "wordform dispose", "wordform undispose" })
+        foreach (var name in new[] { "wordform dispose", "wordform dispose --from-file", "wordform undispose" })
         {
             var writer = CommandCatalog.All.Single(item => item.Name == name);
             Assert.Equal(AgentClass.HumanOnly, writer.Agent);
