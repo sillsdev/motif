@@ -13,4 +13,4 @@ The command refuses, and changes nothing, when any object outside the entry refe
 
 The Dry Run lists the entry's headword, its lexeme form and alternate forms with their classes, text in every writing system and morph type, its senses with gloss and definition, its analyses, and the number of entry references, so a reviewer sees exactly what goes. A Draft may delete several entries, and may delete an entry and author its replacement in the same Draft.
 
-Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.
+Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.

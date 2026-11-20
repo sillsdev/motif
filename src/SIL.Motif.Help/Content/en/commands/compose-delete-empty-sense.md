@@ -17,4 +17,4 @@ An analysis containing only a part of speech is allowed only when the entry has 
 
 Run many at once with `compose-batch`, one entry per sense, so a whole clean-up becomes one Proposal. Each operation carries a rationale; the Draft still needs its own Rationale (`proposal rationale`) before Finalize.
 
-Use this editor through the CLI or MCP. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.
+Use this editor through the CLI or MCP. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.

@@ -11,4 +11,4 @@ motif compose-delete-exception-feature --project language.fwdata --draft cleanup
 
 In FieldWorks: Grammar, Exception Features, select the item, Delete. `compose-edit-exception-features` takes the feature off the stems and affixes that carry it first.
 
-Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite the operation. Only a person can Apply the Proposal.
+Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite the operation. Only a person can Apply the Proposal.

@@ -9,4 +9,4 @@ The closed intent names one existing stem or affix allomorph, its LibLCM field, 
 
 The command changes references on this allomorph only. If an environment is shared, every other user keeps its reference and the environment itself is not edited. Create a new typed environment with `compose-author-environment` when the restriction needs a new context. Finish the Draft, inspect its Dry Run, and run a bounded Trial on positive and negative examples. Only a person can Apply the Proposal.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

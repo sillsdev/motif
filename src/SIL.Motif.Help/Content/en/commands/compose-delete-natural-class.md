@@ -11,4 +11,4 @@ motif compose-delete-natural-class --project language.fwdata --draft cleanup \
 
 In FieldWorks: Grammar, Phonology, Natural Classes, select the class, Delete. Use `compose-relink-natural-class` to point the users at another class first.
 
-Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite the operation. Only a person can Apply the Proposal.
+Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite the operation. Only a person can Apply the Proposal.

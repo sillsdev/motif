@@ -6,4 +6,4 @@ Use the closed input `{ "msa": "<canonical ID>" }` to name the exact MSA. A stem
 
 Use the returned structure identity when [authoring a feature selection](cmd:compose-author-feature-value). An empty structure is valid, and a feature can be selected before choosing its value. Selections must fit the current domain of the named structure.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

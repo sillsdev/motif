@@ -11,4 +11,4 @@ motif compose-delete-text-segment-note --project language.fwdata --draft cleanup
 
 In FieldWorks: Texts & Words, Interlinear Text, clear the Note line of the segment.
 
-Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite the operation. Only a person can Apply the Proposal.
+Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite the operation. Only a person can Apply the Proposal.

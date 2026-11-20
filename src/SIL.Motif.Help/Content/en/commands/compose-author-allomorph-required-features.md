@@ -6,4 +6,4 @@ Use the returned structure ID with [Author feature value](cmd:compose-author-fea
 
 This command preserves an occupied structure, even if it is empty, and refuses to replace it. It accepts ordinary affix allomorphs; a stem form or an affix process is a different LibLCM class. It imposes no restriction on the entry's grammatical info kind. Required Features are distinct from the whole affix's [grammatical features](cmd:compose-author-feature-structure) and from [inflection classes on an affix form](cmd:compose-edit-affix-inflection-classes).
 
-Run a Trial with expected and excluded combinations before Finalize. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite the source on the staged operation.
+Run a Trial with expected and excluded combinations before Finalize. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite the source on the staged operation.

@@ -11,6 +11,6 @@ motif compose-author-inflection-feature --project language.fwdata --draft number
 
 The result names every created entity. The `createFeatures` operation supplies the feature id; each `createValues` operation supplies a value id. Existing feature-structure and feature-value composers attach these choices to a stem's grammatical info. This command makes no category or entry assignments.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
 
 Dry Run and Trial the Draft on affected words, revise it, then Finalize for a person to review and Apply.

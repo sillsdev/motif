@@ -20,4 +20,4 @@ The reference census refuses an incomplete or changed view, an unsupported refer
 
 Review the paired before and after reading evidence for every affected Approved reading. The review keeps each FieldWorks Opinion and surface spelling beside its parser result and rule attribution. Missing identity, parser completion, read-back, or rule trace is shown as unavailable; it is never counted as a preserved reading. Check that the detector finding is resolved in the rebuilt after Report, separately from whether a ruling is Suppressed, before a person Applies the whole Proposal.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

@@ -21,4 +21,4 @@ The command refuses, and changes nothing, when:
 
 A Draft may move several senses out of one root. Each move is composed against the Draft's earlier steps, so the second move sees the first one's result. The Dry Run lists the old entry's senses, the new entry's senses and the sense's analysis; each operation carries a rationale, and the Draft still needs its own (`proposal rationale`) before Finalize.
 
-Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.
+Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.

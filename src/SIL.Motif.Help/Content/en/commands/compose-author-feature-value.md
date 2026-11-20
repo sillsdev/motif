@@ -6,4 +6,4 @@ Use the closed input `{ "featStruc": "<canonical ID>", "feature": "<canonical ID
 
 For InflFeats, the feature must currently belong to the project's morphosyntactic feature system and fit any declared structure type. The feature structure, feature and value may already exist or have been authored earlier in the same Draft. Use the structure identity returned by [authoring grammatical features](cmd:compose-author-feature-structure).
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

@@ -13,4 +13,4 @@ Use this editor through the CLI; it is not exposed as an MCP tool.
 
 Use a stem name id returned by an earlier composition in the same Draft directly in `stemName`. The Draft composer declares the dependency from that reference. This edit creates no stem name.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects and run a Trial on affected words before Finalize; only a person can Apply the Proposal.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects and run a Trial on affected words before Finalize; only a person can Apply the Proposal.

@@ -46,6 +46,15 @@ public class OperationCitationTests
     }
 
     [Fact]
+    public void Create_NamesTheMeasuredLengthOfAnOverlongLocator()
+    {
+        var refusal = Assert.Throws<ContractParseException>(() => OperationCitation.Create("Steere 1870", new string('l', 412)));
+
+        Assert.Contains("300", refusal.Message);
+        Assert.Contains("412", refusal.Message);
+    }
+
+    [Fact]
     public void Create_RefusesOverlongParts()
     {
         Assert.Throws<ContractParseException>(() =>

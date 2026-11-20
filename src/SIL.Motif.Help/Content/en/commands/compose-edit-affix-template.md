@@ -9,4 +9,4 @@ The closed intent names one existing affix template and gives its current and re
 
 The command stages the required move operations in the Draft. It cannot create or delete a template or slot, and it does not change the FieldWorks project. Inspect the Dry Run and run a bounded Trial on relevant words. Only a person can Apply the Proposal.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

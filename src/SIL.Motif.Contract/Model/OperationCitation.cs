@@ -48,10 +48,10 @@ public sealed record OperationCitation
         if (trimmedSource.Length == 0)
             throw new ContractParseException("A citation needs a non-empty 'source'.");
         if (trimmedSource.Length > MaxSourceLength)
-            throw new ContractParseException($"A citation 'source' must be at most {MaxSourceLength} characters.");
+            throw new ContractParseException($"A citation 'source' must be at most {MaxSourceLength} characters; this one has {trimmedSource.Length}.");
         var trimmedLocator = string.IsNullOrWhiteSpace(locator) ? null : locator.Trim();
         if (trimmedLocator is { Length: > MaxLocatorLength })
-            throw new ContractParseException($"A citation 'locator' must be at most {MaxLocatorLength} characters.");
+            throw new ContractParseException($"A citation 'locator' must be at most {MaxLocatorLength} characters; this one has {trimmedLocator.Length}.");
         return new OperationCitation(trimmedSource, trimmedLocator);
     }
 

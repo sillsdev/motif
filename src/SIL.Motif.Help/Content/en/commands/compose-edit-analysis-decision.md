@@ -13,4 +13,4 @@ To clear a mark, use `{"decision":"clear-misspelled","wordform":"<wordformId>","
 
 The command uses the same operations a collected word change does. Finish the Draft, inspect its Dry Run, and review it. A person Applies the Proposal. An Autonomous run (`--autonomous` or `MOTIF_AUTONOMOUS=1`) may Apply it too, with `--message`, once the newest Trial's declared gate is green; that is the same gate every other edit meets.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

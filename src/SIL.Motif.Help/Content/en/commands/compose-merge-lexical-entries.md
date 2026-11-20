@@ -21,4 +21,4 @@ The command refuses, and changes nothing, when `entry` and `into` are the same e
 
 The Dry Run lists the merged entry's headword, forms, senses, analyses and entry references and the entry they join. Entry text in every writing system, including custom fields, is bound to the Dry Run; editing it afterward requires a fresh Dry Run. The preview shows the merged entry leaving the lexicon.
 
-Use this editor through the CLI or the matching MCP tool, which only stages. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.
+Use this editor through the CLI or the matching MCP tool, which only stages. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.

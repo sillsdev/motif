@@ -11,4 +11,4 @@ motif compose-author-affix-slot --project language.fwdata --draft new-slot \
 
 The command stages a category-owned create, a name, an Optional value, and any requested MSA assignments. The create operation is declared as a dependency of those writes, so Draft order does not control execution. Finish the Proposal, inspect its Dry Run, then run a bounded Trial on affected words before a person Applies it.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

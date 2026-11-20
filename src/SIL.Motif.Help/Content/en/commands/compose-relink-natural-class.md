@@ -11,4 +11,4 @@ Create the replacement class earlier in the same Draft and use both its entity i
 
 Finish the Draft, inspect its Dry Run to confirm the intended scope, and run a bounded Trial across corrected, held-out and contrastive forms. Only a person can Apply the Proposal.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

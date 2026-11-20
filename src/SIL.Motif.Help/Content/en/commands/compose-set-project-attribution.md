@@ -11,4 +11,4 @@ The notice is written in an analysis writing system: `analysisWs` when given, ot
 
 The change is an edit of the whole Description for that writing system, so a change made in FieldWorks after the Dry Run is caught by the Proposal's anchor at Apply. It moves no parse.
 
-The command stages a change in the Draft; it does not change the project. Add `--cite-source <text>` and optionally `--cite-locator <text>` to record a source on the operation. Only a person can Apply a Proposal.
+The command stages a change in the Draft; it does not change the project. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record a source on the operation. Only a person can Apply a Proposal.

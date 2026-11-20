@@ -9,4 +9,4 @@ Moves the named characters of one project writing system between word-forming (p
 
 The command stages one write in the Draft. It does not change the FieldWorks project. Finish the Draft, inspect its Dry Run, and Trial the affected Texts: the Trial re-reads them with the changed writing system, so a word such as `‘baba’` becomes `baba`. Review the after Report; only a person can Apply a Proposal. Apply writes the project's writing-system file and re-reads the Texts that contain the changed characters.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on the operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on the operation this command produces.

@@ -20,4 +20,4 @@ The tag is written in an analysis writing system: `--analysis-ws` (the intent's 
 
 Each staged operation sets the whole Bibliography alternative for that writing system, so text added in FieldWorks after the Dry Run is caught by the Proposal's anchor at Apply. The Bibliography is exported as a bibliography note in a LIFT export, so the tag survives a round trip. Changing it moves no parse, so a Trial of this Proposal measures only what it names.
 
-The command stages a change in the Draft; it does not change the project. Add `--cite-source <text>` and optionally `--cite-locator <text>` to record a source on every operation. Only a person can Apply a Proposal.
+The command stages a change in the Draft; it does not change the project. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record a source on every operation. Only a person can Apply a Proposal.

@@ -17,4 +17,4 @@ The legacy `foldStressMarks` option computes the new form from `expectedForm` an
 
 The command stages writes in the Draft. Finish the Draft, inspect its Dry Run and Trial the actual written words; only a person can Apply a Proposal. A spelling-only result cannot prove quantity or stress erased before output.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on the operations this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on the operations this command produces.

@@ -270,6 +270,37 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void ABatchAcceptsA300CharacterLocatorAndRefusesA301CharacterOneNamingTheIntentAndTheLength()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "locator-limit");
+        string Batch(int length) => System.Text.Json.JsonSerializer.Serialize(new
+        {
+            intents = new object[]
+            {
+                new { verb = "compose-author-phoneme", intent = new { name = "a", representations = new[] { "a" } } },
+                new
+                {
+                    verb = "compose-author-phoneme", intent = new { name = "b", representations = new[] { "b" } },
+                    citation = new { source = "Grammar 2026", locator = new string('l', length) },
+                },
+            },
+        });
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "locator-limit", Batch(301)));
+
+        Assert.False(refused.Succeeded);
+        Assert.Contains("Intent 1 (compose-author-phoneme)", refused.Refusal!.Message);
+        Assert.Contains("'locator' must be at most 300 characters", refused.Refusal.Message);
+        Assert.Contains("301", refused.Refusal.Message.Replace("at most 300", ""));
+        Assert.True(ProposalCommands.New(new(path, Version, "locator-limit-ok", "Batch limit")).Succeeded);
+        var accepted = ProposalCommands.ComposeBatch(new(path, Version, "locator-limit-ok", Batch(300)));
+        Assert.True(accepted.Succeeded, accepted.Refusal?.Message);
+    }
+
+    [Fact]
     public void NamedCreatedValuesBindPhonemesAndRulesInOneDraft()
     {
         using var cache = pristine.NewScratch();

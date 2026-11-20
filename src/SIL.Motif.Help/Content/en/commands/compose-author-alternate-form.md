@@ -13,7 +13,7 @@ Each form states its own conditions, and none are copied. `environments` lists e
 
 Alternate forms have declared precedence: an eligible earlier form can block a later one. `placement` names the neighbours of the insertion gap, as `{"after":"<form-id>"}`, `{"before":"<form-id>"}` or both. Adjacent means the two are next to each other now. Leave it out and Motif chooses the gap: a form with environments goes just before the entry's first form without environments, and any other form goes after the last alternate form. A form with no environment always wins over every later form, so an explicit placement of a restricted form after an unrestricted one, or of an unrestricted form before a restricted one, is refused and the refusal names where to place it instead. In a `compose-batch` file a neighbour can be a label such as `@circ:suffix`. The lexeme form is always the last candidate.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
 
 The command returns the new form's operations and created entity id. Dry Run and Trial the Draft on affected words, revise it, then Finalize it for a person to review and Apply.
 

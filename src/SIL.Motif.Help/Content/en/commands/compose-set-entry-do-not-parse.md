@@ -11,4 +11,4 @@ Neither FieldWorks' HermitCrab nor its XAmple transform reads this flag, and Pan
 
 To flag many entries in one Proposal, put one `compose-set-entry-do-not-parse` intent per entry in a [`compose-batch`](cmd:compose-batch) file; but to change how words parse, retype the stems the same way instead.
 
-The command stages a change in the Draft; it does not change the project. Add `--cite-source <text>` and optionally `--cite-locator <text>` to record a source on the operation. Only a person can Apply a Proposal.
+The command stages a change in the Draft; it does not change the project. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record a source on the operation. Only a person can Apply a Proposal.

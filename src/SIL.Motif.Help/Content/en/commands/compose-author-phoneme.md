@@ -2,7 +2,7 @@
 
 Stages a phoneme with explicitly authored name and representations in a Draft. Use its created identity in later natural classes or phonological rules. Only a person can Apply.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
 
 `representations` are literal spellings, including `(`, `)`, `/`, square brackets and other symbols used by imported projects. Do not escape them as environment syntax: `"representations": ["/"]` stores a literal slash. Supply `features` as `{ "feature": "<feature ID>", "value": "<value ID>" }` pairs to give each distinct sound or literal symbol its explicit feature bundle. A shared bundle permits unification; use distinct bundles when the segments must stay distinct. Empty representations, dotted-circle-only representations, parser-reserved boundary/null spellings (`+`, `.`, `^0`, `*0`, `&0`, `∅`), duplicate spellings and spellings owned by another phoneme or boundary are refused. Spellings are canonically decomposed, and display dotted circles are removed as in FieldWorks' parser loader.
 

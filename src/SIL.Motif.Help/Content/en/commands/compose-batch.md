@@ -7,7 +7,7 @@ Before any intent runs, one read-only pass checks every intent's alias (`as`, 1 
 Composing operations does not set the Draft's review text. Before Finalize, add a short label with `motif label` and a Rationale with [`proposal rationale`](cmd:proposal%20rationale).
 
 The file names each intent's composing command and carries the same closed intent that command's `--intent` takes.
-Add an optional `citation` beside `intent`; Motif records it as operation provenance without changing the intent or its digest.
+Add an optional `citation` beside `intent`; Motif records it as operation provenance without changing the intent or its digest. A citation's `source` is at most 2000 characters and its `locator` at most 300; a longer one refuses the whole batch with the intent's position, command, `citation` field and the length it measured, so keep detailed offsets in your own evidence record and give Motif a short, stable locator.
 
 ```json
 {"intents": [

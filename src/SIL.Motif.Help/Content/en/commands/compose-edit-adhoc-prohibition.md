@@ -9,7 +9,7 @@ The closed intent names one existing allomorph or morpheme prohibition. `expecte
 
 The command stages one write in the Draft. It does not change the FieldWorks project. Finish the Draft, inspect its Dry Run, and compare bounded before and after Trials with the same words. Review the after Report; only a person can Apply a Proposal.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
 
 ## When not to use this
 

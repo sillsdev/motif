@@ -19,4 +19,4 @@ The command refuses, and changes nothing, when:
 
 A Draft may delete several senses; each is composed against the Draft's earlier steps, so a second deletion from the same entry sees the first one's result.
 
-Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.
+Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.

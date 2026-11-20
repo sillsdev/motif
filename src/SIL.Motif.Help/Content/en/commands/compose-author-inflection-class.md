@@ -11,7 +11,7 @@ motif compose-author-inflection-class --project language.fwdata --draft noun-cla
 
 The command preserves the category's default inflection class. Use the create operation's `entityId` as `msa.inflectionClass` when authoring a stem. References may name something an earlier call added to the same Draft.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
 
 Dry Run and Trial the Draft on affected words, revise it, then Finalize for a person to review and Apply.
 

@@ -11,4 +11,4 @@ The Form write preserves the allomorph ID, alternate order, morph type, abstract
 
 For lexeme forms use [Rewrite lexeme forms](cmd:compose-rewrite-lexeme-form) with `foldStressMarks=false` and explicit `newForm`. Preserve a selected marked headword with [Edit a citation form](cmd:compose-edit-citation-form).
 
-The CLI and MCP tool stage operations in a Draft. Inspect the Dry Run and Trial results before a person Applies the Proposal. No project is changed by composing. Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the selected evidence.
+The CLI and MCP tool stage operations in a Draft. Inspect the Dry Run and Trial results before a person Applies the Proposal. No project is changed by composing. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the selected evidence.

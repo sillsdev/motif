@@ -11,7 +11,7 @@ motif compose-author-stem-name --project language.fwdata --draft plural-stem \
 
 The command creates the stem name, its regions and their complete feature specifications. It does not attach the stem name to an allomorph: that is the separate semantic `grammar/moStemAllomorph/setStemName` operation. It authors no fallback stem or affix.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
 
 Dry Run and Trial the Draft on positive and negative words, revise it, then Finalize for a person to review and Apply.
 

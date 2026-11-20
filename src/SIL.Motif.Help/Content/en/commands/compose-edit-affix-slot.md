@@ -18,4 +18,4 @@ The closed intent names one existing inflectional affix slot. `expectedOptional`
 
 This command stages one Optional-field write in the Draft and does not change the FieldWorks project. Finish the Draft, inspect its Dry Run, and run a bounded Trial on the words affected by the slot. Only a person can Apply the Proposal.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

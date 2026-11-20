@@ -9,4 +9,4 @@ The closed intent names one lexical entry and its current and requested alternat
 
 Earlier matching alternate forms take precedence over later ones. A final unrestricted form can serve as an elsewhere fallback after the conditioned forms; moving it earlier can make it compete with those forms. Preserve the final position when it is intentional. Finish the Draft, inspect its Dry Run, and run a bounded Trial on the intended cases and relevant contrasts. Only a person can Apply the Proposal.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

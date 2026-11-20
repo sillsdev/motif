@@ -13,4 +13,4 @@ motif compose-author-affix-template --project language.fwdata --draft plural-bra
 
 The Draft declares that the template create precedes its name, Final value and slot references. Finish the Proposal, inspect its Dry Run, and run a bounded Trial on affected words before a person Applies it.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

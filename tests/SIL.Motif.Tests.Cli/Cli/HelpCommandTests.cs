@@ -563,6 +563,26 @@ public sealed class HelpCommandTests
         Assert.Contains("--full", result.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EveryHelpPageThatNamesTheCitationLocatorStatesItsLimit()
+    {
+        var root = Path.Combine(FindRepositoryRoot(), "src", "SIL.Motif.Help", "Content", "en", "commands");
+        var missing = Directory.GetFiles(root, "*.md")
+            .Where(file => File.ReadAllText(file).Contains("--cite-locator", StringComparison.Ordinal))
+            .Where(file => !File.ReadAllText(file).Contains("at most 300 characters", StringComparison.Ordinal))
+            .Select(Path.GetFileName)
+            .ToArray();
+
+        Assert.Empty(missing);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+            if (Directory.Exists(Path.Combine(directory.FullName, "plugin", "skills"))) return directory.FullName;
+        throw new DirectoryNotFoundException("Could not find the repository root from the test output directory.");
+    }
+
     private static string[] CatalogedCommandNames() => HelpCatalog.Load().Entries
         .Where(entry => entry.Kind == HelpEntryKind.Command)
         .Select(entry => entry.Code)

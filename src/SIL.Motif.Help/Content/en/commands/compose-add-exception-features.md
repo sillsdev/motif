@@ -13,4 +13,4 @@ A derivational affix takes its From Exception Features, which a stem must carry 
 
 To restrict an affix to a list of stems, tag the stems with this command and make the affix require the feature (`compose-edit-exception-features` for an inflectional affix, `compose-edit-derivational-affix-restriction` for a derivational one). One call replaces one intent per stem. Use a feature for a lexical class with a reason; a feature per stem is only a stem list.
 
-The command stages operations in a Draft and does not change the saved FieldWorks project. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite the operations. Dry Run and Trial the Proposal on stems that should and should not take the affix, then Finalize it for a person to review and Apply.
+The command stages operations in a Draft and does not change the saved FieldWorks project. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite the operations. Dry Run and Trial the Proposal on stems that should and should not take the affix, then Finalize it for a person to review and Apply.

@@ -13,7 +13,7 @@ motif compose-author-lexical-entry --project language.fwdata --draft new-words \
 
 An inflectional affix can also be restricted. `inflectionClasses` lists existing inflection classes of the affix's category or a category above it, and its form then attaches only to stems of those classes; leave it out for no restriction. A derivational affix uses `compose-edit-derivational-affix-restriction` to set its From Inflection Class and From Exception Features on the grammatical info; inflection classes on its form do not restrict its derivational analysis. `environments` lists existing phonological environments the form occurs in, for a stem or an affix. Empty lists, repeated ids and a stem's `inflectionClass` on an affix are refused.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
 
 Every id can belong to something an earlier command added to the same Draft, such as a new part of speech. The command returns the new entry's operations and created entity ids for later calls. Dry Run and Trial the Draft on affected words, revise it, then Finalize it for a person to review and Apply.
 

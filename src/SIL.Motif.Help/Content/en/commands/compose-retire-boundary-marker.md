@@ -9,4 +9,4 @@ motif compose-retire-boundary-marker --project language.fwdata --draft boundary-
 
 `marker` is required and the intent is closed. The refusal that sends you here names the stray marker and the standard marker the rule must use. The command retires only a marker whose every spelling is `#` or `+` and whose standard marker, with the same spelling, is still in the set. It refuses the standard marker itself, and refuses, changing nothing, when any rule, environment or other object still refers to the marker; the message names the referrer. Retarget that use to the standard marker in FieldWorks first. Nothing is retargeted or cascaded for you.
 
-The Dry Run shows the phoneme set's boundary markers before and after. Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite the operation. Only a person can Apply the Proposal.
+The Dry Run shows the phoneme set's boundary markers before and after. Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite the operation. Only a person can Apply the Proposal.

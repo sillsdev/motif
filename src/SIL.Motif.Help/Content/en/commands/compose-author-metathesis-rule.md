@@ -22,7 +22,7 @@ Motif creates the rule, its name and direction, one structural item for each env
 
 The rule is staged enabled once its parts are complete. Finalize the Proposal, inspect its Dry Run, then use Trial to confirm the switched words parse and the unswitched ones do not before a person Applies it.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
 
 ## When not to use this
 

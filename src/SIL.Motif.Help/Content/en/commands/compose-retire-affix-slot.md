@@ -11,4 +11,4 @@ motif compose-retire-affix-slot --project language.fwdata --draft slot-cleanup \
 
 A template that loses its last slot is allowed, and the grammar check then warns that the template has no slots. Use `compose-edit-affix-slot` to rename a slot or change whether it is optional instead of retiring it.
 
-Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite the operation. Only a person can Apply the Proposal.
+Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite the operation. Only a person can Apply the Proposal.

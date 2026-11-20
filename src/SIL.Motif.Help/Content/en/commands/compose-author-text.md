@@ -17,4 +17,4 @@ A word whose exact form already exists in that writing system reuses its wordfor
 
 The result lists created wordforms and the Text by identity. Inspect the Draft's Dry Run, revise it, then Finalize for review. Only a person can Apply the Proposal.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.

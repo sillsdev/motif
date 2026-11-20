@@ -22,4 +22,4 @@ The command refuses, and changes nothing, when:
 
 The sense may be created by an earlier step of the same Draft. The Dry Run lists the sense's examples before and after, and shows the whole new example in every writing system with its translations, and the sense with its entry and gloss.
 
-Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.
+Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.

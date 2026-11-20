@@ -15,7 +15,7 @@ The entry must be an affix. Its lexeme form may be a plain affix allomorph or an
 
 Alternate forms have declared precedence. When the entry already has alternate forms, `placement` is required and names the neighbours of the insertion gap, as `{"after":"<form-id>"}`, `{"before":"<form-id>"}` or both, and they must be adjacent now. The first alternate form takes no placement. `inflectionClasses` lists existing classes for an inflectional grammatical info the entry has, owned by that info's category or a category above it; the form then attaches only to stems of those classes for that inflectional analysis. FieldWorks ignores these form classes for a derivational analysis; use `compose-edit-derivational-affix-restriction` to restrict that analysis instead. If the entry has no inflectional grammatical info, Motif refuses `inflectionClasses` and names that composer.
 
-Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces. The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal on affected words, including words just outside each pattern, then Finalize it for a person to review and Apply.
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces. The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal on affected words, including words just outside each pattern, then Finalize it for a person to review and Apply.
 
 ## When not to use this
 

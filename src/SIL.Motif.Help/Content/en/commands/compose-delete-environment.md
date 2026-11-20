@@ -11,4 +11,4 @@ motif compose-delete-environment --project language.fwdata --draft cleanup \
 
 In FieldWorks: Grammar, Phonology, Environments, select the environment, Delete.
 
-Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite the operation. Only a person can Apply the Proposal.
+Use this editor through the CLI. Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to cite the operation. Only a person can Apply the Proposal.
