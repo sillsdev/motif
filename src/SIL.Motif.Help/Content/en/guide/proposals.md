@@ -11,3 +11,5 @@ Start with **Proposed changes**. Each row describes a change in the Proposal. Wh
 Follow **Before you apply**. Choose **Try It** or **Try Again** to measure the Proposal on a copy. Choose a Text and **Make Difference** to compare its words. Choose **Run Dry Run** to check and record what would change in FieldWorks. When the checklist is complete and the changes are ready, **Apply…** opens the confirmation and backup reminder. Opening a Proposal starts no checks.
 
 Read [Review a Proposal](guide:review-a-proposal) and [Apply to FieldWorks](guide:apply-to-fieldworks) before applying.
+
+To bring in changes you made in an edited record file, choose **File > Open Record File…**, browse for the file and choose **Preview**. The window lists the operations the file would make and, under **Not imported**, each change it cannot make, with its code, class, field and reason. Give the Draft a name and choose **Stage**; Motif then opens the new Draft on this page. Nothing is applied until you apply it yourself.
