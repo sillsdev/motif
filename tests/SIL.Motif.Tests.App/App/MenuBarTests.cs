@@ -88,7 +88,7 @@ public sealed class MenuBarTests
         Assert.Equal(TopLevel, top);
         Assert.Equal(["Corpus", "Options…", "Writing Systems and Fonts"], tools);
         Assert.Equal(["Help Topics", "Keyboard Shortcuts", "Report a Problem…"], help);
-        Assert.Equal(["Open...", "Open Recent", "Refresh", "Configure…", "Exit"], file);
+        Assert.Equal(["Open...", "Open Recent", "Open Record File...", "Refresh", "Configure…", "Exit"], file);
     }
 
     [Fact]

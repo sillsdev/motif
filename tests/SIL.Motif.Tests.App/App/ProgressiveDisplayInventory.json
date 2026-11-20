@@ -87,6 +87,22 @@
     "control": "ItemsControl"
   },
   {
+    "view": "ImportRecordWindow",
+    "name": "OperationList",
+    "source": "OperationRows",
+    "mode": "finite",
+    "reason": "One page of operations; the command lists RecordImportPaging.PageSize (3) per page.",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ImportRecordWindow",
+    "name": "RefusalList",
+    "source": "RefusalRows",
+    "mode": "finite",
+    "reason": "One page of refusals; the command lists RecordImportPaging.PageSize (3) per page.",
+    "control": "ItemsControl"
+  },
+  {
     "view": "SettingsPage",
     "name": "SettingsAnalysisWritingSystemsItems",
     "source": "AnalysisWritingSystems",

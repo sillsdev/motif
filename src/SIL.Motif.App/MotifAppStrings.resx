@@ -7831,7 +7831,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.AssistantAccessExplanation" xml:space="preserve"><value>This lets assistants such as Claude Desktop use Motif's tools through the MCP.</value><comment>Sentence under the Assistant Access heading in Settings.</comment></data>
   <data name="MotifApp.AssistantAccessSwitch" xml:space="preserve"><value>Let Assistants Use Motif's Tools</value><comment>Checkbox in Settings that turns Advanced AI mode on or off.</comment></data>
   <!-- import-record -->
-  <data name="MotifApp.MenuOpenRecordFile" xml:space="preserve"><value>Open Record _File...</value><comment>File menu command: preview and stage an edited record file. The ellipsis means it asks for more input.</comment></data>
+  <data name="MotifApp.MenuOpenRecordFile" xml:space="preserve"><value>Open Recor_d File...</value><comment>File menu command: preview and stage an edited record file. The ellipsis means it asks for more input.</comment></data>
   <data name="MotifApp.ImportRecordWindowTitle" xml:space="preserve"><value>Open Record File</value><comment>Title of the window that previews an edited record file.</comment></data>
   <data name="MotifApp.ImportRecordPickerTitle" xml:space="preserve"><value>Choose an edited record file</value><comment>Title of the file chooser for an edited record file.</comment></data>
   <data name="MotifApp.ImportRecordIntro" xml:space="preserve"><value>Choose a record file you edited. Motif shows what it would change and stages the changes in a new Draft. Nothing changes in the project until you apply the Draft.</value><comment>Introduction at the top of the Open Record File window.</comment></data>

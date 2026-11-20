@@ -57,7 +57,7 @@ public sealed class ProgressiveDisplayTests
 
     private static readonly string[] ViewNames =
     [
-        "DiagnosticPanel", "HandoffPanel",
+        "DiagnosticPanel", "HandoffPanel", "ImportRecordWindow",
         "MotifWorkspaceView",
         "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage", "Guide/GuideExamples", "Guide/GuideGrammarNames",
         "Proposals/ProposalComparePanel", "Proposals/ProposalCompareSide", "Proposals/ProposalDocument", "Proposals/ProposalEvidenceColumns",
@@ -992,6 +992,16 @@ public sealed class ProgressiveDisplayTests
             new(0, 0, 0, 0, []), []);
     }
 
+    private static Control BuildImportRecordContent()
+    {
+        var (model, _, _, _) = ImportRecordDialogModelTests.Make();
+        var window = new ImportRecordWindow(model);
+        var content = Assert.IsAssignableFrom<Control>(window.Content);
+        window.Content = null;
+        content.DataContext = model;
+        return content;
+    }
+
     private static Control Build(string name, WorkspaceShellViewModel workspace, MainWindow sample)
     {
         var texts = workspace.PageModel<TextsPageModel>();
@@ -1015,6 +1025,7 @@ public sealed class ProgressiveDisplayTests
             "Diagnostics/WhyThisAnalysisPanel" => new SIL.Motif.App.Views.Diagnostics.WhyThisAnalysisPanel(
                 ReadyWhyFold(workspace)),
             "DiagnosticPanel" => new DiagnosticPanel(trace.Diagnostics),
+            "ImportRecordWindow" => BuildImportRecordContent(),
             "HandoffPanel" => new HandoffPanel(workspace.PageModel<SettingsPageModel>().Handoff.Handoff),
             "SettingsPage" => BuildSettingsPage(workspace),
             "SettingsNavigation" => BuildSettingsPage(workspace).Navigation,
