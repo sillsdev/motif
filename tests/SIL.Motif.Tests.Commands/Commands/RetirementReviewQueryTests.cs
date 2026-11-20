@@ -89,6 +89,43 @@ public sealed class RetirementReviewQueryTests(PristineProjectFixture pristine) 
     }
 
     [Fact]
+    public void ReadingARunningDryRunNeverHashesTheBaselineFileTheRunnerHoldsOpen()
+    {
+        OperationRegistryBootstrap.Initialize();
+        Directory.CreateDirectory(_root);
+        var projectPath = Path.Combine(_root, "project.fwdata");
+        File.WriteAllText(projectPath, "project marker");
+        var baselineDirectory = Path.Combine(_root, "baseline");
+        Directory.CreateDirectory(baselineDirectory);
+        var baselinePath = Path.Combine(baselineDirectory, "baseline.fwdata");
+        File.WriteAllText(baselinePath, "baseline bytes");
+        var project = ProjectStoreCommand.Locate(projectPath);
+        var draftId = CanonicalId.Mint("proposal/");
+        var intent = JsonDocument.Parse(AllomorphRetirementCodec.ToJson(RetirementIntent())).RootElement.Clone();
+        var token = new SIL.Motif.Contract.Baselines.BaselineToken("project", Digest, "1", "2026-10-09T00:00:00Z", Digest);
+        var source = new DryRunSourceBinding(token, baselineDirectory, baselinePath,
+            "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(baselinePath))));
+        using (var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+                   MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            new ProposalRepository(database).CreateDraft("retirement", draftId,
+                JsonSerializer.Serialize(Draft(draftId, intent), new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            var input = new DryRunJobInput(DryRunJobInput.CurrentSchemaVersion,
+                FrozenProposalRevision.Create(DraftProposalJson(draftId, intent, "earlier gloss")), [], source);
+            new JobRepository(database).Create(CanonicalId.Mint("job/").Value,
+                ProjectWorkspaceKey.Compute(project), JobCommands.DryRunKind,
+                JsonSerializer.Serialize(input, MotifJson.CreateOptions()), "2026-10-09T00:00:00Z");
+        }
+
+        // The runner opens the Baseline exclusively while a queued or running Dry Run is the latest job.
+        using var held = new FileStream(baselinePath, FileMode.Open, FileAccess.Read, FileShare.None);
+        var result = ParsimonyCommands.ReadRetirementReview(new ReadRetirementReviewRequest(
+            projectPath, "1.0", draftId.Value));
+
+        Assert.Equal("retirement-review.stale-dry-run", result.Refusal?.Code);
+    }
+
+    [Fact]
     public void RetirementDraftWithoutPairedReportsReturnsItsPendingEvidence()
     {
         Directory.CreateDirectory(_root);

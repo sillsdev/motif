@@ -88,7 +88,7 @@ public static class RetirementProposalReviewQuery
                     var latest = dryRunJobs[^1];
                     latestDryRunJob = latest;
                     dryRunJobId = latest.JobId;
-                    var frozenInput = DryRunJobInput.Parse(latest.InputJson);
+                    var frozenInput = DryRunJobInput.ParseWithoutSourceCheck(latest.InputJson);
                     if (frozenInput.Proposal.IntentDigest != intentDigest)
                         return Refused("retirement-review.stale-dry-run", FailureReason.Refused,
                             "The latest Dry Run describes an earlier Draft revision. Run Dry Run again for the current Draft.");
@@ -189,7 +189,7 @@ public static class RetirementProposalReviewQuery
         {
             try
             {
-                var input = DryRunJobInput.Parse(job.InputJson);
+                var input = DryRunJobInput.ParseWithoutSourceCheck(job.InputJson);
                 if (input.Proposal.ProposalId == proposalId) matches.Add(job);
             }
             catch (InvalidDataException)
