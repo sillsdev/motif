@@ -53,4 +53,41 @@ public sealed class ProposalDocumentOperationTests
             await context.StopProjectWorkAsync();
         }
     }
+
+    [Fact]
+    public async Task AnAppliedProposalKeepsTheOldToNewValueAfterTheBaselineMoved()
+    {
+        const string sense = "sense/one";
+        var op = new ProposalOperationView("op/one", LexicalSenseOperationKinds.SetGloss, sense, null,
+            [], """{"ws":"en","text":"buy (demo)"}""");
+        var effect = new EffectView(sense, SnapshotFields.LexSenseGloss, [new("en", "buy", "buy (demo)")])
+        {
+            OperationIds = [op.OperationId],
+        };
+        var detail = new ProposalDetailProjection("one", "applied", "Change the gloss", null, "intent/one", [op]);
+        var dryRun = new DryRunProjection("one", "intent/one", "", [effect], "effect", "footprint");
+        var trial = new TrialRecord("job/one", "one", "intent/one", WorkspaceContextTests.Assessment().Baseline.Token,
+            dryRun, new Dictionary<string, string>(), [], false, null, JobStatus.Completed, DateTimeOffset.UtcNow,
+            TrialFreshness.BaselineMoved);
+        var fake = new FakeCommandClient
+        {
+            ShowProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(detail)),
+            Review = new("one", "intent/one", "revision/one", [], trial, null, [], 0),
+        };
+        var context = WorkspaceContextTests.NewContext(fake);
+        await context.OpenProjectAsync("project.fwdata");
+        var documents = new OpenProposalDocuments(context);
+        try
+        {
+            var document = documents.Open("one");
+            await document.RefreshAsync();
+
+            Assert.Equal("Gloss (en): buy → buy (demo)", Assert.Single(document.OperationRows).Values);
+        }
+        finally
+        {
+            await documents.StopAsync();
+            await context.StopProjectWorkAsync();
+        }
+    }
 }

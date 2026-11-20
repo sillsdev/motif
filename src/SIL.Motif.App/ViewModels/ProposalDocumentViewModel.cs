@@ -370,8 +370,11 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             SharedEffectSummaries = [];
             return;
         }
-        var effects = !IsOutdated && _review?.Trial is { Freshness: TrialFreshness.Current } trial &&
-            trial.IntentDigest == detail.CurrentIntentDigest ? trial.DryRun?.Effects ?? [] : [];
+        // An Applied Proposal keeps its recorded old-to-new values although the project has since moved on.
+        var applied = detail.Status == "applied";
+        var effects = (applied || (!IsOutdated && _review?.Trial is { Freshness: TrialFreshness.Current })) &&
+            _review?.Trial is { } trial && trial.IntentDigest == detail.CurrentIntentDigest
+            ? trial.DryRun?.Effects ?? [] : [];
         var byOperation = effects.Where(effect => effect.OperationIds.Count == 1)
             .ToLookup(effect => effect.OperationIds[0], StringComparer.Ordinal);
         OperationRows = detail.Operations.Select(operation =>
