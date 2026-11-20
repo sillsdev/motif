@@ -7,6 +7,47 @@ namespace SIL.Motif.App;
 /// </summary>
 public static class MotifAppStrings
 {
+    // import-record
+    public static string MenuOpenRecordFile => Text("MotifApp.MenuOpenRecordFile");
+    public static string ImportRecordWindowTitle => Text("MotifApp.ImportRecordWindowTitle");
+    public static string ImportRecordPickerTitle => Text("MotifApp.ImportRecordPickerTitle");
+    public static string ImportRecordIntro => Text("MotifApp.ImportRecordIntro");
+    public static string ImportRecordFileLabel => Text("MotifApp.ImportRecordFileLabel");
+    public static string ImportRecordFileAccessibleName => Text("MotifApp.ImportRecordFileAccessibleName");
+    public static string ImportRecordBrowse => Text("MotifApp.ImportRecordBrowse");
+    public static string ImportRecordBrowseAccessibleName => Text("MotifApp.ImportRecordBrowseAccessibleName");
+    public static string ImportRecordPreview => Text("MotifApp.ImportRecordPreview");
+    public static string ImportRecordPreviewAccessibleName => Text("MotifApp.ImportRecordPreviewAccessibleName");
+    public static string ImportRecordDraftNameLabel => Text("MotifApp.ImportRecordDraftNameLabel");
+    public static string ImportRecordDraftNameAccessibleName => Text("MotifApp.ImportRecordDraftNameAccessibleName");
+    public static string ImportRecordStage => Text("MotifApp.ImportRecordStage");
+    public static string ImportRecordStageAccessibleName => Text("MotifApp.ImportRecordStageAccessibleName");
+    public static string ImportRecordOpenDraft => Text("MotifApp.ImportRecordOpenDraft");
+    public static string ImportRecordOpenDraftAccessibleName => Text("MotifApp.ImportRecordOpenDraftAccessibleName");
+    public static string ImportRecordCancelAccessibleName => Text("MotifApp.ImportRecordCancelAccessibleName");
+    public static string ImportRecordCloseAccessibleName => Text("MotifApp.ImportRecordCloseAccessibleName");
+    public static string ImportRecordIdle => Text("MotifApp.ImportRecordIdle");
+    public static string ImportRecordReading => Text("MotifApp.ImportRecordReading");
+    public static string ImportRecordStaging => Text("MotifApp.ImportRecordStaging");
+    public static string ImportRecordSummaryFormat => Text("MotifApp.ImportRecordSummaryFormat");
+    public static string ImportRecordStagedFormat => Text("MotifApp.ImportRecordStagedFormat");
+    public static string ImportRecordOpenFailed => Text("MotifApp.ImportRecordOpenFailed");
+    public static string ImportRecordOperationsHeading => Text("MotifApp.ImportRecordOperationsHeading");
+    public static string ImportRecordRefusalsHeading => Text("MotifApp.ImportRecordRefusalsHeading");
+    public static string ImportRecordOperationsAccessibleName => Text("MotifApp.ImportRecordOperationsAccessibleName");
+    public static string ImportRecordRefusalsAccessibleName => Text("MotifApp.ImportRecordRefusalsAccessibleName");
+    public static string ImportRecordPageFormat => Text("MotifApp.ImportRecordPageFormat");
+    public static string ImportRecordPreviousAccessibleName => Text("MotifApp.ImportRecordPreviousAccessibleName");
+    public static string ImportRecordNextAccessibleName => Text("MotifApp.ImportRecordNextAccessibleName");
+    public static string ImportRecordOperationFormat => Text("MotifApp.ImportRecordOperationFormat");
+    public static string ImportRecordRefusalFieldFormat => Text("MotifApp.ImportRecordRefusalFieldFormat");
+    public static string ImportRecordRefusalFormat => Text("MotifApp.ImportRecordRefusalFormat");
+    public static string ImportRecordRefusalPlanRefused => Text("MotifApp.ImportRecordRefusalPlanRefused");
+    public static string ImportRecordRefusalUnreadable => Text("MotifApp.ImportRecordRefusalUnreadable");
+    public static string ImportRecordRefusalNothing => Text("MotifApp.ImportRecordRefusalNothing");
+    public static string ImportRecordRefusalNameTaken => Text("MotifApp.ImportRecordRefusalNameTaken");
+    public static string ImportRecordRefusalPage => Text("MotifApp.ImportRecordRefusalPage");
+    public static string ImportRecordNoProject => Text("MotifApp.ImportRecordNoProject");
     // round3-assistant-access
     public static string AssistantAccessHeading => Text("MotifApp.AssistantAccessHeading");
     public static string AssistantAccessExplanation => Text("MotifApp.AssistantAccessExplanation");

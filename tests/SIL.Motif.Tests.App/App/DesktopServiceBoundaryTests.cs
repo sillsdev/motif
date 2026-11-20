@@ -17,6 +17,7 @@ public sealed class DesktopServiceBoundaryTests
     [InlineData(typeof(IClipboard))]
     [InlineData(typeof(IDiagnosticFilePicker))]
     [InlineData(typeof(IReportFilePicker))]
+    [InlineData(typeof(IRecordFilePicker))]
     [InlineData(typeof(IUriLauncher))]
     public void ViewModelFacingServiceInterfaceNamesNoAvaloniaType(Type serviceInterface)
     {

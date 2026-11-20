@@ -1,0 +1,200 @@
+using SIL.Motif.App;
+using SIL.Motif.App.Services;
+using SIL.Motif.App.ViewModels;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
+using Xunit;
+
+namespace SIL.Motif.Tests.App;
+
+/// <summary>Answers the record file chooser from a script and counts how often it was asked.</summary>
+public sealed class ScriptedRecordFiles : IRecordFilePicker
+{
+    private readonly Queue<string?> _answers = new();
+
+    public int Prompts { get; private set; }
+
+    public void NextChooses(string? path) => _answers.Enqueue(path);
+
+    public Task<string?> PickRecordFileAsync(CancellationToken cancellationToken = default)
+    {
+        Prompts++;
+        return Task.FromResult(_answers.Count > 0 ? _answers.Dequeue() : null);
+    }
+}
+
+public sealed class ImportRecordDialogModelTests
+{
+    internal static RecordImportResponse Plan(int operations = 2, int refusals = 1, string? draft = null,
+        int page = 1, int pageCount = 1) =>
+        new(draft is null ? "dryRun" : "draft", "lexiconEntry", "entry-1", "fresh", operations, operations, refusals,
+            page, pageCount,
+            Enumerable.Range(0, Math.Min(operations, 3))
+                .Select(i => new RecordImportOperation($"op-{i}", "lexical/lexSense/setGloss", $"sense-{i}")).ToArray(),
+            Enumerable.Range(0, Math.Min(refusals, 3))
+                .Select(i => new RecordImportRefusal("record-import.field-uncovered", "LexSense", $"Gloss{i}", null,
+                    "No operation writes this field.")).ToArray(),
+            draft, draft is null ? null : "proposal-7");
+
+    internal static Task<CommandOutcome<RecordImportResponse>> Ok(RecordImportResponse response) =>
+        Task.FromResult(CommandOutcome<RecordImportResponse>.Success(response));
+
+    internal static Task<CommandOutcome<RecordImportResponse>> Refused(string code) =>
+        Task.FromResult(CommandOutcome<RecordImportResponse>.Refused(new(code, FailureReason.Refused, "Declined.")));
+
+    internal static (ImportRecordDialogModel Model, FakeCommandClient Client, ScriptedRecordFiles Files,
+        List<string> Opened) Make(
+        Func<RecordImportRequest, CancellationToken, Task<CommandOutcome<RecordImportResponse>>>? handler = null,
+        Func<string, CancellationToken, Task>? open = null)
+    {
+        var client = new FakeCommandClient
+        {
+            StageRecordImportHandler = handler ?? ((request, _) => Ok(Plan(draft: request.DraftName)))
+        };
+        var files = new ScriptedRecordFiles();
+        var opened = new List<string>();
+        var model = new ImportRecordDialogModel(new ImportRecordViewModel(client, "project.fwdata"), files,
+            open ?? ((id, _) => { opened.Add(id); return Task.CompletedTask; }));
+        return (model, client, files, opened);
+    }
+
+    [Fact]
+    public async Task BrowseChoosesTheFileAndPreviewsItAtOnce()
+    {
+        var (model, client, files, _) = Make();
+        files.NextChooses("edited.md");
+
+        await model.BrowseCommand.ExecuteAsync(null);
+
+        Assert.Equal("edited.md", model.Import.FilePath);
+        Assert.Equal("edited.md", Assert.Single(client.StageRecordImportRequests).FilePath);
+        Assert.True(model.HasPreview);
+        Assert.Equal(2, model.OperationRows.Count);
+        var refusal = Assert.Single(model.RefusalRows);
+        Assert.Equal("record-import.field-uncovered", refusal.Code);
+        Assert.Equal("LexSense Gloss0", refusal.Where);
+        Assert.Equal("No operation writes this field.", refusal.Reason);
+        Assert.Contains("2 changes become 2 operations. 1 cannot be imported.", model.StatusText);
+    }
+
+    [Fact]
+    public async Task CancellingTheChooserChangesNothing()
+    {
+        var (model, client, files, _) = Make();
+        files.NextChooses(null);
+
+        await model.BrowseCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, files.Prompts);
+        Assert.Empty(client.StageRecordImportRequests);
+        Assert.False(model.HasPreview);
+        Assert.True(model.BrowseCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void NothingCanBePreviewedOrStagedWithoutAFileAndAName()
+    {
+        var (model, _, _, _) = Make();
+
+        Assert.False(model.Import.PreviewCommand.CanExecute(null));
+        Assert.False(model.Import.StageCommand.CanExecute(null));
+        Assert.False(model.OpenDraftCommand.CanExecute(null));
+        Assert.True(model.BrowseCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task AWholeFileRefusalIsShownInTheWindowsWords()
+    {
+        var (model, _, _, _) = Make((_, _) => Refused(RefusalCodes.RecordImportPlanRefused));
+        model.Import.FilePath = "old.md";
+
+        await model.Import.PreviewAsync();
+
+        Assert.True(model.HasShownRefusal);
+        Assert.Equal(RefusalCodes.RecordImportPlanRefused, model.ShownRefusal!.Code);
+        Assert.Contains("older state of this record", model.ShownRefusal.Sentence);
+        Assert.False(model.HasPreview);
+    }
+
+    [Fact]
+    public async Task StagingOpensTheStagedDraftByItsProposalId()
+    {
+        var (model, _, _, opened) = Make();
+        model.Import.FilePath = "edited.md";
+        model.Import.DraftName = "From file";
+        await model.Import.PreviewAsync();
+        var raised = 0;
+        model.DraftOpened += (_, _) => raised++;
+
+        await model.Import.StageAsync();
+        await model.OpenTask;
+
+        Assert.Equal("proposal-7", Assert.Single(opened));
+        Assert.Equal(1, raised);
+        Assert.True(model.IsStaged);
+        Assert.Equal("Close", model.CancelText);
+        Assert.Contains("From file", model.StatusText);
+    }
+
+    [Fact]
+    public async Task ADraftThatCannotBeOpenedStaysOpenableByHand()
+    {
+        var attempts = 0;
+        var (model, _, _, _) = Make(open: (_, _) =>
+            ++attempts == 1 ? Task.FromException(new InvalidOperationException("nope")) : Task.CompletedTask);
+        model.Import.FilePath = "edited.md";
+        model.Import.DraftName = "From file";
+        await model.Import.PreviewAsync();
+
+        await model.Import.StageAsync();
+        await model.OpenTask;
+
+        Assert.Equal(1, attempts);
+        Assert.Equal(MotifAppStrings.ImportRecordOpenFailed, model.StatusText);
+        Assert.True(model.OpenDraftCommand.CanExecute(null));
+
+        await model.OpenDraftCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, attempts);
+        Assert.False(model.OpenDraftCommand.CanExecute(null) && model.StatusText == MotifAppStrings.ImportRecordOpenFailed);
+    }
+
+    [Fact]
+    public async Task BrowseIsOffWhileAPreviewRunsAndCancelStopsIt()
+    {
+        var gate = new TaskCompletionSource<CommandOutcome<RecordImportResponse>>();
+        var (model, _, _, _) = Make((_, token) =>
+        {
+            token.Register(() => gate.TrySetCanceled(token));
+            return gate.Task;
+        });
+        model.Import.FilePath = "edited.md";
+
+        var running = model.Import.PreviewAsync();
+
+        Assert.True(model.Import.IsBusy);
+        Assert.False(model.BrowseCommand.CanExecute(null));
+        Assert.False(model.Import.PreviewCommand.CanExecute(null));
+        Assert.Equal(MotifAppStrings.ImportRecordReading, model.StatusText);
+
+        model.Cancel();
+        await running;
+
+        Assert.False(model.Import.IsBusy);
+        Assert.True(model.BrowseCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task PagingMovesThroughTheListsAndShowsThePage()
+    {
+        var (model, _, _, _) = Make((request, _) => Ok(Plan(operations: 5, page: request.Page, pageCount: 2)));
+        model.Import.FilePath = "edited.md";
+        await model.Import.PreviewAsync();
+
+        Assert.True(model.HasPaging);
+        Assert.Equal("Page 1 of 2", model.PageText);
+        await model.Import.NextPageCommand.ExecuteAsync(null);
+        Assert.Equal("Page 2 of 2", model.PageText);
+    }
+}

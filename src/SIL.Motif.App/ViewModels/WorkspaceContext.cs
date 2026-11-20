@@ -409,6 +409,21 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     internal T GetOrCreatePage<T>(Func<WorkspaceContext, T> create) where T : PageModel =>
         _pages.OfType<T>().FirstOrDefault() ?? create(this);
 
+    /// <summary>
+    /// Opens the review page of a Draft that was staged outside the Proposals list, such as by an import: the list reads
+    /// again so the new Draft is in it, the Draft is selected and its evidence loaded, and the Proposals page shows.
+    /// </summary>
+    internal async Task OpenStagedProposalAsync(string proposalId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
+        if (_pages.OfType<ProposalsPageModel>().FirstOrDefault() is { } page)
+        {
+            await page.SelectStagedAsync(proposalId, cancellationToken).ConfigureAwait(true);
+        }
+        await OpenProposalAsync(proposalId, cancellationToken).ConfigureAwait(true);
+        OpenPage(WorkspacePage.Proposals);
+    }
+
     // Called by each page model's constructor, so the context reaches a page only through its hooks.
     internal void Attach(PageModel page)
     {
