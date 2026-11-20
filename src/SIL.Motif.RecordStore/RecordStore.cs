@@ -342,6 +342,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         var native = new Dictionary<Guid, GenericRecord>();
         var headers = new List<ReferenceRecord>();
         var anchors = new List<GenericRecord>();
+        var systems = new List<GenericRecord>();
         foreach (var record in records)
         {
             ct.ThrowIfCancellationRequested();
@@ -351,6 +352,7 @@ public sealed partial class RecordStore : IAsyncDisposable
                 headers.Add(new(record.Id, record.ClassId, record.Owner, record.OwningField));
             }
             else if (record.Kind == HandAnalysisKinds.Anchor) anchors.Add(record);
+            else if (record.Kind == "writing-system") systems.Add(record);
         }
         var projection = new ReferenceProjection(await ReferencePersistence.ReadAsync(database, ct), headers.ToArray(),
             state.IndexLimitations.Split('\n', StringSplitOptions.RemoveEmptyEntries));
@@ -369,6 +371,7 @@ public sealed partial class RecordStore : IAsyncDisposable
             new ReferenceIndexSnapshot(state.Revision, projection.Edges, projection.Records, limitations, schema, ct), snapshot, digest)
         {
             Anchors = anchors.ToArray(),
+            WritingSystems = systems.ToArray(),
             ProjectId = projects.Length == 1 ? projects[0].Id : null,
             IndexTrusted = trusted
         };

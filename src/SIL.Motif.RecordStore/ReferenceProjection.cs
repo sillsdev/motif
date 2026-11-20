@@ -31,6 +31,7 @@ internal sealed record VerifiedPoint(StoreState State, Dictionary<Guid, GenericR
     public bool IndexTrusted { get; init; } = true;
     public Guid? ProjectId { get; init; }
     public GenericRecord[] Anchors { get; init; } = [];
+    public GenericRecord[] WritingSystems { get; init; } = [];
     private ReferenceIndexSnapshot? planningIndex;
     public ReferenceIndexSnapshot GetPlanningIndex(CancellationToken ct = default) =>
         planningIndex ??= HandAnalysisReferences.WithAnchors(Index, Records, Anchors, ct);
