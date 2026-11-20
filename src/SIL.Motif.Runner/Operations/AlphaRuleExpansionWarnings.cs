@@ -1,6 +1,7 @@
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Model.Effects;
 
 namespace SIL.Motif.Runner.Operations;
@@ -50,7 +51,7 @@ internal static class AlphaRuleExpansionWarnings
             var combinations = variables.Aggregate(1L, (total, item) => Math.Min(total * Math.Max(item.Values, 1), int.MaxValue));
             if (combinations <= CombinationLimit) continue;
             var features = string.Join(", ", variables.Select(item => $"{Name(item.Feature)} ({item.Values} values)"));
-            var warning = $"Rule '{RuleName(rule)}' has {variables.Count} alpha variable(s) over {features}: the parser tries each " +
+            var warning = $"Rule '{RuleName(rule)}' has {variables.Count} {DryRunWarningMarkers.AlphaRuleExpansion} {features}: the parser tries each " +
                 $"variable with every value of its feature, up to {combinations} combinations for this rule on every word that reaches it, " +
                 "so it can be slow enough that a Trial stops words. A rule over one natural class per value group avoids the expansion; " +
                 "if the Trial stops words, remove this rule first.";

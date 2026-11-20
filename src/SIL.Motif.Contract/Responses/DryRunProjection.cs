@@ -36,3 +36,10 @@ public sealed record DryRunProjection(
         Operations.Select(operation => operation.Kind), Effects.Count, Warnings,
         Baseline?.SemanticSnapshotDigest, effectsFile: EffectsFile);
 }
+
+/// <summary>Stable openings and phrases of Dry Run warnings that later readers, such as a Trial's stop report, look for.</summary>
+public static class DryRunWarningMarkers
+{
+    /// <summary>Appears in the warning for a phonological rule whose alpha variables range over many feature values.</summary>
+    public const string AlphaRuleExpansion = "alpha variable(s) over";
+}

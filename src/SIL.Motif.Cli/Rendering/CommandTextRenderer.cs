@@ -778,8 +778,19 @@ public static class CommandTextRenderer
         text.AppendLine($"Stopped: {work.WorkLimitStops} at a parser limit; {work.TimeSafetyNetStops} at the time safety net.");
         if (work.WorkLimitWords.Count > 0) text.AppendLine("  Parser limit: " + string.Join(", ", work.WorkLimitWords));
         if (work.TimeSafetyNetWords.Count > 0) text.AppendLine("  Time safety net: " + string.Join(", ", work.TimeSafetyNetWords));
+        if (work.WorkLimitStops + work.TimeSafetyNetStops > 0) AppendSuspectRules(text, trial);
         AppendWordResults(text, trial);
         return text.ToString();
+    }
+
+    // A stopped word has no per-rule cost, so rules the Dry Run flagged as expensive are the suspects.
+    private static void AppendSuspectRules(StringBuilder text, TrialRecord trial)
+    {
+        var suspects = trial.DryRun?.Warnings
+            .Where(warning => warning.Contains(DryRunWarningMarkers.AlphaRuleExpansion, StringComparison.Ordinal)).ToArray() ?? [];
+        text.AppendLine("  No per-rule cost is recorded for stopped words." +
+            (suspects.Length == 0 ? "" : " Rules this Proposal adds or edits that the Dry Run flagged as expensive:"));
+        foreach (var suspect in suspects) text.AppendLine("    " + suspect);
     }
 
     private static void AppendWordResults(StringBuilder text, TrialRecord trial)
