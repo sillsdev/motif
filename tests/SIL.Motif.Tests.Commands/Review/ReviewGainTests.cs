@@ -32,6 +32,17 @@ public sealed class ReviewGainTests
     }
 
     [Fact]
+    public void AGainedWordTheTextsAttestIsAttestedWithoutAnyMembership()
+    {
+        var accumulator = new ReviewSummaryAccumulator();
+        accumulator.Add(Case("requested", false, true, []) with { Attested = true });
+        accumulator.Add(Case("invented", false, true, []));
+        var facts = accumulator.Snapshot();
+        Assert.Equal(1, facts.AttestedGained);
+        Assert.Equal(1, facts.GeneratedGained);
+    }
+
+    [Fact]
     public void OnlyANoParseToParseChangeIsAGain()
     {
         var accumulator = new ReviewSummaryAccumulator();

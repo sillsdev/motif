@@ -143,7 +143,9 @@ internal static class ReviewTrialCapture
                 }
                 var inputs = ReviewInputCapture.CaptureAsync(ProjectWorkspaceKey.Compute(project), request.ProposalId,
                     ParserIdentity.Read(parserPath)?.Sha256, sets, selectedIds, ordinary, identities,
-                    assertions, negatives, policyDigest: policyDigest, explicitWords: request.Words).GetAwaiter().GetResult() with
+                    assertions, negatives, policyDigest: policyDigest, explicitWords: request.Words,
+                    corpusWords: evidence.ProjectSummary.Texts.SelectMany(text => text.OccurrencesByWord.Keys)
+                        .Select(word => word.Normalize(NormalizationForm.FormD)).ToHashSet(StringComparer.OrdinalIgnoreCase)).GetAwaiter().GetResult() with
                     {
                         GainGate = configuration.GainGate,
                         ParsimonyBlockOn = configuration.ParsimonyBlockOn.Count == 0 ? null : configuration.ParsimonyBlockOn,

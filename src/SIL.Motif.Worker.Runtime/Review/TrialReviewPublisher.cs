@@ -282,7 +282,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
                 !string.IsNullOrWhiteSpace(item.WritingSystemId) };
             var delta = ReviewCaseClassifier.Compare(facts);
             var readings = Readings(item.Assertions, b, Side.Before).Concat(Readings(item.Assertions, a, Side.After)).ToArray();
-            yield return delta with { Before = SideState(delta.Before, b), After = SideState(delta.After, a),
+            yield return delta with { Attested = item.Attested, Before = SideState(delta.Before, b), After = SideState(delta.After, a),
                 Readings = ReadingsCaptured(b) && ReadingsCaptured(a) && (b?.Morphology is not null || a?.Morphology is not null)
                     ? readings : null };
         }
