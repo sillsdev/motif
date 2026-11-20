@@ -234,7 +234,7 @@ public sealed class ProposalApplyStepsTests
 
         Assert.Single(opened.Fake.ApplyPendingRequests);
         Assert.True(opened.Document.HasReceipt);
-        Assert.False(string.IsNullOrWhiteSpace(opened.Document.ReceiptText));
+        Assert.Equal("Receipt for Proposal published/one. Recorded now.", opened.Document.ReceiptText);
         Assert.Equal(1, opened.Refreshes);
     }
 

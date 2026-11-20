@@ -136,7 +136,15 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     public bool HasReceipt => Receipt is not null;
     public string ReceiptText => Receipt is { } receipt
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalReceiptFormat,
-            receipt.ProposalId, receipt.AppliedLogEntry.TimestampUtc) : string.Empty;
+            receipt.ProposalId, LocalRecordedTime(receipt.AppliedLogEntry.TimestampUtc)) : string.Empty;
+
+    // The log stores a compact UTC stamp; the page shows every other time in the person's local clock.
+    internal static string LocalRecordedTime(string timestampUtc) =>
+        (DateTimeOffset.TryParseExact(timestampUtc, "yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal, out var compact) ? compact :
+        DateTimeOffset.TryParse(timestampUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
+            out var parsed) ? parsed : (DateTimeOffset?)null) is { } time
+            ? time.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) : timestampUtc;
     public RationaleEditorModel? UnsavedEditor =>
         RationaleEditor is { HasUnsavedChanges: true } rationale ? rationale :
         Comments.FirstOrDefault(editor => editor.HasUnsavedChanges);

@@ -90,4 +90,15 @@ public sealed class ProposalDocumentOperationTests
             await context.StopProjectWorkAsync();
         }
     }
+
+    [Fact]
+    public void TheReceiptTimeReadsInLocalTimeLikeEveryOtherTimeOnThePage()
+    {
+        var expected = new DateTimeOffset(2026, 11, 19, 21, 5, 5, TimeSpan.Zero).ToLocalTime()
+            .ToString("g", System.Globalization.CultureInfo.CurrentCulture);
+
+        Assert.Equal(expected, ProposalDocumentViewModel.LocalRecordedTime("20261119T210505Z"));
+        Assert.Equal(expected, ProposalDocumentViewModel.LocalRecordedTime("2026-11-19T21:05:05Z"));
+        Assert.Equal("not a time", ProposalDocumentViewModel.LocalRecordedTime("not a time"));
+    }
 }

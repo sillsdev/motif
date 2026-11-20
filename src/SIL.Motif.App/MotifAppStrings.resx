@@ -7463,7 +7463,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalDryRunCancelling" xml:space="preserve"><value>Cancelling the Dry Run…</value></data>
   <data name="MotifApp.ProposalDryRunCancelled" xml:space="preserve"><value>The Dry Run was cancelled.</value></data>
   <data name="MotifApp.ProposalSelectedNameFormat" xml:space="preserve"><value>{0}, selected</value></data>
-  <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Receipt: {0}. Recorded: {1}.</value></data>
+  <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Receipt for Proposal {0}. Recorded {1}.</value></data>
   <data name="MotifApp.ReviewApplyMeasuring" xml:space="preserve"><value>Checking these changes…</value><comment>Progress while the Apply readiness check measures a Proposal.</comment></data>
   <!-- W6 -->
   <data name="MotifApp.ProposalCompareBack" xml:space="preserve"><value>Back to Proposals</value></data>
