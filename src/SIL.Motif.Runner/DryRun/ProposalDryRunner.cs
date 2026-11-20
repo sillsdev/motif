@@ -118,6 +118,7 @@ public static class ProposalDryRunner
             AffixProcessSemanticValidator.AppendUnparsedShapeWarnings(cache, proposal.Operations, effects);
             DerivationalFeedWarnings.Append(cache, proposal.Operations, effects);
             SenselessVariantWarnings.Append(cache, proposal.Operations, effects);
+            NonFinalTemplateWarnings.Append(cache, proposal.Operations, effects);
             ProhibitionMsaCleanup.ValidateSlots(proposal, effects);
         }
 

@@ -10,7 +10,7 @@ namespace SIL.Motif.Runner.Composers;
 /// <param name="WritingSystem">The writing-system tag for <paramref name="Name"/>.</param>
 /// <param name="PrefixSlots">Slots in the template's authored prefix order.</param>
 /// <param name="SuffixSlots">Slots in the template's authored suffix order.</param>
-/// <param name="Final">Whether this template is marked as requiring further derivation.</param>
+/// <param name="Final">Whether a word can end after this template; false means a derivation must continue from it.</param>
 public sealed record AuthorAffixTemplateIntent(
     CanonicalId Category,
     string Name,

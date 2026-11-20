@@ -352,7 +352,7 @@
   },
   "compose-author-affix-template": {
     "title": "Author an affix template",
-    "description": "Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether this template requires further derivation. Only a person can Apply.",
+    "description": "Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether a word can end after this template. Only a person can Apply.",
     "source": "Hand-written from command behavior.",
     "goals": [
       "Arrange the prefix and suffix slots of a verb",

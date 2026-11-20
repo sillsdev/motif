@@ -238,6 +238,42 @@ public sealed class AuthorAffixTemplateComposerTests : IDisposable
         Assert.Empty(category.AffixTemplatesOS);
     }
 
+    private static IEnumerable<string> Warnings(SIL.Motif.Model.DryRun.DryRun dryRun) => dryRun.ExpectedEffects
+        .Where(effect => effect.Field == "dryRunWarning").Select(effect => effect.After["warning"]);
+
+    private IReadOnlyList<OperationEnvelope> AuthorTemplate(IPartOfSpeech category, bool final)
+    {
+        var ids = new Queue<CanonicalId>([CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint()]);
+        var ws = _cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultAnalWs);
+        return AuthorAffixTemplateComposer.Build(_cache,
+            new AuthorAffixTemplateIntent(Id(category), "Branch", ws, [], [], final), () => ids.Dequeue());
+    }
+
+    [Fact]
+    public void ANonFinalTemplateNothingContinuesFromWarnsInTheDryRunAndAFinalOneDoesNot()
+    {
+        var category = GetCategory(_cache, _seed.PartOfSpeechId);
+
+        var warning = Assert.Single(Warnings(ScratchDryRun.Of(_cache, Proposal(AuthorTemplate(category, final: false)))));
+        Assert.Contains("Template 'Branch'", warning, StringComparison.Ordinal);
+        Assert.Contains("Final set to false", warning, StringComparison.Ordinal);
+        Assert.Contains("Set Final to true", warning, StringComparison.Ordinal);
+        Assert.Empty(Warnings(ScratchDryRun.Of(_cache, Proposal(AuthorTemplate(category, final: true)))));
+    }
+
+    [Fact]
+    public void ANonFinalTemplateADerivationContinuesFromDoesNotWarn()
+    {
+        var category = GetCategory(_cache, _seed.PartOfSpeechId);
+        var other = CreateCategory(_cache, null, "Other");
+        AffixTestSupport.ApplyOps(_cache, AuthorLexicalEntryComposer.Build(_cache, new AuthorLexicalEntryIntent("di",
+            AffixTestSupport.Vern(_cache), AffixTestSupport.MorphType(MoMorphTypeTags.kguidMorphPrefix), "having",
+            AffixTestSupport.Anal(_cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, Id(category), Id(other)))));
+
+        Assert.Empty(Warnings(ScratchDryRun.Of(_cache, Proposal(AuthorTemplate(category, final: false)))));
+    }
+
     private static IPartOfSpeech GetCategory(LcmCache cache, Guid id) =>
         cache.ServiceLocator.GetInstance<ICmObjectRepository>().GetObject(id) as IPartOfSpeech ??
         throw new InvalidOperationException();

@@ -958,7 +958,7 @@
   },
   {
     "name": "motif_add_affix_template",
-    "description": "Author an affix template. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Put affixes in slots in speakers\u0027 order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots). Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether this template requires further derivation. Only a person can Apply.\nCommand: compose-author-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author an affix template. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Put affixes in slots in speakers\u0027 order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots). Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether a word can end after this template. Only a person can Apply.\nCommand: compose-author-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -994,7 +994,7 @@
         },
         "final": {
           "type": "boolean",
-          "description": "Whether the template requires further derivation."
+          "description": "Whether a word can end after this template; true for a word-final template, false only when a derivation continues from it."
         },
         "project": {
           "type": "string",
