@@ -96,6 +96,14 @@ public static class CommandTextRenderer
         }
         if (projection.CurrentUnavailable is not null)
             sb.AppendLine($"  currentUnavailable:  {projection.CurrentUnavailable}");
+        if (projection.AppliedRecord is { } applied)
+        {
+            sb.AppendLine($"  applied:   {applied.AppliedUtc} by {applied.User} ({applied.Mode}) {applied.Message}");
+            foreach (var effect in applied.Effects)
+                sb.AppendLine($"    changed: {effect.Field} {JsonSerializer.Serialize(effect.Before)} -> {JsonSerializer.Serialize(effect.After)}");
+            foreach (var evidence in applied.Evidence)
+                sb.AppendLine($"    evidence: {evidence.TextTitle}: {evidence.Words} words, {evidence.ImprovedWords} improved, {evidence.CouldBeBadWords} could be worse");
+        }
         return sb.ToString();
     }
 

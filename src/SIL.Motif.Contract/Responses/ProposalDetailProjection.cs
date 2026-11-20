@@ -132,6 +132,7 @@ public sealed record CommentView(
 /// <param name="Comments">The Proposal's Comments, oldest first.</param>
 /// <param name="CommentsChanged">Whether the person wrote a Comment after the builder last wrote the Rationale or a Comment.</param>
 /// <param name="CurrentUnavailable">Why current values were asked for and not read, such as no saved project; null otherwise.</param>
+/// <param name="AppliedRecord">What Apply recorded, for an Applied Proposal that has a Receipt; null otherwise.</param>
 public sealed record ProposalDetailProjection(
     string ProposalId,
     string Status,
@@ -148,4 +149,6 @@ public sealed record ProposalDetailProjection(
     IReadOnlyList<CommentView>? Comments = null,
     bool CommentsChanged = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    string? CurrentUnavailable = null);
+    string? CurrentUnavailable = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    AppliedRecordView? AppliedRecord = null);

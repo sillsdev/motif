@@ -1632,6 +1632,8 @@ public static partial class ProposalCommands
                 request.WithCurrent ? seen => content = seen : null);
             if (!result.Succeeded) return result;
             var detail = result.Value!;
+            if (string.Equals(detail.Status, ProposalLifecycle.ToWire(ProposalStatus.Applied), StringComparison.Ordinal))
+                detail = detail with { AppliedRecord = ProposalAppliedRecord.Read(database, detail.ProposalId) };
             detail = detail with
             {
                 Comments = detail.Comments?.Select(comment => comment with

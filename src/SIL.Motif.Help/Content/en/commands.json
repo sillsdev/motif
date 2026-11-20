@@ -1841,7 +1841,7 @@
   },
   "show": {
     "title": "Show a Proposal",
-    "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change's field holds now. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It does not change the FieldWorks project.",
+    "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change's field holds now, and an Applied Proposal carries its appliedRecord: the effects and evidence counts Apply saved. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It does not change the FieldWorks project.",
     "source": "Authored from the typed command contract."
   },
   "parsimony --dry-run": {
