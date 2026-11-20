@@ -7411,7 +7411,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalDocumentUnreadable" xml:space="preserve"><value>The Proposal could not be read. Your unsaved text is kept.</value></data>
   <data name="MotifApp.ProposalEvidenceUnavailable" xml:space="preserve"><value>Evidence is unavailable for this Proposal.</value></data>
   <data name="MotifApp.ProposalEvidenceScope" xml:space="preserve"><value>Evidence for {0} only. Other Texts have not been checked.</value></data>
-  <data name="MotifApp.ProposalEvidencePartial" xml:space="preserve"><value>Only listed words with complete searches are shown. Counts are unavailable.</value></data>
+  <data name="MotifApp.ProposalEvidencePartial" xml:space="preserve"><value>Only listed words with complete searches are shown. Counts and approved places are unavailable.</value></data>
   <data name="MotifApp.ProposalEvidencePlacesUnavailable" xml:space="preserve"><value>Approved places are unavailable.</value></data>
   <data name="MotifApp.ProposalEvidenceNoWords" xml:space="preserve"><value>No words in this Text.</value></data>
   <data name="MotifApp.ProposalCloseDocument" xml:space="preserve"><value>Close Proposal</value></data>
@@ -7450,6 +7450,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalCheckDifference" xml:space="preserve"><value>Difference</value></data>
   <data name="MotifApp.ProposalCheckDryRun" xml:space="preserve"><value>Dry Run</value></data>
   <data name="MotifApp.ProposalCheckComplete" xml:space="preserve"><value>{0} ✓</value></data>
+  <data name="MotifApp.ProposalCheckDifferenceCounts" xml:space="preserve"><value>{0} · {1} · {2} changed approval</value><comment>Detail of the Difference check line: {0} is the Text, {1} is how many words the Difference compared, as in '1,718 words'; {2} is how many of them moved to another approval state.</comment></data>
   <data name="MotifApp.ProposalCheckCompleteDetail" xml:space="preserve"><value>{0} ✓ · {1}</value></data>
   <data name="MotifApp.ProposalCheckNeeded" xml:space="preserve"><value>{0} ○</value></data>
   <data name="MotifApp.ProposalRunDryRun" xml:space="preserve"><value>Run Dry Run</value></data>

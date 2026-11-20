@@ -3960,6 +3960,7 @@ public static class MotifAppStrings
     public static string ProposalCheckDifference => Text("MotifApp.ProposalCheckDifference");
     public static string ProposalCheckDryRun => Text("MotifApp.ProposalCheckDryRun");
     public static string ProposalCheckComplete => Text("MotifApp.ProposalCheckComplete");
+    public static string ProposalCheckDifferenceCounts => Text("MotifApp.ProposalCheckDifferenceCounts");
     public static string ProposalCheckCompleteDetail => Text("MotifApp.ProposalCheckCompleteDetail");
     public static string ProposalCheckNeeded => Text("MotifApp.ProposalCheckNeeded");
     public static string ProposalRunDryRun => Text("MotifApp.ProposalRunDryRun");

@@ -37,7 +37,7 @@ public sealed partial class ProposalDocumentViewModel
         ? FormatCheckDetail(MotifAppStrings.ProposalCheckTried, time.ToLocalTime().ToString("g", CultureInfo.CurrentCulture))
         : CheckText(MotifAppStrings.ProposalCheckTried, TriedChecked);
     public string DifferenceCheckText => DifferenceChecked && Difference.Summary is { } summary
-        ? FormatCheckDetail(MotifAppStrings.ProposalCheckDifference, summary.TextTitle)
+        ? FormatCheckDetail(MotifAppStrings.ProposalCheckDifference, DifferenceDetail(summary))
         : CheckText(MotifAppStrings.ProposalCheckDifference, DifferenceChecked);
     public string DryRunCheckText => CheckText(MotifAppStrings.ProposalCheckDryRun, DryRunChecked);
     public bool ShowsDifferenceAction => ShowsReadiness && TriedChecked && Difference.ShowsMakeControls;
@@ -47,6 +47,13 @@ public sealed partial class ProposalDocumentViewModel
     public bool ShowsDifferenceAdvice => ShowsReadiness && TriedChecked && !DifferenceChecked && Difference.ShowsMakeControls;
     public string DifferenceAdvice => Difference.IsShown
         ? MotifAppStrings.ProposalDifferenceEarlierTry : MotifAppStrings.ProposalEvidenceNotMadeYet;
+
+    // The tick says what the Difference found, so the person need not scroll to the evidence to learn it.
+    internal static string DifferenceDetail(ProposalDifferenceSummary summary) => string.Format(
+        CultureInfo.CurrentCulture, MotifAppStrings.ProposalCheckDifferenceCounts, summary.TextTitle,
+        PluralText.Format(MotifAppStrings.ProposalDifferenceWordCountPattern, summary.Words),
+        summary.Matrix.Where(cell => cell.BeforeState != cell.AfterState).Sum(cell => cell.Words)
+            .ToString("N0", CultureInfo.CurrentCulture));
 
     private static string CheckText(string label, bool complete) => string.Format(CultureInfo.CurrentCulture,
         complete ? MotifAppStrings.ProposalCheckComplete : MotifAppStrings.ProposalCheckNeeded, label);

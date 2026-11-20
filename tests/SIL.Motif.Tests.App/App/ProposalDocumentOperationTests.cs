@@ -101,4 +101,17 @@ public sealed class ProposalDocumentOperationTests
         Assert.Equal(expected, ProposalDocumentViewModel.LocalRecordedTime("2026-11-19T21:05:05Z"));
         Assert.Equal("not a time", ProposalDocumentViewModel.LocalRecordedTime("not a time"));
     }
+
+    [Fact]
+    public void TheDifferenceTickSaysHowManyWordsWereComparedAndHowManyChanged()
+    {
+        var summary = new ProposalDifferenceFixture().Summary with
+        {
+            TextTitle = "CEB approved words", Words = 1718,
+            Matrix = [new("Approved", "Approved", 1700, 1700), new("Approved", "Unparsed", 18, 20)],
+        };
+
+        Assert.Equal("CEB approved words · " + 1718.ToString("N0", System.Globalization.CultureInfo.CurrentCulture) +
+            " words · 18 changed approval", ProposalDocumentViewModel.DifferenceDetail(summary));
+    }
 }
