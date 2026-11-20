@@ -119,14 +119,14 @@ public sealed class ImportRecordViewModelTests
     public async Task ARefusedStageKeepsThePreviewSoTheNameCanBeFixed()
     {
         var (model, _) = Make((request, _) =>
-            request.DraftName is null ? Ok(Plan()) : Refused("proposal.name-taken"));
+            request.DraftName is null ? Ok(Plan()) : Refused(RefusalCodes.DraftNameCollision));
         model.DraftName = "Taken";
         await model.PreviewAsync();
 
         await model.StageAsync();
 
         Assert.Equal(ImportRecordState.Refused, model.State);
-        Assert.Equal("proposal.name-taken", model.Refusal!.Code);
+        Assert.Equal(RefusalCodes.DraftNameCollision, model.Refusal!.Code);
         Assert.NotNull(model.Preview);
         Assert.Null(model.StagedProposalId);
         Assert.True(model.CanStage);
@@ -242,5 +242,94 @@ public sealed class ImportRecordViewModelTests
         Assert.False(model.PreviewCommand.CanExecute(null));
         model.FilePath = "record.md";
         Assert.True(model.PreviewCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task APreviewInFlightWhenTheFileChangesIsNeverApplied()
+    {
+        var release = new TaskCompletionSource<CommandOutcome<RecordImportResponse>>();
+        var started = new TaskCompletionSource();
+        var (model, client) = Make((request, _) =>
+        {
+            if (request.FilePath != "record.md") return Ok(Plan(operations: 3));
+            started.SetResult();
+            return release.Task;
+        });
+
+        var running = model.PreviewAsync();
+        await started.Task;
+        model.FilePath = "other.md";
+        release.SetResult(CommandOutcome<RecordImportResponse>.Success(Plan(operations: 1)));
+        await running;
+
+        Assert.Equal(ImportRecordState.Idle, model.State);
+        Assert.Null(model.Preview);
+        Assert.False(model.IsBusy);
+        await model.PreviewAsync();
+        Assert.Equal(3, model.OperationCount);
+        Assert.Equal("other.md", client.StageRecordImportRequests[^1].FilePath);
+    }
+
+    [Fact]
+    public async Task CancelIsUnavailableWhileStagingAndTheResultStillSurfaces()
+    {
+        var release = new TaskCompletionSource<CommandOutcome<RecordImportResponse>>();
+        var started = new TaskCompletionSource();
+        var (model, _) = Make((request, _) =>
+        {
+            if (request.DraftName is null) return Ok(Plan());
+            started.SetResult();
+            return release.Task;
+        });
+        model.DraftName = "Import";
+        await model.PreviewAsync();
+
+        var running = model.StageAsync();
+        await started.Task;
+        Assert.True(model.IsBusy);
+        Assert.False(model.CancelCommand.CanExecute(null));
+        model.Cancel();
+        model.FilePath = "other.md";
+        release.SetResult(CommandOutcome<RecordImportResponse>.Success(Plan(draft: "Import")));
+        await running;
+
+        Assert.Equal(ImportRecordState.Staged, model.State);
+        Assert.Equal("proposal-1", model.StagedProposalId);
+        Assert.False(model.IsBusy);
+    }
+
+    [Fact]
+    public async Task ARefusedPageNavigationKeepsTheCurrentPreview()
+    {
+        var (model, _) = Make((request, _) =>
+            request.Page == 1 ? Ok(Plan(pageCount: 2, operations: 5)) : Refused(RefusalCodes.RecordImportInvalidPage));
+        await model.PreviewAsync();
+
+        await model.NextPageCommand.ExecuteAsync(null);
+
+        Assert.Equal(ImportRecordState.Refused, model.State);
+        Assert.NotNull(model.Preview);
+        Assert.Equal(1, model.Page);
+    }
+
+    [Fact]
+    public async Task DisposeCancelsAPreviewInFlight()
+    {
+        var started = new TaskCompletionSource();
+        CancellationToken seen = default;
+        var (model, _) = Make(async (_, token) =>
+        {
+            seen = token;
+            started.SetResult();
+            await Task.Delay(Timeout.Infinite, token);
+            throw new InvalidOperationException();
+        });
+
+        var running = model.PreviewAsync();
+        await started.Task;
+        model.Dispose();
+        await running;
+
+        Assert.True(seen.IsCancellationRequested);
     }
 }

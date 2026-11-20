@@ -31,12 +31,13 @@ public enum ImportRecordState
 /// Opens an edited record file, previews what it would change and what it would refuse, then stages the changes in
 /// a new Draft. It has no way to apply: the Draft is reviewed and applied elsewhere.
 /// </summary>
-public sealed partial class ImportRecordViewModel : ObservableObject
+public sealed partial class ImportRecordViewModel : ObservableObject, IDisposable
 {
     private readonly ICommandClient _commands;
     private readonly string _project;
     private CancellationTokenSource? _running;
     private int _generation;
+    private bool _staging;
 
     public ImportRecordViewModel(ICommandClient commands, string project)
     {
@@ -46,7 +47,7 @@ public sealed partial class ImportRecordViewModel : ObservableObject
         PreviousPageCommand = new AsyncRelayCommand(() => PreviewAsync(Page - 1), () => CanPreview && Page > 1);
         NextPageCommand = new AsyncRelayCommand(() => PreviewAsync(Page + 1), () => CanPreview && Page < PageCount);
         StageCommand = new AsyncRelayCommand(() => StageAsync(), () => CanStage);
-        CancelCommand = new RelayCommand(Cancel, () => IsBusy);
+        CancelCommand = new RelayCommand(Cancel, () => IsBusy && !_staging);
     }
 
     public IAsyncRelayCommand PreviewCommand { get; }
@@ -89,8 +90,10 @@ public sealed partial class ImportRecordViewModel : ObservableObject
 
     partial void OnFilePathChanged(string value)
     {
-        if (State == ImportRecordState.Idle) { NotifyCommands(); return; }
-        if (IsBusy) Cancel();
+        if (_staging) { NotifyCommands(); return; }
+        _generation++;
+        _running?.Cancel();
+        IsBusy = false;
         Reset();
     }
 
@@ -117,8 +120,18 @@ public sealed partial class ImportRecordViewModel : ObservableObject
     public Task StageAsync() =>
         RunAsync(new RecordImportRequest(_project, FilePath, DraftName.Trim()), staging: true);
 
-    /// <summary>Stops a preview or stage in flight and returns to what was shown before it.</summary>
-    public void Cancel() => _running?.Cancel();
+    /// <summary>Stops a preview in flight; a stage cannot be stopped once started, so this does nothing then.</summary>
+    public void Cancel()
+    {
+        if (!_staging) _running?.Cancel();
+    }
+
+    /// <summary>Cancels any work in flight.</summary>
+    public void Dispose()
+    {
+        _generation++;
+        _running?.Cancel();
+    }
 
     private async Task RunAsync(RecordImportRequest request, bool staging)
     {
@@ -126,14 +139,16 @@ public sealed partial class ImportRecordViewModel : ObservableObject
         var generation = ++_generation;
         using var cancellation = new CancellationTokenSource();
         _running = cancellation;
+        _staging = staging;
         IsBusy = true;
         try
         {
             var outcome = await _commands.StageRecordImportAsync(request, cancellation.Token);
-            if (cancellation.IsCancellationRequested || generation != _generation) return;
+            // A started stage always reports its result, because the Draft exists whether or not it is wanted.
+            if (!staging && (cancellation.IsCancellationRequested || generation != _generation)) return;
             if (!outcome.Succeeded || outcome.Value is null)
             {
-                Refuse(outcome.Refusal, keepPreview: staging);
+                Refuse(outcome.Refusal, keepPreview: staging || (request.Page > 1 && Preview is not null));
                 return;
             }
             Accept(outcome.Value, staging);
@@ -144,14 +159,15 @@ public sealed partial class ImportRecordViewModel : ObservableObject
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
-            if (generation != _generation) return;
+            if (!staging && generation != _generation) return;
             ErrorMessage = exception.Message;
             State = ImportRecordState.Error;
         }
         finally
         {
             if (ReferenceEquals(_running, cancellation)) _running = null;
-            if (generation == _generation) IsBusy = false;
+            if (staging) _staging = false;
+            if (staging || generation == _generation) IsBusy = false;
         }
     }
 
