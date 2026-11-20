@@ -1,4 +1,7 @@
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Host.Config;
+using SIL.Motif.Host.Gdr;
+using SIL.Motif.Runner.Operations;
 using SIL.LCModel;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Worker.Baselines;
@@ -21,6 +24,19 @@ namespace SIL.Motif.Commands;
 /// <summary>Requires the newest Trial's current green gate for Autonomous Apply (ADR 0017 and ADR 0021).</summary>
 internal static class AutonomousTrialGate
 {
+    // A Guide-only or Notes-only Proposal can lose no word, so its Trial has nothing to gate.
+    private static bool ExemptProposal(ProjectLocator project, ProposalRecord proposal)
+    {
+        if (proposal.ProposalJson is not { } json) return false;
+        var operations = ProposalJsonParser.Parse(json).Operations;
+        if (operations.All(operation => operation.Kind != EditTextNotesOperationKinds.Set) &&
+            operations.All(operation => operation.Target is null)) return false;
+        var sections = ProjectReadCache.ReadSaved(project, (_, cache) => GdrReader.List(cache)
+            .Select(item => SIL.Motif.Runner.Operations.OperationSlotRegistry.ByGuid(SIL.Motif.Contract.Ids.CanonicalId.Parse(item.Id)).Value)
+            .ToHashSet(StringComparer.Ordinal));
+        return GuideNotesOnlyProposal.ExemptionFor(operations, sections) is not null;
+    }
+
     internal static Refusal? Check(MotifDatabase database, ProjectLocator project, ProposalRecord proposal, LcmCache? live = null)
     {
         var key = ProjectWorkspaceKey.Compute(project);
@@ -32,6 +48,7 @@ internal static class AutonomousTrialGate
             new Dictionary<string, string> { ["proposalId"] = proposal.ProposalId.Value, ["jobId"] = jobId ?? "" });
         try
         {
+            if (ExemptProposal(project, proposal)) return null;
             var configuration = new ProjectConfigurationReader().Read(project);
             if (configuration.GateWordSets is null)
             {

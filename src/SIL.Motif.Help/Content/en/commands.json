@@ -6,8 +6,23 @@
   },
   "guide show": {
     "title": "Read a Grammar Guide section",
-    "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs; available in Advanced AI mode.",
+    "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied; available in Advanced AI mode.",
     "source": "Hand-written from the Grammar Guide read command and shared Markdown view."
+  },
+  "guide edit": {
+    "title": "Edit a Grammar Guide section",
+    "description": "Stages an edit of one existing Grammar Guide section, given as FieldWorks Markdown, in a Draft: the whole record that guide show prints with format fw-md, or the Discussion body alone. Nothing reaches the FieldWorks project until a person applies the Draft; a Guide edit changes no word, so its Trial is exempt from the Autonomous gate. It cannot create a section: a new one is added in FieldWorks first. When the Draft already holds an edit of the section, start from guide show with asOf set to that Draft. Available in Advanced AI mode.",
+    "source": "Hand-written from the Grammar Guide staging path shared with the window.",
+    "fields": {
+      "id": "The section's GDR-n number or canonical id.",
+      "markdown": "The whole record as guide show prints it with format fw-md, or the Discussion body alone, as FieldWorks Markdown.",
+      "draft": "The name of an existing Draft to stage into; omit to stage into the pending changes."
+    }
+  },
+  "guide decide": {
+    "title": "Record a judgement call in a Grammar Guide section",
+    "description": "Appends one judgement call, written A or B, I am choosing A, because the reason, under the section's Decisions heading, and stages it in a Draft. The verb records the call a person or the grammar lead made; it does not make it.",
+    "source": "Hand-written from the Grammar Guide template (ADR 0005 decision 2)."
   },
   "progress": {
     "title": "Read Progress",

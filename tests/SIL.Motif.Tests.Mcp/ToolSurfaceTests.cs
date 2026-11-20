@@ -29,7 +29,7 @@ public sealed class ToolSurfaceTests
         Assert.Contains("format fw-md", tool.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("--format", tool.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("--json", tool.Description, StringComparison.Ordinal);
-        Assert.Equal(["expectedBaseline", "format", "id", "project"], tool.ArgumentNames.Order(StringComparer.Ordinal));
+        Assert.Equal(["asOf", "expectedBaseline", "format", "id", "project"], tool.ArgumentNames.Order(StringComparer.Ordinal));
         var format = tool.InputSchema["properties"]!["format"]!;
         Assert.Equal(["json", "fw-md"], format["enum"]!.AsArray().Select(node => node!.GetValue<string>()));
         Assert.Equal("json", format["default"]!.GetValue<string>());

@@ -124,3 +124,13 @@ public sealed record GdrShowResponse(GdrSummary Record, IReadOnlyList<GdrParagra
     /// <summary>The record's position in the list's depth-first order.</summary>
     public int Position { get; init; }
 }
+
+/// <summary>What staging a Grammar Guide edit added to a Draft.</summary>
+/// <param name="DraftName">The Draft the edit is staged in.</param>
+/// <param name="Id">The section's canonical id.</param>
+/// <param name="Abbreviation">The section's <c>GDR-n</c> number.</param>
+/// <param name="Fields">The fields the edit changed, such as discussion or title (ws); empty when nothing differed.</param>
+/// <param name="OperationCount">The Draft operations staged for the section.</param>
+/// <param name="Warnings">Findings from reading the Markdown that do not stop the edit.</param>
+public sealed record GdrEditResponse(
+    string DraftName, string Id, string Abbreviation, IReadOnlyList<string> Fields, int OperationCount, IReadOnlyList<string> Warnings);

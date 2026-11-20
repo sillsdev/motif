@@ -88,7 +88,19 @@ public static class GdrQuery
     }
 
     /// <summary>Reads one record's Discussion with the project's styles and writing systems and any others it uses.</summary>
-    public static CommandOutcome<GdrShowResponse> Show(GdrShowRequest request) => Show(request, StyleCatalogs);
+    public static CommandOutcome<GdrShowResponse> Show(GdrShowRequest request)
+    {
+        var shown = Show(request, StyleCatalogs);
+        if (!shown.Succeeded || string.IsNullOrWhiteSpace(request.AsOf)) return shown;
+        var asOf = request.AsOf.Trim();
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath, NoBaseline<GdrShowResponse>(), (database, _) =>
+        {
+            var operations = ProposalCommands.OperationsOf(database, asOf);
+            return operations.Succeeded
+                ? CommandOutcome<GdrShowResponse>.Success(GdrAsOf.Apply(shown.Value!, operations.Value!))
+                : CommandOutcome<GdrShowResponse>.Refused(operations.Refusal!);
+        });
+    }
 
     internal static CommandOutcome<GdrShowResponse> Show(GdrShowRequest request, GdrStyleCatalogCache styleCatalogs)
     {

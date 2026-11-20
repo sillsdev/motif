@@ -185,6 +185,10 @@ public static class RefusalCodes
     /// <summary>No Grammar Guide section has that id or number.</summary>
     public const string GdrNotFound = "guide.not-found";
     public const string GdrRecordMoved = "guide.record-moved";
+    /// <summary>The Markdown given for a Grammar Guide section cannot be read.</summary>
+    public const string GdrMarkdownInvalid = "guide.markdown-invalid";
+    /// <summary>A Grammar Guide judgement call is missing its option or its reason.</summary>
+    public const string GdrDecisionInvalid = "guide.decision-invalid";
 
     /// <summary>More than one possibility list is named "Motif Sources", so no Source list can be chosen.</summary>
     public const string SourceListAmbiguous = "source.list-ambiguous";

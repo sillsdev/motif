@@ -158,6 +158,7 @@ public static class CommandTextRenderer
             GdrListResponse r => RenderGdrList(r),
             GdrShowResponse r => RenderGdrShow(r),
             GdrCheckResponse r => RenderGdrCheck(r),
+            GdrEditResponse r => RenderGdrEdit(r),
             SourcePassageResponse r => SourceTextRenderer.RenderPassage(r),
             SourceListResponse r => SourceTextRenderer.RenderList(r),
             SourceShowResponse r => SourceTextRenderer.RenderShow(r),
@@ -1634,9 +1635,21 @@ public static class CommandTextRenderer
     private static string RenderGdrList(GdrListResponse response)
     {
         if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to read the Grammar Guide." + Environment.NewLine;
-        if (response.Records.Count == 0) return "This project has no the Grammar Guide." + Environment.NewLine;
+        if (response.Records.Count == 0) return "This project has no Grammar Guide." + Environment.NewLine;
         var text = new StringBuilder();
         foreach (var record in response.Records) text.AppendLine($"{record.Abbreviation}  {record.Title}");
+        return text.ToString();
+    }
+
+    private static string RenderGdrEdit(GdrEditResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine(response.Fields.Count == 0
+            ? $"{response.Abbreviation}: the Markdown matches the section, so nothing was staged in {response.DraftName}."
+            : $"{response.Abbreviation}: staged {string.Join(", ", response.Fields)} in {response.DraftName} ({response.OperationCount} operation(s)).");
+        foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
+        if (response.Fields.Count > 0)
+            text.AppendLine($"Preview it with 'guide show {response.Abbreviation} --as-of {response.DraftName}'; Apply it with the rest of {response.DraftName}.");
         return text.ToString();
     }
 

@@ -11,24 +11,25 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class ExposurePolicyTests
 {
     [Fact]
-    public void GdrShowAloneIsAnAdvancedAiReadAndTheOtherGdrCommandsAreAutonomousOnly()
+    public void GdrShowIsTheAdvancedAiReadGdrEditStagesAndTheOtherGdrCommandsAreAutonomousOnly()
     {
         var commands = CommandCatalog.All.Where(command => command.Name.StartsWith("guide ", StringComparison.Ordinal)).ToArray();
-        Assert.Equal(["guide check", "guide list", "guide show"], commands.Select(command => command.Name).Order(StringComparer.Ordinal));
+        Assert.Equal(["guide check", "guide decide", "guide edit", "guide list", "guide show"], commands.Select(command => command.Name).Order(StringComparer.Ordinal));
+        string[] agentTools = ["guide show", "guide edit"];
         foreach (var command in commands)
         {
-            Assert.Equal(AgentClass.Read, command.Agent);
-            Assert.Equal(command.Name == "guide show" ? CommandSurface.AdvancedAi : CommandSurface.Autonomous, command.Surface);
-            Assert.Equal(command.Name == "guide show", command.IsAgentTool);
+            Assert.Equal(agentTools.Contains(command.Name) ? CommandSurface.AdvancedAi : CommandSurface.Autonomous, command.Surface);
+            Assert.Equal(agentTools.Contains(command.Name), command.IsAgentTool);
         }
         var routes = AgentTools.All.SelectMany(tool => tool.Routes).Where(route => route.Command.StartsWith("guide ", StringComparison.Ordinal));
-        Assert.Equal("guide show", Assert.Single(routes).Command);
+        Assert.Equal(agentTools.Order(StringComparer.Ordinal), routes.Select(route => route.Command).Order(StringComparer.Ordinal));
         foreach (var profile in new[] { ToolProfile.Builtin, ToolProfile.Load("phonology") })
         {
             Assert.True(PolicyFor(profile).Exposes("guide show"));
             Assert.False(PolicyFor(profile, advancedAi: false).Exposes("guide show"));
             Assert.False(PolicyFor(profile).Exposes("guide list"));
             Assert.False(PolicyFor(profile).Exposes("guide check"));
+            Assert.False(PolicyFor(profile).Exposes("guide decide"));
         }
     }
 

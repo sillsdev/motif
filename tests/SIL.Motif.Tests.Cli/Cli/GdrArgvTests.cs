@@ -1,3 +1,6 @@
+using SIL.LCModel;
+using SIL.LCModel.Core.KernelInterfaces;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
@@ -72,7 +75,7 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
                 ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!.Code);
     }
 
-    private string ProjectWithBaseline(bool unicode = false, bool links = false)
+    private string ProjectWithBaseline(bool unicode = false, bool links = false, bool headings = false)
     {
         Directory.CreateDirectory(_root);
         string path;
@@ -80,6 +83,17 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
         {
             SeededGdrs.Seed(cache);
             if (links) SeededGdrs.SeedLinks(cache);
+            if (headings)
+                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                {
+                    foreach (var name in new[] { "Heading 3", "Bulleted List" })
+                    {
+                        var style = cache.ServiceLocator.GetInstance<IStStyleFactory>().Create();
+                        cache.LangProject.StylesOC.Add(style);
+                        style.Name = name;
+                        style.Type = StyleType.kstParagraph;
+                    }
+                });
             if (unicode)
                 NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
                     SeededGdrs.Records(cache).PossibilitiesOS[0].Description.set_String(cache.DefaultAnalWs, "abstract-α"));
@@ -303,6 +317,137 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
 
         var unknown = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path, "GDR-99");
         Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
+    }
+
+    [Fact]
+    public async Task EditStagesTheFileInThePendingChangesAndShowAsOfPreviewsItWithoutChangingTheBaseline()
+    {
+        var path = ProjectWithBaseline();
+        var file = Path.Combine(_root, "body.md");
+        File.WriteAllText(file, "replaced from the cli");
+
+        var edit = await CliProcess.RunAsync(_root, null, true, "guide", "edit", "--project", path, "GDR-2", "--from-file", file, "--json");
+
+        Assert.True(edit.ExitCode == 0, edit.Error);
+        var staged = ProjectionJson.Deserialize<GdrEditResponse>(edit.Output)!;
+        Assert.Equal(["discussion"], staged.Fields);
+        var before = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path, "GDR-2", "--json");
+        var preview = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path, "GDR-2",
+            "--as-of", staged.DraftName, "--json");
+        Assert.True(preview.ExitCode == 0, preview.Error);
+        var previewed = ProjectionJson.Deserialize<GdrShowResponse>(preview.Output)!;
+        Assert.Equal("replaced from the cli", Assert.Single(previewed.Discussion).Runs.Single().Text);
+        Assert.DoesNotContain("replaced from the cli", before.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task EditRefusesAMissingFileOptionAnUnreadableFileAnUnknownDraftAndAnUnknownRecord()
+    {
+        var path = ProjectWithBaseline();
+        var file = Path.Combine(_root, "body.md");
+        File.WriteAllText(file, "text");
+        var invalid = FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
+
+        var noFile = await CliProcess.RunAsync(_root, null, true, "guide", "edit", "--project", path, "GDR-2");
+        Assert.True(noFile.ExitCode == invalid, noFile.Error);
+        Assert.Empty(noFile.Output);
+
+        var unreadable = await CliProcess.RunAsync(_root, null, true, "guide", "edit", "--project", path, "GDR-2",
+            "--from-file", Path.Combine(_root, "absent.md"));
+        Assert.True(unreadable.ExitCode == invalid, unreadable.Error);
+        Assert.Contains("cannot be read", unreadable.Error, StringComparison.Ordinal);
+
+        var draft = await CliProcess.RunAsync(_root, null, true, "guide", "edit", "--project", path, "GDR-2",
+            "--from-file", file, "--draft", "no-such-draft", "--json");
+        Assert.NotEqual(0, draft.ExitCode);
+        Assert.Equal("draft.not-found", ProjectionJson.Deserialize<FailureEnvelope>(draft.Error)!.Code);
+
+        var unknown = await CliProcess.RunAsync(_root, null, true, "guide", "edit", "--project", path, "GDR-99", "--from-file", file);
+        Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
+
+        var bad = Path.Combine(_root, "bad.md");
+        File.WriteAllText(bad, "---\nnot a guide record\n::: {field=bogus}\n");
+        var unreadableMarkdown = await CliProcess.RunAsync(_root, null, true, "guide", "edit", "--project", path, "GDR-2",
+            "--from-file", bad, "--json");
+        Assert.True(unreadableMarkdown.ExitCode == invalid, unreadableMarkdown.Error);
+        Assert.Equal(RefusalCodes.GdrMarkdownInvalid, ProjectionJson.Deserialize<FailureEnvelope>(unreadableMarkdown.Error)!.Code);
+    }
+
+    [Fact]
+    public async Task DecideStagesTheJudgementCallAndRefusesAMissingReasonOrABlankPart()
+    {
+        var path = ProjectWithBaseline(headings: true);
+
+        var decided = await RunAutonomousAsync("guide", "decide", "--project", path, "GDR-2",
+            "--choosing", "A", "--over", "B", "--because", "it fits", "--json");
+        Assert.True(decided.ExitCode == 0, decided.Error);
+        var staged = ProjectionJson.Deserialize<GdrEditResponse>(decided.Output)!;
+        var preview = GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: staged.DraftName)).Value!;
+        var text = string.Join("\n", preview.Discussion.SelectMany(paragraph => paragraph.Runs).Select(run => run.Text));
+        Assert.Contains("A or B, I am choosing A, because it fits.", text, StringComparison.Ordinal);
+
+        var missing = await RunAutonomousAsync("guide", "decide", "--project", path, "GDR-2",
+            "--choosing", "A", "--over", "B");
+        Assert.True(missing.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), missing.Error);
+        Assert.Empty(missing.Output);
+
+        var blank = await RunAutonomousAsync("guide", "decide", "--project", path, "GDR-2",
+            "--choosing", "A", "--over", " ", "--because", "x", "--json");
+        Assert.True(blank.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), blank.Error);
+        Assert.Equal(RefusalCodes.GdrDecisionInvalid, ProjectionJson.Deserialize<FailureEnvelope>(blank.Error)!.Code);
+    }
+
+    [Fact]
+    public async Task ShowAsOfRefusesAnUnknownDraftAndAsOfBelongsToShowOnly()
+    {
+        var path = ProjectWithBaseline();
+
+        var unknown = await CliProcess.RunAsync(_root, null, true, "guide", "show", "--project", path, "GDR-2",
+            "--as-of", "nothing-here", "--json");
+        Assert.NotEqual(0, unknown.ExitCode);
+        Assert.Equal("draft.not-found", ProjectionJson.Deserialize<FailureEnvelope>(unknown.Error)!.Code);
+
+        var list = await RunAutonomousAsync("guide", "list", "--project", path, "--as-of", "x");
+        Assert.True(list.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), list.Error);
+    }
+
+    [Fact]
+    public async Task DecideRefusesAValueFlagWithNoValueAndNamesTheAutonomousSwitchWithoutIt()
+    {
+        var path = ProjectWithBaseline(headings: true);
+        var invalid = FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
+
+        var noValue = await RunAutonomousAsync("guide", "decide", "--project", path, "GDR-2",
+            "--choosing", "A", "--over", "B", "--because", "--json");
+        Assert.True(noValue.ExitCode == invalid, noValue.Error);
+        Assert.Empty(noValue.Output);
+
+        var gated = await CliProcess.RunAsync(_root, null, true, "guide", "decide", "--project", path, "GDR-2",
+            "--choosing", "A", "--over", "B", "--because", "x", "--json");
+        Assert.NotEqual(0, gated.ExitCode);
+        var envelope = ProjectionJson.Deserialize<FailureEnvelope>(gated.Error)!;
+        Assert.Equal("command.autonomous-required", envelope.Code);
+        Assert.Contains("--autonomous", envelope.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task EditReadsStandardInputAsUtf8()
+    {
+        var path = ProjectWithBaseline();
+        var start = CliProcess.CreateStartInfo(_root, null, developerCommands: true,
+            ["guide", "edit", "--project", path, "GDR-2", "--from-file", "-", "--json"]);
+        start.RedirectStandardInput = true;
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        await process.StandardInput.BaseStream.WriteAsync(new UTF8Encoding(false).GetBytes("தமிழ் text"));
+        process.StandardInput.Close();
+        await process.WaitForExitAsync();
+        Assert.True(process.ExitCode == 0, await error);
+        var staged = ProjectionJson.Deserialize<GdrEditResponse>(await output)!;
+
+        var previewed = GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: staged.DraftName)).Value!;
+        Assert.Equal("தமிழ் text", Assert.Single(previewed.Discussion).Runs.Single().Text);
     }
 
     private Task<(int ExitCode, string Output, string Error)> RunAutonomousAsync(params string[] arguments)

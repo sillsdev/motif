@@ -259,6 +259,17 @@ public static class HelpCommand
         foreach (var name in names) output.WriteLine("  " + name);
         output.WriteLine();
         output.WriteLine("Probe loop: new, a compose verb, read the result, then discard-draft to leave no Draft behind.");
+        output.WriteLine();
+        output.WriteLine("Grammar Guide: 'guide show <GDR-n> --format fw-md', edit the file, then 'guide edit <GDR-n> --from-file <file>'");
+        output.WriteLine("stages it (add --draft <name> to ship it with a rule's Draft; check it with 'guide show <GDR-n> --as-of <name>').");
+        output.WriteLine("Record a judgement call, \"A or B, I am choosing A, because ...\", with 'guide decide <GDR-n> --choosing A --over B --because <reason>'.");
+        output.WriteLine("Only existing sections can be edited; a new section is added in FieldWorks.");
+        output.WriteLine("'guide show' and 'guide edit' need Advanced AI mode ('motif settings advanced-ai on'); 'guide decide' needs --autonomous.");
+        output.WriteLine("When the Draft already holds an edit of a section, start from 'guide show <GDR-n> --as-of <name> --format fw-md'.");
+        output.WriteLine();
+        output.WriteLine("Gate rule: Autonomous Apply needs a green Trial gate, except for a Proposal whose every operation edits a Grammar Guide");
+        output.WriteLine("section or the Note of a Text segment. Those change no grammar and no lexicon, so no word can be lost and the Trial is exempt.");
+        output.WriteLine("Add any other operation to the Proposal and the gate applies to all of it.");
         output.WriteLine("Use 'motif help <command> --full' for one command.");
     }
 

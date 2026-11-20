@@ -72,7 +72,8 @@ public sealed class GdrMarkdownView
     /// <summary>The document, using LF line endings and ending in a newline.</summary>
     public string Text { get; }
 
-    private static Paragraph[] ProjectParagraphs(GdrShowResponse response) => response.Discussion.Select(source =>
+    /// <summary>The Discussion of <paramref name="response"/> as paragraphs with the properties and keys the project holds.</summary>
+    public static Paragraph[] ProjectParagraphs(GdrShowResponse response) => response.Discussion.Select(source =>
     {
         var paragraph = new Paragraph
         {

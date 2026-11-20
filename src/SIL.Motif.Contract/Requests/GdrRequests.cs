@@ -11,7 +11,24 @@ public sealed record GdrListRequest(string ProjectPath, BaselineToken? ExpectedB
 /// <param name="ProjectPath">The recorded project path.</param>
 /// <param name="Id">The record's <c>GDR-n</c> abbreviation or its canonical id.</param>
 /// <param name="ExpectedBaseline">The required Baseline identity; null accepts the current Baseline.</param>
-public sealed record GdrShowRequest(string ProjectPath, string Id, BaselineToken? ExpectedBaseline = null);
+/// <param name="AsOf">A Draft name or Proposal id whose edits of this section are shown as if applied; null shows the Baseline.</param>
+public sealed record GdrShowRequest(string ProjectPath, string Id, BaselineToken? ExpectedBaseline = null, string? AsOf = null);
+
+/// <summary>Stages an edit of one Grammar Guide section, given as FieldWorks Markdown, in a Draft.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Id">The record's <c>GDR-n</c> abbreviation or its canonical id.</param>
+/// <param name="Markdown">The whole record as <c>guide show --format fw-md</c> prints it, or the Discussion body alone.</param>
+/// <param name="Draft">The name of an existing Draft to stage into; null stages into the pending changes.</param>
+public sealed record GdrEditRequest(string ProjectPath, string Id, string Markdown, string? Draft = null);
+
+/// <summary>Stages one judgement call, "A or B, I am choosing A, because ...", under a section's Decisions heading.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Id">The record's <c>GDR-n</c> abbreviation or its canonical id.</param>
+/// <param name="Choosing">The option taken.</param>
+/// <param name="Over">The option not taken.</param>
+/// <param name="Because">The reason, in one line.</param>
+/// <param name="Draft">The name of an existing Draft to stage into; null stages into the pending changes.</param>
+public sealed record GdrDecideRequest(string ProjectPath, string Id, string Choosing, string Over, string Because, string? Draft = null);
 
 /// <summary>Finds the object at a project path in the current Baseline, for a link to it.</summary>
 /// <param name="ProjectPath">The recorded project path.</param>

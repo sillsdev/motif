@@ -29,11 +29,15 @@ public sealed record GdrMarkdownIdentity(string Abbreviation, string? ParentId, 
 
 public static partial class ProposalCommands
 {
-    /// <summary>Stages every changed field in one Draft save, or leaves its operations unchanged on refusal.</summary>
-    public static CommandOutcome<ComposedOperationsResponse[]> StageGdrMarkdown(string projectPath, GdrMarkdownEdits edits) =>
+    /// <summary>
+    /// Stages every changed field in one Draft save, or leaves its operations unchanged on refusal. With no
+    /// <paramref name="namedDraft"/> the edit joins the pending changes; a named Draft must already exist.
+    /// </summary>
+    public static CommandOutcome<ComposedOperationsResponse[]> StageGdrMarkdown(string projectPath, GdrMarkdownEdits edits,
+        string? namedDraft = null) =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
-            var draftName = PendingChanges.DraftName;
+            var draftName = namedDraft ?? PendingChanges.DraftName;
             try
             {
                 var target = CanonicalId.Parse(edits.Target);
@@ -98,7 +102,7 @@ public static partial class ProposalCommands
                 // The empty step makes the batch validate its last operation against the scratch project.
                 steps.Add(new ComposeStep(null, "Validate", (_, _) =>
                     (JsonSerializer.SerializeToElement(new { }), Array.Empty<OperationEnvelope>())));
-                draftName = PendingChanges.EnsurePendingDraft(database, new ProposalRepository(database));
+                if (namedDraft is null) draftName = PendingChanges.EnsurePendingDraft(database, new ProposalRepository(database));
                 return ComposeStepsIntoDraft(database, project, draftName, steps);
             }
             catch (Exception exception) when (SqliteConnections.IsBusy(exception))

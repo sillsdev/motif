@@ -2110,14 +2110,56 @@ try
             break;
 
         case "guide":
+            if (flags.TryGetValue("project", out var gdrEditProject) && positionals is ["edit" or "decide", var gdrEditId])
+            {
+                var gdrDraft = flags.GetValueOrDefault("draft");
+                // A value flag left without its value parses as "true"; refuse that instead of recording it as text.
+                bool GdrFlagMissingValue(string name)
+                {
+                    var at = Array.IndexOf(args, "--" + name);
+                    return at >= 0 && (at + 1 >= args.Length || args[at + 1].StartsWith("--", StringComparison.Ordinal));
+                }
+                if (positionals[0] == "edit")
+                {
+                    if (!flags.TryGetValue("from-file", out var gdrFile) || GdrFlagMissingValue("from-file") ||
+                        flags.Keys.Any(key => key is not ("project" or "from-file" or "draft" or "json" or "autonomous")) ||
+                        gdrDraft == "true")
+                        return Usage(UsageLineFor("guide edit"), asJson);
+                    string gdrMarkdown;
+                    try
+                    {
+                        gdrMarkdown = gdrFile == "-"
+                            ? new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false)).ReadToEnd()
+                            : File.ReadAllText(gdrFile);
+                    }
+                    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                    {
+                        return Usage($"The --from-file '{gdrFile}' cannot be read: {exception.Message}", asJson);
+                    }
+                    result = RenderCommand(GdrEditCommands.Edit(new GdrEditRequest(gdrEditProject, gdrEditId, gdrMarkdown, gdrDraft)));
+                    break;
+                }
+                if (!flags.TryGetValue("choosing", out var gdrChoosing) || !flags.TryGetValue("over", out var gdrOver) ||
+                    !flags.TryGetValue("because", out var gdrBecause) ||
+                    GdrFlagMissingValue("choosing") || GdrFlagMissingValue("over") || GdrFlagMissingValue("because") ||
+                    flags.Keys.Any(key => key is not ("project" or "choosing" or "over" or "because" or "draft" or "json" or "autonomous")) ||
+                    gdrDraft == "true")
+                    return Usage(UsageLineFor("guide decide"), asJson);
+                result = RenderCommand(GdrEditCommands.Decide(new GdrDecideRequest(gdrEditProject, gdrEditId, gdrChoosing, gdrOver, gdrBecause, gdrDraft)));
+                break;
+            }
             if (!flags.TryGetValue("project", out var gdrProject) || positionals.Count is < 1 or > 2 ||
-                (positionals[0] is "list" or "check" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2))
-                return Usage(UsageLineFor("guide list") + " OR " + UsageLineFor("guide show") + " OR " + UsageLineFor("guide check"), asJson);
+                (positionals[0] is "list" or "check" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2) ||
+                flags.ContainsKey("as-of") && positionals[0] != "show")
+                return Usage(UsageLineFor("guide list") + " OR " + UsageLineFor("guide show") + " OR " + UsageLineFor("guide check") +
+                    " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide decide"), asJson);
+            var gdrAsOf = flags.GetValueOrDefault("as-of");
+            if (gdrAsOf == "true") return Usage(UsageLineFor("guide show"), asJson);
             if (flags.TryGetValue("format", out var gdrFormat))
             {
                 if (positionals[0] != "show" || gdrFormat != "fw-md" || asJson)
                     return Usage("Use --format fw-md with guide show, without --json.", asJson);
-                var shown = GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1]));
+                var shown = GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1], AsOf: gdrAsOf));
                 result = shown.Succeeded
                     ? new CommandResult(0, new GdrMarkdownView(shown.Value!, Path.GetFileNameWithoutExtension(gdrProject)).Text)
                     : RenderCommand(shown);
@@ -2127,7 +2169,7 @@ try
             {
                 "list" => RenderCommand(GdrQuery.List(new GdrListRequest(gdrProject))),
                 "check" => RenderCommand(GdrQuery.Check(new GdrCheckRequest(gdrProject))),
-                _ => RenderCommand(GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1]))),
+                _ => RenderCommand(GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1], AsOf: gdrAsOf))),
             };
             break;
 

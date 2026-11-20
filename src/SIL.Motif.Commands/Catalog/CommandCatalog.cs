@@ -263,6 +263,8 @@ public static class CommandCatalog
         new CommandDescriptor("guide list", typeof(GdrListRequest), typeof(GdrListResponse), CommandSurface.Autonomous, AgentClass.Read),
         new CommandDescriptor("guide show", typeof(GdrShowRequest), typeof(GdrShowResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("guide check", typeof(GdrCheckRequest), typeof(GdrCheckResponse), CommandSurface.Autonomous, AgentClass.Read),
+        new CommandDescriptor("guide edit", typeof(GdrEditRequest), typeof(GdrEditResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
+        new CommandDescriptor("guide decide", typeof(GdrDecideRequest), typeof(GdrEditResponse), CommandSurface.Autonomous, AgentClass.Draft),
 
         // SourceQuery: Motif Sources from the current Baseline and the local file, behind the developer gate
         new CommandDescriptor("source list", typeof(SourceListRequest), typeof(SourceListResponse), CommandSurface.AdvancedAi, AgentClass.Read),
