@@ -79,6 +79,18 @@ public static class HelpCommand
         }
 
         var code = string.Join(' ', codeParts);
+        if (!code.StartsWith("guide:", StringComparison.Ordinal) && !IsKnownEntry(catalog, code))
+        {
+            // A trailing word may be an argument of the command, as in "group suffix".
+            for (var length = codeParts.Length - 1; length >= 1; length--)
+            {
+                var prefix = string.Join(' ', codeParts.Take(length));
+                if (!IsKnownCommand(catalog, prefix)) continue;
+                code = prefix;
+                break;
+            }
+        }
+
         if (code == "mcp")
         {
             if (json)
@@ -151,6 +163,13 @@ public static class HelpCommand
 
         return 0;
     }
+
+    private static bool IsKnownCommand(HelpCatalog catalog, string code) =>
+        code is "mcp" or "autonomous" ||
+        catalog.Find(HelpEntryKind.Command, code) is not null || CommandCatalog.All.Any(item => item.Name == code);
+
+    private static bool IsKnownEntry(HelpCatalog catalog, string code) =>
+        IsKnownCommand(catalog, code) || catalog.Find(HelpEntryKind.Term, code) is not null;
 
     private static object BuildExport(HelpCatalog catalog, CommandSurfacePolicy policy) => new
     {

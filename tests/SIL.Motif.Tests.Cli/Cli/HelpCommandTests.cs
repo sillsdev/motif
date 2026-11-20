@@ -16,6 +16,38 @@ namespace SIL.Motif.Tests.Cli;
 public sealed class HelpCommandTests
 {
     [Fact]
+    public void HelpResolvesEveryMultiWordCommandAsSeparateWords()
+    {
+        var failures = HelpCatalog.Load().Entries
+            .Where(entry => entry.Kind == HelpEntryKind.Command && entry.Code.Contains(' ', StringComparison.Ordinal))
+            .Select(entry => entry.Code)
+            .Where(code => Run(true, true, ["help", .. code.Split(' ')]).ExitCode != 0)
+            .ToArray();
+
+        Assert.Empty(failures);
+    }
+
+    [Theory]
+    [InlineData("suffix")]
+    [InlineData("prefix")]
+    public void HelpForAGroupSubcommandShowsTheGroupHelp(string subcommand)
+    {
+        var result = Run("help", "group", subcommand);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("Group words by stem", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HelpForTheTrialListsVerbose()
+    {
+        var result = Run("help", "trial");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("--verbose", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HelpListsReleasedCommandsWithTitles()
     {
         var result = Run("help");
