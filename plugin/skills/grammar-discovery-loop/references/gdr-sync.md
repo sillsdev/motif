@@ -15,7 +15,7 @@ and stable IDs. Do not turn a working guess into a decision.
 **Grouping commands** holds ` ```motif-query ` definitions (`id`, `title`, one read-only `run: motif ...` command
 without `--project`, optional `columns` and `sort`) and ` ```motif-show ` directives (`query: <id>`, optional `show:
 table|counts|list`, `limit` and `columns`). Write a query with an existing read-only verb such as `motif query
-forms`; `motif group` is not available yet. Never paste a result into the section: results are computed at render
+forms`; `motif group suffix --ending <text>` and `motif group prefix --start <text>` also work as a `run:` line. Never paste a result into the section: results are computed at render
 and are never stored. A directive must name a defined `id`. The Proposal's before and after rerun each query with
 `--as-of <base revision>` and `--as-of <result revision>` (a project revision, distinct from `query stems --at`). The exact syntax is in ADR 0005 D2.
 

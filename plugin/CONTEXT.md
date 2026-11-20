@@ -7,7 +7,7 @@ Decisions and their reasoning: [agent and skill findings](../docs/references/age
 ## The package
 
 **Plugin**:
-The unit an AI assistant installs: one directory holding all seven skills, their shared references,
+The unit an AI assistant installs: one directory holding all eight skills, their shared references,
 and the registration of Motif's agent server. Named `motif` because the skills assume Motif is there:
 FieldWorks itself offers an agent no safe way to change a project. Every skill is invoked as
 `motif:<skill>`. A plugin cannot read files outside its own directory. Motif's installer carries it,
@@ -17,7 +17,7 @@ _Avoid_: extension, package, bundle, "the fieldworks plugin"
 **Marketplace**:
 The catalog Claude Code adds with one command, `/plugin marketplace add sillsdev/motif`. It is this
 repository, named `motif`, declared in `.claude-plugin/marketplace.json` at the repo root. One
-marketplace, one plugin, seven skills.
+marketplace, one plugin, eight skills.
 _Avoid_: registry, store, feed
 
 **Skill**:
@@ -26,7 +26,7 @@ trigger: it is always in context, the body loads when it fires, references load 
 must stay self-contained enough to be zipped for Claude.ai on its own.
 _Avoid_: prompt, persona file, agent
 
-## The seven skills
+## The eight skills
 
 **FieldWorks expert** (`fieldworks-expert`):
 Answers what FLEx does, where, and how it maps to the data model: location, visibility, and the

@@ -93,6 +93,34 @@ public sealed class AgentPluginSkillTests
     }
 
     [Fact]
+    public void PluginDocumentsStateTheRealSkillCount()
+    {
+        var repository = FindRepositoryRoot();
+        var words = new[] { "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten" };
+        var plural = string.Join('|', words.Skip(5));
+        var count = Directory.GetDirectories(Path.Combine(repository, "plugin", "skills")).Length;
+        Assert.Equal(SkillNames.Length, count);
+        foreach (var document in new[] { "CONTEXT.md", Path.Combine("plugin", "CONTEXT.md") })
+        {
+            var text = File.ReadAllText(Path.Combine(repository, document));
+            foreach (Match match in Regex.Matches(text, @"\b(" + plural + @") skills\b", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase))
+                Assert.True(string.Equals(match.Groups[1].Value, words[count], StringComparison.OrdinalIgnoreCase),
+                    $"{document} says '{match.Value}' but plugin/skills holds {count}.");
+        }
+    }
+
+    [Fact]
+    public void NoSkillCallsAReleasedCommandUnavailable()
+    {
+        var skills = Path.Combine(FindRepositoryRoot(), "plugin", "skills");
+        var stale = Directory.GetFiles(skills, "*.md", SearchOption.AllDirectories)
+            .Where(file => File.ReadAllText(file).Contains("`motif group` is not available yet", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Empty(stale);
+    }
+
+    [Fact]
     public void BundledManifestsExposeTheLocalServerWithoutAProjectArgument()
     {
         var repository = FindRepositoryRoot();

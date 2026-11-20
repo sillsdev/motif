@@ -1173,7 +1173,7 @@ _Avoid_: self-check, smoke test, sanity check
 
 ## The plugin and its skills
 
-Motif publishes the `motif` plugin: seven skills (a FieldWorks expert, a parsing expert, a linguistic
+Motif publishes the `motif` plugin: eight skills (a FieldWorks expert, a parsing expert, a linguistic
 consultant, a Motif workflow, a Parsimony review, a Grammar router and a grammar discovery loop with its hypothesis test) that an AI assistant installs beside the MCP server. That
 is a bounded context of its own with its own vocabulary — plugin, marketplace, skill, corpus, index, crosswalk,
 persona, job map — in [plugin/CONTEXT.md](plugin/CONTEXT.md). Inside the plugin, **corpus** means a
