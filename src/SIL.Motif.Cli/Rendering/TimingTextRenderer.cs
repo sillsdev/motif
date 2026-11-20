@@ -17,6 +17,7 @@ internal static class TimingTextRenderer
             TimingEvidenceRelation.SavedSince => "FieldWorks saved since the measured Baseline",
             _ => "Baseline relationship unknown",
         }));
+        if (response.TrialScope is { } trialScope) text.AppendLine("  Trial scope: " + trialScope);
         if (response.SourceLastWriteUtc is { } saved) text.AppendLine($"  Measured FieldWorks save: {saved:O}");
         if (response.CurrentProjectIsStale) text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
         text.AppendLine("  " + Describe(response.CostComparison.Total));

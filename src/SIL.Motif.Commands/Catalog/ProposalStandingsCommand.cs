@@ -213,7 +213,7 @@ public static class ProposalStandingsCommand
     {
         var trial = candidate.Trial!;
         OverviewResponse? after = null;
-        if (trial.HasComparableNumbers)
+        if (trial.HasComparableNumbers && !TrialSampleKind.IsWorkingSet(trial.Sample))
         {
             var set = EvidenceSets.ForTrial(database, project, trial);
             var read = set.Succeeded ? OverviewCommand.Overview(database, project, set.Value!) : null;

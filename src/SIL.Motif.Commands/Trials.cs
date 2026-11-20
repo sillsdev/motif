@@ -43,6 +43,22 @@ public static class Trials
         string? parserPath = null) =>
         ReadLatest(database, project, proposalId, includeWordResults: false, parserPath);
 
+    /// <summary>
+    /// Reads the newest Trial that measured the Proposal's full base sample, skipping working-set Trials, for the
+    /// summaries that stand in for a gate; null when only working-set Trials exist.
+    /// </summary>
+    public static TrialRecord? LatestStratifiedFor(MotifDatabase database, ProjectLocator project, string proposalId,
+        string? parserPath = null)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(project);
+        var id = CanonicalId.Parse(proposalId);
+        var context = CreateReadContext(database, project, parserPath);
+        var selected = IdentifyJobs(context.Jobs, id.Value, requireIdentity: true)
+            .FirstOrDefault(item => !TrialSampleKind.IsWorkingSet(TrialJobInput.Parse(item.Job.InputJson).Sample));
+        return selected is null ? null : ReadSelected(selected, context, includeWordResults: false);
+    }
+
     /// <summary>Reads the latest Trial for a Proposal, returning a successful null when none exists.</summary>
     public static CommandOutcome<TrialRecord?> Read(ReadTrialRequest request, string? parserPath = null)
     {
@@ -136,13 +152,18 @@ public static class Trials
         return ids;
     }
 
+    /// <summary>The working-set refusal for a read Trial, or null when it is an ordinary Trial.</summary>
+    internal static Refusal? WorkingSetRefusal(TrialRecord trial, string use) =>
+        TrialSampleKind.IsWorkingSet(trial.Sample) ? WorkingSetNotAGate(use) : null;
+
+    private static Refusal WorkingSetNotAGate(string use) =>
+        new(RefusalCodes.TrialWorkingSetNotAGate, FailureReason.Refused,
+            "That Trial measured only a chosen word list (a working-set Trial), so it cannot be used to " + use +
+            ". Run a Trial without --no-base-sample.");
+
     /// <summary>The working-set refusal for a Trial job, or null when it is an ordinary Trial.</summary>
     internal static Refusal? WorkingSetRefusal(JobRecord job, string use) =>
-        TrialSampleKind.IsWorkingSet(TrialJobInput.Parse(job.InputJson).Sample)
-            ? new Refusal(RefusalCodes.TrialWorkingSetNotAGate, FailureReason.Refused,
-                "That Trial measured only a chosen word list (a working-set Trial), so it cannot be used to " + use +
-                ". Run a Trial without --no-base-sample.")
-            : null;
+        TrialSampleKind.IsWorkingSet(TrialJobInput.Parse(job.InputJson).Sample) ? WorkingSetNotAGate(use) : null;
 
     /// <summary>Every Trial job that names this Proposal, running or not, so deleting the Proposal removes them.</summary>
     internal static IReadOnlyList<JobRecord> JobsFor(MotifDatabase database, ProjectLocator project,

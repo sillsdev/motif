@@ -4144,6 +4144,10 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>The check for grammar the parser left out did not finish. Try again.</value>
     <comment>Sentence shown when the Proposal was tried but the parser could not say whether it left grammar out, such as after a timeout or a try made before that check existed.</comment>
   </data>
+  <data name="MotifApp.TrialWorkingSetOnlySentence" xml:space="preserve">
+    <value>Only a chosen list of words was tried. Try again without a word list before applying.</value>
+    <comment>Sentence shown when the newest Trial measured only a chosen word list, which cannot stand as the Proposal's evidence.</comment>
+  </data>
   <data name="MotifApp.TrialProposalChangedOldNumbers" xml:space="preserve">
     <value>From the last try, before this Proposal changed</value>
     <comment>Caption above numbers that came from a Trial run before the Proposal changed.</comment>

@@ -81,12 +81,14 @@ public static class StatsCommand
             var kind = AssessmentKind.ObjectTiming.ToStoredKind();
             EvidenceSet? trialSet = null;
             HashSet<string>? trialAssessmentIds = null;
+            string? trialScope = null;
             if (request.ProposalId is { } proposalId)
             {
                 var trial = Trials.LatestFor(database, project, proposalId);
                 if (trial is null)
                     return CommandOutcome<StatsCommandResponse>.Refused(new Refusal("trial.none",
                         FailureReason.NotFound, "No Trial is recorded for this Proposal."));
+                trialScope = trial.ScopeLabel;
                 var selected = EvidenceSets.ForTrial(database, project, trial);
                 if (!selected.Succeeded) return CommandOutcome<StatsCommandResponse>.Refused(selected.Refusal!);
                 trialSet = selected.Value;
@@ -169,9 +171,10 @@ public static class StatsCommand
                 return CommandOutcome<StatsCommandResponse>.Success(request.Output == StatsOutputKind.Text
                     ? new StatsCommandResponse(
                         assessment.AssessmentId, assessment.Invocation.SourcePath, assessment.CachePath, completed.Output, null)
+                        { TrialScope = trialScope }
                     : new StatsCommandResponse(
                         assessment.AssessmentId, assessment.Invocation.SourcePath, assessment.CachePath, null,
-                        ParseJsonRows(completed.Output)));
+                        ParseJsonRows(completed.Output)) { TrialScope = trialScope });
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
             {

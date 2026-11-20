@@ -76,10 +76,10 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
     }
 
     private JobRecord CommitTrial(MotifDatabase database, string? proposalJson = null, BaselineToken? token = null,
-        bool publish = false)
+        bool publish = false, string? sample = null)
     {
         var jobs = new JobRepository(database);
-        var input = new TrialJobInput(proposalJson ?? ProposalJson(), null, ["word"], false, []);
+        var input = new TrialJobInput(proposalJson ?? ProposalJson(), null, ["word"], false, []) { Sample = sample };
         var created = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero).AddTicks(++_trialSequence);
         var trial = jobs.Create(CanonicalId.Mint("job/").Value, _projectKey, TrialJobHandler.TrialKind,
             JobParserPin.Stamp(JsonSerializer.Serialize(input, Options), _parser), JobTimestamp.FormatUtc(created));
@@ -158,6 +158,27 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
         Assert.Equal(ProposalParsimonyState.NotYetRun, status.State);
         Assert.Equal("status-no-trial", status.StateReason!.Code);
         Assert.Null(status.TrialJobId);
+    }
+
+    [Fact]
+    public void AWorkingSetTrialIsNotYetRunAndSaysParsimonyIsNotBuiltFromItsWords()
+    {
+        using (var database = OpenDatabase()) _ = CommitTrial(database, sample: TrialSampleKind.WorkingSet);
+
+        var status = Read(_parser);
+
+        Assert.Equal(ProposalParsimonyState.NotYetRun, status.State);
+        Assert.Equal("status-working-set-trial", status.StateReason!.Code);
+    }
+
+    [Fact]
+    public void NoParsimonyRunIsQueuedFromAWorkingSetTrial()
+    {
+        using var database = OpenDatabase();
+        var working = CommitTrial(database, sample: TrialSampleKind.WorkingSet);
+
+        Assert.Null(ParsimonyAutoRun.Enqueue(database, working, _token, retryFailed: true));
+        Assert.NotNull(ParsimonyAutoRun.Enqueue(database, CommitTrial(database), _token, retryFailed: true));
     }
 
     [Fact]

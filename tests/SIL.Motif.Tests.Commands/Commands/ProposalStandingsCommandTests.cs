@@ -61,6 +61,23 @@ public sealed class ProposalStandingsCommandTests : IDisposable
     }
 
     [Fact]
+    public void AWorkingSetTrialNeverMakesAProposalCurrentOrWaitForYou()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "trial-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["trial-root"], baselineAssessmentIds: [before],
+            sample: TrialSampleKind.WorkingSet);
+
+        var card = Assert.Single(Read(fixture).Proposals);
+
+        Assert.Equal(ProposalGroup.NeedsAnotherTry, card.Group);
+        Assert.Equal(TrialStandingKind.WorkingSetOnly, card.Standing.Kind);
+        Assert.True(card.Standing.CanTryAgain);
+        Assert.False(card.Trial!.ApprovedKept.HasAfter);
+    }
+
+    [Fact]
     public void ATrialThatCouldNotCheckDroppedGrammarIsGroupedAsNeedingAnotherTry()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);

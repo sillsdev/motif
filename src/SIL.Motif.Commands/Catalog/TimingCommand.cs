@@ -45,12 +45,14 @@ public static class TimingCommand
             var currentEvidence = current.Value!;
             EvidenceSet? trialSet = null;
             IReadOnlyList<string> trialAssessmentIds = [];
+            string? trialScope = null;
             if (request.ProposalId is { } proposalId)
             {
                 var trial = Trials.LatestFor(database, project, proposalId);
                 if (trial is null)
                     return CommandOutcome<TimingResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,
                         "No Trial is recorded for this Proposal."));
+                trialScope = trial.ScopeLabel;
                 var trialEvidence = EvidenceSets.ForTrial(database, project, trial);
                 if (!trialEvidence.Succeeded) return CommandOutcome<TimingResponse>.Refused(trialEvidence.Refusal!);
                 trialSet = trialEvidence.Value;
@@ -173,6 +175,7 @@ public static class TimingCommand
                 summary.MedianMs, summary.Percentile95Ms, summary.SlowestWords,
                 namedAggregates, aggregates.CostliestWords)
             {
+                TrialScope = trialScope,
                 ObjectTimingDetail = evidenceSet.TimingDetail,
                 ObjectTimingAggregatesAvailable = aggregatesAvailable,
                 IsStale = relation is TimingEvidenceRelation.Historical or TimingEvidenceRelation.SavedSince,

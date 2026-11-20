@@ -101,6 +101,28 @@ public sealed class EvidenceSetReadsTests : IDisposable
     }
 
     [Fact]
+    public void OverviewForAWorkingSetTrialSaysItMeasuredOnlyTheListedWordsAndAnOrdinaryTrialSaysNothing()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
+        var proposal = fixture.SaveProposal();
+        fixture.SetDefaultSelection([fixture.TextId], []);
+        fixture.RecordProjectAssessment("project-root", AssessmentKinds.ParseTime,
+            ParsedWord("cat", 1), ParsedWord("dog", 3));
+        fixture.RecordAssessment(proposal, "trial-root", AssessmentKinds.ParseTime, "no-analysis");
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "full", ["trial-root"], allWords: false);
+        var ordinary = OverviewCommand.Overview(new OverviewRequest(fixture.Project.FullFwDataPath, proposal.Id.Value));
+        Assert.True(ordinary.Succeeded, ordinary.Refusal?.Message);
+        Assert.Null(ordinary.Value!.TrialScope);
+
+        fixture.CreateJob(proposal.Json, "2026-09-24T12:00:00Z", "ws", ["trial-root"], allWords: false,
+            sample: TrialSampleKind.WorkingSet);
+        var working = OverviewCommand.Overview(new OverviewRequest(fixture.Project.FullFwDataPath, proposal.Id.Value));
+
+        Assert.True(working.Succeeded, working.Refusal?.Message);
+        Assert.StartsWith("working set", working.Value!.TrialScope, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OverviewForATrialListsTheWordsTheTrialLeavesUnparsedAndLeftOutCountsOnlyFromItsOwnBaseline()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);

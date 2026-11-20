@@ -37,6 +37,10 @@ public static class TrialSampleKind
 
     /// <summary>Whether a recorded sample is the working-set kind; a Trial recorded before the field reads as stratified.</summary>
     public static bool IsWorkingSet(string? sample) => string.Equals(sample, WorkingSet, StringComparison.Ordinal);
+
+    /// <summary>The scope label a working-set Trial's numbers carry, or null for an ordinary Trial.</summary>
+    public static string? Label(string? sample, int? words) =>
+        IsWorkingSet(sample) ? words is { } count ? $"working set ({count} listed words)" : "working set" : null;
 }
 
 /// <summary>Which words a Trial was asked to measure.</summary>
@@ -138,7 +142,12 @@ public sealed record TrialRecord(
     private readonly TrialWordScope? _wordScope;
 
     /// <summary>What the person can do next with this Trial's Proposal; see <see cref="TrialStanding"/>.</summary>
-    public TrialStanding Standing => TrialStanding.From(Status, Freshness, DroppedGrammarNotChecked);
+    public TrialStanding Standing =>
+        TrialStanding.From(Status, Freshness, DroppedGrammarNotChecked, TrialSampleKind.IsWorkingSet(Sample));
+
+    /// <summary>"working set (N listed words)" for a working-set Trial, otherwise null.</summary>
+    [JsonIgnore]
+    public string? ScopeLabel => TrialSampleKind.Label(Sample, SampleWords);
 
     /// <summary>
     /// Whether a completed Trial has no completed check for dropped grammar, which only another Trial can settle.

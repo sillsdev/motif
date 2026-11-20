@@ -881,6 +881,7 @@ public static class CommandTextRenderer
         TrialStandingKind.Trying => "In progress",
         TrialStandingKind.Failed => "Did not finish",
         TrialStandingKind.Current => "Current",
+        TrialStandingKind.WorkingSetOnly => "Working-set Trial only",
         TrialStandingKind.NeedsAnotherTry when standing.Reason == TrialStaleReason.BaselineMoved =>
             "Needs another try because the project changed",
         TrialStandingKind.NeedsAnotherTry when standing.Reason == TrialStaleReason.DroppedGrammarNotChecked =>
@@ -1412,7 +1413,8 @@ public static class CommandTextRenderer
     }
 
     // Human-mode dispatch always asks for text output, so response.Text is always populated here.
-    private static string RenderStats(StatsCommandResponse response) => response.Text ?? string.Empty;
+    private static string RenderStats(StatsCommandResponse response) =>
+        (response.TrialScope is { } scope ? $"Scope: {scope}\n" : string.Empty) + (response.Text ?? string.Empty);
 
     private static string RenderDefaultSelection(DefaultSelectionResponse response) =>
         RenderDefaultOnly(response) + RenderParsimonySelection(response.ParsimonySelection);
@@ -1513,6 +1515,7 @@ public static class CommandTextRenderer
         var timestamps = baselineTime is null ? string.Empty
             : $" (Baseline {baselineTime}, FieldWorks saved {savedTime})";
         text.AppendLine($"{response.ProjectName}  {fileName}  {freshness}{timestamps}");
+        if (response.TrialScope is { } trialScope) text.AppendLine($"Trial scope: {trialScope}");
         if (response.SelectionResolved)
             text.AppendLine($"Selection default: {response.SelectionTextCount:N0} text + " +
                 $"{response.SelectionAddedWordCount:N0} words = {response.SelectionWordCount:N0} words, " +

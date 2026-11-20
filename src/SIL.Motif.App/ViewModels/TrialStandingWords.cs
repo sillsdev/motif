@@ -51,6 +51,10 @@ public static class TrialStandingWords
     public static TrialStandingText DroppedGrammarNotChecked { get; } = new(MotifAppStrings.TrialNeedsAnotherTryStatus,
         MotifAppStrings.TrialDroppedGrammarNotCheckedSentence, MotifAppStrings.TryAgain);
 
+    /// <summary>What the window says when only a chosen word list was tried.</summary>
+    public static TrialStandingText WorkingSetOnly { get; } = new(MotifAppStrings.TrialNeedsAnotherTryStatus,
+        MotifAppStrings.TrialWorkingSetOnlySentence, MotifAppStrings.TryAgain);
+
     private static readonly TrialStandingText Unverified = new(MotifAppStrings.TrialNeedsAnotherTryStatus,
         MotifAppStrings.TrialNeedsAnotherTryStatus, MotifAppStrings.TryAgain);
 
@@ -63,6 +67,7 @@ public static class TrialStandingWords
             TrialStandingKind.Trying => Trying,
             TrialStandingKind.Failed => Failed,
             TrialStandingKind.Current => Current,
+            TrialStandingKind.WorkingSetOnly => WorkingSetOnly,
             TrialStandingKind.NeedsAnotherTry => standing.Reason switch
             {
                 TrialStaleReason.BaselineMoved => BaselineMoved,

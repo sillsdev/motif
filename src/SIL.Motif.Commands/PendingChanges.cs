@@ -1125,7 +1125,7 @@ public static class PendingChanges
 
     private static EvidenceSet? TrialSetFor(MotifDatabase database, ProjectLocator project, string proposalId)
     {
-        var trial = Trials.LatestFor(database, project, proposalId);
+        var trial = Trials.LatestStratifiedFor(database, project, proposalId);
         if (trial is null) return null;
         var set = EvidenceSets.ForTrial(database, project, trial);
         return set.Succeeded ? set.Value : null;

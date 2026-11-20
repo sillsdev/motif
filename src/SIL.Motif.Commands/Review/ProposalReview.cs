@@ -190,7 +190,7 @@ public static class ProposalReview
         }
         var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
         var intentDigest = IntentDigest.Compute(proposal);
-        var trial = Trials.LatestFor(database, project, id, parserPath);
+        var trial = Trials.LatestStratifiedFor(database, project, id, parserPath);
         var evidenceDigest = EvidenceDigestOf(trial);
         var marks = ReviewMarks.Read(database, id);
 

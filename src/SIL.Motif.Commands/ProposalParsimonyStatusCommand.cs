@@ -79,6 +79,10 @@ public static class ProposalParsimonyStatusCommand
         if (trial is null)
             return Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("status-no-trial",
                 "Parsimony runs after the Proposal's Trial finishes, and no Trial has finished."));
+        if (TrialSampleKind.IsWorkingSet(TrialJobInput.Parse(trial.InputJson).Sample))
+            return Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("status-working-set-trial",
+                "The latest Trial measured only a chosen word list, so Parsimony is not built from it. " +
+                "Run a Trial without --no-base-sample."));
         if (trial.Status != JobStatus.Completed)
             return job is null
                 ? Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("status-no-completed-trial",

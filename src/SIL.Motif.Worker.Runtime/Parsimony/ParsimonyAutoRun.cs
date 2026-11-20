@@ -6,6 +6,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
@@ -83,6 +84,8 @@ public static class ParsimonyAutoRun
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(trial);
         ArgumentNullException.ThrowIfNull(baseline);
+        // A working-set Trial measured only a chosen word list, so no grammar-level run is built from it.
+        if (TrialSampleKind.IsWorkingSet(TrialJobInput.Parse(trial.InputJson).Sample)) return null;
         var inputs = ParsimonyAutoInputs.For(trial.InputJson, baseline);
         var key = inputs.ToKey();
         var jobs = new JobRepository(database);

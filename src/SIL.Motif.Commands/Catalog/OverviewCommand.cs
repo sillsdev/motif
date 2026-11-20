@@ -34,9 +34,11 @@ public static class OverviewCommand
                 return CommandOutcome<OverviewResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,
                     "No Trial is recorded for this Proposal."));
             var selected = EvidenceSets.ForTrial(database, project, trial);
-            return selected.Succeeded
-                ? Overview(database, project, selected.Value!)
-                : CommandOutcome<OverviewResponse>.Refused(selected.Refusal!);
+            if (!selected.Succeeded) return CommandOutcome<OverviewResponse>.Refused(selected.Refusal!);
+            var overview = Overview(database, project, selected.Value!);
+            return trial.ScopeLabel is { } scope && overview.Succeeded
+                ? CommandOutcome<OverviewResponse>.Success(overview.Value! with { TrialScope = scope })
+                : overview;
         });
 
     /// <summary>Reads an Overview from the named Baseline, Assessment and measurements.</summary>

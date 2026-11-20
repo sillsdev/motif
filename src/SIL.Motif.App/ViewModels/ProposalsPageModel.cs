@@ -350,7 +350,7 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// </summary>
     public string StatusText => Standing.Kind switch
     {
-        TrialStandingKind.Trying or TrialStandingKind.Failed => Words.Sentence,
+        TrialStandingKind.Trying or TrialStandingKind.Failed or TrialStandingKind.WorkingSetOnly => Words.Sentence,
         TrialStandingKind.NeedsAnotherTry => Words.OldNumbers ?? Words.Sentence,
         TrialStandingKind.NotTried when Card.Group != ProposalGroup.NotTried => Words.Status,
         _ => string.Empty,

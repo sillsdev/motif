@@ -2491,6 +2491,8 @@ public static class MotifAppStrings
 
     public static string TrialDroppedGrammarNotCheckedSentence => Text("MotifApp.TrialDroppedGrammarNotCheckedSentence");
 
+    public static string TrialWorkingSetOnlySentence => Text("MotifApp.TrialWorkingSetOnlySentence");
+
     public static string RefusalParserMissing => Text("MotifApp.RefusalParserMissing");
 
     public static string RefusalParserMissingDetailsFormat => Text("MotifApp.RefusalParserMissingDetailsFormat");

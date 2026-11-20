@@ -15,6 +15,9 @@ public sealed record TimingResponse(
     IReadOnlyList<TimingAggregateRow> Aggregates,
     IReadOnlyList<WordRuleTiming> CostliestWords)
 {
+    /// <summary>"working set (N listed words)" when the numbers come from a working-set Trial, otherwise null.</summary>
+    public string? TrialScope { get; init; }
+
     /// <summary>Paired work changes for the selected words, or an explanation when no pair is available.</summary>
     public TimingCostComparison CostComparison { get; init; } = TimingCostComparison.Unavailable("No paired Assessment was selected.");
     /// <summary>Parser work attributed to objects and to the unattributed remainder.</summary>

@@ -16,6 +16,8 @@ public enum TrialStandingKind
     Current,
     /// <summary>The chosen Trial completed and its evidence needs to be checked again.</summary>
     NeedsAnotherTry,
+    /// <summary>The newest Trial measured only a chosen word list, so it says nothing about the Proposal as a whole.</summary>
+    WorkingSetOnly,
 }
 
 /// <summary>Why a completed Trial no longer describes the Proposal against today's project.</summary>
@@ -60,6 +62,9 @@ public sealed record TrialStanding(
     /// <summary>The standing of a Proposal whose Trial still describes it against today's project.</summary>
     public static TrialStanding Current { get; } = new(TrialStandingKind.Current);
 
+    /// <summary>The standing of a Proposal whose newest completed Trial measured only a chosen word list.</summary>
+    public static TrialStanding WorkingSetOnly { get; } = new(TrialStandingKind.WorkingSetOnly);
+
     /// <summary>Whether the person may queue a new Trial now; only a running Trial prevents it.</summary>
     [JsonIgnore]
     public bool CanTryAgain => Kind != TrialStandingKind.Trying;
@@ -77,11 +82,14 @@ public sealed record TrialStanding(
     /// <param name="droppedGrammarNotChecked">
     /// Whether a Trial that is otherwise current has no completed check for dropped grammar.
     /// </param>
-    public static TrialStanding From(JobStatus status, TrialFreshness freshness, bool droppedGrammarNotChecked = false)
+    /// <param name="workingSet">Whether the Trial measured only a chosen word list.</param>
+    public static TrialStanding From(JobStatus status, TrialFreshness freshness, bool droppedGrammarNotChecked = false,
+        bool workingSet = false)
     {
         if (status is JobStatus.Queued or JobStatus.WaitingForBaseline or JobStatus.WaitingForProjectHost or
             JobStatus.Running)
             return Trying;
+        if (workingSet && status == JobStatus.Completed && freshness != TrialFreshness.None) return WorkingSetOnly;
         return freshness switch
         {
             TrialFreshness.Current when status == JobStatus.Completed && droppedGrammarNotChecked =>

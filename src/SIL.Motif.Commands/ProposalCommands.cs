@@ -1851,7 +1851,7 @@ public static partial class ProposalCommands
         MotifDatabase database, ProjectLocator project, CanonicalId proposalId, string? parserPath = null)
     {
         var trial = Trials.LatestFor(database, project, proposalId.Value, parserPath);
-        if (trial is not { Freshness: TrialFreshness.Current }) return null;
+        if (trial is not { Freshness: TrialFreshness.Current } || TrialSampleKind.IsWorkingSet(trial.Sample)) return null;
         var job = new JobRepository(database).Get(trial.JobId);
         return job?.DryRunJson is null ? null : JobCommands.ParsePublishedDryRun(job.DryRunJson);
     }

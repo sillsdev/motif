@@ -181,6 +181,84 @@ public sealed class TrialsTests : IDisposable
     }
 
     [Fact]
+    public void ATrialRecordedBeforeTheSampleFieldReadsAsStratified()
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "old-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "old", ["old-root"], baselineAssessmentIds: [before]);
+
+        var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value, FakeParser.ExecutablePath)!;
+
+        Assert.Equal(TrialSampleKind.Stratified, trial.Sample);
+        Assert.Null(trial.ScopeLabel);
+        Assert.Equal(TrialStanding.Current, trial.Standing);
+    }
+
+    [Fact]
+    public void AWorkingSetTrialStandsAsWorkingSetOnlyAndLabelsItsNumbers()
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "ws-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "ws", ["ws-root"], baselineAssessmentIds: [before],
+            sample: TrialSampleKind.WorkingSet);
+
+        var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!;
+
+        Assert.Equal(TrialStanding.WorkingSetOnly, trial.Standing);
+        Assert.StartsWith("working set", trial.ScopeLabel, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheStratifiedReadSkipsAWorkingSetTrialThatIsNewer()
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "full-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "full", ["full-root"], baselineAssessmentIds: [before]);
+        fixture.CreateJob(proposal.Json, "2026-09-24T12:00:00Z", "ws", ["full-root"], baselineAssessmentIds: [before],
+            sample: TrialSampleKind.WorkingSet);
+
+        Assert.Equal("ws", Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!.JobId);
+        Assert.Equal("full",
+            Trials.LatestStratifiedFor(fixture.Database, fixture.Project, proposal.Id.Value)!.JobId);
+    }
+
+    [Fact]
+    public void AWorkingSetTrialPublishesNoDryRunForApplyToBindAndIsRefusedByTheTrialCheck()
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "ws-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "ws", ["ws-root"], baselineAssessmentIds: [before],
+            sample: TrialSampleKind.WorkingSet);
+
+        Assert.Null(ProposalCommands.TrialDryRun(fixture.Database, fixture.Project, proposal.Id));
+        var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!;
+        Assert.Equal("trial.working-set-not-a-gate", Trials.WorkingSetRefusal(trial, "apply this Proposal")!.Code);
+    }
+
+    [Fact]
+    public void TheApplyTrialCheckRefusesAWorkingSetTrialUpFrontAndAcceptsAnOrdinaryOne()
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var before = fixture.RecordPinnedAssessmentPair(proposal, "full-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "full", ["full-root"], baselineAssessmentIds: [before]);
+        Assert.Null(PendingChangesWorkflow.CheckTrial(fixture.Database, fixture.Project, proposal.Id,
+            FakeParser.ExecutablePath));
+
+        fixture.CreateJob(proposal.Json, "2026-09-24T12:00:00Z", "ws", ["full-root"], baselineAssessmentIds: [before],
+            sample: TrialSampleKind.WorkingSet);
+
+        var refusal = PendingChangesWorkflow.CheckTrial(fixture.Database, fixture.Project, proposal.Id,
+            FakeParser.ExecutablePath);
+        Assert.Equal("trial.working-set-not-a-gate", refusal?.Code);
+        Assert.Contains("working-set Trial", refusal!.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AProposalWithNoTrialIsNotTried()
     {
         using var fixture = new ProjectFixture(_root);
@@ -693,9 +771,9 @@ public sealed class TrialsTests : IDisposable
             IReadOnlyList<string> assessmentIds, bool allWords = false,
             IReadOnlyList<SIL.Motif.Model.Effects.ExpectedEffect>? effects = null, BaselineToken? baseline = null,
             IReadOnlyList<string>? baselineAssessmentIds = null, DroppedGrammar? droppedGrammar = null,
-            bool recordDroppedGrammar = true)
+            bool recordDroppedGrammar = true, string? sample = null)
         {
-            var job = CreateRunningJob(proposalJson, createdUtc, jobId, ["cat"], allWords, baselineAssessmentIds);
+            var job = CreateRunningJob(proposalJson, createdUtc, jobId, ["cat"], allWords, baselineAssessmentIds, sample);
             var dryRun = PublishedDryRun(ProposalJsonParser.Parse(proposalJson), effects);
             job = _jobs.PublishDryRun(job.JobId, dryRun, job.Version);
             var completion = JsonSerializer.Serialize(new
@@ -740,7 +818,8 @@ public sealed class TrialsTests : IDisposable
             => CreateRunningJob(proposalJson, createdUtc, jobId, ["cat"], allWords);
 
         public JobRecord CreateRunningJob(string proposalJson, string createdUtc, string jobId,
-            IReadOnlyList<string>? words, bool allWords = false, IReadOnlyList<string>? baselineAssessmentIds = null)
+            IReadOnlyList<string>? words, bool allWords = false, IReadOnlyList<string>? baselineAssessmentIds = null,
+            string? sample = null)
         {
             var input = JsonSerializer.Serialize(new
             {
@@ -749,6 +828,7 @@ public sealed class TrialsTests : IDisposable
                 words,
                 allWords,
                 baselineAssessmentIds,
+                sample,
                 limits = (TrialLimits?)null,
             }, MotifJson.CreateOptions());
             var job = _jobs.Create(jobId, ProjectWorkspaceKey.Compute(Project), TrialJobHandler.TrialKind,

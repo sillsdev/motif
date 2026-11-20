@@ -24,6 +24,9 @@ public sealed record OverviewResponse(
     OverviewTiming Timing,
     OverviewWarningsSummary? Warnings)
 {
+    /// <summary>"working set (N listed words)" when the numbers come from a working-set Trial, otherwise null.</summary>
+    public string? TrialScope { get; init; }
+
     public IReadOnlyList<WritingSystemDisplay> WritingSystems { get; init; } = [];
 
     /// <summary>The most recent parser refusal for the current Baseline, until parsing succeeds.</summary>

@@ -15,4 +15,8 @@ public sealed record StatsCommandResponse(
     string GrammarPath,
     string CachePath,
     string? Text,
-    IReadOnlyList<JsonElement>? Rows);
+    IReadOnlyList<JsonElement>? Rows)
+{
+    /// <summary>"working set (N listed words)" when the numbers come from a working-set Trial, otherwise null.</summary>
+    public string? TrialScope { get; init; }
+}

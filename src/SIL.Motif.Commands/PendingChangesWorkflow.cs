@@ -304,10 +304,11 @@ public static class PendingChangesWorkflow
             return CommandOutcome<string>.Success("bound");
         }).Refusal;
 
-    private static Refusal? CheckTrial(MotifDatabase database, ProjectLocator project, CanonicalId canonical, string? parserPath)
+    internal static Refusal? CheckTrial(MotifDatabase database, ProjectLocator project, CanonicalId canonical, string? parserPath)
     {
         var trial = Trials.LatestFor(database, project, canonical.Value, parserPath);
         if (trial is null || trial.Status != JobStatus.Completed) return TrialMissing();
+        if (Trials.WorkingSetRefusal(trial, "apply this Proposal") is { } workingSet) return workingSet;
         return trial.Freshness == TrialFreshness.Current ? null : TrialStale();
     }
 
