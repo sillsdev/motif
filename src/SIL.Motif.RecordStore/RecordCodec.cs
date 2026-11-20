@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Collections.Immutable;
 using SIL.Harmony.Changes;
@@ -5,17 +6,21 @@ using SIL.Harmony.Core;
 
 namespace SIL.Motif.RecordStore;
 
+/// <remarks>
+/// <see cref="Snapshot(byte[])"/> and <see cref="Change(byte[])"/> (decoding) may run on several threads at once while
+/// nothing encodes. Encoding shares the content writer, so it stays single-threaded.
+/// </remarks>
 /// <param name="retainValues">Keep each stored value decoded for reading back; a bulk import writes values it never reads.</param>
 internal sealed class RecordCodec(RecordContent content, bool retainValues = true)
 {
     private readonly Dictionary<JsonElement, int> layoutIds = [];
-    private readonly Dictionary<JsonElement, RecordInitialization.LayoutView> layouts = [];
+    private readonly ConcurrentDictionary<JsonElement, RecordInitialization.LayoutView> layouts = [];
 
-    private RecordInitialization.LayoutView View(JsonElement layout)
-    {
-        if (!layouts.TryGetValue(layout, out var view)) layouts.Add(layout, view = new RecordInitialization.LayoutView(layout));
-        return view;
-    }
+    /// <summary>When set, <see cref="Snapshot(byte[])"/> returns the stored bytes undecoded (see <see cref="GenericRecord.Encoded"/>).</summary>
+    internal bool DeferSnapshotDecode { get; set; }
+
+    private RecordInitialization.LayoutView View(JsonElement layout) =>
+        layouts.GetOrAdd(layout, static element => new RecordInitialization.LayoutView(element));
 
     public byte[] Snapshot(IObjectBase entity)
     {
@@ -69,6 +74,7 @@ internal sealed class RecordCodec(RecordContent content, bool retainValues = tru
 
     public IObjectBase Snapshot(byte[] bytes)
     {
+        if (DeferSnapshotDecode) return new GenericRecord { Encoded = bytes };
         var input = new BinaryInput(bytes);
         var version = input.Byte();
         if (version is not (1 or 2 or 3)) throw new InvalidDataException("Unknown record codec version.");

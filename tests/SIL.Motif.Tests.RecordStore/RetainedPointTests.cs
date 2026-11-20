@@ -49,6 +49,8 @@ public sealed partial class DeletionSafetyTests
         Assert.Equal(8, verified.DeletionImpact(entry.Id).NativeLinkCount);
         // Full verification on the writing handle, a rebuilt index and a full replay all still agree.
         Assert.Equal(revision, (await store.ReferencesAsync()).Revision);
+        Assert.Equal(1, store.PointAcquisitions);
+        Assert.Equal(verified.DeletionImpact(entry.Id).PlanToken, (await store.ReferencesAsync()).DeletionImpact(entry.Id).PlanToken);
         await store.RebuildReferenceIndexAsync();
         await store.RegenerateAsync();
         Assert.Equal(verified.DeletionImpact(entry.Id).PlanToken, (await store.ReferencesAsync()).DeletionImpact(entry.Id).PlanToken);

@@ -13,6 +13,7 @@ internal sealed class RecordDatabase(DbContextOptions<RecordDatabase> options, I
     RecordContent content) : DbContext(options), ICrdtDbContext
 {
     private readonly RecordCodec codec = new(content);
+    internal RecordCodec Codec => codec;
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder) =>
         builder.Properties<Guid>().HaveConversion<NetworkGuidConverter>();

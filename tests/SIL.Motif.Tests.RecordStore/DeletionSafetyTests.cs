@@ -139,11 +139,15 @@ public sealed partial class DeletionSafetyTests : IDisposable
         using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM IncomingReferences";
         command.ExecuteNonQuery();
-        var partial = (await store.ReferencesAsync()).DeletionImpact(entry.Id);
+        var acquisitions = store.PointAcquisitions;
+        Assert.Equal(9, (await store.ReferencesAsync()).DeletionImpact(entry.Id).NativeLinkCount);
+        Assert.Equal(acquisitions, store.PointAcquisitions);
+        await using var damaged = new Store(Database);
+        var partial = (await damaged.ReferencesAsync()).DeletionImpact(entry.Id);
         Assert.False(partial.NativeComplete);
         Assert.Null(partial.NativeAnalysisCount);
-        await Assert.ThrowsAsync<IncompleteDeletionClosureException>(() => store.PrepareDeletionAsync(entry.Id, index.Revision, partial.PlanToken));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => store.SetFieldAsync(entry.Id, LexEntryTags.kflidHomographNumber,
+        await Assert.ThrowsAsync<IncompleteDeletionClosureException>(() => damaged.PrepareDeletionAsync(entry.Id, index.Revision, partial.PlanToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => damaged.SetFieldAsync(entry.Id, LexEntryTags.kflidHomographNumber,
             old, JsonSerializer.SerializeToElement(old.GetInt32() + 1), index.Revision, Guid.NewGuid()));
         await store.RebuildReferenceIndexAsync();
         Assert.Equal(9, (await store.ReferencesAsync()).DeletionImpact(entry.Id).NativeLinkCount);

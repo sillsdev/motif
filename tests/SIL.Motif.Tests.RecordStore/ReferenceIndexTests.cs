@@ -125,7 +125,11 @@ public sealed class ReferenceIndexTests : IDisposable
         using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM IncomingReferences";
         command.ExecuteNonQuery();
-        Assert.Null((await store.ReferencesAsync(evidence)).Incoming([child.Id]).NativeTotal);
+        // The live handle keeps its verified point; a handle opened after the damage verifies again.
+        Assert.Equal(1, (await store.ReferencesAsync(evidence)).Incoming([child.Id]).NativeTotal);
+        Assert.Equal(1, store.PointAcquisitions);
+        await using (var damaged = new Store(Database))
+            Assert.Null((await damaged.ReferencesAsync(evidence)).Incoming([child.Id]).NativeTotal);
         await store.RebuildReferenceIndexAsync();
         Assert.Equal(1, (await store.ReferencesAsync(evidence)).Incoming([child.Id]).NativeTotal);
         command.CommandText = "UPDATE RecordStoreState SET Published=0";
