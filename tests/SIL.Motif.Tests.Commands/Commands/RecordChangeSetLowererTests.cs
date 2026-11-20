@@ -518,7 +518,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
     // Why liblcm cannot make an owned class generically: rules about classes, not pairs.
     /// <summary>Remove and Move on references whose target class is abstract with no standalone subclass.</summary>
-    private const int UnexercisedAbstractReferencePairs = 22;
+    private const int UnexercisedAbstractReferencePairs = 27;
     private const string AbstractClass = "the class is abstract and no concrete subclass stands alone in the fixture";
     private const string NoOwnerChain = "no owning field leads from an object the project holds to the class";
     private const string CreationRefused = "only the class's own composer creates it, or no create kind does, so the fixture holds none";
@@ -1118,5 +1118,119 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         Assert.Null(_cache.LangProject.StatusOA);
         RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexSense/setStatus",
             new { @ref = CanonicalId.FromGuid(child.Guid).Value }, _sense.Guid);
+    }
+
+    private ICmPossibilityList EnsureList(string field) => field switch
+    {
+        "usage-types" => _cache.LangProject.LexDbOA.UsageTypesOA ??= NewList(),
+        "dialect-labels" => _cache.LangProject.LexDbOA.DialectLabelsOA ??= NewList(),
+        "domain-types" => _cache.LangProject.LexDbOA.DomainTypesOA ??= NewList(),
+        "semantic-domains" => _cache.LangProject.SemanticDomainListOA ??= NewList(),
+        "anthro-codes" => _cache.LangProject.AnthroListOA ??= NewList(),
+        _ => throw new ArgumentOutOfRangeException(nameof(field)),
+    };
+
+    private ICmPossibilityList NewList() => _cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().Create();
+
+    private ICmPossibility NewSetItem(string field)
+    {
+        ICmPossibility made = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var list = EnsureList(field);
+            made = field switch
+            {
+                "semantic-domains" => _cache.ServiceLocator.GetInstance<ICmSemanticDomainFactory>().Create(),
+                "anthro-codes" => _cache.ServiceLocator.GetInstance<ICmAnthroItemFactory>().Create(),
+                _ => _cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create(),
+            };
+            list.PossibilitiesOS.Add(made);
+            made.Name.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("zzitem", _cache.DefaultAnalWs));
+        });
+        return made;
+    }
+
+    private void AttachToSense(string field, ICmPossibility item) => NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+    {
+        switch (field)
+        {
+            case "usage-types": _sense.UsageTypesRC.Add(item); break;
+            case "dialect-labels": _sense.DialectLabelsRS.Add(item); break;
+            case "domain-types": _sense.DomainTypesRC.Add(item); break;
+            case "semantic-domains": _sense.SemanticDomainsRC.Add((ICmSemanticDomain)item); break;
+            case "anthro-codes": _sense.AnthroCodesRC.Add((ICmAnthroItem)item); break;
+        }
+    });
+
+    [Theory]
+    [InlineData("usage-types", "UsageTypes")]
+    [InlineData("dialect-labels", "DialectLabels")]
+    [InlineData("domain-types", "DomainTypes")]
+    [InlineData("semantic-domains", "SemanticDomains")]
+    [InlineData("anthro-codes", "AnthroCodes")]
+    public void ASenseReferenceSetAddAndRemoveLowerToTheirKindsAndReadBack(string field, string name)
+    {
+        var item = NewSetItem(field);
+        var added = Lower(PlanEdit(d => SenseAt(d, 0).Set(field, new RecordList().Add(new RecordScalar(LinkTo(item))))));
+        Assert.Empty(added.Refusals);
+        var addOp = Assert.Single(added.Operations);
+        Assert.Equal("lexical/lexSense/addRef" + name, addOp.Kind);
+        var addEffect = Assert.Single(DryRun(added).ExpectedEffects);
+        Assert.Empty(addEffect.Before.Values);
+        Assert.Contains(addEffect.After.Values, v => CanonicalId.Parse(v).ToGuid() == item.Guid);
+
+        AttachToSense(field, item);
+        var removed = Lower(PlanEdit(d => SenseAt(d, 0).Fields.RemoveAll(f => f.Key == field)));
+        Assert.Empty(removed.Refusals);
+        Assert.Equal("lexical/lexSense/removeRef" + name, Assert.Single(removed.Operations).Kind);
+        var removeEffect = Assert.Single(DryRun(removed).ExpectedEffects);
+        Assert.Contains(removeEffect.Before.Values, v => CanonicalId.Parse(v).ToGuid() == item.Guid);
+        Assert.Empty(removeEffect.After.Values);
+        Assert.True(new CatalogWritableFields(_schema).CanWrite("LexSense", name));
+    }
+
+    [Theory]
+    [InlineData("usage-types", "UsageTypes")]
+    [InlineData("dialect-labels", "DialectLabels")]
+    [InlineData("domain-types", "DomainTypes")]
+    [InlineData("semantic-domains", "SemanticDomains")]
+    [InlineData("anthro-codes", "AnthroCodes")]
+    public void ASenseReferenceSetAddRefusesAnObjectFromAnotherListWithAWrongListCode(string field, string name)
+    {
+        NewSetItem(field);
+        ICmPossibility elsewhere = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var other = NewList();
+            _cache.LangProject.ConfidenceLevelsOA ??= other;
+            elsewhere = field switch
+            {
+                "semantic-domains" => _cache.ServiceLocator.GetInstance<ICmSemanticDomainFactory>().Create(),
+                "anthro-codes" => _cache.ServiceLocator.GetInstance<ICmAnthroItemFactory>().Create(),
+                _ => _cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create(),
+            };
+            _cache.LangProject.ConfidenceLevelsOA.PossibilitiesOS.Add(elsewhere);
+        });
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexSense/addRef" + name,
+            new { member = CanonicalId.FromGuid(elsewhere.Guid).Value }, _sense.Guid);
+    }
+
+    [Fact]
+    public void ASenseReferenceSetAddRefusesAWrongClassAndAcceptsASubPossibility()
+    {
+        var parent = NewSetItem("usage-types");
+        ICmPossibility child = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            child = _cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
+            parent.SubPossibilitiesOS.Add(child);
+        });
+        var accepted = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "lexical/lexSense/addRefUsageTypes",
+            target: CanonicalId.FromGuid(_sense.Guid), after: JsonSerializer.SerializeToElement(new { member = CanonicalId.FromGuid(child.Guid).Value }));
+        Assert.NotEmpty(ScratchDryRun.Of(_cache, Proposal([accepted])).ExpectedEffects);
+
+        var wrongClass = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "lexical/lexSense/addRefSemanticDomains",
+            target: CanonicalId.FromGuid(_sense.Guid), after: JsonSerializer.SerializeToElement(new { member = CanonicalId.FromGuid(parent.Guid).Value }));
+        Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, Proposal([wrongClass])));
     }
 }
