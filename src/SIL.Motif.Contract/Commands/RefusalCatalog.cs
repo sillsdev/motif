@@ -358,6 +358,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.HandAnalysisReferenced, FailureReason.Refused),
         Spec(RefusalCodes.HandAnalysisDeletionPlanMismatch, FailureReason.Refused),
         Spec(RefusalCodes.HandAnalysisUnsupportedOperation, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.HandAnalysisIdentityMismatch, FailureReason.Refused),
         Spec(RefusalCodes.ProgressIndexNotReady, FailureReason.Refused),
         Spec(RefusalCodes.ProgressInvalidCursor, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProgressInvalidRequest, FailureReason.InvalidArgument),

@@ -34,6 +34,7 @@ public static class RefusalCodes
     public const string HandAnalysisReferenced = "hand-analysis.referenced";
     public const string HandAnalysisDeletionPlanMismatch = "hand-analysis.deletion-plan-mismatch";
     public const string HandAnalysisUnsupportedOperation = "hand-analysis.unsupported-operation";
+    public const string HandAnalysisIdentityMismatch = "hand-analysis.identity-mismatch";
 
     /// <summary>The saved Text Progress projection has not been published or needs reconciliation.</summary>
     public const string ProgressIndexNotReady = "progress.index-not-ready";
