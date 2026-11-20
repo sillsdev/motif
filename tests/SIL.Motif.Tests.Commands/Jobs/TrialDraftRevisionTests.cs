@@ -279,6 +279,28 @@ public sealed class TrialDraftRevisionTests : IDisposable
     }
 
     [Fact]
+    public void AFailedTrialWithNoCodeStillCarriesItsFailureReasonAndTheUnfinishedMessageQuotesIt()
+    {
+        var id = NewDraftWithOneGloss("uncoded-failure");
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id, Words: ["word"]));
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var jobs = new JobRepository(database);
+            var job = jobs.Get(queued.Value!.JobId)!;
+            jobs.Transition(job.JobId, SIL.Motif.Contract.Jobs.JobStatus.Failed, job.Version,
+                SIL.Motif.Contract.Jobs.JobFailureCategory.Unknown,
+                """{"detail":"The Proposal no longer fits the project."}""");
+        }
+
+        var shown = JobCommands.Show(new ShowJobRequest(_fwDataPath, queued.Value!.JobId, ProductVersion));
+
+        Assert.Null(shown.Value!.FailureCode);
+        Assert.Equal("The Proposal no longer fits the project.", shown.Value.FailureDetail);
+        Assert.Contains("The Proposal no longer fits the project",
+            SIL.Motif.Commands.Review.TrialReviewReads.UnfinishedReason(shown.Value), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ATrialKeepsTheWordsItsCallerNamedEvenForAGrammarChange()
     {
         var id = NewDraftWithOneGloss("named-scope");

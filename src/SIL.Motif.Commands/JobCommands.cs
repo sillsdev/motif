@@ -549,10 +549,12 @@ public static class JobCommands
             {
                 if (job.Status == JobStatus.Failed && ReadDryRunRefusal(job) is { } refusal)
                     return CommandOutcome<DryRunProjection>.Refused(refusal);
+                var failureReason = job.Status == JobStatus.Failed
+                    ? FailureField(job.ResultJson, "message") ?? FailureField(job.ResultJson, "detail") : null;
                 return CommandOutcome<DryRunProjection>.Refused(new Refusal(
                     "job.dry-run-incomplete", FailureReason.Refused,
                     "Dry Run job '" + request.JobId + "' finished as " + JobStatusJson.ToWire(job.Status) +
-                    " rather than completing.",
+                    " rather than completing" + (failureReason is null ? "." : ": " + failureReason.TrimEnd('.') + "."),
                     Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(job.Status)))));
             }
 
@@ -662,7 +664,7 @@ public static class JobCommands
                 TrialProgress = trialProgress,
                 StageProgress = stageProgress,
                 FailureCode = FailureCodeOf(job),
-                FailureDetail = FailureCodeOf(job) is null ? null :
+                FailureDetail = FailureCodeOf(job) is null && job.Status != JobStatus.Failed ? null :
                     FailureField(job.ResultJson, "message") ?? FailureField(job.ResultJson, "detail"),
                 WordsDone = int.TryParse(FailureField(job.ResultJson, "wordsDone"), out var done) ? done : null,
                 WordsNotDone = int.TryParse(FailureField(job.ResultJson, "wordsNotDone"), out var notDone) ? notDone : null,

@@ -121,6 +121,7 @@ public static class TrialReviewReads
             : "The Trial did not finish measuring: job " + job.JobId + " ended as " + JobStatusJson.ToWire(job.Status.Value) +
               (job.FailureCategory is { } category and not JobFailureCategory.None
                   ? " (" + JobFailureCategoryJson.ToWire(category) + ")" : "") +
-              ". Read `motif jobs show` for the parser's failure detail.";
+              (job.FailureDetail is { Length: > 0 } detail ? ": " + detail.TrimEnd('.') : "") +
+              ". Read `motif jobs show` for the failure detail.";
     }
 }

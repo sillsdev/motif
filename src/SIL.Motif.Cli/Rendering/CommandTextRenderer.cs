@@ -1357,6 +1357,8 @@ public static class CommandTextRenderer
             text.AppendLine("  Queue order: " + queueOrder.ToString("R"));
         if (response.FailureCode is { } failureCode)
             text.AppendLine("  Failure: " + failureCode + (response.FailureDetail is { } detail ? " - " + detail : ""));
+        else if (response.FailureDetail is { } uncodedDetail)
+            text.AppendLine("  Failure: " + uncodedDetail);
         if (response.StageProgress is { } stage)
             text.AppendLine($"  Stage:   {stage.Stage} ({stage.Step} of {stage.Steps})" +
                 (stage.Detail is null ? string.Empty : " " + stage.Detail));
