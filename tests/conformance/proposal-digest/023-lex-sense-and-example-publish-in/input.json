@@ -1,0 +1,41 @@
+{
+  "contractVersions": {
+    "lexical": "1.0"
+  },
+  "proposalId": "AAAAAAAAAAAAAAAAAAAAUA",
+  "requires": [],
+  "operations": [
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAQ",
+      "kind": "lexical/lexSense/addRefDoNotPublishIn",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQQ"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAg",
+      "kind": "lexical/lexSense/removeRefDoNotPublishIn",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQQ"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAw",
+      "kind": "lexical/lexExampleSentence/addRefDoNotPublishIn",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQQ"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABA",
+      "kind": "lexical/lexExampleSentence/removeRefDoNotPublishIn",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQQ"
+      }
+    }
+  ]
+}

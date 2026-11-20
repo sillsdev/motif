@@ -518,7 +518,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
     // Why liblcm cannot make an owned class generically: rules about classes, not pairs.
     /// <summary>Remove and Move on references whose target class is abstract with no standalone subclass.</summary>
-    private const int UnexercisedAbstractReferencePairs = 27;
+    private const int UnexercisedAbstractReferencePairs = 29;
     private const string AbstractClass = "the class is abstract and no concrete subclass stands alone in the fixture";
     private const string NoOwnerChain = "no owning field leads from an object the project holds to the class";
     private const string CreationRefused = "only the class's own composer creates it, or no create kind does, so the fixture holds none";
@@ -1127,6 +1127,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         "domain-types" => _cache.LangProject.LexDbOA.DomainTypesOA ??= NewList(),
         "semantic-domains" => _cache.LangProject.SemanticDomainListOA ??= NewList(),
         "anthro-codes" => _cache.LangProject.AnthroListOA ??= NewList(),
+        "do-not-publish-in" => _cache.LangProject.LexDbOA.PublicationTypesOA ??= NewList(),
         _ => throw new ArgumentOutOfRangeException(nameof(field)),
     };
 
@@ -1159,6 +1160,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             case "domain-types": _sense.DomainTypesRC.Add(item); break;
             case "semantic-domains": _sense.SemanticDomainsRC.Add((ICmSemanticDomain)item); break;
             case "anthro-codes": _sense.AnthroCodesRC.Add((ICmAnthroItem)item); break;
+            case "do-not-publish-in": _sense.DoNotPublishInRC.Add(item); break;
         }
     });
 
@@ -1168,6 +1170,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     [InlineData("domain-types", "DomainTypes")]
     [InlineData("semantic-domains", "SemanticDomains")]
     [InlineData("anthro-codes", "AnthroCodes")]
+    [InlineData("do-not-publish-in", "DoNotPublishIn")]
     public void ASenseReferenceSetAddAndRemoveLowerToTheirKindsAndReadBack(string field, string name)
     {
         var item = NewSetItem(field);
@@ -1195,6 +1198,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     [InlineData("domain-types", "DomainTypes")]
     [InlineData("semantic-domains", "SemanticDomains")]
     [InlineData("anthro-codes", "AnthroCodes")]
+    [InlineData("do-not-publish-in", "DoNotPublishIn")]
     public void ASenseReferenceSetAddRefusesAnObjectFromAnotherListWithAWrongListCode(string field, string name)
     {
         NewSetItem(field);
@@ -1231,6 +1235,59 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
         var wrongClass = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "lexical/lexSense/addRefSemanticDomains",
             target: CanonicalId.FromGuid(_sense.Guid), after: JsonSerializer.SerializeToElement(new { member = CanonicalId.FromGuid(parent.Guid).Value }));
-        Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, Proposal([wrongClass])));
+        var failure = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, Proposal([wrongClass])));
+        Assert.Contains("is not a CmSemanticDomain (it is a CmPossibility)", failure.Message);
+    }
+
+    private OperationEnvelope SenseSetOp(string kind, ICmObject member, ICmObject? target = null) =>
+        new(CanonicalId.FromGuid(Guid.NewGuid()), kind, target: CanonicalId.FromGuid((target ?? _sense).Guid),
+            after: JsonSerializer.SerializeToElement(new { member = CanonicalId.FromGuid(member.Guid).Value }));
+
+    [Fact]
+    public void ASenseReferenceSetAddOfAMemberTheSenseHoldsAndRemoveOfAnAbsentOneChangeNothing()
+    {
+        var held = NewSetItem("usage-types");
+        var absent = NewSetItem("usage-types");
+        AttachToSense("usage-types", held);
+        var duplicate = ScratchDryRun.Of(_cache, Proposal([SenseSetOp("lexical/lexSense/addRefUsageTypes", held)]));
+        Assert.All(duplicate.ExpectedEffects, e => Assert.Equal(e.Before.Values, e.After.Values));
+        var removeAbsent = ScratchDryRun.Of(_cache, Proposal([SenseSetOp("lexical/lexSense/removeRefUsageTypes", absent)]));
+        Assert.All(removeAbsent.ExpectedEffects, e => Assert.Equal(e.Before.Values, e.After.Values));
+    }
+
+    [Fact]
+    public void AnExampleSentencePublishInAddAndRemoveReadBackAndRefuseAnotherList()
+    {
+        ILexExampleSentence example = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            example = _cache.ServiceLocator.GetInstance<ILexExampleSentenceFactory>().Create();
+            _sense.ExamplesOS.Add(example);
+        });
+        var publication = UnheldPublication();
+        var add = ScratchDryRun.Of(_cache, Proposal([SenseSetOp("lexical/lexExampleSentence/addRefDoNotPublishIn", publication, example)]));
+        var addEffect = Assert.Single(add.ExpectedEffects);
+        Assert.Contains(addEffect.After.Values, v => CanonicalId.Parse(v).ToGuid() == publication.Guid);
+
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => example.DoNotPublishInRC.Add(publication));
+        var remove = ScratchDryRun.Of(_cache, Proposal([SenseSetOp("lexical/lexExampleSentence/removeRefDoNotPublishIn", publication, example)]));
+        var removeEffect = Assert.Single(remove.ExpectedEffects);
+        Assert.Contains(removeEffect.Before.Values, v => CanonicalId.Parse(v).ToGuid() == publication.Guid);
+        Assert.Empty(removeEffect.After.Values);
+
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexExampleSentence/addRefDoNotPublishIn",
+            new { member = CanonicalId.FromGuid(NewSetItem("usage-types").Guid).Value }, example.Guid);
+    }
+
+    [Fact]
+    public void ALexEntryReferenceAddRefusesAnObjectFromAnotherListWithAWrongListCode()
+    {
+        var usage = NewSetItem("usage-types");
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexEntry/addRefDoNotPublishIn",
+            new { member = CanonicalId.FromGuid(usage.Guid).Value });
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexEntry/addRefDoNotShowMainEntryIn",
+            new { member = CanonicalId.FromGuid(usage.Guid).Value });
+        RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexEntry/addRefDialectLabels",
+            new { member = CanonicalId.FromGuid(_publication.Guid).Value });
     }
 }

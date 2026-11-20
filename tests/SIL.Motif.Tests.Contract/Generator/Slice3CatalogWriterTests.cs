@@ -13,7 +13,7 @@ namespace SIL.Motif.Tests.Generator;
 public class Slice3CatalogWriterTests
 {
     [Fact]
-    public void WriteAll_RealModel_WritesOneHundredThirtyEightFiles_EachContainingItsOwnKindStrings()
+    public void WriteAll_RealModel_WritesOneHundredFortyOneFiles_EachContainingItsOwnKindStrings()
     {
         var model = MotifModelLoader.Load();
         var tempRoot = Path.Combine(Path.GetTempPath(), "motif-emit-slice3-tests", Guid.NewGuid().ToString("N"));
@@ -23,8 +23,8 @@ public class Slice3CatalogWriterTests
         {
             var written = Slice3CatalogWriter.WriteAll(model, tempRoot);
 
-            // 86 Operations files + 51 Snapshotting + 1 shared g.cs; 26th rel/atomic is PhPhonRuleFeat.Item.
-            Assert.Equal(138, written.Count);
+            // 88 Operations files + 51 Snapshotting + 1 shared g.cs; 26th rel/atomic is PhPhonRuleFeat.Item.
+            Assert.Equal(141, written.Count);
 
             foreach (var file in written)
             {

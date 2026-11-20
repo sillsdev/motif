@@ -68,6 +68,8 @@ public static class Slice3FieldSelector
         new FieldKey("LexSense", "DomainTypes"),
         new FieldKey("LexSense", "SemanticDomains"),
         new FieldKey("LexSense", "AnthroCodes"),
+        new FieldKey("LexSense", "DoNotPublishIn"),
+        new FieldKey("LexExampleSentence", "DoNotPublishIn"),
     };
 
     private static readonly string[] BasicOkSigs = { "MultiUnicode", "MultiString", "Boolean" };

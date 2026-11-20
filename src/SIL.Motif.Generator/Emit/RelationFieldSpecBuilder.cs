@@ -29,6 +29,16 @@ public static class RelationFieldSpecBuilder
         [new FieldKey("LexSense", "SemanticDomains")] = "c => c.LangProject.SemanticDomainListOA",
         // FieldWorks LexSenseParts.xml:499-507, AnthroCodes chooses from LangProject.AnthroListOA.
         [new FieldKey("LexSense", "AnthroCodes")] = "c => c.LangProject.AnthroListOA",
+        // FieldWorks LexSenseParts.xml:490-498, Publish Sense In (visField DoNotPublishIn) uses PublicationTypesOA.
+        [new FieldKey("LexSense", "DoNotPublishIn")] = "c => c.LangProject.LexDbOA.PublicationTypesOA",
+        // FieldWorks LexSenseParts.xml:773-781, Publish Example In (visField DoNotPublishIn) uses PublicationTypesOA.
+        [new FieldKey("LexExampleSentence", "DoNotPublishIn")] = "c => c.LangProject.LexDbOA.PublicationTypesOA",
+        // FieldWorks LexEntryParts.xml:46 Publish Entry In (visField DoNotPublishIn) uses PublicationTypesOA.
+        [new FieldKey("LexEntry", "DoNotPublishIn")] = "c => c.LangProject.LexDbOA.PublicationTypesOA",
+        // FieldWorks LexEntryParts.xml:320 Show As Headword In (visField DoNotShowMainEntryIn) uses PublicationTypesOA.
+        [new FieldKey("LexEntry", "DoNotShowMainEntryIn")] = "c => c.LangProject.LexDbOA.PublicationTypesOA",
+        // FieldWorks LexEntryParts.xml DialectLabelsEntry slice chooses from LexDb.DialectLabelsOA.
+        [new FieldKey("LexEntry", "DialectLabels")] = "c => c.LangProject.LexDbOA.DialectLabelsOA",
     };
 
     public static ReferenceAtomicFieldSpec BuildAtomic(JoinedRow row)

@@ -49,6 +49,9 @@ public static partial class SnapshotFields
     /// <summary>A <c>LexEtymology</c>'s <c>Gloss</c> basic MultiString field.</summary>
     public const string LexEtymologyGloss = "lexical/lexEtymology/gloss";
 
+    /// <summary>A <c>LexExampleSentence</c>'s <c>DoNotPublishIn</c> rel/col CmPossibility field.</summary>
+    public const string LexExampleSentenceDoNotPublishIn = "lexical/lexExampleSentence/doNotPublishIn";
+
     /// <summary>A <c>LexPronunciation</c>'s <c>Form</c> basic MultiUnicode field.</summary>
     public const string LexPronunciationForm = "lexical/lexPronunciation/form";
 
@@ -57,6 +60,9 @@ public static partial class SnapshotFields
 
     /// <summary>A <c>LexSense</c>'s <c>DialectLabels</c> rel/seq CmPossibility field.</summary>
     public const string LexSenseDialectLabels = "lexical/lexSense/dialectLabels";
+
+    /// <summary>A <c>LexSense</c>'s <c>DoNotPublishIn</c> rel/col CmPossibility field.</summary>
+    public const string LexSenseDoNotPublishIn = "lexical/lexSense/doNotPublishIn";
 
     /// <summary>A <c>LexSense</c>'s <c>DomainTypes</c> rel/col CmPossibility field.</summary>
     public const string LexSenseDomainTypes = "lexical/lexSense/domainTypes";

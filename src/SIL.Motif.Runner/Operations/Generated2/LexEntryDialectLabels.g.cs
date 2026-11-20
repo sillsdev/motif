@@ -58,13 +58,14 @@ public static class LexEntryDialectLabelsMemberPayload
 }
 
 /// <summary>Lowers <see cref="LexEntryDialectLabelsOperationKinds.AddRefDialectLabels"/>: resolves the
-/// referenced ICmPossibility and adds it to <c>lexEntry.DialectLabelsRS</c> (a no-op if already
-/// present).</summary>
+/// referenced ICmPossibility, refuses one outside the list the field takes, and adds it to
+/// <c>lexEntry.DialectLabelsRS</c> (a no-op if already present).</summary>
 public static class LexEntryDialectLabelsAddRefLowering
 {
     public static void Apply(LcmCache cache, ILexEntry lexEntry, CanonicalId memberId) =>
-        ReferenceCollectionFieldLowering.ApplyAddRef<ICmPossibility>(
-            cache, lexEntry.DialectLabelsRS, memberId, LexEntryDialectLabelsOperationKinds.AddRefDialectLabels);
+        ReferenceCollectionFieldLowering.ApplyAddRefInList<ICmPossibility>(
+            cache, lexEntry.DialectLabelsRS, memberId, LexEntryDialectLabelsOperationKinds.AddRefDialectLabels,
+            "LexEntry.DialectLabels", c => c.LangProject.LexDbOA.DialectLabelsOA);
 }
 
 /// <summary>Lowers <see cref="LexEntryDialectLabelsOperationKinds.RemoveRefDialectLabels"/>: resolves the
