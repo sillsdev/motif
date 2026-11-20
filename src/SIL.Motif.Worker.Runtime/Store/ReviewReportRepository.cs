@@ -69,9 +69,17 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
         var released = !ProposalDifferenceRetention.KeepsWordDetail(status);
         var reportId = new ReviewReportId("review-report/" + Guid.NewGuid().ToString("N"));
         var committed = false;
+        var superseded = false;
         try
         {
-            var remaining = Budget - Math.Min(Budget, AssessmentRetention.BytesInUse(connection, transaction));
+            var remaining = Budget - Math.Min(Budget, DetailBytesHeld(connection, transaction));
+            if (!released && publication.EstimatedDetailBytes > remaining &&
+                ReviewReportRetention.Supersede(connection, transaction, publication.ProposalId,
+                    DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)))
+            {
+                superseded = true;
+                remaining = Budget - Math.Min(Budget, DetailBytesHeld(connection, transaction));
+            }
             var available = !released && publication.EstimatedDetailBytes <= remaining;
             var summary = publication.Summary with { ReportId = reportId.Value, ReportDigest = publication.ManifestDigest };
             var summaryJson = JsonSerializer.Serialize(summary, ReviewJson.Options);
@@ -219,8 +227,9 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
             {
                 ReviewReportRetention.DeleteRows(connection, transaction, reportId.Value);
                 summary = summary with { DetailAvailability = DetailAvailability.Unavailable, Page = null, Word = null, Trace = null,
-                    Limitations = summary.Limitations.Concat([new Limitation(released ? "detail-released" : "store-budget", [],
-                        released ? "Report detail was released after the Proposal decision." : "Complete report detail exceeds the store budget.", [])]).ToArray() };
+                    Limitations = summary.Limitations.Concat([new Limitation(released ? ReviewReportRetention.ReleasedCode : "store-budget", [],
+                        released ? "Report detail was released after the Proposal decision." :
+                            "Complete report detail did not fit the review budget when this Trial finished.", [])]).ToArray() };
                 summaryJson = JsonSerializer.Serialize(summary, ReviewJson.Options);
                 Execute(connection, transaction, "UPDATE ReviewReports SET SummaryJson=$summary,SummaryDigest=$hash,DetailAvailable=0,DetailBytes=0 WHERE ReportId=$id;",
                     ("$summary", summaryJson), ("$hash", Hash(summaryJson)), ("$id", reportId.Value));
@@ -230,6 +239,7 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
             cancellationToken.ThrowIfCancellationRequested();
             transaction.Commit();
             committed = true;
+            if (superseded) ReviewRowArtifacts.DeleteReleased(_database, publication.ProposalId);
             if (!available) ReviewRowArtifacts.Delete(_database, reportId.Value);
             return reportId;
         }
@@ -237,6 +247,13 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
         {
             if (!committed) ReviewRowArtifacts.Delete(_database, reportId.Value);
         }
+    }
+
+    // Detail is budgeted by the review detail it holds, not by the whole store, which review detail cannot shrink.
+    private static long DetailBytesHeld(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        using var command = Command(connection, transaction, "SELECT COALESCE(SUM(DetailBytes),0) FROM ReviewReports WHERE DetailAvailable=1;");
+        return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
     }
 
     /// <summary>Reads a frozen summary, rejecting damaged stored summary bytes.</summary>

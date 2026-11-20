@@ -7,7 +7,19 @@ namespace SIL.Motif.Worker.Store;
 
 internal static class ReviewReportRetention
 {
-    internal static void DropDetail(SqliteConnection connection, SqliteTransaction transaction, string proposalId, string droppedUtc)
+    internal const string ReleasedCode = "detail-released";
+    internal const string SupersededCode = "detail-superseded";
+
+    internal static void DropDetail(SqliteConnection connection, SqliteTransaction transaction, string proposalId, string droppedUtc) =>
+        Release(connection, transaction, proposalId, ReleasedCode,
+            $"Report detail was released at {droppedUtc} after the Proposal decision.");
+
+    // Frees the detail of the Proposal's earlier Trials so the newest keeps its own.
+    internal static bool Supersede(SqliteConnection connection, SqliteTransaction transaction, string proposalId, string droppedUtc) =>
+        Release(connection, transaction, proposalId, SupersededCode,
+            $"Report detail was released at {droppedUtc} because a newer Trial superseded this one and the review store needed the space.");
+
+    private static bool Release(SqliteConnection connection, SqliteTransaction transaction, string proposalId, string code, string message)
     {
         var reports = new List<(string Id, string Json, string Digest)>();
         using (var command = connection.CreateCommand())
@@ -23,12 +35,13 @@ internal static class ReviewReportRetention
             if (ReviewReportRepository.Hash(json) != digest) throw new InvalidDataException("Review summary digest does not match.");
             var summary = JsonSerializer.Deserialize<ReportView>(json, ReviewJson.Options) ?? throw new InvalidDataException("Invalid review summary.");
             summary = summary with { DetailAvailability = DetailAvailability.Unavailable, Page = null, Word = null, Trace = null,
-                Limitations = summary.Limitations.Concat([new Limitation("detail-released", [], "Report detail was released after the Proposal decision.", [])]).ToArray() };
+                Limitations = summary.Limitations.Concat([new Limitation(code, [], message, [])]).ToArray() };
             var updated = JsonSerializer.Serialize(summary, ReviewJson.Options);
             DeleteRows(connection, transaction, id);
             ReviewReportRepository.Execute(connection, transaction, "UPDATE ReviewReports SET SummaryJson=$json,SummaryDigest=$hash,InputReferencesJson='[]',DetailAvailable=0,DetailBytes=0 WHERE ReportId=$id;",
                 ("$json", updated), ("$hash", ReviewReportRepository.Hash(updated)), ("$id", id));
         }
+        return reports.Count > 0;
     }
 
     internal static void DeleteRows(SqliteConnection connection, SqliteTransaction transaction, string id)

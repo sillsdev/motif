@@ -129,7 +129,8 @@ public sealed class TrialReviewCommands(MotifDatabase database, string? parserPa
                 var facts = new Dictionary<string, string> { ["reason"] = exception.Reason };
                 if (exception.SummaryUri is not null) facts["summaryUri"] = exception.SummaryUri;
                 return CommandOutcome<TrialReviewResult>.Refused(new Refusal(RefusalCodes.ReviewDetailUnavailable,
-                    FailureReason.Refused, "Report detail is no longer retained.", facts));
+                    FailureReason.Refused, (exception.Explanation ?? "Report detail is no longer retained.") +
+                    " Rerun the Trial to get it back.", facts));
             }
             catch (ReviewCursorInvalidException) { return Refused(RefusalCodes.ReviewCursorInvalid, FailureReason.InvalidArgument, "The continuation does not match this report selection."); }
             catch (ArgumentException exception) { return Invalid(exception.Message); }
