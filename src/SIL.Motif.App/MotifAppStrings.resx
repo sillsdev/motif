@@ -7472,7 +7472,13 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalDryRunCancelling" xml:space="preserve"><value>Cancelling the Dry Run…</value></data>
   <data name="MotifApp.ProposalDryRunCancelled" xml:space="preserve"><value>The Dry Run was cancelled.</value></data>
   <data name="MotifApp.ProposalSelectedNameFormat" xml:space="preserve"><value>{0}, selected</value></data>
-  <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Receipt for Proposal {0}. Recorded {1}.</value></data>
+  <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Applied. Recorded {0}.</value></data>
+  <data name="MotifApp.ProposalReceiptByYouFormat" xml:space="preserve"><value>Applied by you. Recorded {0}.</value></data>
+  <data name="MotifApp.ProposalReceiptFieldWorksNote" xml:space="preserve"><value>FieldWorks shows this change the next time you open the project.</value></data>
+  <data name="MotifApp.ProposalReceiptCopy" xml:space="preserve"><value>Copy Receipt ID</value></data>
+  <data name="MotifApp.ProposalReceiptCopied" xml:space="preserve"><value>Copied</value></data>
+  <data name="MotifApp.ProposalReceiptCopyFailed" xml:space="preserve"><value>Could Not Copy</value></data>
+  <data name="MotifApp.ProposalReceiptSeeInTexts" xml:space="preserve"><value>See in Texts</value></data>
   <data name="MotifApp.ReviewApplyMeasuring" xml:space="preserve"><value>Checking these changes…</value><comment>Progress while the Apply readiness check measures a Proposal.</comment></data>
   <!-- W6 -->
   <data name="MotifApp.ProposalCompareBack" xml:space="preserve"><value>Back to Proposals</value></data>

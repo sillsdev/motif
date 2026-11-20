@@ -42,5 +42,12 @@
     <views:RefusalBlock DataContext="{Binding ApplyRefusal}" />
     <views:CopyableTextBlock AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalReceipt}"
                              Text="{Binding ReceiptText}" IsVisible="{Binding HasReceipt}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{Binding ReceiptFieldWorksNote}" IsVisible="{Binding HasReceipt}" TextWrapping="Wrap" />
+    <WrapPanel IsVisible="{Binding HasReceipt}">
+      <Button Classes="secondary" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalReceiptSeeInTexts}"
+              Content="{x:Static app:MotifAppStrings.ProposalReceiptSeeInTexts}" Command="{Binding SeeInTextsCommand}" />
+      <Button Classes="secondary" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalReceiptCopy}"
+              Content="{Binding ReceiptCopyLabel}" Command="{Binding CopyReceiptIdCommand}" />
+    </WrapPanel>
   </StackPanel>
 </UserControl>

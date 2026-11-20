@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Requests;
@@ -136,9 +137,42 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     public bool CanAddComment => !_stopped && Detail is { } detail &&
         !IsDecided(detail.Status) && (Card?.Card is not { } card || !IsDecided(card.Status));
     public bool HasReceipt => Receipt is not null;
+    // A press in this window is by the person at it; a receipt that found the Proposal already applied is not.
     public string ReceiptText => Receipt is { } receipt
-        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalReceiptFormat,
-            receipt.ProposalId, LocalRecordedTime(receipt.AppliedLogEntry.TimestampUtc)) : string.Empty;
+        ? string.Format(CultureInfo.CurrentCulture, !receipt.AlreadyApplied && receipt.AppliedLogEntry.Mode == "person"
+            ? MotifAppStrings.ProposalReceiptByYouFormat : MotifAppStrings.ProposalReceiptFormat,
+            LocalRecordedTime(receipt.AppliedLogEntry.TimestampUtc)) : string.Empty;
+    /// <summary>The note on when FieldWorks shows an applied change.</summary>
+    public string ReceiptFieldWorksNote => MotifAppStrings.ProposalReceiptFieldWorksNote;
+    /// <summary>The label of the Copy button on the receipt, which says so after the id was copied.</summary>
+    public string ReceiptCopyLabel => _receiptCopy;
+    private string _receiptCopy = MotifAppStrings.ProposalReceiptCopy;
+    private string? _receiptWord;
+
+    /// <summary>Copies the applied Proposal's id for a bug report or the applied-change log.</summary>
+    public IAsyncRelayCommand CopyReceiptIdCommand => _copyReceiptId ??= new AsyncRelayCommand(async () =>
+    {
+        if (Receipt is not { } receipt) return;
+        try
+        {
+            await _context.Clipboard.SetTextAsync(receipt.ProposalId).ConfigureAwait(true);
+            _receiptCopy = MotifAppStrings.ProposalReceiptCopied;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            _receiptCopy = MotifAppStrings.ProposalReceiptCopyFailed;
+        }
+        OnPropertyChanged(nameof(ReceiptCopyLabel));
+    });
+    private IAsyncRelayCommand? _copyReceiptId;
+
+    /// <summary>Opens the Texts reader on the first word the Proposal's Trial measured, or on the reader alone.</summary>
+    public ICommand SeeInTextsCommand => _seeInTexts ??= new RelayCommand(() =>
+    {
+        if (_receiptWord is { Length: > 0 } word) _context.OpenWord(word);
+        else _context.OpenTexts();
+    });
+    private ICommand? _seeInTexts;
 
     // The log stores a compact UTC stamp; the page shows every other time in the person's local clock.
     internal static string LocalRecordedTime(string timestampUtc) =>
@@ -266,6 +300,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     }
     partial void OnReceiptChanged(ApplyProjection? value)
     {
+        _receiptCopy = MotifAppStrings.ProposalReceiptCopy;
+        OnPropertyChanged(nameof(ReceiptCopyLabel));
         OnPropertyChanged(nameof(HasReceipt));
         OnPropertyChanged(nameof(ReceiptText));
     }
@@ -597,6 +633,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         if (!IsConfirmingApply || !CanApply) return;
         IsConfirmingApply = false;
         var pending = IsPending;
+        _receiptWord = _review?.Trial?.Words.FirstOrDefault();
         var result = _context.ProposalApply;
         await result.ApplyCurrentAsync(_review).ConfigureAwait(true);
         if (_stopped || _context.ProjectPath != ProjectPath) return;

@@ -3983,6 +3983,12 @@ public static class MotifAppStrings
     public static string ProposalDryRunCancelled => Text("MotifApp.ProposalDryRunCancelled");
     public static string ProposalSelectedNameFormat => Text("MotifApp.ProposalSelectedNameFormat");
     public static string ProposalReceiptFormat => Text("MotifApp.ProposalReceiptFormat");
+    public static string ProposalReceiptByYouFormat => Text("MotifApp.ProposalReceiptByYouFormat");
+    public static string ProposalReceiptFieldWorksNote => Text("MotifApp.ProposalReceiptFieldWorksNote");
+    public static string ProposalReceiptCopy => Text("MotifApp.ProposalReceiptCopy");
+    public static string ProposalReceiptCopied => Text("MotifApp.ProposalReceiptCopied");
+    public static string ProposalReceiptCopyFailed => Text("MotifApp.ProposalReceiptCopyFailed");
+    public static string ProposalReceiptSeeInTexts => Text("MotifApp.ProposalReceiptSeeInTexts");
     public static string ReviewApplyMeasuring => Text("MotifApp.ReviewApplyMeasuring");
     #endregion
     #region W6
