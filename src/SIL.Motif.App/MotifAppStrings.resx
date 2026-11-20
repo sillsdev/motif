@@ -7405,6 +7405,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProgressReadingNext" xml:space="preserve"><value>Reading next actions…</value></data>
   <data name="MotifApp.ProgressNextUnavailable" xml:space="preserve"><value>Some next actions are unavailable. Refresh the project or try again.</value></data>
   <!-- W5 -->
+  <data name="MotifApp.ProposalApplyCouldNotStart" xml:space="preserve"><value>Apply could not start because the project or the open Proposal changed. Choose Refresh, then Apply… again.</value></data>
+  <data name="MotifApp.ProposalApplyStillReading" xml:space="preserve"><value>Motif is still reading this Proposal. Try Apply again in a moment, or reopen the Proposal.</value></data>
   <data name="MotifApp.ProposalDocumentOutdated" xml:space="preserve"><value>The project or Proposal changed. Refresh its evidence before applying.</value></data>
   <data name="MotifApp.ProposalDocumentUnreadable" xml:space="preserve"><value>The Proposal could not be read. Your unsaved text is kept.</value></data>
   <data name="MotifApp.ProposalEvidenceUnavailable" xml:space="preserve"><value>Evidence is unavailable for this Proposal.</value></data>
@@ -7430,7 +7432,36 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalDeclined" xml:space="preserve"><value>Declined</value></data>
   <data name="MotifApp.ProposalSuperseded" xml:space="preserve"><value>Superseded</value></data>
   <data name="MotifApp.ProposalWithdrawn" xml:space="preserve"><value>Withdrawn</value></data>
-  <data name="MotifApp.ProposalActivateForApply" xml:space="preserve"><value>Choose Apply… to check this Proposal’s readiness.</value></data>
+  <data name="MotifApp.ProposalChangeWritingSystem" xml:space="preserve"><value>Writing system: {0}</value></data>
+  <data name="MotifApp.ProposalDifferenceEarlierTry" xml:space="preserve"><value>The saved Difference is from an earlier try. Make Difference again.</value></data>
+  <data name="MotifApp.ProposalChangeHeading" xml:space="preserve"><value>Proposed changes</value></data>
+  <data name="MotifApp.ProposalChangeSense" xml:space="preserve"><value>Sense {0}</value></data>
+  <data name="MotifApp.ProposalChangeEntry" xml:space="preserve"><value>Entry {0}</value></data>
+  <data name="MotifApp.ProposalChangeTarget" xml:space="preserve"><value>Target {0}</value></data>
+  <data name="MotifApp.ProposalChangeGloss" xml:space="preserve"><value>Gloss</value></data>
+  <data name="MotifApp.ProposalChangeEmpty" xml:space="preserve"><value>(empty)</value></data>
+  <data name="MotifApp.ProposalChangeTransition" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
+  <data name="MotifApp.ProposalSharedEffect" xml:space="preserve"><value>Several changes contribute to the final result for {0}.</value></data>
+  <data name="MotifApp.ProposalChangeFieldWithWritingSystem" xml:space="preserve"><value>{0} ({1})</value></data>
+  <data name="MotifApp.ProposalChangeValue" xml:space="preserve"><value>Proposed value: {0}</value></data>
+  <data name="MotifApp.ProposalChangeValueWithWritingSystem" xml:space="preserve"><value>Proposed value ({0}): {1}</value></data>
+  <data name="MotifApp.ProposalCheckHeading" xml:space="preserve"><value>Before you apply</value></data>
+  <data name="MotifApp.ProposalCheckTried" xml:space="preserve"><value>Tried</value></data>
+  <data name="MotifApp.ProposalCheckDifference" xml:space="preserve"><value>Difference</value></data>
+  <data name="MotifApp.ProposalCheckDryRun" xml:space="preserve"><value>Dry Run</value></data>
+  <data name="MotifApp.ProposalCheckComplete" xml:space="preserve"><value>{0} ✓</value></data>
+  <data name="MotifApp.ProposalCheckCompleteDetail" xml:space="preserve"><value>{0} ✓ · {1}</value></data>
+  <data name="MotifApp.ProposalCheckNeeded" xml:space="preserve"><value>{0} ○</value></data>
+  <data name="MotifApp.ProposalRunDryRun" xml:space="preserve"><value>Run Dry Run</value></data>
+  <data name="MotifApp.ProposalDryRunNeeded" xml:space="preserve"><value>Run Dry Run to check and record what this Proposal would change in FieldWorks.</value></data>
+  <data name="MotifApp.ProposalDryRunQueued" xml:space="preserve"><value>Waiting to start the Dry Run…</value></data>
+  <data name="MotifApp.ProposalDryRunWaitingForBaseline" xml:space="preserve"><value>Waiting for the saved project copy…</value></data>
+  <data name="MotifApp.ProposalDryRunRunning" xml:space="preserve"><value>Running the Dry Run on a copy of the project…</value></data>
+  <data name="MotifApp.ProposalDryRunBinding" xml:space="preserve"><value>Recording the Dry Run for this Proposal…</value></data>
+  <data name="MotifApp.ProposalDryRunFailed" xml:space="preserve"><value>The Dry Run could not finish. Try running it again.</value></data>
+  <data name="MotifApp.ProposalDryRunOutdated" xml:space="preserve"><value>The Proposal or project changed during the Dry Run. Refresh the evidence and run it again.</value></data>
+  <data name="MotifApp.ProposalDryRunCancelling" xml:space="preserve"><value>Cancelling the Dry Run…</value></data>
+  <data name="MotifApp.ProposalDryRunCancelled" xml:space="preserve"><value>The Dry Run was cancelled.</value></data>
   <data name="MotifApp.ProposalSelectedNameFormat" xml:space="preserve"><value>{0}, selected</value></data>
   <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Receipt: {0}. Recorded: {1}.</value></data>
   <data name="MotifApp.ReviewApplyMeasuring" xml:space="preserve"><value>Checking these changes…</value><comment>Progress while the Apply readiness check measures a Proposal.</comment></data>
@@ -7767,7 +7798,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.WordReadingsTipPattern" xml:space="preserve"><value>{0, plural, one {# reading. Open the word panel to approve it.} other {# readings. Open the word panel to choose one to approve.}}</value><comment>Hover sentence on the count of readings beside a word in the Texts reader. {0} is the number of readings.</comment></data>
   <!-- round2-proposal -->
   <data name="MotifApp.ProposalStatusDraft" xml:space="preserve"><value>This Draft has not been checked yet. Check what applying it does to the numbers.</value><comment>Status at the top of a pending Draft's page: its changes have not been measured.</comment></data>
-  <data name="MotifApp.ProposalStatusReady" xml:space="preserve"><value>This Proposal has been tried and its Difference made. You can apply it.</value><comment>Status at the top of a Proposal's page when a current Trial and a Difference exist and nothing blocks Apply.</comment></data>
+  <data name="MotifApp.ProposalStatusReady" xml:space="preserve"><value>This Proposal is ready. You can apply it.</value><comment>Status at the top of a Proposal's page when the checklist is complete and nothing blocks Apply.</comment></data>
   <data name="MotifApp.ProposalApplyNeedsDifference" xml:space="preserve"><value>Apply is unavailable: no Difference has been made yet. Choose Make Difference at the top of this page, then come back to apply.</value></data>
   <data name="MotifApp.ProposalApplyDifferenceUnavailable" xml:space="preserve"><value>Apply is unavailable: this Proposal's Difference is not available. Refresh the project and reopen this Proposal.</value></data>
   <!-- round2-deferred -->

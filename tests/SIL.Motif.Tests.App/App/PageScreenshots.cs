@@ -691,7 +691,7 @@ public sealed class PageScreenshots
             Assert.Equal([expectedCode], codes);
     }
 
-    internal static void Save(MainWindow window, string path)
+    internal static void Save(Window window, string path)
     {
         Settle(window);
         LayoutAssertions.BeforeCapture(window);
@@ -726,7 +726,7 @@ public sealed class PageScreenshots
         }
     }
 
-    private static void SaveRenderedFrame(MainWindow window, string path)
+    private static void SaveRenderedFrame(Window window, string path)
     {
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
         frame.Save(path, PngBitmapEncoderOptions.Default);

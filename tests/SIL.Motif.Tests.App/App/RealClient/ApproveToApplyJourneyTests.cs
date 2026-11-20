@@ -160,7 +160,7 @@ public sealed class ApproveToApplyJourneyTests(PristineProjectFixture pristine)
             });
             var check = ButtonShowing(walkthrough, MotifAppStrings.ApplyCheckChanges);
             HeadlessClick.Click(walkthrough.Window, check, MotifAppStrings.ApplyCheckChanges);
-            walkthrough.WaitUntil(() => !document.PendingMeasurement.IsMeasuring &&
+            walkthrough.WaitUntil(() => !document.IsCheckingChanges &&
                 string.IsNullOrWhiteSpace(document.ApplyBlockReason), TimeSpan.FromSeconds(60),
                 "checking the changes did not clear what blocked Apply",
                 () => $"blocked: '{document.ApplyBlockReason}' refusal='{document.PendingMeasurement.Refusal?.Sentence}' " +
@@ -171,9 +171,24 @@ public sealed class ApproveToApplyJourneyTests(PristineProjectFixture pristine)
                 "the Apply button never became available after checking the changes",
                 () => $"canPrepare={document.CanPrepareApply} loading={document.IsLoading} applying={workspace.Context.ProposalApply.IsApplying} " +
                     $"canExecute={document.PrepareApplyCommand.CanExecute(null)} block='{document.ApplyBlockReason}'");
+            // Tells a press that never asked from a confirmation that a later read closed.
+            var confirmationsOpened = 0;
+            document.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(ProposalDocumentViewModel.IsConfirmingApply) && document.IsConfirmingApply)
+                    confirmationsOpened++;
+            };
             HeadlessClick.Click(walkthrough.Window, prepare, MotifAppStrings.ProposalApplyPrepare);
             walkthrough.WaitUntil(() => document.IsConfirmingApply, WalkthroughSteps.Remaining(deadline),
-                "Apply did not ask for confirmation");
+                "Apply did not ask for confirmation",
+                () => $"press ran={document.PrepareApplyCommand.ExecutionTask?.Status.ToString() ?? "never"} " +
+                    $"running={document.PrepareApplyCommand.IsRunning} confirmations opened={confirmationsOpened} " +
+                    $"apply refusal='{document.ApplyRefusal?.Sentence}' checking={document.IsCheckingChanges} " +
+                    $"pending={document.IsPending} loading={document.IsLoading} outdated={document.IsOutdated} " +
+                    $"canApply={document.CanApply} canPrepare={document.CanPrepareApply} block='{document.ApplyBlockReason}' " +
+                    $"target='{workspace.Context.Changes.TargetProposalId}' applying={workspace.Context.ProposalApply.IsApplying} " +
+                    $"hasReview={document.HasReview} stale={workspace.Context.Evidence.IsStale} lens='{workspace.Context.Lens?.ProposalId}' " +
+                    $"reading={document.Reading.Status} measuring={document.PendingMeasurement.IsMeasuring} refusal='{document.PendingMeasurement.Refusal?.Sentence}'");
             Assert.Empty(StoredApproved(project.FwDataPath, pristine, word));
             var confirm = ButtonById(walkthrough, AutomationIds.ProposalConfirmApply);
             Assert.True(confirm.IsEffectivelyEnabled, document.ApplyBlockReason);

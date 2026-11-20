@@ -39,7 +39,7 @@ internal static class ProposalOperationSentence
         payload.TryGetProperty("member", out var member) && member.ValueKind == JsonValueKind.String
         ? member.GetString() : null;
 
-    private static JsonElement? Payload(string? afterJson)
+    internal static JsonElement? Payload(string? afterJson)
     {
         if (string.IsNullOrWhiteSpace(afterJson)) return null;
         try

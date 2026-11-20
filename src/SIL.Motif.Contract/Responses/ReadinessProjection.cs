@@ -18,6 +18,14 @@ public sealed record ReadinessProjection(
     IReadOnlyList<string> Reasons,
     bool Forced)
 {
+    /// <summary>Whether Apply needs a Dry Run bound to this Proposal.</summary>
+    [JsonIgnore]
+    public bool MissingBoundDryRun { get; init; }
+
+    /// <summary>The refusal code the window uses to word an additional Apply blocker, when there is one.</summary>
+    [JsonIgnore]
+    public string? RefusalCode { get; init; }
+
     /// <summary>
     /// The entry of <see cref="Reasons"/> that reports dropped grammar, so a reader that words reasons for a
     /// person can replace it; <see langword="null"/> when none does. Not part of the serialized form.

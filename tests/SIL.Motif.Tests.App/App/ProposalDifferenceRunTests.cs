@@ -35,7 +35,7 @@ public sealed class ProposalDifferenceRunTests
         public async Task OpenAsync()
         {
             Fake.ProposalStandingsCompleteWith(new ProposalStandings([Card("p/one"), Card("p/two")], 0));
-            Fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(GenesisId, "Genesis 1")],
+            Fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(GenesisId, "Genesis 1", 12)],
                 HasBaseline: true));
             var fixture = new ProposalDifferenceFixture { TextId = GenesisId.ToString("D") };
             Fake.OnProposalDifference((_, _) => Task.FromResult(CommandOutcome<ProposalDifferenceResponse>.Refused(
@@ -218,7 +218,7 @@ public sealed class ProposalDifferenceRunTests
         {
             Fake.OnProposalStandings((_, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
                 new ProposalStandings([.. Cards], 0))));
-            Fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(GenesisId, "Genesis 1")],
+            Fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(GenesisId, "Genesis 1", 12)],
                 HasBaseline: true));
             Fake.OnProposalDifference(Fixture.Read);
             Context = WorkspaceContextTests.NewContext(Fake);
@@ -367,7 +367,7 @@ public sealed class ProposalDifferenceRunTests
         await scene.OpenAsync();
         Assert.Equal(GenesisId, Assert.Single(scene.Page.Difference.TextChoices).Id);
 
-        scene.Fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(ExodusId, "Exodus 1")],
+        scene.Fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(ExodusId, "Exodus 1", 12)],
             HasBaseline: true));
         await scene.Context.Selection.LoadTextsAsync(Project);
         await scene.Context.PublishBaselineCapturedAsync(openFirstRunSetup: false);

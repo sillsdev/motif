@@ -110,7 +110,9 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
     public bool HasScope => Scope.Length > 0;
     public string NotesText => string.Join(Environment.NewLine, Difference.Notes);
     public bool HasNotes => Difference.HasNotes;
-    public string Availability => !CanShowFacts ? (StatusSaysUnavailable ? string.Empty : Unavailable()) :
+    public string Availability => !CanShowFacts
+        ? (StatusSaysUnavailable || Difference.State is ProposalDifferenceState.None or ProposalDifferenceState.Loading
+            ? string.Empty : Unavailable()) :
         Complete ? string.Empty : MotifAppStrings.ProposalEvidencePartial;
     public bool HasAvailability => Availability.Length > 0;
 

@@ -527,6 +527,20 @@
   },
   {
     "view": "Proposals/ProposalDocument",
+    "name": "ProposalOperations",
+    "source": "OperationRows",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalDocument",
+    "name": "ProposalSharedEffects",
+    "source": "SharedEffectSummaries",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalDocument",
     "name": "ProposalComments",
     "source": "Comments",
     "mode": "paged",

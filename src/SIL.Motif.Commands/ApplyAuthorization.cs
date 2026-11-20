@@ -48,6 +48,8 @@ internal sealed record ApplyAuthorizationDecision(
             Reasons: reasons,
             Forced: forced && reasons.Count > 0)
         {
+            MissingBoundDryRun = !HasAnchor,
+            RefusalCode = PendingRefusal?.Code ?? (Readiness.IsRegression ? RefusalCodes.ApplyRegression : null),
             DroppedGrammarReason = Readiness.DroppedGrammarReason,
             DroppedGrammar = Readiness.Dropped,
         };
