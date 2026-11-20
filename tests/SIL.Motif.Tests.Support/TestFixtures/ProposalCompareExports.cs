@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text.Json;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.HandAnalysis;
@@ -65,7 +66,23 @@ public static class ProposalCompareExports
         readings.Select(number => new TrialExportReading(ReadingId(number), Signature(number),
             ReadingAcceptance.LexiconBacked, [])).ToArray());
 
-    private static ReadingSignature Signature(int number) => new([new ReadingMorpheme(
-        CanonicalId.FromGuid(new Guid(number, 0, 0, [1, 2, 3, 4, 5, 6, 7, 8])).Value, null, [], ReadingSenseStatus.Unresolved,
-        null, null, null, true, null, [])]);
+    /// <summary>
+    /// The Reading for a number. The entry is <c>number % 1000</c>; <c>number / 1000</c> picks the sense: 0 unresolved,
+    /// 1 resolved to the first sense, 2 resolved to the second, 3 ambiguous between both.
+    /// </summary>
+    public static ReadingSignature Signature(int number)
+    {
+        static string Id(int value) => CanonicalId.FromGuid(new Guid(value, 0, 0, [1, 2, 3, 4, 5, 6, 7, 8])).Value;
+        var sense = number / 1000;
+        var first = Id(900001);
+        var second = Id(900002);
+        var (senseId, candidates, status) = sense switch
+        {
+            1 => ((string?)first, ImmutableArray<string>.Empty, ReadingSenseStatus.Resolved),
+            2 => (second, ImmutableArray<string>.Empty, ReadingSenseStatus.Resolved),
+            3 => (null, [first, second], ReadingSenseStatus.Ambiguous),
+            _ => (null, ImmutableArray<string>.Empty, ReadingSenseStatus.Unresolved),
+        };
+        return new([new ReadingMorpheme(Id(number % 1000), senseId, candidates, status, null, null, null, true, null, [])]);
+    }
 }

@@ -1861,7 +1861,7 @@
   },
   "proposal compare": {
     "title": "Compare Proposals",
-    "description": "Compares two to eight Proposals side by side from each one's Trial before and after, not against approved analyses. It reads retained Trial evidence and measures nothing.",
+    "description": "Compares two to eight Proposals side by side from each one's Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project's approved analyses and measures nothing.",
     "source": "Authored from the typed command contract."
   },
   "proposal trial export": {

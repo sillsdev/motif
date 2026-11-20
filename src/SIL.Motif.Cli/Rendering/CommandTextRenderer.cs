@@ -702,15 +702,18 @@ public static class CommandTextRenderer
     private static string RenderProposalComparison(ProposalComparison comparison)
     {
         var text = new StringBuilder();
-        text.Append("Comparison of each Proposal's Trial before and after. It is not measured against approved analyses.\n");
+        text.Append("Comparison of each Proposal's Trial before and after, and of the approved analyses each Proposal keeps and loses.\n");
         text.Append($"Snapshot {comparison.Snapshot} (pass it with --page)\n" +
             $"Forms compared: {comparison.FormsCompared:N0}  Diverging: {comparison.FormsDiverging:N0}  Rows: {comparison.RowsTotal:N0} ({comparison.Pages:N0} pages)\n");
         for (var index = 0; index < comparison.Columns.Count; index++)
         {
             var column = comparison.Columns[index];
             text.Append($"{index + 1}. {column.ProposalId}: {column.Gained:N0} gained, {column.Lost:N0} lost, " +
-                $"{column.Unchanged:N0} unchanged, {column.NotMeasured:N0} not measured, {column.Incomplete:N0} incomplete\n");
+                $"{column.Unchanged:N0} unchanged, {column.NotMeasured:N0} not measured, {column.Incomplete:N0} incomplete; " +
+                $"approved: {column.ApprovedKept:N0} kept, {column.ApprovedLost:N0} lost\n");
         }
+        if (comparison.ApprovedSkippedOtherAgents > 0)
+            text.Append($"{comparison.ApprovedSkippedOtherAgents:N0} analyses approved only by another human agent are not counted as approved.\n");
         text.Append(comparison.Complete ? "Comparison complete" :
             "Comparison incomplete: " + string.Join(", ", comparison.Limitations.Select(item => item.Code + " " + item.Count)));
         if (comparison.Page is { } page)

@@ -101,6 +101,18 @@ public sealed class FwHandAnalysisIndexTests : IDisposable, IHandAnalysisProject
     }
 
     [Fact]
+    public void AnApprovedAnalysisCarriesItsWordformsTextInNfdByWritingSystem()
+    {
+        Analysis(Wordform("zz\u00e9"), _seed.FirstEntryId, Opinions.approves);
+        var ws = _cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultVernWs);
+
+        var fact = Assert.Single(ApprovedReadingSet.Read(_cache).Analyses);
+
+        Assert.Equal("zze\u0301", fact.FormIn(ws));
+        Assert.Null(fact.FormIn("no-such-ws"));
+    }
+
+    [Fact]
     public void AnApprovalWithoutMorphBundlesIsCountedButNeverGivenAnIdentity()
     {
         Analysis(Wordform("zzNoBundles"), null, Opinions.approves);
