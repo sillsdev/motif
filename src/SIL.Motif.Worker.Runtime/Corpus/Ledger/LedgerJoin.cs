@@ -15,7 +15,7 @@ internal enum JoinBlock { InputPolicyMismatch, FrequencyDigestMismatch, Duplicat
 
 internal sealed record JoinedType(
     string Key, long Weight, LedgerRow? Row, IReadOnlyList<LedgerRow> DuplicateRows, bool Missing, bool RevisionIncompatible,
-    long? ConflictingTokens)
+    long? ConflictingTokens, bool FromStore = false)
 {
     public bool Resolved => Row is not null && !RevisionIncompatible && ConflictingTokens is null;
 }
@@ -40,7 +40,7 @@ internal sealed record LedgerJoin(
 
 internal static class LedgerJoiner
 {
-    public static string Key(string word) => word.Normalize(NormalizationForm.FormD);
+    public static string Key(string word) => SIL.Motif.Contract.Dispositions.WordTypeKey.Of(word);
 
     public static LedgerJoin Join(LedgerFile ledger, LedgerSidecar sidecar, PinnedFrequencyList frequency,
         string? declaredFrequencySha256 = null)

@@ -101,6 +101,7 @@ public static class CommandTextRenderer
             ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
             FindComposerResponse r => RenderFindComposer(r),
+            GroupResponse r => RenderGroup(r),
             ProposalComparison r => RenderProposalComparison(r),
             TrialExportReceipt r => RenderTrialExport(r),
             TrialRecord r => RenderTrial(r),
@@ -178,6 +179,11 @@ public static class CommandTextRenderer
             HypothesisNeighboursResponse r => HypothesisRenderer.RenderNeighbours(r),
             HypothesisListResponse r => HypothesisRenderer.RenderList(r),
             HypothesisReportResponse r => r.Text,
+            DisposeFormsResponse r => DispositionRenderer.RenderDisposed(r),
+            DisposeFromFileResponse r => DispositionRenderer.RenderFromFile(r),
+            UndisposeFormsResponse r => DispositionRenderer.RenderUndisposed(r),
+            ShowDispositionResponse r => DispositionRenderer.RenderShown(r),
+            ListDispositionsResponse r => DispositionRenderer.RenderListed(r),
             RequestCreatedResponse r => $"Request {r.Request.RequestId} is open: {r.Request.TargetLabel}.{Environment.NewLine}",
             RequestWithdrawnResponse r => $"Request {r.RequestId} withdrawn.{Environment.NewLine}",
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
@@ -699,6 +705,26 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
+    private static string RenderGroup(GroupResponse group)
+    {
+        var text = new StringBuilder();
+        text.Append($"Group {group.Kind}: {group.Query} (read {group.ReadAt}, parse state {group.ParseState}, min stem {group.MinStem}, fold {group.Fold})\n");
+        text.Append($"{group.MatchingTypes:N0} of {group.CorpusTypes:N0} word types in {group.Groups:N0} stems: " +
+            $"{group.Known:N0} known, {group.Fitting:N0} fitting, {group.NotFitting:N0} not fitting. Page {group.Page} of {group.Pages}.\n");
+        foreach (var row in group.Rows)
+        {
+            text.Append($"{row.Stem}  [{row.Status}]  {row.Tokens:N0} tokens  " +
+                string.Join(", ", row.Words.Select(word => $"{word.Word} ({word.ParseState}, {word.Tokens})")));
+            if (row.WordsTotal > row.Words.Count) text.Append($" +{row.WordsTotal - row.Words.Count} more");
+            if (row.SiblingsTotal > 0)
+                text.Append("  | also: " + string.Join(", ", row.Siblings) +
+                    (row.SiblingsTotal > row.Siblings.Count ? $" +{row.SiblingsTotal - row.Siblings.Count} more" : ""));
+            text.Append('\n');
+        }
+        foreach (var note in group.Notes) text.Append(note).Append('\n');
+        return text.ToString().TrimEnd('\n');
+    }
+
     private static string RenderProposalComparison(ProposalComparison comparison)
     {
         var text = new StringBuilder();
@@ -757,8 +783,19 @@ public static class CommandTextRenderer
         text.AppendLine($"Stopped: {work.WorkLimitStops} at a parser limit; {work.TimeSafetyNetStops} at the time safety net.");
         if (work.WorkLimitWords.Count > 0) text.AppendLine("  Parser limit: " + string.Join(", ", work.WorkLimitWords));
         if (work.TimeSafetyNetWords.Count > 0) text.AppendLine("  Time safety net: " + string.Join(", ", work.TimeSafetyNetWords));
+        if (work.WorkLimitStops + work.TimeSafetyNetStops > 0) AppendSuspectRules(text, trial);
         AppendWordResults(text, trial);
         return text.ToString();
+    }
+
+    // A stopped word has no per-rule cost, so rules the Dry Run flagged as expensive are the suspects.
+    private static void AppendSuspectRules(StringBuilder text, TrialRecord trial)
+    {
+        var suspects = trial.DryRun?.Warnings
+            .Where(warning => warning.Contains(DryRunWarningMarkers.AlphaRuleExpansion, StringComparison.Ordinal)).ToArray() ?? [];
+        text.AppendLine("  No per-rule cost is recorded for stopped words." +
+            (suspects.Length == 0 ? "" : " Rules this Proposal adds or edits that the Dry Run flagged as expensive:"));
+        foreach (var suspect in suspects) text.AppendLine("    " + suspect);
     }
 
     private static void AppendWordResults(StringBuilder text, TrialRecord trial)

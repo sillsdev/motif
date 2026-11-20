@@ -69,7 +69,7 @@ internal static class DroppedGrammarCheck
         var keyed = !string.IsNullOrEmpty(baselineCheckIdentity);
         var baselineCheck = baselineCheckIdentity is null ? checks.ReadBaselineCheck(baselineToken)
             : keyed ? checks.ReadBaselineCheck(baselineToken, baselineCheckIdentity) : null;
-        if (baselineCheck is not null && keyed) onBaselineReused?.Invoke(baselineCheck);
+        if (baselineCheck is not null) onBaselineReused?.Invoke(baselineCheck);
         string? why = null;
         if (baselineCheck is null)
         {

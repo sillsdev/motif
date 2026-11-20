@@ -2,6 +2,7 @@ using SIL.Motif.Tests.TestFixtures;
 using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
@@ -162,9 +163,11 @@ public sealed class JobVerbArgvTests : IDisposable
             Assert.True(await Wait.ForAsync(() => File.Exists(heartbeat), TimeSpan.FromSeconds(30)));
             using var process = Process.GetProcessById(int.Parse(File.ReadAllText(processIdPath)));
             Assert.False(process.HasExited);
-            waiter = Task.Run(() => Run($"jobs wait {id} --project \"{Project}\" --wait-terminal --wait-timeout-ms 0 --json"));
+            waiter = Task.Run(() => Run($"jobs wait {id} --project \"{Project}\" --wait-terminal --wait-timeout-ms 0 --json",
+                Wait.Scaled(TimeSpan.FromMinutes(2))));
             var first = await Task.WhenAny(waiter, exitedParser.Task).WaitAsync(deadline.Token);
-            Assert.NotSame(waiter, first);
+            if (ReferenceEquals(waiter, first))
+                Assert.Fail("The wait returned before the parser exited: " + (await waiter).Error);
             Assert.IsType<PanGlossOutcome.Cancelled>(await exitedParser.Task);
             Assert.Equal(JobStatus.Cancelled, jobs.Get(id)!.Status);
             Assert.True(process.HasExited);
@@ -386,7 +389,7 @@ public sealed class JobVerbArgvTests : IDisposable
     private static FailureEnvelope Envelope(string stderr) =>
         ProjectionJson.Deserialize<FailureEnvelope>(stderr)!;
 
-    private CliRun Run(string arguments)
+    private CliRun Run(string arguments, TimeSpan? cleanupBudget = null)
     {
         var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
@@ -402,6 +405,8 @@ public sealed class JobVerbArgvTests : IDisposable
         CliProcess.EnableAdvancedAiMode(start, _root);
         start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+        if (cleanupBudget is { } budget)
+            start.Environment[JobWait.CleanupBudgetVariable] = ((int)budget.TotalMilliseconds).ToString();
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();

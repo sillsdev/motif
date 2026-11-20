@@ -62,6 +62,32 @@ public sealed class AdvancedAiModeTests
         Assert.Equal(enabled, store.IsEnabled);
     }
 
+    [Fact]
+    public async Task SavingThePreferenceWhileOtherProcessesReadItNeverFails()
+    {
+        var path = NewPreferencePath();
+        new FileAdvancedAiModePreferenceStore(path).SetEnabled(true);
+        using var stop = new CancellationTokenSource();
+        var readers = Enumerable.Range(0, 4).Select(index => Task.Run(() =>
+        {
+            var reader = new FileAdvancedAiModePreferenceStore(path);
+            while (!stop.IsCancellationRequested) _ = reader.IsEnabled;
+        })).ToArray();
+
+        try
+        {
+            var writer = new FileAdvancedAiModePreferenceStore(path);
+            for (var i = 0; i < 300; i++) writer.SetEnabled(true);
+        }
+        finally
+        {
+            await stop.CancelAsync();
+            await Task.WhenAll(readers);
+        }
+
+        Assert.True(new FileAdvancedAiModePreferenceStore(path).IsEnabled);
+    }
+
     private static string NewPreferencePath() => Path.Combine(Path.GetTempPath(), "motif-advanced-ai-cli-tests",
         Guid.NewGuid().ToString("N"), "advanced-ai-mode.json");
 }

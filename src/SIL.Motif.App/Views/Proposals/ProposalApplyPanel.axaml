@@ -7,8 +7,8 @@
              x:DataType="vm:ProposalDocumentViewModel"
              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalApply}">
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-    <views:CopyableTextBlock Text="{Binding ApplyBlockReason}" TextWrapping="Wrap" />
-    <views:CopyableTextBlock x:Name="ApplyLossNotice" Text="{Binding ApplyLossNotice}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{Binding ApplyDisplayReason}" IsVisible="{Binding !!ApplyDisplayReason}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock x:Name="ApplyLossNotice" Text="{Binding ApplyLossNotice}" IsVisible="{Binding !!ApplyLossNotice}" TextWrapping="Wrap" />
     <StackPanel IsVisible="{Binding IsPending}" Spacing="{DynamicResource Intent.Space.Related}">
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ReviewApplyMeasuring}"
                                IsVisible="{Binding PendingMeasurement.IsMeasuring}" TextWrapping="Wrap" />
@@ -21,9 +21,13 @@
             IsVisible="{Binding OffersRemoveNonFitting}" HorizontalAlignment="Left" />
     <Button AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalPrepareApply}"
             Content="{x:Static app:MotifAppStrings.ProposalApplyPrepare}" Command="{Binding PrepareApplyCommand}"
-            IsVisible="{Binding CanAddComment}" HorizontalAlignment="Left" />
+            IsVisible="{Binding ShowsPrepareApply}" HorizontalAlignment="Left" />
     <StackPanel IsVisible="{Binding IsConfirmingApply}" Spacing="{DynamicResource Intent.Space.Related}">
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalApplyConfirm}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock x:Name="ApplyWillChange" Text="{Binding ApplyWillChangeText}"
+                               IsVisible="{Binding !!ApplyWillChangeText}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalApplyDeferredNotice}"
+                               IsVisible="{Binding ShowsDeferredApplyNotice}" TextWrapping="Wrap" />
       <views:CopyableTextBlock x:Name="ApplyBackupNotice" Text="{x:Static app:MotifAppStrings.ApplyBackupNotice}" TextWrapping="Wrap" />
       <HyperlinkButton x:Name="ApplyBackupLink" Content="{x:Static app:MotifAppStrings.ApplyBackupLink}"
                        Command="{Binding OpenBackupHelpCommand}" HorizontalAlignment="Left" />
@@ -38,5 +42,12 @@
     <views:RefusalBlock DataContext="{Binding ApplyRefusal}" />
     <views:CopyableTextBlock AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalReceipt}"
                              Text="{Binding ReceiptText}" IsVisible="{Binding HasReceipt}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{Binding ReceiptFieldWorksNote}" IsVisible="{Binding HasReceipt}" TextWrapping="Wrap" />
+    <WrapPanel IsVisible="{Binding HasReceipt}">
+      <Button Classes="secondary" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalReceiptSeeInTexts}"
+              Content="{x:Static app:MotifAppStrings.ProposalReceiptSeeInTexts}" Command="{Binding SeeInTextsCommand}" />
+      <Button Classes="secondary" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalReceiptCopy}"
+              Content="{Binding ReceiptCopyLabel}" Command="{Binding CopyReceiptIdCommand}" />
+    </WrapPanel>
   </StackPanel>
 </UserControl>

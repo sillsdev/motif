@@ -12,8 +12,12 @@ public sealed class ReviewCursorInvalidException() : ArgumentException("review.c
 public sealed class ReviewDetailUnavailableException : InvalidOperationException
 {
     /// <summary>Creates an unavailable-detail refusal and its retained summary target.</summary>
-    public ReviewDetailUnavailableException(string reason = "not-retained", string? summaryUri = null)
-        : base("review.detail-unavailable") { Reason = reason; SummaryUri = summaryUri; }
+    public ReviewDetailUnavailableException(string reason = "not-retained", string? summaryUri = null,
+        string? explanation = null)
+        : base("review.detail-unavailable") { Reason = reason; SummaryUri = summaryUri; Explanation = explanation; }
+
+    /// <summary>What evicted the detail and when, taken from the report's own limitation, when known.</summary>
+    public string? Explanation { get; }
 
     /// <summary>The reason the indexed detail cannot be read.</summary>
     public string Reason { get; }

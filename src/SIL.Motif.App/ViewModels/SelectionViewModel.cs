@@ -200,7 +200,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
             var textChoice = new TextChoiceViewModel(
                 choice.Id, choice.Title, choice.WordCount, choice.InterlinearizedWordCount,
                 choice.InterlinearizationPercent)
-            { IsChecked = previouslyChecked.Contains(choice.Id) };
+            { IsChecked = previouslyChecked.Contains(choice.Id), InventoryOccurrenceCount = choice.OccurrenceCount };
             textChoice.PropertyChanged += OnTextChoicePropertyChanged;
             _allTexts.Add(textChoice);
         }

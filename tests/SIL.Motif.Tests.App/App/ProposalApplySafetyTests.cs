@@ -44,7 +44,7 @@ public sealed class ProposalApplySafetyTests
     {
         var fake = new FakeCommandClient();
         if (withTexts)
-            fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(Guid.NewGuid(), "Genesis 1")],
+            fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(Guid.NewGuid(), "Genesis 1", 12)],
                 HasBaseline: true));
         var trial = CurrentTrial();
         if (withTrial)
@@ -69,7 +69,7 @@ public sealed class ProposalApplySafetyTests
     }
 
     [Fact]
-    public void AProposalWithoutACurrentTrialSaysEvidenceIsUnavailableOnceAndKeepsApplyOffWithItsReason()
+    public void AnUntriedProposalShowsTheNextActionAndKeepsApplyOff()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -83,8 +83,9 @@ public sealed class ProposalApplySafetyTests
                 var text = VisibleText(page);
                 Assert.Single(text, line => line.Contains("Not tried yet", StringComparison.Ordinal));
                 Assert.False(PrepareButton(page).IsEffectivelyEnabled);
-                Assert.Contains(text, line => line.StartsWith("Apply is unavailable until", StringComparison.Ordinal) &&
-                    line.Contains("Try It", StringComparison.Ordinal));
+                Assert.DoesNotContain(MotifAppStrings.ProposalEvidenceUnavailable, text);
+                Assert.True(document.HasStatusAction);
+                Assert.Equal(MotifAppStrings.TryIt, document.StatusActionText);
                 Assert.False(document.CanPrepareApply);
                 Assert.False(document.CanApply);
             }
@@ -141,6 +142,140 @@ public sealed class ProposalApplySafetyTests
             }
             finally { window.Close(); await documents.StopAsync(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void TheChecklistReflectsTheBoundDryRunAndAShortFailureCanBeRetried()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context, documents, document) = await OpenAsync(withTrial: true, withDifference: true);
+            var ready = fake.Review!;
+            fake.Review = ready with
+            {
+                Readiness = ready.Readiness! with
+                {
+                    IsReady = false,
+                    MissingBoundDryRun = true,
+                    Reasons = ["RAW back-end reason"],
+                },
+            };
+            var page = new ProposalDocument { DataContext = document };
+            var window = new MotifTestWindow { Width = 1050, Height = 920, Content = new ScrollViewer { Content = page } };
+            var finish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            try
+            {
+                await document.RefreshAsync();
+                window.Show();
+                PageScreenshots.Settle(window);
+                var run = Assert.Single(page.GetVisualDescendants().OfType<Button>(),
+                    button => AutomationProperties.GetAutomationId(button) == AutomationIds.ProposalRunDryRun);
+                Assert.True(document.TriedChecked);
+                Assert.True(document.DifferenceChecked);
+                Assert.False(document.DryRunChecked);
+                Assert.True(run.IsEffectivelyEnabled);
+                Assert.False(PrepareButton(page).IsEffectivelyEnabled);
+                Assert.DoesNotContain(VisibleText(page), line => line.Contains("RAW", StringComparison.Ordinal));
+
+                fake.WaitForDryRunHandler = async (request, progress, token) =>
+                {
+                    Assert.Equal(document.ProposalId, request.ProposalId);
+                    Assert.Equal(document.ProjectPath, request.FwDataPath);
+                    Assert.Equal("job/dry-run", request.JobId);
+                    progress.Report(new(request.JobId, "project/test", true, "dry-run",
+                        JobStatus.Running, 1, null, false, null, 0));
+                    await finish.Task.WaitAsync(token);
+                    return CommandOutcome<DryRunProjection>.Refused(
+                        new Refusal("job.dry-run-incomplete", FailureReason.Refused, "The job stopped."));
+                };
+                var running = document.RunDryRunCommand.ExecuteAsync(null);
+                PageScreenshots.Settle(window);
+                Assert.Contains(MotifAppStrings.ProposalDryRunRunning, VisibleText(page));
+                Assert.False(run.IsEffectivelyEnabled);
+                Capture("dry-run-running");
+                finish.SetResult();
+                await running;
+                PageScreenshots.Settle(window);
+                Assert.Contains(MotifAppStrings.ProposalDryRunFailed, VisibleText(page));
+                Assert.False(PrepareButton(page).IsEffectivelyEnabled);
+                Assert.True(run.IsEffectivelyEnabled);
+                Capture("dry-run-failed");
+
+                fake.WaitForDryRunHandler = (request, _, _) =>
+                {
+                    fake.Review = ready;
+                    return Task.FromResult(CommandOutcome<DryRunProjection>.Success(
+                        new(request.ProposalId, "intent/one", "", [], "effect", "footprint") { EvidenceCurrent = true }));
+                };
+                await document.RunDryRunCommand.ExecuteAsync(null);
+                PageScreenshots.Settle(window);
+                Assert.True(document.DryRunChecked);
+                Assert.False(run.IsEffectivelyVisible);
+                Assert.True(PrepareButton(page).IsEffectivelyEnabled);
+
+                fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+                    new(request.ProposalId, "deferred", "Clarify the gloss", null, "intent/one", [])));
+                fake.Review = ready with { Readiness = null };
+                await document.RefreshAsync();
+                PageScreenshots.Settle(window);
+                Assert.Equal(MotifAppStrings.ProposalDeferred, document.StatusText);
+                Assert.False(PrepareButton(page).IsEffectivelyEnabled);
+                Assert.DoesNotContain("Choose Apply... to check this Proposal's readiness.", VisibleText(page));
+                Capture("deferred");
+            }
+            finally
+            {
+                finish.TrySetResult();
+                window.Close();
+                await documents.StopAsync();
+                await context.StopProjectWorkAsync();
+            }
+
+            void Capture(string state)
+            {
+                if (Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable) is { Length: > 0 } folder)
+                    PageScreenshots.Save(window, Path.Combine(folder, $"proposal-{state}.png"));
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public async Task TheDifferenceChooserStartsWithTheLargestSelectedTextAndSkipsEmptyTexts()
+    {
+        var fake = new FakeCommandClient();
+        var empty = Guid.NewGuid();
+        var small = Guid.NewGuid();
+        var largest = Guid.NewGuid();
+        var unselected = Guid.NewGuid();
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new(empty, "Empty"), new(small, "Small", 4), new(largest, "Large", 20),
+                new(unselected, "Outside the Selection", 200)], HasBaseline: true));
+        var context = WorkspaceContextTests.NewContext(fake);
+        await context.OpenProjectAsync("project.fwdata");
+        foreach (var text in context.Selection.Texts) text.IsChecked = text.Id != unselected;
+        var documents = new OpenProposalDocuments(context);
+        try
+        {
+            var document = documents.Open("one");
+            await document.RefreshAsync();
+            Assert.DoesNotContain(document.Difference.TextChoices, text => text.Id == empty);
+            Assert.Equal(largest, document.Difference.SelectedText?.Id);
+        }
+        finally
+        {
+            await documents.StopAsync();
+            await context.StopProjectWorkAsync();
+        }
+    }
+
+    [Fact]
+    public void UnloadedEvidenceDoesNotSayItIsUnavailable()
+    {
+        var difference = new ProposalDifferenceViewModel(
+            (_, _) => throw new InvalidOperationException(), _ => { });
+        var evidence = new ProposalEvidenceColumnsViewModel(difference);
+
+        Assert.False(evidence.HasAvailability);
     }
 
     [Fact]

@@ -47,6 +47,24 @@ internal static class LexicalFormAuthoring
         return text.Trim().Normalize(NormalizationForm.FormD);
     }
 
+    /// <summary>The form FieldWorks' parser reads as a null affix: its loader makes ∅ the null boundary.</summary>
+    public const string NullAffixForm = "∅";
+
+    /// <summary>
+    /// The form text to store. A stem needs one. An affix with no form is a null allomorph, stored as ∅ because the
+    /// parser skips an affix allomorph whose form is empty; "0" would be read as a letter.
+    /// </summary>
+    public static string RequireFormText(string text, MoFormConcreteClass formClass, string construct)
+    {
+        if (formClass == MoFormConcreteClass.AffixAllomorph && string.IsNullOrWhiteSpace(text)) return NullAffixForm;
+        if (string.IsNullOrWhiteSpace(text))
+            throw new InvalidOperationException(
+                $"'{construct}': a stem needs a form; 'form' must not be blank. To author a null allomorph or zero morpheme, " +
+                $"use an affix morph type (prefix, suffix, infix or a clitic) and give the form as \"{NullAffixForm}\" or " +
+                "leave it empty; do not write \"0\", which the parser reads as a letter.");
+        return text.Trim().Normalize(NormalizationForm.FormD);
+    }
+
     public static void RequireWritingSystem(LcmCache cache, string tag, bool vernacular, string construct)
     {
         var systems = vernacular

@@ -204,7 +204,8 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
 
         Assert.False(refused.Succeeded);
         Assert.Contains(expected, refused.Refusal!.Message);
-        Assert.Empty(ReadDraft(path, "closed").Operations);
+        Assert.Contains("discarded", refused.Refusal.Message);
+        Assert.True(ProposalCommands.New(new(path, Version, "closed", "Closed batch shape")).Succeeded);
     }
 
     [Fact]
@@ -458,6 +459,151 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
             .Order(StringComparer.Ordinal);
 
         Assert.Equal(composing, ProposalCommands.DraftComposers.Keys.Order(StringComparer.Ordinal));
+    }
+
+    private static string RuleEntry(string phoneme, string name, string? entryExtra = null, string? placement = null) =>
+        "{\"verb\": \"compose-author-phonological-rule\"," + (entryExtra is null ? "" : entryExtra + ",") +
+        "\"intent\": {\"name\": \"" + name + "\", \"direction\": \"simultaneous\"," +
+        "\"input\": [{\"phoneme\": \"" + phoneme + "\"}], \"output\": [{\"phoneme\": \"" + phoneme + "\"}]," +
+        "\"left\": [{\"phoneme\": \"" + phoneme + "\"}], \"right\": [{\"phoneme\": \"" + phoneme + "\"}]" +
+        (placement is null ? "" : ", \"placement\": " + placement) + "}}";
+
+    private static string Raw(params string[] entries) => "{\"intents\": [" + string.Join(",", entries) + "]}";
+
+    private const string LongAlias = "\"as\": \"aliasthatistoolongforthelimit\"";
+
+    [Fact]
+    public void AnAliasOverTheLimitIsRefusedBeforeAnyIntentRuns()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        var phoneme = StartDraft(path, "alias");
+        var before = ReadDraft(path, "alias").Operations.Count;
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "alias", Raw(
+            "{\"verb\": \"compose-author-phoneme\", \"intent\": {\"name\": \"o\", \"representations\": [\"o\"]}}",
+            "{\"verb\": \"compose-author-phoneme\"," + LongAlias + ", \"intent\": {\"name\": \"u\", \"representations\": [\"u\"]}}")));
+
+        Assert.Equal("draft.invalid", refused.Refusal?.Code);
+        Assert.Contains("Intent 1", refused.Refusal!.Message);
+        Assert.Contains("'as'", refused.Refusal.Message);
+        Assert.Contains("21", refused.Refusal.Message);
+        Assert.Equal("as", refused.Refusal.Facts["field"]);
+        Assert.Equal(before, ReadDraft(path, "alias").Operations.Count);
+        _ = phoneme;
+    }
+
+    [Fact]
+    public void AMissingRulePlacementIsRefusedAtItsIndexBeforeAnyIntentRuns()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        var phoneme = StartDraft(path, "placement");
+        var before = ReadDraft(path, "placement").Operations.Count;
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "placement", Raw(
+            RuleEntry(phoneme, "first"), RuleEntry(phoneme, "second"))));
+
+        Assert.Equal("draft.invalid", refused.Refusal?.Code);
+        Assert.Contains("Intent 1 (compose-author-phonological-rule)", refused.Refusal!.Message);
+        Assert.Contains("requires declared placement", refused.Refusal.Message);
+        Assert.Equal("placement", refused.Refusal.Facts["field"]);
+        Assert.Equal("1", refused.Refusal.Facts["intentIndex"]);
+        Assert.Equal(before, ReadDraft(path, "placement").Operations.Count);
+    }
+
+    [Fact]
+    public void ARulePlacedAfterALabelAnEarlierIntentInTheBatchCreatesPassesPreflightAndApplies()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        var phoneme = StartDraft(path, "anchored");
+        var before = ReadDraft(path, "anchored").Operations.Count;
+
+        var batch = ProposalCommands.ComposeBatch(new(path, Version, "anchored", Raw(
+            RuleEntry(phoneme, "first", "\"as\": \"firstrule\""),
+            RuleEntry(phoneme, "second", null, "{\"after\": \"@firstrule\"}"))));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        Assert.True(ReadDraft(path, "anchored").Operations.Count > before);
+        Assert.Equal(ReadDraft(path, "anchored").Operations.Count, batch.Value!.OperationCount);
+    }
+
+    [Fact]
+    public void ABatchReportsEveryStaticProblemAtOnce()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        var phoneme = StartDraft(path, "everything");
+        var before = ReadDraft(path, "everything").Operations.Count;
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "everything", Raw(
+            "{\"verb\": \"compose-author-phoneme\"," + LongAlias + ", \"intent\": {\"name\": \"u\", \"representations\": [\"u\"]}}",
+            RuleEntry(phoneme, "first"),
+            RuleEntry(phoneme, "second"),
+            RuleEntry(phoneme, "third", null, "{\"after\": \"@later\"}"),
+            RuleEntry(phoneme, "fourth", "\"as\": \"later\"", "{\"after\": \"@bad label\"}"))));
+
+        Assert.Equal("draft.invalid", refused.Refusal?.Code);
+        var message = refused.Refusal!.Message;
+        Assert.Contains("Intent 0 (compose-author-phoneme)", message);
+        Assert.Contains("Intent 2 (compose-author-phonological-rule): a nonempty rule sequence requires declared placement", message);
+        Assert.Contains("Intent 3 (compose-author-phonological-rule): Placement after label '@later' is a forward reference", message);
+        Assert.Contains("Intent 4 (compose-author-phonological-rule): Placement after label", message);
+        Assert.Contains("malformed", message);
+        Assert.Equal("4", refused.Refusal.Facts["problemCount"]);
+        Assert.Equal("0,2,3,4", refused.Refusal.Facts["problemIntents"]);
+        Assert.Equal(before, ReadDraft(path, "everything").Operations.Count);
+    }
+
+    [Fact]
+    public void AFailedBatchLeavesNoEmptyDraftBehindAndTheNextNewDraftSucceeds()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        Assert.True(ProposalCommands.New(new(path, Version, "gone", "Failed batch")).Succeeded);
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "gone", Raw(
+            "{\"verb\": \"compose-author-phoneme\"," + LongAlias + ", \"intent\": {\"name\": \"u\", \"representations\": [\"u\"]}}")));
+
+        Assert.False(refused.Succeeded);
+        Assert.Contains("discarded", refused.Refusal!.Message);
+        var again = ProposalCommands.New(new(path, Version, "gone", "Second try"));
+        Assert.True(again.Succeeded, again.Refusal?.Message);
+    }
+
+    [Fact]
+    public void AFailedBatchKeepsADraftThatAlreadyHoldsWork()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "keeps");
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "keeps", Raw(
+            "{\"verb\": \"compose-author-phoneme\"," + LongAlias + ", \"intent\": {\"name\": \"u\", \"representations\": [\"u\"]}}")));
+
+        Assert.False(refused.Succeeded);
+        Assert.DoesNotContain("discarded", refused.Refusal!.Message);
+        Assert.NotEmpty(ReadDraft(path, "keeps").Operations);
+    }
+
+    [Fact]
+    public void AnEmptyDraftNameIsRefusedAsNotFound()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "", Raw(
+            "{\"verb\": \"compose-author-phoneme\", \"intent\": {\"name\": \"u\", \"representations\": [\"u\"]}}")));
+
+        Assert.False(refused.Succeeded);
     }
 
     private static string StartDraft(string path, string draft)

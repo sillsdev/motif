@@ -16,7 +16,7 @@ public static class MotifStoreUpgrade
         "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
         "Receipts", "AppliedIndex", "NamedSelections", "DefaultSelection", "ParsimonySelection", "ReviewMarks", "ReadOccurrences",
         "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples", "ReviewReports", "Requests",
-        "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations"];
+        "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations", "WordTypeDispositions"];
     private static readonly string[] Schema76Carry =
     [
         "Baselines", "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex",

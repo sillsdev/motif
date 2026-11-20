@@ -2,6 +2,8 @@
 
 Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added. Only a person can Apply.
 
+Before any intent runs, one read-only pass checks every intent's alias (`as`, 1 to 21 characters), citation, `@label` references, and each phonological or metathesis rule's `placement` (required once the grammar or an earlier entry has a rule; a rule id anchor must exist). It reports every problem at once, with each intent's position, command and field. A Draft that held no operations when the batch was refused is discarded, so `new --draft` with the same name works again.
+
 Composing operations does not set the Draft's review text. Before Finalize, add a short label with `motif label` and a Rationale with [`proposal rationale`](cmd:proposal%20rationale).
 
 The file names each intent's composing command and carries the same closed intent that command's `--intent` takes.

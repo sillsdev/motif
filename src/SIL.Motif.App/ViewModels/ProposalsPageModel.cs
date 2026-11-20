@@ -237,17 +237,17 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <summary>Whether this open Proposal can be declined.</summary>
     public bool CanDecide => !Card.IsPendingDraft && (Card.IsDraft || Card.Status is "proposed" or "deferred");
 
-    /// <summary>Whether a Ready Proposal can be left for a later decision.</summary>
+    /// <summary>Whether a Waiting Proposal can be left for a later decision.</summary>
     public bool CanDecideLater => !Card.IsPendingDraft && !Card.IsDraft && Card.Status == "proposed";
 
     /// <summary>
-    /// The Proposal's status in the window's words: Draft, Ready, Deferred, Applied, Declined, Superseded or Withdrawn.
+    /// The Proposal's status in the window's words: Draft, Waiting, Deferred, Applied, Declined, Superseded or Withdrawn.
     /// </summary>
     public string StatusWord => (Card.IsPendingDraft || Card.IsDraft) &&
         Card.Status is not ("applied" or "rejected" or "superseded" or "withdrawn")
         ? MotifAppStrings.ProposalDraft : Card.Status switch
     {
-        "proposed" => MotifAppStrings.ProposalReady,
+        "proposed" => MotifAppStrings.ProposalWaiting,
         "deferred" => MotifAppStrings.ProposalDeferred,
         "applied" => MotifAppStrings.ProposalApplied,
         "rejected" => MotifAppStrings.ProposalDeclined,
@@ -436,8 +436,8 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <summary>The status shown beside the Proposal details.</summary>
     public string DetailsStatusText => Card.IsPendingDraft ? "Not applied yet" : StatusWord;
 
-    /// <summary>Explains a Ready Proposal's status and any reason its numbers need another try.</summary>
-    public string DetailsStatusSentence => StatusWord != "Ready" ? string.Empty :
+    /// <summary>Explains a Waiting Proposal's status and any reason its numbers need another try.</summary>
+    public string DetailsStatusSentence => StatusWord != MotifAppStrings.ProposalWaiting ? string.Empty :
         Standing.Kind == TrialStandingKind.Current ? MotifAppStrings.ProposalReadyExplanation : Words.Sentence;
 
     public bool HasDetailsStatusSentence => DetailsStatusSentence.Length > 0;

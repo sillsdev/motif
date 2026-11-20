@@ -284,28 +284,28 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         Assert.Equal(0L, (long)command.ExecuteScalar()!);
     }
 
-    // A save that lands a moment late is found by the bounded re-read, not refused.
+    // The save lands during the third pause; a fake sleeper keeps the test independent of the clock.
     [Fact]
-    public async System.Threading.Tasks.Task ASaveThatLandsLateIsFoundByTheBoundedReRead()
+    public void ASaveThatLandsLateIsFoundByTheBoundedReRead()
     {
         var path = Path.Combine(Path.GetTempPath(), "apply-late-" + Guid.NewGuid().ToString("N") + ".fwdata");
         var id = Guid.NewGuid();
-        var savedPause = ApplySaveCheck.Pause;
+        var savedSleep = ApplySaveCheck.Sleep;
+        var pauses = 0;
         try
         {
-            ApplySaveCheck.Pause = TimeSpan.FromMilliseconds(100);
             File.WriteAllText(path, "<x/>");
-            var writer = System.Threading.Tasks.Task.Run(() =>
+            ApplySaveCheck.Sleep = _ =>
             {
-                System.Threading.Thread.Sleep(250);
-                File.WriteAllText(path, "<x><Version val=\"" + id.ToString("D") + "\"/></x>");
-            });
+                if (++pauses == 3)
+                    File.WriteAllText(path, "<x><Version val=\"" + id.ToString("D") + "\"/></x>");
+            };
             ApplySaveCheck.RequireOnDisk(path, id);
-            await writer;
+            Assert.True(pauses >= 1);
         }
         finally
         {
-            ApplySaveCheck.Pause = savedPause;
+            ApplySaveCheck.Sleep = savedSleep;
             File.Delete(path);
         }
     }

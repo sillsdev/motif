@@ -114,6 +114,17 @@ public sealed class ReviewInputCaptureTests
     }
 
     [Fact]
+    public async Task ExplicitWordsOccurringInTheTextsAreCapturedAsAttested()
+    {
+        var identity = new ReviewProjectWordIdentity("cat", "qaa", "qaa",
+            SIL.Motif.Contract.Ids.CanonicalId.FromGuid(Guid.NewGuid()).Value, "word-key");
+        var result = await ReviewInputCapture.CaptureAsync("project", "proposal", null, [], null, [], [identity], [], [],
+            explicitWords: ["cat", "dog"], corpusWords: new HashSet<string>(["Cat"], StringComparer.OrdinalIgnoreCase));
+        Assert.True(Assert.Single(result.Cases, item => item.Word == "cat").Attested);
+        Assert.False(Assert.Single(result.Cases, item => item.Word == "dog").Attested);
+    }
+
+    [Fact]
     public async Task NamedMembershipDoesNotHideAmbiguousTouchedWord()
     {
         var first = Guid.NewGuid();

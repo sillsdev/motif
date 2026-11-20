@@ -95,7 +95,8 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
     public bool HasFillIn => CanShowFacts && (WillFillIn.Count > 0 || Complete);
     public bool HasChange => CanShowFacts && (WillChange.Count > 0 || Complete);
     public bool HasApprovedPlaces => false;
-    public bool ShowsPlacesNotice => CanShowFacts;
+    // The partial-evidence line already says places are unavailable, so the two never show together.
+    public bool ShowsPlacesNotice => CanShowFacts && !HasAvailability;
     public string ApprovedPlacesNotice => MotifAppStrings.ProposalEvidencePlacesUnavailable;
     public bool CanShowFacts => _current && Difference is { IsShown: true, WordDetailKept: true, WordDetailUnreadable: false } &&
         Difference.Summary is { } summary && Compatible(summary);
@@ -110,7 +111,9 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
     public bool HasScope => Scope.Length > 0;
     public string NotesText => string.Join(Environment.NewLine, Difference.Notes);
     public bool HasNotes => Difference.HasNotes;
-    public string Availability => !CanShowFacts ? (StatusSaysUnavailable ? string.Empty : Unavailable()) :
+    public string Availability => !CanShowFacts
+        ? (StatusSaysUnavailable || Difference.State is ProposalDifferenceState.None or ProposalDifferenceState.Loading
+            ? string.Empty : Unavailable()) :
         Complete ? string.Empty : MotifAppStrings.ProposalEvidencePartial;
     public bool HasAvailability => Availability.Length > 0;
 
@@ -123,6 +126,7 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
             if (!SetProperty(ref _statusSaysUnavailable, value)) return;
             OnPropertyChanged(nameof(Availability));
             OnPropertyChanged(nameof(HasAvailability));
+            OnPropertyChanged(nameof(ShowsPlacesNotice));
         }
     }
     private bool _statusSaysUnavailable;

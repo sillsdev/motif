@@ -33,13 +33,17 @@ internal sealed record LedgerCoverageReport(
     Tally RecurringUnsupportedDisposition, bool ExactTotals)
 {
     public DoneResult Done { get; init; } = DoneResult.Unmeasured;
+
+    /// <summary>How the store's standing dispositions met the ledger; empty when the store holds none.</summary>
+    public StoreDispositionSummary StoreDispositions { get; init; } = StoreDispositionSummary.Empty;
 }
 
 internal static class LedgerCoverage
 {
     public static LedgerCoverageReport Build(LedgerCoverageInputs inputs)
     {
-        var join = LedgerJoiner.Join(inputs.Ledger, inputs.Sidecar, inputs.Frequency, inputs.DeclaredFrequencySha256);
+        var joined = LedgerJoiner.Join(inputs.Ledger, inputs.Sidecar, inputs.Frequency, inputs.DeclaredFrequencySha256);
+        var (join, storeSummary) = StoreDispositionOverlay.Apply(joined, inputs.StoreDispositions, inputs.Sidecar.GrammarRevision);
         foreach (var supplied in inputs.Checks?.Values ?? [])
             if (supplied is { Completeness: CheckCompleteness.Complete, Comparable: true, ProducedReadings: null })
                 throw new LedgerRefusalException(LedgerRefusalCode.CheckMalformed,
@@ -98,14 +102,15 @@ internal static class LedgerCoverage
             sidecar.TokenizerId, sidecar.TokenizerSha256, sidecar.Fold, sidecar.Normalization, sidecar.SourceIds, sidecar.ScopeFilter);
         var report = new LedgerCoverageReport(stamp, join, rows, byState, noState, dispositions, mechanisms, noAnalysis, wrongOnly,
             lost, reach, curOpen, staleOpen, singletons, share, ranked, unresolved, staleLost, unsupported, exact);
-        return report with { Done = DoneVerdict.Compute(report, inputs) };
+        return report with { Done = DoneVerdict.Compute(report, inputs), StoreDispositions = storeSummary };
     }
 }
 
 internal sealed record LedgerCoverageInputs(
     LedgerFile Ledger, LedgerSidecar Sidecar, PinnedFrequencyList Frequency,
     IReadOnlyDictionary<string, TypeCheck>? Checks = null, string? DeclaredFrequencySha256 = null,
-    string? AuditSampleDirectory = null, string? ProtectedSetPath = null);
+    string? AuditSampleDirectory = null, string? ProtectedSetPath = null,
+    IReadOnlyDictionary<string, StoreDisposition>? StoreDispositions = null);
 
 internal static class LedgerPins
 {

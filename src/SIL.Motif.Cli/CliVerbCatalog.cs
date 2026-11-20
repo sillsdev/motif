@@ -282,7 +282,7 @@ public static class CliVerbCatalog
             new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--effects] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
-            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--no-base-sample] [--review-set <ids>|none] [--wait] [--json]" }),
+            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--no-base-sample] [--review-set <ids>|none] [--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--verbose]] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --wait",
             new[]
@@ -469,6 +469,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Project", "overview", "overview",
             new[] { "overview --project <fwdata> [--proposal <id>] [--json]" }),
+        new CliVerbDescriptor("Commands", "group", "group",
+            new[] { "group <suffix|prefix> --project <fwdata> (--ending <text> | --start <text> | --pattern <regex>) [--parse-state parsed|unparsed|approved|all] [--limit <1-200>] [--page <N>] [--min-stem <N>] [--fold <set>] [--as-of baseline|<proposalId>] [--format table|json] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal compare", "proposal compare",
             new[] { "proposal compare <proposalId> <proposalId> [<proposalId>...] --project <fwdata> [--at <digest>] [--page <N> --snapshot <token>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial export", "proposal trial export",
@@ -688,6 +690,18 @@ public static class CliVerbCatalog
             new[] { "hypothesis report --project <fwdata> --kind decisions|questions [--json]" }),
         new CliVerbDescriptor("Commands", "list", "list hypotheses",
             new[] { "list hypotheses --project <fwdata> [--id <H-n> | --status proposed|passed|failed|superseded] [--offset <n>] [--limit <n>] [--json]" }),
+        new CliVerbDescriptor("Commands", "wordform", "wordform dispose",
+            new[] { "wordform dispose <form>... --project <fwdata> --as name|loan|other-language|abbreviation|numeral|non-word|misspelling " +
+                "--evidence <text> [--intended <form>] [--replace] [--by <name>] [--json]" }),
+        new CliVerbDescriptor("Commands", "wordform", "wordform dispose --from-file",
+            new[] { "wordform dispose --from-file <path> --project <fwdata> [--format tsv|jsonl|ledger|json] [--replace] [--dry-run] " +
+                "[--skip-refused] [--by <name>] [--json]" }),
+        new CliVerbDescriptor("Commands", "wordform", "wordform undispose",
+            new[] { "wordform undispose <form>... --project <fwdata> [--reason <text>] [--by <name>] [--json]" }),
+        new CliVerbDescriptor("Commands", "disposition", "disposition show",
+            new[] { "disposition show <form> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "disposition", "disposition list",
+            new[] { "disposition list --project <fwdata> [--as <category>] [--limit <1-200>] [--page <N>] [--format table|json] [--json]" }),
         new CliVerbDescriptor("Commands", "request", "request create",
             new[]
             {

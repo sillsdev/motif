@@ -1,0 +1,100 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:SIL.Motif.App"
+        xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+        xmlns:views="clr-namespace:SIL.Motif.App.Views"
+        x:Class="SIL.Motif.App.Views.ImportRecordWindow"
+        x:DataType="vm:ImportRecordDialogModel"
+        Title="{x:Static app:MotifAppStrings.ImportRecordWindowTitle}"
+        WindowStartupLocation="CenterOwner"
+        Width="{DynamicResource Component.Shell.CrashWidth}"
+        Height="{DynamicResource Component.Shell.ImportRecordHeight}"
+        MinWidth="{DynamicResource Component.Shell.CrashMinWidth}"
+        MinHeight="{DynamicResource Component.Shell.CrashMinHeight}">
+  <LayoutTransformControl LayoutTransform="{DynamicResource App.ZoomTransform}">
+    <DockPanel Margin="{DynamicResource Component.Shell.CrashInset}">
+      <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource Intent.Space.Related}">
+        <TextBlock x:Name="ImportStatus" Classes="muted" Text="{Binding StatusText}" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{DynamicResource Intent.Space.Related}">
+          <Button x:Name="OpenDraftButton" Content="{x:Static app:MotifAppStrings.ImportRecordOpenDraft}"
+                  Command="{Binding OpenDraftCommand}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordOpenDraftAccessibleName}" />
+          <Button x:Name="CancelButton" Content="{Binding CancelText}" Click="OnCancelClick" IsCancel="True"
+                  AutomationProperties.Name="{Binding CancelAccessibleName}" />
+        </StackPanel>
+      </StackPanel>
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
+          <TextBlock Text="{x:Static app:MotifAppStrings.ImportRecordIntro}" TextWrapping="Wrap" />
+          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+            <TextBlock Text="{x:Static app:MotifAppStrings.ImportRecordFileLabel}" />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+              <TextBox x:Name="FilePathBox" Text="{Binding Import.FilePath}"
+                       AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordFileAccessibleName}" />
+              <Button x:Name="BrowseButton" Grid.Column="1" Content="{x:Static app:MotifAppStrings.ImportRecordBrowse}"
+                      Command="{Binding BrowseCommand}"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordBrowseAccessibleName}" />
+              <Button x:Name="PreviewButton" Grid.Column="2" Content="{x:Static app:MotifAppStrings.ImportRecordPreview}"
+                      Command="{Binding Import.PreviewCommand}"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordPreviewAccessibleName}" />
+            </Grid>
+          </StackPanel>
+          <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
+          <StackPanel Spacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding HasPreview}">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding !IsStaged}">
+              <TextBlock Text="{x:Static app:MotifAppStrings.ImportRecordDraftNameLabel}" />
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                <TextBox x:Name="DraftNameBox" Text="{Binding Import.DraftName}"
+                         AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordDraftNameAccessibleName}" />
+                <Button x:Name="StageButton" Grid.Column="1" Classes="Primary" Theme="{DynamicResource SolidButton}"
+                        Content="{x:Static app:MotifAppStrings.ImportRecordStage}"
+                        Command="{Binding Import.StageCommand}"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordStageAccessibleName}" />
+              </Grid>
+            </StackPanel>
+            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding HasOperations}">
+              <TextBlock Text="{x:Static app:MotifAppStrings.ImportRecordOperationsHeading}"
+                         FontWeight="{DynamicResource Intent.Weight.Section}" />
+              <ItemsControl x:Name="OperationList" ItemsSource="{Binding OperationRows}"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordOperationsAccessibleName}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ImportOperationRow">
+                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                      <views:CopyableTextBlock Text="{Binding Kind}" TextWrapping="Wrap" />
+                      <views:CopyableTextBlock Classes="muted" Text="{Binding Target}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding HasRefusals}">
+              <TextBlock Text="{x:Static app:MotifAppStrings.ImportRecordRefusalsHeading}"
+                         FontWeight="{DynamicResource Intent.Weight.Section}" />
+              <ItemsControl x:Name="RefusalList" ItemsSource="{Binding RefusalRows}"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordRefusalsAccessibleName}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ImportRefusalRow">
+                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                      <views:CopyableTextBlock Text="{Binding Code}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextWrapping="Wrap" />
+                      <views:CopyableTextBlock Classes="muted" Text="{Binding Where}" IsVisible="{Binding HasWhere}" TextWrapping="Wrap" />
+                      <views:CopyableTextBlock Text="{Binding Reason}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}" IsVisible="{Binding HasPaging}">
+              <Button x:Name="PreviousPageButton" Content="{x:Static app:MotifAppStrings.Previous}"
+                      Command="{Binding Import.PreviousPageCommand}"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordPreviousAccessibleName}" />
+              <TextBlock Classes="muted" Text="{Binding PageText}" VerticalAlignment="Center" />
+              <Button x:Name="NextPageButton" Content="{x:Static app:MotifAppStrings.Next}"
+                      Command="{Binding Import.NextPageCommand}"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.ImportRecordNextAccessibleName}" />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+  </LayoutTransformControl>
+</Window>

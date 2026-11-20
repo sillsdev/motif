@@ -282,7 +282,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
                 !string.IsNullOrWhiteSpace(item.WritingSystemId) };
             var delta = ReviewCaseClassifier.Compare(facts);
             var readings = Readings(item.Assertions, b, Side.Before).Concat(Readings(item.Assertions, a, Side.After)).ToArray();
-            yield return delta with { Before = SideState(delta.Before, b), After = SideState(delta.After, a),
+            yield return delta with { Attested = item.Attested, Before = SideState(delta.Before, b), After = SideState(delta.After, a),
                 Readings = ReadingsCaptured(b) && ReadingsCaptured(a) && (b?.Morphology is not null || a?.Morphology is not null)
                     ? readings : null };
         }
@@ -429,6 +429,15 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         return RuleAttemptSummary.Create(shapes, ledger, inputs.ParsimonyBlockOn ?? []);
     }
 
+    private static WarningSummary WarningCounts(TrialReviewLedger ledger, ReviewAccumulatedFacts facts, bool hasWarnings)
+    {
+        if (!hasWarnings || facts.Findings is null)
+            return new WarningSummary(null, null, null) { Unavailable = "paired-warning-evidence-unavailable" };
+        var removed = facts.Findings.RemovedWarnings.Count;
+        return new WarningSummary(facts.Findings.AddedWarnings.Count, removed,
+            Math.Max(0, ledger.BeforeWarnings!.Count - removed));
+    }
+
     private static ReviewSummary BuildSummary(ReviewAccumulatedFacts facts, FrozenReviewInputs inputs, TrialReviewLedger ledger,
         long overlappingLosses, IReadOnlyList<string> negativeSets, bool hasWarnings)
     {
@@ -467,8 +476,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
                 ReviewCoverage.DeltaPoints(facts.TokensBefore, facts.TokensAfter, true)),
             new CoverageSummary(facts.SetCountsByRole.GetValueOrDefault("paradigm-cells"), facts.CellsBefore, facts.CellsAfter,
                 ReviewCoverage.DeltaPoints(facts.CellsBefore, facts.CellsAfter, true)),
-            facts.Controls, facts.Negatives, work, new WarningSummary(hasWarnings ? facts.Findings?.AddedWarnings.Count : null,
-                hasWarnings ? facts.Findings?.RemovedWarnings.Count : null, null),
+            facts.Controls, facts.Negatives, work, WarningCounts(ledger, facts, hasWarnings),
             facts.Findings?.Measures.Select(measure => new ParsimonySummary(measure.Group, measure.MeasureId,
                 measure.Limitation is null ? measure.Added.Count : null, measure.Limitation is null ? measure.Removed.Count : null,
                 measure.Limitation is null ? measure.EvidenceChanged.Count : null, measure.Unit,

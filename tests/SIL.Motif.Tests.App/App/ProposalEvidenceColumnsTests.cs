@@ -98,6 +98,8 @@ public sealed class ProposalEvidenceColumnsTests
         Assert.False(columns.ShowsZeroChange);
         Assert.False(columns.ShowsZeroFillIn);
         Assert.NotEmpty(columns.Availability);
+        Assert.Contains("approved places are unavailable", columns.Availability);
+        Assert.False(columns.ShowsPlacesNotice);
     }
 
     [Fact]

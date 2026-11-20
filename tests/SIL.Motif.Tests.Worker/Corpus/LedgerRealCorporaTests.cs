@@ -59,6 +59,7 @@ public sealed class LedgerRealCorporaTests(ITestOutputHelper output)
             ? FrequencyListReader.ReadWordCountJson(frequencyBytes, sidecar)
             : FrequencyListReader.ReadTsv(frequencyBytes, sidecar, hasHeader);
         IReadOnlyDictionary<string, TypeCheck>? checks = null;
+        IReadOnlyDictionary<string, StoreDisposition>? storeDispositions = null;
         if (Environment.GetEnvironmentVariable(StoreVariablePrefix + lane.ToUpperInvariant()) is { Length: > 0 } storePath)
         {
             // A disposable copy of a project database, never the original; the registered path only names the project.
@@ -68,9 +69,12 @@ public sealed class LedgerRealCorporaTests(ITestOutputHelper output)
             using var database = SIL.Motif.Host.Store.MotifDatabase.OpenOwned(storePath, project,
                 SIL.Motif.Host.Store.MotifSchema.CurrentSchema, new Version(1, 0));
             checks = TypeCheckProducer.FromStore(new SIL.Motif.Worker.Store.AssessmentRepository(database), sidecar.GrammarRevision);
+            storeDispositions = StoreDispositionReader.Read(new SIL.Motif.Worker.Store.WordTypeDispositionRepository(database));
         }
-        var report = LedgerCoverage.Build(new(ledger, sidecar, frequency, checks, declaredFrequency));
+        var withoutStore = LedgerCoverage.Build(new(ledger, sidecar, frequency, checks, declaredFrequency));
+        var report = LedgerCoverage.Build(new(ledger, sidecar, frequency, checks, declaredFrequency, StoreDispositions: storeDispositions));
         var join = report.Join;
+        var summary = report.StoreDispositions;
 
         var metrics = new
         {
@@ -83,6 +87,9 @@ public sealed class LedgerRealCorporaTests(ITestOutputHelper output)
                 usedByJoin = report.Rows.Count(row => row.Check is not null),
                 usedComparable = report.Rows.Count(row => row.Check is { Comparable: true }),
             },
+            storeRows = storeDispositions?.Count, store = new { summary.Store, summary.Ledger, summary.Both, summary.Conflict, summary.StoreOnly,
+                summary.StoreRowsOutsideList, byCategory = summary.StoreByCategory, conflictExamples = summary.ConflictExamples.Count },
+            accountedWithoutStore = withoutStore.Done.Accounted.Verdict.ToString(),
             accountedCounts = report.Done.Accounted.Counts,
             ledgerRows = ledger.Rows.Count, ledgerTokens = ledger.TokenSum, frequencyTypes = frequency.Entries.Count,
             frequencyDigestDeclared = declaredFrequency is not null, frequencyDigestMatches = declaredFrequency is null || declaredFrequency == frequency.Digest,

@@ -47,6 +47,8 @@
                 </MultiBinding>
               </MenuItem.IsEnabled>
             </MenuItem>
+            <MenuItem x:Name="OpenRecordFileMenuItem" Header="{x:Static app:MotifAppStrings.MenuOpenRecordFile}"
+                      IsEnabled="{Binding Context.HasProject}" Click="OnOpenRecordFileClick" />
             <MenuItem x:Name="RefreshMenuItem" Header="{x:Static app:MotifAppStrings.MenuRefresh}"
                       Command="{Binding RefreshCommand}" />
             <MenuItem x:Name="ConfigureMenuItem" Header="{x:Static app:MotifAppStrings.MenuConfigure}"

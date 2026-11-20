@@ -12,7 +12,7 @@ public sealed partial class RecordStore
 {
     internal Task<RecordHistoryJson> ExportHistoryJsonAsync(int peerModelVersion) => ReadPublishedAsync(async state =>
     {
-        if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database))
+        if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database, Workers))
             throw new InvalidDataException("History is corrupt; export was refused.");
         var result = await model.GetChanges(new SyncState([], []));
         var commits = result.MissingFromClient.OrderBy(commit => commit.CompareKey).ToArray();

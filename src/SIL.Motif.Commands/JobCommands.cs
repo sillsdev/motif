@@ -532,9 +532,9 @@ public static class JobCommands
     public static CommandOutcome<DryRunProjection> WaitForDryRun(
         WaitForDryRunRequest request, CancellationToken cancellationToken = default,
         bool cancelOnTimeout = false, Action? wakeRunner = null, Action<string>? reportStall = null,
-        bool wakeImmediately = false)
+        bool wakeImmediately = false, IProgress<JobStatusResponse>? progress = null)
     {
-        var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellationToken,
+        var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, progress, cancellationToken,
             request.Timeout, request.ProductVersion, cancelOnTimeout, wakeRunner, reportStall: reportStall,
             waitForTerminal: request.WaitForTerminal, expectedKind: DryRunKind, expectedProposal: request.ProposalId,
             wakeImmediately: wakeImmediately)

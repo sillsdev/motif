@@ -277,6 +277,10 @@ public static class RefusalCodes
     public const string HypothesisInvalid = "hypothesis.invalid";
     public const string HypothesisNotFound = "hypothesis.not-found";
     public const string HypothesisRule = "hypothesis.rule";
+    /// <summary>A disposition request names no form, a malformed form, an unknown category, no evidence, or a wrong intended form.</summary>
+    public const string DispositionInvalid = "disposition.invalid";
+    /// <summary>A word type already stands with another disposition and the write did not ask to replace it.</summary>
+    public const string DispositionContradiction = "disposition.contradiction";
     public const string RequestNoRequest = "request.no-request";
     public const string RequestNotFound = "request.not-found";
     public const string RequestNotOpen = "request.not-open";
@@ -423,6 +427,10 @@ public static class RefusalCodes
     public const string ProposalCompareAtMismatch = "proposal.compare-at-mismatch";
     /// <summary>A newer Trial has replaced one the comparison's earlier pages were read from.</summary>
     public const string ProposalCompareSnapshotChanged = "proposal.compare-snapshot-changed";
+    /// <summary>A group request names no ending, start or pattern, or an invalid one.</summary>
+    public const string GroupRequestInvalid = "group.request-invalid";
+    /// <summary>The Baseline or Proposal Trial a group read was asked to use is not available.</summary>
+    public const string GroupAsOfUnavailable = "group.as-of-unavailable";
     /// <summary>The Trial's frozen review inputs could not be captured or read.</summary>
     public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
     /// <summary>A Trial without the base sample was asked for with no word list, or with options that contradict it.</summary>
@@ -883,6 +891,8 @@ public static class RefusalCodes
 
     /// <summary>The window could not make a Proposal's Difference.</summary>
     public const string WindowDifferenceMakeFailed = "window.difference-make-failed";
+    /// <summary>The window could not run and record a Proposal's Dry Run.</summary>
+    public const string WindowDryRunFailed = "window.dry-run-failed";
     /// <summary>The window could not open the chosen project.</summary>
     public const string WindowOpenFailed = "window.open-failed";
     /// <summary>The window could not open a Proposal.</summary>

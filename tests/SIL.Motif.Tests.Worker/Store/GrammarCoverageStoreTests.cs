@@ -163,6 +163,12 @@ public sealed class GrammarCoverageStoreTests : IDisposable
             DataSource = CoveragePath, Mode = SqliteOpenMode.ReadWrite, Pooling = false,
         }.ToString());
         holdWal.Open();
+        using (var join = holdWal.CreateCommand())
+        {
+            // Join the WAL now, or a pool clear elsewhere can delete the -wal sidecar before the checkpoint.
+            join.CommandText = "SELECT count(*) FROM sqlite_master;";
+            join.ExecuteScalar();
+        }
         var basis = Save(database, segmentation, "before", "parsed");
         var summary = store.Build(database, "before", basis);
         using (var settle = holdWal.CreateCommand())
@@ -613,7 +619,7 @@ public sealed class GrammarCoverageStoreTests : IDisposable
 
         using var upgraded = Open();
         Assert.True(File.Exists(CoveragePath + ".schema76.bak"));
-        Assert.Equal(78L, Pragma(upgraded, "PRAGMA user_version;"));
+        Assert.Equal((long)MotifSchema.CurrentSchema, Pragma(upgraded, "PRAGMA user_version;"));
         Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM GrammarCoverageSegmentations;"));
         Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM IndexedCorpusGenerations;"));
         Assert.Equal("stale", new SourceIndexRepository(upgraded).ReadState("source")!.Status);
@@ -662,7 +668,7 @@ public sealed class GrammarCoverageStoreTests : IDisposable
 
         using var upgraded = Open();
         Assert.True(File.Exists(CoveragePath + ".schema77.bak"));
-        Assert.Equal(78L, Pragma(upgraded, "PRAGMA user_version;"));
+        Assert.Equal((long)MotifSchema.CurrentSchema, Pragma(upgraded, "PRAGMA user_version;"));
         Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM IndexedCorpusGenerations;"));
         Assert.Equal(1L, Pragma(upgraded, "SELECT COUNT(*) FROM GrammarCoverageMeasurements;"));
         Assert.Equal("ready", new SourceIndexRepository(upgraded).ReadState("source")!.Status);

@@ -11,7 +11,7 @@ public partial interface ICommandClient
     Task<CommandOutcome<ProposalDetailProjection>> ShowProposalAsync(
         ShowProposalRequest request, CancellationToken cancellationToken);
 
-    /// <summary>Writes a Proposal's Rationale; on a Ready Proposal one with findings is not saved and the last clean one stays.</summary>
+    /// <summary>Writes a Proposal's Rationale; on an open Proposal one with findings is not saved and the last clean one stays.</summary>
     Task<CommandOutcome<ProposalTextChangedResponse>> SetRationaleAsync(
         SetRationaleRequest request, CancellationToken cancellationToken);
 

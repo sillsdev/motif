@@ -352,7 +352,7 @@
   },
   "compose-author-affix-template": {
     "title": "Author an affix template",
-    "description": "Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether this template requires further derivation. Only a person can Apply.",
+    "description": "Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether a word can end after this template. Only a person can Apply.",
     "source": "Hand-written from command behavior.",
     "goals": [
       "Arrange the prefix and suffix slots of a verb",
@@ -1859,6 +1859,11 @@
     "description": "Reads the saved report of a Proposal's Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.",
     "source": "Authored from ADR 0021 and the typed command contract."
   },
+  "group": {
+    "title": "Group words by stem",
+    "description": "Lists the word types of the project's Texts that end or start in a string, or match a pattern, grouped by candidate stem, and marks each stem known, fitting or not fitting. It reads and never writes.",
+    "source": "Authored from the typed command contract."
+  },
   "proposal compare": {
     "title": "Compare Proposals",
     "description": "Compares two to eight Proposals side by side from each one's Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project's approved analyses and measures nothing.",
@@ -2595,6 +2600,31 @@
     "title": "Clear the Current chapter",
     "description": "Forgets the Current chapter of a Source on this machine.",
     "source": "Hand-written from the SourceLocalCommand behavior."
+  },
+  "wordform dispose": {
+    "title": "Give word types a disposition",
+    "description": "Records that word types are names, loans, other-language words, abbreviations, numerals, non-words or misspellings, with the evidence, so Coverage can count them as accounted for. It writes Motif's store only, never the FieldWorks project.",
+    "source": "Hand-written from command behavior."
+  },
+  "wordform dispose --from-file": {
+    "title": "Dispose word types from a file",
+    "description": "Reads word types and their dispositions from a TSV, a JSONL file or a grammar lane ledger and records them in one transaction. Rows that cannot be recorded are refused with their line numbers and nothing is written unless --skip-refused is given; --dry-run reports what would change.",
+    "source": "Hand-written from command behavior."
+  },
+  "wordform undispose": {
+    "title": "Clear word type dispositions",
+    "description": "Removes the standing disposition of each word type. The removed disposition stays in the type's history, and a type that had none is reported and left alone.",
+    "source": "Hand-written from command behavior."
+  },
+  "disposition show": {
+    "title": "Show a word type's disposition",
+    "description": "Shows the disposition a word type stands under, who recorded it and why, and the dispositions it had before. It reads and never writes.",
+    "source": "Hand-written from command behavior."
+  },
+  "disposition list": {
+    "title": "List word type dispositions",
+    "description": "Lists the word types that have a disposition in key order, with how many stand in each category, by page and optionally for one category. It reads and never writes.",
+    "source": "Hand-written from command behavior."
   },
   "hypothesis add": {
     "title": "State a hypothesis",

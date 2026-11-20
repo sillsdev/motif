@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Text;
 using SIL.Motif.Contract.Responses;
@@ -7,6 +8,7 @@ namespace SIL.Motif.Cli.Rendering;
 internal static class GrammarReadTextRenderer
 {
     private const int TextListLimit = 10;
+    private const string NullAffixForm = "∅";
 
     public static string Render(GrammarReadResponse response)
     {
@@ -85,7 +87,9 @@ internal static class GrammarReadTextRenderer
 
     private static void RenderForm(StringBuilder text, string label, GrammarFormRead form)
     {
-        text.AppendLine($"  {label}: {Display(form.Form)} ({Display(form.WritingSystem)}) " +
+        var shown = form.Form == NullAffixForm && form.FormKind.Contains("Affix", StringComparison.Ordinal)
+            ? NullAffixForm + " (null allomorph)" : Display(form.Form);
+        text.AppendLine($"  {label}: {shown} ({Display(form.WritingSystem)}) " +
             $"[{form.FormKind}]  {form.Id}");
         if (form.MorphType is not null)
             text.AppendLine($"    Morph type: {form.MorphType}  {form.MorphTypeId}");

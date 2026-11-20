@@ -67,6 +67,8 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.RemoveProposalPictureAsync)] = "proposal picture remove",
             [nameof(ICommandClient.ReadProposalDifferenceAsync)] = "difference show",
             [nameof(ICommandClient.ProduceProposalDifferenceAsync)] = "difference produce",
+            [nameof(ICommandClient.EnqueueDryRunAsync)] = "dry-run",
+            [nameof(ICommandClient.WaitForDryRunAsync)] = "dry-run --wait",
             [nameof(ICommandClient.ListSourcesAsync)] = "source list",
             [nameof(ICommandClient.ShowSourceAsync)] = "source show",
             [nameof(ICommandClient.WhereSourceAsync)] = "source where",
@@ -77,6 +79,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.ClearSourceCurrentAsync)] = "current set --clear",
             [nameof(ICommandClient.StageSourceAddAsync)] = "source add",
             [nameof(ICommandClient.StageSourceContextAsync)] = "source set-context",
+            [nameof(ICommandClient.StageRecordImportAsync)] = "import",
         };
 
     // A store-writing client method must map to a catalogued CLI verb.

@@ -1802,6 +1802,46 @@ try
                 overviewProject, flags.GetValueOrDefault("proposal"))));
             break;
 
+        case "group":
+        {
+            if (positionals.Count != 1 || positionals[0] is not ("suffix" or "prefix") ||
+                !flags.TryGetValue("project", out var groupProject) ||
+                flags.Keys.Any(flag => flag is not ("project" or "json" or "format" or "ending" or "start" or "pattern" or
+                    "parse-state" or "limit" or "page" or "fold" or "as-of" or "min-stem" or "autonomous")))
+                return Usage(UsageLineFor("group"), asJson);
+            if (flags.TryGetValue("format", out var groupFormat))
+            {
+                if (groupFormat is not ("table" or "json")) return Usage("--format must be table or json.", asJson);
+                if (groupFormat == "json") asJson = true;
+            }
+            int? groupLimit = null;
+            int? groupPage = null;
+            if (flags.TryGetValue("limit", out var groupLimitText))
+            {
+                if (!int.TryParse(groupLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out var limitNumber) || limitNumber < 1)
+                    return Usage("--limit must be a positive integer.", asJson);
+                groupLimit = limitNumber;
+            }
+            if (flags.TryGetValue("page", out var groupPageText))
+            {
+                if (!int.TryParse(groupPageText, NumberStyles.None, CultureInfo.InvariantCulture, out var pageNumber) || pageNumber < 1)
+                    return Usage("--page must be a positive integer.", asJson);
+                groupPage = pageNumber;
+            }
+            int? groupMinStem = null;
+            if (flags.TryGetValue("min-stem", out var groupMinStemText))
+            {
+                if (!int.TryParse(groupMinStemText, NumberStyles.None, CultureInfo.InvariantCulture, out var minStemNumber) || minStemNumber < 1)
+                    return Usage("--min-stem must be a positive integer.", asJson);
+                groupMinStem = minStemNumber;
+            }
+            result = RenderCommand(GroupQueryCommand.Run(new GroupRequest(groupProject, positionals[0],
+                flags.GetValueOrDefault("ending"), flags.GetValueOrDefault("start"), flags.GetValueOrDefault("pattern"),
+                flags.GetValueOrDefault("parse-state"), groupLimit, groupPage, flags.GetValueOrDefault("as-of"),
+                flags.GetValueOrDefault("fold"), groupMinStem)));
+            break;
+        }
+
         case "proposal":
             if (positionals.Count == 1 && positionals[0] == "review" &&
                 flags.TryGetValue("project", out var proposalReviewProject))
@@ -2578,6 +2618,89 @@ try
                 default:
                     return Usage("Usage: motif hypothesis (add | test | decide | link | grade | answer | neighbours | report) ... --project <fwdata>", asJson);
             }
+            break;
+        }
+
+        case "wordform":
+        {
+            var wordformCommand = positionals.Count > 0 ? positionals[0] : "";
+            if (wordformCommand == "dispose" && flags.ContainsKey("from-file"))
+            {
+                if (!flags.TryGetValue("project", out var bulkProject) || positionals.Count != 1 ||
+                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "from-file" or "format" or "input-format" or
+                        "replace" or "dry-run" or "skip-refused" or "by")) ||
+                    flags["from-file"] == "true" || flags.TryGetValue("dry-run", out var dryRunValue) && dryRunValue != "true")
+                    return Usage(UsageLineFor("wordform dispose --from-file"), asJson);
+                var inputFormat = flags.GetValueOrDefault("input-format");
+                var outputLines = false;
+                if (flags.TryGetValue("format", out var bulkFormat))
+                {
+                    if (bulkFormat == "json") outputLines = true;
+                    else if (bulkFormat is "tsv" or "jsonl" or "ledger" && inputFormat is null) inputFormat = bulkFormat;
+                    else return Usage("--format must be tsv, jsonl or ledger (the file's format) or json (one JSON object per row).", asJson);
+                }
+                var bulk = WordTypeDispositionCommands.RecordFromFile(new DisposeFromFileRequest(bulkProject, CliProductVersion(),
+                    flags["from-file"], inputFormat, flags.ContainsKey("replace"), flags.ContainsKey("dry-run"),
+                    flags.ContainsKey("skip-refused"), outputLines, flags.GetValueOrDefault("by")));
+                result = RenderCommand(bulk, successAsJson: !outputLines);
+                if (outputLines && bulk.Succeeded)
+                    result = result with { Output = DispositionRenderer.RenderFromFileLines(bulk.Value!) };
+                if (bulk.Value is { Refused: > 0, Written: false } && !flags.ContainsKey("skip-refused"))
+                    result = result with { ExitCode = FailureEnvelope.ExitCodeFor(FailureReason.Refused), Reason = FailureReason.Refused };
+                break;
+            }
+            if (wordformCommand is not ("dispose" or "undispose") || positionals.Count < 2 ||
+                !flags.TryGetValue("project", out var wordformProject))
+                return Usage("Usage: motif wordform (dispose | undispose) <form>... --project <fwdata>", asJson);
+            var wordformFlags = wordformCommand == "dispose"
+                ? new[] { "project", "json", "autonomous", "as", "evidence", "intended", "replace", "by" }
+                : new[] { "project", "json", "autonomous", "reason", "by" };
+            if (flags.Keys.Any(flag => !wordformFlags.Contains(flag)))
+                return Usage(UsageLineFor("wordform " + wordformCommand), asJson);
+            var wordForms = positionals.Skip(1).ToArray();
+            if (wordformCommand == "undispose")
+            {
+                result = RenderCommand(WordTypeDispositionCommands.Clear(new UndisposeWordFormsRequest(wordformProject,
+                    CliProductVersion(), wordForms, flags.GetValueOrDefault("reason"), flags.GetValueOrDefault("by"))));
+                break;
+            }
+            if (!flags.TryGetValue("as", out var wordformCategory) || !flags.TryGetValue("evidence", out var wordformEvidence))
+                return Usage(UsageLineFor("wordform dispose"), asJson);
+            result = RenderCommand(WordTypeDispositionCommands.Record(new DisposeWordFormsRequest(wordformProject,
+                CliProductVersion(), wordForms, wordformCategory, wordformEvidence, flags.GetValueOrDefault("intended"),
+                flags.ContainsKey("replace"), flags.GetValueOrDefault("by"))));
+            break;
+        }
+
+        case "disposition":
+        {
+            var dispositionCommand = positionals.Count > 0 ? positionals[0] : "";
+            if (dispositionCommand is not ("show" or "list") || !flags.TryGetValue("project", out var dispositionProject) ||
+                positionals.Count != (dispositionCommand == "show" ? 2 : 1) ||
+                flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "as" or "limit" or "page" or "format")) ||
+                dispositionCommand == "show" && flags.Keys.Any(flag => flag is "as" or "limit" or "page" or "format"))
+                return Usage("Usage: motif disposition (show <form> | list) --project <fwdata>", asJson);
+            if (dispositionCommand == "show")
+            {
+                result = RenderCommand(WordTypeDispositionCommands.Show(
+                    new ShowDispositionRequest(dispositionProject, CliProductVersion(), positionals[1])));
+                break;
+            }
+            if (flags.TryGetValue("format", out var dispositionFormat))
+            {
+                if (dispositionFormat is not ("table" or "json")) return Usage("--format must be table or json.", asJson);
+                if (dispositionFormat == "json") asJson = true;
+            }
+            var dispositionLimit = WordTypeDispositionCommands.DefaultLimit;
+            if (flags.TryGetValue("limit", out var dispositionLimitText) &&
+                !int.TryParse(dispositionLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out dispositionLimit))
+                return Usage("--limit must be a positive integer.", asJson);
+            var dispositionPage = 1;
+            if (flags.TryGetValue("page", out var dispositionPageText) &&
+                !int.TryParse(dispositionPageText, NumberStyles.None, CultureInfo.InvariantCulture, out dispositionPage))
+                return Usage("--page must be a positive integer.", asJson);
+            result = RenderCommand(WordTypeDispositionCommands.List(new ListDispositionsRequest(dispositionProject,
+                CliProductVersion(), flags.GetValueOrDefault("as"), dispositionLimit, dispositionPage)));
             break;
         }
 
@@ -3766,7 +3889,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose" or "replace" or "skip-refused")
             {
                 flags[name] = "true";
                 continue;

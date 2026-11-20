@@ -7405,34 +7405,80 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProgressReadingNext" xml:space="preserve"><value>Reading next actions…</value></data>
   <data name="MotifApp.ProgressNextUnavailable" xml:space="preserve"><value>Some next actions are unavailable. Refresh the project or try again.</value></data>
   <!-- W5 -->
+  <data name="MotifApp.ProposalApplyCouldNotStart" xml:space="preserve"><value>Apply could not start because the project or the open Proposal changed. Choose Refresh, then Apply… again.</value></data>
+  <data name="MotifApp.ProposalApplyStillReading" xml:space="preserve"><value>Motif is still reading this Proposal. Try Apply again in a moment, or reopen the Proposal.</value></data>
   <data name="MotifApp.ProposalDocumentOutdated" xml:space="preserve"><value>The project or Proposal changed. Refresh its evidence before applying.</value></data>
   <data name="MotifApp.ProposalDocumentUnreadable" xml:space="preserve"><value>The Proposal could not be read. Your unsaved text is kept.</value></data>
   <data name="MotifApp.ProposalEvidenceUnavailable" xml:space="preserve"><value>Evidence is unavailable for this Proposal.</value></data>
   <data name="MotifApp.ProposalEvidenceScope" xml:space="preserve"><value>Evidence for {0} only. Other Texts have not been checked.</value></data>
-  <data name="MotifApp.ProposalEvidencePartial" xml:space="preserve"><value>Only listed words with complete searches are shown. Counts are unavailable.</value></data>
+  <data name="MotifApp.ProposalEvidencePartial" xml:space="preserve"><value>Only listed words with complete searches are shown. Counts and approved places are unavailable.</value></data>
   <data name="MotifApp.ProposalEvidencePlacesUnavailable" xml:space="preserve"><value>Approved places are unavailable.</value></data>
   <data name="MotifApp.ProposalEvidenceNoWords" xml:space="preserve"><value>No words in this Text.</value></data>
   <data name="MotifApp.ProposalCloseDocument" xml:space="preserve"><value>Close Proposal</value></data>
   <data name="MotifApp.ProposalComparisonHint" xml:space="preserve"><value>Check two Proposals to compare their evidence.</value></data>
   <data name="MotifApp.ProposalComparisonLimit" xml:space="preserve"><value>Two Proposals are already checked. Uncheck one first.</value></data>
   <data name="MotifApp.ProposalApplyConfirm" xml:space="preserve"><value>Apply This Proposal to FieldWorks?</value></data>
+  <data name="MotifApp.ProposalApplyDeferredNotice" xml:space="preserve"><value>This Proposal is Deferred.</value></data>
+  <data name="MotifApp.ProposalApplyFinishSteps" xml:space="preserve"><value>Finish the steps above, then apply.</value></data>
   <data name="MotifApp.ProposalApplyPrepare" xml:space="preserve"><value>Apply…</value></data>
   <data name="MotifApp.ProposalRefreshEvidence" xml:space="preserve"><value>Refresh Evidence</value></data>
   <data name="MotifApp.ProposalCheckForComparison" xml:space="preserve"><value>Compare {0}</value></data>
   <data name="MotifApp.ProposalReading" xml:space="preserve"><value>Reading Proposal…</value></data>
+  <data name="MotifApp.ProposalReadStuck" xml:space="preserve"><value>Motif has been reading this Proposal for a long time, and the read may have stopped. Choose Read Again to read it once more.</value></data>
+  <data name="MotifApp.ProposalReadAgain" xml:space="preserve"><value>Read Again</value></data>
   <data name="MotifApp.ProposalReadingChanged" xml:space="preserve"><value>Reading Changed</value></data>
   <data name="MotifApp.ProposalSpellingChanged" xml:space="preserve"><value>Spelling Acceptance Changed</value></data>
   <data name="MotifApp.ProposalEvidenceListedCount" xml:space="preserve"><value>Listed Words: {0}</value></data>
   <data name="MotifApp.ProposalEvidenceCompleteCount" xml:space="preserve"><value>Words in This Text: {0}</value></data>
   <data name="MotifApp.ProposalDraft" xml:space="preserve"><value>Draft</value></data>
-  <data name="MotifApp.ProposalReady" xml:space="preserve"><value>Ready</value></data>
+  <data name="MotifApp.ProposalWaiting" xml:space="preserve"><value>Waiting</value></data>
   <data name="MotifApp.ProposalDeferred" xml:space="preserve"><value>Deferred</value></data>
   <data name="MotifApp.ProposalDeclined" xml:space="preserve"><value>Declined</value></data>
   <data name="MotifApp.ProposalSuperseded" xml:space="preserve"><value>Superseded</value></data>
   <data name="MotifApp.ProposalWithdrawn" xml:space="preserve"><value>Withdrawn</value></data>
-  <data name="MotifApp.ProposalActivateForApply" xml:space="preserve"><value>Choose Apply… to check this Proposal’s readiness.</value></data>
+  <data name="MotifApp.ProposalChangeWritingSystem" xml:space="preserve"><value>Writing system: {0}</value></data>
+  <data name="MotifApp.ProposalDifferenceEarlierTry" xml:space="preserve"><value>The saved Difference is from an earlier try. Make Difference again.</value></data>
+  <data name="MotifApp.ProposalChangeHeading" xml:space="preserve"><value>Proposed changes</value></data>
+  <data name="MotifApp.ProposalChangeSense" xml:space="preserve"><value>Sense {0}</value></data>
+  <data name="MotifApp.ProposalChangeEntry" xml:space="preserve"><value>Entry {0}</value></data>
+  <data name="MotifApp.ProposalChangeTarget" xml:space="preserve"><value>Target {0}</value></data>
+  <data name="MotifApp.ProposalChangeGloss" xml:space="preserve"><value>Gloss</value></data>
+  <data name="MotifApp.ProposalChangeEmpty" xml:space="preserve"><value>(empty)</value></data>
+  <data name="MotifApp.ProposalChangeTransition" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
+  <data name="MotifApp.ProposalSharedEffect" xml:space="preserve"><value>Several changes contribute to the final result for {0}.</value></data>
+  <data name="MotifApp.ProposalChangeFieldWithWritingSystem" xml:space="preserve"><value>{0} ({1})</value></data>
+  <data name="MotifApp.ProposalChangeValue" xml:space="preserve"><value>Proposed value: {0}</value></data>
+  <data name="MotifApp.ProposalChangeValueWithWritingSystem" xml:space="preserve"><value>Proposed value ({0}): {1}</value></data>
+  <data name="MotifApp.ProposalCheckHeading" xml:space="preserve"><value>Before you apply</value></data>
+  <data name="MotifApp.ProposalCheckTried" xml:space="preserve"><value>Tried</value></data>
+  <data name="MotifApp.ProposalCheckDifference" xml:space="preserve"><value>Difference</value></data>
+  <data name="MotifApp.ProposalCheckDryRun" xml:space="preserve"><value>Dry Run</value></data>
+  <data name="MotifApp.ProposalCheckComplete" xml:space="preserve"><value>{0} ✓</value></data>
+  <data name="MotifApp.ProposalCheckDifferenceCounts" xml:space="preserve"><value>{0} · {1} · {2} changed approval</value><comment>Detail of the Difference check line: {0} is the Text, {1} is how many words the Difference compared, as in '1,718 words'; {2} is how many of them moved to another approval state.</comment></data>
+  <data name="MotifApp.ProposalCheckCompleteDetail" xml:space="preserve"><value>{0} ✓ · {1}</value></data>
+  <data name="MotifApp.ProposalDryRunFieldCountPattern" xml:space="preserve"><value>{0, plural, one {Will change # field} other {Will change # fields}}</value></data>
+  <data name="MotifApp.ProposalDryRunWillChangeFormat" xml:space="preserve"><value>{0}: {1}</value><comment>The Dry Run result: {0} is 'Will change 1 field', {1} is the changes, as 'Gloss (en): buy → buy (demo)'.</comment></data>
+  <data name="MotifApp.ProposalDryRunWillChangeMore" xml:space="preserve"><value>; and {0} more</value></data>
+  <data name="MotifApp.ProposalDryRunWillChangeNothing" xml:space="preserve"><value>Will change nothing in the project.</value></data>
+  <data name="MotifApp.ProposalCheckNeeded" xml:space="preserve"><value>{0} ○</value></data>
+  <data name="MotifApp.ProposalRunDryRun" xml:space="preserve"><value>Run Dry Run</value></data>
+  <data name="MotifApp.ProposalDryRunNeeded" xml:space="preserve"><value>Run Dry Run to check and record what this Proposal would change in FieldWorks.</value></data>
+  <data name="MotifApp.ProposalDryRunQueued" xml:space="preserve"><value>Waiting to start the Dry Run…</value></data>
+  <data name="MotifApp.ProposalDryRunWaitingForBaseline" xml:space="preserve"><value>Waiting for the saved project copy…</value></data>
+  <data name="MotifApp.ProposalDryRunRunning" xml:space="preserve"><value>Running the Dry Run on a copy of the project…</value></data>
+  <data name="MotifApp.ProposalDryRunBinding" xml:space="preserve"><value>Recording the Dry Run for this Proposal…</value></data>
+  <data name="MotifApp.ProposalDryRunFailed" xml:space="preserve"><value>The Dry Run could not finish. Try running it again.</value></data>
+  <data name="MotifApp.ProposalDryRunOutdated" xml:space="preserve"><value>The Proposal or project changed during the Dry Run. Refresh the evidence and run it again.</value></data>
+  <data name="MotifApp.ProposalDryRunCancelling" xml:space="preserve"><value>Cancelling the Dry Run…</value></data>
+  <data name="MotifApp.ProposalDryRunCancelled" xml:space="preserve"><value>The Dry Run was cancelled.</value></data>
   <data name="MotifApp.ProposalSelectedNameFormat" xml:space="preserve"><value>{0}, selected</value></data>
-  <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Receipt: {0}. Recorded: {1}.</value></data>
+  <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Applied. Recorded {0}.</value></data>
+  <data name="MotifApp.ProposalReceiptByYouFormat" xml:space="preserve"><value>Applied by you. Recorded {0}.</value></data>
+  <data name="MotifApp.ProposalReceiptFieldWorksNote" xml:space="preserve"><value>FieldWorks shows this change the next time you open the project.</value></data>
+  <data name="MotifApp.ProposalReceiptCopy" xml:space="preserve"><value>Copy Receipt ID</value></data>
+  <data name="MotifApp.ProposalReceiptCopied" xml:space="preserve"><value>Copied</value></data>
+  <data name="MotifApp.ProposalReceiptCopyFailed" xml:space="preserve"><value>Could Not Copy</value></data>
+  <data name="MotifApp.ProposalReceiptSeeInTexts" xml:space="preserve"><value>See in Texts</value></data>
   <data name="MotifApp.ReviewApplyMeasuring" xml:space="preserve"><value>Checking these changes…</value><comment>Progress while the Apply readiness check measures a Proposal.</comment></data>
   <!-- W6 -->
   <data name="MotifApp.ProposalCompareBack" xml:space="preserve"><value>Back to Proposals</value></data>
@@ -7767,7 +7813,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.WordReadingsTipPattern" xml:space="preserve"><value>{0, plural, one {# reading. Open the word panel to approve it.} other {# readings. Open the word panel to choose one to approve.}}</value><comment>Hover sentence on the count of readings beside a word in the Texts reader. {0} is the number of readings.</comment></data>
   <!-- round2-proposal -->
   <data name="MotifApp.ProposalStatusDraft" xml:space="preserve"><value>This Draft has not been checked yet. Check what applying it does to the numbers.</value><comment>Status at the top of a pending Draft's page: its changes have not been measured.</comment></data>
-  <data name="MotifApp.ProposalStatusReady" xml:space="preserve"><value>This Proposal has been tried and its Difference made. You can apply it.</value><comment>Status at the top of a Proposal's page when a current Trial and a Difference exist and nothing blocks Apply.</comment></data>
+  <data name="MotifApp.ProposalStatusReady" xml:space="preserve"><value>This Proposal is ready. You can apply it.</value><comment>Status at the top of a Proposal's page when the checklist is complete and nothing blocks Apply.</comment></data>
   <data name="MotifApp.ProposalApplyNeedsDifference" xml:space="preserve"><value>Apply is unavailable: no Difference has been made yet. Choose Make Difference at the top of this page, then come back to apply.</value></data>
   <data name="MotifApp.ProposalApplyDifferenceUnavailable" xml:space="preserve"><value>Apply is unavailable: this Proposal's Difference is not available. Refresh the project and reopen this Proposal.</value></data>
   <!-- round2-deferred -->
@@ -7784,4 +7830,43 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.AssistantAccessHeading" xml:space="preserve"><value>Assistant Access</value><comment>Settings group heading for the switch that lets assistants use Motif's tools through the MCP.</comment></data>
   <data name="MotifApp.AssistantAccessExplanation" xml:space="preserve"><value>This lets assistants such as Claude Desktop use Motif's tools through the MCP.</value><comment>Sentence under the Assistant Access heading in Settings.</comment></data>
   <data name="MotifApp.AssistantAccessSwitch" xml:space="preserve"><value>Let Assistants Use Motif's Tools</value><comment>Checkbox in Settings that turns Advanced AI mode on or off.</comment></data>
+  <!-- import-record -->
+  <data name="MotifApp.MenuOpenRecordFile" xml:space="preserve"><value>Open Record _File...</value><comment>File menu command: preview and stage an edited record file. The ellipsis means it asks for more input.</comment></data>
+  <data name="MotifApp.ImportRecordWindowTitle" xml:space="preserve"><value>Open Record File</value><comment>Title of the window that previews an edited record file.</comment></data>
+  <data name="MotifApp.ImportRecordPickerTitle" xml:space="preserve"><value>Choose an edited record file</value><comment>Title of the file chooser for an edited record file.</comment></data>
+  <data name="MotifApp.ImportRecordIntro" xml:space="preserve"><value>Choose a record file you edited. Motif shows what it would change and stages the changes in a new Draft. Nothing changes in the project until you apply the Draft.</value><comment>Introduction at the top of the Open Record File window.</comment></data>
+  <data name="MotifApp.ImportRecordFileLabel" xml:space="preserve"><value>Record file</value><comment>Label of the box naming the record file.</comment></data>
+  <data name="MotifApp.ImportRecordFileAccessibleName" xml:space="preserve"><value>Path of the record file to open</value><comment>Accessible name of the record file path box.</comment></data>
+  <data name="MotifApp.ImportRecordBrowse" xml:space="preserve"><value>Browse...</value><comment>Button that chooses a record file.</comment></data>
+  <data name="MotifApp.ImportRecordBrowseAccessibleName" xml:space="preserve"><value>Browse for a record file</value><comment>Accessible name of the Browse button.</comment></data>
+  <data name="MotifApp.ImportRecordPreview" xml:space="preserve"><value>Preview</value><comment>Button that reads the record file and shows its changes.</comment></data>
+  <data name="MotifApp.ImportRecordPreviewAccessibleName" xml:space="preserve"><value>Preview the changes in the record file</value><comment>Accessible name of the Preview button.</comment></data>
+  <data name="MotifApp.ImportRecordDraftNameLabel" xml:space="preserve"><value>Draft name</value><comment>Label of the box naming the Draft that will hold the changes.</comment></data>
+  <data name="MotifApp.ImportRecordDraftNameAccessibleName" xml:space="preserve"><value>Name for the new Draft</value><comment>Accessible name of the Draft name box.</comment></data>
+  <data name="MotifApp.ImportRecordStage" xml:space="preserve"><value>Stage</value><comment>Button that saves the previewed changes in a new Draft.</comment></data>
+  <data name="MotifApp.ImportRecordStageAccessibleName" xml:space="preserve"><value>Stage the previewed changes in a new Draft</value><comment>Accessible name of the Stage button.</comment></data>
+  <data name="MotifApp.ImportRecordOpenDraft" xml:space="preserve"><value>Open Draft</value><comment>Button that opens the staged Draft's review page.</comment></data>
+  <data name="MotifApp.ImportRecordOpenDraftAccessibleName" xml:space="preserve"><value>Open the staged Draft for review</value><comment>Accessible name of the Open Draft button.</comment></data>
+  <data name="MotifApp.ImportRecordCancelAccessibleName" xml:space="preserve"><value>Cancel and close the window</value><comment>Accessible name of the Cancel button.</comment></data>
+  <data name="MotifApp.ImportRecordCloseAccessibleName" xml:space="preserve"><value>Close the window</value><comment>Accessible name of the Close button once a Draft is staged.</comment></data>
+  <data name="MotifApp.ImportRecordIdle" xml:space="preserve"><value>Choose a record file, then preview it.</value><comment>Status before a file is previewed.</comment></data>
+  <data name="MotifApp.ImportRecordReading" xml:space="preserve"><value>Reading the record file...</value><comment>Status while the file is read.</comment></data>
+  <data name="MotifApp.ImportRecordStaging" xml:space="preserve"><value>Staging the changes...</value><comment>Status while the Draft is made.</comment></data>
+  <data name="MotifApp.ImportRecordSummaryFormat" xml:space="preserve"><value>{0} changes become {1} operations. {2} cannot be imported.</value><comment>Status after a preview: change, operation and refusal counts.</comment></data>
+  <data name="MotifApp.ImportRecordStagedFormat" xml:space="preserve"><value>Staged as the Draft {0}. Open it to review the changes.</value><comment>Status after the Draft is made; the argument is the Draft's name.</comment></data>
+  <data name="MotifApp.ImportRecordOpenFailed" xml:space="preserve"><value>The Draft was staged but could not be opened. Find it on the Proposals page.</value><comment>Status when the staged Draft's review page could not be opened.</comment></data>
+  <data name="MotifApp.ImportRecordOperationsHeading" xml:space="preserve"><value>Operations</value><comment>Heading of the list of operations the file would make.</comment></data>
+  <data name="MotifApp.ImportRecordRefusalsHeading" xml:space="preserve"><value>Not imported</value><comment>Heading of the list of changes the file asks for that cannot be imported.</comment></data>
+  <data name="MotifApp.ImportRecordOperationsAccessibleName" xml:space="preserve"><value>Operations the file would make</value><comment>Accessible name of the operation list.</comment></data>
+  <data name="MotifApp.ImportRecordRefusalsAccessibleName" xml:space="preserve"><value>Changes that cannot be imported</value><comment>Accessible name of the refusal list.</comment></data>
+  <data name="MotifApp.ImportRecordPageFormat" xml:space="preserve"><value>Page {0} of {1}</value><comment>Page position of the preview lists.</comment></data>
+  <data name="MotifApp.ImportRecordPreviousAccessibleName" xml:space="preserve"><value>Previous page of the preview</value><comment>Accessible name of the previous page button.</comment></data>
+  <data name="MotifApp.ImportRecordNextAccessibleName" xml:space="preserve"><value>Next page of the preview</value><comment>Accessible name of the next page button.</comment></data>
+  <data name="MotifApp.ImportRecordRefusalPlanRefused" xml:space="preserve"><value>The file was made from an older state of this record. Export the record again and redo your edits.</value><comment>Sentence for a file whose base is not fresh.</comment></data>
+  <data name="MotifApp.ImportRecordRefusalUnreadable" xml:space="preserve"><value>The file could not be read as a record file.</value><comment>Sentence for an unreadable file.</comment></data>
+  <data name="MotifApp.ImportRecordRefusalNothing" xml:space="preserve"><value>The file makes no change that can be staged, so no Draft was made.</value><comment>Sentence for a file with no operations.</comment></data>
+  <data name="MotifApp.ImportRecordRefusalNameTaken" xml:space="preserve"><value>A Draft with that name already exists. Choose another name.</value><comment>Sentence for a Draft name already used.</comment></data>
+  <data name="MotifApp.ImportRecordRefusalPage" xml:space="preserve"><value>That page does not exist.</value><comment>Sentence for a page number outside the preview.</comment></data>
+  <data name="MotifApp.ImportRecordOpenMissing" xml:space="preserve"><value>The Draft was staged but is not in the Proposals list yet. Find it on the Proposals page.</value><comment>Status when the staged Draft is missing from the Proposals list.</comment></data>
+  <data name="MotifApp.ImportRecordOpenRefusedFormat" xml:space="preserve"><value>The Draft was staged but its review could not be read: {0}</value><comment>Status when the staged Draft was found but could not be read; the argument is the reason.</comment></data>
 </root>

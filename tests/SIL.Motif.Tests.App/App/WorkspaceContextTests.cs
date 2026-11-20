@@ -1240,7 +1240,8 @@ public sealed class WorkspaceContextTests
     internal static WorkspaceContext NewContext(
         ICommandClient commands,
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
-        IUriLauncher? uriLauncher = null)
+        IUriLauncher? uriLauncher = null,
+        IClipboard? clipboard = null)
     {
         if (commands is FakeCommandClient fake)
             fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
@@ -1253,6 +1254,7 @@ public sealed class WorkspaceContextTests
             new NoFolderPicker(),
             new NoDragSource(),
             new BaselineViewModel(commands),
+            clipboard: clipboard,
             advancedAiModePreferences: advancedAiModePreferences,
             uriLauncher: uriLauncher);
     }

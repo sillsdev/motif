@@ -4,6 +4,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -13,6 +14,22 @@ namespace SIL.Motif.Tests.App;
 // Unconfigured queries return an empty value or a refusal, depending on the query.
 public sealed partial class FakeCommandClient
 {
+    public Func<EnqueueDryRunRequest, CancellationToken, Task<CommandOutcome<JobEnqueuedResponse>>>?
+        EnqueueDryRunHandler { get; set; }
+
+    public Func<WaitForDryRunRequest, IProgress<JobStatusResponse>, CancellationToken,
+        Task<CommandOutcome<DryRunProjection>>>? WaitForDryRunHandler { get; set; }
+
+    public Task<CommandOutcome<JobEnqueuedResponse>> EnqueueDryRunAsync(
+        EnqueueDryRunRequest request, CancellationToken cancellationToken) =>
+        EnqueueDryRunHandler?.Invoke(request, cancellationToken) ??
+        Completed(new JobEnqueuedResponse("job/dry-run", "dry-run", "project/test"));
+
+    public Task<CommandOutcome<DryRunProjection>> WaitForDryRunAsync(
+        WaitForDryRunRequest request, IProgress<JobStatusResponse> progress, CancellationToken cancellationToken) =>
+        WaitForDryRunHandler?.Invoke(request, progress, cancellationToken) ??
+        Refused<DryRunProjection>(new Refusal("job.dry-run-incomplete", FailureReason.Refused, "The Dry Run did not finish."));
+
     public Func<EnqueueParsimonyReportRequest, CancellationToken, Task<CommandOutcome<JobEnqueuedResponse>>>?
         EnqueueParsimonyHandler { get; set; }
     public List<EnqueueParsimonyReportRequest> EnqueueParsimonyRequests { get; } = [];

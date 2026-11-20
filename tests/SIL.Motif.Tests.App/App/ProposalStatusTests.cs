@@ -38,7 +38,7 @@ public sealed class ProposalStatusTests
         Action<FakeCommandClient>? configure = null)
     {
         var fake = new FakeCommandClient();
-        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(Guid.NewGuid(), "Genesis 1")],
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(Guid.NewGuid(), "Genesis 1", 12)],
             HasBaseline: true));
         var id = state == State.Draft ? "draft/one" : "one";
         var trial = CurrentTrial();
@@ -208,13 +208,13 @@ public sealed class ProposalStatusTests
                     window.Show();
                     PageScreenshots.Settle(window);
                     Assert.False(ApplyButton(page).IsEffectivelyEnabled);
-                    Assert.Contains(VisibleText(page), line => line.Contains(MotifAppStrings.ProposalApplyNeedsDifference, StringComparison.Ordinal));
+                    Assert.Contains(MotifAppStrings.ProposalEvidenceNotMadeYet, VisibleText(page));
 
                     await document.Difference.Maker.RunCommand.ExecuteAsync(null);
                     PageScreenshots.Settle(window);
                     Assert.True(document.Difference.IsShown);
                     Assert.True(ApplyButton(page).IsEffectivelyEnabled);
-                    Assert.DoesNotContain(VisibleText(page), line => line.Contains(MotifAppStrings.ProposalApplyNeedsDifference, StringComparison.Ordinal));
+                    Assert.DoesNotContain(MotifAppStrings.ProposalEvidenceNotMadeYet, VisibleText(page));
 
                     document.Difference.Clear();
                     PageScreenshots.Settle(window);
@@ -237,7 +237,8 @@ public sealed class ProposalStatusTests
             {
                 await RenderAsync(document, (page, _) =>
                 {
-                    var tryIt = Assert.Single(StatusBlocks(page).Single().GetVisualDescendants().OfType<Button>(), b => b.IsEffectivelyVisible);
+                    var tryIt = Assert.Single(StatusBlocks(page).Single().GetVisualDescendants().OfType<Button>(),
+                        button => button.IsEffectivelyVisible && button.IsEffectivelyEnabled);
                     Assert.Equal(MotifAppStrings.TryIt, tryIt.Content);
                     Assert.Same(document.TryCommand, tryIt.Command);
                     Assert.DoesNotContain("Proposals list", document.ApplyBlockReason, StringComparison.OrdinalIgnoreCase);

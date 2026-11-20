@@ -36,6 +36,21 @@ public sealed class ProposalDifferenceListedTests
     }
 
     [Fact]
+    public async Task TheListedNoteGroupsThousandsLikeTheCountsBesideIt()
+    {
+        var fixture = new ProposalDifferenceFixture { Cut = 40, Unchanged = 1700 };
+        var model = Make(fixture);
+
+        await model.LoadAsync(Project, "proposal/one");
+
+        var total = model.Summary!.Words;
+        Assert.True(total >= 1000);
+        var grouped = total.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+        Assert.Contains($" of {grouped} words are listed;", model.ListedNoteText);
+        Assert.DoesNotContain($" of {total} words", model.ListedNoteText);
+    }
+
+    [Fact]
     public async Task WordsThatAreOnlyCountedAreSaidSoInANoteAndOnTheChipsThatCutThem()
     {
         var fixture = new ProposalDifferenceFixture { Cut = 40, Unchanged = 100 };

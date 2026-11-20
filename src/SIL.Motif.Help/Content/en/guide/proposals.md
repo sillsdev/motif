@@ -6,6 +6,10 @@ Selection and comparison are separate. Check two Proposals to choose the pair fo
 
 **Will Fill In** lists words whose complete parser searches establish no analysis before and an analysis afterward. **Will Change** lists supported reading or spelling acceptance changes. These are effects, rather than sums of advisory categories. Evidence names the single FieldWorks Text it covers. Listed words may be only part of that Text's results; absent, expired, unreadable, incomplete and outdated evidence never means zero. Exact approved places and whole-Context totals remain unavailable when the stored evidence cannot establish them.
 
-Choose **Try It** or **Try Again** explicitly to measure a Proposal on a copy. Opening or selecting a document never starts a Trial. Apply uses the command engine's current fit and readiness checks; reading a column does not approve it or create an extra Apply condition.
+Start with **Proposed changes**. Each row describes a change in the Proposal. When its most recent try still applies to the saved project, the row shows recorded before and after values where available.
+
+Follow **Before you apply**. Choose **Try It** or **Try Again** to measure the Proposal on a copy. Choose a Text and **Make Difference** to compare its words. Choose **Run Dry Run** to check and record what would change in FieldWorks. When the checklist is complete and the changes are ready, **Apply…** opens the confirmation and backup reminder. Opening a Proposal starts no checks.
 
 Read [Review a Proposal](guide:review-a-proposal) and [Apply to FieldWorks](guide:apply-to-fieldworks) before applying.
+
+To bring in changes you made in an edited record file, choose **File > Open Record File…**, browse for the file and choose **Preview**. The window lists the operations the file would make and, under **Not imported**, each change it cannot make, with its code, class, field and reason. Give the Draft a name and choose **Stage**; Motif then opens the new Draft on this page. Nothing is applied until you apply it yourself.

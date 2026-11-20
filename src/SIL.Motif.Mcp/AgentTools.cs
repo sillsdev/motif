@@ -577,7 +577,7 @@ internal static class AgentTools
                 ("ws", Schema.String("Writing system tag for the template name."), true),
                 ("prefix_slots", Schema.StringArray("Ordered canonical ids of prefix slots."), true),
                 ("suffix_slots", Schema.StringArray("Ordered canonical ids of suffix slots."), true),
-                ("final", Schema.Boolean("Whether the template requires further derivation."), true)),
+                ("final", Schema.Boolean("Whether a word can end after this template; true for a word-final template, false only when a derivation continues from it."), true)),
             false,
             false,
             false,

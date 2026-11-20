@@ -14,7 +14,7 @@ namespace SIL.Motif.App.Services;
 /// </summary>
 public sealed class AvaloniaStoragePickers :
     IProjectPicker, IHandoffFolderPicker, IDiagnosticFilePicker, IDiagnosticWindowDialogs, IFileDragSource,
-    IReportFilePicker
+    IReportFilePicker, IRecordFilePicker
 {
     private static readonly FilePickerFileType FwDataFileType =
         new("FieldWorks project or backup") { Patterns = ["*.fwdata", "*.fwbackup"] };
@@ -57,6 +57,18 @@ public sealed class AvaloniaStoragePickers :
             AllowMultiple = false,
         });
         return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
+    }
+
+    public async Task<string?> PickRecordFileAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var files = await _topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = MotifAppStrings.ImportRecordPickerTitle,
+            AllowMultiple = false,
+            FileTypeFilter = [FilePickerFileTypes.All],
+        });
+        return files.Count > 0 ? files[0].TryGetLocalPath() : null;
     }
 
     public IDiagnosticFilePicker For(TopLevel window)

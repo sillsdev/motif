@@ -380,11 +380,11 @@ public sealed class WorkflowShellTests
             {
                 window.Show();
                 var entries = window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!.Items.OfType<MenuItem>().ToList();
-                Assert.Equal(["SelectNewMenuItem", "OpenRecentMenuItem", "RefreshMenuItem", "ConfigureMenuItem", "ExitMenuItem"],
+                Assert.Equal(["SelectNewMenuItem", "OpenRecentMenuItem", "OpenRecordFileMenuItem", "RefreshMenuItem", "ConfigureMenuItem", "ExitMenuItem"],
                     entries.Select(entry => entry.Name));
                 Assert.Same(workspace.SelectNewProjectCommand, entries[0].Command);
-                Assert.Same(workspace.RefreshCommand, entries[2].Command);
-                Assert.Same(workspace.ConfigureCommand, entries[3].Command);
+                Assert.Same(workspace.RefreshCommand, entries[3].Command);
+                Assert.Same(workspace.ConfigureCommand, entries[4].Command);
                 Assert.Equal("WritingSystemsMenuItem", window.FindInWindowOrWorkspace<MenuItem>("ToolsMenu")!.Items
                     .OfType<MenuItem>().Last().Name);
 

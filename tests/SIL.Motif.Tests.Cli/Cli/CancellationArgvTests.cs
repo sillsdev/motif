@@ -116,7 +116,7 @@ public sealed class CancellationArgvTests : IDisposable
 
     private async Task CaptureBaseline(string project)
     {
-        var result = await CliProcess.RunAsync(_workerRoot, null, false,
+        var result = await CliProcess.RunWithoutRunnerAsync(_workerRoot, null, false,
             "baseline", "capture", "--project", project, "--json");
         Assert.True(result.ExitCode == 0, result.FailureDetails);
     }

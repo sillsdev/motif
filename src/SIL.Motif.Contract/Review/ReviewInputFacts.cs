@@ -46,6 +46,10 @@ public sealed record ReviewCaseDelta(
     IReadOnlyList<ReviewReadingLoss> ReadingLosses, IReadOnlyList<ReviewFlagId> Flags,
     IReadOnlyList<ReviewMembership> Memberships, IReadOnlyList<string> Limitations)
 {
+    /// <summary>Whether the word occurs in the project's Texts, carried from the planned case.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Attested { get; init; }
+
     public ReviewCaseSideFacts Before { get; init; } = ReviewCaseSideFacts.NotMeasured;
     public ReviewCaseSideFacts After { get; init; } = ReviewCaseSideFacts.NotMeasured;
     public IReadOnlyList<ReviewAssertion> Assertions { get; init; } = [];
@@ -137,6 +141,10 @@ public sealed record ReviewPlannedCase(
     /// <summary>Identifies a caller-supplied witness even when a configured set also covers this case.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public ExplicitTrialInput? ExplicitInput { get; init; }
+
+    /// <summary>Whether the word occurs in the project's Texts, whichever set or request put it in the Trial.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Attested { get; init; }
 }
 
 /// <summary>The content-bound inputs used on both sides of one Trial.</summary>

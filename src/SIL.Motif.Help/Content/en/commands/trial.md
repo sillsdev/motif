@@ -30,3 +30,4 @@ The report and the saved Trial record `sample: "working-set"` (an ordinary Trial
 
 `--no-background` (MCP `no_background`) needs `--wait`. A Baseline recapture the Trial needs runs inline, and no Parsimony job is queued after the Trial completes, so nothing commits after the command returns.
 
+Add `--verbose` with `--wait` to print the Trial's phase timings (where the time went, and whether the before-side parse was reused) to standard error after the report.

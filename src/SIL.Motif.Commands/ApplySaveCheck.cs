@@ -14,6 +14,7 @@ internal static class ApplySaveCheck
 {
     internal static int Attempts { get; set; } = 6;
     internal static TimeSpan Pause { get; set; } = TimeSpan.FromMilliseconds(500);
+    internal static Action<TimeSpan> Sleep { get; set; } = Thread.Sleep;
 
     /// <summary>Throws <see cref="ApplySaveNotLandedException"/> unless the file on disk names the Proposal's applied-log entry.</summary>
     internal static void RequireOnDisk(string fwDataPath, Guid proposalId)
@@ -33,7 +34,7 @@ internal static class ApplySaveCheck
                 problem = exception.Message;
             }
 
-            if (attempt < Attempts) Thread.Sleep(Pause);
+            if (attempt < Attempts) Sleep(Pause);
         }
 
         throw new ApplySaveNotLandedException(

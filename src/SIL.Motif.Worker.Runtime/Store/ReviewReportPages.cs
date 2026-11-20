@@ -944,10 +944,14 @@ public sealed partial class ReviewReportRepository
     private static void RequireDetail(SqliteConnection connection, SqliteTransaction transaction, string project, ReviewReportId report)
     {
         using var command = PageCommand(connection, transaction,
-            "SELECT DetailAvailable FROM ReviewReports WHERE ProjectKey=$project AND ReportId=$report;", ("$project", project), ("$report", report.Value));
-        if (command.ExecuteScalar() is not long available || available == 0)
-            throw new ReviewDetailUnavailableException("not-retained",
-                $"motif://projects/{Uri.EscapeDataString(project)}/trial-reports/{Uri.EscapeDataString(report.Value)}");
+            "SELECT DetailAvailable,SummaryJson FROM ReviewReports WHERE ProjectKey=$project AND ReportId=$report;", ("$project", project), ("$report", report.Value));
+        using var reader = command.ExecuteReader();
+        if (reader.Read() && reader.GetInt64(0) != 0) return;
+        var uri = $"motif://projects/{Uri.EscapeDataString(project)}/trial-reports/{Uri.EscapeDataString(report.Value)}";
+        var evicted = reader.HasRows ? JsonSerializer.Deserialize<ReportView>(reader.GetString(1), ReviewJson.Options)?.Limitations
+            .FirstOrDefault(item => item.Code is ReviewReportRetention.ReleasedCode or ReviewReportRetention.SupersededCode or "store-budget") : null;
+        var reason = evicted?.Code ?? "not-retained";
+        throw new ReviewDetailUnavailableException(reason, uri, evicted?.Text);
     }
     private static long Count(SqliteConnection connection, SqliteTransaction transaction, string sql, List<(string, object?)> args)
     {

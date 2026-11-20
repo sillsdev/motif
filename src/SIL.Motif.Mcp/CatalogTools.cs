@@ -4,8 +4,11 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Dispositions;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -155,6 +158,30 @@ internal static class CatalogTools
             schema["properties"]!["page"]!["minimum"] = 1;
             schema["properties"]!["proposalIds"]!["minItems"] = 2;
             schema["properties"]!["proposalIds"]!["maxItems"] = ProposalComparison.MaxProposals;
+        }
+        if (command.RequestType == typeof(GroupRequest))
+        {
+            var properties = schema["properties"]!.AsObject();
+            properties["kind"] = Schema.String("suffix groups words by the stem before an ending; prefix by the stem after a start.",
+                WordGrouping.Suffix, WordGrouping.Prefix);
+            properties["parseState"] = Schema.String("Which words to list; the default is all.", WordGrouping.Parsed,
+                WordGrouping.Unparsed, WordGrouping.Approved, WordGrouping.All);
+            properties["limit"]!["minimum"] = 1;
+            properties["limit"]!["maximum"] = WordGrouping.MaxLimit;
+            properties["limit"]!["default"] = WordGrouping.DefaultLimit;
+            properties["page"]!["minimum"] = 1;
+            properties["minStem"]!["minimum"] = 1;
+            properties["minStem"]!["default"] = WordGrouping.DefaultMinStem;
+            properties["pattern"]!["maxLength"] = WordGrouping.MaxPatternLength;
+        }
+        if (command.RequestType == typeof(ListDispositionsRequest))
+        {
+            var properties = schema["properties"]!.AsObject();
+            properties["category"] = Schema.String("Only this category; leave out for all.", [.. DispositionCategories.Names]);
+            properties["limit"]!["minimum"] = 1;
+            properties["limit"]!["maximum"] = WordTypeDispositionCommands.MaxLimit;
+            properties["limit"]!["default"] = WordTypeDispositionCommands.DefaultLimit;
+            properties["page"]!["minimum"] = 1;
         }
         if (command.RequestType == typeof(GdrShowRequest))
         {

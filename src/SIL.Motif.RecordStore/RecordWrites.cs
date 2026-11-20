@@ -46,7 +46,7 @@ public sealed partial class RecordStore
             var verified = await PointAsync();
             var state = verified.State;
             if (state.Revision != expectedRevision) throw new StaleRevisionException("Field write belongs to another store revision.");
-            var replay = verified.Replay ?? await ReplayIntegrity.ScanAsync(database);
+            var replay = verified.Replay ?? await ReplayIntegrity.ScanAsync(database, Workers);
             if (state.ReplayDigest != replay.Final()) throw new InvalidDataException("History is corrupt; the field write was refused.");
             var record = verified.Records.GetValueOrDefault(target)
                 ?? throw new InvalidOperationException("A field write requires a known native record.");

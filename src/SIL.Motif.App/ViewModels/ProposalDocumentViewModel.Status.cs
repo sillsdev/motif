@@ -1,52 +1,90 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows.Input;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
-// round2-proposal: the one status block at the top of a Proposal's page.
 public sealed partial class ProposalDocumentViewModel
 {
     private string _statusSentence = string.Empty;
     private string? _statusActionText;
     private ICommand? _statusActionCommand;
 
-    /// <summary>What state the Proposal is in and what to do next, said once; empty when nothing needs saying.</summary>
     public string StatusSentence => _statusSentence;
-
-    /// <summary>Whether the status block has a sentence.</summary>
     public bool HasStatusSentence => _statusSentence.Length > 0;
-
-    /// <summary>The label of the button that does the next step, or null when no button does it.</summary>
+    public bool ShowsReadySentence => _statusSentence == MotifAppStrings.ProposalStatusReady;
+    public bool ShowsTrialStatusSentence => HasStatusSentence && !ShowsReadySentence;
+    public bool ShowsLifecycleStatus => StatusText.Length > 0 && StatusText != MotifAppStrings.ProposalWaiting;
     public string? StatusActionText => _statusActionText;
-
-    /// <summary>The command of that button.</summary>
     public ICommand? StatusActionCommand => _statusActionCommand;
-
-    /// <summary>Whether the status block has a button.</summary>
     public bool HasStatusAction => _statusActionText is not null && _statusActionCommand is not null;
-
-    /// <summary>Whether the status block is shown: it has a sentence, a button, or the controls that make a Difference.</summary>
-    public bool ShowsStatus => HasStatusSentence || HasStatusAction || (CanAddComment && !IsLoading && Difference.ShowsMakeControls);
-
-    /// <summary>Whether the page still needs its own line saying the evidence is out of date.</summary>
+    public bool ShowsStatus => ShowsReadiness || HasStatusSentence || HasStatusAction;
+    public bool ShowsReadiness => !_stopped && !IsLoading && CanAddComment && !IsPending;
     public bool ShowsOutdatedNotice => IsOutdated && !ShowsStatus;
 
     /// <summary>The automation id of the status block's Try It or Try Again button.</summary>
     public string TryAutomationId => Card?.InspectorTryAgainAutomationId ?? AutomationIds.ForProposalTryAgain(ProposalId) + "-inspector";
+
+    private TrialStanding CurrentStanding => Card?.Standing ?? TrialStanding.Of(_review?.Trial);
+
+    public bool TriedChecked => CurrentStanding.Kind == TrialStandingKind.Current && !IsOutdated;
+    public bool DifferenceChecked => TriedChecked && Difference.IsShown && Difference.Summary is { } summary &&
+        summary.TrialJobId == (_review?.Trial?.JobId ?? Card?.Card.Trial?.JobId);
+    public bool DryRunChecked => !IsOutdated && _review?.Readiness is { MissingBoundDryRun: false };
+    public string TriedCheckText => TriedChecked &&
+        (Card?.Card.Trial?.CompletedUtc ?? _review?.Trial?.CompletedUtc) is { } time
+        ? FormatCheckDetail(MotifAppStrings.ProposalCheckTried, time.ToLocalTime().ToString("g", CultureInfo.CurrentCulture))
+        : CheckText(MotifAppStrings.ProposalCheckTried, TriedChecked);
+    public string DifferenceCheckText => DifferenceChecked && Difference.Summary is { } summary
+        ? FormatCheckDetail(MotifAppStrings.ProposalCheckDifference, DifferenceDetail(summary))
+        : CheckText(MotifAppStrings.ProposalCheckDifference, DifferenceChecked);
+    public string DryRunCheckText => DryRunChecked && DryRunFound is { } found
+        ? FormatCheckDetail(MotifAppStrings.ProposalCheckDryRun, found)
+        : CheckText(MotifAppStrings.ProposalCheckDryRun, DryRunChecked);
+
+    /// <summary>What the bound Dry Run will change, from its recorded effects, or null when none are on hand.</summary>
+    public string? DryRunFound => DryRunChecked && Detail is { } detail && _review?.Trial is { } trial &&
+        trial.IntentDigest == detail.CurrentIntentDigest && trial.DryRun is { } dryRun
+        ? ProposalEffectText.WillChange(dryRun.Effects) : null;
+
+    /// <summary>The Dry Run's finding repeated in the Apply confirmation, or empty.</summary>
+    public string ApplyWillChangeText => DryRunFound ?? string.Empty;
+    public bool ShowsDifferenceAction => ShowsReadiness && TriedChecked && Difference.ShowsMakeControls;
+    public bool ShowsDryRunAction => ShowsReadiness && !DryRunChecked;
+    public bool ShowsDryRunAdvice => ShowsDryRunAction && DifferenceChecked &&
+        _review?.Readiness is { MissingBoundDryRun: true } && !IsDryRunActive;
+    public bool ShowsDifferenceAdvice => ShowsReadiness && TriedChecked && !DifferenceChecked && Difference.ShowsMakeControls;
+    public string DifferenceAdvice => Difference.IsShown
+        ? MotifAppStrings.ProposalDifferenceEarlierTry : MotifAppStrings.ProposalEvidenceNotMadeYet;
+
+    // The tick says what the Difference found, so the person need not scroll to the evidence to learn it.
+    internal static string DifferenceDetail(ProposalDifferenceSummary summary) => string.Format(
+        CultureInfo.CurrentCulture, MotifAppStrings.ProposalCheckDifferenceCounts, summary.TextTitle,
+        PluralText.Format(MotifAppStrings.ProposalDifferenceWordCountPattern, summary.Words),
+        summary.Matrix.Where(cell => cell.BeforeState != cell.AfterState).Sum(cell => cell.Words)
+            .ToString("N0", CultureInfo.CurrentCulture));
+
+    private static string CheckText(string label, bool complete) => string.Format(CultureInfo.CurrentCulture,
+        complete ? MotifAppStrings.ProposalCheckComplete : MotifAppStrings.ProposalCheckNeeded, label);
+
+    private static string FormatCheckDetail(string label, string detail) =>
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalCheckCompleteDetail, label, detail);
 
     private void OnDifferenceStatusChanged(object? sender, PropertyChangedEventArgs e) => RaiseApply();
 
     private void RaiseStatus()
     {
         (_statusSentence, _statusActionText, _statusActionCommand) = ComputeStatus();
-        Evidence.StatusSaysUnavailable = HasStatusSentence && !IsStatusReady;
+        Evidence.StatusSaysUnavailable = IsLoading || ShowsDifferenceAdvice ||
+            HasStatusSentence && _statusSentence != MotifAppStrings.ProposalStatusReady;
         foreach (var name in new[] { nameof(StatusSentence), nameof(HasStatusSentence), nameof(StatusActionText),
-                     nameof(StatusActionCommand), nameof(HasStatusAction), nameof(ShowsStatus), nameof(ShowsOutdatedNotice) })
+                     nameof(StatusActionCommand), nameof(HasStatusAction), nameof(ShowsStatus), nameof(ShowsOutdatedNotice),
+                     nameof(ShowsReadiness), nameof(ShowsReadySentence), nameof(ShowsTrialStatusSentence), nameof(ShowsLifecycleStatus), nameof(TriedChecked), nameof(DifferenceChecked), nameof(DryRunChecked),
+                     nameof(TriedCheckText), nameof(DifferenceCheckText), nameof(DryRunCheckText), nameof(ApplyWillChangeText), nameof(ShowsDifferenceAction),
+                     nameof(ShowsDryRunAction), nameof(ShowsDryRunAdvice), nameof(ShowsDifferenceAdvice), nameof(DifferenceAdvice) })
             OnPropertyChanged(name);
     }
-
-    private bool IsStatusReady => _statusSentence == MotifAppStrings.ProposalStatusReady;
 
     private (string Sentence, string? Action, ICommand? Command) ComputeStatus()
     {
@@ -54,8 +92,7 @@ public sealed partial class ProposalDocumentViewModel
         if (IsPending)
             return (_context.PendingMeasurement.EvidenceComplete ? string.Empty : MotifAppStrings.ProposalStatusDraft,
                 MotifAppStrings.ApplyCheckChanges, MeasurePendingCommand);
-        var standing = Card?.Standing ?? (_review?.Trial is { Freshness: TrialFreshness.Current }
-            ? TrialStanding.Current : TrialStanding.NotTried);
+        var standing = CurrentStanding;
         if (standing.Kind != TrialStandingKind.Current)
         {
             var words = TrialStandingWords.For(standing);
@@ -63,9 +100,7 @@ public sealed partial class ProposalDocumentViewModel
                 standing.CanTryAgain ? TryCommand : null);
         }
         if (IsOutdated) return (MotifAppStrings.ProposalDocumentOutdated, MotifAppStrings.Refresh, RefreshCommand);
-        if (Difference.State == ProposalDifferenceState.Absent && Difference.ShowsMakeControls)
-            return (MotifAppStrings.ProposalEvidenceNotMadeYet, null, null);
-        return Difference.IsShown && PrepareBlockReason is null ? (MotifAppStrings.ProposalStatusReady, null, null)
+        return DifferenceChecked && PrepareBlockReason is null ? (MotifAppStrings.ProposalStatusReady, null, null)
             : (string.Empty, null, null);
     }
 

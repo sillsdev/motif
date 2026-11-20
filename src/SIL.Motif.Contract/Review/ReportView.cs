@@ -666,6 +666,10 @@ public sealed record WarningSummary(
     [property: JsonRequired]
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] long? PreExistingCount) : IJsonOnDeserialized, IJsonOnSerializing
 {
+    /// <summary>Why the counts are null; absent when they are integers, so null never reads as zero.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Unavailable { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 

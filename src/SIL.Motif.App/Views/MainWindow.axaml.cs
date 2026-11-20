@@ -30,6 +30,26 @@ public sealed partial class MainWindow : Window
             new CorpusViewerWindow(path).Show(this);
     }
 
+    /// <summary>The Open Record File window this window owns, if one is open.</summary>
+    internal ImportRecordWindow? CurrentImportRecordWindow { get; private set; }
+
+    /// <summary>Chooses the record file; when null the window uses its own storage dialog.</summary>
+    internal IRecordFilePicker? RecordFilePicker { get; set; }
+
+    private void OnOpenRecordFileClick(object? sender, RoutedEventArgs e)
+    {
+        if (CurrentImportRecordWindow is { } open)
+        {
+            open.Activate();
+            return;
+        }
+        if (DataContext is not WorkspaceShellViewModel { Context: { ProjectPath: { } path } context }) return;
+        var window = ImportRecordWindow.For(context, path, RecordFilePicker);
+        CurrentImportRecordWindow = window;
+        window.Closed += (_, _) => CurrentImportRecordWindow = null;
+        window.Show(this);
+    }
+
     private readonly IUriLauncher _uriLauncher;
     private readonly ProblemReportWindowServices _problemReportServices;
     private readonly IUserPreferencesStore _preferences;

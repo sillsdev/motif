@@ -487,6 +487,26 @@ public sealed class CatalogTextRenderingTests
     }
 
     [Fact]
+    public void TrialTextNamesTheExpensiveRuleWhenWordsAreStopped()
+    {
+        var warning = "Rule 'degemination' has 1 " + DryRunWarningMarkers.AlphaRuleExpansion + " identity (28 values): up to 28 combinations.";
+        var trial = new TrialRecord("job/1", "p/1", "sha256:x", new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-10-05T00:00:00Z", "sha256:" + new string('b', 64)),
+            new DryRunProjection("p/1", "sha256:x", "note", [], "sha256:e", "sha256:f") { Warnings = [warning] },
+            new Dictionary<string, string>(), [], false, null, JobStatus.Completed, null, TrialFreshness.Current)
+        { Work = new TrialWork(3, 1000, 1180, 18, [], 0, 2) { TimeSafetyNetWords = ["a", "b"] } };
+
+        var output = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), asJson: false).Output;
+
+        Assert.Contains("No per-rule cost is recorded for stopped words.", output, StringComparison.Ordinal);
+        Assert.Contains("Rule 'degemination' has 1", output, StringComparison.Ordinal);
+
+        var quiet = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial with
+            { Work = new TrialWork(3, 1000, 1180, 18, [], 0, 0) }), asJson: false).Output;
+        Assert.DoesNotContain("No per-rule cost", quiet, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TrialTextPrintsTheReadingIdentityProofOfAFeatureRemoval()
     {
         var identity = new ReadingIdentityResult(ReadingIdentityStatus.Differs, 3, 2, 5, 0, 1,

@@ -13,7 +13,12 @@ namespace SIL.Motif.Commands;
 /// <summary>Waits asynchronously for one durable job and requests cancellation when the wait is cancelled.</summary>
 public static class JobWait
 {
-    private static readonly TimeSpan TerminalCleanupBudget = TimeSpan.FromSeconds(8);
+    /// <summary>Test-only: milliseconds a terminal wait allows for cleanup, in place of eight seconds.</summary>
+    public const string CleanupBudgetVariable = "MOTIF_TEST_TERMINAL_CLEANUP_MS";
+
+    private static readonly TimeSpan TerminalCleanupBudget =
+        int.TryParse(AmbientEnvironment.Get(CleanupBudgetVariable), out var milliseconds) && milliseconds > 0
+            ? TimeSpan.FromMilliseconds(milliseconds) : TimeSpan.FromSeconds(8);
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(200);
 
     /// <summary>How long a job may sit Queued before a wait wakes the runner again.</summary>

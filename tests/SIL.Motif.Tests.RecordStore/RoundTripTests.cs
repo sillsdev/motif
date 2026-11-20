@@ -57,6 +57,24 @@ public sealed class RoundTripTests(ITestOutputHelper output) : IDisposable
     public async Task IndonesianCopySurvivesStoreReopenAndLcmSerialization() =>
         await Check(CopyProject(Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_INDONESIAN")!), true);
 
+    [PrivateProjectFact("MOTIF_RECORD_STORE_INDONESIAN")]
+    public async Task IndonesianCopyReadsTheSameRecordsInTheSameOrderAtEveryWorkerCount()
+    {
+        var source = CopyProject(Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_INDONESIAN")!);
+        var database = Path.Combine(root, "workers.sqlite");
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(source, Path.Combine(root, "templates")))
+            await LcmRecordBridge.ImportAsync(cache, source, database);
+        await using var sequential = new SIL.Motif.RecordStore.RecordStore(database) { Workers = 1 };
+        var expected = await sequential.ReadAsync();
+        foreach (var workers in new[] { 2, 4, 8 })
+        {
+            await using var store = new SIL.Motif.RecordStore.RecordStore(database) { Workers = workers, DecodeChunkSize = 257 };
+            var actual = await store.ReadAsync();
+            Assert.Equal(expected.Select(r => r.Id), actual.Select(r => r.Id));
+            Assert.Equal(expected.Select(SIL.Motif.RecordStore.RecordStore.SnapshotItem), actual.Select(SIL.Motif.RecordStore.RecordStore.SnapshotItem));
+        }
+    }
+
     [PrivateProjectFact("MOTIF_RECORD_STORE_CEBUANO", CebuanoWrapper)]
     public async Task CebuanoCopySurvivesStoreReopenAndLcmSerialization()
     {

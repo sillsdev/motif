@@ -222,7 +222,8 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// <summary>"40 of 900 words are listed; 860 words are counted but not listed, because …".</summary>
     public string ListedNoteText => HasListedNote
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferenceListedNoteFormat,
-            Summary!.ListedWordCount, Summary.Words,
+            Summary!.ListedWordCount.ToString("N0", CultureInfo.CurrentCulture),
+            Summary.Words.ToString("N0", CultureInfo.CurrentCulture),
             PluralText.Format(MotifAppStrings.ProposalDifferenceNotListedPattern, Summary.Words - Summary.ListedWordCount),
             ProposalDifferenceListing.MostWordsPerGroup, ProposalDifferenceListing.MostPlacesPerWord)
         : string.Empty;

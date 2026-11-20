@@ -68,7 +68,7 @@ public sealed class ReviewSummaryAccumulator
         _wordBefore.Add(ReviewCoverage.Observed(item.Before), 1, item.Before.Completion != Completion.Complete);
         _wordAfter.Add(ReviewCoverage.Observed(item.After), 1, item.After.Completion != Completion.Complete);
         if (item.Before.Parsed == false && item.After.Parsed == true) _gained.Add(item.WordKey);
-        if (item.Memberships.Any(member => member.Role == "sampled-tokens") ||
+        if (item.Attested || item.Memberships.Any(member => member.Role == "sampled-tokens") ||
             item.Assertions.Any(assertion => assertion.Eligible && assertion.Approved && !assertion.WholeWordNegative))
             _attestedWords.Add(item.WordKey);
         if (item.NewNoParse) _noParse.Add(item.WordKey);

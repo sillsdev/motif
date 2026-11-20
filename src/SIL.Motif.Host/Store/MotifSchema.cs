@@ -17,7 +17,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 78;
+    public const int CurrentSchema = 79;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -36,7 +36,7 @@ public static class MotifSchema
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + ProgressDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
-                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl + QueryDdl + StoreRelocationDdl;
+                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl + QueryDdl + StoreRelocationDdl + WordTypeDispositionDdl;
             command.ExecuteNonQuery();
         }
 
@@ -93,7 +93,7 @@ public static class MotifSchema
             "ReviewReports", "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents",
             "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
             "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding",
-            "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations",
+            "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations", "WordTypeDispositions",
             "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
             "IndexedCorpusHeads", "IndexedCorpusGenerations", "IndexedCorpusDocuments", "IndexedCorpusShards",
             "IndexedCorpusForms", "IndexedCorpusOccurrences", "IndexedCorpusWeights", "IndexedCorpusShardWeights",
@@ -115,6 +115,7 @@ public static class MotifSchema
             "IX_PhonologyExampleSets_Name", "IX_PhonologyExampleSetRevisions_SetRevision",
             "IX_PhonologyExamples_RevisionExampleId", "IX_Requests_Status",
             "IX_Hypotheses_Shape", "IX_Hypotheses_Seq", "IX_Hypotheses_StatusSeq", "IX_HypothesisProposals_Proposal",
+            "IX_WordTypeDispositions_Current", "IX_WordTypeDispositions_History", "IX_WordTypeDispositions_Category",
             "IX_IndexedCorpusOccurrences_Form", "IX_IndexedCorpusOccurrences_Anchor",
             "IX_IndexedCorpusDocuments_Shard", "IX_IndexedCorpusShards_Stage"
         };
@@ -258,7 +259,7 @@ public static class MotifSchema
             "AssessedWords" => "AUTOINCREMENT",
             "RetainedInvocationMembers" => "UNIQUE (AssessmentId)",
             "ReadOccurrences" => "CHECK (WordIndex >= 0)",
-            "ProposalRationaleRevisions" or "ProposalComments" or "ProposalPictures" => "AUTOINCREMENT",
+            "ProposalRationaleRevisions" or "ProposalComments" or "ProposalPictures" or "WordTypeDispositions" => "AUTOINCREMENT",
             _ => null
         };
         using var command = connection.CreateCommand();
@@ -417,15 +418,18 @@ public static class MotifSchema
         "IX_Requests_Status" => "Requests",
         "IX_Hypotheses_Shape" or "IX_Hypotheses_Seq" or "IX_Hypotheses_StatusSeq" => "Hypotheses",
         "IX_HypothesisProposals_Proposal" => "HypothesisProposals",
+        "IX_WordTypeDispositions_Current" or "IX_WordTypeDispositions_History" or "IX_WordTypeDispositions_Category" => "WordTypeDispositions",
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
     private static bool IsUniqueIndex(string index) => index is "IX_Jobs_Lineage_Attempt" or
         "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" or
         "IX_PhonologyExampleSets_Name" or "IX_PhonologyExampleSetRevisions_SetRevision" or "IX_PhonologyExamples_RevisionExampleId" or
-        "IX_ProposalDifferences_ProposalText" or "IX_ReviewReports_ProjectManifest" or "IX_IndexedCorpusOccurrences_Anchor";
+        "IX_ProposalDifferences_ProposalText" or "IX_ReviewReports_ProjectManifest" or "IX_IndexedCorpusOccurrences_Anchor" or
+        "IX_WordTypeDispositions_Current";
 
-    private static bool IsPartialIndex(string index) => index is "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or
+    private static bool IsPartialIndex(string index) => index is "IX_WordTypeDispositions_Current" or
+        "IX_WordTypeDispositions_Category" or "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or
         "IX_GrammarChecks_Proposal" or "IX_AssessedWords_MorphologyJson" or "IX_AssessedWords_CorrectnessJson" or
         "IX_AssessedWords_ReadingGradesJson" or "IX_AssessedWords_AnalysisComparisonJson" or "IX_AssessedWords_MissedApprovedJson";
 
@@ -476,6 +480,9 @@ public static class MotifSchema
         "IX_Hypotheses_Seq" => ["Seq"],
         "IX_Hypotheses_StatusSeq" => ["Status", "Seq"],
         "IX_HypothesisProposals_Proposal" => ["ProposalId"],
+        "IX_WordTypeDispositions_Current" => ["FormKey"],
+        "IX_WordTypeDispositions_History" => ["FormKey", "DispositionId"],
+        "IX_WordTypeDispositions_Category" => ["Category", "FormKey"],
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -755,6 +762,11 @@ public static class MotifSchema
             C("ObjectsBefore", "INTEGER"), C("TypesBefore", "INTEGER"), C("ObjectsAfter", "INTEGER"),
             C("TypesAfter", "INTEGER"), C("AgentHours", "REAL"), C("AlternativeHours", "REAL"),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true)],
+        "WordTypeDispositions" =>
+        [C("DispositionId", "INTEGER", false, 1), C("FormKey", "TEXT", true), C("Form", "TEXT", true),
+            C("Category", "TEXT", true), C("Evidence", "TEXT", true), C("Intended", "TEXT"),
+            C("RecordedBy", "TEXT", true), C("RecordedUtc", "TEXT", true), C("EndedUtc", "TEXT"),
+            C("EndedKind", "TEXT"), C("EndedBy", "TEXT"), C("EndedNote", "TEXT")],
         "StoreRelocations" =>
         [C("RelocationId", "INTEGER", false, 1), C("OldFwDataPath", "TEXT", true), C("NewFwDataPath", "TEXT", true),
             C("RelocatedUtc", "TEXT", true), C("Basis", "TEXT", true)],
@@ -1033,6 +1045,33 @@ public static class MotifSchema
             Basis TEXT NOT NULL CHECK (Basis IN ('project-guid', 'name'))
         );
 
+        """;
+
+    /// <summary>
+    /// A word type's disposition. A row stands until <c>EndedUtc</c> is set, and an ended row is history, so one
+    /// type has at most one standing row and any number of ended ones.
+    /// </summary>
+    internal const string WordTypeDispositionDdl = """
+        CREATE TABLE WordTypeDispositions (
+            DispositionId INTEGER PRIMARY KEY AUTOINCREMENT,
+            FormKey TEXT NOT NULL,
+            Form TEXT NOT NULL,
+            Category TEXT NOT NULL CHECK (Category IN
+                ('name', 'loan', 'other-language', 'abbreviation', 'numeral', 'non-word', 'misspelling')),
+            Evidence TEXT NOT NULL CHECK (length(trim(Evidence)) > 0),
+            Intended TEXT NULL,
+            RecordedBy TEXT NOT NULL,
+            RecordedUtc TEXT NOT NULL,
+            EndedUtc TEXT NULL,
+            EndedKind TEXT NULL CHECK (EndedKind IS NULL OR EndedKind IN ('replaced', 'cleared')),
+            EndedBy TEXT NULL,
+            EndedNote TEXT NULL,
+            CHECK ((Category = 'misspelling') = (Intended IS NOT NULL)),
+            CHECK ((EndedUtc IS NULL) = (EndedKind IS NULL))
+        );
+        CREATE UNIQUE INDEX IX_WordTypeDispositions_Current ON WordTypeDispositions(FormKey) WHERE EndedUtc IS NULL;
+        CREATE INDEX IX_WordTypeDispositions_History ON WordTypeDispositions(FormKey, DispositionId);
+        CREATE INDEX IX_WordTypeDispositions_Category ON WordTypeDispositions(Category, FormKey) WHERE EndedUtc IS NULL;
         """;
 
     private const string CorpusDdl = """

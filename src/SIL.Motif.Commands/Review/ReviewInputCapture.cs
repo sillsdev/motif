@@ -23,7 +23,7 @@ public static class ReviewInputCapture
         IReadOnlyList<string> touchedWords, IReadOnlyList<ReviewProjectWordIdentity> identities,
         IReadOnlyList<ReviewAssertion> assertions, IReadOnlyList<ReviewNegativeExpectation> negatives,
         CancellationToken cancellationToken = default, string? policyDigest = null,
-        IReadOnlyList<string>? explicitWords = null)
+        IReadOnlyList<string>? explicitWords = null, IReadOnlySet<string>? corpusWords = null)
     {
         ArgumentNullException.ThrowIfNull(sets);
         ArgumentNullException.ThrowIfNull(touchedWords);
@@ -136,7 +136,11 @@ public static class ReviewInputCapture
                     item.Assertions.TryAdd(assertion.Id, FreezeAssertion(assertion));
             }
         }
-        var rows = cases.Values.Select(item => item.Freeze() with { ExplicitInput = explicitInputs.GetValueOrDefault(item.Word) })
+        var rows = cases.Values.Select(item => item.Freeze() with
+            {
+                ExplicitInput = explicitInputs.GetValueOrDefault(item.Word),
+                Attested = corpusWords?.Contains(item.Word) == true,
+            })
             .OrderBy(item => item.CaseKey, StringComparer.Ordinal).ToArray();
         var scopeDigest = Hash(new
         {

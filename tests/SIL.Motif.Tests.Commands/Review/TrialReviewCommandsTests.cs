@@ -574,6 +574,30 @@ public sealed class TrialReviewCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task PairedWarningsThatAreZeroOnBothSidesPublishIntegerZeros()
+    {
+        CreateInterrupted();
+        var ledger = TrialReviewEvidence.ReadJob(_database, Job)!;
+        TrialReviewEvidence.Save(_database, ledger with { BeforeWarnings = [], AfterWarnings = [] });
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var warnings = new ReviewReportRepository(_database).ReadManifest(id)!.Summary.Summary.Warnings;
+        Assert.Equal(0, warnings.NewCount);
+        Assert.Equal(0, warnings.ResolvedCount);
+        Assert.Equal(0, warnings.PreExistingCount);
+        Assert.Null(warnings.Unavailable);
+    }
+
+    [Fact]
+    public async Task WarningCountsThatWereNeverPairedSayWhyTheyAreNull()
+    {
+        CreateInterrupted();
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var warnings = new ReviewReportRepository(_database).ReadManifest(id)!.Summary.Summary.Warnings;
+        Assert.Null(warnings.NewCount);
+        Assert.Equal("paired-warning-evidence-unavailable", warnings.Unavailable);
+    }
+
+    [Fact]
     public async Task PairedWarningsFromTheTrialProduceAFlagEvenWithoutParsimony()
     {
         CreateInterrupted();
@@ -773,7 +797,7 @@ public sealed class TrialReviewCommandsTests : IDisposable
     }
 
     private void CreateInterrupted(IReadOnlyList<FrozenProposalRevision>? prerequisites = null, ParseAnalysis? analysis = null,
-        bool configured = false)
+        bool configured = false, string job = Job)
     {
         ReviewSetBinding[] sets = configured ? [new("reference-set", "Reference", "reference", "members", "expectations", "source", [])] : [];
         ReviewMembership[] memberships = configured ? [new("reference-set", "member", "reference", 1, null, null, [])] : [];
@@ -784,11 +808,80 @@ public sealed class TrialReviewCommandsTests : IDisposable
         var reference = ReviewInputArtifacts.Store(_database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
         var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = _proposal.Value, operations = Array.Empty<object>() });
         var input = new TrialJobInput(proposalJson, null, Prerequisites: prerequisites, ReviewInputs: reference);
-        new JobRepository(_database).RecordInterrupted(Job, "project", "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
+        new JobRepository(_database).RecordInterrupted(job, "project", "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
             "{}", "2026-01-01T00:00:00Z", JobStatus.Failed);
         var row = new ParseWordEvidence("fieldworks-parse-analysis/v1", 0, "word", 0, false, true, false, analysis is null ? [] : [analysis], []);
-        var ledger = new TrialReviewLedger(Job, reference, [new("case", "word", "timed-out", row)], [], []);
+        var ledger = new TrialReviewLedger(job, reference, [new("case", "word", "timed-out", row)], [], []);
         TrialReviewEvidence.Save(_database, TrialReviewEvidence.Interrupt(ledger, inputs, "after", "cancelled"));
+    }
+
+    private void FillStore(long bytes)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "CREATE TABLE IF NOT EXISTS TestFiller (Blob BLOB); INSERT INTO TestFiller VALUES (zeroblob($bytes));";
+        command.Parameters.AddWithValue("$bytes", bytes);
+        command.ExecuteNonQuery();
+    }
+
+    private Refusal ReadFullDetail(ReviewReportId id)
+    {
+        var detail = new TrialReviewCommands(_database).Read(new ReviewReadRequest("project", _proposal.Value,
+            ReportId: id.Value, Detail: DetailLevel.Full, Section: "wordforms", Flag: ReviewFlagId.NewWordFailures));
+        return detail.Refusal ?? throw new Xunit.Sdk.XunitException("Detail was readable.");
+    }
+
+    [Fact]
+    public async Task DetailIsRetainedRightAfterATrialWhenTheStoreIsLarge()
+    {
+        CreateInterrupted();
+        FillStore(150_000_000);
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        Assert.True(new ReviewReportRepository(_database).ReadManifest(id)!.DetailAvailable);
+        var detail = new TrialReviewCommands(_database).Read(new ReviewReadRequest("project", _proposal.Value,
+            ReportId: id.Value, Detail: DetailLevel.Full, Section: "wordforms"));
+        Assert.True(detail.Succeeded);
+    }
+
+    [Fact]
+    public async Task ARepeatTrialKeepsItsDetailAndTheSupersededOneNamesWhatEvictedIt()
+    {
+        CreateInterrupted();
+        var first = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        CreateInterrupted(job: "job/review-2");
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE ReviewReports SET DetailBytes=99999000 WHERE ReportId=$id;";
+            command.Parameters.AddWithValue("$id", first.Value);
+            command.ExecuteNonQuery();
+        }
+        var second = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest("job/review-2"));
+        var repository = new ReviewReportRepository(_database);
+        Assert.NotEqual(first.Value, second.Value);
+        Assert.True(repository.ReadManifest(second)!.DetailAvailable);
+        Assert.False(repository.ReadManifest(first)!.DetailAvailable);
+        var refusal = ReadFullDetail(first);
+        Assert.Equal("detail-superseded", refusal.Facts["reason"]);
+        Assert.Contains("superseded", refusal.Message);
+        Assert.Contains("rerun", refusal.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RefusalAfterTheProposalIsDecidedSaysSoAndHowToGetItBack()
+    {
+        CreateInterrupted();
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        using (var connection = _database.OpenConnection())
+        {
+            using var transaction = connection.BeginTransaction();
+            ReviewReportRetention.DropDetail(connection, transaction, _proposal.Value, "2026-01-02T00:00:00Z");
+            transaction.Commit();
+        }
+        var refusal = ReadFullDetail(id);
+        Assert.Equal("detail-released", refusal.Facts["reason"]);
+        Assert.Contains("decision", refusal.Message);
+        Assert.Contains("Trial", refusal.Message);
     }
 
     public void Dispose()
