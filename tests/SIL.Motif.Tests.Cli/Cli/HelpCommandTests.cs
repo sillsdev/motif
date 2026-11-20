@@ -496,6 +496,26 @@ public sealed class HelpCommandTests
             Assert.Contains("--wait", commands[name].GetRawText(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void HelpForATopicWithoutACommandPrintsThePageAndExitsZero()
+    {
+        var catalog = HelpCatalog.Load();
+        var commandNames = CommandCatalog.All.Select(command => command.Name).ToHashSet(StringComparer.Ordinal);
+        var topics = catalog.Entries
+            .Where(entry => entry.Kind == HelpEntryKind.Command && !commandNames.Contains(entry.Code))
+            .Select(entry => entry.Code)
+            .ToArray();
+        Assert.Contains("lexicon-import", topics);
+
+        var failures = topics
+            .SelectMany(topic => new[] { new[] { "help", topic }, ["help", topic, "--full"], ["help", topic, "--json"] })
+            .Where(arguments => Run(true, true, arguments).ExitCode != 0)
+            .Select(arguments => string.Join(' ', arguments))
+            .ToArray();
+
+        Assert.Empty(failures);
+    }
+
     private static string[] CatalogedCommandNames() => HelpCatalog.Load().Entries
         .Where(entry => entry.Kind == HelpEntryKind.Command)
         .Select(entry => entry.Code)

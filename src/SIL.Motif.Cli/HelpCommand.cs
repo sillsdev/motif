@@ -140,7 +140,7 @@ public static class HelpCommand
         var unavailable = command is not null && !policy.IsAvailable(command);
         if (json)
         {
-            var helpEntry = BuildEntry(entry, entryKind == HelpEntryKind.Command);
+            var helpEntry = BuildEntry(entry, entryKind == HelpEntryKind.Command && IsCataloguedCommand(entry.Code));
             output.WriteLine(JsonSerializer.Serialize(unavailable
                 ? new { entry = helpEntry, available = false, enablement = EnablementText(command!) }
                 : helpEntry, JsonOptions));
@@ -163,6 +163,9 @@ public static class HelpCommand
 
         return 0;
     }
+
+    // A Command-kind Help page can be a topic with no command behind it, such as lexicon-import.
+    private static bool IsCataloguedCommand(string code) => CommandCatalog.All.Any(item => item.Name == code);
 
     private static bool IsKnownCommand(HelpCatalog catalog, string code) =>
         code is "mcp" or "autonomous" ||
@@ -345,7 +348,7 @@ public static class HelpCommand
         if (entry.Redirect is { } redirect)
             output.WriteLine(redirect);
         output.WriteLine(entry.Description);
-        if (kind == HelpEntryKind.Command)
+        if (kind == HelpEntryKind.Command && IsCataloguedCommand(entry.Code))
         {
             foreach (var usage in UsageLines(entry.Code))
                 output.WriteLine(NormalizeUsage(usage));
