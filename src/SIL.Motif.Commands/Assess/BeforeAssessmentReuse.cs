@@ -28,20 +28,27 @@ internal static class BeforeAssessmentReuse
         catch (Exception exception) when (exception is JsonException or ArgumentException) { return false; }
     }
 
+    /// <summary>The limits a Trial measures under, and where the time limit came from when an earlier measurement set it.</summary>
+    /// <param name="Limits">The limits to measure under.</param>
+    /// <param name="Detail">The earlier measurement whose time limit was kept, or null when the policy's own limit stands.</param>
+    internal sealed record AdoptedSafetyNet(TrialLimits Limits, string? Detail);
+
     /// <summary>
-    /// The limits a Trial measures under, with the wall-clock safety net an earlier measurement of this Baseline used.
-    /// The net is sized from the latest parse rate, so it moves with every run and no earlier measurement would match it
-    /// again; the parser work limit is what stops a word, and the net only has to be generous. Taking the earlier net
-    /// keeps the before and after sides under one limit and lets <see cref="Find"/> match by the limit exactly.
+    /// The limits a Trial measures under, with the wall-clock safety net an earlier measurement of this Baseline used when
+    /// that net is at least as long as the one the project's parse rate sizes now. The net is re-sized from the latest
+    /// parse rate on every run, so no earlier measurement would match it again; the parser work limit is what stops a
+    /// word, and the net only has to be generous. Keeping the longer of the two lets a repeat Trial match by the limit
+    /// exactly, while a net born of a small or fast run can never pin a shorter limit than the policy now asks for.
     /// </summary>
     /// <param name="database">The project's store, for its earlier measurements.</param>
     /// <param name="baseline">The Baseline the Trial measures.</param>
     /// <param name="limits">The limits resolved from the project's policy.</param>
     /// <param name="parserPath">The parser the Trial measures with; only a measurement by the same bytes is followed.</param>
-    internal static TrialLimits AdoptEarlierSafetyNet(MotifDatabase database, BaselineToken baseline, TrialLimits limits,
+    internal static AdoptedSafetyNet AdoptEarlierSafetyNet(MotifDatabase database, BaselineToken baseline, TrialLimits limits,
         string? parserPath)
     {
-        if (limits.PerWordLimit is null || parserPath is null) return limits;
+        var kept = new AdoptedSafetyNet(limits, null);
+        if (limits.PerWordLimit is not { } current || parserPath is null) return kept;
         try
         {
             var parserHash = BatchInvocationEvidence.DigestFile(parserPath);
@@ -56,15 +63,17 @@ internal static class BeforeAssessmentReuse
                     invocation.ExecutableBytesSha256 != parserHash ||
                     invocation.PerWordParserWorkLimit != limits.PerWordParserWorkLimit ||
                     invocation.PerWordTimeoutMs is not { } milliseconds) continue;
-                return limits with { PerWordLimit = TimeSpan.FromMilliseconds(milliseconds) };
+                if (milliseconds < current.TotalMilliseconds) return kept;
+                return new AdoptedSafetyNet(limits with { PerWordLimit = TimeSpan.FromMilliseconds(milliseconds) },
+                    $"time limit {milliseconds} ms kept from assessment {record.AssessmentId} saved {record.SavedUtc}");
             }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
             InvalidDataException or JsonException or ArgumentException or KeyNotFoundException)
         {
-            return limits;
+            return kept;
         }
-        return limits;
+        return kept;
     }
 
     public static string? Find(MotifDatabase database, AssessmentRepository assessments, BaselineToken baseline,

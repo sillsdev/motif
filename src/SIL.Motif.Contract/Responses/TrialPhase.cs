@@ -12,6 +12,10 @@ public sealed record TrialPhase(
     /// <summary>Why the step cost what it did: <see cref="TrialPhaseNames.Reused"/> or <see cref="TrialPhaseNames.NotRun"/>.</summary>
     [JsonPropertyName("note"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Note { get; init; }
+
+    /// <summary>Where a value the step used came from, such as the time limit an earlier measurement of this Baseline set.</summary>
+    [JsonPropertyName("detail"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Detail { get; init; }
 }
 
 /// <summary>The stable names of a Trial's phases, in the order they happen.</summary>

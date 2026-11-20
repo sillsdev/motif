@@ -43,6 +43,9 @@ public sealed record EnqueueTrialRequest(
     /// <summary>What the before-side parse took and whether a stored result served it; null when none ran.</summary>
     internal SIL.Motif.Contract.Responses.TrialPhase? BeforeParsePhase { get; init; }
 
+    /// <summary>Where the time limit came from when an earlier measurement of this Baseline set it; null when the policy's own limit was used.</summary>
+    internal string? AdoptedNetDetail { get; init; }
+
     /// <summary>Starts the pre-queue clock once, at the first entry point a Trial passes through.</summary>
     internal EnqueueTrialRequest WithPrequeueClock() => PrequeueStartedTimestamp != 0 ? this
         : this with { PrequeueStartedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp() };

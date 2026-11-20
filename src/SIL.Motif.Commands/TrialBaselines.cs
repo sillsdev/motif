@@ -192,38 +192,45 @@ public static class TrialBaselines
             catch (Exception exception) when (onBaselineUnavailable is not null && exception is not OperationCanceledException)
             {
                 onBaselineUnavailable(exception.Message);
-                return JobCommands.EnqueueTrialAdmitted(RetainBefore(RefusalCodes.AssessUnavailable), expectedParserPath, admission);
+                return JobCommands.EnqueueTrialAdmitted(ReleasedRead(RetainBefore(RefusalCodes.AssessUnavailable)), expectedParserPath, admission);
             }
             if (!before.Succeeded)
             {
                 if (before.Refusal!.Code == RefusalCodes.ChangeRefreshRequired)
                     return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal);
                 if (before.Refusal.Code is RefusalCodes.AssessParserKilled or RefusalCodes.AssessOutOfMemory)
-                    return JobCommands.EnqueueStoppedTrial(RetainBefore(before.Refusal.Code) with { Words = words }, expectedParserPath, before.Refusal);
+                    return JobCommands.EnqueueStoppedTrial(ReleasedRead(RetainBefore(before.Refusal.Code) with { Words = words }), expectedParserPath, before.Refusal);
                 if (before.Refusal.Reason == FailureReason.StoppedByBudget)
-                    return JobCommands.EnqueueStoppedTrial(RetainBefore(before.Refusal.Code) with { Words = words }, expectedParserPath, before.Refusal);
+                    return JobCommands.EnqueueStoppedTrial(ReleasedRead(RetainBefore(before.Refusal.Code) with { Words = words }), expectedParserPath, before.Refusal);
                 if (request.ReviewSnapshot is not null &&
                     (before.Refusal.Reason == FailureReason.Cancelled || before.Refusal.Code == RefusalCodes.AssessParserMemoryLimit))
-                    return JobCommands.EnqueueStoppedTrial(RetainBefore(before.Refusal.Code) with { Words = words }, expectedParserPath, before.Refusal);
+                    return JobCommands.EnqueueStoppedTrial(ReleasedRead(RetainBefore(before.Refusal.Code) with { Words = words }), expectedParserPath, before.Refusal);
                 if (onBaselineUnavailable is null || before.Refusal.Reason == FailureReason.Cancelled)
                     return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal);
                 onBaselineUnavailable(before.Refusal!.Message);
-                return JobCommands.EnqueueTrialAdmitted(RetainBefore(before.Refusal.Code), expectedParserPath, admission);
+                return JobCommands.EnqueueTrialAdmitted(ReleasedRead(RetainBefore(before.Refusal.Code)), expectedParserPath, admission);
             }
             beforeSeconds += System.Diagnostics.Stopwatch.GetElapsedTime(beforeStarted).TotalSeconds;
             allReused &= before.Value!.ReusedEvidence;
             assessmentIds.AddRange(before.Value!.AssessmentIds);
             baselines.Add(new(partition.WritingSystemId, partition.CaseKeys, before.Value.AssessmentIds));
         }
-        return JobCommands.EnqueueTrialAdmitted(request with
+        return JobCommands.EnqueueTrialAdmitted(ReleasedRead(request with
         {
             BeforeParsePhase = new TrialPhase(TrialPhaseNames.ParseBefore, Math.Round(beforeSeconds, 3))
-                { Note = allReused ? TrialPhaseNames.Reused : null },
+                { Note = allReused ? TrialPhaseNames.Reused : null, Detail = request.AdoptedNetDetail },
             Words = request.ReviewSnapshot is null ? request.Words : words,
             BaselineAssessmentIds = assessmentIds,
             ReviewBaselines = request.ReviewSnapshot is null ? null : baselines,
             ReviewBeforeDispatches = dispatched.Count == 0 ? null : dispatched.ToArray(),
-        }, expectedParserPath, admission);
+        }), expectedParserPath, admission);
+
+        // The Baseline copy is released before the job is queued, so the worker never starts beside it.
+        EnqueueTrialRequest ReleasedRead(EnqueueTrialRequest queued)
+        {
+            sharedBaselineRead.Dispose();
+            return queued;
+        }
 
         EnqueueTrialRequest RetainBefore(string code) => request.ReviewSnapshot is null ? request : request with
         {

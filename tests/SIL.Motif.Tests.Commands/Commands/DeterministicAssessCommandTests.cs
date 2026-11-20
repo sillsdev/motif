@@ -121,20 +121,115 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void AReuseKeepsTheEarlierSafetyNetSoARepeatTrialFindsIt()
+    public void AReuseKeepsALongerEarlierSafetyNetAndSaysWhereItCameFrom()
     {
         using var seeded = NewSeededScratch();
-        var parser = FakeParser.Copy(Path.Combine(_managedRootsParent, "net-parser"));
-        FakeParser.BehaveBesideExecutable(parser, new { words = new[] { new { word = "balay", outcome = "complete" } } });
-        var request = new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["balay"], false, null));
-        var root = NewManagedRoot();
-        var measured = new TrialLimits(TimeSpan.FromSeconds(7), ParserWorkLimit.Default);
-        Assert.True(AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, measured, reuseBefore: true).Succeeded);
+        var (parser, request, root) = NetFixture(seeded, "net-keep");
+        var earlier = new TrialLimits(TimeSpan.FromHours(5), ParserWorkLimit.Default);
+        Assert.True(AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, earlier, reuseBefore: true).Succeeded);
 
         var adopted = SIL.Motif.Commands.JobCommands.FreezeTrialLimitsForReuse(
             new SIL.Motif.Commands.Requests.EnqueueTrialRequest(seeded.FwDataPath, "1.0", "x") { Limits = null }, parser);
+
         Assert.True(adopted.Succeeded, adopted.Refusal?.Message);
-        Assert.Equal(TimeSpan.FromSeconds(7), adopted.Value!.Limits?.PerWordLimit);
+        Assert.Equal(TimeSpan.FromHours(5), adopted.Value!.Limits?.PerWordLimit);
+        Assert.Contains("kept from assessment", adopted.Value.AdoptedNetDetail);
+    }
+
+    [Fact]
+    public void AShorterEarlierSafetyNetNeverPinsTheLimit()
+    {
+        using var seeded = NewSeededScratch();
+        var (parser, request, root) = NetFixture(seeded, "net-max");
+        Assert.True(AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None,
+            new TrialLimits(TimeSpan.FromSeconds(3), ParserWorkLimit.Default), reuseBefore: true).Succeeded);
+        var current = new TrialLimits(TimeSpan.FromSeconds(20), ParserWorkLimit.Default);
+
+        var result = AdoptNet(seeded, current, parser);
+        Assert.Equal(current, result.Limits);
+        Assert.Null(result.Detail);
+        var equal = AdoptNet(seeded, current with { PerWordLimit = TimeSpan.FromSeconds(3) }, parser);
+        Assert.NotNull(equal.Detail);
+    }
+
+    [Theory]
+    [InlineData("no-parser")]
+    [InlineData("no-time-net")]
+    [InlineData("other-parser-bytes")]
+    [InlineData("other-work-limit")]
+    [InlineData("changed-baseline")]
+    [InlineData("other-assessor")]
+    public void TheEarlierSafetyNetIsSkippedUnlessTheMeasurementIsTheSame(string skip)
+    {
+        using var seeded = NewSeededScratch();
+        var (parser, request, root) = NetFixture(seeded, "net-skip");
+        Assert.True(AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None,
+            new TrialLimits(TimeSpan.FromHours(5), ParserWorkLimit.Default), reuseBefore: true).Succeeded);
+        var asking = new TrialLimits(TimeSpan.FromSeconds(2), ParserWorkLimit.Default);
+        var path = parser;
+        if (skip == "no-parser") path = null!;
+        if (skip == "no-time-net") asking = asking with { PerWordLimit = null };
+        if (skip == "other-parser-bytes") File.AppendAllText(parser, "different executable bytes");
+        if (skip == "other-work-limit") asking = asking with { PerWordParserWorkLimit = new ParserWorkLimit(100) };
+        if (skip == "other-assessor")
+        {
+            using var connection = OpenDatabase(seeded.FwDataPath).OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE Assessments SET Assessor = 'someone-else'";
+            command.ExecuteNonQuery();
+        }
+        var token = CurrentBaselineToken(seeded.FwDataPath);
+        if (skip == "changed-baseline") token = new SIL.Motif.Contract.Baselines.BaselineToken(token.ProjectIdentity,
+            "sha256:" + new string('a', 64), token.ProjectionVersion, token.CapturedUtc, token.BundleDigest);
+
+        using var database = OpenDatabase(seeded.FwDataPath);
+        var result = SIL.Motif.Commands.Assess.BeforeAssessmentReuse.AdoptEarlierSafetyNet(database, token, asking, path);
+
+        Assert.Equal(asking, result.Limits);
+        Assert.Null(result.Detail);
+    }
+
+    [Theory]
+    [InlineData("timed-out")]
+    [InlineData("capped")]
+    public void IncompleteBeforeWordsAreNeverReused(string outcome)
+    {
+        using var seeded = NewSeededScratch();
+        var parser = FakeParser.Copy(Path.Combine(_managedRootsParent, "incomplete-parser"));
+        FakeParser.BehaveBesideExecutable(parser, new { words = new[] { new { word = "balay", outcome } } });
+        var request = new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["balay"], false, null));
+        var root = NewManagedRoot();
+        var limits = new TrialLimits(TimeSpan.FromSeconds(1), ParserWorkLimit.Default);
+        var first = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits, reuseBefore: true);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var id = first.Value!.Measurements.Single(item => item.Kind == "ParseTime").AssessmentId;
+
+        var second = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits, reuseBefore: true);
+
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.DoesNotContain(id, second.Value!.AssessmentIds);
+    }
+
+    private (string Parser, AssessRequest Request, string Root) NetFixture(SeededScratch seeded, string name)
+    {
+        var parser = FakeParser.Copy(Path.Combine(_managedRootsParent, name));
+        FakeParser.BehaveBesideExecutable(parser, new { words = new[] { new { word = "balay", outcome = "complete" } } });
+        return (parser, new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["balay"], false, null)), NewManagedRoot());
+    }
+
+    private SIL.Motif.Commands.Assess.BeforeAssessmentReuse.AdoptedSafetyNet AdoptNet(SeededScratch seeded, TrialLimits limits, string parser)
+    {
+        using var database = OpenDatabase(seeded.FwDataPath);
+        return SIL.Motif.Commands.Assess.BeforeAssessmentReuse.AdoptEarlierSafetyNet(
+            database, CurrentBaselineToken(seeded.FwDataPath), limits, parser);
+    }
+
+    private static SIL.Motif.Contract.Baselines.BaselineToken CurrentBaselineToken(string fwDataPath)
+    {
+        var project = new ProjectLocator(Path.GetFullPath(fwDataPath), Path.GetFileNameWithoutExtension(fwDataPath));
+        using var database = OpenDatabase(fwDataPath);
+        return new SIL.Motif.Worker.Baselines.BaselineRepository(database)
+            .GetCurrentPublished(ProjectWorkspaceKey.Compute(project))!.Token;
     }
 
     [Fact]

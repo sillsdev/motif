@@ -17,7 +17,8 @@ public static class TrialPhaseTable
         foreach (var phase in all)
             table.Append("  ").Append(phase.Name.PadRight(width)).Append(' ')
                 .Append(phase.Seconds.ToString("0.000", CultureInfo.InvariantCulture).PadLeft(9))
-                .Append(phase.Note is null ? string.Empty : "  (" + phase.Note + ")").Append('\n');
+                .Append(phase.Note is null ? string.Empty : "  (" + phase.Note + ")")
+                .Append(phase.Detail is null ? string.Empty : "  [" + phase.Detail + "]").Append('\n');
         table.Append("  ").Append("total".PadRight(width)).Append(' ')
             .Append(all.Sum(phase => phase.Seconds).ToString("0.000", CultureInfo.InvariantCulture).PadLeft(9)).Append('\n');
         return table.ToString();

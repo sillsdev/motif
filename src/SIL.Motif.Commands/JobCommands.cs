@@ -433,7 +433,7 @@ public static class JobCommands
 
     /// <summary>
     /// Freezes the limits as <see cref="FreezeTrialLimits"/> does, and for a policy that sizes the time limit from the
-    /// parse rate, follows the time limit an earlier measurement of this Baseline used (see
+    /// parse rate, keeps the longer of its time limit and the one an earlier measurement of this Baseline used (see
     /// <see cref="Assess.BeforeAssessmentReuse.AdoptEarlierSafetyNet"/>). A caller's limits and an explicit time are kept as given.
     /// </summary>
     internal static CommandOutcome<EnqueueTrialRequest> FreezeTrialLimitsForReuse(EnqueueTrialRequest request, string? parserPath)
@@ -446,8 +446,10 @@ public static class JobCommands
             var policy = ReadTrialLimitPolicy(database, project, request.Scope);
             var baseline = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
             var adopted = policy is { TimeMode: not SelectionTimeLimitMode.Explicit } && baseline is not null
-                ? Assess.BeforeAssessmentReuse.AdoptEarlierSafetyNet(database, baseline.Token, limits, parserPath) : limits;
-            return CommandOutcome<EnqueueTrialRequest>.Success(frozen.Value! with { Limits = adopted });
+                ? Assess.BeforeAssessmentReuse.AdoptEarlierSafetyNet(database, baseline.Token, limits, parserPath)
+                : new Assess.BeforeAssessmentReuse.AdoptedSafetyNet(limits, null);
+            return CommandOutcome<EnqueueTrialRequest>.Success(frozen.Value! with
+                { Limits = adopted.Limits, AdoptedNetDetail = adopted.Detail });
         });
     }
 
