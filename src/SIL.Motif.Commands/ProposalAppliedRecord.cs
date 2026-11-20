@@ -35,11 +35,17 @@ internal static class ProposalAppliedRecord
         var evidence = differences.ListFor(proposalId).Items
             .Select(saved => differences.GetSummary(saved.DifferenceId))
             .OfType<ProposalDifferenceSummary>()
+            .Where(summary => !SavedAfter(summary.CreatedUtc, view.AppliedUtc))
             .Select(summary => new AppliedEvidenceView(summary.DifferenceId, summary.TextId, summary.TextTitle,
                 summary.Words, summary.Occurrences, summary.ImprovedWords, summary.CouldBeBadWords, summary.CreatedUtc))
             .ToArray();
         return view with { Evidence = evidence };
     }
+
+    // Evidence saved after the Apply is excluded.
+    private static bool SavedAfter(string createdUtc, string appliedUtc) =>
+        DateTimeOffset.TryParse(createdUtc, out var created) && DateTimeOffset.TryParse(appliedUtc, out var applied)
+        && created > applied;
 
     // The Receipt is read as JSON, not as a Receipt: its ids are written as objects the typed read cannot restore.
     private static AppliedRecordView ReadReceipt(string json)
