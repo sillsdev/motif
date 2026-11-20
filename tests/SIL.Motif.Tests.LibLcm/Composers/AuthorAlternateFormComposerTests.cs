@@ -302,7 +302,6 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
 
         AuthorAlternateFormIntent[] refused =
         [
-            Prefix(entry, " "),
             Prefix(entry) with { FormWritingSystem = "zz-notaws" },
             Prefix(entry) with { FormWritingSystem = Anal(_cache) == Vern(_cache) ? "zz" : Anal(_cache) },
             Prefix(entry) with { MorphType = CanonicalId.Mint() },

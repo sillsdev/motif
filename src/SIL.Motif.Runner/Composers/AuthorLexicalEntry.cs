@@ -42,7 +42,7 @@ public sealed record LexicalEntryMsa(
     IReadOnlyList<CanonicalId>? ExceptionFeatures = null);
 
 /// <summary>One new dictionary entry with one sense and typed grammatical info.</summary>
-/// <param name="Form">The lexeme form, without affix hyphens.</param>
+/// <param name="Form">The lexeme form, without affix hyphens; an affix may leave it empty for a null allomorph, stored as ∅.</param>
 /// <param name="FormWritingSystem">The vernacular writing system tag of <paramref name="Form"/>.</param>
 /// <param name="MorphType">The existing morph type, such as stem, root, prefix or suffix.</param>
 /// <param name="Gloss">The sense's gloss.</param>
@@ -186,7 +186,6 @@ public static class AuthorLexicalEntryComposer
             },
         };
         if (withMsa) RequireMsaShape(intent.Msa, ConstructName);
-        var form = formPayload is null ? LexicalFormAuthoring.RequireText(intent.Form, "form", ConstructName) : "";
         var gloss = withSense ? LexicalFormAuthoring.RequireText(intent.Gloss, "gloss", ConstructName) : "";
         var definition = intent.Definition is null || !withSense
             ? null : LexicalFormAuthoring.RequireText(intent.Definition, "definition", ConstructName);
@@ -197,6 +196,7 @@ public static class AuthorLexicalEntryComposer
 
         var morphType = LexicalFormAuthoring.Resolve<IMoMorphType>(cache, intent.MorphType, ConstructName);
         var formClass = MoFormConcreteClassSelection.ClassFor(morphType, ConstructName);
+        var form = formPayload is null ? LexicalFormAuthoring.RequireFormText(intent.Form, formClass, ConstructName) : "";
         var msa = intent.Msa;
         if (withMsa && (formClass == MoFormConcreteClass.StemAllomorph) != (msa.Kind == LexicalEntryMsaKind.Stem))
             throw new InvalidOperationException(

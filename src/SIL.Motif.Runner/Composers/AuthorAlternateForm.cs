@@ -94,12 +94,12 @@ public static class AuthorAlternateFormComposer
                 gap.After is { } left ? LexicalFormAuthoring.Normalize(left) : null,
                 gap.Before is { } right ? LexicalFormAuthoring.Normalize(right) : null) : null,
         };
-        var text = LexicalFormAuthoring.RequireText(intent.Form, "form", ConstructName);
         LexicalFormAuthoring.RequireWritingSystem(cache, intent.FormWritingSystem, vernacular: true, ConstructName);
 
         var entry = LexicalFormAuthoring.Resolve<ILexEntry>(cache, intent.Entry, ConstructName);
         var morphType = LexicalFormAuthoring.Resolve<IMoMorphType>(cache, intent.MorphType, ConstructName);
         var formClass = MoFormConcreteClassSelection.ClassFor(morphType, ConstructName);
+        var text = LexicalFormAuthoring.RequireFormText(intent.Form, formClass, ConstructName);
         LexicalFormAuthoring.RequireMatchingKind(entry, formClass, ConstructName);
 
         IReadOnlyList<CanonicalId> environments = intent.Environments is null ? []
