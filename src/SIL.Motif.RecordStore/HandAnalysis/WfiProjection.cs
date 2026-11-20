@@ -57,6 +57,22 @@ internal sealed class WfiProjection
     public ImmutableDictionary<Guid, Guid> BundleOwner { get; private init; } = ImmutableDictionary<Guid, Guid>.Empty;
     public string FactsDigest { get; private init; } = "";
 
+    /// <summary>The same facts with each reading's native use count and default-rank key bound to the point.</summary>
+    public WfiProjection WithUseCounts(IReadOnlyDictionary<Guid, long> counts) => new()
+    {
+        Headers = Headers, HeaderById = HeaderById, ByKey = ByKey, GlossOwner = GlossOwner, BundleOwner = BundleOwner,
+        FactsDigest = FactsDigest,
+        Readings = Readings.ToImmutableDictionary(p => p.Key, p =>
+        {
+            var count = counts.GetValueOrDefault(p.Key) + p.Value.Fact.Glosses.Sum(g => counts.GetValueOrDefault(g.Id));
+            return p.Value with { Fact = p.Value.Fact with { OccurrenceUseCount = count, DefaultRankKey = RankKey(count, p.Value) } };
+        })
+    };
+
+    /// <summary>Orders by use count descending, then native encounter, as one string that compares ordinally.</summary>
+    internal static string RankKey(long count, NativeReading reading) =>
+        string.Create(CultureInfo.InvariantCulture, $"{long.MaxValue - count:D19}:{reading.Fact.EncounterKey}");
+
     public static string Nfd(string text) => text.Normalize(NormalizationForm.FormD);
 
     /// <summary>Builds from a whole record list.</summary>
@@ -208,16 +224,16 @@ internal sealed class WfiProjection
             null, null, signature, limits.ToImmutable()));
     }
 
-    private static GenericRecord Get(IReadOnlyDictionary<Guid, GenericRecord> native, Guid id) =>
+    internal static GenericRecord Get(IReadOnlyDictionary<Guid, GenericRecord> native, Guid id) =>
         native.TryGetValue(id, out var record) ? record : throw new IndexUnavailableException("A Wfi member record is missing.");
 
-    private static string Key(int field) => field.ToString(CultureInfo.InvariantCulture);
+    internal static string Key(int field) => field.ToString(CultureInfo.InvariantCulture);
 
-    private static long Ordinal(GenericRecord record, string repository) =>
+    internal static long Ordinal(GenericRecord record, string repository) =>
         record.Provenance!.RepositoryOrdinals.TryGetValue(repository, out var ordinal) ? ordinal
             : throw new IndexUnavailableException("A native record lacks its repository ordinal.");
 
-    private static EncounterKey Encounter(GenericRecord record, string repository) =>
+    internal static EncounterKey Encounter(GenericRecord record, string repository) =>
         new(record.Provenance!.EncounterOrdinal, Ordinal(record, repository));
 
     private static Guid? Ref(IReadOnlyDictionary<Guid, GenericRecord> native, WfiSchema schema, GenericRecord record, int field)
@@ -229,20 +245,20 @@ internal sealed class WfiProjection
         return id;
     }
 
-    private static int Int(GenericRecord record, int field) => record.Values[Key(field)].GetInt32();
+    internal static int Int(GenericRecord record, int field) => record.Values[Key(field)].GetInt32();
 
     /// <summary>Native member order: the captured vector when present, else the stored list.</summary>
-    private static IEnumerable<Guid> Members(GenericRecord record, int field) =>
+    internal static IEnumerable<Guid> Members(GenericRecord record, int field) =>
         record.Provenance!.Vectors.TryGetValue(field, out var native) ? native
             : record.Values.TryGetValue(Key(field), out var v) ? v.EnumerateArray().Select(x => x.GetGuid()) : [];
 
-    private static ImmutableDictionary<string, string> Texts(JsonElement multi) =>
+    internal static ImmutableDictionary<string, string> Texts(JsonElement multi) =>
         multi.EnumerateObject().ToImmutableDictionary(p => p.Name, p => Text(p.Value), StringComparer.Ordinal);
 
     private static IEnumerable<KeyValuePair<string, string>> FormBytes(ImmutableDictionary<string, string> forms) =>
         forms.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => KeyValuePair.Create(p.Key, Convert.ToBase64String(MemoryMarshal.AsBytes(p.Value.AsSpan()))));
 
-    private static string Text(JsonElement text)
+    internal static string Text(JsonElement text)
     {
         if (text.ValueKind == JsonValueKind.Null) return "";
         if (text.ValueKind != JsonValueKind.Object || !text.TryGetProperty("text", out var raw) ||

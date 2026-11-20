@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using SIL.LCModel;
 using CanonicalJson = SIL.Motif.Contract.Canonicalization.CanonicalJson;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.HandAnalysis;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.RecordStore;
@@ -24,21 +25,8 @@ public sealed class HandAnalysisSignatureTests : IDisposable
     public async Task NativeBundlesMatchTheSharedReadingVector(bool explicitSense, bool unsupported, string vectorName)
     {
         using var cache = NewLangProjFixture.CreateCache(root);
-        var schema = new LcmGraphReader(cache).Schema();
-        var manifest = new GenericRecord { Id = LcmRecordBridge.ManifestId, Kind = "manifest" };
-        manifest.Values["schema"] = schema;
         var records = Records(cache.LangProject.Guid, explicitSense, unsupported).ToArray();
-        var types = schema.GetProperty("fields").EnumerateArray()
-            .ToDictionary(f => f.GetProperty("id").GetInt32(), f => f.GetProperty("type").GetInt32());
-        var layouts = records.GroupBy(r => r.ClassId).ToImmutableDictionary(g => g.Key,
-            g => g.First().Values.Keys.Select(int.Parse).ToImmutableDictionary(f => f, f => types[f]));
-        var coverage = NativeImportCoverage.Capture(records.Select(r => new ReferenceRecord(r.Id, r.ClassId, r.Owner, r.OwningField)),
-            layouts, records[0].Provenance!.TraversalVersion, schema);
-        var path = Path.Combine(root, "signature.sqlite");
-        await using (var store = new SIL.Motif.RecordStore.RecordStore(path))
-            await store.ImportAsync(records.Append(manifest).Select(r => new RecordImport(r, types)), Guid.NewGuid(), coverage);
-
-        await using var host = await HandAnalysisHost.OpenAsync(path);
+        await using var host = await HandAnalysisHost.OpenAsync(await Import(cache, records));
         IHandAnalysisIndex index = host;
         await using var pin = (await index.PinAsync(cache.LangProject.Guid, null, default)).Value();
         var page = await pin.Words(TestWord.Reading(GuidOf(31)), new());
@@ -60,6 +48,71 @@ public sealed class HandAnalysisSignatureTests : IDisposable
         Assert.Equal(new ReadingSignature(ReadingSignatureFixture.ParserFacts(explicitSense)), signature);
     }
 
+    private async Task<string> Import(LcmCache cache, GenericRecord[] records)
+    {
+        var schema = new LcmGraphReader(cache).Schema();
+        var manifest = new GenericRecord { Id = LcmRecordBridge.ManifestId, Kind = "manifest" };
+        manifest.Values["schema"] = schema;
+        var types = schema.GetProperty("fields").EnumerateArray()
+            .ToDictionary(f => f.GetProperty("id").GetInt32(), f => f.GetProperty("type").GetInt32());
+        var layouts = records.GroupBy(r => r.ClassId).ToImmutableDictionary(g => g.Key,
+            g => g.First().Values.Keys.Select(int.Parse).ToImmutableDictionary(f => f, f => types[f]));
+        var coverage = NativeImportCoverage.Capture(records.Select(r => new ReferenceRecord(r.Id, r.ClassId, r.Owner, r.OwningField)),
+            layouts, records[0].Provenance!.TraversalVersion, schema);
+        var path = Path.Combine(root, "signature-" + Guid.NewGuid().ToString("N") + ".sqlite");
+        await using var store = new SIL.Motif.RecordStore.RecordStore(path);
+        await store.ImportAsync(records.Append(manifest).Select(r => new RecordImport(r, types)), Guid.NewGuid(), coverage);
+        return path;
+    }
+
+    /// <summary>A present native integer of the wrong kind makes the index unavailable; it is never read as an empty or zero value.</summary>
+    [Theory]
+    [InlineData(1, LexEntryTags.kflidHomographNumber, "\"x\"")]
+    [InlineData(1, LexEntryTags.kflidHomographNumber, "null")]
+    [InlineData(1, LexEntryTags.kflidHomographNumber, "true")]
+    [InlineData(22, LexEntryRefTags.kflidRefType, "\"1\"")]
+    [InlineData(22, LexEntryRefTags.kflidRefType, "null")]
+    public async Task ACorruptNativeValueRefusesTheIndexInsteadOfAnsweringPlausibly(int record, int field, string json)
+    {
+        using var cache = NewLangProjFixture.CreateCache(root);
+        var records = Records(cache.LangProject.Guid, true, false).ToArray();
+        var target = Assert.Single(records, r => r.Id == GuidOf(record));
+        target.Values[field.ToString()] = JsonDocument.Parse(json).RootElement.Clone();
+        await using var host = await HandAnalysisHost.OpenAsync(await Import(cache, records));
+        var outcome = await ((IHandAnalysisIndex)host).PinAsync(cache.LangProject.Guid, null, default);
+        Assert.Null(outcome.Value);
+        Assert.Equal(RefusalCodes.HandAnalysisIndexUnavailable, outcome.Refusal?.Code);
+    }
+
+    /// <summary>Import already stops wrong-kind references, so the readers are checked directly: a wrong kind is unavailable, only a missing key is empty.</summary>
+    [Fact]
+    public void TheLexiconReadersRefuseWrongKindsAndTreatOnlyAMissingKeyAsEmpty()
+    {
+        static GenericRecord With(string json)
+        {
+            var record = new GenericRecord { Id = Guid.NewGuid() };
+            record.Values["1"] = JsonDocument.Parse(json).RootElement.Clone();
+            return record;
+        }
+        var good = Guid.NewGuid();
+        var none = new GenericRecord { Id = Guid.NewGuid() };
+        Assert.Null(LexiconProjection.Atom(none, 1));
+        Assert.Null(LexiconProjection.Atom(With("null"), 1));
+        Assert.Equal(good, LexiconProjection.Atom(With($"\"{good}\""), 1));
+        Assert.Empty(LexiconProjection.Seq(none, 1));
+        Assert.Equal([good], LexiconProjection.Seq(With($"[\"{good}\"]"), 1));
+        Assert.Empty(LexiconProjection.Multi(none, 1));
+        Assert.Throws<IndexUnavailableException>(() => LexiconProjection.Int(none, 1));
+        foreach (var json in new[] { "\"x\"", "7", "[]", "{}", "true" })
+            Assert.Throws<IndexUnavailableException>(() => LexiconProjection.Atom(With(json), 1));
+        foreach (var json in new[] { "\"x\"", "7", "{}", "null", "[7]", "[null]", "[\"x\"]" })
+            Assert.Throws<IndexUnavailableException>(() => LexiconProjection.Seq(With(json), 1).ToArray());
+        foreach (var json in new[] { "\"x\"", "7", "[]", "null", "true" })
+            Assert.Throws<IndexUnavailableException>(() => LexiconProjection.Multi(With(json), 1));
+        foreach (var json in new[] { "\"x\"", "null", "true", "1.5", "[]", "{}" })
+            Assert.Throws<IndexUnavailableException>(() => LexiconProjection.Int(With(json), 1));
+    }
+
     private static IEnumerable<GenericRecord> Records(Guid project, bool explicitSense, bool unsupported)
     {
         static GenericRecord Record(int id, int cls, int parent, int owningField, string? repository = null, int ordinal = 0,
@@ -77,7 +130,8 @@ public sealed class HandAnalysisSignatureTests : IDisposable
             Record(id, LexEntryTags.kClassId, 0, 0, fields:
                 [(LexEntryTags.kflidLexemeForm, morph is { } form ? GuidOf(form) : null),
                  (LexEntryTags.kflidMorphoSyntaxAnalyses, msa is { } analysis ? Ids(analysis) : Ids()),
-                 (LexEntryTags.kflidSenses, Ids(senses)), (LexEntryTags.kflidEntryRefs, Ids(references))]);
+                 (LexEntryTags.kflidSenses, Ids(senses)), (LexEntryTags.kflidEntryRefs, Ids(references)),
+                 (LexEntryTags.kflidHomographNumber, 0), (LexEntryTags.kflidCitationForm, new { })]);
 
         static GenericRecord Sense(int id, int entry, int msa) =>
             Record(id, LexSenseTags.kClassId, entry, LexEntryTags.kflidSenses, fields:

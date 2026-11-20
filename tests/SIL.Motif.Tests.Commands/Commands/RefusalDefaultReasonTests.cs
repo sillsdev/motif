@@ -90,7 +90,6 @@ public sealed class RefusalDefaultReasonTests
         ["hand-analysis.deletion-plan-mismatch"] = HandAnalysisContract,
         ["hand-analysis.invalid-buffer"] = HandAnalysisContract,
         ["hand-analysis.referenced"] = HandAnalysisContract,
-        ["hand-analysis.source-unavailable"] = HandAnalysisContract,
         ["hand-analysis.stale-read-set"] = HandAnalysisContract,
         ["hand-analysis.unsupported-operation"] = HandAnalysisContract,
         ["hand-analysis.outcome-unknown"] = "contract code for an annotation persistence outcome, outside identity resolution",

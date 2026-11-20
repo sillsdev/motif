@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -18,7 +19,10 @@ internal sealed class IndexUnavailableException(string message, Exception? inner
 
 internal sealed class SnapshotExpiredException(string message) : InvalidOperationException(message);
 
-internal sealed record PinnedPoint(SnapshotStamp Stamp, StoreState Proof, WfiProjection Projection, ReferenceIndexSnapshot Index);
+internal sealed record PinnedPoint(SnapshotStamp Stamp, StoreState Proof, HandAnalysisProjection Hand, ReferenceIndexSnapshot Index)
+{
+    public WfiProjection Projection => Hand.Wfi;
+}
 
 /// <summary>Serves immutable pins of an existing published Home through read-only SQLite connections.</summary>
 /// <remarks>
@@ -28,7 +32,7 @@ internal sealed record PinnedPoint(SnapshotStamp Stamp, StoreState Proof, WfiPro
 /// </remarks>
 internal sealed class HandAnalysisHost : IHandAnalysisIndex, IAsyncDisposable
 {
-    public const int IndexSchemaVersion = 2;
+    public const int IndexSchemaVersion = 3;
     public const string ComparisonVersionNone = "none";
     public const int RetainedPoints = 4;
 
@@ -40,23 +44,27 @@ internal sealed class HandAnalysisHost : IHandAnalysisIndex, IAsyncDisposable
     private readonly string storeScope;
     private readonly string path;
     private readonly ExternalBasis basis;
+    private readonly FormCollationFactory collationFactory;
     private bool disposed;
 
-    private HandAnalysisHost(string path, RecordStore reader, ExternalBasis basis)
+    private HandAnalysisHost(string path, RecordStore reader, ExternalBasis basis, FormCollationFactory collationFactory)
     {
+        this.collationFactory = collationFactory;
         this.reader = reader;
         this.basis = basis;
         storeScope = OperatingSystem.IsWindows() ? path.ToUpperInvariant() : path;
         this.path = path;
     }
 
-    public static Task<HandAnalysisHost> OpenAsync(string path, ExternalBasis? basis = null, CancellationToken ct = default)
+    public static Task<HandAnalysisHost> OpenAsync(string path, ExternalBasis? basis = null, CancellationToken ct = default,
+        FormCollationFactory? collation = null)
     {
         ct.ThrowIfCancellationRequested();
         path = RecordStore.ResolvePath(path);
         try
         {
-            return Task.FromResult(new HandAnalysisHost(path, RecordStore.OpenPublishedReader(path), basis ?? new()));
+            return Task.FromResult(new HandAnalysisHost(path, RecordStore.OpenPublishedReader(path), basis ?? new(),
+                collation ?? OrdinalFormCollation.Factory));
         }
         catch (Exception exception) when (exception is SqliteException or IOException or InvalidDataException or InvalidOperationException)
         {
@@ -111,7 +119,8 @@ internal sealed class HandAnalysisHost : IHandAnalysisIndex, IAsyncDisposable
             var project = point.ProjectId ?? throw new IndexUnavailableException("The native Home identity is unavailable.");
             if (projectId.HasValue && projectId != project)
                 throw new IndexUnavailableException("The requested project does not identify this Home.", cause: HandAnalysisRefusalFacts.Unavailable);
-            var id = SnapshotId(project, point.State, external);
+            var collation = collationFactory(HandAnalysisProjection.Systems(point));
+            var id = SnapshotId(project, point.State, external, collation.Version);
             var existing = ring.FirstOrDefault(p => p.Stamp.SnapshotId == id);
             lock (pinLifetime)
                 existing ??= live.GetValueOrDefault(id).Point;
@@ -122,11 +131,11 @@ internal sealed class HandAnalysisHost : IHandAnalysisIndex, IAsyncDisposable
                 return Hold(existing);
             }
 
-            var projection = ring.FirstOrDefault(p => p.Proof.SamePoint(point.State))?.Projection
-                ?? WfiProjection.Build(point.Records, point.Index.UsageSchema, ct);
+            var hand = ring.FirstOrDefault(p => p.Proof.SamePoint(point.State) && p.Hand.ComparisonVersion == collation.Version)?.Hand
+                ?? HandAnalysisProjection.Build(point, collation, ct);
             var stamp = new SnapshotStamp(id, project, home, external.SourceRevision, external.ParserRevision, external.SettingsRevision,
-                ComparisonVersionNone, IndexSchemaVersion, SnapshotVerification.Full);
-            var pinned = new PinnedPoint(stamp, point.State, projection, point.GetPlanningIndex(ct));
+                collation.Version, IndexSchemaVersion, SnapshotVerification.Full);
+            var pinned = new PinnedPoint(stamp, point.State, hand, point.GetPlanningIndex(ct));
             ct.ThrowIfCancellationRequested();
             Retain(pinned);
             return Hold(pinned);
@@ -198,12 +207,12 @@ internal sealed class HandAnalysisHost : IHandAnalysisIndex, IAsyncDisposable
         catch (Exception exception) when (exception is SqliteException or IOException or InvalidDataException) { return false; }
     }
 
-    private string SnapshotId(Guid project, StoreState proof, ExternalBasis external) => Convert.ToHexStringLower(SHA256.HashData(
+    private string SnapshotId(Guid project, StoreState proof, ExternalBasis external, string comparisonVersion) => Convert.ToHexStringLower(SHA256.HashData(
         JsonSerializer.SerializeToUtf8Bytes(new
         {
             Store = Encode(storeScope), Project = project, Proof = proof,
             Source = Encode(external.SourceRevision), Parser = Encode(external.ParserRevision), Settings = Encode(external.SettingsRevision),
-            ComparisonVersionNone, IndexSchemaVersion
+            ComparisonVersion = comparisonVersion, IndexSchemaVersion
         })));
 
     private static string Encode(string text) => Convert.ToBase64String(MemoryMarshal.AsBytes(text.AsSpan()));
