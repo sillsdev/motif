@@ -60,6 +60,7 @@ public sealed class ProgressiveDisplayTests
         "DiagnosticPanel", "HandoffPanel", "ImportRecordWindow",
         "MotifWorkspaceView",
         "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage", "Guide/GuideExamples", "Guide/GuideGrammarNames",
+        "Guide/GuideQueryTables", "Guide/GuideQueryBlock", "Guide/GuideQueryDisplay",
         "Proposals/ProposalComparePanel", "Proposals/ProposalCompareSide", "Proposals/ProposalDocument", "Proposals/ProposalEvidenceColumns",
         "ProposalParsimonyDetails", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "Texts/SourcesPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel",
@@ -1033,6 +1034,9 @@ public sealed class ProgressiveDisplayTests
             "Pages/GrammarGuidePage" => new GrammarGuidePage(workspace.PageModel<GrammarGuidePageModel>()),
             "Guide/GuideGrammarNames" => new SIL.Motif.App.Views.Guide.GuideGrammarNames(workspace.PageModel<GrammarGuidePageModel>()),
             "Guide/GuideExamples" => new SIL.Motif.App.Views.Guide.GuideExamples(),
+            "Guide/GuideQueryTables" => new SIL.Motif.App.Views.Guide.GuideQueryTables(workspace.PageModel<GrammarGuidePageModel>().Queries),
+            "Guide/GuideQueryBlock" => new SIL.Motif.App.Views.Guide.GuideQueryBlock(GuideQueryFixture.Block()),
+            "Guide/GuideQueryDisplay" => new SIL.Motif.App.Views.Guide.GuideQueryDisplay(GuideQueryFixture.Block().Displays[0]),
             "Pages/ProposalsPage" => WorkspaceLayoutHost.ForPage(
                 new ProposalsPage(workspace.PageModel<ProposalsPageModel>())),
             "ReviewWordRow" => new PresentationWordRow

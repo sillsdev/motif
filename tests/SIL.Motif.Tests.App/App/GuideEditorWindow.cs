@@ -99,6 +99,7 @@ internal sealed class GuideEditorWindow : Window
     public Task<bool> InsertLinkToPathAsync(string path) => _editor.InsertLinkToPathAsync(path);
     public bool ShowTarget(ContextInfo place) => _editor.ShowTarget(place);
     public Task<bool> OpenMarkdownAsync() => _editor.OpenMarkdownAsync();
+    public Task<string?> ReplaceQueryBodyAsync(string queryId, string body) => _editor.ReplaceQueryBodyAsync(queryId, body);
     public Task<bool> SaveMarkdownAsync() => _editor.SaveMarkdownAsync();
     public Task<bool> UndoMarkdownAsync() => _editor.UndoMarkdownAsync();
     public bool BackToFields() => _editor.BackToFields();

@@ -43,6 +43,8 @@ public sealed partial class GrammarGuidePage : UserControl
         _editor = BuildEditor();
         this.FindControl<ContentControl>("ExamplesHost")!.Content = new GuideExamples(model.Examples);
         this.FindControl<ContentControl>("NamesHost")!.Content = new GuideGrammarNames(model);
+        this.FindControl<ContentControl>("QueriesHost")!.Content = new GuideQueryTables(model.Queries);
+        model.Queries.SaveBody = (id, body) => _editor.ReplaceQueryBodyAsync(id, body);
         var toggle = this.FindControl<ToggleButton>("EditToggle")!;
         ShowEditLabel(toggle);
         toggle.IsCheckedChanged += (_, _) =>

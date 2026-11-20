@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:guide="clr-namespace:SIL.Motif.App.Views.Guide"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.Guide.GuideQueryTables"
+             x:DataType="vm:GuideQueryTablesViewModel"
+             IsVisible="{Binding IsShown}"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryTables}"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideQueriesHeading}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/GrammarGuideScoped.axaml" />
+  </UserControl.Styles>
+  <StackPanel Classes="guideBlock">
+    <views:CopyableTextBlock Classes="guideBlockTitle" Text="{x:Static app:MotifAppStrings.GuideQueriesHeading}" />
+    <views:CopyableTextBlock Classes="guideMeta" Text="{Binding ProblemsText}" IsVisible="{Binding HasProblems}" TextWrapping="Wrap"
+                             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryProblems}" />
+    <ItemsControl x:Name="GuideQueryBlocks" ItemsSource="{Binding Blocks}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:GuideQueryBlockViewModel">
+          <guide:GuideQueryBlock />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

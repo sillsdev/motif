@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.GuideQueries;
 using SIL.Motif.App.Preview;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
@@ -31,7 +32,12 @@ public sealed partial class GrammarGuidePageModel : PageModel
     {
         OpenInFieldWorksCommand = new AsyncRelayCommand<Uri>(OpenInFieldWorksAsync,
             uri => uri is not null && Context.UriLauncher is not null);
+        Queries = new GuideQueryTablesViewModel(GuideQueryContext.Baseline, () => Context.ProjectPath,
+            (request, token) => Context.Commands.RunGuideQueryAsync(request, token), word => Context.OpenWord(word));
     }
+
+    /// <summary>The query tables of the selected section, read from the Baseline: its <c>motif-query</c> blocks run as it is shown.</summary>
+    public GuideQueryTablesViewModel Queries { get; }
 
     /// <summary>The records in their stored order.</summary>
     public ObservableCollection<GdrSummary> Records { get; } = [];
@@ -185,6 +191,8 @@ public sealed partial class GrammarGuidePageModel : PageModel
         OnPropertyChanged(nameof(IsShownStale));
         // No reviewed query joins approved occurrences to this section yet, so there is nothing to supply.
         Examples.Clear();
+        Queries.Show(value is null ? null : GuideQueryDocument.From(value.Discussion
+            .Select(paragraph => string.Concat(paragraph.Runs.Select(run => run.Text))).ToArray()));
     }
 
     partial void OnSelectedRecordChanged(GdrSummary? value)
@@ -215,6 +223,7 @@ public sealed partial class GrammarGuidePageModel : PageModel
         _editStore = null;
         _editStoreProject = null;
         _writingSystemName = null;
+        Queries.Clear();
         SelectedRecord = null;
         Parts.Clear();
         Records.Clear();

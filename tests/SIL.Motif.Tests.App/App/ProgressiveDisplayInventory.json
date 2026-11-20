@@ -497,6 +497,27 @@
     "control": "ListBox"
   },
   {
+    "view": "Guide/GuideQueryTables",
+    "name": "GuideQueryBlocks",
+    "source": "Blocks",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Guide/GuideQueryBlock",
+    "name": "GuideQueryDisplays",
+    "source": "Displays",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Guide/GuideQueryDisplay",
+    "name": "GuideQueryRows",
+    "source": "Rows",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
     "view": "Texts/SourcesPanel",
     "name": "SourcesPanelTextsItems",
     "source": "Selection.Texts",

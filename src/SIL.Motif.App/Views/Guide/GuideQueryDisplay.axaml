@@ -1,0 +1,111 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.Guide.GuideQueryDisplay"
+             x:DataType="vm:GuideQueryDisplayViewModel"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryDisplay}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/GrammarGuideScoped.axaml" />
+  </UserControl.Styles>
+  <StackPanel Classes="guideBlock">
+    <views:CopyableTextBlock Classes="guideMeta" Text="{Binding BaselinePending}" IsVisible="{Binding HasBaselinePending}"
+                             TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryBaselinePending}" />
+    <views:CopyableTextBlock Classes="guideMeta" Text="{Binding ProposalPending}" IsVisible="{Binding HasProposalPending}"
+                             TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryProposalPending}" />
+    <views:CopyableTextBlock Text="{Binding CountsText}" IsVisible="{Binding IsCounts}" TextWrapping="Wrap"
+                             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryCounts}" />
+    <StackPanel IsVisible="{Binding ShowsRows}" Classes="guideBlock">
+      <StackPanel Orientation="Horizontal" Classes="guideQueryRow">
+        <TextBox Classes="guideQueryFilter" Text="{Binding FilterText, Mode=TwoWay}"
+                 PlaceholderText="{x:Static app:MotifAppStrings.GuideQueryFilterPlaceholder}"
+                 AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideQueryFilterName}"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryFilter}" />
+        <StackPanel Orientation="Horizontal" Classes="guideQueryRow" IsVisible="{Binding CanChooseSide}">
+          <RadioButton Content="{x:Static app:MotifAppStrings.GuideQueryScopeBoth}" IsChecked="{Binding FilterOnBothSides, Mode=OneWay}"
+                       Command="{Binding FilterScopeCommand}" CommandParameter="{x:Static vm:GuideQueryFilterScope.BothSides}" />
+          <RadioButton Content="{x:Static app:MotifAppStrings.GuideQueryScopeBaseline}" IsChecked="{Binding FilterOnBaseline, Mode=OneWay}"
+                       Command="{Binding FilterScopeCommand}" CommandParameter="{x:Static vm:GuideQueryFilterScope.Baseline}" />
+          <RadioButton Content="{x:Static app:MotifAppStrings.GuideQueryScopeProposal}" IsChecked="{Binding FilterOnProposal, Mode=OneWay}"
+                       Command="{Binding FilterScopeCommand}" CommandParameter="{x:Static vm:GuideQueryFilterScope.Proposal}" />
+        </StackPanel>
+      </StackPanel>
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <StackPanel Classes="guideBlock">
+          <StackPanel Orientation="Horizontal" Classes="guideQueryRow">
+            <Button Classes="guideQueryWord" Command="{Binding SortCommand}"
+                    CommandParameter="{x:Static vm:GuideQueryColumn.BaselineWord}">
+              <views:CopyableTextBlock Classes="guideMeta" Text="{Binding BaselineWordHeader}" />
+            </Button>
+            <Button Classes="guideQueryAnalysis" IsVisible="{Binding ShowsDetails}" Command="{Binding SortCommand}"
+                    CommandParameter="{x:Static vm:GuideQueryColumn.BaselineAnalysis}">
+              <views:CopyableTextBlock Classes="guideMeta" Text="{Binding BaselineAnalysisHeader}" />
+            </Button>
+            <Button Classes="guideQueryState" IsVisible="{Binding ShowsDetails}" Command="{Binding SortCommand}"
+                    CommandParameter="{x:Static vm:GuideQueryColumn.BaselineState}"
+                    Content="{x:Static app:MotifAppStrings.GuideQueryBaselineState}" />
+            <StackPanel Orientation="Horizontal" Classes="guideQueryRow" IsVisible="{Binding ShowsProposal}">
+              <Button Classes="guideQueryWord" Command="{Binding SortCommand}"
+                      CommandParameter="{x:Static vm:GuideQueryColumn.ProposalWord}"
+                      Content="{x:Static app:MotifAppStrings.GuideQueryProposalWord}" />
+              <Button Classes="guideQueryAnalysis" IsVisible="{Binding ShowsDetails}" Command="{Binding SortCommand}"
+                      CommandParameter="{x:Static vm:GuideQueryColumn.ProposalAnalysis}"
+                      Content="{x:Static app:MotifAppStrings.GuideQueryProposalAnalysis}" />
+              <Button Classes="guideQueryState" IsVisible="{Binding ShowsDetails}" Command="{Binding SortCommand}"
+                      CommandParameter="{x:Static vm:GuideQueryColumn.ProposalState}"
+                      Content="{x:Static app:MotifAppStrings.GuideQueryProposalState}" />
+            </StackPanel>
+          </StackPanel>
+          <ItemsControl x:Name="GuideQueryRows" ItemsSource="{Binding Rows}"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideQueryRowsName}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:GuideQueryRowViewModel">
+                <StackPanel Orientation="Horizontal" Classes="guideQueryRow">
+                  <Panel Classes="guideQueryWord">
+                    <Button Classes="guideQueryLink" IsVisible="{Binding BaselineIsWord}" Command="{Binding OpenBaselineWordCommand}"
+                            AutomationProperties.Name="{Binding BaselineOpenName}">
+                      <views:CopyableTextBlock Text="{Binding BaselineWord}" />
+                    </Button>
+                    <views:CopyableTextBlock Text="{Binding BaselineWord}" IsVisible="{Binding BaselineIsPlain}" />
+                    <views:CopyableTextBlock Classes="guideMeta" Text="{x:Static app:MotifAppStrings.GuideQueryPending}"
+                                             IsVisible="{Binding BaselineIsPending}" />
+                  </Panel>
+                  <views:CopyableTextBlock Classes="guideQueryAnalysis" Text="{Binding BaselineAnalysis}" TextWrapping="Wrap"
+                                           IsVisible="{Binding ShowsDetails}" />
+                  <views:CopyableTextBlock Classes="guideQueryState guideMeta" Text="{Binding BaselineState}" TextWrapping="Wrap"
+                                           IsVisible="{Binding ShowsDetails}" />
+                  <StackPanel Orientation="Horizontal" Classes="guideQueryRow" IsVisible="{Binding ShowsProposal}">
+                    <Panel Classes="guideQueryWord">
+                      <Button Classes="guideQueryLink" IsVisible="{Binding ProposalIsWord}" Command="{Binding OpenProposalWordCommand}"
+                              AutomationProperties.Name="{Binding ProposalOpenName}">
+                        <views:CopyableTextBlock Text="{Binding ProposalWord}" />
+                      </Button>
+                      <views:CopyableTextBlock Text="{Binding ProposalWord}" IsVisible="{Binding ProposalIsPlain}" />
+                      <views:CopyableTextBlock Classes="guideMeta" Text="{x:Static app:MotifAppStrings.GuideQueryPending}"
+                                               IsVisible="{Binding ProposalIsPending}" />
+                    </Panel>
+                    <views:CopyableTextBlock Classes="guideQueryAnalysis" Text="{Binding ProposalAnalysis}" TextWrapping="Wrap"
+                                             IsVisible="{Binding ShowsDetails}" />
+                    <views:CopyableTextBlock Classes="guideQueryState guideMeta" Text="{Binding ProposalState}" TextWrapping="Wrap"
+                                             IsVisible="{Binding ShowsDetails}" />
+                  </StackPanel>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+      <StackPanel Orientation="Horizontal" Classes="guideQueryRow">
+        <Button Command="{Binding PreviousPageCommand}" Content="{x:Static app:MotifAppStrings.GuideQueryPreviousPage}"
+                IsVisible="{Binding HasPages}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryPreviousPage}" />
+        <Button Command="{Binding NextPageCommand}" Content="{x:Static app:MotifAppStrings.GuideQueryNextPage}"
+                IsVisible="{Binding HasPages}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryNextPage}" />
+        <views:CopyableTextBlock Classes="guideMeta" Text="{Binding PageText}" VerticalAlignment="Center"
+                                 AutomationProperties.LiveSetting="Polite" />
+      </StackPanel>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

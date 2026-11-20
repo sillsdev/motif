@@ -51,6 +51,19 @@ public sealed class GdrMarkdownDocument
     /// <summary>The document initially shown to the person.</summary>
     public string Text { get; }
 
+    /// <summary>The Discussion's paragraphs as the document was built, with any pending edit; copies the caller may change.</summary>
+    public IReadOnlyList<Paragraph> DiscussionParagraphs => _fields[("discussion", null)].Original.Select(paragraph => paragraph.Clone()).ToArray();
+
+    /// <summary>Reads Discussion paragraphs a caller edited as paragraphs, giving the change Markdown would, or none when they match.</summary>
+    public GdrMarkdownReading ReadDiscussion(IReadOnlyList<Paragraph> paragraphs)
+    {
+        ArgumentNullException.ThrowIfNull(paragraphs);
+        var field = _fields[("discussion", null)];
+        if (field.Original.Count == paragraphs.Count && field.Original.Zip(paragraphs).All(pair => field.Form.AreEquivalent(pair.First, pair.Second)))
+            return new([], [], []);
+        return new([new GdrMarkdownChange("discussion", null, paragraphs, null)], [], []);
+    }
+
     /// <summary>Reads the document, returning findings and changed fields without staging anything.</summary>
     public GdrMarkdownReading Read(string text)
     {

@@ -357,6 +357,23 @@ public static class AutomationIds
     public const string GuideNotice = "motif-guide-notice";
     // round2-guide
     public const string GuideListNotice = "motif-guide-list-notice";
+    public const string GuideQueryTables = "motif-guide-query-tables";
+    public const string GuideQueryBlock = "motif-guide-query-block";
+    public const string GuideQueryDisplay = "motif-guide-query-display";
+    public const string GuideQueryRun = "motif-guide-query-run";
+    public const string GuideQueryEdit = "motif-guide-query-edit";
+    public const string GuideQuerySave = "motif-guide-query-save";
+    public const string GuideQueryCancel = "motif-guide-query-cancel";
+    public const string GuideQueryDraft = "motif-guide-query-draft";
+    public const string GuideQuerySaveReason = "motif-guide-query-save-reason";
+    public const string GuideQueryNotice = "motif-guide-query-notice";
+    public const string GuideQueryProblems = "motif-guide-query-problems";
+    public const string GuideQueryFilter = "motif-guide-query-filter";
+    public const string GuideQueryCounts = "motif-guide-query-counts";
+    public const string GuideQueryBaselinePending = "motif-guide-query-baseline-pending";
+    public const string GuideQueryProposalPending = "motif-guide-query-proposal-pending";
+    public const string GuideQueryPreviousPage = "motif-guide-query-previous-page";
+    public const string GuideQueryNextPage = "motif-guide-query-next-page";
     // fix1-progress
     public const string ProgressNothingParsed = "motif-progress-nothing-parsed";
     public const string ProgressChooseTexts = "motif-progress-choose-texts";

@@ -86,6 +86,7 @@ public sealed class ICommandClientCatalogParityTests
     private static readonly HashSet<string> ReadsThatNeverWriteTheStore = new(StringComparer.Ordinal)
     {
         nameof(ICommandClient.ListGrammarGuideAsync),
+        nameof(ICommandClient.RunGuideQueryAsync),
         nameof(ICommandClient.ShowGrammarGuideAsync),
         // W11a: a path lookup reads the Baseline; the edit store stages in the Draft.
         nameof(ICommandClient.LinkGrammarGuidePathAsync),

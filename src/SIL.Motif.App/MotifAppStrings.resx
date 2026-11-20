@@ -7659,6 +7659,64 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.GuideSectionsName" xml:space="preserve"><value>Grammar Guide Sections</value></data>
   <data name="MotifApp.GuideExamplesHeading" xml:space="preserve"><value>Examples from Your Texts</value></data>
   <data name="MotifApp.GuideStaleNotice" xml:space="preserve"><value>The project has been saved since this section was read. Your typing is safe.</value></data>
+  <data name="MotifApp.GuideQueriesHeading" xml:space="preserve"><value>Grouping Commands</value></data>
+  <data name="MotifApp.GuideQueryRun" xml:space="preserve"><value>Run</value></data>
+  <data name="MotifApp.GuideQueryEdit" xml:space="preserve"><value>Edit Query</value></data>
+  <data name="MotifApp.GuideQuerySave" xml:space="preserve"><value>Save Query</value></data>
+  <data name="MotifApp.GuideQueryCancel" xml:space="preserve"><value>Cancel Edit</value></data>
+  <data name="MotifApp.GuideQueryDraftName" xml:space="preserve"><value>Query text</value></data>
+  <data name="MotifApp.GuideQueryRunning" xml:space="preserve"><value>Running the query.</value></data>
+  <data name="MotifApp.GuideQueryNotRun" xml:space="preserve"><value>Not run yet.</value></data>
+  <data name="MotifApp.GuideQueryNoRows" xml:space="preserve"><value>No words match.</value></data>
+  <data name="MotifApp.GuideQueryPageFormat" xml:space="preserve"><value>{0} to {1} of {2}</value></data>
+  <data name="MotifApp.GuideQueryWordsCountFormat" xml:space="preserve"><value>{0} words</value></data>
+  <data name="MotifApp.GuideQueryGroupsCountFormat" xml:space="preserve"><value>{0} groups</value></data>
+  <data name="MotifApp.GuideQueryBaselineSide" xml:space="preserve"><value>Baseline</value></data>
+  <data name="MotifApp.GuideQueryProposalSide" xml:space="preserve"><value>Proposal</value></data>
+  <data name="MotifApp.GuideQueryBaselineWord" xml:space="preserve"><value>Baseline word</value></data>
+  <data name="MotifApp.GuideQueryBaselineAnalysis" xml:space="preserve"><value>Baseline analysis</value></data>
+  <data name="MotifApp.GuideQueryBaselineState" xml:space="preserve"><value>Baseline parse</value></data>
+  <data name="MotifApp.GuideQueryProposalWord" xml:space="preserve"><value>Proposal word</value></data>
+  <data name="MotifApp.GuideQueryProposalAnalysis" xml:space="preserve"><value>Proposal analysis</value></data>
+  <data name="MotifApp.GuideQueryProposalState" xml:space="preserve"><value>Proposal parse</value></data>
+  <data name="MotifApp.GuideQueryGroupHeader" xml:space="preserve"><value>Group</value></data>
+  <data name="MotifApp.GuideQueryGroupCountHeader" xml:space="preserve"><value>Forms</value></data>
+  <data name="MotifApp.GuideQueryStateApproved" xml:space="preserve"><value>Approved</value></data>
+  <data name="MotifApp.GuideQueryStateParsed" xml:space="preserve"><value>Parsed</value></data>
+  <data name="MotifApp.GuideQueryStateUnparsed" xml:space="preserve"><value>No analysis</value></data>
+  <data name="MotifApp.GuideQueryStateFailed" xml:space="preserve"><value>All analyses rejected</value></data>
+  <data name="MotifApp.GuideQueryStateAbsent" xml:space="preserve"><value>Not a word of the Texts</value></data>
+  <data name="MotifApp.GuideQueryPending" xml:space="preserve"><value>Pending</value></data>
+  <data name="MotifApp.GuideQueryPendingFormat" xml:space="preserve"><value>{0}: pending, {1}.</value></data>
+  <data name="MotifApp.GuideQueryPendingNoTrial" xml:space="preserve"><value>the query has not been run on the Proposal because no Trial has run</value></data>
+  <data name="MotifApp.GuideQueryPendingTrialRunning" xml:space="preserve"><value>the Proposal's latest Trial has not finished</value></data>
+  <data name="MotifApp.GuideQueryPendingTrialCleared" xml:space="preserve"><value>the Proposal's Trial copy was cleared</value></data>
+  <data name="MotifApp.GuideQueryPendingNoBaseline" xml:space="preserve"><value>the project has no Baseline yet</value></data>
+  <data name="MotifApp.GuideQueryPendingUnknown" xml:space="preserve"><value>the side has not been read</value></data>
+  <data name="MotifApp.GuideQueryFilterPlaceholder" xml:space="preserve"><value>Filter words and analyses</value></data>
+  <data name="MotifApp.GuideQueryFilterName" xml:space="preserve"><value>Filter the query's words and analyses</value></data>
+  <data name="MotifApp.GuideQueryScopeBoth" xml:space="preserve"><value>Both sides</value></data>
+  <data name="MotifApp.GuideQueryScopeBaseline" xml:space="preserve"><value>Baseline</value></data>
+  <data name="MotifApp.GuideQueryScopeProposal" xml:space="preserve"><value>Proposal</value></data>
+  <data name="MotifApp.GuideQueryRowsName" xml:space="preserve"><value>Query rows</value></data>
+  <data name="MotifApp.GuideQueryPreviousPage" xml:space="preserve"><value>Previous Page</value></data>
+  <data name="MotifApp.GuideQueryNextPage" xml:space="preserve"><value>Next Page</value></data>
+  <data name="MotifApp.GuideQueryOpenWordFormat" xml:space="preserve"><value>Open {0} and its analysis</value></data>
+  <data name="MotifApp.GuideQueryGroupLine" xml:space="preserve"><value>A motif group line is not shown as a table here yet. Use a motif query forms line.</value></data>
+  <data name="MotifApp.GuideQueryOwnAsOf" xml:space="preserve"><value>Leave --as-of out of the run line: this page reads the Baseline, or the Proposal and the Baseline, for you.</value></data>
+  <data name="MotifApp.GuideQuerySaveUnavailable" xml:space="preserve"><value>This section's text cannot be saved from here.</value></data>
+  <data name="MotifApp.GuideQueryNothingToSave" xml:space="preserve"><value>Nothing to save: the text is as stored.</value></data>
+  <data name="MotifApp.GuideQueryOneQuery" xml:space="preserve"><value>The text must be exactly one query: id, title and run, one to a line.</value></data>
+  <data name="MotifApp.GuideQueryRefusedFormat" xml:space="preserve"><value>This query did not run. {0}</value></data>
+  <data name="MotifApp.GuideQueryNoAnswer" xml:space="preserve"><value>The query command gave no answer.</value></data>
+  <data name="MotifApp.GuideQuerySaveFailedFormat" xml:space="preserve"><value>The query was not saved. {0}</value></data>
+  <data name="MotifApp.GuideQuerySaved" xml:space="preserve"><value>Saved to the pending changes. Apply them to keep the change; no rows are saved.</value></data>
+  <data name="MotifApp.GuideQueryProblemFormat" xml:space="preserve"><value>Line {0}: {1}</value></data>
+  <data name="MotifApp.GuideQueryNoSides" xml:space="preserve"><value>The run returned no Baseline or Proposal sides, so the table cannot be filled.</value></data>
+  <data name="MotifApp.GuideQuerySidesVersion" xml:space="preserve"><value>The run's answer has a newer shape than this window reads, so the table cannot be filled.</value></data>
+  <data name="MotifApp.GuideQueryCloseMarkdownFirst" xml:space="preserve"><value>Leave the Markdown view first, then save the query.</value></data>
+  <data name="MotifApp.GuideQueryBlockGone" xml:space="preserve"><value>The query is no longer in this section's text, so it was not saved.</value></data>
+  <data name="MotifApp.GuideQueryBlockShared" xml:space="preserve"><value>The query shares a paragraph with other text, so it cannot be saved from here.</value></data>
   <data name="MotifApp.GuideDiscussionName" xml:space="preserve"><value>Discussion</value></data>
   <!-- fix1-round1c -->
   <data name="MotifApp.ProgressReadingParse" xml:space="preserve"><value>Reading parse results...</value></data>

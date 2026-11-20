@@ -124,4 +124,34 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
     <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Row}" />
   </Style>
+  <Style Selector="Border.guideQueryBlock">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Row}" />
+  </Style>
+  <Style Selector="StackPanel.guideQueryRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector=":is(Control).guideQueryWord">
+    <Setter Property="Width" Value="{DynamicResource Primitive.Size.140}" />
+  </Style>
+  <Style Selector=":is(Control).guideQueryAnalysis">
+    <Setter Property="Width" Value="{DynamicResource Primitive.Size.280}" />
+  </Style>
+  <Style Selector=":is(Control).guideQueryState">
+    <Setter Property="Width" Value="{DynamicResource Primitive.Size.140}" />
+  </Style>
+  <Style Selector="Button.guideQueryLink">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+  <Style Selector="TextBox.guideQueryDraft">
+    <Setter Property="MinHeight" Value="{DynamicResource Primitive.Size.110}" />
+  </Style>
+  <Style Selector="TextBox.guideQueryFilter">
+    <Setter Property="MinWidth" Value="{DynamicResource Primitive.Size.220}" />
+  </Style>
 </Styles>

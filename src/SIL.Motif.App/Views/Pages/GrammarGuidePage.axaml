@@ -70,6 +70,7 @@
             <ContentControl x:Name="DiscussionHost" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GrammarGuideDiscussion}"
                             AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideDiscussionName}" />
           </Border>
+          <ContentControl x:Name="QueriesHost" />
           <ContentControl x:Name="ExamplesHost" />
           <ContentControl x:Name="NamesHost" />
         </StackPanel>

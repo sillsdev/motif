@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
+using SIL.Motif.App.GuideQueries;
 using SIL.Motif.App.Preview;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands;
@@ -108,6 +109,11 @@ public sealed partial class GuideSectionEditor
         var read = document.Read(MarkdownText);
         if (read.HasErrors) { _status.Text = string.Join(" ", read.Errors.Concat(read.Warnings)); return false; }
         if (read.Changes.Count == 0) { DiscardMarkdown(); _status.Text = string.Join(" ", read.Warnings); return true; }
+        return await StageReadAsync(read, start, id, store);
+    }
+
+    private async Task<bool> StageReadAsync(GdrMarkdownReading read, GdrShowResponse start, string id, IGdrMarkdownEditStore store)
+    {
         var edits = new List<TextRichStringPayload>();
         var undo = new List<TextRichStringPayload>();
         TextParagraphsPayload? paragraphs = null, undoParagraphs = null;
@@ -138,7 +144,7 @@ public sealed partial class GuideSectionEditor
         var batch = new GdrMarkdownEdits(id, edits, paragraphs,
             new GdrMarkdownIdentity(start.Record.Abbreviation, start.Record.ParentId, start.Position));
         _markdownSaving = true;
-        _markdownBox!.IsReadOnly = true;
+        if (_markdownBox is not null) _markdownBox.IsReadOnly = true;
         GdrMarkdownStageResult result;
         try { result = await store.StageMarkdownAsync(batch); }
         finally
@@ -154,6 +160,61 @@ public sealed partial class GuideSectionEditor
         await ShowAsync(id);
         _status.Text = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.GuideMarkdownSavedFormat, result.Count, string.Join(" ", read.Warnings));
         return true;
+    }
+
+    /// <summary>
+    /// Replaces the body of the query block <paramref name="queryId"/> in the shown section's Discussion, one paragraph to a
+    /// line, and stages the section as a Markdown save does; returns why nothing was staged, or null.
+    /// </summary>
+    public async Task<string?> ReplaceQueryBodyAsync(string queryId, string body)
+    {
+        ArgumentNullException.ThrowIfNull(queryId);
+        ArgumentNullException.ThrowIfNull(body);
+        if (_markdownDocument is not null || _markdownSaving || _markdownOpening) return MotifAppStrings.GuideQueryCloseMarkdownFirst;
+        var wasEditing = _isEditing;
+        _isEditing = true;
+        try
+        {
+            if (!await OpenMarkdownAsync()) return _status.Text is { Length: > 0 } text ? text : MotifAppStrings.GuideQuerySaveUnavailable;
+            if (_markdownDocument is not { } document || _markdownStart is not { } start || _shownId is not { } id ||
+                _store is not IGdrMarkdownEditStore store) return MotifAppStrings.GuideQuerySaveUnavailable;
+            var paragraphs = document.DiscussionParagraphs.ToList();
+            var found = GuideQueryDocument.From(paragraphs.Select(paragraph => paragraph.Text).ToArray());
+            var query = found.Blocks.Queries.FirstOrDefault(item => item.Id == queryId);
+            if (query is null || !found.TryParagraphsOf(query.Span, out var first, out var last))
+            {
+                DiscardMarkdown();
+                return query is null ? MotifAppStrings.GuideQueryBlockGone : MotifAppStrings.GuideQueryBlockShared;
+            }
+            var lines = found.WithBody(query.Span, body).Split('\n');
+            var replaced = new List<Paragraph>();
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var source = paragraphs[Math.Min(first + i, last)];
+                var line = source.Clone();
+                if (first + i > last) line.Key = null;
+                if (line.Text != lines[i])
+                {
+                    var run = line.Runs.FirstOrDefault()?.CloneWithText(lines[i]) ?? new Run { Text = lines[i], Ws = line.DefaultWs };
+                    line.Runs.Clear();
+                    line.Runs.Add(run);
+                }
+                replaced.Add(line);
+            }
+            paragraphs.RemoveRange(first, last - first + 1);
+            paragraphs.InsertRange(first, replaced);
+            var read = document.ReadDiscussion(paragraphs);
+            if (read.Changes.Count == 0) { DiscardMarkdown(); return null; }
+            if (await StageReadAsync(read, start, id, store)) return null;
+            var message = _status.Text;
+            DiscardMarkdown();
+            return message;
+        }
+        finally
+        {
+            _isEditing = wasEditing;
+            ShowToolbar();
+        }
     }
 
     /// <summary>Undoes the whole most recent Markdown save as one Draft update.</summary>

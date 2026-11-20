@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:guide="clr-namespace:SIL.Motif.App.Views.Guide"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.Guide.GuideQueryBlock"
+             x:DataType="vm:GuideQueryBlockViewModel"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryBlock}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/GrammarGuideScoped.axaml" />
+  </UserControl.Styles>
+  <Border Classes="guideQueryBlock">
+    <StackPanel Classes="guideBlock">
+      <Grid ColumnDefinitions="*,Auto">
+        <views:CopyableTextBlock Classes="guideBlockTitle" Text="{Binding Title}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Classes="guideBar">
+          <Button Command="{Binding RunCommand}" Content="{x:Static app:MotifAppStrings.GuideQueryRun}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryRun}" />
+          <Button Command="{Binding EditCommand}" Content="{x:Static app:MotifAppStrings.GuideQueryEdit}"
+                  IsVisible="{Binding IsReading}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryEdit}" />
+          <Button Command="{Binding SaveCommand}" Content="{x:Static app:MotifAppStrings.GuideQuerySave}"
+                  IsVisible="{Binding IsEditing}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQuerySave}" />
+          <Button Command="{Binding CancelCommand}" Content="{x:Static app:MotifAppStrings.GuideQueryCancel}"
+                  IsVisible="{Binding IsEditing}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryCancel}" />
+        </StackPanel>
+      </Grid>
+      <StackPanel Classes="guideBlock" IsVisible="{Binding IsEditing}">
+        <TextBox Classes="guideQueryDraft" Text="{Binding DraftText, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="NoWrap"
+                 AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideQueryDraftName}"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryDraft}" />
+        <views:CopyableTextBlock Classes="guideMeta" Text="{Binding SaveReason}" IsVisible="{Binding HasSaveReason}" TextWrapping="Wrap"
+                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQuerySaveReason}" />
+      </StackPanel>
+      <views:CopyableTextBlock Classes="guideMeta" Text="{Binding Status}" IsVisible="{Binding HasStatus}"
+                               AutomationProperties.LiveSetting="Polite" />
+      <views:CopyableTextBlock Classes="guideMeta" Text="{Binding Body}" IsVisible="{Binding ShowsQueryText}" TextWrapping="Wrap" />
+      <Border Classes="guideNotice" IsVisible="{Binding HasNotice}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryNotice}">
+        <views:CopyableTextBlock Text="{Binding Notice}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+      </Border>
+      <ItemsControl x:Name="GuideQueryDisplays" ItemsSource="{Binding Displays}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GuideQueryDisplayViewModel">
+            <guide:GuideQueryDisplay />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </Border>
+</UserControl>
