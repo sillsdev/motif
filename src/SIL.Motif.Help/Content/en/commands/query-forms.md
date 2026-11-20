@@ -11,6 +11,45 @@ motif query forms --project "project.fwdata" --where kind=alternate --group lett
 
 `--group` accepts comma-separated columns, `--min-count` filters groups, and `--examples` selects examples ordered by form. `--ids` includes ids for use by other commands. `--trial` selects the Trial whose evidence is available; only one evidence bundle has query rows. Token frequency is not available in this phase. Forms use the project's graphemes; `--raw-letters` uses individual characters instead.
 
+## Reading the Baseline or a Proposal: `--as-of` and `--sides both`
+
+`motif query forms --as-of baseline` reads the lexicon's forms from the current Baseline and needs no Trial. `--as-of <proposalId>` reads that Proposal's latest completed Trial copy, which carries the Proposal's grammar. A Proposal with no completed Trial is not an error: the run succeeds with that side marked `pending` and no rows. `--sides both --as-of <proposalId>` returns the Baseline and the Proposal side by side. Nothing is saved; a run is always read afresh. These runs print JSON. They read only the forms source and refuse `--change`, `--score`, evidence, `--members`, `--context`, `--exception`, `--unit` and `--trial`. An unknown Proposal, no Baseline, a revision digest, or a Trial whose copy was cleared is refused with `query.as-of-unavailable`.
+
+Each row carries its form's columns and, under `parse`, the state and analyses of the word of the Texts whose spelling is the form: `state` is `approved`, `parsed`, `unparsed`, `failed` (it has analyses and a person disapproved every one) or `absent` (the form is not a word of the Texts); `tokens` counts its occurrences in the Texts (the form's `tokens` column); `analyses` lists each analysis's `category`, `approved` flag and morph cut, each `morphs` entry having `form`, `gloss`, `category` and the lexicon `entry` id.
+
+`--where` selectors work as above and also on `parse-state` (`=`, `in`, `not`) and `parse-tokens` (`=`, `not`, `<`, `>`). With `--sides both`, prefix a column with `baseline.` or `proposal.` to apply it to that side only, for example `--where proposal.parse-state=parsed`; a row stays only if it passes every prefixed selector, and an unprefixed selector must pass on at least one side read. A selector on a pending side is not applied. `--sort [baseline.|proposal.]<column>[:desc]` orders the rows by `form`, `base`, `kind`, `entry`, `id`, `morph-type`, `variant-type`, `environments`, `category`, `tokens`, `parse-state` or `parse-tokens`; with `--sides both` the side is required, rows lacking that side come last, and the default is `baseline.form`. A single side may also use `--group`; the groups then appear under `result` and `sides.rows` is empty.
+
+```powershell
+motif query forms --project "project.fwdata" --as-of baseline --where kind=alternate --sort form --json
+motif query forms --project "project.fwdata" --as-of <proposalId> --sides both --where proposal.parse-state=parsed --sort proposal.form:desc --json
+```
+
+The JSON keeps the usual fields and adds `sides` (the usual `result.rows` repeats the rows without parse data for a single side, and is empty for `--sides both`; `trialId` is the proposal side's Trial, and `grammarHash` and `bundleId` are empty):
+
+```json
+{
+  "sides": {
+    "version": 1,
+    "mode": "both",
+    "states": [
+      { "side": "baseline", "status": "ready", "source": "baseline" },
+      { "side": "proposal", "status": "pending", "source": "<proposalId>", "reason": "no-trial" }
+    ],
+    "rows": [
+      {
+        "id": "<form id>",
+        "baseline": { "form": { "id": "", "form": "kaon", "base": "kaon", "kind": "lexeme", "entry": "", "morphType": "stem", "variantType": "", "environments": [], "category": [], "tokens": 3 },
+                      "parse": { "state": "approved", "tokens": 3, "analyses": [ { "category": "", "approved": true, "morphs": [ { "form": "kaon", "gloss": "eat", "category": "", "entry": "" } ] } ] } }
+      }
+    ]
+  }
+}
+```
+
+`version` is the shape version; it rises when a property changes meaning or is removed, and a consumer should tolerate unknown values in the closed sets below. `status` is `ready` or `pending`; `reason` (only when pending) is `no-trial`, `trial-not-completed`, `no-baseline` or `trial-cleared`; `parse.state` is `approved`, `parsed`, `unparsed`, `failed` or `absent`. A pending proposal side is not an absence of changes: read `states` first. `absent` means no data, not a failed parse: the form is matched to a word of the Texts by its exact spelling, so a lexeme stem that is not itself a word of the Texts is `absent` even when its inflected words are parsed. `parse.tokens` counts the word's occurrences in this side's own copy, and the row's `form.tokens` repeats it (omitted when 0), so it differs from the `tokens` column of a latest-Trial query; sorting or filtering on `tokens` or `parse-tokens` treats a missing count as 0. Each row's `id` is unique: a form's id, and for a variant form that varies two or more entries, the variant form's id, `@`, then the main entry's id, so one row per main entry.
+
+A side that was not read, is pending, or lacks the form is omitted from its row. A ready Proposal state also gives `trialId`. `mode` is `baseline`, `proposal` or `both`.
+
 ## Other sources
 
 | Source | One row per | Columns |

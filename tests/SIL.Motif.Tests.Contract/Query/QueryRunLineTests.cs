@@ -54,11 +54,18 @@ public sealed class QueryRunLineTests
     }
 
     [Fact]
-    public void TheCliSurfaceStillRefusesAsOfOnQuery()
+    public void AsOfOnAQueryIsAFlagOnlyWhereTheCallerAllowsIt()
     {
         Assert.False(QueryRunLine.TryParseQueryArguments(["forms", "--project", "p", "--as-of", "1"], false, out _, out _));
         Assert.True(QueryRunLine.TryParseQueryArguments(["forms", "--project", "p", "--as-of", "1"], true, out var parsed, out _));
         Assert.Equal("p", parsed.Project);
+    }
+
+    [Fact]
+    public void AGuideRunLineParsesSidesAndSortIntoTheRecord()
+    {
+        Assert.True(QueryRunLine.TryParse("motif query forms --as-of 42 --sides both --sort proposal.form", out var record, out var refusal), refusal?.Message);
+        Assert.Equal(("42", "both", "proposal.form"), (record.AsOf, record.Sides, record.Sort));
     }
 
     [Theory]

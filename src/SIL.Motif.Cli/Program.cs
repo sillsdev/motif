@@ -2217,8 +2217,9 @@ try
         {
             var queryUsage = UsageLineFor("query forms");
             if (!flags.TryGetValue("project", out var queryProject) ||
-                !QueryRunLine.TryBuildQuery(flags, positionals, rest, false, out var queryArguments, out _)) return Usage(queryUsage, asJson);
+                !QueryRunLine.TryBuildQuery(flags, positionals, rest, true, out var queryArguments, out _)) return Usage(queryUsage, asJson);
             var record = queryArguments.Record;
+            if (record.AsOf is not null || record.Sides is not null) asJson = true;
             if (queryArguments.MembersFile is { } membersFile)
             {
                 if (!File.Exists(membersFile)) return Usage(queryUsage, asJson);

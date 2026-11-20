@@ -37,7 +37,7 @@ public static class QueryRunLine
     [
         "project", "where", "group", "min-count", "examples", "ids", "raw-letters", "json", "trial", "fold", "distinct",
         "change", "at", "affixes", "wordset", "discovery", "heldout", "score", "exception", "unit", "controls",
-        "control-letters", "test-result", "members", "context",
+        "control-letters", "test-result", "members", "context", "sides", "sort",
     ];
 
     private static readonly string[] SavedFlags = ["project", "examples", "json", "trial"];
@@ -98,7 +98,7 @@ public static class QueryRunLine
 
     /// <summary>Parses the tokens after <c>motif query</c>; the CLI and a run line share this, so they accept the same lines.</summary>
     /// <param name="tokens">The arguments after <c>query</c>.</param>
-    /// <param name="allowAsOf">Whether <c>--as-of</c> is a flag of this line; the CLI verb does not take it yet.</param>
+    /// <param name="allowAsOf">Whether <c>--as-of</c> is a flag of this line.</param>
     /// <param name="parsed">The arguments when the line parses.</param>
     /// <param name="refusal">Why it does not, otherwise.</param>
     public static bool TryParseQueryArguments(IReadOnlyList<string> tokens, bool allowAsOf, [NotNullWhen(true)] out QueryArguments? parsed,
@@ -188,7 +188,8 @@ public static class QueryRunLine
                 flags.ContainsKey("raw-letters"), flags.GetValueOrDefault("trial"), flags.GetValueOrDefault("fold"),
                 flags.GetValueOrDefault("distinct"), hypothesis, flags.ContainsKey("score") ? List(flags, "score") : null,
                 exceptionList.Count == 0 ? null : exceptionList, flags.GetValueOrDefault("unit"), null,
-                contextList.Count == 0 ? null : contextList, evidence);
+                contextList.Count == 0 ? null : contextList, evidence, flags.GetValueOrDefault("as-of"),
+                flags.GetValueOrDefault("sides"), flags.GetValueOrDefault("sort"));
         }
         parsed = new QueryArguments(record, flags.GetValueOrDefault("project"), flags.GetValueOrDefault("as-of"),
             flags.ContainsKey("json"), flags.ContainsKey("test-result"), flags.GetValueOrDefault("members"));

@@ -22,6 +22,10 @@ public sealed record FormsQueryResponse(string TrialId, string GrammarHash, stri
 {
     /// <summary>What the facts did not measure that this query's source would otherwise present as complete.</summary>
     public IReadOnlyList<string> NotMeasured { get; init; } = [];
+
+    /// <summary>The sides of a query run with <c>--as-of</c>, with each row's parse state and analyses; null for a run on the latest Trial.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public QuerySidesResult? Sides { get; init; }
 }
 
 /// <summary>Runs a query over the forms, stems, uses or objects source of the last completed Trial's materialized facts.</summary>
@@ -30,8 +34,10 @@ public static class FormsQueryCommand
     /// <summary>Reads the current Trial and evaluates a closed query record.</summary>
     public static CommandOutcome<FormsQueryResponse> Run(FormsQueryRequest request, FormsQuerySnapshotCache? cache = null,
         string? parserPath = null) =>
-        ProjectStoreCommand.ReadExisting(request.FwDataPath,
-            CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryNoTrialRows, FailureReason.NotFound, "Query rows are built by the Parsimony evidence job; run a Trial and wait for evidence.")),
+        request.Query.AsOf is not null || request.Query.Sides is not null || request.Query.Sort is not null
+            ? FormsQuerySides.RunAsOf(request, parserPath)
+            : ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryNoTrialRows, FailureReason.NotFound, "Query rows are built by the Parsimony evidence job; run a Trial and wait for evidence, or read the forms of the Baseline with --as-of baseline.")),
             (database, project) =>
         {
             using var connection = database.OpenConnection();
@@ -41,7 +47,7 @@ public static class FormsQueryCommand
             {
                 if (identity is null) cache?.Clear();
                 return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryNoTrialRows, FailureReason.NotFound,
-                    "Query rows are built by the Parsimony evidence job; run a Trial and wait for evidence."));
+                    "Query rows are built by the Parsimony evidence job; run a Trial and wait for evidence, or read the forms of the Baseline with --as-of baseline."));
             }
             var formEntries = request.Query.Change is null ? null
                 : (IReadOnlyCollection<(string Form, string Entry)>?)QuerySnapshotStore.ReadFormEntries(connection, transaction);

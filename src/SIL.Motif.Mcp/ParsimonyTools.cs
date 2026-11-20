@@ -56,7 +56,10 @@ internal static class ParsimonyTools
                     ("col", Schema.String("Column name."), true),
                     ("op", Schema.String("Selector operator.", "is", "in", "not", "~", "has", "<", ">"), true),
                     ("value", Schema.String("Selector value."), true))), false),
-                ("evidence", Schema.Boolean("Return the one-screen evidence composite for the grouping that where or members names, over stems or forms."), false)),
+                ("evidence", Schema.Boolean("Return the one-screen evidence composite for the grouping that where or members names, over stems or forms."), false),
+                ("asOf", Schema.String("Read the forms source from the Baseline (baseline) or a Proposal's Trial copy (a Proposal id) instead of the latest Trial's evidence; rows carry parse state and analyses, and a Proposal with no completed Trial returns a pending side."), false),
+                ("sides", Schema.String("both returns the Baseline and the Proposal named by asOf side by side.", "both"), false),
+                ("sort", Schema.String("Order of an asOf run's rows: [baseline.|proposal.]column[:desc], with column form, base, kind, entry, id, morph-type, variant-type, environments, category, tokens, parse-state or parse-tokens."), false)),
             true, true, false, true,
             (c, a, ct) =>
             {

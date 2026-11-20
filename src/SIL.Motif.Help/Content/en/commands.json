@@ -2673,7 +2673,7 @@
   },
   "query forms": {
     "title": "Query forms",
-    "description": "Filters and groups forms, stems, uses or objects from available Trial evidence, or runs the saved query of a Parsimony Measure.",
+    "description": "Filters and groups forms, stems, uses or objects from available Trial evidence, reads forms from the Baseline or a Proposal's Trial copy with parse state and analyses (--as-of, --sides both), or runs the saved query of a Parsimony Measure.",
     "source": "Hand-written from the query contract."
   },
   "source approve": {

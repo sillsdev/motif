@@ -18,11 +18,18 @@ namespace SIL.Motif.Contract.Query;
 /// unchanged form alone is attested. <c>Context</c> selectors name the context <c>size</c> weighs. <c>Evidence</c> asks for the
 /// one-screen composite over the grouping <c>Where</c> or <c>Members</c> names, compared with the whole source.
 /// </remarks>
+/// <remarks>
+/// <c>AsOf</c> (<c>baseline</c> or a Proposal id) reads the forms source from the Baseline or from that Proposal's Trial copy and
+/// returns each row with its word's parse state and morph-cut analyses; <c>Sides</c> <c>both</c> returns the Baseline and the
+/// Proposal side by side, and <c>Sort</c> orders those rows by a named column, optionally prefixed <c>baseline.</c> or
+/// <c>proposal.</c> and suffixed <c>:desc</c>.
+/// </remarks>
 public sealed record QueryRecord(string From, IReadOnlyList<QueryCondition> Where, IReadOnlyList<string> Group,
     int MinCount = 1, int Examples = 5, bool Ids = false, bool RawLetters = false, string? TrialId = null,
     string? Fold = null, string? Distinct = null, QueryHypothesis? Change = null, IReadOnlyList<string>? Score = null,
     IReadOnlyList<QueryCondition>? Exceptions = null, string? Unit = null, IReadOnlyList<string>? Members = null,
-    IReadOnlyList<QueryCondition>? Context = null, bool Evidence = false);
+    IReadOnlyList<QueryCondition>? Context = null, bool Evidence = false, string? AsOf = null, string? Sides = null,
+    string? Sort = null);
 
 /// <summary>One selector; selectors in a query are combined with AND.</summary>
 public sealed record QueryCondition(string Col, string Op, string Value);

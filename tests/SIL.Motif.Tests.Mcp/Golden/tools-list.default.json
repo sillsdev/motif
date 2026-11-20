@@ -10553,7 +10553,7 @@
   },
   {
     "name": "motif_query",
-    "description": "Query forms. Filters and groups forms, stems, uses or objects from available Trial evidence, or runs the saved query of a Parsimony Measure.\nCommand: query forms. Agent class: Read.\n",
+    "description": "Query forms. Filters and groups forms, stems, uses or objects from available Trial evidence, reads forms from the Baseline or a Proposal\u0027s Trial copy with parse state and analyses (--as-of, --sides both), or runs the saved query of a Parsimony Measure.\nCommand: query forms. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -10820,6 +10820,21 @@
         "evidence": {
           "type": "boolean",
           "description": "Return the one-screen evidence composite for the grouping that where or members names, over stems or forms."
+        },
+        "asOf": {
+          "type": "string",
+          "description": "Read the forms source from the Baseline (baseline) or a Proposal\u0027s Trial copy (a Proposal id) instead of the latest Trial\u0027s evidence; rows carry parse state and analyses, and a Proposal with no completed Trial returns a pending side."
+        },
+        "sides": {
+          "type": "string",
+          "description": "both returns the Baseline and the Proposal named by asOf side by side.",
+          "enum": [
+            "both"
+          ]
+        },
+        "sort": {
+          "type": "string",
+          "description": "Order of an asOf run\u0027s rows: [baseline.|proposal.]column[:desc], with column form, base, kind, entry, id, morph-type, variant-type, environments, category, tokens, parse-state or parse-tokens."
         },
         "project": {
           "type": "string",

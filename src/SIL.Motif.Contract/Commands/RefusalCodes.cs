@@ -321,6 +321,8 @@ public static class RefusalCodes
     public const string GuideQueryRunInvalid = "guide-query.run-invalid";
     /// <summary>A Guide query's run line names a command that can change something or is not a query.</summary>
     public const string GuideQueryRunNotReadOnly = "guide-query.run-not-read-only";
+    /// <summary>The Baseline or Proposal Trial copy a query was asked to read as of is not available.</summary>
+    public const string QueryAsOfUnavailable = "query.as-of-unavailable";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";

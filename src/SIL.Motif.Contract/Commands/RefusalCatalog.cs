@@ -451,6 +451,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.QueryNoTrialRows, FailureReason.NotFound),
         Spec(RefusalCodes.GuideQueryRunInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GuideQueryRunNotReadOnly, FailureReason.Refused),
+        Spec(RefusalCodes.QueryAsOfUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.ProjectBackupUnreadable, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProjectBusy, FailureReason.Busy,
             NextStep.Repeat()),
