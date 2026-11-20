@@ -30,7 +30,7 @@ internal static class LegacyTrialReviewProjection
             new WordformSummary(null, unavailable, unavailable, null, null), new ApprovedSummary(null, null, null, null, null),
             new CoverageSummary(0, unavailable, unavailable, null), new CoverageSummary(0, unavailable, unavailable, null),
             [], new NegativeSummary(0, null, null, null), new WorkChange(null, 0, digest, WorkComparison.NotComparable,
-                ["legacy-review-inputs-missing"]), new WarningSummary(null, null, null), [], new EffectsSummary(null, false), []);
+                ["legacy-review-inputs-missing"]), new WarningSummary(null, null, null) { Unavailable = "legacy-review-inputs-missing" }, [], new EffectsSummary(null, false), []);
         var limitations = new[] { new Limitation("legacy-review-inputs-missing", [],
             "This Trial predates captured review scope, exact identities and expectations; exhaustive review details are unavailable.", []) };
         return new ReportView("motif.proposal-review-report", 1, "legacy/" + job.JobId, digest, DetailLevel.Summary,

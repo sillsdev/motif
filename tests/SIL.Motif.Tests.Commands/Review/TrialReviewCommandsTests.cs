@@ -574,6 +574,30 @@ public sealed class TrialReviewCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task PairedWarningsThatAreZeroOnBothSidesPublishIntegerZeros()
+    {
+        CreateInterrupted();
+        var ledger = TrialReviewEvidence.ReadJob(_database, Job)!;
+        TrialReviewEvidence.Save(_database, ledger with { BeforeWarnings = [], AfterWarnings = [] });
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var warnings = new ReviewReportRepository(_database).ReadManifest(id)!.Summary.Summary.Warnings;
+        Assert.Equal(0, warnings.NewCount);
+        Assert.Equal(0, warnings.ResolvedCount);
+        Assert.Equal(0, warnings.PreExistingCount);
+        Assert.Null(warnings.Unavailable);
+    }
+
+    [Fact]
+    public async Task WarningCountsThatWereNeverPairedSayWhyTheyAreNull()
+    {
+        CreateInterrupted();
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var warnings = new ReviewReportRepository(_database).ReadManifest(id)!.Summary.Summary.Warnings;
+        Assert.Null(warnings.NewCount);
+        Assert.Equal("paired-warning-evidence-unavailable", warnings.Unavailable);
+    }
+
+    [Fact]
     public async Task PairedWarningsFromTheTrialProduceAFlagEvenWithoutParsimony()
     {
         CreateInterrupted();

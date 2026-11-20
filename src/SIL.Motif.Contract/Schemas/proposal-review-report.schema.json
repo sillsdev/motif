@@ -1262,6 +1262,9 @@
               "type": "null"
             }
           ]
+        },
+        "unavailable": {
+          "type": "string"
         }
       },
       "required": [
