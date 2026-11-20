@@ -15,6 +15,9 @@
       "tool": "motif_lexicon"
     },
     {
+      "tool": "motif_entry"
+    },
+    {
       "tool": "motif_word"
     },
     {

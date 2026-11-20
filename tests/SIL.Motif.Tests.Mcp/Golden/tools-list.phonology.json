@@ -190,6 +190,48 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_entry",
+    "description": "Read a lexical entry. Reads an entry from the current Baseline by entry id or sense id: the headword and every sense with its glosses. A Proposal change names a sense by id; this says which entry and sense that is, with no Trial.\nCommand: lexical-entry. Agent class: Read.\nIds: Portable ids of entries or senses; a sense id reads the entry that owns it. At most 100.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids of lexical entries or senses, such as a change\u0027s target. A sense id reads its entry."
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "ids",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_word",
     "description": "Read one word\u0027s context. Reads a word\u0027s captured FieldWorks presence and every stored analysis with its individual Opinion. Uses the current Baseline without requiring a Selection or an Assessment, and reports whether FieldWorks has saved since.\nCommand: word-context. Agent class: Read.\nWord: The exact word form to read.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.",
     "inputSchema": {
@@ -2023,7 +2065,7 @@
   },
   {
     "name": "motif_proposals",
-    "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change\u0027s field holds now. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: A Draft name or the exact canonical identity of a Draft or finalized Proposal.\nWithCurrent: Also reads, from the saved project, the value each change\u0027s field holds now, with no Trial.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.",
+    "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change\u0027s field holds now, and an Applied Proposal carries its appliedRecord: the effects and evidence counts Apply saved. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: A Draft name or the exact canonical identity of a Draft or finalized Proposal.\nWithCurrent: Also reads, from the saved project, the value each change\u0027s field holds now, with no Trial.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.",
     "inputSchema": {
       "type": "object",
       "properties": {

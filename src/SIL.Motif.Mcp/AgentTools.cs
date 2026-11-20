@@ -183,6 +183,18 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ReadLexicon(c, a))),
 
+        new("motif_entry",
+            string.Empty,
+            AgentClass.Read,
+            Schema.Object([("ids", Schema.StringArray("Ids of lexical entries or senses, such as a change's target. A sense id reads its entry."), true),
+                ..Schema.Verbosity()]),
+            true,
+            true,
+            true,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(LexicalEntryQuery.Query(
+                new LexicalEntryRequest(c.ProjectPath, a.RequiredList("ids")))))) { Requests = [typeof(LexicalEntryRequest)] },
+
         new("motif_word",
             string.Empty,
             AgentClass.Read,

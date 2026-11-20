@@ -308,6 +308,7 @@ public static class CommandCatalog
         new CommandDescriptor("inspect", typeof(InspectRequest), typeof(InspectResponse), CommandSurface.Developer, AgentClass.Read),
 
         new CommandDescriptor("word-context", typeof(WordContextRequest), typeof(WordContextResponse), CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("lexical-entry", typeof(LexicalEntryRequest), typeof(LexicalEntryResponse), CommandSurface.Released, AgentClass.Read),
 
         // WordTraceQuery: one word's trace, live or from a saved file, as Try a Word reads it
         new CommandDescriptor("trace", typeof(WordTraceRequest), typeof(WordTraceResponse), CommandSurface.Released, AgentClass.Evaluate),

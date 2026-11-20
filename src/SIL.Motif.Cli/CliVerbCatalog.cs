@@ -93,6 +93,8 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor("Project", "word-context", "word-context",
             new[] { "word-context --project <fwdata> --word <word> [--json]" }),
+        new CliVerbDescriptor("Project", "lexical-entry", "lexical-entry",
+            new[] { "lexical-entry --project <fwdata> <entryOrSenseId>... [--json]" }),
         new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples save",
             new[] { "phonology-examples save --project <fwdata> --file <examples.json> [--json]" }),
         new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples list",

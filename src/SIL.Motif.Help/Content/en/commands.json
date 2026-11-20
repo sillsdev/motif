@@ -24,6 +24,11 @@
     "description": "Reads a word's captured FieldWorks presence and every stored analysis with its individual Opinion. Uses the current Baseline without requiring a Selection or an Assessment, and reports whether FieldWorks has saved since.",
     "source": "Hand-written from the shared WordContext query."
   },
+  "lexical-entry": {
+    "title": "Read a lexical entry",
+    "description": "Reads an entry from the current Baseline by entry id or sense id: the headword and every sense with its glosses. A Proposal change names a sense by id; this says which entry and sense that is, with no Trial.",
+    "source": "Authored from the typed command contract."
+  },
   "analyses": {
     "title": "Inspect word analyses",
     "description": "Lists manually approved analyses, or adds parser results from a named Assessment when current digests are supplied. It does not run PanGloss.",

@@ -2060,6 +2060,19 @@
     },
     {
       "kind": "command",
+      "code": "lexical-entry",
+      "slug": "lexical-entry",
+      "title": "Read a lexical entry",
+      "description": "Reads an entry from the current Baseline by entry id or sense id: the headword and every sense with its glosses. A Proposal change names a sense by id; this says which entry and sense that is, with no Trial.",
+      "helpPage": "# Read a lexical entry\n\n\u0060lexical-entry\u0060 reads an entry from the current Baseline by its id, or by the id of one of its senses, and returns the headword and every sense with its glosses. A Proposal change names a sense by id; this read says which entry and which sense that is, and what the other senses are, before any Dry Run or Trial.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif lexical-entry --project Koro.fwdata 6ZbA3mwkQkS3EhX0tQ5ihQ --json\n\u0060\u0060\u0060\n\n## What it prints\n\nOne lookup per id, in the order asked. A found lookup has \u0060entryId\u0060, \u0060headword\u0060 and \u0060senses\u0060; each sense has \u0060senseId\u0060, \u0060outline\u0060 (FieldWorks\u0027 sense number, such as \u00602\u0060 or \u00602.1\u0060), \u0060gloss\u0060 (the best analysis-language gloss) with its \u0060glossWritingSystem\u0060, and \u0060glosses\u0060 for every writing system. When the id named a sense, \u0060senseId\u0060 on the lookup is that sense, so it can be highlighted among the others. An id the Baseline does not hold as an entry or a sense comes back with \u0060found\u0060 false. The response also names the Baseline and the FieldWorks save it represents.\n\nAt most 100 ids are read in one call. The read uses the saved Baseline copy, never the live project, and needs no Trial. It is refused when no Baseline has been captured.\n\n## Related commands\n\n- [Capture a Baseline](cmd:baseline%20capture) records the saved project state.\n- [Show a Proposal](cmd:show) with \u0060--current\u0060 returns the value each change\u0027s field holds now.\n",
+      "usage": [
+        "Usage: motif lexical-entry --project \u003Cfwdata\u003E \u003CentryOrSenseId\u003E... [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/lexical-entry/"
+    },
+    {
+      "kind": "command",
       "code": "list",
       "slug": "list",
       "title": "List Proposals",

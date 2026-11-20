@@ -168,6 +168,7 @@ public static class CommandTextRenderer
             SourceApprovalStageResponse r => SourceTextRenderer.RenderApprovalStaged(r),
             DecisionEvidenceExportResponse r => RenderDecisionEvidenceExportPage(r),
             WordContextResponse r => RenderWordContext(r),
+            LexicalEntryResponse r => RenderLexicalEntries(r),
             ProposalStandings r => RenderProposalStandings(r),
             ProposalStatusChangedResponse r => ProposalCommandRenderer.RenderStatusChanged(r),
             ProposalTextChangedResponse r => ProposalCommandRenderer.RenderTextChanged(r),
@@ -1681,6 +1682,24 @@ public static class CommandTextRenderer
                 _ => $"Link '{run.Text}' is broken: its target is not in this project.",
             });
         }
+        return text.ToString();
+    }
+
+    private static string RenderLexicalEntries(LexicalEntryResponse response)
+    {
+        var text = new StringBuilder();
+        foreach (var lookup in response.Lookups)
+        {
+            if (!lookup.Found)
+            {
+                text.AppendLine($"{lookup.Id}: not in the Baseline as an entry or a sense");
+                continue;
+            }
+            text.AppendLine($"{lookup.Headword ?? "(no headword)"} ({lookup.EntryId})");
+            foreach (var sense in lookup.Senses)
+                text.AppendLine($"  {(sense.SenseId == lookup.SenseId ? "*" : " ")} {sense.Outline} {sense.Gloss ?? "(no gloss)"} ({sense.SenseId})");
+        }
+        text.AppendLine($"Baseline: {response.Baseline.BundleDigest}; FieldWorks source save {response.SourceLastWriteUtc:O}");
         return text.ToString();
     }
 

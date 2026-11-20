@@ -2294,6 +2294,12 @@ try
             result = RenderCommand(WordContextQuery.Query(new WordContextRequest(contextProject, contextWord)));
             break;
 
+        case "lexical-entry":
+            if (positionals.Count == 0 || !flags.TryGetValue("project", out var entryProject))
+                return Usage(UsageLineFor("lexical-entry"), asJson);
+            result = RenderCommand(LexicalEntryQuery.Query(new LexicalEntryRequest(entryProject, positionals)));
+            break;
+
         case "phonology-examples":
             if (positionals.Count < 1 || !flags.TryGetValue("project", out var phonologyProject))
                 return Usage(UsageLineFor("phonology-examples save") + " OR " +

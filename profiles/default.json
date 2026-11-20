@@ -7,6 +7,7 @@
     { "tool": "motif_capture_baseline" },
     { "tool": "motif_grammar", "detail": "detailed" },
     { "tool": "motif_lexicon" },
+    { "tool": "motif_entry" },
     { "tool": "motif_word" },
     { "tool": "motif_sources" },
     { "tool": "motif_source_passage" },
