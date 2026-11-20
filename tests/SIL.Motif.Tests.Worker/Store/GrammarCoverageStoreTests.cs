@@ -163,6 +163,12 @@ public sealed class GrammarCoverageStoreTests : IDisposable
             DataSource = CoveragePath, Mode = SqliteOpenMode.ReadWrite, Pooling = false,
         }.ToString());
         holdWal.Open();
+        using (var join = holdWal.CreateCommand())
+        {
+            // Join the WAL now, or a pool clear elsewhere can delete the -wal sidecar before the checkpoint.
+            join.CommandText = "SELECT count(*) FROM sqlite_master;";
+            join.ExecuteScalar();
+        }
         var basis = Save(database, segmentation, "before", "parsed");
         var summary = store.Build(database, "before", basis);
         using (var settle = holdWal.CreateCommand())
