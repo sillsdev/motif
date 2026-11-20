@@ -1,0 +1,5 @@
+Group suffix: ending an (read saved project, parse state all, min stem 2, fold nfc,case)
+3 of 4 word types in 3 stems: 1 known, 1 fitting, 1 not fitting. Page 1 of 1.
+kaon  [known]  3 tokens  kaonan (approved, 3)
+baha  [fitting]  2 tokens  bahaan (parsed, 2)
+lis  [not-fitting]  2 tokens  Lisan (unparsed, 2)

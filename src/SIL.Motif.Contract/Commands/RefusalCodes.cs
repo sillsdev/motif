@@ -423,6 +423,10 @@ public static class RefusalCodes
     public const string ProposalCompareAtMismatch = "proposal.compare-at-mismatch";
     /// <summary>A newer Trial has replaced one the comparison's earlier pages were read from.</summary>
     public const string ProposalCompareSnapshotChanged = "proposal.compare-snapshot-changed";
+    /// <summary>A group request names no ending, start or pattern, or an invalid one.</summary>
+    public const string GroupRequestInvalid = "group.request-invalid";
+    /// <summary>The Baseline or Proposal Trial a group read was asked to use is not available.</summary>
+    public const string GroupAsOfUnavailable = "group.as-of-unavailable";
     /// <summary>The Trial's frozen review inputs could not be captured or read.</summary>
     public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
     /// <summary>A Trial without the base sample was asked for with no word list, or with options that contradict it.</summary>

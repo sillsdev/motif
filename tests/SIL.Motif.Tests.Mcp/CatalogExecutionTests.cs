@@ -46,6 +46,26 @@ public sealed class CatalogExecutionTests
     }
 
     [Fact]
+    public void GroupIsOneReadToolWithAKindAndBoundedPaging()
+    {
+        var command = CommandCatalog.All.Single(item => item.Name == "group");
+        Assert.Equal(AgentClass.Read, command.Agent);
+        var generated = CatalogTools.Prepare(CatalogTools.Create(command));
+        var actual = AgentTools.All.Single(tool => tool.Name == generated.Name);
+        Assert.Equal("motif_group", actual.Name);
+        Assert.True(JsonNode.DeepEquals(generated.InputSchema, actual.InputSchema));
+        var properties = actual.InputSchema["properties"]!;
+        Assert.Equal(["suffix", "prefix"], properties["kind"]!["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ToArray());
+        Assert.Equal((1, 200, 50), (properties["limit"]!["minimum"]!.GetValue<int>(), properties["limit"]!["maximum"]!.GetValue<int>(),
+            properties["limit"]!["default"]!.GetValue<int>()));
+        Assert.Equal(1, properties["page"]!["minimum"]!.GetValue<int>());
+        Assert.Equal(["project", "kind"], actual.InputSchema["required"]!.AsArray().Select(item => item!.GetValue<string>()).Order().Reverse().ToArray());
+        Assert.NotNull(properties["asOf"]);
+        Assert.Null(properties["at"]);
+        Assert.Single(AgentTools.All, tool => tool.Name.StartsWith("motif_group", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ProposalCompareAdvertisesItsCatalogRequestSchemaWithTheEightProposalLimit()
     {
         var command = CommandCatalog.All.Single(item => item.Name == "proposal compare");

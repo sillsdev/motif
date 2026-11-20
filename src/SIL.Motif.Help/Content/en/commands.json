@@ -1859,6 +1859,11 @@
     "description": "Reads the saved report of a Proposal's Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.",
     "source": "Authored from ADR 0021 and the typed command contract."
   },
+  "group": {
+    "title": "Group words by stem",
+    "description": "Lists the word types of the project's Texts that end or start in a string, or match a pattern, grouped by candidate stem, and marks each stem known, fitting or not fitting. It reads and never writes.",
+    "source": "Authored from the typed command contract."
+  },
   "proposal compare": {
     "title": "Compare Proposals",
     "description": "Compares two to eight Proposals side by side from each one's Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project's approved analyses and measures nothing.",

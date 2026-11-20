@@ -185,7 +185,7 @@ public static class FormsQueryCommand
         query.Where?.FirstOrDefault(c => c?.Col == "target-kind" && c.Op is "is" or "in" && c.Value is not null)
             ?.Value.Split(',', StringSplitOptions.TrimEntries);
 
-    private static IReadOnlyList<FoldRule> ProjectFold(SIL.Motif.Contract.Projects.ProjectLocator project)
+    internal static IReadOnlyList<FoldRule> ProjectFold(SIL.Motif.Contract.Projects.ProjectLocator project)
     {
         try
         {

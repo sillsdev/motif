@@ -101,6 +101,7 @@ public static class CommandTextRenderer
             ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
             FindComposerResponse r => RenderFindComposer(r),
+            GroupResponse r => RenderGroup(r),
             ProposalComparison r => RenderProposalComparison(r),
             TrialExportReceipt r => RenderTrialExport(r),
             TrialRecord r => RenderTrial(r),
@@ -697,6 +698,26 @@ public static class CommandTextRenderer
                 $"segment {occurrence.SegmentId}, position {occurrence.Index}.");
         AppendTextListOverflow(text, response.SkippedOccurrences.Count, TextListLimit);
         return text.ToString();
+    }
+
+    private static string RenderGroup(GroupResponse group)
+    {
+        var text = new StringBuilder();
+        text.Append($"Group {group.Kind}: {group.Query} (read {group.ReadAt}, parse state {group.ParseState}, min stem {group.MinStem}, fold {group.Fold})\n");
+        text.Append($"{group.MatchingTypes:N0} of {group.CorpusTypes:N0} word types in {group.Groups:N0} stems: " +
+            $"{group.Known:N0} known, {group.Fitting:N0} fitting, {group.NotFitting:N0} not fitting. Page {group.Page} of {group.Pages}.\n");
+        foreach (var row in group.Rows)
+        {
+            text.Append($"{row.Stem}  [{row.Status}]  {row.Tokens:N0} tokens  " +
+                string.Join(", ", row.Words.Select(word => $"{word.Word} ({word.ParseState}, {word.Tokens})")));
+            if (row.WordsTotal > row.Words.Count) text.Append($" +{row.WordsTotal - row.Words.Count} more");
+            if (row.SiblingsTotal > 0)
+                text.Append("  | also: " + string.Join(", ", row.Siblings) +
+                    (row.SiblingsTotal > row.Siblings.Count ? $" +{row.SiblingsTotal - row.Siblings.Count} more" : ""));
+            text.Append('\n');
+        }
+        foreach (var note in group.Notes) text.Append(note).Append('\n');
+        return text.ToString().TrimEnd('\n');
     }
 
     private static string RenderProposalComparison(ProposalComparison comparison)

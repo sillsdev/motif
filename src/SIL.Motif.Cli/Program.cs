@@ -1802,6 +1802,46 @@ try
                 overviewProject, flags.GetValueOrDefault("proposal"))));
             break;
 
+        case "group":
+        {
+            if (positionals.Count != 1 || positionals[0] is not ("suffix" or "prefix") ||
+                !flags.TryGetValue("project", out var groupProject) ||
+                flags.Keys.Any(flag => flag is not ("project" or "json" or "format" or "ending" or "start" or "pattern" or
+                    "parse-state" or "limit" or "page" or "fold" or "as-of" or "min-stem" or "autonomous")))
+                return Usage(UsageLineFor("group"), asJson);
+            if (flags.TryGetValue("format", out var groupFormat))
+            {
+                if (groupFormat is not ("table" or "json")) return Usage("--format must be table or json.", asJson);
+                if (groupFormat == "json") asJson = true;
+            }
+            int? groupLimit = null;
+            int? groupPage = null;
+            if (flags.TryGetValue("limit", out var groupLimitText))
+            {
+                if (!int.TryParse(groupLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out var limitNumber) || limitNumber < 1)
+                    return Usage("--limit must be a positive integer.", asJson);
+                groupLimit = limitNumber;
+            }
+            if (flags.TryGetValue("page", out var groupPageText))
+            {
+                if (!int.TryParse(groupPageText, NumberStyles.None, CultureInfo.InvariantCulture, out var pageNumber) || pageNumber < 1)
+                    return Usage("--page must be a positive integer.", asJson);
+                groupPage = pageNumber;
+            }
+            int? groupMinStem = null;
+            if (flags.TryGetValue("min-stem", out var groupMinStemText))
+            {
+                if (!int.TryParse(groupMinStemText, NumberStyles.None, CultureInfo.InvariantCulture, out var minStemNumber) || minStemNumber < 1)
+                    return Usage("--min-stem must be a positive integer.", asJson);
+                groupMinStem = minStemNumber;
+            }
+            result = RenderCommand(GroupQueryCommand.Run(new GroupRequest(groupProject, positionals[0],
+                flags.GetValueOrDefault("ending"), flags.GetValueOrDefault("start"), flags.GetValueOrDefault("pattern"),
+                flags.GetValueOrDefault("parse-state"), groupLimit, groupPage, flags.GetValueOrDefault("as-of"),
+                flags.GetValueOrDefault("fold"), groupMinStem)));
+            break;
+        }
+
         case "proposal":
             if (positionals.Count == 1 && positionals[0] == "review" &&
                 flags.TryGetValue("project", out var proposalReviewProject))

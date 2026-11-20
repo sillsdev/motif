@@ -10921,6 +10921,81 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_group",
+    "description": "Group words by stem. Lists the word types of the project\u0027s Texts that end or start in a string, or match a pattern, grouped by candidate stem, and marks each stem known, fitting or not fitting. It reads and never writes.\nCommand: group. Agent class: Read.\nKind: The grouping: suffix groups words by the stem before an ending, prefix groups them by the stem after a start.\nEnding: For kind suffix: the string the words end in, such as an affix without its hyphen. Give exactly one of ending, start and pattern.\nStart: For kind prefix: the string the words start with. Give exactly one of ending, start and pattern.\nPattern: An anchored pattern over the whole folded word with one named group, for example (?\u003Cstem\u003E.\u002B)(?:an|on). It has no backtracking, so it cannot run away, and it is at most 256 characters.\nParseState: Which words to list: parsed (has a parse, none approved), unparsed (no parse), approved (a human approved a parse) or all. The default is all.\nLimit: The most stem groups on one page. The default is 50 and the cap is 200; a larger value is reduced to the cap and the response says so.\nPage: The one-based page of stem groups. The default is 1.\nAsOf: Read the project as of baseline (the current Baseline) or as of a Proposal id (that Proposal\u0027s latest Trial copy). Omit to read the saved project.\nFold: The fold set that makes two spellings one, such as nfc,case (the default), a named set or project for the project\u0027s own fold rules.\nMinStem: The fewest graphemes a stem may have. The default is 2, so single-letter stems are left out; 1 lists them too.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "suffix groups words by the stem before an ending; prefix by the stem after a start.",
+          "enum": [
+            "suffix",
+            "prefix"
+          ]
+        },
+        "ending": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "start": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Value for the request field.",
+          "maxLength": 256
+        },
+        "parseState": {
+          "type": "string",
+          "description": "Which words to list; the default is all.",
+          "enum": [
+            "parsed",
+            "unparsed",
+            "approved",
+            "all"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "asOf": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "fold": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "minStem": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "kind",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_proposal_compare",
     "description": "Compare Proposals. Compares two to eight Proposals side by side from each one\u0027s Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project\u0027s approved analyses and measures nothing.\nCommand: proposal compare. Agent class: Read.\nProposalIds: Two to eight distinct Proposal IDs. Each uses its newest completed Trial.\nAt: The Baseline digest every Trial must have been measured on. Omit to use the one they share.\nPage: The one-based page of form rows to read. Omit for the compact summary.\nSnapshot: The snapshot token from an earlier summary. Page calls pass it so every page reads the same Trials.",
     "inputSchema": {
