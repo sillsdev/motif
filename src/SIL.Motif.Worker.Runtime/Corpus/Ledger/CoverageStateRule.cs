@@ -48,10 +48,17 @@ internal static class CoverageStateRule
         if (SameNamed.Contains(kind, StringComparer.Ordinal)) return kind;
         if (kind == "artifact") return "non-word";
         if (kind != "misspelling" || !row.Evidence.StartsWith(IntendedPrefix, StringComparison.Ordinal)) return null;
+        return IntendedForm(row) is not null ? "misspelling" : null;
+    }
+
+    /// <summary>The intended form a misspelling row names in <c>intended=X | evidence</c>, or null when none is well formed.</summary>
+    public static string? IntendedForm(LedgerRow row)
+    {
+        if (row.Evidence is null || !row.Evidence.StartsWith(IntendedPrefix, StringComparison.Ordinal)) return null;
         var form = row.Evidence[IntendedPrefix.Length..];
         var bar = form.IndexOf(" | ", StringComparison.Ordinal);
         if (bar >= 0) form = form[..bar];
-        return form.Length > 0 && form.Trim() == form ? "misspelling" : null;
+        return form.Length > 0 && form.Trim() == form ? form : null;
     }
 
     public static CoverageDecision Decide(JoinedType type, TypeCheck? check)
@@ -90,6 +97,12 @@ internal static class CoverageStateRule
         var recovered = identity && protectedReadings.Length > 0;
         if (row is { State: LedgerState.Lost } && protectedReadings.Length > 0 && !recovered)
             return Make(2, ReportState.Lost, StateFreshness.Stale, OpenKind.Lost);
+        // A store disposition is a linguist's decision, so it is current with no check.
+        if (type.FromStore && dispositionKind is not null)
+        {
+            reasons.Add("store-disposition");
+            return Make(3, ReportState.Disposition, StateFreshness.Current, kind: dispositionKind);
+        }
         if ((complete || present) && dispositionKind is not null)
             return Make(3, ReportState.Disposition, StateFreshness.Current, kind: dispositionKind);
         if (present && protectedReadings.Length > 0) return Make(4, ReportState.Expected, StateFreshness.Current);
