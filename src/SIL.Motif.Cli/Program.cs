@@ -125,6 +125,10 @@ if (ArtifactInventoryCli.IsInvocation(args))
 string ResolveRoot() => environment.TryGetValue(RunnerOptions.RootVariable, out var root)
     && !string.IsNullOrWhiteSpace(root) ? root : RunnerOptions.DefaultRoot;
 
+// `<verb> --help` prints the page `help <verb>` does and exits 0, so a probe can trust the code.
+if (HelpFlagRewrite(args) is { } helpArguments)
+    args = helpArguments;
+
 var usageVerb = args.Length > 0 ? args[0] : "cli";
 var usageArguments = args.Length > 0
     ? ParseArgs(args[1..])
@@ -3365,6 +3369,18 @@ static bool TryReadCitation(IReadOnlyDictionary<string, string> flags, out SIL.M
         error = exception.Message;
         return false;
     }
+}
+
+// The leading non-flag words name the verb; a help flag after `--` belongs to the forwarded command.
+static string[]? HelpFlagRewrite(string[] arguments)
+{
+    if (arguments.Length == 0 || arguments[0] == "help") return null;
+    var separator = Array.IndexOf(arguments, "--");
+    var own = separator < 0 ? arguments : arguments[..separator];
+    if (!own.Any(argument => argument is "--help" or "-h")) return null;
+    var words = own.TakeWhile(argument => !argument.StartsWith('-')).ToArray();
+    var autonomous = own.Where(argument => argument == CommandSurfacePolicy.AutonomousFlag);
+    return ["help", .. words, .. autonomous];
 }
 
 int Usage(string message, bool asJson = false, bool withUsageBanner = false)

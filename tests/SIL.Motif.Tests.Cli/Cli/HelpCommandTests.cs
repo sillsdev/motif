@@ -496,6 +496,42 @@ public sealed class HelpCommandTests
             Assert.Contains("--wait", commands[name].GetRawText(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("apply")]
+    [InlineData("assess")]
+    [InlineData("dry-run")]
+    [InlineData("trial")]
+    [InlineData("baseline", "capture")]
+    [InlineData("compose-author-lexical-entry")]
+    public void AVerbFollowedByHelpFlagPrintsTheSameHelpAndExitsZero(params string[] verb)
+    {
+        var viaFlag = Run(true, true, [.. verb, "--help"]);
+        var viaHelp = Run(true, true, ["help", .. verb]);
+
+        Assert.Equal(0, viaFlag.ExitCode);
+        Assert.Equal(0, viaHelp.ExitCode);
+        Assert.Equal(viaHelp.Output, viaFlag.Output);
+        Assert.NotEmpty(viaFlag.Output);
+    }
+
+    [Fact]
+    public void TheHelpFlagAfterOtherFlagsStillFindsTheVerb()
+    {
+        var viaFlag = Run(true, true, "trial", "--project", "x.fwdata", "--help");
+
+        Assert.Equal(0, viaFlag.ExitCode);
+        Assert.Equal(Run(true, true, "help", "trial").Output, viaFlag.Output);
+    }
+
+    [Fact]
+    public void TheBareHelpFlagListsTheCommandsAndExitsZero()
+    {
+        var result = Run("--help");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(Run("help").Output, result.Output);
+    }
+
     [Fact]
     public void HelpForATopicWithoutACommandPrintsThePageAndExitsZero()
     {
