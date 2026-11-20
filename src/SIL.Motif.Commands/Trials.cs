@@ -118,6 +118,32 @@ public static class Trials
         return byAssessment;
     }
 
+    /// <summary>
+    /// The Assessment ids that working-set Trials of this Proposal recorded: they measured only a chosen word list,
+    /// so none of them can stand as the Proposal's evidence for Apply.
+    /// </summary>
+    internal static IReadOnlySet<string> WorkingSetAssessmentIds(MotifDatabase database, ProjectLocator project,
+        CanonicalId proposalId)
+    {
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var candidate in ReadCandidates(OrderedJobs(database, ProjectWorkspaceKey.Compute(project)),
+            proposalId.Value))
+        {
+            if (!TrialSampleKind.IsWorkingSet(candidate.Input.Sample)) continue;
+            try { ids.UnionWith(ReadCompletion(candidate.Job.ResultJson)?.AssessmentIds ?? []); }
+            catch (Exception exception) when (exception is JsonException or InvalidDataException) { }
+        }
+        return ids;
+    }
+
+    /// <summary>The working-set refusal for a Trial job, or null when it is an ordinary Trial.</summary>
+    internal static Refusal? WorkingSetRefusal(JobRecord job, string use) =>
+        TrialSampleKind.IsWorkingSet(TrialJobInput.Parse(job.InputJson).Sample)
+            ? new Refusal(RefusalCodes.TrialWorkingSetNotAGate, FailureReason.Refused,
+                "That Trial measured only a chosen word list (a working-set Trial), so it cannot be used to " + use +
+                ". Run a Trial without --no-base-sample.")
+            : null;
+
     /// <summary>Every Trial job that names this Proposal, running or not, so deleting the Proposal removes them.</summary>
     internal static IReadOnlyList<JobRecord> JobsFor(MotifDatabase database, ProjectLocator project,
         CanonicalId proposalId) =>
@@ -303,6 +329,9 @@ public static class Trials
                 : input.Words is null && input.WordList is null ? TrialWordScope.DefaultSelection
                     : TrialWordScope.ChosenWords,
             Label = label,
+            Sample = TrialSampleKind.IsWorkingSet(input.Sample) ? TrialSampleKind.WorkingSet : TrialSampleKind.Stratified,
+            SampleWords = input.SampleWords,
+            WordListDigest = input.WordListDigest,
             GrammarCheckId = grammarCheckId,
             WordResults = wordResults,
             Work = work,

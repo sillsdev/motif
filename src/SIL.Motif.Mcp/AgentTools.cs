@@ -896,6 +896,7 @@ internal static class AgentTools
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("review_sets", Schema.StringArray("Named review sets to include."), false),
                 ("expect_loss", Schema.StringArray("Words the change intends to lose, frozen when the Trial is queued. They are reported in the saved gate and do not make it a loss; any other lost word does. A resumed Trial cannot change them."), false),
+                ("no_base_sample", Schema.Boolean("True measures exactly the words given in words or wordsFile and adds no review word set: a working-set Trial for a development loop, recorded as sample working-set. It is never a gate and is compared only with another working-set Trial over the same list. Needs words; not with negative_words, review_sets or job."), false),
                 ("no_background", Schema.Boolean("True keeps the Trial foreground only: any Baseline recapture runs inline and no Parsimony job is queued after the Trial commits, so nothing commits after the tool returns. Not with job."), false),
                 ("wait_seconds", Schema.Integer("How long to wait. Default 40.", 1, 300), false),
                 ("wait_terminal", Schema.Boolean("Cancel the job on timeout and wait for its execution to end."), false),
@@ -912,6 +913,7 @@ internal static class AgentTools
                     ["Scope"] = null, ["AllWords"] = null,
                     ["ExpectedDraftRevision"] = null, ["Limits"] = null, ["BaselineAssessmentIds"] = null,
                     ["ReviewSetIds"] = null, ["ExpectedLosses"] = "expect_loss", ["NoBackground"] = "no_background",
+                    ["NoBaseSample"] = "no_base_sample",
                     ["ProjectKey"] = null, ["EffectiveDetail"] = null, ["EffectiveSide"] = null,
                 } },
 
@@ -1805,16 +1807,21 @@ internal static class AgentTools
         var waitForTerminal = args.Flag("wait_terminal");
         var wait = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         var job = args.Optional("job");
-        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss") || args.Has("no_background")))
+        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss") || args.Has("no_background") || args.Has("no_base_sample")))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "A resumed Trial cannot change its inputs.");
         if (job is null)
         {
             var negatives = args.List("negative_words");
             var named = WordListFile.Resolve(args.List("words"), args.Optional("wordsFile"));
             if (!named.Succeeded) return ToolOutcome.Refused(named.Refusal!);
+            var noBaseSample = args.Flag("no_base_sample");
+            if (noBaseSample && negatives.Count > 0)
+                return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument,
+                    "no_base_sample measures exactly the words given, so it cannot also take negative_words.");
             var words = named.Value!.Concat(negatives).Distinct(StringComparer.Ordinal).ToArray();
             var request = new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion, proposal,
-                Words: words.Length == 0 ? null : words, NegativeWords: negatives, NoBackground: args.Flag("no_background"))
+                Words: words.Length == 0 ? null : words, NegativeWords: negatives, NoBackground: args.Flag("no_background"),
+                NoBaseSample: noBaseSample)
                 { ReviewSetIds = args.Has("review_sets") ? args.List("review_sets") : null, ExpectedLosses = args.List("expect_loss") };
             var queued = await Task.Run(() => TrialWorkflow.Enqueue(request,
                 RunnerOptions.ResolveRoot(), context.JobParserPath, BaselineMode.Required, cancellation), cancellation);

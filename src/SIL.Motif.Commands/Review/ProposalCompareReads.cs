@@ -66,6 +66,21 @@ public static class ProposalCompareReads
                     new() { ["proposalId"] = id.Value });
             columns.Add((id, receipt));
         }
+        var samples = columns.Select(column =>
+        {
+            var input = TrialJobInput.Parse(new JobRepository(database).Get(column.Receipt.JobId)!.InputJson);
+            return (Working: TrialSampleKind.IsWorkingSet(input.Sample), input.WordListDigest);
+        }).ToArray();
+        if (samples.Any(sample => sample.Working))
+        {
+            if (!samples.All(sample => sample.Working))
+                return Refuse(RefusalCodes.TrialWorkingSetNotAGate, FailureReason.Refused,
+                    "A working-set Trial measured only a chosen word list, so it cannot be compared with a Trial that did not. " +
+                    "Compare working-set Trials with each other, or run each Proposal without --no-base-sample.");
+            if (samples.Select(sample => sample.WordListDigest).Distinct(StringComparer.Ordinal).Count() > 1)
+                return Refuse(RefusalCodes.TrialWorkingSetListsDiffer, FailureReason.Refused,
+                    "These working-set Trials measured different word lists. Run each Proposal on the same list to compare them.");
+        }
         if (at is not null)
             foreach (var (id, receipt) in columns)
                 if (TrialExportArtifact.Read(database, receipt.JobId, at) is null)

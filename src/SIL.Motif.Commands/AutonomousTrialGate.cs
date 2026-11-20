@@ -47,6 +47,9 @@ internal static class AutonomousTrialGate
             if (Trials.SelectJob(database, key, proposal.ProposalId.Value) is { } job)
             {
                 jobId = job.JobId;
+                if (TrialSampleKind.IsWorkingSet(TrialJobInput.Parse(job.InputJson).Sample))
+                    return Refuse("The newest Trial is a working-set Trial that measured only a chosen word list, so it cannot " +
+                        "authorize Apply. Run a Trial without --no-base-sample.");
                 if (job.Status != JobStatus.Completed)
                     return Refuse("The newest Trial is " + JobStatusJson.ToWire(job.Status) + ".");
                 var read = new TrialReviewCommands(database).Read(new ReviewReadRequest(key, proposal.ProposalId.Value, JobId: job.JobId));

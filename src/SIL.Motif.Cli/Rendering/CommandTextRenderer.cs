@@ -1394,6 +1394,7 @@ public static class CommandTextRenderer
         text.AppendLine("  Last save: " + response.Baseline.SourceLastWriteUtc.ToString("O") +
             "  (as of FieldWorks' last save)");
         text.AppendLine("  Selection: " + response.Selection.Words.Count + " word(s)");
+        if (AssessSummary.Scope(response) is { } scope) text.AppendLine("  Scope: " + scope);
         foreach (var entry in response.Selection.Provenance)
             text.AppendLine("    " + entry.Source + ": " + entry.Count);
         text.AppendLine("  Assessments: " + string.Join(", ", response.AssessmentIds));

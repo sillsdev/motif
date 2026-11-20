@@ -24,11 +24,12 @@ public sealed record EnqueueDryRunRequest(string FwDataPath, string ProductVersi
 /// <param name="BaselineAssessmentIds">The project Assessments used as the before side of a Trial Difference.</param>
 /// <param name="NegativeWords">Attested counterexamples that should not parse.</param>
 /// <param name="NoBackground">True runs any Baseline recapture this Trial needs in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.</param>
+/// <param name="NoBaseSample">True measures exactly <paramref name="Words"/> and leaves out every configured review word set, so the Trial is a working-set Trial that cannot stand in for a gate; it needs Words.</param>
 public sealed record EnqueueTrialRequest(
     string FwDataPath, string ProductVersion, string ProposalId, string? Scope = null,
     IReadOnlyList<string>? Words = null, bool AllWords = false, string? ExpectedDraftRevision = null,
     TrialLimits? Limits = null, IReadOnlyList<string>? BaselineAssessmentIds = null,
-    IReadOnlyList<string>? NegativeWords = null, bool NoBackground = false)
+    IReadOnlyList<string>? NegativeWords = null, bool NoBackground = false, bool NoBaseSample = false)
 {
     /// <summary>Words the author declares as intended losses before this Trial is queued.</summary>
     public IReadOnlyList<string>? ExpectedLosses { get; init; }

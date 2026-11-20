@@ -217,6 +217,18 @@ public sealed record ReportView(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public TrialGate? Gate { get; init; }
 
+    /// <summary>How the Trial's words were chosen: <c>stratified</c>, or <c>working-set</c> for exactly a chosen word list. Null on a report saved before it was recorded.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Sample { get; init; }
+
+    /// <summary>The distinct words of a working-set Trial's list; null for any other Trial.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? SampleWords { get; init; }
+
+    /// <summary>The digest of a working-set Trial's word list; null for any other Trial.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? WordListDigest { get; init; }
+
     /// <summary>The project declaration and required scope measured by this Trial.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public TrialGateDeclaration? DeclaredGate { get; init; }

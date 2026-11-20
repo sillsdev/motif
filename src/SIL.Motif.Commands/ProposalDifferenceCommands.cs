@@ -97,6 +97,10 @@ public static class ProposalDifferenceCommands
                 return Refuse("difference.no-trial", FailureReason.NotFound, request.JobId is null
                     ? "The Proposal has no completed Trial. Run: motif proposal trial --project <fwdata> <proposalId>"
                     : "The Proposal has no Trial with that job id.");
+            if (TrialSampleKind.IsWorkingSet(trial.Sample))
+                return Refuse(RefusalCodes.TrialWorkingSetNotAGate, FailureReason.Refused,
+                    "That Trial measured only a chosen word list (a working-set Trial), so a Difference cannot be produced from it. " +
+                    "Run a Trial without --no-base-sample.");
             if (trial.Status != JobStatus.Completed)
                 return Refuse("difference.trial-incomplete", FailureReason.Refused,
                     "The Trial did not complete. Trial the Proposal again before comparing it.");

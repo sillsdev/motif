@@ -32,6 +32,8 @@ motif assess "C:\FieldWorks\Projects\Koro\Koro.fwdata" --all-wordforms --collect
 
 Human output reports the Selection and stored Assessment ids, followed by each word's comparison headline and any qualification on a second line. For example, when a completed search builds a Disapproved analysis but misses the word's undecided analysis, it prints “Rebuilt an analysis you Disapproved” and “Your undecided analysis wasn't built”.
 
+When the run scored only a word list (`--words`, with no Texts or `--all-wordforms`), human output prints `Scope: scored N listed words` and JSON carries the same text as `scope`. Nothing else is added to the Selection, so a 500-word list parses 500 words (plus any lowercase forms noted below).
+
 Both human output and JSON begin with `counts`: how many words were measured, how many came out `analysed`, `noAnalysis`, `capped` (stopped at the work limit), `timedOut` (stopped at the time safety net) or `skipped`, and among the analysed words how many are `accepted` (some reading identifies every morph in the lexicon) and how many are `guessOnly` (every reading contains a morph the parser had to guess because it could not identify it, such as `a+?baga`). An analysed word is not necessarily an accepted one.
 
 JSON returns the Baseline, Selection, and Assessment results. Each word's `comparison` carries its standing, outcome, stable `meaningCode`, headline, detail, completion flag and tone, plus matched analysis identities and their individual opinions, missing Approved analyses, rebuilt Disapproved analyses and extra readings. This is the same comparison used by the window; display wording is not a grouping identity.

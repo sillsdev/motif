@@ -11,6 +11,15 @@ namespace SIL.Motif.Commands.Assess;
 /// </summary>
 public static class AssessSummary
 {
+    /// <summary>
+    /// The scope line of an Assessment that scored only a caller's word list, such as <c>scored 500 listed words</c>;
+    /// null when the run also read Texts, all wordforms or a retry, whose scope is the Selection's own.
+    /// </summary>
+    public static string? Scope(AssessCommandResponse response) =>
+        response.SelectionDescriptor is { PastedWords.Count: > 0, AllWordforms: false, RetryFailed: false, RetryWorkOver: null } descriptor &&
+        descriptor.TextIds.Count == 0
+            ? $"scored {response.Selection.Words.Count} listed words" : null;
+
     /// <summary>Projects a complete Assessment response without publishing unpaired parser costs.</summary>
     public static JsonObject Full(AssessCommandResponse response)
     {
@@ -24,6 +33,7 @@ public static class AssessSummary
         })!.AsObject();
         result["words"] = new JsonArray(response.Words.Select(Detailed).ToArray());
         result["costComparison"] = new JsonObject { ["state"] = "unavailable", ["reason"] = "No paired Assessment was selected." };
+        if (Scope(response) is { } scope) result["scope"] = scope;
         return result;
     }
 
@@ -36,6 +46,7 @@ public static class AssessSummary
             trial.Words, trial.AllWords, trial.Limits, trial.Status, trial.CompletedUtc, trial.Freshness,
             trial.Label, trial.GrammarCheckId, trial.Work, trial.GrammarCheckWarning, trial.DroppedGrammar,
             trial.Clean, trial.WordScope, trial.Standing, trial.DroppedGrammarNotChecked,
+            trial.Sample, trial.SampleWords, trial.WordListDigest,
         })!.AsObject();
         result["wordResults"] = new JsonArray(trial.WordResults.Select(Detailed).ToArray());
         return result;
@@ -46,7 +57,9 @@ public static class AssessSummary
     {
         var measured = response.Measurements.FirstOrDefault(m => m.Kind == "ParseTime")?.AssessmentId
             ?? response.AssessmentIds.FirstOrDefault();
-        return Build(measured, response.Words, response.InvocationId, offset, limit, detailed);
+        var page = Build(measured, response.Words, response.InvocationId, offset, limit, detailed);
+        if (Scope(response) is { } scope) page["scope"] = scope;
+        return page;
     }
 
     /// <summary>The page of a stored Assessment's words, read back by its id.</summary>

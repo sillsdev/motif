@@ -115,6 +115,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
     [InlineData("parser-changed")]
     [InlineData("parser-missing")]
     [InlineData("pending-latest")]
+    [InlineData("working-set")]
     public void AutonomousApplyRequiresTheNewestTrialsCurrentGreenGate(string scenario)
     {
         WriteGateConfiguration();
@@ -133,6 +134,8 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.Contains("Trial", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Contains("--expect-loss", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
+        if (scenario == "working-set")
+            Assert.Contains("working-set Trial", result.Refusal.Message, StringComparison.Ordinal);
         if (scenario is "failed-latest" or "cancelled-latest" or "pending-latest")
         {
             var latest = TrialReviewReads.ReadStored(_fwDataPath, new ReviewReadRequest("project", proposalId, Latest: true));
@@ -696,7 +699,8 @@ public sealed class ApplyPromotionGatingAndSweepTests
             new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>())
                 { Baseline = baseline, BaselineSidecarDigest = ProgressSourceIdentity.CaptureSidecars(saved.FwDataPath)!.Digest });
         var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference)
-        { ExpectedLosses = scenario == "covered-loss" ? words : scenario == "partial-expected" ? ["alpha"] : [] };
+        { Sample = scenario == "working-set" ? TrialSampleKind.WorkingSet : null,
+          ExpectedLosses = scenario == "covered-loss" ? words : scenario == "partial-expected" ? ["alpha"] : [] };
         var jobs = new JobRepository(database);
         var job = jobs.Create("gate-" + Guid.NewGuid().ToString("N"), key, "trial",
             JsonSerializer.Serialize(input, MotifJson.CreateOptions()), JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));

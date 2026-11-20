@@ -32,13 +32,14 @@ internal static class ReviewTrialCapture
             try
             {
                 var configuration = new ProjectConfigurationReader().Read(project);
-                var selected = request.ReviewSetIds?.ToHashSet(StringComparer.Ordinal);
+                var selected = request.NoBaseSample ? new HashSet<string>(StringComparer.Ordinal)
+                    : request.ReviewSetIds?.ToHashSet(StringComparer.Ordinal);
                 if (request.ReviewSetIds is { } ids && ids.Count != selected!.Count)
                     throw new InvalidOperationException("Review set IDs cannot be repeated.");
                 if (selected is not null && selected.Except(configuration.ReviewWordSets.Select(set => set.Id),
                         StringComparer.Ordinal).Any())
                     throw new InvalidOperationException("A selected review set is not declared.");
-                selected?.UnionWith(configuration.GateWordSets ?? []);
+                if (!request.NoBaseSample) selected?.UnionWith(configuration.GateWordSets ?? []);
                 var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
                     includeResolvedReadings: false, includeWordContext: false);
                 if (!current.Succeeded) return CommandOutcome<EnqueueTrialRequest>.Refused(current.Refusal!);
@@ -148,7 +149,8 @@ internal static class ReviewTrialCapture
                         ParsimonyBlockOn = configuration.ParsimonyBlockOn.Count == 0 ? null : configuration.ParsimonyBlockOn,
                         VariantForms = VariantFormCapture.Read(cache, request.ReviewProposal),
                     };
-                inputs = inputs with { DeclaredGate = DeclaredTrialGatePolicy.Capture(configuration, inputs) };
+                if (!request.NoBaseSample)
+                    inputs = inputs with { DeclaredGate = DeclaredTrialGatePolicy.Capture(configuration, inputs) };
                 IReadOnlyList<ReviewBaselinePartition>? suppliedBaselines = null;
                 if (request.BaselineAssessmentIds is { } assessmentIds)
                 {

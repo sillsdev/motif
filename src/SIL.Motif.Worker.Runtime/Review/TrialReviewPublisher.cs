@@ -158,7 +158,8 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         var report = new ReportView("motif.proposal-review-report", 1, "pending", digest, DetailLevel.Summary,
             pins, new Freshness(FreshnessRelation.Unknown, ["freshness-not-checked"]), summary, evidence,
             limitations, DetailAvailability.Available, [], null, null, null, [])
-        { Losses = losses, StoppedWords = named.StoppedWords, HeldWords = named.HeldWords, DeclaredGate = inputs.DeclaredGate };
+        { Losses = losses, StoppedWords = named.StoppedWords, HeldWords = named.HeldWords, DeclaredGate = inputs.DeclaredGate,
+            Sample = input.Sample, SampleWords = input.SampleWords, WordListDigest = input.WordListDigest };
         report = report with { Gate = TrialGateEvaluation.GateOf(new AvailableTrialResult(report), input.ExpectedLosses ?? [],
             new TrialGateEvaluation.GateWords(losses.Words, named.BlockingStoppedWords)) };
         if (report.Gate!.State == TrialGateState.Green &&

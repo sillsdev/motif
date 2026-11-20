@@ -280,6 +280,9 @@ public static class JobCommands
                 {
                     ExpectedLosses = request.ExpectedLosses?.ToArray(),
                     NoBackground = request.NoBackground,
+                    Sample = request.NoBaseSample ? TrialSampleKind.WorkingSet : TrialSampleKind.Stratified,
+                    SampleWords = request.NoBaseSample ? words!.Length : null,
+                    WordListDigest = request.NoBaseSample ? WordListDigest(words!) : null,
                     ExportRevision = record.DraftName is null ? record.IntentDigest : DraftRevision.Compute(record.ProposalJson),
                     ReviewBeforeDispatches = request.ReviewBeforeDispatches?.Select(batch => batch with
                     {
@@ -337,11 +340,27 @@ public static class JobCommands
         });
     }
 
-    internal static Refusal? InvalidTrialWords(EnqueueTrialRequest request) =>
-        request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
-            !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true
-            ? new Refusal(RefusalCodes.JobInvalidWords, FailureReason.InvalidArgument,
-                "Trial words must be nonblank and have no surrounding whitespace.") : null;
+    internal static Refusal? InvalidTrialWords(EnqueueTrialRequest request)
+    {
+        if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
+                !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
+            return new Refusal(RefusalCodes.JobInvalidWords, FailureReason.InvalidArgument,
+                "Trial words must be nonblank and have no surrounding whitespace.");
+        if (!request.NoBaseSample) return null;
+        if (request.Words is not { Count: > 0 } || request.AllWords)
+            return new Refusal(RefusalCodes.TrialNoBaseSampleInvalid, FailureReason.InvalidArgument,
+                "--no-base-sample measures exactly the words of --words <file>, so it needs a word list and cannot be used with --all-words.");
+        if (request.ReviewSetIds is not null)
+            return new Refusal(RefusalCodes.TrialNoBaseSampleInvalid, FailureReason.InvalidArgument,
+                "--no-base-sample already leaves out every review set, so do not also name --review-set.");
+        return null;
+    }
+
+    /// <summary>The digest of a word list: its distinct words in NFD, ordered, so the same list in any order matches.</summary>
+    internal static string WordListDigest(IEnumerable<string> words) => "sha256:" + Convert.ToHexStringLower(
+        System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('\n',
+            words.Select(word => word.Normalize(System.Text.NormalizationForm.FormD)).Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)))));
 
     // The job is inserted only if the Proposal, or the Draft the Trial was read from, still exists in that write.
     internal static CommandOutcome<JobEnqueuedResponse> QueueTrial(JobRepository jobs, ProposalRecord record,

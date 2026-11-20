@@ -39,6 +39,25 @@ public sealed class ProposalCompareReadTests
         [column.Gained, column.Lost, column.Unchanged, column.NotMeasured, column.Incomplete];
 
     [Fact]
+    public void AWorkingSetTrialIsComparedOnlyWithAnotherOverTheSameWordList()
+    {
+        InStore((database, project) =>
+        {
+            var working = SIL.Motif.Contract.Responses.TrialSampleKind.WorkingSet;
+            var full = AddTrial(database, project, [F("f1", [1], [1, 2])]);
+            var one = AddTrial(database, project, [F("f1", [1], [1, 2])], sample: working, wordListDigest: "sha256:one");
+            var same = AddTrial(database, project, [F("f1", [1], [1])], sample: working, wordListDigest: "sha256:one");
+            var other = AddTrial(database, project, [F("f1", [1], [1])], sample: working, wordListDigest: "sha256:two");
+
+            Assert.Equal("trial.working-set-not-a-gate", Compare(project, [full, one]).Refusal?.Code);
+            Assert.Equal("trial.working-set-not-a-gate", Compare(project, [one, full]).Refusal?.Code);
+            Assert.Equal("trial.working-set-lists-differ", Compare(project, [one, other]).Refusal?.Code);
+            var allowed = Compare(project, [one, same]);
+            Assert.True(allowed.Succeeded, allowed.Refusal?.Message);
+        });
+    }
+
+    [Fact]
     public void GainsLossesTiesAndUnmeasuredFormsAreCountedPerProposalFromTheirOwnTrials()
     {
         InStore((database, project) =>

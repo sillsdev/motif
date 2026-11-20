@@ -1101,7 +1101,7 @@ try
             {
                 return Usage(
                     "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
-                    "[--words <file>|--all-words] [--wait] [--no-background] [--expect-loss <file>] [--json]", asJson);
+                    "[--words <file>|--all-words] [--no-base-sample] [--wait] [--no-background] [--expect-loss <file>] [--json]", asJson);
             }
             IReadOnlyList<string>? trialWords = null;
             IReadOnlyList<string>? reviewSets = null;
@@ -1141,7 +1141,7 @@ try
             var trialWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                 "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
-                "[--words <file>|--all-words] " +
+                "[--words <file>|--all-words] [--no-base-sample] " +
                 "--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
             var trialResultExit = 0;
@@ -1151,7 +1151,8 @@ try
                     new EnqueueTrialRequest(
                         trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
                         Words: trialWords, AllWords: flags.ContainsKey("all-words"),
-                        NoBackground: flags.ContainsKey("no-background")) { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses },
+                        NoBackground: flags.ContainsKey("no-background"),
+                        NoBaseSample: flags.ContainsKey("no-base-sample")) { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses },
                     ResolveRoot(), null, BaselineMode.BestEffort, cancellationToken);
                 if (!queued.Succeeded)
                     return RenderCommand(CommandOutcome<JobEnqueuedResponse>.Refused(queued.Refusal!), successAsJson: false);
@@ -3745,7 +3746,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample")
             {
                 flags[name] = "true";
                 continue;

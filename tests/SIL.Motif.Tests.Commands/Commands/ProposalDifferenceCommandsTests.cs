@@ -388,6 +388,24 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
     }
 
     [Fact]
+    public void AWorkingSetTrialIsRefusedBecauseItMeasuredOnlyAChosenWordList()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+        var queued = TrialBaselines.EnqueueWithBaseline(
+            new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId,
+                Words: ["sita", "mutu"], NoBaseSample: true),
+            words => CommandOutcome<AssessCommandResponse>.Success(new AssessCommandResponse(null!, null!, ["before"], "")));
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        fixture.CompleteTrial(queued.Value!.JobId);
+
+        var produced = ProposalDifferenceCommands.Produce(
+            fixture.ProduceRequest() with { JobId = queued.Value.JobId });
+
+        Assert.Equal("trial.working-set-not-a-gate", produced.Refusal?.Code);
+        Assert.Contains("working-set Trial", produced.Refusal!.Message);
+    }
+
+    [Fact]
     public void ATrialQueuedThroughTheWorkflowHasABeforeSideAndProducesADifference()
     {
         using var fixture = new Fixture(_root, noBaselineIds: true);

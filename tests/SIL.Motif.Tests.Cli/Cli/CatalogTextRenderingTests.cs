@@ -154,6 +154,28 @@ public sealed class CatalogTextRenderingTests
         Assert.Contains("\"guessOnly\": 1", json, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(true, "scored 2 listed words")]
+    [InlineData(false, null)]
+    public void AssessShowsAListedWordsScopeOnlyWhenTheRunScoredNothingElse(bool wordsOnly, string? scope)
+    {
+        var response = new AssessCommandResponse(new BaselineCaptureResponse(
+            new("project", "sha256:" + new string('a', 64), "version", "2026-10-01T00:00:00.0000000Z",
+                "sha256:" + new string('b', 64)), "project.fwdata", DateTimeOffset.UtcNow, false, true),
+            new SelectionProjection(["a", "b"], []), ["assessment"], "Search completed")
+        {
+            SelectionDescriptor = new SelectionDescriptor([], ["a", "b"], !wordsOnly, false, null, null, ["a", "b"],
+                "sha256:" + new string('c', 64), []),
+        };
+        var outcome = CommandOutcome<AssessCommandResponse>.Success(response);
+
+        var text = CommandTextRenderer.Render(outcome, asJson: false).Output;
+        var json = CommandTextRenderer.Render(outcome, asJson: true).Output;
+
+        Assert.Equal(scope is not null, text.Contains("Scope: " + scope, StringComparison.Ordinal));
+        Assert.Equal(scope is not null, json.Contains("\"scope\": \"" + scope + "\"", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void WarningTextRetainsProducerAdvicePlacesAndMissingReferenceState()
     {

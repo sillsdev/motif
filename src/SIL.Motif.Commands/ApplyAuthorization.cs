@@ -118,6 +118,10 @@ internal static class ApplyAuthorization
         var candidateIds = manifest.CurrentIntentDigest is null
             ? []
             : ProposalCommands.CandidateAssessmentIds(assessments, record.ProposalId, manifest.CurrentIntentDigest);
+        IReadOnlySet<string> workingSetIds = candidateIds.Count == 0
+            ? new HashSet<string>() : Trials.WorkingSetAssessmentIds(database, project, record.ProposalId);
+        var workingSetOnly = candidateIds.Count > 0 && candidateIds.All(workingSetIds.Contains);
+        candidateIds = candidateIds.Where(id => !workingSetIds.Contains(id)).ToArray();
         var baselines = new BaselineRepository(database);
         var projectKey = ProjectWorkspaceKey.Compute(project);
         var baseline = baselines.GetCurrent(projectKey);
@@ -177,6 +181,10 @@ internal static class ApplyAuthorization
         var choice = ProposalCommands.ChooseCandidate(candidateIds, assessments.Get, EvaluateFor);
         var candidate = choice.Candidate;
         var readiness = choice.Decision;
+        if (workingSetOnly)
+            readiness = readiness with { Reasons = [.. readiness.Reasons,
+                "its only Trials are working-set Trials that measured a chosen word list, so none can stand as evidence; " +
+                "run a Trial without --no-base-sample"] };
         return new ApplyAuthorizationDecision(readiness, candidate, boundDryRun, true, choice.Considered, choice.Unread, pendingRefusal);
     }
 

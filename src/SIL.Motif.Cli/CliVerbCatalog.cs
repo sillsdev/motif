@@ -282,12 +282,12 @@ public static class CliVerbCatalog
             new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--effects] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
-            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--review-set <ids>|none] [--wait] [--json]" }),
+            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--no-base-sample] [--review-set <ids>|none] [--wait] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --wait",
             new[]
             {
-                "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] --wait " +
+                "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--no-base-sample] --wait " +
                 "[--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--json]",
             }),
         new CliVerbDescriptor(

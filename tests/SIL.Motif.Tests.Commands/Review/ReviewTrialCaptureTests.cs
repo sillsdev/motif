@@ -197,6 +197,82 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
         finally { Directory.Delete(root, recursive: true); }
     }
 
+    [Fact]
+    public void ANoBaseSampleTrialParsesExactlyTheListedWordsAndIsMarkedAsAWorkingSet()
+    {
+        string path;
+        using (var cache = pristine.NewScratch())
+        {
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var root = Directory.CreateTempSubdirectory("motif-review-working-set-").FullName;
+        try
+        {
+            File.WriteAllText(Path.ChangeExtension(path, ".motif.toml"),
+                "[gate]\nword-sets = [\"gold\"]\n[[review-word-set]]\nid = \"gold\"\nname = \"Gold\"\nrole = \"regression\"\nselection = \"Gold words\"\n");
+            var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+            Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+            var draft = SIL.Motif.Commands.ProposalCommands.New(new(path, "1.0", "capture-revision", null));
+            Assert.True(draft.Succeeded, draft.Refusal?.Message);
+            var project = new ProjectLocator(path, Path.GetFileNameWithoutExtension(path));
+            using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+                MotifSchema.CurrentSchema, new Version(1, 0));
+            new NamedSelectionRepository(database).SetDefault("Gold words", [], ["goldone", "goldtwo", "goldthree"],
+                new SIL.Motif.Contract.Requests.SelectionParsingLimits(SIL.Motif.Contract.Assess.ParserWorkLimit.Default,
+                    SIL.Motif.Contract.Requests.SelectionTimeLimitMode.Estimated, null), null);
+            AddWordChange(new ProposalRepository(database), "unrelated");
+            string[] listed = ["listone", "listtwo"];
+
+            (TrialJobInput Input, FrozenReviewInputs Inputs) Queue(bool noBaseSample)
+            {
+                var request = new EnqueueTrialRequest(path, "1.0", draft.Value!.ProposalId, Words: listed,
+                    NoBaseSample: noBaseSample);
+                var job = TrialBaselines.EnqueueWithBaseline(request, (_, _, _, _, _, _) =>
+                    SIL.Motif.Contract.Commands.CommandOutcome<AssessCommandResponse>.Refused(new(
+                        SIL.Motif.Contract.Commands.RefusalCodes.AssessmentStoppedByBudget,
+                        SIL.Motif.Contract.Responses.FailureReason.StoppedByBudget, "Stopped")));
+                Assert.True(job.Succeeded, job.Refusal?.Message);
+                var input = TrialJobInput.Parse(new JobRepository(database).Get(job.Value!.JobId)!.InputJson);
+                return (input, ReviewInputArtifacts.Read(database, input.ReviewInputs!).Inputs);
+            }
+
+            var working = Queue(noBaseSample: true);
+            Assert.Equal(listed.Order(), working.Inputs.Cases.Select(item => item.Word).Order());
+            Assert.Equal(listed.Order(), working.Input.Words!.Order());
+            Assert.Null(working.Inputs.DeclaredGate);
+            Assert.Empty(working.Inputs.Sets);
+            Assert.Equal(TrialSampleKind.WorkingSet, working.Input.Sample);
+            Assert.Equal(listed.Length, working.Input.SampleWords);
+            Assert.Equal(SIL.Motif.Commands.JobCommands.WordListDigest(listed.Reverse()), working.Input.WordListDigest);
+
+            var stratified = Queue(noBaseSample: false);
+            Assert.Equal(TrialSampleKind.Stratified, stratified.Input.Sample);
+            Assert.Null(stratified.Input.SampleWords);
+            Assert.Contains(stratified.Inputs.Cases, item => item.Word == "goldone");
+            Assert.NotNull(stratified.Inputs.DeclaredGate);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void ANoBaseSampleTrialNeedsAWordListAndRefusesOptionsThatContradictIt()
+    {
+        string[] words = ["listone"];
+        foreach (var request in new[]
+        {
+            new EnqueueTrialRequest("p.fwdata", "1.0", "proposal/x", NoBaseSample: true),
+            new EnqueueTrialRequest("p.fwdata", "1.0", "proposal/x", Words: words, AllWords: true, NoBaseSample: true),
+            new EnqueueTrialRequest("p.fwdata", "1.0", "proposal/x", Words: words, NoBaseSample: true) { ReviewSetIds = [] },
+        })
+        {
+            var refusal = SIL.Motif.Commands.JobCommands.InvalidTrialWords(request);
+            Assert.Equal(SIL.Motif.Contract.Commands.RefusalCodes.TrialNoBaseSampleInvalid, refusal?.Code);
+        }
+        Assert.Null(SIL.Motif.Commands.JobCommands.InvalidTrialWords(
+            new EnqueueTrialRequest("p.fwdata", "1.0", "proposal/x", Words: words, NoBaseSample: true)));
+    }
+
     [Theory]
     [InlineData("single", false, false)]
     [InlineData("single", true, false)]

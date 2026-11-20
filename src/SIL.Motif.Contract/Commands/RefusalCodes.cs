@@ -425,6 +425,12 @@ public static class RefusalCodes
     public const string ProposalCompareSnapshotChanged = "proposal.compare-snapshot-changed";
     /// <summary>The Trial's frozen review inputs could not be captured or read.</summary>
     public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
+    /// <summary>A Trial without the base sample was asked for with no word list, or with options that contradict it.</summary>
+    public const string TrialNoBaseSampleInvalid = "trial.no-base-sample-invalid";
+    /// <summary>A working-set Trial measured only a chosen word list, so it cannot gate, apply or be compared with a full Trial.</summary>
+    public const string TrialWorkingSetNotAGate = "trial.working-set-not-a-gate";
+    /// <summary>Two working-set Trials were measured on different word lists, so they cannot be compared.</summary>
+    public const string TrialWorkingSetListsDiffer = "trial.working-set-lists-differ";
     /// <summary>The exact inputs needed for a report-bound diagnostic trace are unavailable.</summary>
     public const string TrialTraceUnavailable = "trial.trace-unavailable";
     /// <summary>The Proposal or its Draft was discarded, deleted or finalized while its Trial was being queued.</summary>

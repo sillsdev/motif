@@ -26,6 +26,19 @@ public enum TrialFreshness
     Unknown,
 }
 
+/// <summary>How a Trial's words were chosen, as its receipt records it.</summary>
+public static class TrialSampleKind
+{
+    /// <summary>The caller's words plus the configured review word sets: the Trial that can gate and be compared.</summary>
+    public const string Stratified = "stratified";
+
+    /// <summary>Exactly the caller's word list, with no review word set added; never a gate or a baseline.</summary>
+    public const string WorkingSet = "working-set";
+
+    /// <summary>Whether a recorded sample is the working-set kind; a Trial recorded before the field reads as stratified.</summary>
+    public static bool IsWorkingSet(string? sample) => string.Equals(sample, WorkingSet, StringComparison.Ordinal);
+}
+
 /// <summary>Which words a Trial was asked to measure.</summary>
 public enum TrialWordScope
 {
@@ -66,6 +79,17 @@ public sealed record TrialRecord(
 {
     /// <summary>The Proposal label at read time, or <see langword="null"/> when it has no label.</summary>
     public string? Label { get; init; }
+
+    /// <summary>The sample kind the Trial recorded: <see cref="TrialSampleKind.Stratified"/> or <see cref="TrialSampleKind.WorkingSet"/>.</summary>
+    public string Sample { get; init; } = TrialSampleKind.Stratified;
+
+    /// <summary>The distinct words of a working-set Trial's list; null for any other Trial.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? SampleWords { get; init; }
+
+    /// <summary>The digest of a working-set Trial's word list; null for any other Trial.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? WordListDigest { get; init; }
 
     /// <summary>The named grammar check for this Trial revision, when the Trial produced one.</summary>
     public string? GrammarCheckId { get; init; }

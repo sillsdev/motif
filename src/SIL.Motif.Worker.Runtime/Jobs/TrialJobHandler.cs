@@ -65,6 +65,18 @@ public sealed record TrialJobInput(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool NoBackground { get; init; }
 
+    /// <summary>The sample kind recorded when the Trial was queued; null for a Trial queued before it was recorded.</summary>
+    [JsonPropertyName("sample"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Sample { get; init; }
+
+    /// <summary>The distinct words of a working-set Trial's list; null for any other Trial.</summary>
+    [JsonPropertyName("sampleWords"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? SampleWords { get; init; }
+
+    /// <summary>The digest of a working-set Trial's word list; null for any other Trial.</summary>
+    [JsonPropertyName("wordListDigest"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? WordListDigest { get; init; }
+
     /// <summary>The expected losses frozen when this Trial was queued.</summary>
     [JsonPropertyName("expectedLosses")]
     public IReadOnlyList<string>? ExpectedLosses { get; init; }

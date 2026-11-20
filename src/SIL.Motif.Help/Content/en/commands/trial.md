@@ -20,6 +20,12 @@ Older saved reports without compact gate facts are explicitly `unmeasured`. Use 
 
 Autonomous Apply also requires a [declared gate](cmd:config%20show), the current declaration and exact required word-set scope, a green newest Trial, and unchanged live project and writing-system state.
 
+## Working-set Trials
+
+`motif trial --project <fwdata> <proposalId> --words <file> --no-base-sample --wait` (MCP `no_base_sample`) parses exactly the words in the file and adds no review word set, including the sets `[gate] word-sets` requires. Use it in development loops of up to 500 chosen words; run the ordinary Trial, with its base sample, once per round. It needs `--words`, and it cannot be combined with `--all-words` or `--review-set`.
+
+The report and the saved Trial record `sample: "working-set"` (an ordinary Trial records `stratified`) with `sampleWords` and `wordListDigest`. A working-set Trial is never a gate or a baseline: it has no declared gate, Autonomous Apply and ordinary Apply readiness ignore it, and `difference produce` refuses it. `proposal compare` compares working-set Trials only with each other, over the same `wordListDigest`.
+
 ## Foreground-only
 
 `--no-background` (MCP `no_background`) needs `--wait`. A Baseline recapture the Trial needs runs inline, and no Parsimony job is queued after the Trial completes, so nothing commits after the command returns.

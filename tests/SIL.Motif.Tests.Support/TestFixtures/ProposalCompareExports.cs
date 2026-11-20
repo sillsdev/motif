@@ -24,7 +24,8 @@ public static class ProposalCompareExports
 
     /// <summary>Publishes one completed Trial for a new Proposal and returns the Proposal ID.</summary>
     public static string AddTrial(MotifDatabase database, ProjectLocator project, IEnumerable<FormSpec> forms,
-        string? proposalId = null, char baseline = 'a', int minute = 0, bool completed = true)
+        string? proposalId = null, char baseline = 'a', int minute = 0, bool completed = true,
+        string? sample = null, string? wordListDigest = null)
     {
         proposalId ??= CanonicalId.Mint("proposal/").Value;
         var jobId = "job/" + Guid.NewGuid().ToString("D");
@@ -33,7 +34,7 @@ public static class ProposalCompareExports
         {
             contractVersions = new Dictionary<string, string>(), proposalId, operations = Array.Empty<object>(),
         });
-        var input = new TrialJobInput(proposalJson, null);
+        var input = new TrialJobInput(proposalJson, null) { Sample = sample, WordListDigest = wordListDigest };
         var created = new DateTimeOffset(2026, 1, 1, 0, minute, 0, TimeSpan.Zero).ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
         new JobRepository(database).RecordInterrupted(jobId, key, "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
             "{}", created, JobStatus.Failed);
