@@ -44,7 +44,7 @@ internal static class LedgerFixtures
     }
 
     public static TypeCheck Complete(bool present, params string[] produced) =>
-        new(CheckCompleteness.Complete, true, present, false, produced);
+        new(CheckCompleteness.Complete, true, present, false, produced, Revision);
 
     public static string WriteJson(string path, object value)
     {

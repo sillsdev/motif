@@ -44,7 +44,7 @@ public sealed class CoverageStateRuleTests
     [Fact]
     public void APartialCheckProvesPresenceButNeverAbsence()
     {
-        var partial = new TypeCheck(CheckCompleteness.Partial, true, true, false, [A]);
+        var partial = new TypeCheck(CheckCompleteness.Partial, true, true, false, [A], Revision);
 
         var decision = Decide(Row("w", 4, "Expected", A + ";" + B), 4, partial);
 
@@ -56,7 +56,7 @@ public sealed class CoverageStateRuleTests
     [Fact]
     public void APartialCheckWithNoProvedReadingKeepsThePriorStateStaleInsteadOfOpeningIt()
     {
-        var partial = new TypeCheck(CheckCompleteness.Partial, true, false);
+        var partial = new TypeCheck(CheckCompleteness.Partial, true, false, GrammarPin: Revision);
 
         var decision = Decide(Row("w", 4, "Unverified"), 4, partial);
 
@@ -78,7 +78,7 @@ public sealed class CoverageStateRuleTests
     [Fact]
     public void AnUnmeasuredRecheckOfALostTypeKeepsLostStaleWithItsSingleOpenCount()
     {
-        var unmeasuredCheck = new TypeCheck(CheckCompleteness.Partial, true, true, false, null);
+        var unmeasuredCheck = new TypeCheck(CheckCompleteness.Partial, true, true, false, null, Revision);
 
         var decision = Decide(Row("w", 4, "Lost", A, "missing-reading"), 4, unmeasuredCheck, out var report);
 
@@ -146,7 +146,7 @@ public sealed class CoverageStateRuleTests
     [Fact]
     public void AnEvidencedWrongOnlyOutcomeIsOpenAndCurrent()
     {
-        var wrong = new TypeCheck(CheckCompleteness.Complete, true, true, true, [Reading(9, 10)]);
+        var wrong = new TypeCheck(CheckCompleteness.Complete, true, true, true, [Reading(9, 10)], Revision);
 
         var decision = Decide(Row("w", 4, "Unverified"), 4, wrong);
 

@@ -44,6 +44,10 @@ internal static class LedgerCoverage
             if (supplied is { Completeness: CheckCompleteness.Complete, Comparable: true, ProducedReadings: null })
                 throw new LedgerRefusalException(LedgerRefusalCode.CheckMalformed,
                     "A complete comparable check must carry an explicit produced Reading set.");
+        foreach (var supplied in inputs.Checks?.Values ?? [])
+            if (supplied is { Comparable: true } && !LedgerPins.Same(supplied.GrammarPin, inputs.Sidecar.GrammarRevision))
+                throw new LedgerRefusalException(LedgerRefusalCode.CheckPinMismatch,
+                    "A comparable check was not made at the report's grammar pin.");
         var rows = new List<CoverageRow>(join.Types.Count);
         var byState = Enum.GetValues<ReportState>().ToDictionary(state => state, _ => default(CurrentStale));
         var dispositions = new SortedDictionary<string, CurrentStale>(StringComparer.Ordinal);
@@ -102,3 +106,14 @@ internal sealed record LedgerCoverageInputs(
     LedgerFile Ledger, LedgerSidecar Sidecar, PinnedFrequencyList Frequency,
     IReadOnlyDictionary<string, TypeCheck>? Checks = null, string? DeclaredFrequencySha256 = null,
     string? AuditSampleDirectory = null, string? ProtectedSetPath = null);
+
+internal static class LedgerPins
+{
+    private const string Prefix = "sha256:";
+
+    /// <summary>Stored Assessments spell the grammar digest with a <c>sha256:</c> prefix; a ledger sidecar does not.</summary>
+    public static bool Same(string? checkPin, string reportPin) =>
+        checkPin is { Length: > 0 } && string.Equals(Bare(checkPin), Bare(reportPin), StringComparison.OrdinalIgnoreCase);
+
+    private static string Bare(string pin) => pin.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase) ? pin[Prefix.Length..] : pin;
+}

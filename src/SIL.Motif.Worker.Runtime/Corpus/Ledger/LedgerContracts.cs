@@ -9,7 +9,7 @@ internal enum LedgerRefusalCode
     NotUtf8, EmptyFile, BadHeader, WrongFieldCount, EmptyWord, EmptyGrammarRevision, BadTokens, BadState,
     BadExpectedReadings, RowCountMismatch, TokenSumMismatch, DigestMismatch,
     SidecarMissing, SidecarInvalidJson, SidecarDuplicateKey, SidecarMissingKey, SidecarInvalidValue,
-    FrequencyMalformed, CheckMalformed,
+    FrequencyMalformed, CheckMalformed, CheckPinMismatch,
 }
 
 internal sealed class LedgerRefusalException(LedgerRefusalCode code, string message, int? row = null)

@@ -2,14 +2,20 @@ namespace SIL.Motif.Worker.Corpus.Ledger;
 
 internal enum CheckCompleteness { Unmeasured, Partial, Complete }
 
+/// <summary>Why a check cannot be compared with the report: it was made at another grammar pin.</summary>
+internal enum CheckIncomparable { None, RevisionIncompatible }
+
 /// <summary>
 /// A saved check of one type against the report pin. <see cref="ProducedReadings"/> holds canonical
 /// Reading projections when the producer established Reading identity; an explicit empty set proves zero
 /// Readings. Null means identity was not established, which a complete comparable check may not claim.
+/// A comparable check carries the grammar pin it was made at in <see cref="GrammarPin"/>. A check that is not
+/// comparable says why in <see cref="Incomparable"/>.
 /// </summary>
 internal sealed record TypeCheck(
     CheckCompleteness Completeness, bool Comparable, bool ProvedPresent, bool AllProducedWrong = false,
-    IReadOnlyCollection<string>? ProducedReadings = null)
+    IReadOnlyCollection<string>? ProducedReadings = null, string? GrammarPin = null,
+    CheckIncomparable Incomparable = CheckIncomparable.None)
 {
     public static TypeCheck Unmeasured { get; } = new(CheckCompleteness.Unmeasured, false, false);
 }
@@ -60,7 +66,8 @@ internal static class CoverageStateRule
         if (type.DuplicateRows.Count > 0) reasons.Add("duplicate-normalized-key");
         if (type.RevisionIncompatible) reasons.Add("incompatible-revision");
         if (type.ConflictingTokens is not null) reasons.Add("conflicting-weight");
-        if (check.Completeness != CheckCompleteness.Unmeasured && !check.Comparable) reasons.Add("incompatible-check");
+        if (check.Completeness != CheckCompleteness.Unmeasured && !check.Comparable) reasons.Add(check.Incomparable == CheckIncomparable.RevisionIncompatible
+            ? "check-revision-incompatible" : "incompatible-check");
         if (check.Completeness == CheckCompleteness.Unmeasured) reasons.Add("check-unmeasured");
 
         var protectedReadings = row?.ExpectedReadings.Select(item => item.Canonical).Distinct(StringComparer.Ordinal).ToArray() ?? [];
