@@ -279,6 +279,44 @@ public sealed class FwHandAnalysisIndexTests : IDisposable, IHandAnalysisProject
     }
 
     [Fact]
+    public async Task ASameLengthSameModificationTimeChangeInvalidatesALivePin()
+    {
+        var index = Index();
+        await using var first = await Pin(index);
+        var bytes = File.ReadAllBytes(_livePath);
+        var time = File.GetLastWriteTimeUtc(_livePath);
+        var at = bytes.Length - 2;
+        while (!(bytes[at] == (byte)' ' && bytes[at - 1] == (byte)'"' && char.IsLetter((char)bytes[at + 1]))) at--;
+        Assert.True(at > bytes.Length - 65536);
+        bytes[at] = (byte)'\n';
+        File.WriteAllBytes(_livePath, bytes);
+        File.SetLastWriteTimeUtc(_livePath, time);
+
+        var stale = await index.PinAsync(ProjectId, null, CancellationToken.None);
+
+        Assert.Equal(2, index.Loads);
+        Assert.NotNull(stale.Value);
+    }
+
+    [Fact]
+    public async Task AProjectFileThatCannotBeReadRefusesAsUnreadable()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var original = File.GetUnixFileMode(_livePath);
+        File.SetUnixFileMode(_livePath, UnixFileMode.None);
+        try
+        {
+            var outcome = await Index().PinAsync(ProjectId, null, CancellationToken.None);
+
+            Assert.Equal(RefusalCodes.ProjectUnreadable, outcome.Refusal?.Code);
+        }
+        finally
+        {
+            File.SetUnixFileMode(_livePath, original);
+        }
+    }
+
+    [Fact]
     public async Task AMissingBaselineProjectOrSnapshotRefusesWithRegisteredCodes()
     {
         var index = Index();

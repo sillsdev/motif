@@ -6,6 +6,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.HandAnalysis;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Baselines;
 
 namespace SIL.Motif.Host.HandAnalysis;
@@ -86,8 +87,27 @@ public sealed class FwHandAnalysisIndex(IHandAnalysisProjectSources sources) : I
     private static string? LiveStamp(string? path)
     {
         if (path is null) return null;
-        var info = new FileInfo(path);
-        return info.Exists ? info.Length + ":" + info.LastWriteTimeUtc.Ticks : null;
+        const int Edge = 64 * 1024;
+        try
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists) return null;
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            var buffer = new byte[Edge];
+            hash.AppendData(buffer, 0, file.Read(buffer, 0, Edge));
+            if (file.Length > Edge)
+            {
+                file.Seek(Math.Max(Edge, file.Length - Edge), SeekOrigin.Begin);
+                hash.AppendData(buffer, 0, file.Read(buffer, 0, Edge));
+            }
+
+            return info.Length + ":" + info.LastWriteTimeUtc.Ticks + ":" + Convert.ToHexStringLower(hash.GetHashAndReset());
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private async ValueTask<CommandOutcome<IHandAnalysisSnapshot>> BuildAsync(Guid projectId, string? path,
@@ -109,6 +129,11 @@ public sealed class FwHandAnalysisIndex(IHandAnalysisProjectSources sources) : I
         catch (OperationCanceledException)
         {
             throw;
+        }
+        catch (Exception error) when (error is UnauthorizedAccessException or LcmFileLockedException)
+        {
+            return CommandOutcome<IHandAnalysisSnapshot>.Refused(new Refusal(RefusalCodes.ProjectUnreadable, FailureReason.Refused,
+                "The project file is locked or cannot be read."));
         }
         catch (IOException)
         {
