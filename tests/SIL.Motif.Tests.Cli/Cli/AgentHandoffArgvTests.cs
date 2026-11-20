@@ -109,7 +109,7 @@ public sealed class AgentHandoffArgvTests : IDisposable
             textId = SeededProject.SeedText(cache, _pristine.Seed).TextId;
             new FwDataProjectLoader().Save(cache);
         }
-        var capture = await CliProcess.RunAsync(_workerRoot, null, false,
+        var capture = await CliProcess.RunWithoutRunnerAsync(_workerRoot, null, false,
             "baseline", "capture", "--project", project, "--json");
         Assert.True(capture.ExitCode == 0, capture.FailureDetails);
         var baseline = ProjectionJson.Deserialize<BaselineCaptureResponse>(capture.Output)!;

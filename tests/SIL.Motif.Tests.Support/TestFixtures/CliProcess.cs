@@ -56,10 +56,22 @@ public static class CliProcess
         return start;
     }
 
-    public static async Task<CliProcessResult> RunAsync(
+    public static Task<CliProcessResult> RunAsync(
+        string workerRoot, string? parserPath, bool developerCommands, params string[] arguments) =>
+        RunStartedAsync(CreateStartInfo(workerRoot, parserPath, developerCommands, arguments));
+
+    /// <summary>Runs the CLI without the detached background runner a successful verb would kick.</summary>
+    public static Task<CliProcessResult> RunWithoutRunnerAsync(
         string workerRoot, string? parserPath, bool developerCommands, params string[] arguments)
     {
-        using var process = Process.Start(CreateStartInfo(workerRoot, parserPath, developerCommands, arguments))!;
+        var start = CreateStartInfo(workerRoot, parserPath, developerCommands, arguments);
+        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        return RunStartedAsync(start);
+    }
+
+    private static async Task<CliProcessResult> RunStartedAsync(ProcessStartInfo start)
+    {
+        using var process = Process.Start(start)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
         try

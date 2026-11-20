@@ -21,14 +21,6 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-source-argv-" + Guid.NewGuid().ToString("N"));
 
-    // No runner is started: a detached worker could still hold motif.db when Dispose deletes _root.
-    private Task<(int ExitCode, string Output, string Error)> RunCliAsync(params string[] arguments)
-    {
-        var start = CliProcess.CreateStartInfo(_root, null, true, arguments);
-        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
-        return CliProcess.RunAsync(start);
-    }
-
     private string ProjectWithBaseline()
     {
         Directory.CreateDirectory(_root);
@@ -51,25 +43,25 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
     {
         var path = ProjectWithBaseline();
 
-        var list = await RunCliAsync("source", "list", "--project", path, "--json");
+        var list = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "list", "--project", path, "--json");
         Assert.True(list.ExitCode == 0, list.Error);
         Assert.Equal(ProjectionJson.Serialize(SourceQuery.List(new SourceListRequest(path)).Value),
             ProjectionJson.Serialize(ProjectionJson.Deserialize<SourceListResponse>(list.Output)));
         Assert.Equal(["WEB"], ProjectionJson.Deserialize<SourceListResponse>(list.Output)!.Sources.Select(source => source.Id));
 
-        var all = await RunCliAsync("source", "list", "--project", path, "--all", "--json");
+        var all = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "list", "--project", path, "--all", "--json");
         Assert.Equal(["WEB", "OLD"], ProjectionJson.Deserialize<SourceListResponse>(all.Output)!.Sources.Select(source => source.Id));
 
-        var show = await RunCliAsync("source", "show", "--project", path, "WEB", "--json");
+        var show = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "show", "--project", path, "WEB", "--json");
         Assert.True(show.ExitCode == 0, show.Error);
         Assert.Equal(ProjectionJson.Serialize(SourceQuery.Show(new SourceShowRequest(path, "WEB")).Value),
             ProjectionJson.Serialize(ProjectionJson.Deserialize<SourceShowResponse>(show.Output)));
 
-        var where = await RunCliAsync("source", "where", "--project", path, "MAT 5", "--source", "WEB", "--json");
+        var where = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "where", "--project", path, "MAT 5", "--source", "WEB", "--json");
         Assert.True(where.ExitCode == 0, where.Error);
         Assert.Equal("InContext", Assert.Single(ProjectionJson.Deserialize<SourceWhereResponse>(where.Output)!.Places).Place);
 
-        var text = await RunCliAsync("source", "list", "--project", path);
+        var text = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "list", "--project", path);
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains("WEB  World English Bible  [Active]  GEN-ROM; 1CO 13-15", text.Output);
         Assert.DoesNotContain("OLD", text.Output);
@@ -85,20 +77,20 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
             ScriptureLocalStore.ForInstallation().SetSourcePath(ProjectWorkspaceKey.Compute(database.Project), "WEB", tiny.Folder);
             SIL.Motif.Worker.Sources.SourceIndexRefresh.Run(database);
         }
-        var cli = await RunCliAsync("source", "passage", "--project", path,
+        var cli = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "passage", "--project", path,
             "--source", "WEB", "--ref", "MAT 1", "--limit", "1", "--json");
         Assert.True(cli.ExitCode == 0, cli.Error + cli.Output);
         var page = ProjectionJson.Deserialize<SourcePassageResponse>(cli.Output)!;
         Assert.Equal("MAT 1:1#1", Assert.Single(page.Places).Anchor);
-        var next = await RunCliAsync("source", "passage", "--project", path,
+        var next = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "passage", "--project", path,
             "--source", "WEB", "--ref", "MAT 1", "--limit", "1", "--cursor", page.NextCursor!, "--json");
         Assert.True(next.ExitCode == 0, next.Error + next.Output);
         Assert.Equal("MAT 1:1#2", Assert.Single(ProjectionJson.Deserialize<SourcePassageResponse>(next.Output)!.Places).Anchor);
-        var text = await RunCliAsync("source", "passage", "--project", path,
+        var text = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "passage", "--project", path,
             "--source", "WEB", "--ref", "MAT 1", "--limit", "1");
         Assert.True(text.ExitCode == 0, text.Error + text.Output);
         Assert.Contains("Approved state: available", text.Output);
-        var invalid = await RunCliAsync("source", "passage", "--project", path,
+        var invalid = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "passage", "--project", path,
             "--source", "WEB", "--ref", "MAT 1", "--unknown", "yes", "--json");
         Assert.Equal(1, invalid.ExitCode);
     }
@@ -107,7 +99,7 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
     public async Task CurrentGetReadsTheLocalFileThisProcessIsPointedAt()
     {
         var path = ProjectWithBaseline();
-        var none = await RunCliAsync("current", "get", "--project", path);
+        var none = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "current", "get", "--project", path);
         Assert.True(none.ExitCode == 0, none.Error);
         Assert.Contains("No Current chapter", none.Output);
 
@@ -115,7 +107,7 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
             (_, project) => CommandOutcome<string>.Success(ProjectWorkspaceKey.Compute(project))).Value!;
         new ScriptureLocalStore(ProcessScriptureLocalPathInitializer.Path).SetCurrent(key, "WEB", new ChapterRef("MAT", 5));
 
-        var set = await RunCliAsync("current", "get", "--project", path, "--json");
+        var set = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "current", "get", "--project", path, "--json");
         var current = Assert.Single(ProjectionJson.Deserialize<CurrentGetResponse>(set.Output)!.Current);
         Assert.Equal(("WEB", "MAT 5", "InContext"), (current.Source, current.Chapter, current.Place));
     }
@@ -125,14 +117,14 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
     {
         var path = ProjectWithBaseline();
 
-        var noId = await RunCliAsync("source", "show", "--project", path);
+        var noId = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "show", "--project", path);
         Assert.True(noId.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), noId.Error);
-        var noVerb = await RunCliAsync("source", "--project", path);
+        var noVerb = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "--project", path);
         Assert.True(noVerb.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), noVerb.Error);
 
-        var unknown = await RunCliAsync("source", "show", "--project", path, "NOPE");
+        var unknown = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "show", "--project", path, "NOPE");
         Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
-        var badRef = await RunCliAsync("source", "where", "--project", path, "MAT");
+        var badRef = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "where", "--project", path, "MAT");
         Assert.True(badRef.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), badRef.Error);
     }
 
@@ -145,24 +137,24 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
             (_, project) => CommandOutcome<string>.Success(ProjectWorkspaceKey.Compute(project))).Value!;
         var store = new ScriptureLocalStore(ProcessScriptureLocalPathInitializer.Path);
 
-        var folder = await RunCliAsync("source", "set-folder", "--project", path, "web", tiny.Folder, "--json");
+        var folder = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "set-folder", "--project", path, "web", tiny.Folder, "--json");
         Assert.True(folder.ExitCode == 0, folder.Error);
         Assert.Equal(("WEB", Path.GetFullPath(tiny.Folder)), (ProjectionJson.Deserialize<SourceLocalResponse>(folder.Output)!.Source,
             ProjectionJson.Deserialize<SourceLocalResponse>(folder.Output)!.Folder));
         Assert.Equal(Path.GetFullPath(tiny.Folder), store.Read(key).SourcePaths["WEB"]);
 
-        var set = await RunCliAsync("current", "set", "--project", path, "WEB", "GEN 2");
+        var set = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "current", "set", "--project", path, "WEB", "GEN 2");
         Assert.True(set.ExitCode == 0, set.Error);
         Assert.Contains("current: GEN 2", set.Output);
         Assert.Equal(new ChapterRef("GEN", 2), store.Read(key).Current["WEB"]);
 
-        var tooFar = await RunCliAsync("current", "set", "--project", path, "WEB", "MAT 99");
+        var tooFar = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "current", "set", "--project", path, "WEB", "MAT 99");
         Assert.True(tooFar.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), tooFar.Error);
 
-        var clearCurrent = await RunCliAsync("current", "set", "--project", path, "WEB", "--clear");
+        var clearCurrent = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "current", "set", "--project", path, "WEB", "--clear");
         Assert.True(clearCurrent.ExitCode == 0, clearCurrent.Error);
         Assert.Empty(store.Read(key).Current);
-        var clearFolder = await RunCliAsync("source", "clear-folder", "--project", path, "WEB");
+        var clearFolder = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "clear-folder", "--project", path, "WEB");
         Assert.True(clearFolder.ExitCode == 0, clearFolder.Error);
         Assert.Empty(store.Read(key).SourcePaths);
     }
@@ -172,15 +164,15 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
     {
         var path = ProjectWithBaseline();
 
-        var unknown = await RunCliAsync("source", "set-folder", "--project", path, "NOPE", _root);
+        var unknown = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "set-folder", "--project", path, "NOPE", _root);
         Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
-        var absent = await RunCliAsync("source", "set-folder", "--project", path, "WEB", Path.Combine(_root, "absent"));
+        var absent = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "set-folder", "--project", path, "WEB", Path.Combine(_root, "absent"));
         Assert.True(absent.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), absent.Error);
-        var noPath = await RunCliAsync("source", "set-folder", "--project", path, "WEB");
+        var noPath = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "source", "set-folder", "--project", path, "WEB");
         Assert.True(noPath.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), noPath.Error);
-        var noRef = await RunCliAsync("current", "set", "--project", path, "WEB");
+        var noRef = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "current", "set", "--project", path, "WEB");
         Assert.True(noRef.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), noRef.Error);
-        var badRef = await RunCliAsync("current", "set", "--project", path, "WEB", "MAT");
+        var badRef = await CliProcess.RunWithoutRunnerAsync(_root, null, true, "current", "set", "--project", path, "WEB", "MAT");
         Assert.True(badRef.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), badRef.Error);
     }
 

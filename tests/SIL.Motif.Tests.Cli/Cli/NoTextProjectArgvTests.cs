@@ -21,7 +21,7 @@ public sealed class NoTextProjectArgvTests : IDisposable
     public async Task AProjectWithoutTextsCanCaptureAndUseATypedSelection()
     {
         var project = _pristine.CopyProjectFile();
-        var captured = await CliProcess.RunAsync(
+        var captured = await CliProcess.RunWithoutRunnerAsync(
             _workerRoot, null, developerCommands: false, "baseline", "capture", "--project", project, "--json");
 
         Assert.True(captured.ExitCode == 0, captured.FailureDetails);
