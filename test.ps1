@@ -505,7 +505,9 @@ $jobs = foreach ($run in $testRuns) {
         if ($portablePrepare) {
             $portablePrepare.WaitForExit()
             if ($portablePrepare.ExitCode -ne 0) {
-                Set-Content -Path $log -Value "The portable Worker package preparation failed with exit code $($portablePrepare.ExitCode); see portable-package.log beside this file."
+                $prepareLog = Join-Path (Split-Path -Parent $log) 'portable-package.log'
+                $prepareTail = if (Test-Path -LiteralPath $prepareLog) { (Get-Content -LiteralPath $prepareLog -Tail 40) -join [Environment]::NewLine } else { '(portable-package.log is missing)' }
+                Set-Content -Path $log -Value "The portable Worker package preparation failed with exit code $($portablePrepare.ExitCode); see portable-package.log beside this file. Its last lines:$([Environment]::NewLine)$prepareTail"
                 return [pscustomobject]@{
                     Name = $name; ExitCode = 1; Seconds = $projectClock.Elapsed.TotalSeconds; Log = $log
                     ErrorLog = $errorLog; ResultsDirectory = $projectResults; StopReason = 'artifact preparation failed'
