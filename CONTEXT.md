@@ -135,7 +135,7 @@ a view of it (ADR 0006, SIL.TextEditing ADR 0028).
 _Avoid_: Guide text (for the general format), GDR Markdown, FWMD (in prose), source (for the stored text)
 
 **Guide text**:
-The Grammar Guide as FieldWorks Markdown, with sections for How it works, Examples, Exceptions, Decisions,
+The Grammar Guide as FieldWorks Markdown, with sections for How it works, Examples, Grouping commands, Exceptions, Decisions,
 Open questions and In the grammar. It uses the same format as other FieldWorks text.
 _Avoid_: GDR Markdown, GDR profile, agent Markdown, extended Markdown
 

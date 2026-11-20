@@ -33,7 +33,7 @@ Ask one question at a time. For each, request two or three example words or form
 
 ## After the interview
 
-Use the `motif:motif-workflow` skill to draft one Proposal containing the Guide sections and grammar objects supported by the answers. Put working guesses in Open questions; never promote them to decisions without the person's judgment.
+Use the `motif:motif-workflow` skill to draft one Proposal containing the Guide sections and grammar objects supported by the answers. Put working guesses in Open questions; never promote them to decisions without the person's judgment. Each section also has a **Grouping commands** part: where an answer rests on a pattern in the words (a shared ending, stems that take one affix), add a `motif-query` block that runs an existing read-only verb such as `motif query forms`, and a `motif-show` block to display it. Never paste results; they are computed when the section is shown. See ADR 0005 D2.
 
 ## Sources
 

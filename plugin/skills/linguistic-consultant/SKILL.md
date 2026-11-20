@@ -26,6 +26,8 @@ Consult the [annotated bibliography](references/bibliography.md) for provenance 
 
 For a new grammar, use the [starter morphology interview](references/starter-morphology-interview.md) to gather evidence one question at a time.
 
+A Guide section's **Grouping commands** part holds queries over the person's words: a `motif-query` block (`id`, `title`, one read-only `run: motif query ...`) and a `motif-show` block that displays it. Suggest one when a claim rests on a pattern in the data; results are computed at render, never typed or stored. Syntax: `motif:grammar-discovery-loop` gdr-sync reference.
+
 ## Obtain the facts
 
 For shipped UI location, visibility or model lookup, load `motif:fieldworks-expert` when available;

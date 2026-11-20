@@ -21,12 +21,56 @@ Passage. Motif's database holds none of the Guide text. It is project data under
 
 ### D2. A Guide section has a fixed template
 
-The body's parts, in order, are **How it works**, **Examples**, **Exceptions**, **Decisions**, **Open questions**
-and **In the grammar**. Judgement calls and their reasons go in **Decisions**, not standalone records.
+The body's parts, in order, are **How it works**, **Examples**, **Grouping commands**, **Exceptions**, **Decisions**,
+**Open questions** and **In the grammar**. Judgement calls and their reasons go in **Decisions**, not standalone records.
 A part is `#`, a section `##`, and a template part `###`; headings stop at `###`. The template adds no
-operation kinds or separate Markdown profile. Generic field operations and the shared checker/importer in
+operation kinds and no Markdown profile beyond the two fenced block kinds under Grouping commands below. Generic field operations and the shared checker/importer in
 [ADR 0006](0006-rich-text-is-fieldworks-markdown-in-the-shared-textediting-field.md) carry the edits. Tables
 use **Table Header**, **Table Row** and **Table Cell Separator**.
+
+#### Grouping commands
+
+**Grouping commands** holds queries that gather the corpus evidence behind the section's claims, such as the words
+that share an ending or the stems that take one affix. It stores definitions and display directives only. A query
+result is never stored: it is computed each time the section is rendered or compared, so
+there is no saved table and nothing that can go out of date. Both blocks below are the only fenced block kinds the
+template admits; the importer reads them as authored text, and every other fenced block stays ordinary Markdown.
+A section or Proposal may hold many queries, and one query may be shown several times.
+
+A query is a fenced block tagged `motif-query`. Each line is `key: value`; the keys are `id` (unique in the section,
+lowercase letters, digits and hyphens), `title` (one plain-language line saying what the query groups), `run`
+(exactly one read-only `motif` command, without `--project`, which the renderer supplies), `columns` (optional,
+comma-separated result columns to show) and `sort` (optional, a column, then `asc` or `desc`).
+
+````text
+```motif-query
+id: dropped-letters
+title: Alternate forms that lose a letter, grouped by the letter lost
+run: motif query forms --where kind=alternate --group letters.dropped
+columns: letters.dropped, count
+sort: count desc
+```
+````
+
+A display directive is a fenced block tagged `motif-show`. The keys are `query` (the `id` of a defined query),
+`show` (optional: `table`, `counts` or `list`; default `table`), `limit` (optional, a positive number of rows)
+and `columns` (optional, overriding the query's own).
+
+````text
+```motif-show
+query: dropped-letters
+show: counts
+limit: 10
+```
+````
+
+A Proposal's before and after run each query with `--as-of <base revision>` and with `--as-of <result revision>`, so a
+verb used in a query must accept `--as-of`. `--as-of` names a project revision and is distinct from `query stems --at`. Reading the Guide never executes a query; the renderer and
+`guide check` do. Export carries the definitions and directives only: it never runs a query and never writes a result.
+
+`guide check` (a later slice) reports a query that does not parse, uses a verb that is not read-only, or does not
+execute, and a directive whose `query` names no defined id. As the rest of the check does (D9), these findings
+are advisory and do not block Finalize, Apply or Trial success.
 
 ### D3. One outline and a human-editable export
 

@@ -7,10 +7,17 @@ When a Proposal changes a grammar object, read the relevant Guide section and re
 evidence, decisions and uncertainty alongside the change. Consult [black-guidance.md](black-guidance.md),
 [mechanism-ladder.md](mechanism-ladder.md).
 
-A section has **How it works**, **Examples**, **Exceptions**, **Decisions**, **Open questions** and
-**In the grammar**, in that order. A part uses `#`, a section `##`, and template parts `###`. Generated
+A section has **How it works**, **Examples**, **Grouping commands**, **Exceptions**, **Decisions**, **Open questions**
+and **In the grammar**, in that order. A part uses `#`, a section `##`, and template parts `###`. Generated
 content is a view; the importer ignores its marked blocks. Use FieldWorks Markdown and preserve object links
 and stable IDs. Do not turn a working guess into a decision.
+
+**Grouping commands** holds ` ```motif-query ` definitions (`id`, `title`, one read-only `run: motif ...` command
+without `--project`, optional `columns` and `sort`) and ` ```motif-show ` directives (`query: <id>`, optional `show:
+table|counts|list`, `limit` and `columns`). Write a query with an existing read-only verb such as `motif query
+forms`; `motif group` is not available yet. Never paste a result into the section: results are computed at render
+and are never stored. A directive must name a defined `id`. The Proposal's before and after rerun each query with
+`--as-of <base revision>` and `--as-of <result revision>` (a project revision, distinct from `query stems --at`). The exact syntax is in ADR 0005 D2.
 
 The CLI verbs are `guide list`, `guide show` and `guide check`; there are no `gdr` aliases. The developer command
 `motif guide check --project <fwdata>` runs the check. The check reads the
