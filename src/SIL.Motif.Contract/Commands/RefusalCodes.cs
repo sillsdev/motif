@@ -317,6 +317,10 @@ public static class RefusalCodes
     /// <summary>A scorer was asked to count in a unit its hits or exceptions are not in.</summary>
     public const string QueryMixedUnits = "query.mixed-units";
     public const string QueryNoTrialRows = "query.no-trial-rows";
+    /// <summary>A Guide query's run line is not one well-formed <c>motif query</c> or <c>motif group</c> command.</summary>
+    public const string GuideQueryRunInvalid = "guide-query.run-invalid";
+    /// <summary>A Guide query's run line names a command that can change something or is not a query.</summary>
+    public const string GuideQueryRunNotReadOnly = "guide-query.run-not-read-only";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";

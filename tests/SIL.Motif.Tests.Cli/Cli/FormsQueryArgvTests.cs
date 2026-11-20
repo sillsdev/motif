@@ -65,6 +65,45 @@ public sealed class FormsQueryArgvTests
     }
 
     [Fact]
+    public async Task ASwitchBeforeTheSourceEatsItAsItsValueAndGivesUsage()
+    {
+        var result = await CliProcess.RunAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")),
+            null, false, "query", "--ids", "forms", "--project", "unused.fwdata");
+        Assert.True(result.ExitCode == 1, result.FailureDetails);
+        Assert.Contains("query forms", result.Output + result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task WordsAfterADoubleDashAreForwardedAndDoNotBreakTheQuery()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-query-argv", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var path = Path.Combine(root, "project.fwdata");
+        try
+        {
+            File.WriteAllText(path, "marker");
+            var snapshot = new QueryFactsReader.Snapshot(
+                [new QueryForm("id", "sarang", "sadang", "alternate", "entry", "stem", "", [], [], 5)], ["ng"], 0);
+            var outcome = ProjectStoreCommand.Run(path, "1.0", (database, _) =>
+            {
+                using var connection = database.OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                QuerySnapshotStore.Replace(connection, transaction,
+                    new QuerySnapshotStore.Stored("trial", "grammar", "bundle", "ws", snapshot,
+                        File.GetLastWriteTimeUtc(path).Ticks));
+                transaction.Commit();
+                return CommandOutcome<string>.Success("ok");
+            });
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            var result = await CliProcess.RunAsync(Path.Combine(root, "worker"), null, false,
+                "query", "forms", "--project", path, "--group", "letters.dropped", "--", "extra");
+            Assert.True(result.ExitCode == 0, result.FailureDetails);
+            Assert.Contains("trial", result.Output, StringComparison.Ordinal);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
     public async Task HypothesisFlagsReachTheReleasedExecutableAndAWordSetIsRequired()
     {
         var result = await CliProcess.RunAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")),

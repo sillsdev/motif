@@ -2216,80 +2216,13 @@ try
         case "query":
         {
             var queryUsage = UsageLineFor("query forms");
-            var saved = positionals.Count == 2 && positionals[0] == "saved";
-            var evidenceQuery = positionals.Count == 2 && positionals[0] == "evidence" && positionals[1] is "stems" or "forms";
-            var querySource = evidenceQuery ? positionals[1] : positionals[0];
-            if (!(saved || evidenceQuery || positionals.Count == 1 && QuerySources.All.Contains(positionals[0])) ||
-                !flags.TryGetValue("project", out var queryProject)) return Usage(queryUsage, asJson);
-            var allowed = saved ? new[] { "project", "examples", "json", "trial" }
-                : ["project", "where", "group", "min-count", "examples", "ids", "raw-letters", "json", "trial", "fold", "distinct",
-                    "change", "at", "affixes", "wordset", "discovery", "heldout", "score", "exception", "unit", "controls", "control-letters", "test-result",
-                    "members", "context"];
-            if (flags.Keys.Any(key => !allowed.Contains(key))) return Usage(queryUsage, asJson);
-            if (!int.TryParse(flags.GetValueOrDefault("min-count", "1"), out var minCount) || minCount < 1 ||
-                !int.TryParse(flags.GetValueOrDefault("examples", "5"), out var examples) || examples is < 0 or > 1000)
-                return Usage(queryUsage, asJson);
-            QueryRecord record;
-            if (saved)
+            if (!flags.TryGetValue("project", out var queryProject) ||
+                !QueryRunLine.TryBuildQuery(flags, positionals, rest, false, out var queryArguments, out _)) return Usage(queryUsage, asJson);
+            var record = queryArguments.Record;
+            if (queryArguments.MembersFile is { } membersFile)
             {
-                if (!SavedQueries.TryGet(positionals[1], out var shipped)) return Usage(queryUsage, asJson);
-                record = shipped with { Examples = examples, TrialId = flags.GetValueOrDefault("trial") };
-            }
-            else
-            {
-                var selectors = new List<QueryCondition>();
-                for (var i = 0; i < rest.Length; i++)
-                    if (rest[i] == "--where")
-                    {
-                        if (++i >= rest.Length || rest[i].StartsWith("--", StringComparison.Ordinal))
-                            return Usage(queryUsage, asJson);
-                        try { selectors.Add(QueryConditionParser.Parse(rest[i])); }
-                        catch (ArgumentException) { return Usage(queryUsage, asJson); }
-                    }
-                var exceptions = new List<QueryCondition>();
-                for (var i = 0; i < rest.Length; i++)
-                    if (rest[i] == "--exception")
-                    {
-                        if (++i >= rest.Length || rest[i].StartsWith("--", StringComparison.Ordinal))
-                            return Usage(queryUsage, asJson);
-                        try { exceptions.Add(QueryConditionParser.Parse(rest[i])); }
-                        catch (ArgumentException) { return Usage(queryUsage, asJson); }
-                    }
-                var contexts = new List<QueryCondition>();
-                for (var i = 0; i < rest.Length; i++)
-                    if (rest[i] == "--context")
-                    {
-                        if (++i >= rest.Length || rest[i].StartsWith("--", StringComparison.Ordinal))
-                            return Usage(queryUsage, asJson);
-                        try { contexts.Add(QueryConditionParser.Parse(rest[i])); }
-                        catch (ArgumentException) { return Usage(queryUsage, asJson); }
-                    }
-                string[]? memberIds = null;
-                if (flags.TryGetValue("members", out var membersFile))
-                {
-                    if (!File.Exists(membersFile)) return Usage(queryUsage, asJson);
-                    memberIds = [.. File.ReadLines(membersFile).Select(line => line.Trim()).Where(line => line.Length > 0)];
-                }
-                string[] List(string name) => flags.TryGetValue(name, out var list)
-                    ? list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : [];
-                QueryHypothesis? hypothesis = null;
-                if (flags.TryGetValue("change", out var changeText))
-                {
-                    var arrow = changeText.IndexOf('>');
-                    if (arrow < 1 || !int.TryParse(flags.GetValueOrDefault("controls", "5"), out var controls)) return Usage(queryUsage, asJson);
-                    hypothesis = new QueryHypothesis(changeText[..arrow], changeText[(arrow + 1)..], flags.GetValueOrDefault("at", "final"),
-                        List("affixes"), List("wordset"), List("discovery"), List("heldout"), controls,
-                        flags.ContainsKey("control-letters") ? List("control-letters") : null);
-                }
-                else if (new[] { "at", "affixes", "wordset", "discovery", "heldout", "controls", "control-letters" }.Any(flags.ContainsKey))
-                    return Usage(queryUsage, asJson);
-                var groupList = flags.TryGetValue("group", out var groupColumns)
-                    ? groupColumns.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : [];
-                record = new QueryRecord(querySource, selectors, groupList, minCount, examples, flags.ContainsKey("ids"),
-                    flags.ContainsKey("raw-letters"), flags.GetValueOrDefault("trial"), flags.GetValueOrDefault("fold"),
-                    flags.GetValueOrDefault("distinct"), hypothesis, flags.ContainsKey("score") ? List("score") : null,
-                    exceptions.Count == 0 ? null : exceptions, flags.GetValueOrDefault("unit"), memberIds,
-                    contexts.Count == 0 ? null : contexts, evidenceQuery);
+                if (!File.Exists(membersFile)) return Usage(queryUsage, asJson);
+                record = record with { Members = [.. File.ReadLines(membersFile).Select(line => line.Trim()).Where(line => line.Length > 0)] };
             }
             var groups = record.Group;
             var queryOutcome = FormsQueryCommand.Run(new FormsQueryRequest(queryProject, CliProductVersion(), record));
