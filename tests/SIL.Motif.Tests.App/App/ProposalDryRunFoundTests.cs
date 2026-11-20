@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.App;
 /// <summary>The Dry Run row says what the Dry Run found, and the Apply confirmation repeats it.</summary>
 public sealed class ProposalDryRunFoundTests
 {
-    private static EffectView Gloss(string before, string after) => new("sense/two", SIL.Motif.Model.Snapshot.SnapshotFields.LexSenseGloss,
+    private static EffectView Gloss(string before, string after) => new("sense/" + before, SIL.Motif.Model.Snapshot.SnapshotFields.LexSenseGloss,
         [new EffectChange("en", before, after)]);
 
     private static async Task<(WorkspaceContext Context, OpenProposalDocuments Documents, ProposalDocumentViewModel Document)>
@@ -60,6 +60,20 @@ public sealed class ProposalDryRunFoundTests
         {
             Assert.StartsWith("Dry Run ✓ · Will change 5 fields: Gloss (en): a → b; Gloss (en): c → d; " +
                 "Gloss (en): e → f; and 2 more", document.DryRunCheckText, StringComparison.Ordinal);
+        }
+        finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
+    }
+
+    [Fact]
+    public async Task TwoLanguagesOfOneFieldCountAsOneField()
+    {
+        var both = new EffectView("sense/two", SIL.Motif.Model.Snapshot.SnapshotFields.LexSenseGloss,
+            [new EffectChange("en", "a", "b"), new EffectChange("fr", "c", "d")]);
+        var (context, documents, document) = await OpenAsync(both);
+        try
+        {
+            Assert.StartsWith("Dry Run ✓ · Will change 1 field: Gloss (en): a → b; Gloss (fr): c → d",
+                document.DryRunCheckText, StringComparison.Ordinal);
         }
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }

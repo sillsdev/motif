@@ -13,7 +13,7 @@ public sealed class ProposalReceiptTests
         "Saved", [], "effect", new AppliedLogEntrySummary("AaH1Zma5FdfY2eXzcMCOWg", "20261119T210505Z", "Person", "intent/one"));
 
     private static async Task<(RecordingClipboard Clipboard, WorkspaceContext Context, OpenProposalDocuments Documents,
-        ProposalDocumentViewModel Document)> AppliedAsync(ApplyProjection receipt)
+        ProposalDocumentViewModel Document)> AppliedAsync(ApplyProjection receipt, string? word = null)
     {
         var fake = new FakeCommandClient();
         var change = new PendingChange("one", "wordform/one", "one", "approve", "assessment/one", "reading", ["op"]);
@@ -26,6 +26,13 @@ public sealed class ProposalReceiptTests
             fake.PendingChangesIs(new(null, "none", [], []));
             return Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(receipt, "Saved")));
         };
+        if (word is not null)
+        {
+            var trial = new TrialRecord("job/one", "draft/one", "intent/one",
+                WorkspaceContextTests.Assessment().Baseline.Token, null, new Dictionary<string, string>(), [word], false,
+                null, SIL.Motif.Contract.Jobs.JobStatus.Completed, DateTimeOffset.UtcNow, TrialFreshness.Current);
+            fake.Review = new ProposalReviewResponse("draft/one", "intent/one", "revision/one", [], trial, null, [], 0);
+        }
         var clipboard = new RecordingClipboard();
         var context = WorkspaceContextTests.NewContext(fake, clipboard: clipboard);
         await context.OpenProjectAsync("project.fwdata");
@@ -94,6 +101,32 @@ public sealed class ProposalReceiptTests
 
             Assert.Empty(clipboard.Copied);
             Assert.Equal("Could Not Copy", document.ReceiptCopyLabel);
+        }
+        finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
+    }
+
+    private sealed class Catcher(WorkspaceContext context) : PageModel(context)
+    {
+        public string? Word { get; private set; }
+
+        protected override void OnRequested(PageRequest request)
+        {
+            if (request is OpenWordRequest open) Word = open.Word;
+        }
+    }
+
+    [Fact]
+    public async Task SeeInTextsOpensTheReceiptsTrialWordWhenThereIsOne()
+    {
+        var (_, context, documents, document) = await AppliedAsync(Receipt(), word: "palit");
+        try
+        {
+            var catcher = new Catcher(context);
+
+            document.SeeInTextsCommand.Execute(null);
+
+            Assert.Equal("palit", catcher.Word);
+            Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
         }
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }

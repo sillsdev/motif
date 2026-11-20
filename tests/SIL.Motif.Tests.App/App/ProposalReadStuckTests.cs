@@ -89,7 +89,8 @@ public sealed class ProposalReadStuckTests
                 new(request.ProposalId, "proposed", "Clarify the gloss", null, "intent/one", [])));
         };
 
-        await document.ReadAgainCommand.ExecuteAsync(null);
+        document.ReadAgainCommand.Execute(null);
+        await document.Reading;
 
         Assert.True(requests > 0);
         Assert.False(document.IsLoading);
@@ -183,7 +184,7 @@ public sealed class ProposalReadStuckTests
     }
 
     [Fact]
-    public async Task AfterTheDryRunRecordTheStuckReadOffersReadAgainAndTheRunFinishes()
+    public async Task AfterTheDryRunRecordAReadThatIgnoresItsTokenStillLetsReadAgainFinishTheRun()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
         var gate = new TaskCompletionSource();
@@ -194,11 +195,7 @@ public sealed class ProposalReadStuckTests
         {
             fake.WaitForDryRunHandler = (request, _, _) =>
             {
-                fake.ShowProposalHandler = async (_, token) =>
-                {
-                    await Task.Delay(Timeout.InfiniteTimeSpan, token);
-                    return default!;
-                };
+                fake.ShowProposalHandler = Hung(gate);
                 return Task.FromResult(CommandOutcome<DryRunProjection>.Success(
                     new(request.ProposalId, "intent/one", "", [], "effect", "footprint") { EvidenceCurrent = true }));
             };
@@ -206,13 +203,87 @@ public sealed class ProposalReadStuckTests
 
             await Until(() => document.ShowsReadStuck);
             Reads(fake);
-            await document.ReadAgainCommand.ExecuteAsync(null);
+            document.ReadAgainCommand.Execute(null);
             await running.WaitAsync(TimeSpan.FromSeconds(15));
+            await document.Reading;
 
             Assert.False(document.IsLoading);
             Assert.False(document.IsDryRunActive);
         }
         finally { gate.TrySetCanceled(); await Settle(context, documents); }
+    }
+
+    [Fact]
+    public async Task ReadAgainStaysPressableWhenTheNewReadHangsToo()
+    {
+        var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
+        var gate = new TaskCompletionSource();
+        fake.ShowProposalHandler = Hung(gate);
+        try
+        {
+            _ = document.RefreshAsync();
+            await Until(() => document.ShowsReadStuck);
+            document.ReadAgainCommand.Execute(null);
+            Assert.False(document.ShowsReadStuck);
+
+            await Until(() => document.ShowsReadStuck);
+            Assert.True(document.ReadAgainCommand.CanExecute(null));
+            Reads(fake);
+            document.ReadAgainCommand.Execute(null);
+            await document.Reading;
+
+            Assert.False(document.IsLoading);
+            Assert.NotNull(document.Detail);
+        }
+        finally { gate.TrySetCanceled(); await Settle(context, documents); }
+    }
+
+    [Fact]
+    public async Task ClosingADocumentWhoseReadIgnoresItsTokenStillCloses()
+    {
+        var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
+        var gate = new TaskCompletionSource();
+        fake.ShowProposalHandler = Hung(gate);
+        try
+        {
+            _ = document.RefreshAsync();
+            await Until(() => document.ShowsReadStuck);
+
+            await documents.StopAsync().WaitAsync(TimeSpan.FromSeconds(10));
+
+            Assert.False(document.IsLoading);
+        }
+        finally { gate.TrySetCanceled(); await context.StopProjectWorkAsync(); }
+    }
+
+    [Fact]
+    public async Task RepeatedReadAgainDoesNotGrowTheTrackedReads()
+    {
+        var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
+        var gate = new TaskCompletionSource();
+        fake.ShowProposalHandler = Hung(gate);
+        try
+        {
+            for (var i = 0; i < 6; i++) document.ReadAgainCommand.Execute(null);
+
+            await Until(() => document.TrackedReads <= 1);
+        }
+        finally { gate.TrySetCanceled(); await Settle(context, documents); }
+    }
+
+    [Fact]
+    public async Task ADayOfSlowReadsLeavesNoWatchRunningAfterTheReadEnds()
+    {
+        var (_, context, documents, document) = await OpenAsync(TrialStanding.Current);
+        try
+        {
+            document.StuckReadAfter = TimeSpan.FromMilliseconds(100);
+            await document.RefreshAsync();
+            await Task.Delay(300);
+
+            Assert.False(document.ReadTimedOut);
+        }
+        finally { await Settle(context, documents); }
     }
 
     [Fact]
@@ -253,7 +324,8 @@ public sealed class ProposalReadStuckTests
             Assert.False(document.ShowsDifferenceAction);
 
             Reads(fake);
-            await document.ReadAgainCommand.ExecuteAsync(null);
+            document.ReadAgainCommand.Execute(null);
+        await document.Reading;
 
             Assert.False(document.IsLoading);
             Assert.True(document.ShowsReadiness);

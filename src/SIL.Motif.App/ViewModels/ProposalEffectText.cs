@@ -25,7 +25,9 @@ internal static class ProposalEffectText
             shown += string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDryRunWillChangeMore,
                 transitions.Length - ShownChanges);
         return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDryRunWillChangeFormat,
-            PluralText.Format(MotifAppStrings.ProposalDryRunFieldCountPattern, transitions.Length), shown);
+            PluralText.Format(MotifAppStrings.ProposalDryRunFieldCountPattern,
+                effects.Where(effect => effect.Changes.Count > 0).Select(effect => (effect.CanonicalId, effect.Field)).Distinct().Count()),
+            shown);
     }
 
     private const int ShownChanges = 3;

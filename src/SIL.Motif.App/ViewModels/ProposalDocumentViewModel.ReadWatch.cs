@@ -1,11 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 
 namespace SIL.Motif.App.ViewModels;
 
 public sealed partial class ProposalDocumentViewModel
 {
-    private IAsyncRelayCommand? _readAgain;
+    private ICommand? _readAgain;
 
     /// <summary>How long a read may run before the page stops saying "Reading" and offers Read Again.</summary>
     internal TimeSpan StuckReadAfter { get; set; } = TimeSpan.FromSeconds(30);
@@ -15,6 +16,8 @@ public sealed partial class ProposalDocumentViewModel
     [NotifyPropertyChangedFor(nameof(ShowsReadingLine), nameof(ShowsReadStuck))]
     private bool _readTimedOut;
 
+    internal TimeSpan SupersededGrace { get; set; } = TimeSpan.FromMilliseconds(250);
+
     /// <summary>Whether the plain "Reading Proposal" line shows: a read is running and still within its bound.</summary>
     public bool ShowsReadingLine => IsLoading && !ReadTimedOut;
 
@@ -22,7 +25,7 @@ public sealed partial class ProposalDocumentViewModel
     public bool ShowsReadStuck => IsLoading && ReadTimedOut;
 
     /// <summary>Starts a fresh read of this Proposal, replacing one that never finished.</summary>
-    public IAsyncRelayCommand ReadAgainCommand => _readAgain ??= new AsyncRelayCommand(() => RefreshAsync());
+    public ICommand ReadAgainCommand => _readAgain ??= new RelayCommand(() => _ = RefreshAsync());
 
     partial void OnIsLoadingChanged(bool value)
     {
@@ -30,6 +33,28 @@ public sealed partial class ProposalDocumentViewModel
         OnPropertyChanged(nameof(ShowsReadingLine));
         OnPropertyChanged(nameof(ShowsReadStuck));
         RaiseApply();
+    }
+
+    // The read's task ends with the read or when a newer read supersedes it, so a hung call holds no caller.
+    private async Task ReadBoundedAsync(int generation, CancellationTokenSource cancellation)
+    {
+        var token = cancellation.Token;
+        var superseded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = token.Register(() => superseded.TrySetResult());
+        using var watch = CancellationTokenSource.CreateLinkedTokenSource(token);
+        var watching = WatchReadAsync(generation, watch.Token);
+        try
+        {
+            var read = ReadAsync(generation, cancellation);
+            // A superseded read gets a moment to unwind before its callers stop waiting for it.
+            if (await Task.WhenAny(read, superseded.Task).ConfigureAwait(true) != read)
+                await Task.WhenAny(read, Task.Delay(SupersededGrace)).ConfigureAwait(true);
+        }
+        finally
+        {
+            watch.Cancel();
+        }
+        await watching.ConfigureAwait(true);
     }
 
     // Never leaves the document on "Reading" for good: past the bound the read gets a reason and a way out.

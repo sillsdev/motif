@@ -321,15 +321,24 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         var cancellation = _cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         ReadTimedOut = false;
         IsLoading = true;
-        _ = WatchReadAsync(generation, cancellation.Token);
         IsConfirmingApply = false;
         DetailRefusal = null;
         _review = null;
         Evidence.SetCurrent(false);
-        Reading = ReadAsync(generation, cancellation);
-        _reads.RemoveAll(task => task.IsCompleted);
-        _reads.Add(Reading);
+        Reading = ReadBoundedAsync(generation, cancellation);
+        lock (_reads)
+        {
+            _reads.RemoveAll(task => task.IsCompleted);
+            _reads.Add(Reading);
+        }
+        _ = UntrackWhenDoneAsync(Reading);
         return Reading;
+    }
+
+    private async Task UntrackWhenDoneAsync(Task read)
+    {
+        await read.ConfigureAwait(true);
+        lock (_reads) _reads.Remove(read);
     }
 
     // A refused read leaves no evidence to stand on, so the old Difference goes unless a make is running.
@@ -626,6 +635,10 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         return false;
     }
 
+    private Task[] TrackedTasks() { lock (_reads) return [.. _reads]; }
+
+    internal int TrackedReads { get { lock (_reads) return _reads.Count; } }
+
     internal bool HasReview => _review is not null;
 
     private async Task ConfirmApplyAsync()
@@ -663,7 +676,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         Parsimony.Stop();
         Pictures.Clear();
         var dryRun = RunDryRunCommand.ExecutionTask ?? Task.CompletedTask;
-        await Task.WhenAll(_reads.Append(Difference.StopAsync()).Append(dryRun)).ConfigureAwait(true);
+        await Task.WhenAll(TrackedTasks().Append(Difference.StopAsync()).Append(dryRun)).ConfigureAwait(true);
         Difference.Clear();
         IsLoading = false;
         Detail = null;
