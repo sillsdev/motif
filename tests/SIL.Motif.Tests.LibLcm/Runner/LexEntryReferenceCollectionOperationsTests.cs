@@ -166,8 +166,26 @@ public sealed class LexEntryReferenceCollectionOperationsTests : IDisposable
     private ICmPossibility FindAPossibilityNotAlreadyOn(ILexEntry entry, string field)
     {
         var current = CurrentMembers(entry, field).Select(m => m.Guid).ToHashSet();
-        return _cache.ServiceLocator.GetInstance<ICmPossibilityRepository>().AllInstances()
-            .First(p => !current.Contains(p.Guid));
+        var lexDb = _cache.LangProject.LexDbOA;
+        var list = field switch
+        {
+            "DialectLabels" => lexDb.DialectLabelsOA,
+            _ => lexDb.PublicationTypesOA,
+        };
+        if (list?.PossibilitiesOS.FirstOrDefault(p => !current.Contains(p.Guid)) is { } found)
+            return found;
+        ICmPossibility made = null!;
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            if (list is null)
+            {
+                list = _cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().Create();
+                if (field == "DialectLabels") lexDb.DialectLabelsOA = list; else lexDb.PublicationTypesOA = list;
+            }
+            made = _cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
+            list.PossibilitiesOS.Add(made);
+        });
+        return made;
     }
 
     private static IEnumerable<ICmPossibility> CurrentMembers(ILexEntry entry, string field) => field switch
