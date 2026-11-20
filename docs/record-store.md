@@ -48,18 +48,31 @@ store close/reopen, export and a fresh LCM load. The only field exemption is the
 project-relative `LinkedFilesRootDir` relocation. No broad field or class exemptions
 are allowed.
 
-Private project gates never download or commit owner data. Set either environment
-variable to an external **copy** of a `.fwdata` project; tests copy it again into their
-private temporary root before loading it:
+Private project gates use an external **copy** of a `.fwdata` project. The tests copy
+it into a private temporary directory before loading it. For the Indonesian gate:
 
 ```powershell
 $env:MOTIF_RECORD_STORE_INDONESIAN = '/private/copies/indonesian/indonesian.fwdata'
 pwsh -NoProfile -File ./test.ps1 -Project SIL.Motif.Tests.RecordStore
 ```
 
-`MOTIF_RECORD_STORE_CEBUANO` enables the larger manual/nightly gate in the same suite.
-An unset variable is reported as a named skip. A configured missing or invalid input
-fails. To require Indonesian on a validation runner, use
+Cebuano runs through the staged Release wrapper below. The gate imports once, reopens
+the store, and compares every canonical object and the writing-system definitions in the
+export against the source. An independent LCM scan selects the entry or
+sense whose deletion subtree has the most incoming native link occurrences from outside
+the subtree. The gate checks the matching links and distinct analysis and morph-bundle
+counts, and times planning on the acquired reference snapshot.
+
+Import and verification run in separate test hosts with private workspaces and templates.
+The wrapper moves the closed project copy and store into the verification workspace
+after import passes, and retains a separate TRX result for each phase.
+
+```powershell
+pwsh -NoProfile -File ./tools/Test-RecordStoreRoundTrip.ps1 -Configuration Release -CebuanoCopy '/private/copies/ceb/ceb.fwdata'
+```
+
+Ordinary runs without private inputs report named skips. A configured missing or invalid
+input fails. To require Indonesian on a validation runner, use
 `tools/Test-RecordStoreRoundTrip.ps1 -IndonesianCopy <path>`; it refuses absent inputs
 before invoking the suite. Public CI runs the generated-project gate; private-data
 CI must provision these copies externally.
@@ -82,6 +95,9 @@ class. The manifest schema stores it next to the numeric field id. Export recrea
 in a blank project, maps each stored id to the id the new project assigned, and restores values under the
 new ids, so a project whose custom field numbers differ round-trips equal. A stored identity that does not
 match its definition, or a repeated identity, is refused.
+For a custom owning field, LibLCM loads the parent's property by its field name in the
+recreated schema. The child's owning field and field 104 follow that attachment and use
+the destination project's field id.
 
 The generic importer splits an oversize create at 500 changes and yields the same state as
 applying those changes in one commit. One guarded scalar edit adds at most 2 KB of row payload.

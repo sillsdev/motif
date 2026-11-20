@@ -213,6 +213,59 @@ public sealed class StoreCoreTests : IDisposable
         Assert.Empty(GraphComparison.Differences([original], [changed], schema, sourceRoot, destinationRoot));
     }
 
+    [Fact]
+    public void StreamedCanonicalGateAcceptsAnExactOrProjectRelativeLinkedFilesRoot()
+    {
+        Directory.CreateDirectory(root);
+        var canonical = Path.Combine(root, "source.jsonl");
+        var sourceRoot = Path.Combine(root, "before");
+        var destinationRoot = Path.Combine(root, "after");
+        var original = new GenericRecord { Id = Guid.NewGuid(), ClassId = 6001 };
+        original.Values["6001042"] = JsonSerializer.SerializeToElement(RawPath(Path.Combine(sourceRoot, "LinkedFiles")));
+        var schema = JsonSerializer.SerializeToElement(new { fields = new[] { new { id = 6001042, name = "LinkedFilesRootDir", owner = "LangProject", type = 15 } } });
+        GraphComparison.WriteCanonical(canonical, [original]);
+
+        GraphComparison.AssertCanonical(canonical, [original], schema, sourceRoot, destinationRoot);
+        var changed = (GenericRecord)original.Copy();
+        changed.Values["6001042"] = JsonSerializer.SerializeToElement(RawPath(Path.Combine(destinationRoot, "LinkedFiles")));
+        GraphComparison.AssertCanonical(canonical, [changed], schema, sourceRoot, destinationRoot);
+        changed.Values["6001042"] = JsonSerializer.SerializeToElement(RawPath(Path.Combine(destinationRoot, "Unrelated")));
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+            GraphComparison.AssertCanonical(canonical, [changed], schema, sourceRoot, destinationRoot));
+    }
+
+    [Fact]
+    public void StreamedCanonicalGateAcceptsOnlyTheExactImportedLinkedFilesRoot()
+    {
+        Directory.CreateDirectory(root);
+        var canonical = Path.Combine(root, "imported.jsonl");
+        var sourceRoot = Path.Combine(root, "verify-source");
+        var destinationRoot = Path.Combine(root, "restored");
+        var importedRoot = Path.Combine(root, "import-source");
+        var original = new GenericRecord { Id = Guid.NewGuid(), ClassId = 6001 };
+        original.Values["6001042"] = JsonSerializer.SerializeToElement(RawPath(Path.Combine(sourceRoot, "LinkedFiles")));
+        var schema = JsonSerializer.SerializeToElement(new { fields = new[] { new { id = 6001042, name = "LinkedFilesRootDir", owner = "LangProject", type = 15 } } });
+        GraphComparison.WriteCanonical(canonical, [original]);
+
+        var changed = (GenericRecord)original.Copy();
+        changed.Values["6001042"] = JsonSerializer.SerializeToElement(RawPath(Path.Combine(importedRoot, "LinkedFiles")));
+        GraphComparison.AssertCanonical(canonical, [changed], schema, sourceRoot, destinationRoot, importedRoot);
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+            GraphComparison.AssertCanonical(canonical, [changed], schema, sourceRoot, destinationRoot));
+        foreach (var rejected in new[]
+        {
+            Path.Combine(root, "other-source", "LinkedFiles"),
+            Path.Combine(importedRoot, "Nested", "LinkedFiles"),
+            Path.Combine(importedRoot, "LinkedFiles", "Sub"),
+            importedRoot
+        })
+        {
+            changed.Values["6001042"] = JsonSerializer.SerializeToElement(RawPath(rejected));
+            Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                GraphComparison.AssertCanonical(canonical, [changed], schema, sourceRoot, destinationRoot, importedRoot));
+        }
+    }
+
     private static object RawPath(string path) => new
     {
         text = path, utf16le = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(path))

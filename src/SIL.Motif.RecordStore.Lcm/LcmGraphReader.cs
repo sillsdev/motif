@@ -127,15 +127,18 @@ public sealed class LcmGraphReader
     });
 
     // LCModel is read on this thread; a chunk's values then become JSON in parallel, from plain objects only.
-    public IReadOnlyList<GenericRecord> Read()
+    public IReadOnlyList<GenericRecord> Read() => ReadRecords().ToArray();
+
+    // Streams one chunk at a time so a very large project need not hold every record at once.
+    internal IEnumerable<GenericRecord> ReadRecords()
     {
         const int Chunk = 1024;
         var ordered = objects.Values.OrderBy(o => o.Guid).ToArray();
-        var records = new GenericRecord[ordered.Length];
         var options = new ParallelOptions { MaxDegreeOfParallelism = Math.Min(4, Environment.ProcessorCount) };
         for (var start = 0; start < ordered.Length; start += Chunk)
         {
             var count = Math.Min(Chunk, ordered.Length - start);
+            var records = new GenericRecord[count];
             var extracted = new object?[count][];
             var heads = new (Guid Id, int ClassId, Guid? Owner, int Hvo)[count];
             for (var index = 0; index < count; index++)
@@ -152,7 +155,7 @@ public sealed class LcmGraphReader
                     var fields = Fields(head.ClassId);
                     var values = new Dictionary<string, JsonElement>(fields.Length);
                     for (var field = 0; field < fields.Length; field++) values.Add(fieldKeys[fields[field]], Json(extracted[index][field]));
-                    records[start + index] = new GenericRecord
+                    records[index] = new GenericRecord
                     {
                         Provenance = provenance[head.Hvo],
                         Id = head.Id, ClassId = head.ClassId, Owner = head.Owner,
@@ -165,8 +168,8 @@ public sealed class LcmGraphReader
             {
                 System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure.InnerExceptions[0]).Throw();
             }
+            foreach (var record in records) yield return record;
         }
-        return records;
     }
 
     private static JsonElement Json(object? extracted) => extracted switch

@@ -24,8 +24,9 @@ public sealed class StoreRelocateArgvTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_root, "a"));
         Directory.CreateDirectory(Path.Combine(_root, "b"));
         Directory.CreateDirectory(_workerRoot);
-        var text = "<languageproject>\n<rt class=\"LangProject\" guid=\"" + Guid.Parse("0d1f9e4a-5b3c-4a8e-9f10-2c3d4e5f6a7b") +
-            "\">\n</rt>\n</languageproject>\n";
+        var text = new System.Xml.Linq.XDocument(new System.Xml.Linq.XElement("languageproject",
+            new System.Xml.Linq.XElement("rt", new System.Xml.Linq.XAttribute("class", "LangProject"),
+                new System.Xml.Linq.XAttribute("guid", Guid.Parse("0d1f9e4a-5b3c-4a8e-9f10-2c3d4e5f6a7b"))))).ToString();
         File.WriteAllText(Original, text);
         File.WriteAllText(Copy, text);
         Assert.True(ProjectStoreCommand.Run(Original, MotifProductVersion.CurrentText,

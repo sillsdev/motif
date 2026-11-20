@@ -1,6 +1,9 @@
+using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.LCModel;
+using SIL.LCModel.Application;
+using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.LcmUtils;
@@ -106,6 +109,62 @@ public sealed class BuiltInLayoutTests : IDisposable
         Assert.True(differences.Count == 0, string.Join(Environment.NewLine, differences.Take(20)));
     }
 
+    [Fact]
+    public async Task ExportRebindsCustomOwningFieldsAndTheirChildren()
+    {
+        const string name = "OwnedTexts";
+        var (source, original, schema) = await ImportSeeded("source", seeded =>
+        {
+            var field = new FieldDescription(seeded)
+            {
+                Class = LexEntryTags.kClassId, Name = name, Userlabel = name,
+                Type = CellarPropertyType.OwningSequence, DstCls = StTextTags.kClassId
+            };
+            field.UpdateCustomField();
+            var entry = seeded.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances().First();
+            for (var index = 0; index < 2; index++)
+                seeded.DomainDataByFlid.MakeNewObject(StTextTags.kClassId, entry.Hvo, field.Id, index);
+        });
+        var fieldId = schema.GetProperty("fields").EnumerateArray()
+            .Single(f => f.GetProperty("name").GetString() == name).GetProperty("id").GetInt32();
+        var children = original.Where(r => r.OwningField == fieldId).OrderBy(r => r.Values["105"].GetInt32()).ToArray();
+        Assert.Equal(2, children.Length);
+
+        const int offset = 1_000_000;
+        var shifted = await Reimport(source, "shifted", offset, tamper: null);
+        await using (var store = new Store(shifted))
+        {
+            var stored = (await store.ReadAsync()).ToDictionary(r => r.Id);
+            Assert.All(children, child =>
+            {
+                Assert.Equal(fieldId + offset, stored[child.Id].OwningField);
+                Assert.Equal(fieldId + offset, stored[child.Id].Values["104"].GetInt32());
+            });
+        }
+
+        var exported = await LcmRecordBridge.ExportAsync(shifted, Path.Combine(root, "restored"));
+        using var cache = new FwDataProjectLoader().LoadScratchCache(exported, Path.Combine(root, "templates"));
+        var restored = new LcmGraphReader(cache);
+        var actual = restored.Read();
+        var actualField = cache.MetaDataCacheAccessor.GetFieldId2(LexEntryTags.kClassId, name, true);
+        Assert.NotEqual(fieldId + offset, actualField);
+        var parent = cache.ServiceLocator.GetObject(children[0].Owner!.Value);
+        var data = (ISilDataAccessManaged)cache.DomainDataByFlid;
+        Assert.Equal(children.Select(child => child.Id), data.VecProp(parent.Hvo, actualField)
+            .Select(hvo => cache.ServiceLocator.GetObject(hvo).Guid));
+        foreach (var expected in children)
+        {
+            var child = Assert.Single(actual, r => r.Id == expected.Id);
+            Assert.Equal(parent.Guid, child.Owner);
+            Assert.Equal(actualField, child.OwningField);
+            Assert.Equal(actualField, child.Values["104"].GetInt32());
+            Assert.Equal(actualField, data.get_IntProp(cache.ServiceLocator.GetObject(child.Id).Hvo, 104));
+        }
+        Assert.Equal(CanonicalJson.Normalize(schema), CanonicalJson.Normalize(restored.Schema()));
+        var differences = GraphComparison.Differences(original, actual, schema);
+        Assert.True(differences.Count == 0, string.Join(Environment.NewLine, differences.Take(20)));
+    }
+
     [Theory]
     [InlineData("wrong")]
     [InlineData("renamed")]
@@ -127,13 +186,15 @@ public sealed class BuiltInLayoutTests : IDisposable
         }
     }
 
-    private async Task<(string Store, IReadOnlyList<GenericRecord> Graph, JsonElement Schema)> ImportSeeded(string name)
+    private async Task<(string Store, IReadOnlyList<GenericRecord> Graph, JsonElement Schema)> ImportSeeded(
+        string name, Action<LcmCache>? customize = null)
     {
         Directory.CreateDirectory(root);
         var project = Path.Combine(root, "Temp");
         using (var seeded = NewLangProjFixture.CreateCache(project))
         {
             SeededProject.Seed(seeded);
+            if (customize is not null) NonUndoableUnitOfWorkHelper.Do(seeded.ActionHandlerAccessor, () => customize(seeded));
             new FwDataProjectLoader().Save(seeded);
         }
         var path = NewLangProjFixture.FwDataPath(project);
@@ -174,13 +235,22 @@ public sealed class BuiltInLayoutTests : IDisposable
         var types = fields.ToDictionary(f => f!["id"]!.GetValue<int>(), f => f!["type"]!.GetValue<int>());
         var moves = records.Select(record =>
         {
+            var provenance = record.Provenance;
+            if (offset != 0 && provenance is not null)
+                provenance = provenance with
+                {
+                    Vectors = provenance.Vectors.ToImmutableDictionary(
+                        vector => moved.GetValueOrDefault(vector.Key, vector.Key), vector => vector.Value)
+                };
             var copy = new GenericRecord
             {
                 Id = record.Id, Kind = record.Kind, ClassId = record.ClassId, Owner = record.Owner,
-                OwningField = moved.GetValueOrDefault(record.OwningField, record.OwningField), Provenance = record.Provenance
+                OwningField = moved.GetValueOrDefault(record.OwningField, record.OwningField), Provenance = provenance
             };
             foreach (var (key, value) in record.Values)
                 copy.Values[record.Kind == "lcm" && moved.TryGetValue(int.Parse(key), out var to) ? to.ToString() : key] = value;
+            if (copy.OwningField != record.OwningField)
+                copy.Values["104"] = JsonSerializer.SerializeToElement(copy.OwningField);
             if (record.Kind == "manifest") copy.Values["schema"] = JsonSerializer.SerializeToElement(schema);
             return new RecordImport(copy, record.Kind == "lcm" ? types : new Dictionary<int, int>());
         }).ToList();
