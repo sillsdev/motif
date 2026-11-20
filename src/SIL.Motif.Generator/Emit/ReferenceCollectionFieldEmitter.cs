@@ -22,9 +22,11 @@ public static class ReferenceCollectionFieldEmitter
             : "ReferenceCollectionFieldSnapshotting.ReadAlternatives";
 
         return Template
-            .Replace("__ADDREFLOWERINGBLOCK__", !spec.SupportsPlacement
-                ? LegacyAddRefLoweringBlock
-                : PlacementAddRefLoweringBlock)
+            .Replace("__ADDREFLOWERINGBLOCK__", spec.PossibilityListExpression is not null
+                ? ListAddRefLoweringBlock.Replace("__LISTEXPR__", spec.PossibilityListExpression)
+                : !spec.SupportsPlacement
+                    ? LegacyAddRefLoweringBlock
+                    : PlacementAddRefLoweringBlock)
             .Replace("__MOVE_BLOCK__", spec.MoveKind is null ? string.Empty : "\n\n" + MoveBlock)
             .Replace("__MOVE_REGISTRATION__", spec.MoveKind is null ? string.Empty : MoveRegistration + "\n")
             .Replace("__PREFIX__", prefix)
@@ -76,6 +78,19 @@ public static class ReferenceCollectionFieldEmitter
             public static void Apply(LcmCache cache, __TARGETIFACE__ __VAR__, CanonicalId memberId) =>
                 ReferenceCollectionFieldLowering.ApplyAddRef<__REFIFACE__>(
                     cache, __VAR__.__ACCESSOR__, memberId, __PREFIX__OperationKinds.AddRef__FIELDNAME__);
+        }
+        """;
+
+    private const string ListAddRefLoweringBlock = """
+        /// <summary>Lowers <see cref="__PREFIX__OperationKinds.AddRef__FIELDNAME__"/>: resolves the
+        /// referenced __REFIFACE__, refuses one outside the list the field takes, and adds it to
+        /// <c>__VAR__.__ACCESSOR__</c> (a no-op if already present).</summary>
+        public static class __PREFIX__AddRefLowering
+        {
+            public static void Apply(LcmCache cache, __TARGETIFACE__ __VAR__, CanonicalId memberId) =>
+                ReferenceCollectionFieldLowering.ApplyAddRefInList<__REFIFACE__>(
+                    cache, __VAR__.__ACCESSOR__, memberId, __PREFIX__OperationKinds.AddRef__FIELDNAME__,
+                    "__DECLARINGCLASS__.__FIELDNAME__", __LISTEXPR__);
         }
         """;
 

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.LCModel;
 
@@ -25,6 +27,19 @@ internal static class ReferenceCollectionFieldLowering
         where TRef : ICmObject
     {
         var member = ReferenceFieldLowering.Resolve<TRef>(cache, memberId, kind);
+        if (!collection.Contains(member))
+            collection.Add(member);
+    }
+
+    /// <summary>Adds a member of the one possibility list FieldWorks offers for the field; any other object is refused by name.</summary>
+    public static void ApplyAddRefInList<TRef>(LcmCache cache, ICollection<TRef> collection, CanonicalId memberId,
+        string kind, string field, Func<LcmCache, ICmPossibilityList?> list)
+        where TRef : ICmPossibility
+    {
+        var member = ReferenceFieldLowering.Resolve<TRef>(cache, memberId, kind);
+        if (member.OwningList.Guid != list(cache)?.Guid)
+            throw new ReferenceFieldRefusal(RefusalCodes.ReferenceWrongList, kind, field,
+                $"Referenced object '{memberId.Value}' is not in the list {field} takes.");
         if (!collection.Contains(member))
             collection.Add(member);
     }

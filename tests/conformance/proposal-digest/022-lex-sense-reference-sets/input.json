@@ -1,0 +1,89 @@
+{
+  "contractVersions": {
+    "lexical": "1.0"
+  },
+  "proposalId": "AAAAAAAAAAAAAAAAAAAAUA",
+  "requires": [],
+  "operations": [
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAQ",
+      "kind": "lexical/lexSense/addRefUsageTypes",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQQ"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAg",
+      "kind": "lexical/lexSense/removeRefUsageTypes",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQQ"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAw",
+      "kind": "lexical/lexSense/addRefDialectLabels",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQg"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABA",
+      "kind": "lexical/lexSense/removeRefDialectLabels",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQg"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABQ",
+      "kind": "lexical/lexSense/addRefDomainTypes",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQw"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABg",
+      "kind": "lexical/lexSense/removeRefDomainTypes",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAAQw"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABw",
+      "kind": "lexical/lexSense/addRefSemanticDomains",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAARA"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAACA",
+      "kind": "lexical/lexSense/removeRefSemanticDomains",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAARA"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAACQ",
+      "kind": "lexical/lexSense/addRefAnthroCodes",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAARQ"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAACg",
+      "kind": "lexical/lexSense/removeRefAnthroCodes",
+      "target": "AAAAAAAAAAAAAAAAAAAAQA",
+      "after": {
+        "member": "AAAAAAAAAAAAAAAAAAAARQ"
+      }
+    }
+  ]
+}

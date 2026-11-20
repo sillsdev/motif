@@ -19,6 +19,26 @@ public static class RelationFieldSpecBuilder
         [new FieldKey("LexSense", "SenseType")] = "c => c.LangProject.LexDbOA.SenseTypesOA",
         // FieldWorks LexSenseParts.xml:509-514, possAtomicReference for Status, chooses from LangProject.StatusOA.
         [new FieldKey("LexSense", "Status")] = "c => c.LangProject.StatusOA",
+        // FieldWorks LexSenseParts.xml:444-451, UsageTypes chooses from LexDb.UsageTypesOA.
+        [new FieldKey("LexSense", "UsageTypes")] = "c => c.LangProject.LexDbOA.UsageTypesOA",
+        // FieldWorks LexSenseParts.xml:465-472, DialectLabels chooses from LexDb.DialectLabelsOA.
+        [new FieldKey("LexSense", "DialectLabels")] = "c => c.LangProject.LexDbOA.DialectLabelsOA",
+        // FieldWorks LexSenseParts.xml:473-480, DomainTypes chooses from LexDb.DomainTypesOA.
+        [new FieldKey("LexSense", "DomainTypes")] = "c => c.LangProject.LexDbOA.DomainTypesOA",
+        // FieldWorks LexSenseParts.xml:481-489, SemanticDomains chooses from LangProject.SemanticDomainListOA.
+        [new FieldKey("LexSense", "SemanticDomains")] = "c => c.LangProject.SemanticDomainListOA",
+        // FieldWorks LexSenseParts.xml:499-507, AnthroCodes chooses from LangProject.AnthroListOA.
+        [new FieldKey("LexSense", "AnthroCodes")] = "c => c.LangProject.AnthroListOA",
+        // FieldWorks LexSenseParts.xml:490-498, Publish Sense In (visField DoNotPublishIn) uses PublicationTypesOA.
+        [new FieldKey("LexSense", "DoNotPublishIn")] = "c => c.LangProject.LexDbOA.PublicationTypesOA",
+        // FieldWorks LexSenseParts.xml:773-781, Publish Example In (visField DoNotPublishIn) uses PublicationTypesOA.
+        [new FieldKey("LexExampleSentence", "DoNotPublishIn")] = "c => c.LangProject.LexDbOA.PublicationTypesOA",
+        // FieldWorks LexEntryParts.xml:46 Publish Entry In (visField DoNotPublishIn) uses PublicationTypesOA.
+        [new FieldKey("LexEntry", "DoNotPublishIn")] = "c => c.LangProject.LexDbOA.PublicationTypesOA",
+        // FieldWorks LexEntryParts.xml:320 Show As Headword In (visField DoNotShowMainEntryIn) uses PublicationTypesOA.
+        [new FieldKey("LexEntry", "DoNotShowMainEntryIn")] = "c => c.LangProject.LexDbOA.PublicationTypesOA",
+        // FieldWorks LexEntryParts.xml DialectLabelsEntry slice chooses from LexDb.DialectLabelsOA.
+        [new FieldKey("LexEntry", "DialectLabels")] = "c => c.LangProject.LexDbOA.DialectLabelsOA",
     };
 
     public static ReferenceAtomicFieldSpec BuildAtomic(JoinedRow row)
@@ -75,7 +95,8 @@ public static class RelationFieldSpecBuilder
             AccessorPropertyName: row.FieldName + accessorSuffix,
             SnapshotFieldConstant: row.DeclaringClass + row.FieldName,
             MoveKind: supportsPlacement ? KindNameDerivation.DeriveOne(group, construct, "move", row.FieldName) : null,
-            SupportsPlacement: supportsPlacement);
+            SupportsPlacement: supportsPlacement,
+            PossibilityListExpression: PossibilityLists.GetValueOrDefault(row.Key));
     }
 
     public static IReadOnlyList<ReferenceAtomicFieldSpec> BuildAllAtomic(IReadOnlyList<JoinedRow> rows) =>

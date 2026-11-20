@@ -58,13 +58,14 @@ public static class LexEntryDoNotPublishInMemberPayload
 }
 
 /// <summary>Lowers <see cref="LexEntryDoNotPublishInOperationKinds.AddRefDoNotPublishIn"/>: resolves the
-/// referenced ICmPossibility and adds it to <c>lexEntry.DoNotPublishInRC</c> (a no-op if already
-/// present).</summary>
+/// referenced ICmPossibility, refuses one outside the list the field takes, and adds it to
+/// <c>lexEntry.DoNotPublishInRC</c> (a no-op if already present).</summary>
 public static class LexEntryDoNotPublishInAddRefLowering
 {
     public static void Apply(LcmCache cache, ILexEntry lexEntry, CanonicalId memberId) =>
-        ReferenceCollectionFieldLowering.ApplyAddRef<ICmPossibility>(
-            cache, lexEntry.DoNotPublishInRC, memberId, LexEntryDoNotPublishInOperationKinds.AddRefDoNotPublishIn);
+        ReferenceCollectionFieldLowering.ApplyAddRefInList<ICmPossibility>(
+            cache, lexEntry.DoNotPublishInRC, memberId, LexEntryDoNotPublishInOperationKinds.AddRefDoNotPublishIn,
+            "LexEntry.DoNotPublishIn", c => c.LangProject.LexDbOA.PublicationTypesOA);
 }
 
 /// <summary>Lowers <see cref="LexEntryDoNotPublishInOperationKinds.RemoveRefDoNotPublishIn"/>: resolves the

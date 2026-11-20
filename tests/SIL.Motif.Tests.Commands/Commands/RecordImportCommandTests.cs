@@ -173,6 +173,60 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         Assert.Equal(before, Hashes(path));
     }
 
+    [Theory]
+    [InlineData("semantic-domains", "lexical/lexSense/addRefSemanticDomains")]
+    [InlineData("usage-types", "lexical/lexSense/addRefUsageTypes")]
+    public void EditingASenseReferenceSetThroughTheImportCommandReportsItsOperation(string field, string kind)
+    {
+        Directory.CreateDirectory(_folder);
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        Guid entryId = default;
+        Guid itemId = default;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var entry = services.GetInstance<ILexEntryFactory>().Create();
+            entryId = entry.Guid;
+            var form = services.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = form;
+            form.Form.set_String(cache.DefaultVernWs, "zzword");
+            var sense = services.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(sense);
+            sense.Gloss.set_String(cache.DefaultAnalWs, "zzgloss");
+            if (field == "semantic-domains")
+            {
+                var list = cache.LangProject.SemanticDomainListOA ??= services.GetInstance<ICmPossibilityListFactory>().Create();
+                var item = services.GetInstance<ICmSemanticDomainFactory>().Create();
+                list.PossibilitiesOS.Add(item);
+                itemId = item.Guid;
+            }
+            else
+            {
+                var list = cache.LangProject.LexDbOA.UsageTypesOA ??= services.GetInstance<ICmPossibilityListFactory>().Create();
+                var item = services.GetInstance<ICmPossibilityFactory>().Create();
+                list.PossibilitiesOS.Add(item);
+                itemId = item.Guid;
+            }
+        });
+        new FwDataProjectLoader().Save(cache);
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(cache, schema);
+        var read = RecordFileReader.Read(exporter.Export(entryId).Text!, schema.Schema, exporter.CreateReadOptions());
+        Assert.False(read.HasErrors);
+        var sense0 = (RecordObject)((RecordList)read.Document!.Data["senses"]!).Items[0];
+        sense0.Set(field, new RecordList().Add(new RecordScalar("[zzitem](/objects/" + itemId.ToString("D") + "){.name guid=" + itemId.ToString("D") + "}")));
+        var file = Path.Combine(_folder, "entry.md");
+        File.WriteAllText(file, RecordFileWriter.Write(read.Document!, schema.Schema));
+        var before = Hashes(path);
+
+        var outcome = RecordImportCommand.Run(new(path, file));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(kind, Assert.Single(outcome.Value!.Operations).Kind);
+        Assert.Equal(before, Hashes(path));
+    }
+
     [Fact]
     public void DraftStagesExactlyOneDraftAndAppliesNothing()
     {

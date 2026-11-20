@@ -58,13 +58,14 @@ public static class LexEntryDoNotShowMainEntryInMemberPayload
 }
 
 /// <summary>Lowers <see cref="LexEntryDoNotShowMainEntryInOperationKinds.AddRefDoNotShowMainEntryIn"/>: resolves the
-/// referenced ICmPossibility and adds it to <c>lexEntry.DoNotShowMainEntryInRC</c> (a no-op if already
-/// present).</summary>
+/// referenced ICmPossibility, refuses one outside the list the field takes, and adds it to
+/// <c>lexEntry.DoNotShowMainEntryInRC</c> (a no-op if already present).</summary>
 public static class LexEntryDoNotShowMainEntryInAddRefLowering
 {
     public static void Apply(LcmCache cache, ILexEntry lexEntry, CanonicalId memberId) =>
-        ReferenceCollectionFieldLowering.ApplyAddRef<ICmPossibility>(
-            cache, lexEntry.DoNotShowMainEntryInRC, memberId, LexEntryDoNotShowMainEntryInOperationKinds.AddRefDoNotShowMainEntryIn);
+        ReferenceCollectionFieldLowering.ApplyAddRefInList<ICmPossibility>(
+            cache, lexEntry.DoNotShowMainEntryInRC, memberId, LexEntryDoNotShowMainEntryInOperationKinds.AddRefDoNotShowMainEntryIn,
+            "LexEntry.DoNotShowMainEntryIn", c => c.LangProject.LexDbOA.PublicationTypesOA);
 }
 
 /// <summary>Lowers <see cref="LexEntryDoNotShowMainEntryInOperationKinds.RemoveRefDoNotShowMainEntryIn"/>: resolves the

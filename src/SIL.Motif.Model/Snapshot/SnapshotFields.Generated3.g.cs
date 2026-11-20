@@ -49,17 +49,38 @@ public static partial class SnapshotFields
     /// <summary>A <c>LexEtymology</c>'s <c>Gloss</c> basic MultiString field.</summary>
     public const string LexEtymologyGloss = "lexical/lexEtymology/gloss";
 
+    /// <summary>A <c>LexExampleSentence</c>'s <c>DoNotPublishIn</c> rel/col CmPossibility field.</summary>
+    public const string LexExampleSentenceDoNotPublishIn = "lexical/lexExampleSentence/doNotPublishIn";
+
     /// <summary>A <c>LexPronunciation</c>'s <c>Form</c> basic MultiUnicode field.</summary>
     public const string LexPronunciationForm = "lexical/lexPronunciation/form";
 
+    /// <summary>A <c>LexSense</c>'s <c>AnthroCodes</c> rel/col CmAnthroItem field.</summary>
+    public const string LexSenseAnthroCodes = "lexical/lexSense/anthroCodes";
+
+    /// <summary>A <c>LexSense</c>'s <c>DialectLabels</c> rel/seq CmPossibility field.</summary>
+    public const string LexSenseDialectLabels = "lexical/lexSense/dialectLabels";
+
+    /// <summary>A <c>LexSense</c>'s <c>DoNotPublishIn</c> rel/col CmPossibility field.</summary>
+    public const string LexSenseDoNotPublishIn = "lexical/lexSense/doNotPublishIn";
+
+    /// <summary>A <c>LexSense</c>'s <c>DomainTypes</c> rel/col CmPossibility field.</summary>
+    public const string LexSenseDomainTypes = "lexical/lexSense/domainTypes";
+
     /// <summary>A <c>LexSense</c>'s <c>MorphoSyntaxAnalysis</c> rel/atomic MoMorphSynAnalysis field.</summary>
     public const string LexSenseMorphoSyntaxAnalysis = "lexical/lexSense/morphoSyntaxAnalysis";
+
+    /// <summary>A <c>LexSense</c>'s <c>SemanticDomains</c> rel/col CmSemanticDomain field.</summary>
+    public const string LexSenseSemanticDomains = "lexical/lexSense/semanticDomains";
 
     /// <summary>A <c>LexSense</c>'s <c>SenseType</c> rel/atomic CmPossibility field.</summary>
     public const string LexSenseSenseType = "lexical/lexSense/senseType";
 
     /// <summary>A <c>LexSense</c>'s <c>Status</c> rel/atomic CmPossibility field.</summary>
     public const string LexSenseStatus = "lexical/lexSense/status";
+
+    /// <summary>A <c>LexSense</c>'s <c>UsageTypes</c> rel/col CmPossibility field.</summary>
+    public const string LexSenseUsageTypes = "lexical/lexSense/usageTypes";
 
     /// <summary>A <c>MoAdhocProhib</c>'s <c>Disabled</c> basic Boolean field.</summary>
     public const string MoAdhocProhibDisabled = "grammar/moAdhocProhib/disabled";
