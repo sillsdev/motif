@@ -16,7 +16,7 @@ The format is detected from the first line, or set with `--format tsv|jsonl|ledg
 
 - **TSV**: a header row naming `form`, `category` and `evidence`, and optionally `intended`, in any order. Without a header the columns are form, category, intended, evidence.
 - **JSONL**: one object per line with the string fields `form`, `category`, `evidence` and `intended`.
-- **Ledger**: a grammar lane ledger with its eight columns. Only rows whose state is `Disposition` are read, and the others are counted and left out. The `class` column is the category. A misspelling's `intended=<form> | <evidence>` prefix is split at the first " | ", as Coverage splits it; an intended form that is not one word is refused on its row. Rows are read less strictly than Coverage reads a ledger (blank lines skipped, tokens and revision not checked). Evidence longer than the limit is cut and counted. A class that is not a category, such as `mixed`, is refused on its row.
+- **Ledger**: a grammar lane ledger with its eight columns. Only rows whose state is `Disposition` are read, and the others are counted and left out. The `class` column is the category. A misspelling's `intended=<form> | <evidence>` prefix is split at the first " | ", as Coverage splits it; an intended form may be several words, for a run-together misspelling, but one with `;` (several candidates) is refused on its row: pick one. Rows are read less strictly than Coverage reads a ledger (blank lines skipped, tokens and revision not checked). Evidence longer than the limit is cut and counted. A class that is not a category, such as `mixed`, is refused on its row.
 
 ## One transaction, with refusals
 

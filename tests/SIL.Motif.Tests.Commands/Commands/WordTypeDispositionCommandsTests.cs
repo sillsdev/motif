@@ -99,6 +99,27 @@ public sealed class WordTypeDispositionCommandsTests : IDisposable
     }
 
     [Fact]
+    public void AnIntendedFormMayBeSeveralWordsForARunTogetherMisspelling()
+    {
+        Recorded("misspelling", "two words run together", intended: "New York", forms: ["newyork"]);
+
+        Assert.Equal("New York".Normalize(System.Text.NormalizationForm.FormD), Show("newyork").Current!.Intended);
+        Assert.Equal(1, Recorded("misspelling", "again", intended: "New York", forms: ["newyork"]).AlreadyRecorded);
+        Recorded("misspelling", "x", intended: "caf\u00e9 au lait", forms: ["cafelait"]);
+        Assert.Equal(1, Recorded("misspelling", "again", intended: "cafe\u0301 au lait", forms: ["cafelait"]).AlreadyRecorded);
+    }
+
+    [Fact]
+    public void AnIntendedFormWithASemicolonIsRefusedWithAHintToPickOne()
+    {
+        var refused = TryDispose("misspelling", "x", intended: "of; the", forms: ["ofthe"]);
+
+        Assert.Equal(RefusalCodes.DispositionInvalid, refused.Refusal!.Code);
+        Assert.Contains("pick one", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(0, Rows());
+    }
+
+    [Fact]
     public void ADifferentCategoryIsRefusedAndTheWholeCallWritesNothing()
     {
         Recorded("name", "a town", forms: ["Nairobi"]);
@@ -207,7 +228,7 @@ public sealed class WordTypeDispositionCommandsTests : IDisposable
         { "name", "", null, ["a"] },
         { "name", "   ", null, ["a"] },
         { "misspelling", "typo", null, ["a"] },
-        { "misspelling", "typo", "has space", ["a"] },
+        { "misspelling", "typo", "has\ttab", ["a"] },
         { "misspelling", "typo", "a", ["a"] },
         { "name", "evidence", "b", ["a"] },
         { "name", "evidence", null, [] },

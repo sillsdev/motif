@@ -10,7 +10,7 @@ motif wordform dispose recieve --project <fwdata> --as misspelling --intended re
 motif wordform dispose Kenya --project <fwdata> --as loan --evidence "English toponym" --replace
 ```
 
-`--as` is one of `name`, `loan`, `other-language`, `abbreviation`, `numeral`, `non-word` or `misspelling` (`artifact` is accepted for `non-word`). `--evidence` is required. A `misspelling` also needs `--intended <form>`, and no other category accepts it.
+`--as` is one of `name`, `loan`, `other-language`, `abbreviation`, `numeral`, `non-word` or `misspelling` (`artifact` is accepted for `non-word`). `--evidence` is required. A `misspelling` also needs `--intended <form>`, and no other category accepts it. The intended form may be several words, for a run-together misspelling such as `newyork` for "New York"; a form with `;` is refused, so pick one candidate.
 
 - A disposition belongs to a word type, not to one occurrence: it holds for every use of the word in the corpus. Spellings that differ only in Unicode composition are one type. Case is not folded, so give the form as the corpus word list spells it.
 - A type that already stands with the same category and intended form is left alone and reported as `already-recorded`.

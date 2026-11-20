@@ -142,14 +142,36 @@ public sealed class WordTypeDispositionFileTests : IDisposable
     }
 
     [Fact]
-    public void ALedgerIntendedIsEverythingUpToTheBarSoAMultiWordOneIsRefusedWithItsRow()
+    public void ALedgerIntendedIsEverythingUpToTheBarSoAMultiWordOneIsRecorded()
     {
         var path = Write("ledger.tsv", LedgerHeader + "\nnewyork\t1\tDisposition\t\tmisspelling\tintended=New York | typo\tp\tabc\n");
 
         var response = Disposed(path);
 
-        Assert.Equal((false, 1), (response.Written, response.Refused));
-        Assert.Equal(2, response.Refusals[0].Row);
+        Assert.Equal((true, 0), (response.Written, response.Refused));
+        Assert.Equal("New York".Normalize(System.Text.NormalizationForm.FormD), Standing("newyork")!.Intended);
+    }
+
+    [Fact]
+    public void AFileIntendedFormWithSpacesIsRecordedAndOneWithASemicolonIsRefusedWithAHint()
+    {
+        const string header = "form\tcategory\tintended\tevidence";
+        var spaced = Disposed(Write("a.tsv", Lines(header, "newyork\tmisspelling\tNew York\trun together")));
+        var listed = Disposed(Write("b.tsv", Lines(header, "ofthe\tmisspelling\tof; the\tcandidates")), skipRefused: true, detail: true);
+
+        Assert.Equal((1, 1), (spaced.Added, listed.Refused));
+        Assert.Contains("pick one", listed.Refusals[0].Message, StringComparison.Ordinal);
+        Assert.Equal("New York", Standing("newyork")!.Intended);
+        Assert.Null(Standing("ofthe"));
+    }
+
+    [Fact]
+    public void AFileIntendedFormKeepsTheNfdCompareAcrossComposedAndDecomposedSpellings()
+    {
+        Disposed(Write("c.tsv", Lines("form\tcategory\tintended\tevidence", "cafelait\tmisspelling\tcaf\u00e9 au lait\ttypo")));
+        var again = Disposed(Write("d.tsv", Lines("form\tcategory\tintended\tevidence", "cafelait\tmisspelling\tcafe\u0301 au lait\ttypo")));
+
+        Assert.Equal(1, again.Unchanged);
     }
 
     [Fact]

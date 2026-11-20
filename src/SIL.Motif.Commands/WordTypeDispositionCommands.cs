@@ -46,7 +46,7 @@ public static class WordTypeDispositionCommands
         {
             if (string.IsNullOrEmpty(intended))
                 return Invalid<DisposeFormsResponse>("A misspelling names the word it was meant to be: give --intended <form>.");
-            if (CleanForm(intended) is { } intendedProblem) return Invalid<DisposeFormsResponse>("The intended form: " + intendedProblem);
+            if (CleanIntended(intended) is { } intendedProblem) return Invalid<DisposeFormsResponse>("The intended form: " + intendedProblem);
             if (forms.Any(form => WordTypeKey.Of(form) == WordTypeKey.Of(intended)))
                 return Invalid<DisposeFormsResponse>("A misspelling cannot be its own intended form.");
         }
@@ -159,7 +159,7 @@ public static class WordTypeDispositionCommands
         if (category == DispositionCategory.Misspelling)
         {
             if (string.IsNullOrEmpty(intended)) return (null, "A misspelling needs the intended form.");
-            if (CleanForm(intended) is { } intendedProblem) return (null, "The intended form: " + intendedProblem);
+            if (CleanIntended(intended) is { } intendedProblem) return (null, "The intended form: " + intendedProblem);
             if (WordTypeKey.Of(intended) == key) return (null, "A misspelling cannot be its own intended form.");
         }
         else if (intended is { Length: > 0 }) return (null, "Only a misspelling names an intended form.");
@@ -248,6 +248,14 @@ public static class WordTypeDispositionCommands
         form.Length == 0 ? "A word form cannot be empty."
         : form.Length > MaxFormLength ? $"A word form can be at most {MaxFormLength} characters: '{form[..20]}...'."
         : form.Any(char.IsWhiteSpace) ? $"A word form is one word with no spaces: '{form}'."
+        : null;
+
+    // A run-together misspelling's intended form is several words; ';' marks several candidates and is refused.
+    private static string? CleanIntended(string intended) =>
+        intended.Length == 0 ? "An intended form cannot be empty."
+        : intended.Length > MaxFormLength ? $"An intended form can be at most {MaxFormLength} characters: '{intended[..20]}...'."
+        : intended.Contains(';') ? $"An intended form is one reading, not a list ('{intended}'): pick one candidate."
+        : intended.Any(char.IsControl) ? $"An intended form has no tabs or line breaks: '{intended}'."
         : null;
 
     private static CommandOutcome<DisposeFormsResponse> Contradicted(
