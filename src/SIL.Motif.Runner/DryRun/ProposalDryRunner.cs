@@ -119,6 +119,7 @@ public static class ProposalDryRunner
             DerivationalFeedWarnings.Append(cache, proposal.Operations, effects);
             SenselessVariantWarnings.Append(cache, proposal.Operations, effects);
             NonFinalTemplateWarnings.Append(cache, proposal.Operations, effects);
+            AlphaRuleExpansionWarnings.Append(cache, proposal.Operations, effects);
             ProhibitionMsaCleanup.ValidateSlots(proposal, effects);
         }
 
