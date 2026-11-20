@@ -409,4 +409,53 @@ public sealed class ProposalCompareReadTests
             Assert.Equal("hand-analysis.snapshot-expired", result.Refusal?.Code);
         });
     }
+
+    [Fact]
+    public void AnAmbiguousParserSenseThatIncludesTheApprovedSenseIsKept()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1001], [3001])]);
+            var b = AddTrial(database, project, [F("f1", [1001], [1001])]);
+
+            var summary = Compare(project, [a, b], approved: Approvals([Approved(1001, "f1")])).Value!;
+
+            Assert.Equal([1, 0], [summary.Columns[0].ApprovedKept, summary.Columns[0].ApprovedLost]);
+        });
+    }
+
+    [Fact]
+    public void AParserThatResolvesADifferentSenseLosesTheApproval()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1001], [2001])]);
+            var b = AddTrial(database, project, [F("f1", [1001], [1001])]);
+
+            var summary = Compare(project, [a, b], approved: Approvals([Approved(1001, "f1")])).Value!;
+
+            Assert.Equal([0, 1], [summary.Columns[0].ApprovedKept, summary.Columns[0].ApprovedLost]);
+        });
+    }
+
+    [Fact]
+    public void AnAnalysisApprovedInTwoWritingSystemsCountsOncePerProposalAndKeptWinsOverLost()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], []), F("g1", [1], [], ws: "other")]);
+            var b = AddTrial(database, project, [F("f1", [1], [1]), F("g1", [1], [], ws: "other")]);
+            var c = AddTrial(database, project, [F("f1", [1], [1]), F("g1", [1], [1], ws: "other")]);
+            var one = Approved(1, "f1") with
+            {
+                Forms = ImmutableDictionary<string, string>.Empty.Add("ws", "f1").Add("other", "g1"),
+            };
+
+            var summary = Compare(project, [a, b, c], approved: Approvals([one])).Value!;
+
+            Assert.Equal([0, 1], [summary.Columns[0].ApprovedKept, summary.Columns[0].ApprovedLost]);
+            Assert.Equal([1, 0], [summary.Columns[1].ApprovedKept, summary.Columns[1].ApprovedLost]);
+            Assert.Equal([1, 0], [summary.Columns[2].ApprovedKept, summary.Columns[2].ApprovedLost]);
+        });
+    }
 }

@@ -137,7 +137,9 @@ public static class ProposalCompareReads
         for (var index = 0; index < columns.Count; index++)
             Collect(database, columns[index].Receipt, index, columns.Count, forms, byForm);
 
-        var counts = new int[columns.Count, 7];
+        var counts = new int[columns.Count, 5];
+        var keptAnalyses = columns.Select(_ => new HashSet<Guid>()).ToArray();
+        var lostAnalyses = columns.Select(_ => new HashSet<Guid>()).ToArray();
         var rows = new List<CompareRow>();
         var diverging = 0;
         foreach (var form in forms.Values)
@@ -152,8 +154,8 @@ public static class ProposalCompareReads
                 if (cell.Lost.Length > 0) counts[index, 1]++;
                 if (cell.Gained.Length == 0 && cell.Lost.Length == 0) counts[index, 2]++; else trivial = false;
                 if (!cell.Complete) { counts[index, 4]++; trivial = false; }
-                counts[index, 5] += cell.Kept.Length;
-                counts[index, 6] += cell.LostApproved.Length;
+                keptAnalyses[index].UnionWith(cell.Kept.Select(hit => hit.Analysis));
+                lostAnalyses[index].UnionWith(cell.LostApproved.Select(hit => hit.Analysis));
             }
             var diverges = cells.Skip(1).Any(cell => !cell.SameObservation(cells[0]));
             if (trivial && !diverges && cells.All(cell => cell.LostApproved.Length == 0)) continue;
@@ -171,7 +173,7 @@ public static class ProposalCompareReads
 
         var summaryColumns = columns.Select((column, index) => new CompareColumn(column.Proposal.Value,
             counts[index, 0], counts[index, 1],
-            counts[index, 2], counts[index, 3], counts[index, 4], counts[index, 5], counts[index, 6])).ToArray();
+            counts[index, 2], counts[index, 3], counts[index, 4], keptAnalyses[index].Count, lostAnalyses[index].Except(keptAnalyses[index]).Count())).ToArray();
         var limitations = new List<CompareLimitation>();
         var notMeasured = summaryColumns.Count(column => column.NotMeasured > 0);
         if (notMeasured > 0) limitations.Add(new(CompareLimitation.NotMeasured, notMeasured));
