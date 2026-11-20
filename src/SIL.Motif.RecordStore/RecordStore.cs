@@ -250,20 +250,76 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     public Task<IReadOnlyList<GenericRecord>> ReadAsync() => ReadPublishedAsync(async state =>
     {
-        var records = await ReadRecordsAsync();
-        VerifySnapshots(state, records);
-        return records;
+        var decoded = await DecodeLatestAsync(digest: true, default);
+        VerifySnapshots(state, decoded.Digest);
+        return decoded.Records;
     });
 
-    private async Task<IReadOnlyList<GenericRecord>> ReadRecordsAsync(CancellationToken ct = default)
+    private async Task<IReadOnlyList<GenericRecord>> ReadRecordsAsync(CancellationToken ct = default) =>
+        (await DecodeLatestAsync(digest: false, ct)).Records;
+
+    /// <summary>Worker threads for decoding, digesting and the history scan; null uses <see cref="ParallelWork.DefaultWorkers"/>.</summary>
+    internal int? Workers { get; set; }
+
+    /// <summary>Scans the whole history exactly as a guarded write's first call does; for tests and measurements.</summary>
+    internal Task<ReplayState> ScanHistoryAsync(int batchRows = ReplayIntegrity.DefaultBatchRows, CancellationToken ct = default,
+        Action<string, long>? batchStarted = null) => ReplayIntegrity.ScanAsync(database, Workers, batchRows, ct, batchStarted);
+
+    /// <summary>Records per decode chunk; small values let tests exercise many chunks on small stores.</summary>
+    internal int DecodeChunkSize { get; set; } = 1024;
+
+    /// <summary>Test hook, called with the chunk number as each decode chunk starts (on a worker thread).</summary>
+    internal Action<int>? DecodeChunkStarted { get; set; }
+
+    /// <summary>Number of snapshots this handle has decoded for verified reads.</summary>
+    internal long SnapshotsDecoded { get; private set; }
+
+    private sealed record DecodedSnapshots(IReadOnlyList<GenericRecord> Records, SetDigest Digest);
+
+    /// <summary>Live records in Harmony's order, decoded on workers, with their digest when asked.</summary>
+    private async Task<DecodedSnapshots> DecodeLatestAsync(bool digest, CancellationToken ct)
     {
-        var records = new List<GenericRecord>();
-        await foreach (var snapshot in model.GetLatestSnapshots().WithCancellation(ct))
+        // Several failing rows may be reported in another order than sequentially: read errors win.
+        var blobs = new List<byte[]>();
+        var codec = database.Codec;
+        codec.DeferSnapshotDecode = true;
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            if (snapshot.Entity is GenericRecord { DeletedAt: null } record) records.Add((GenericRecord)record.Copy());
+            await foreach (var snapshot in model.GetLatestSnapshots().WithCancellation(ct))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (snapshot.Entity is not GenericRecord { Encoded: { } bytes })
+                    throw new InvalidOperationException("The latest-snapshot query returned an entity that was not left undecoded.");
+                blobs.Add(bytes);
+            }
         }
-        return records;
+        finally { codec.DeferSnapshotDecode = false; }
+        var size = Math.Max(1, DecodeChunkSize);
+        var chunks = (blobs.Count + size - 1) / size;
+        var decoded = new GenericRecord?[blobs.Count];
+        var partial = new SetDigest[chunks];
+        var workers = Workers ?? ParallelWork.DefaultWorkers;
+        await Task.Run(() => ParallelWork.ForEachChunk(chunks, workers, ct, chunk =>
+        {
+            DecodeChunkStarted?.Invoke(chunk);
+            var sum = new SetDigest();
+            var end = Math.Min(blobs.Count, (chunk + 1) * size);
+            for (var index = chunk * size; index < end; index++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var record = (GenericRecord)codec.Snapshot(blobs[index]);
+                if (record.DeletedAt is not null) continue;
+                decoded[index] = record;
+                if (digest) sum = sum.Add(SnapshotItem(record));
+            }
+            partial[chunk] = sum;
+        }), ct);
+        SnapshotsDecoded += blobs.Count;
+        var records = new List<GenericRecord>(blobs.Count);
+        foreach (var record in decoded) if (record is not null) records.Add(record);
+        var total = new SetDigest();
+        foreach (var part in partial) total = total.Combine(part);
+        return new(records, total);
     }
 
     public async Task<IReadOnlyList<RecordCommit>> CommitsAsync() => await database.Set<Commit>().AsNoTracking()
@@ -272,8 +328,7 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     public async Task<ReferenceIndexSnapshot> ReferencesAsync(ReferenceEvidence? evidence = null)
     {
-        var acquired = await ReadPublishedAsync(state => AcquireAsync(state));
-        var index = acquired.GetPlanningIndex();
+        var index = (await PointAsync()).GetPlanningIndex();
         return evidence is null ? index : index.WithObservations(evidence);
     }
 
@@ -281,8 +336,9 @@ public sealed partial class RecordStore : IAsyncDisposable
     private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default)
     {
         point = null;
-        var records = await ReadRecordsAsync(ct);
-        var snapshot = VerifySnapshots(state, records, ct);
+        var decoded = await DecodeLatestAsync(digest: true, ct);
+        var records = decoded.Records;
+        var snapshot = VerifySnapshots(state, decoded.Digest);
         var native = new Dictionary<Guid, GenericRecord>();
         var headers = new List<ReferenceRecord>();
         var anchors = new List<GenericRecord>();
@@ -343,7 +399,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         var state = await PublishedStateAsync();
         var records = await ReadRecordsAsync();
         VerifySnapshots(state, records);
-        if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database))
+        if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database, Workers))
             throw new InvalidDataException("History is corrupt; the reference index cannot be republished.");
         await PublishIndexAsync(records, state.Revision);
     }
@@ -365,7 +421,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         state.Revision = revision;
         state.IndexDigest = projection.Digest();
         state.IndexLimitations = string.Join("\n", projection.Limitations);
-        state.ReplayDigest = await ReplayIntegrity.DigestAsync(database);
+        state.ReplayDigest = await ReplayIntegrity.DigestAsync(database, Workers);
         state.SnapshotDigest = (work is null ? SnapshotDigest(records) : await work.Snapshot).Final("snapshot");
         state.ContentDigest = content.Digest();
         state.Published = true;
@@ -441,9 +497,11 @@ public sealed partial class RecordStore : IAsyncDisposable
         return digest;
     }
 
-    private static SetDigest VerifySnapshots(StoreState state, IReadOnlyList<GenericRecord> records, CancellationToken ct = default)
+    private static SetDigest VerifySnapshots(StoreState state, IReadOnlyList<GenericRecord> records, CancellationToken ct = default) =>
+        VerifySnapshots(state, SnapshotDigest(records, ct));
+
+    private static SetDigest VerifySnapshots(StoreState state, SetDigest digest)
     {
-        var digest = SnapshotDigest(records, ct);
         if (state.SnapshotDigest != digest.Final("snapshot"))
             throw new InvalidDataException("The snapshot projection is corrupt; regenerate it from history before use.");
         return digest;
@@ -454,7 +512,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         using var writer = AcquireWriter();
         point = null;
         var state = await PublishedStateAsync();
-        if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database))
+        if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database, Workers))
             throw new InvalidDataException("History is corrupt; the existing snapshot projection has been preserved.");
         var temporary = Directory.CreateTempSubdirectory("motif-record-replay-");
         try

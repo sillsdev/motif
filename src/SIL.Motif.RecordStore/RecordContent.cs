@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -29,14 +30,16 @@ internal sealed partial class RecordContent
     // Rows stay encoded until read: opening a store costs one hash per row, not one decode per row.
     private Dictionary<ContentKey, int>? identities;
     private Dictionary<int, byte[]> encoded = new();
-    private Dictionary<int, JsonElement> values = new();
+    // Concurrent: decode workers share one decoded value per row.
+    private ConcurrentDictionary<int, JsonElement> values = new();
     private readonly List<ContentRow> pending = [];
     private int next;
     // Ids only grow past every loaded id, so the list stays ordered once loading has sorted it.
     private List<(int Id, byte[] Hash)> hashes = [];
     private readonly BinaryOutput scratch = new();
+    private int decodedCount;
     /// <summary>Number of rows decoded from storage; proves that opening and hashing do not decode.</summary>
-    internal int DecodedCount { get; private set; }
+    internal int DecodedCount => Volatile.Read(ref decodedCount);
     public IReadOnlyList<ContentRow> Pending => pending;
     public void Saved() => pending.Clear();
 
@@ -130,7 +133,7 @@ internal sealed partial class RecordContent
         var id = checked(++next);
         known.Add(key, id);
         encoded.Add(id, bytes);
-        if (retained is { } value) values.Add(id, value.Clone());
+        if (retained is { } value) values[id] = value.Clone();
         hashes.Add((id, SHA256.HashData(bytes)));
         pending.Add(new ContentRow { Id = id, Data = bytes });
         digest = null;
@@ -164,14 +167,19 @@ internal sealed partial class RecordContent
         return digest = Convert.ToHexStringLower(SHA256.HashData(output.Finish()));
     }
 
+    /// <summary>
+    /// The decoded value of a stored row. Safe to call from several threads while no thread is calling <c>Put</c>,
+    /// <c>Load</c> or <c>Reload</c>: the encoded rows are only read, and the first decoder of a row publishes the one
+    /// shared element (a racing decoder drops its copy), so equal ids always yield the same element.
+    /// </summary>
     public JsonElement Get(int id)
     {
         if (values.TryGetValue(id, out var value)) return value;
         if (!encoded.TryGetValue(id, out var bytes)) throw new InvalidDataException("Missing immutable record content.");
-        value = Decode(bytes);
-        DecodedCount++;
-        values.Add(id, value);
-        return value;
+        var decoded = Decode(bytes);
+        if (!values.TryAdd(id, decoded)) return values[id];
+        Interlocked.Increment(ref decodedCount);
+        return decoded;
     }
 
     internal static byte[] Canonical(JsonElement value)

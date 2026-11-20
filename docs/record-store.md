@@ -199,22 +199,26 @@ Store open hashes every immutable content row but decodes none: a row is decoded
 time a record needs it, and the content identity used for de-duplication is derived from the
 stored bytes without decoding JSON. Envelope and content-version refusals still happen at
 open (a one-byte check per row), and any changed byte is caught by the content digest.
-`ReferencesAsync` still reads and verifies every snapshot each time. Hold the returned
-immutable snapshot for repeated lookups. Private gates report store-open and
+`ReferencesAsync` verifies every snapshot on the first call of a handle and then reuses the
+retained point (see below). Hold the returned immutable snapshot for repeated lookups. Private gates report store-open and
 reference-acquisition time separately from repeated planning on a retained snapshot; the
 ready-planning budget does not cover acquisition.
 
 A handle that has fully verified a published point (`ReferencesAsync`, or the first
 `PrepareDeletionAsync` or `SetFieldAsync`) retains it: the native records, the reference
 snapshot and three order-independent set digests (snapshot, history, index) that bind them
-to the stored state row. Later planning and guarded writes reuse the retained point while
-the stored state row is unchanged, and `SetFieldAsync` updates the point, the digests and
-the persisted index incrementally. Trust model: the full verification (every snapshot, the
-index digest and, before the first write, a one-time history scan) happens once per handle
-per published point; a later full `ReferencesAsync` re-verifies and replaces the retained
-point, and a corrupt result discards it. Corruption introduced behind an open handle between
-two reuse calls is found by the next full verification or by reopening, not by each call.
-The digests detect corruption and divergence; they are unkeyed and not an authenticator.
+to the stored state row. `ReferencesAsync`, planning and guarded writes all reuse the retained
+point while the stored state row (revision and digests, with the content digest and commit
+revision) is unchanged, so a repeated call costs a state read, not a verification.
+`SetFieldAsync` updates the point, the digests and the persisted index incrementally; a write
+through another handle changes the state row and forces a full acquisition or a refusal.
+Trust model: the full verification (every snapshot, the index digest and, before the first
+write, a one-time history scan) happens once per handle per published point and runs its
+decoding and hashing on up to four worker threads. A live handle never re-verifies on request:
+corruption introduced behind it that leaves the state row unchanged is not seen by that
+handle. To force a full re-verification, reopen the handle (`ReadAsync` also re-verifies the
+snapshots each call). A corrupt result at acquisition is not retained. The digests detect
+corruption and divergence; they are unkeyed and not an authenticator.
 
 ## Deletion-impact planning
 

@@ -27,6 +27,13 @@ internal readonly record struct SetDigest(UInt128 Low, UInt128 High, long Count)
         return new(Low - low, High - high - (Low < low ? UInt128.One : UInt128.Zero), Count - 1);
     }
 
+    /// <summary>The digest of the union of two multisets: partial digests of disjoint parts add up exactly.</summary>
+    public SetDigest Combine(SetDigest other)
+    {
+        var sum = Low + other.Low;
+        return new(sum, High + other.High + (sum < Low ? UInt128.One : UInt128.Zero), Count + other.Count);
+    }
+
     public string Final(string domain)
     {
         var bytes = new byte[32 + 8];

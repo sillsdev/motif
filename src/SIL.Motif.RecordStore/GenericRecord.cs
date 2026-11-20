@@ -21,6 +21,9 @@ public sealed class GenericRecord : IObjectBase<GenericRecord>
     internal JsonElement Layout { get; init; } = RecordInitialization.EmptyLayout;
     internal Dictionary<int, ListHistory> Lists { get; init; } = [];
 
+    /// <summary>A stored snapshot not yet decoded; only the verified read's parallel decoder ever sees this placeholder.</summary>
+    internal byte[]? Encoded { get; init; }
+
     internal ListHistory HistoryFor(int field)
     {
         if (Lists.TryGetValue(field, out var history)) return history;
