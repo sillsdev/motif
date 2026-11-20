@@ -84,7 +84,12 @@
       <views:RefusalBlock DataContext="{Binding DryRunRefusal}" />
       <views:CopyableTextBlock Text="{Binding StatusSentence}" IsVisible="{Binding ShowsReadySentence}" TextWrapping="Wrap" />
     </StackPanel>
-    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalReading}" IsVisible="{Binding IsLoading}" />
+    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalReading}" IsVisible="{Binding ShowsReadingLine}" />
+    <StackPanel IsVisible="{Binding ShowsReadStuck}" Spacing="{DynamicResource Intent.Space.Related}">
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalReadStuck}" TextWrapping="Wrap" />
+      <Button Content="{x:Static app:MotifAppStrings.ProposalReadAgain}" Command="{Binding ReadAgainCommand}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalReadAgain}" HorizontalAlignment="Left" />
+    </StackPanel>
     <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDocumentOutdated}" IsVisible="{Binding ShowsOutdatedNotice}" TextWrapping="Wrap" />
     <views:RefusalBlock DataContext="{Binding DetailRefusal}" />
     <views:ProposalApplyPanel />

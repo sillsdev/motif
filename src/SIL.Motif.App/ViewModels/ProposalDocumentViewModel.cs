@@ -259,7 +259,6 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         RaiseApply();
     }
     partial void OnOperationDescriptionsChanged(IReadOnlyList<string> value) => OnPropertyChanged(nameof(Label));
-    partial void OnIsLoadingChanged(bool value) => RaiseApply();
     partial void OnIsOutdatedChanged(bool value)
     {
         RefreshOperationDisplay();
@@ -271,7 +270,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         OnPropertyChanged(nameof(ReceiptText));
     }
 
-    internal Task EnsureLoadedAsync() => _hasStartedRead ? Reading : RefreshAsync();
+    // Reopening a document whose read ran past its bound reads again rather than joining the stuck read.
+    internal Task EnsureLoadedAsync() => _hasStartedRead && !ReadTimedOut ? Reading : RefreshAsync();
 
     private sealed record DifferenceIdentity(string? IntentDigest, string? TrialJobId,
         BaselineSemanticIdentity? Baseline, DifferenceOffer Offer);
@@ -283,7 +283,9 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         var generation = ++_generation;
         _cancellation?.Cancel();
         var cancellation = _cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        ReadTimedOut = false;
         IsLoading = true;
+        _ = WatchReadAsync(generation, cancellation.Token);
         IsConfirmingApply = false;
         DetailRefusal = null;
         _review = null;

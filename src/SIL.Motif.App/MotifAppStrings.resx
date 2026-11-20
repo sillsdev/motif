@@ -7424,6 +7424,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalRefreshEvidence" xml:space="preserve"><value>Refresh Evidence</value></data>
   <data name="MotifApp.ProposalCheckForComparison" xml:space="preserve"><value>Compare {0}</value></data>
   <data name="MotifApp.ProposalReading" xml:space="preserve"><value>Reading Proposal…</value></data>
+  <data name="MotifApp.ProposalReadStuck" xml:space="preserve"><value>Motif has been reading this Proposal for a long time, and the read may have stopped. Choose Read Again to read it once more.</value></data>
+  <data name="MotifApp.ProposalReadAgain" xml:space="preserve"><value>Read Again</value></data>
   <data name="MotifApp.ProposalReadingChanged" xml:space="preserve"><value>Reading Changed</value></data>
   <data name="MotifApp.ProposalSpellingChanged" xml:space="preserve"><value>Spelling Acceptance Changed</value></data>
   <data name="MotifApp.ProposalEvidenceListedCount" xml:space="preserve"><value>Listed Words: {0}</value></data>
