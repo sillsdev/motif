@@ -835,6 +835,89 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.False(ReadDroppedGrammar(completed).Checked);
     }
 
+    [Fact]
+    public void ARepeatTrialReusesTheBaselineGrammarCheckOnlyForTheSameParserAndSettings()
+    {
+        string? identity = "parser-a";
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var calls = new List<string>();
+        var runCalls = 0;
+        var subject = Guid.NewGuid();
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            grammarHealth: (_, _, _, _) =>
+            {
+                // The candidate is always checked first within a Trial.
+                calls.Add(runCalls++ == 0 ? "candidate" : "baseline");
+                return Task.FromResult<GrammarCheckResponse?>(new GrammarCheckResponse(
+                    calls[^1] == "candidate" ? [DroppedEnvironment(subject)] : [], HasBaseline: true));
+            }, baselineCheckIdentity: () => identity);
+        JobRecord Run()
+        {
+            runCalls = 0;
+            var proposalId = CanonicalId.Mint("proposal/");
+            var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "dropped grammar");
+            SaveCommittedProposal(proposalId, proposalJson);
+            return RunAndFinish(handler, CreateTrialJob(proposalJson));
+        }
+
+        var cold = Run();
+        var coldCalls = calls.ToArray();
+        calls.Clear();
+        var warm = Run();
+        var warmCalls = calls.ToArray();
+        calls.Clear();
+        identity = "parser-b";
+        Run();
+
+        Assert.Equal(["candidate", "baseline"], coldCalls);
+        Assert.Equal(["candidate"], warmCalls);
+        Assert.Equal(2, calls.Count);
+        identity = null;
+        calls.Clear();
+        Run();
+        Assert.Equal(2, calls.Count);
+        Assert.Equal(JsonSerializer.Serialize(ReadDroppedGrammar(cold)), JsonSerializer.Serialize(ReadDroppedGrammar(warm)));
+        Assert.Contains("\"name\":\"grammar-health-baseline\",\"seconds\":0,\"note\":\"reused\"", warm.ResultJson);
+    }
+
+    [Fact]
+    public void AParserReplacedInPlaceWithTheSamePathSizeAndTimeGetsANewBaselineCheckIdentity()
+    {
+        Directory.CreateDirectory(_root);
+        var parser = Path.Combine(_root, "identity-parser");
+        var stamp = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+        File.WriteAllText(parser, "parser-bytes-one");
+        File.SetLastWriteTimeUtc(parser, stamp);
+        var mode = SIL.Motif.Contract.Requests.StoredAnalysisComparison.Budget;
+        var first = ProjectJobHandlers.BaselineCheckIdentity(parser, mode, _ => "pangloss 1.0");
+        File.WriteAllText(parser, "parser-bytes-two");
+        File.SetLastWriteTimeUtc(parser, stamp);
+        var replaced = ProjectJobHandlers.BaselineCheckIdentity(parser, mode, _ => "pangloss 1.0");
+
+        Assert.NotNull(first);
+        Assert.NotEqual(first, replaced);
+        Assert.NotEqual(replaced, ProjectJobHandlers.BaselineCheckIdentity(parser, mode, _ => "pangloss 2.0"));
+        Assert.Null(ProjectJobHandlers.BaselineCheckIdentity(parser, mode, _ => "unavailable"));
+        Assert.Null(ProjectJobHandlers.BaselineCheckIdentity(Path.Combine(_root, "missing"), mode, _ => "pangloss 1.0"));
+    }
+
+    [Fact]
+    public void ABaselineGrammarCheckIsKeyedByTheBaselineAndTheParserIdentity()
+    {
+        Directory.CreateDirectory(_root);
+        var project = new ProjectLocator(Path.Combine(_root, "keyed.fwdata"), "keyed");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "keyed.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new TrialGrammarCheckRepository(database);
+        var token = new BaselineToken("keyed", "sha256:" + new string('a', 64), "1", "2026-08-29T00:00:00Z", "sha256:" + new string('b', 64));
+        var other = new BaselineToken("keyed", "sha256:" + new string('c', 64), "1", "2026-08-29T00:00:00Z", "sha256:" + new string('b', 64));
+        repository.SaveBaselineCheck(token, new GrammarCheckResponse([], true) { Locale = "x" }, "parser-a");
+
+        Assert.Equal("x", repository.ReadBaselineCheck(token, "parser-a")!.Locale);
+        Assert.Null(repository.ReadBaselineCheck(token, "parser-b"));
+        Assert.Null(repository.ReadBaselineCheck(other, "parser-a"));
+    }
+
     // The first call checks the candidate grammar and the second checks the Baseline's.
     private DroppedGrammar RunTrialWithGrammarHealth(
         Func<int, CancellationToken, Task<GrammarCheckResponse?>> check, TimeSpan? bound = null)
@@ -2658,7 +2741,8 @@ public sealed class TrialJobHandlerTests : IDisposable
         Func<LcmCache?, CancellationToken, Task<string>>? prepareForAssessment = null,
         IProjectConfigurationReader? configuration = null,
         Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null,
-        IAssessmentRepository? assessments = null, Func<bool>? retainScratch = null)
+        IAssessmentRepository? assessments = null, Func<bool>? retainScratch = null,
+        Func<string?>? baselineCheckIdentity = null)
     {
         var catalog = new AssessorCatalog(new[] { assessor });
         var factory = new ScratchCacheFactory(_loader);
@@ -2673,7 +2757,8 @@ public sealed class TrialJobHandlerTests : IDisposable
                 return Task.FromResult<(IReadOnlyCollection<Guid>, DryRunScratch?)>((appliedProposalIds, scratch));
             },
             (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)),
-            prepareForAssessment ?? DefaultPrepareForAssessment, _root, grammarHealth, retainScratch);
+            prepareForAssessment ?? DefaultPrepareForAssessment, _root, grammarHealth, retainScratch,
+            baselineCheckIdentity: baselineCheckIdentity);
     }
 
     private sealed class TrialArtifactAssessor : IAssessor

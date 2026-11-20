@@ -20,7 +20,8 @@ internal static class DroppedGrammarCheck
     internal static async Task<(GrammarCheckResponse? Candidate, DroppedGrammar Result)> CheckAsync(
         Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth,
         MotifDatabase database, BaselineToken baselineToken, string baselineFwDataPath, string candidatePath, string projectName,
-        Contract.Model.Proposal proposal, Action<bool>? onWait, TimeSpan bound, CancellationToken cancellationToken)
+        Contract.Model.Proposal proposal, Action<bool>? onWait, TimeSpan bound, CancellationToken cancellationToken,
+        string? baselineCheckIdentity = null, Action<GrammarCheckResponse>? onBaselineReused = null)
     {
         if (grammarHealth is null)
             return (null, DroppedGrammar.NotChecked("No parser is available to check the candidate grammar."));
@@ -43,7 +44,8 @@ internal static class DroppedGrammarCheck
         try
         {
             return (candidate, await CompareAsync(candidate, grammarHealth, database, baselineToken, baselineFwDataPath,
-                projectName, proposal, onWait, bound, cancellationToken).ConfigureAwait(false));
+                projectName, proposal, onWait, bound, cancellationToken, baselineCheckIdentity, onBaselineReused)
+                .ConfigureAwait(false));
         }
         catch (Exception exception) when (exception is not OperationCanceledException &&
             JobFailureDetail.Category(exception) is null)
@@ -58,9 +60,16 @@ internal static class DroppedGrammarCheck
     internal static async Task<DroppedGrammar> CompareAsync(GrammarCheckResponse candidate,
         Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>> grammarHealth,
         MotifDatabase database, BaselineToken baselineToken, string baselineFwDataPath, string projectName, Contract.Model.Proposal proposal,
-        Action<bool>? onWait, TimeSpan bound, CancellationToken cancellationToken)
+        Action<bool>? onWait, TimeSpan bound, CancellationToken cancellationToken,
+        string? baselineCheckIdentity = null, Action<GrammarCheckResponse>? onBaselineReused = null)
     {
-        var baselineCheck = new TrialGrammarCheckRepository(database).ReadBaselineCheck(baselineToken);
+        // With an identity, a stored check serves only when the same parser and settings produced it for this Baseline.
+        var checks = new TrialGrammarCheckRepository(database);
+        // An empty identity means the parser could not be identified, so nothing is read or kept.
+        var keyed = !string.IsNullOrEmpty(baselineCheckIdentity);
+        var baselineCheck = baselineCheckIdentity is null ? checks.ReadBaselineCheck(baselineToken)
+            : keyed ? checks.ReadBaselineCheck(baselineToken, baselineCheckIdentity) : null;
+        if (baselineCheck is not null && keyed) onBaselineReused?.Invoke(baselineCheck);
         string? why = null;
         if (baselineCheck is null)
         {
@@ -69,6 +78,7 @@ internal static class DroppedGrammarCheck
                 (baselineCheck, why) = await StageBound.RunAsync("Baseline grammar check", bound,
                     token => grammarHealth(baselineFwDataPath, projectName, onWait, token), cancellationToken)
                     .ConfigureAwait(false);
+                if (baselineCheck is not null && keyed) checks.SaveBaselineCheck(baselineToken, baselineCheck, baselineCheckIdentity!);
             }
             catch (Exception exception) when (exception is not OperationCanceledException &&
                 JobFailureDetail.Category(exception) is null)

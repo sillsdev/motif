@@ -147,6 +147,8 @@ internal sealed class TrialJobHandler
         Task<(IReadOnlyCollection<Guid> AppliedProposalIds, DryRunScratch? Scratch)>> _openScratch;
     private readonly Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> _runDryRun;
     private readonly Func<LcmCache?, CancellationToken, Task<string>> _prepareForAssessment;
+    // The parser and settings a stored Baseline grammar check must share to be reused; null reuses none.
+    private readonly Func<string?>? _baselineCheckIdentity;
     private readonly Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? _grammarHealth;
     private readonly Func<string, string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? _grammarHealthWithSnapshot;
     private readonly Func<bool> _retainScratch;
@@ -178,7 +180,8 @@ internal sealed class TrialJobHandler
         Func<LcmCache?, CancellationToken, Task<string>> prepareForAssessment, string workerRoot,
         Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null,
         Func<bool>? retainScratch = null,
-        Func<string, string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealthWithSnapshot = null)
+        Func<string, string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealthWithSnapshot = null,
+        Func<string?>? baselineCheckIdentity = null)
     {
         _baselines = baselines ?? throw new ArgumentNullException(nameof(baselines));
         ArgumentNullException.ThrowIfNull(proposals);
@@ -193,6 +196,7 @@ internal sealed class TrialJobHandler
         _prepareForAssessment = prepareForAssessment ?? throw new ArgumentNullException(nameof(prepareForAssessment));
         _grammarHealth = grammarHealth;
         _grammarHealthWithSnapshot = grammarHealthWithSnapshot;
+        _baselineCheckIdentity = baselineCheckIdentity;
         _retainScratch = retainScratch ?? (() => TrialScratchRetention.RetainRequested);
     }
 
@@ -480,7 +484,13 @@ internal sealed class TrialJobHandler
                 }
                 var (grammarCheck, dropped) = await DroppedGrammarCheck.CheckAsync(Check, claim.Database,
                     baseline.Token, baseline.FwDataPath, candidate.GrammarPath, project.FieldWorksProjectIdentity,
-                    proposal, grammarWait.Observe, StageTimeout, cancellationToken).ConfigureAwait(false);
+                    proposal, grammarWait.Observe, StageTimeout, cancellationToken,
+                    _baselineCheckIdentity is null ? null : _baselineCheckIdentity() ?? string.Empty,
+                    reused =>
+                    {
+                        pairedBaseline = reused;
+                        phases.Add(TrialPhaseNames.GrammarHealthBaseline, 0, TrialPhaseNames.Reused);
+                    }).ConfigureAwait(false);
                 droppedGrammar = dropped;
                 if (pairedBaseline is not null && grammarCheck is not null)
                     review?.SetWarnings(pairedBaseline, grammarCheck);

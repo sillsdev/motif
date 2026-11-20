@@ -1,5 +1,6 @@
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
@@ -239,6 +240,29 @@ public static class ProjectJobHandlers
                     defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait),
             grammarHealthWithSnapshot: (grammarPath, projectName, snapshotPath, onAdmissionWait, cancellationToken) =>
                 TrialGrammarCheck.RunAsync(invoker, "trial-grammar:" + ProjectWorkspaceKey.Compute(project),
-                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait, snapshotPath));
+                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait, snapshotPath),
+            baselineCheckIdentity: () => BaselineCheckIdentity(options.ParserPath, defaultChecks.StoredAnalyses));
+    }
+
+    /// <summary>The parser's bytes (SHA-256) and reported version, plus the stored-analysis setting, a Baseline grammar check was made with.</summary>
+    /// <param name="parserPath">The parser executable; the bytes are hashed afresh, so a file replaced in place gets a new identity.</param>
+    /// <param name="storedAnalyses">The stored-analysis comparison the check ran with.</param>
+    /// <param name="readVersion">Reads the version the executable reports; tests substitute one.</param>
+    /// <returns>The identity, or null when the parser or its version is unavailable, so nothing is reused.</returns>
+    internal static string? BaselineCheckIdentity(string? parserPath, StoredAnalysisComparison storedAnalyses,
+        Func<string, string>? readVersion = null)
+    {
+        if (parserPath is not { } exe || !File.Exists(exe)) return null;
+        try
+        {
+            var version = (readVersion ?? ParserExecutableIdentity.ReadFreshVersion)(exe);
+            if (version == "unavailable") return null;
+            return $"trial-health|{BatchInvocationEvidence.DigestFile(exe)}|{version}|{storedAnalyses}";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            SIL.Motif.Host.Assess.AssessorUnavailableException)
+        {
+            return null;
+        }
     }
 }
