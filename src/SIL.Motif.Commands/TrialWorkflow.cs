@@ -45,7 +45,7 @@ public static class TrialWorkflow
 
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request, string managedRoot,
         string? parserPath, BaselineMode mode, CancellationToken cancellationToken, bool requireExplicitRefresh) =>
-        EnqueueWithUpdateGate(() => TrialBaselines.WithAdmission(request, (admission, busy) =>
+        EnqueueWithUpdateGate(() => TrialBaselines.WithAdmission(request = request.WithPrequeueClock(), (admission, busy) =>
         {
             var resolved = JobCommands.ResolveTrialWords(request);
             if (!resolved.Succeeded) return CommandOutcome<TrialEnqueued>.Refused(resolved.Refusal!);

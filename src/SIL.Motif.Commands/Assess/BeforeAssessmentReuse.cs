@@ -28,6 +28,45 @@ internal static class BeforeAssessmentReuse
         catch (Exception exception) when (exception is JsonException or ArgumentException) { return false; }
     }
 
+    /// <summary>
+    /// The limits a Trial measures under, with the wall-clock safety net an earlier measurement of this Baseline used.
+    /// The net is sized from the latest parse rate, so it moves with every run and no earlier measurement would match it
+    /// again; the parser work limit is what stops a word, and the net only has to be generous. Taking the earlier net
+    /// keeps the before and after sides under one limit and lets <see cref="Find"/> match by the limit exactly.
+    /// </summary>
+    /// <param name="database">The project's store, for its earlier measurements.</param>
+    /// <param name="baseline">The Baseline the Trial measures.</param>
+    /// <param name="limits">The limits resolved from the project's policy.</param>
+    /// <param name="parserPath">The parser the Trial measures with; only a measurement by the same bytes is followed.</param>
+    internal static TrialLimits AdoptEarlierSafetyNet(MotifDatabase database, BaselineToken baseline, TrialLimits limits,
+        string? parserPath)
+    {
+        if (limits.PerWordLimit is null || parserPath is null) return limits;
+        try
+        {
+            var parserHash = BatchInvocationEvidence.DigestFile(parserPath);
+            foreach (var record in new AssessmentRepository(database)
+                .ListRecentBaselineHeaders(AssessmentKind.ParseTime.ToStoredKind(), 50))
+            {
+                if (record.Assessor != PanGlossAssessor.AssessorName) continue;
+                var token = JsonSerializer.Deserialize<BaselineToken>(record.BaselineToken, MotifJson.CreateOptions());
+                if (!baseline.HasSameSemanticIdentity(token)) continue;
+                var invocation = record.Invocation;
+                if (invocation is null || invocation.StoppedWordRetry is not null ||
+                    invocation.ExecutableBytesSha256 != parserHash ||
+                    invocation.PerWordParserWorkLimit != limits.PerWordParserWorkLimit ||
+                    invocation.PerWordTimeoutMs is not { } milliseconds) continue;
+                return limits with { PerWordLimit = TimeSpan.FromMilliseconds(milliseconds) };
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            InvalidDataException or JsonException or ArgumentException or KeyNotFoundException)
+        {
+            return limits;
+        }
+        return limits;
+    }
+
     public static string? Find(MotifDatabase database, AssessmentRepository assessments, BaselineToken baseline,
         Selection selection, AssessmentScope.Words scope, LcmCache cache, string parserPath, CancellationToken cancellationToken)
     {

@@ -1983,6 +1983,17 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.False(Directory.Exists(assessor.InvocationDirectory));
     }
 
+    // The cleanup phase is appended after the commit, so the committed result is compared without the phase list.
+    private static string? WithoutPhases(string? resultJson) => resultJson is null ? null
+        : System.Text.Json.Nodes.JsonNode.Parse(resultJson) is System.Text.Json.Nodes.JsonObject node
+            ? WithoutPhaseNode(node) : resultJson;
+
+    private static string WithoutPhaseNode(System.Text.Json.Nodes.JsonObject node)
+    {
+        node.Remove("phases");
+        return node.ToJsonString();
+    }
+
     [Fact]
     public async Task ACommittedTrialSurvivesLateCancellationRecoveryAndStaleOwnerActions()
     {
@@ -2041,7 +2052,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Single(assessmentIds);
         Assert.All(assessmentIds, id => Assert.Equal(proposalId, _assessments.Get(id).ProposalId));
         Assert.Equal(JobStatus.Completed, final.Status);
-        Assert.Equal(resultJson, final.ResultJson);
+        Assert.Equal(WithoutPhases(resultJson), WithoutPhases(final.ResultJson));
         Assert.Equal(dryRunJson, final.DryRunJson);
         Assert.Equal(1, final.Attempt);
         Assert.Null(outcome);

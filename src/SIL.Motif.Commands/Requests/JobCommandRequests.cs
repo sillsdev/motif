@@ -37,6 +37,16 @@ public sealed record EnqueueTrialRequest(
     /// <summary>The named review sets to include, or null to include every configured set.</summary>
     public IReadOnlyList<string>? ReviewSetIds { get; init; }
 
+    /// <summary>When the CLI began work toward queueing this Trial, as a <see cref="System.Diagnostics.Stopwatch"/> timestamp; 0 before it began.</summary>
+    internal long PrequeueStartedTimestamp { get; init; }
+
+    /// <summary>What the before-side parse took and whether a stored result served it; null when none ran.</summary>
+    internal SIL.Motif.Contract.Responses.TrialPhase? BeforeParsePhase { get; init; }
+
+    /// <summary>Starts the pre-queue clock once, at the first entry point a Trial passes through.</summary>
+    internal EnqueueTrialRequest WithPrequeueClock() => PrequeueStartedTimestamp != 0 ? this
+        : this with { PrequeueStartedTimestamp = System.Diagnostics.Stopwatch.GetTimestamp() };
+
     internal SIL.Motif.Worker.Jobs.ReviewInputReference? ReviewInputs { get; init; }
     internal SIL.Motif.Worker.Store.ProposalRecord? ReviewProposal { get; init; }
     internal bool ReviewLeaseHeld { get; init; }

@@ -1142,7 +1142,7 @@ try
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                 "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
                 "[--words <file>|--all-words] [--no-base-sample] " +
-                "--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
+                "--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--verbose] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
             var trialResultExit = 0;
             result = RunWithConsoleCancellation(cancellationToken =>
@@ -1172,8 +1172,11 @@ try
                     trialProposal: positionals[0], wakeImmediately: true);
                 if (waited.Value is { Status: SIL.Motif.Contract.Jobs.JobStatus.Completed })
                 {
+                    var reportStarted = System.Diagnostics.Stopwatch.GetTimestamp();
                     var trialReview = TrialReviewReads.ReadJob(trialProject, CliProductVersion(), positionals[0], trialJobId);
                     var rendered = RenderCommand(trialReview);
+                    if (flags.ContainsKey("verbose"))
+                        WriteTrialPhases(trialProject, positionals[0], trialJobId, System.Diagnostics.Stopwatch.GetElapsedTime(reportStarted), error);
                     if (rendered.ExitCode == 0 && trialReview.Value is AvailableTrialResult { Gate: { } gate } &&
                         gate.State != TrialGateState.Green)
                     {
@@ -3427,6 +3430,23 @@ static bool TryReadSelectionLimits(IReadOnlyDictionary<string, string> flags, ou
     return limits.ValidationError() is null;
 }
 
+// Cleanup is recorded after the commit, so ask again briefly.
+static void WriteTrialPhases(string project, string proposalId, string jobId, TimeSpan cliReport, TextWriter error)
+{
+    IReadOnlyList<TrialPhase>? phases = null;
+    var deadline = DateTime.UtcNow.AddSeconds(30);
+    while (true)
+    {
+        var read = Trials.Read(new ReadTrialRequest(project, proposalId));
+        phases = read.Succeeded && read.Value is { } record && record.JobId == jobId ? record.Phases : null;
+        if (phases is null || phases.Any(phase => phase.Name == TrialPhaseNames.Cleanup && phase.Note != TrialPhaseNames.NotRun) ||
+            DateTime.UtcNow >= deadline) break;
+        Thread.Sleep(250);
+    }
+    if (phases is null) { error.WriteLine("Trial phases: this Trial recorded none."); return; }
+    error.Write(TrialPhaseTable.Render(phases, new TrialPhase("cli-report", Math.Round(cliReport.TotalSeconds, 3))));
+}
+
 static string JobsUsage() =>
     "Usage: motif jobs wait <jobId> --project <fwdata> [--json] OR motif jobs show <jobId> --project <fwdata> [--json] OR " +
     "motif jobs assessments <jobId> --project <fwdata> [--json] OR motif jobs list [--all] [--json] OR " +
@@ -3746,7 +3766,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose")
             {
                 flags[name] = "true";
                 continue;

@@ -95,6 +95,13 @@ public sealed record TrialRecord(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? WordListDigest { get; init; }
 
+    /// <summary>
+    /// Where the Trial's wall time went, by <see cref="TrialPhaseNames"/>; <see langword="null"/> for a Trial recorded
+    /// before phases were, or one that has not finished.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TrialPhase>? Phases { get; init; }
+
     /// <summary>The named grammar check for this Trial revision, when the Trial produced one.</summary>
     public string? GrammarCheckId { get; init; }
 

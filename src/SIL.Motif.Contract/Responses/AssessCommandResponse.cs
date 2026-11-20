@@ -35,6 +35,9 @@ public sealed record AssessCommandResponse(
     /// rather than inferring it from missing rows. Null when timing was collected in full or never asked for.
     /// </summary>
     public ObjectTimingNote? ObjectTimingNote { get; init; }
+    /// <summary>True when an earlier run's stored measurement served this result, so nothing was parsed again.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ReusedEvidence { get; init; }
 }
 
 /// <summary>What the row budget did to per-object timing in one Assess run.</summary>

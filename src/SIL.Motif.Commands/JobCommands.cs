@@ -12,6 +12,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
 using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
@@ -149,7 +150,7 @@ public static class JobCommands
         string? parserPath = null)
     {
         if (InvalidTrialWords(request) is { } invalid) return CommandOutcome<JobEnqueuedResponse>.Refused(invalid);
-        return WithReviewInputLease(request, leased => EnqueueTrialCaptured(leased, parserPath, null));
+        return WithReviewInputLease(request.WithPrequeueClock(), leased => EnqueueTrialCaptured(leased, parserPath, null));
     }
 
     private static CommandOutcome<JobEnqueuedResponse> EnqueueTrialCaptured(EnqueueTrialRequest request,
@@ -190,6 +191,15 @@ public static class JobCommands
                     ContractParseException) { }
             }
         });
+    }
+
+    // The CLI's time before the job exists, less the before-side parse.
+    private static IReadOnlyList<TrialPhase>? CliPhases(EnqueueTrialRequest request)
+    {
+        if (request.PrequeueStartedTimestamp == 0) return null;
+        var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(request.PrequeueStartedTimestamp).TotalSeconds;
+        var prequeue = new TrialPhase(TrialPhaseNames.CliPrequeue, Math.Round(Math.Max(0, elapsed - (request.BeforeParsePhase?.Seconds ?? 0)), 3));
+        return request.BeforeParsePhase is { } before ? [prequeue, before] : [prequeue];
     }
 
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueStoppedTrial(EnqueueTrialRequest request,
@@ -278,6 +288,7 @@ public static class JobCommands
                 ReviewRevision: record.DraftName is null ? IntentDigest.Compute(proposal) : null,
                 ReviewCounterSemantics: request.ReviewInputs is null ? null : SIL.Motif.Host.PanGloss.PanGlossInterfaceVersions.StatsCounterSemanticsVersion)
                 {
+                    CliPhases = CliPhases(request),
                     ExpectedLosses = request.ExpectedLosses?.ToArray(),
                     NoBackground = request.NoBackground,
                     Sample = request.NoBaseSample ? TrialSampleKind.WorkingSet : TrialSampleKind.Stratified,
@@ -398,23 +409,46 @@ public static class JobCommands
     // The default Selection's limits as Assess resolves them, so Baseline and Trial stop a word at the same cap.
     internal static TrialLimits? ResolveTrialLimits(MotifDatabase database, ProjectLocator project, string? scopeName)
     {
-        var saved = new NamedSelectionRepository(database).GetDefault();
-        var limits = saved?.Limits;
-        if (limits is null)
+        var limits = ReadTrialLimitPolicy(database, project, scopeName);
+        return limits is null ? null
+            : ParseRunLimits.Resolve(limits, ParseRunLimits.ReadRate(new AssessmentRepository(database)));
+    }
+
+    private static SelectionParsingLimits? ReadTrialLimitPolicy(MotifDatabase database, ProjectLocator project, string? scopeName)
+    {
+        var limits = new NamedSelectionRepository(database).GetDefault()?.Limits;
+        if (limits is not null) return limits;
+        try
         {
-            try
-            {
-                var scopes = new ProjectConfigurationReader().Read(project).Scopes;
-                var scope = scopes.FirstOrDefault(declared => declared.Name == (scopeName ?? AssessmentScopeConfiguration.DefaultName))
-                    ?? scopes[0];
-                limits = SelectionLimitPolicy.Estimated(scope.PerWordParserWorkLimit);
-            }
-            catch (ProjectConfigurationException)
-            {
-                return null;
-            }
+            var scopes = new ProjectConfigurationReader().Read(project).Scopes;
+            var scope = scopes.FirstOrDefault(declared => declared.Name == (scopeName ?? AssessmentScopeConfiguration.DefaultName))
+                ?? scopes[0];
+            return SelectionLimitPolicy.Estimated(scope.PerWordParserWorkLimit);
         }
-        return ParseRunLimits.Resolve(limits, ParseRunLimits.ReadRate(new AssessmentRepository(database)));
+        catch (ProjectConfigurationException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Freezes the limits as <see cref="FreezeTrialLimits"/> does, and for a policy that sizes the time limit from the
+    /// parse rate, follows the time limit an earlier measurement of this Baseline used (see
+    /// <see cref="Assess.BeforeAssessmentReuse.AdoptEarlierSafetyNet"/>). A caller's limits and an explicit time are kept as given.
+    /// </summary>
+    internal static CommandOutcome<EnqueueTrialRequest> FreezeTrialLimitsForReuse(EnqueueTrialRequest request, string? parserPath)
+    {
+        var callerChose = request.Limits is not null;
+        var frozen = FreezeTrialLimits(request);
+        if (callerChose || !frozen.Succeeded || frozen.Value!.Limits is not { } limits) return frozen;
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        {
+            var policy = ReadTrialLimitPolicy(database, project, request.Scope);
+            var baseline = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
+            var adopted = policy is { TimeMode: not SelectionTimeLimitMode.Explicit } && baseline is not null
+                ? Assess.BeforeAssessmentReuse.AdoptEarlierSafetyNet(database, baseline.Token, limits, parserPath) : limits;
+            return CommandOutcome<EnqueueTrialRequest>.Success(frozen.Value! with { Limits = adopted });
+        });
     }
 
     internal static CommandOutcome<EnqueueTrialRequest> FreezeTrialProposal(EnqueueTrialRequest request)

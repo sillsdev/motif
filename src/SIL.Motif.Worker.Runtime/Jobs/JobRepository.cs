@@ -186,6 +186,28 @@ public sealed class JobRepository
         return reader.Read() ? Read(reader) : null;
     }
 
+    /// <summary>
+    /// Adds the phases that ran after a Trial committed to its committed result, without changing its status,
+    /// version or time. A Trial that is not Completed, or that changed since it was read, is left as it is.
+    /// </summary>
+    /// <returns>Whether the phases were recorded.</returns>
+    internal bool AppendCompletedTrialPhases(string jobId, string phasesJson)
+    {
+        var current = Get(jobId);
+        if (current is not { Kind: TrialJobHandler.TrialKind, Status: JobStatus.Completed, ResultJson: { } result }) return false;
+        var node = System.Text.Json.Nodes.JsonNode.Parse(result) as System.Text.Json.Nodes.JsonObject;
+        if (node is null) return false;
+        node["phases"] = System.Text.Json.Nodes.JsonNode.Parse(phasesJson);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Jobs SET ResultJson = $result WHERE JobId = $id AND Version = $version AND Status = $status;";
+        command.Parameters.AddWithValue("$result", node.ToJsonString());
+        command.Parameters.AddWithValue("$id", jobId);
+        command.Parameters.AddWithValue("$version", current.Version);
+        command.Parameters.AddWithValue("$status", JobStatusJson.ToWire(JobStatus.Completed));
+        return command.ExecuteNonQuery() == 1;
+    }
+
     public IReadOnlyList<JobRecord> ListAttempts(string lineageId)
     {
         if (string.IsNullOrWhiteSpace(lineageId)) throw new ArgumentException("A lineage id is required.", nameof(lineageId));

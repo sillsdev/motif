@@ -287,7 +287,7 @@ public static class AssessCommand
                 AssessmentStage.SelectingWords, 0, null, "Composing the Selection..."));
             SelectionComposition composition;
             // One copy of the Baseline serves both the Selection and the naming, and is released when the run ends.
-            using var baselineReader = BaselineReadCache.Open(baseline.FwDataPath);
+            using var baselineReader = BaselineReadScope.Open(baseline.FwDataPath);
             {
                 var cache = baselineReader.Cache;
                 var composed = SelectionComposer.Compose(
@@ -398,7 +398,7 @@ public static class AssessCommand
                         BatchInvocationEvidence.ReadVerifiedWords(invocation) is { } batchWords)
                         onDispatched(batchWords, invocation.ExecutableBytesSha256);
                     return CommandOutcome<AssessCommandResponse>.Success(new AssessCommandResponse(
-                        baseline, composition.Projection, [reused], string.Empty));
+                        baseline, composition.Projection, [reused], string.Empty) { ReusedEvidence = true });
                 }
                 var timeLimit = limits.PerWordLimit;
                 var latestWordProgress = new TrialWordProgress(0, parsedWords.Count, null);

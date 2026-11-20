@@ -359,6 +359,7 @@ public static class Trials
             ReadingIdentity = readingIdentity,
             GrammarCheckWarning = completion?.GrammarCheckWarning,
             DroppedGrammar = completion?.DroppedGrammar,
+            Phases = completion?.Phases,
             DroppedGrammarNotChecked = completed && completion?.DroppedGrammar is not { Checked: true },
         };
     }
@@ -413,7 +414,8 @@ public static class Trials
         [property: JsonPropertyName("allWords")] bool AllWords,
         [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning = null,
         [property: JsonPropertyName("droppedGrammar")] DroppedGrammar? DroppedGrammar = null,
-        [property: JsonPropertyName("reviewAfter")] IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null);
+        [property: JsonPropertyName("reviewAfter")] IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null,
+        [property: JsonPropertyName("phases")] IReadOnlyList<TrialPhase>? Phases = null);
 
     private sealed record IdentifiedTrial(JobRecord Job, CanonicalId ProposalId);
 

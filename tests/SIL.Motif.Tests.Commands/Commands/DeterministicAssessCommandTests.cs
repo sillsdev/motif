@@ -96,6 +96,48 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void TheBeforeReuseKeyCoversWordsLimitsAndParser()
+    {
+        using var seeded = NewSeededScratch();
+        var parser = FakeParser.Copy(Path.Combine(_managedRootsParent, "key-parser"));
+        FakeParser.BehaveBesideExecutable(parser, new { words = new[] { new { word = "balay", outcome = "complete" }, new { word = "ba", outcome = "complete" } } });
+        var root = NewManagedRoot();
+        var limits = new TrialLimits(TimeSpan.FromSeconds(1), ParserWorkLimit.Default);
+        var request = new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["balay"], false, null));
+        string ParseId(AssessRequest asked, string path, TrialLimits asking) => Assert.IsType<AssessCommandResponse>(
+            AssessCommand.AssessWithLimits(asked, root, path, null, CancellationToken.None, asking, reuseBefore: true).Value)
+            .AssessmentIds.Where(id => OpenRepository(seeded.FwDataPath).Get(id).Kind == AssessmentKind.ParseTime.ToStoredKind()).Single();
+
+        var first = ParseId(request, parser, limits);
+        Assert.Equal(first, ParseId(request, parser, limits));
+        var otherWords = new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["balay", "ba"], false, null));
+        Assert.NotEqual(first, ParseId(otherWords, parser, limits));
+        Assert.NotEqual(first, ParseId(request, parser, limits with { PerWordLimit = TimeSpan.FromSeconds(2) }));
+        Assert.NotEqual(first, ParseId(request, parser, limits with { PerWordParserWorkLimit = ParserWorkLimit.Unbounded }));
+        var other = FakeParser.Copy(Path.Combine(_managedRootsParent, "key-parser-other"));
+        FakeParser.BehaveBesideExecutable(other, new { words = new[] { new { word = "balay", outcome = "complete" } } });
+        File.AppendAllText(other, " ");
+        Assert.NotEqual(first, ParseId(request, other, limits));
+    }
+
+    [Fact]
+    public void AReuseKeepsTheEarlierSafetyNetSoARepeatTrialFindsIt()
+    {
+        using var seeded = NewSeededScratch();
+        var parser = FakeParser.Copy(Path.Combine(_managedRootsParent, "net-parser"));
+        FakeParser.BehaveBesideExecutable(parser, new { words = new[] { new { word = "balay", outcome = "complete" } } });
+        var request = new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["balay"], false, null));
+        var root = NewManagedRoot();
+        var measured = new TrialLimits(TimeSpan.FromSeconds(7), ParserWorkLimit.Default);
+        Assert.True(AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, measured, reuseBefore: true).Succeeded);
+
+        var adopted = SIL.Motif.Commands.JobCommands.FreezeTrialLimitsForReuse(
+            new SIL.Motif.Commands.Requests.EnqueueTrialRequest(seeded.FwDataPath, "1.0", "x") { Limits = null }, parser);
+        Assert.True(adopted.Succeeded, adopted.Refusal?.Message);
+        Assert.Equal(TimeSpan.FromSeconds(7), adopted.Value!.Limits?.PerWordLimit);
+    }
+
+    [Fact]
     public void BeforeWithoutCorrectnessReusesVerifiedEvidence()
     {
         using var seeded = NewSeededScratch();

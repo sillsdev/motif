@@ -49,7 +49,7 @@ internal static class ReviewTrialCapture
                     return CommandOutcome<EnqueueTrialRequest>.Success(request);
                 if (evidence.Baseline is null || evidence.ProjectSummary is null)
                     throw new InvalidOperationException("A published Baseline is required to capture review inputs.");
-                using var reader = BaselineReadCache.Open(evidence.Baseline.FwDataPath);
+                using var reader = BaselineReadScope.Open(evidence.Baseline.FwDataPath);
                 var cache = reader.Cache;
                 var identities = ReviewWordIdentityProjection.Read(cache);
                 var approved = ReviewExpectationProjection.ReadApproved(cache).Values.SelectMany(value => value).ToArray();

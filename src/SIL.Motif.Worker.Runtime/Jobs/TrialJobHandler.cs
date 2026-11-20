@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -84,6 +85,10 @@ public sealed record TrialJobInput(
     /// <summary>The frozen revision of the measured Proposal or Draft, for durable export.</summary>
     [JsonPropertyName("exportRevision"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ExportRevision { get; init; }
+
+    /// <summary>The phases the CLI timed before it queued this Trial, for the receipt.</summary>
+    [JsonPropertyName("cliPhases"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TrialPhase>? CliPhases { get; init; }
 
     /// <summary>The exact input references for Baseline batches whose dispatch was observed.</summary>
     [JsonPropertyName("reviewBeforeDispatches"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -329,6 +334,10 @@ internal sealed class TrialJobHandler
         ArgumentNullException.ThrowIfNull(claim);
         if (claim.Job.Status != JobStatus.Running)
             throw new InvalidOperationException("A Trial must already be claimed by a runner.");
+        var phases = new TrialPhaseLog();
+        phases.AddRange(TrialJobInput.Parse(claim.Job.InputJson).CliPhases);
+        phases.Add(TrialPhaseNames.QueueWait, (DateTimeOffset.UtcNow - DateTimeOffset.Parse(claim.Job.CreatedUtc,
+            System.Globalization.CultureInfo.InvariantCulture)).TotalSeconds);
         using var parseLease = SIL.Motif.Host.Store.ProjectParseLease.TryAcquire(claim.Database);
         if (parseLease is null)
             return new JobOutcome(JobStatus.Failed, JobFailureCategory.Unknown,
@@ -395,6 +404,7 @@ internal sealed class TrialJobHandler
                 var records = (input.BaselineAssessmentIds ?? []).Select(id => _assessments.Get(id)).ToArray();
                 export.Before(null, records.SelectMany(item => item.Words ?? []), records.Select(item => item.Invocation));
             }
+            phases.Add(TrialPhaseNames.ScratchPrepare, candidate.PrepareSeconds);
             export?.BindCandidate(candidate.GrammarPath);
             review?.BindCandidate(candidate.GrammarPath);
             review?.SetGdrSync(candidate.GdrSync);
@@ -429,6 +439,9 @@ internal sealed class TrialJobHandler
         }
 
         progress.Total = candidate.Partitions.Sum(partition => partition.Scope.WordForms.Count);
+        var committed = false;
+        long cleanupStarted = 0;
+        var cleanupExcluded = 0.0;
         try
         {
             string? grammarCheckWarning = null;
@@ -442,6 +455,16 @@ internal sealed class TrialJobHandler
                 var snapshotPath = Path.Combine(scratchRoot, "grammar-snapshot.json");
                 GrammarCheckResponse? pairedBaseline = null;
                 async Task<GrammarCheckResponse?> Check(string path, string name, Action<bool>? wait, CancellationToken token)
+                {
+                    var checkStarted = Stopwatch.GetTimestamp();
+                    try { return await CheckTimed(path, name, wait, token).ConfigureAwait(false); }
+                    finally
+                    {
+                        phases.Add(path == baseline.FwDataPath ? TrialPhaseNames.GrammarHealthBaseline
+                            : TrialPhaseNames.GrammarHealthCandidate, TrialPhaseLog.Since(checkStarted));
+                    }
+                }
+                async Task<GrammarCheckResponse?> CheckTimed(string path, string name, Action<bool>? wait, CancellationToken token)
                 {
                     GrammarCheckResponse? response;
                     if (_grammarHealthWithSnapshot is null || path != candidate.GrammarPath || assessor is not PanGlossAssessor)
@@ -497,6 +520,8 @@ internal sealed class TrialJobHandler
                     }
                     if (assessor is PanGlossAssessor)
                         export?.PlanAfter(partition.WritingSystemId, partition.Scope.WordForms, partition.Scope.Casing);
+                    var produceStarted = Stopwatch.GetTimestamp();
+                    long? parserStarted = null;
                     var produced = assessor is PanGlossAssessor panGloss
                         ? await panGloss.ProduceAsync(partition.Scope, candidate.ExportedDirectory, WordProgress,
                             batchWait.Observe, cancellationToken, importedSnapshot, rows =>
@@ -505,10 +530,20 @@ internal sealed class TrialJobHandler
                                 var partial = rows.Select(TrialExportCapture.PartialWord).ToArray();
                                 export.After(partition.WritingSystemId, partial, []);
                                 review?.Add(partition.CaseKeys, partial);
-                            }, (forms, executable) => export?.AfterDispatched(partition.WritingSystemId, forms, executable))
+                            }, (forms, executable) =>
+                            {
+                                parserStarted ??= Stopwatch.GetTimestamp();
+                                export?.AfterDispatched(partition.WritingSystemId, forms, executable);
+                            })
                             .ConfigureAwait(false)
                         : await assessor.ProduceAsync(partition.Scope, candidate.ExportedDirectory, WordProgress,
                             batchWait.Observe, cancellationToken).ConfigureAwait(false);
+                    var produceEnded = Stopwatch.GetTimestamp();
+                    // Staging the candidate runs before the parser starts, so the parser's own time is what follows.
+                    phases.Add(TrialPhaseNames.Export, parserStarted is { } started
+                        ? Stopwatch.GetElapsedTime(produceStarted, started).TotalSeconds : 0);
+                    phases.Add(TrialPhaseNames.ParseAfter, Stopwatch.GetElapsedTime(parserStarted ?? produceStarted, produceEnded).TotalSeconds);
+                    var reportStarted = Stopwatch.GetTimestamp();
                     artifactLeases.AddRange(produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>()
                         .Where(lease => !artifactLeases.Contains(lease)));
                     var measured = PrepareAll(produced, proposal, candidate.DryRun, partition.Selection, partition.Scope,
@@ -521,8 +556,10 @@ internal sealed class TrialJobHandler
                         review?.Add(partition.CaseKeys, measuredWords);
                     }
                     completedEarlier += partition.Scope.ParsedWords.Count;
+                    phases.Add(TrialPhaseNames.Report, TrialPhaseLog.Since(reportStarted));
                 }
                 cancellationToken.ThrowIfCancellationRequested();
+                var finishStarted = Stopwatch.GetTimestamp();
                 PublishEvidence();
                 var records = new List<NewAssessmentRecord>();
                 var reviewAfter = new List<ReviewAfterPartition>();
@@ -548,10 +585,12 @@ internal sealed class TrialJobHandler
                         part.Select(record => record.AssessmentId).ToArray()));
                 }
                 var assessmentIds = records.Select(record => record.AssessmentId).ToArray();
+                phases.Add(TrialPhaseNames.Report, TrialPhaseLog.Since(finishStarted));
                 var completionJson = JsonSerializer.Serialize(
                     new TrialCompletion(baseline.Token, assessmentIds, input.AllWords, grammarCheckWarning,
                         droppedGrammar, reviewArtifact is null ? null : reviewAfter,
-                        reviewArtifact is null ? null : PanGlossInterfaceVersions.StatsCounterSemanticsVersion),
+                        reviewArtifact is null ? null : PanGlossInterfaceVersions.StatsCounterSemanticsVersion)
+                        { Phases = phases.Snapshot() },
                     MotifJson.CreateOptions());
                 try
                 {
@@ -575,6 +614,8 @@ internal sealed class TrialJobHandler
                 }
 
                 published = true;
+                committed = true;
+                cleanupStarted = Stopwatch.GetTimestamp();
                 foreach (var lease in artifactLeases)
                 {
                     try { lease.Retain(); }
@@ -596,8 +637,10 @@ internal sealed class TrialJobHandler
                     catch (Exception exception) { ReportTrialMaintenanceFailure(claim.JobId, "sweep source copies", exception); }
                 }
                 // Advisory follow-on work: whatever it does, the committed Trial stays as it is.
+                var afterCommitStarted = Stopwatch.GetTimestamp();
                 try { AfterCommit?.Invoke(claim, baseline.Token); }
                 catch (Exception exception) { ReportTrialMaintenanceFailure(claim.JobId, "queue Parsimony", exception); }
+                cleanupExcluded = TrialPhaseLog.Since(afterCommitStarted);
                 return null;
             }
             finally
@@ -644,6 +687,20 @@ internal sealed class TrialJobHandler
                     ReportTrialMaintenanceFailure(claim.JobId, "prune Trial copies", exception);
                 }
             }
+            if (committed)
+            {
+                // The result is already committed, so the cleanup that followed it is added to the committed phases.
+                phases.Add(TrialPhaseNames.Cleanup, TrialPhaseLog.Since(cleanupStarted) - cleanupExcluded);
+                try
+                {
+                    new JobRepository(claim.Database).AppendCompletedTrialPhases(claim.JobId,
+                        JsonSerializer.Serialize(phases.Snapshot(), MotifJson.CreateOptions()));
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    ReportTrialMaintenanceFailure(claim.JobId, "record Trial cleanup time", exception);
+                }
+            }
         }
     }
 
@@ -653,7 +710,7 @@ internal sealed class TrialJobHandler
 
     private sealed record CandidateRun(DryRunModel DryRun, AssessmentScope.Words Scope, Selection Selection,
         string ExportedDirectory, string GrammarPath, IReadOnlyDictionary<string, string> ProjectStandings,
-        IReadOnlyList<CandidatePartition> Partitions, GdrCheckResponse? GdrSync = null);
+        IReadOnlyList<CandidatePartition> Partitions, GdrCheckResponse? GdrSync = null, double PrepareSeconds = 0);
 
     private async Task<CandidateRun> RunCandidateAsync(ClaimedJob claim, ProjectLane lane,
         Contract.Model.Proposal proposal, IReadOnlyList<FrozenProposalRevision> frozenPrerequisites,
@@ -665,6 +722,7 @@ internal sealed class TrialJobHandler
         await lane.EnqueueAsync(ProjectWorkItem.CandidateExport(async (_, laneToken) =>
         {
             claim.Transition(JobStatus.Running);
+            var prepareStarted = Stopwatch.GetTimestamp();
             var (appliedProposalIds, scratch) = await _openScratch(baselineFwDataPath, scratchRoot, laneToken)
                 .ConfigureAwait(false);
             try
@@ -705,6 +763,7 @@ internal sealed class TrialJobHandler
                     exportedDirectory, Path.GetFullPath(cache?.ProjectId.Path
                         ?? throw new InvalidOperationException("A Trial requires a scratch project for grammar health.")),
                     projectStandings, partitions, GdrSyncAdvisory(claim.JobId, () => GdrSyncCheck(claim.Database, cache)));
+                candidate = candidate with { PrepareSeconds = TrialPhaseLog.Since(prepareStarted) };
             }
             finally
             {
@@ -871,5 +930,9 @@ internal sealed class TrialJobHandler
         [property: JsonPropertyName("reviewAfter"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null,
         [property: JsonPropertyName("reviewCounterSemantics"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        int? ReviewCounterSemantics = null);
+        int? ReviewCounterSemantics = null)
+    {
+        [JsonPropertyName("phases"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public IReadOnlyList<TrialPhase>? Phases { get; init; }
+    }
 }

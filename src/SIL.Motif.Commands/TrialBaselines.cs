@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Store;
@@ -72,7 +73,7 @@ public static class TrialBaselines
     public static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
         string managedRoot, string? parserPath, CancellationToken cancellationToken,
         Action<string>? onBaselineUnavailable = null) =>
-        WithAdmission(request, (admission, busy) =>
+        WithAdmission(request = request.WithPrequeueClock(), (admission, busy) =>
         {
             var resolved = JobCommands.ResolveTrialWords(request);
             if (!resolved.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(resolved.Refusal!);
@@ -142,9 +143,11 @@ public static class TrialBaselines
         var resolved = JobCommands.ResolveTrialWords(request);
         if (!resolved.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(resolved.Refusal!);
         var words = resolved.Value;
-        var frozen = JobCommands.FreezeTrialLimits(request);
+        var frozen = JobCommands.FreezeTrialLimitsForReuse(request, expectedParserPath);
         if (!frozen.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(frozen.Refusal!);
         request = frozen.Value!;
+        // The Baseline is copied and loaded once for the review capture and every Baseline measurement that follows.
+        using var sharedBaselineRead = BaselineReadScope.Begin();
         var captured = ReviewTrialCapture.Capture(request, words, expectedParserPath);
         if (!captured.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(captured.Refusal!);
         request = captured.Value!;
@@ -156,8 +159,12 @@ public static class TrialBaselines
         var baselines = new List<ReviewBaselinePartition>();
         var partialRows = new List<TrialReviewObservation>();
         var dispatched = new List<TrialBeforeDispatch>();
+        var beforeStarted = 0L;
+        var beforeSeconds = 0.0;
+        var allReused = true;
         foreach (var partition in partitions)
         {
+            beforeStarted = System.Diagnostics.Stopwatch.GetTimestamp();
             CommandOutcome<AssessCommandResponse> before;
             try { before = assess(partition.Words, request.Limits, partition.WritingSystemId, rows =>
             {
@@ -203,11 +210,15 @@ public static class TrialBaselines
                 onBaselineUnavailable(before.Refusal!.Message);
                 return JobCommands.EnqueueTrialAdmitted(RetainBefore(before.Refusal.Code), expectedParserPath, admission);
             }
+            beforeSeconds += System.Diagnostics.Stopwatch.GetElapsedTime(beforeStarted).TotalSeconds;
+            allReused &= before.Value!.ReusedEvidence;
             assessmentIds.AddRange(before.Value!.AssessmentIds);
             baselines.Add(new(partition.WritingSystemId, partition.CaseKeys, before.Value.AssessmentIds));
         }
         return JobCommands.EnqueueTrialAdmitted(request with
         {
+            BeforeParsePhase = new TrialPhase(TrialPhaseNames.ParseBefore, Math.Round(beforeSeconds, 3))
+                { Note = allReused ? TrialPhaseNames.Reused : null },
             Words = request.ReviewSnapshot is null ? request.Words : words,
             BaselineAssessmentIds = assessmentIds,
             ReviewBaselines = request.ReviewSnapshot is null ? null : baselines,
