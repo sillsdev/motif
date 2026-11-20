@@ -230,7 +230,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
 
     public string ApplyDisplayReason => ShowsReadiness &&
         (!TriedChecked || ShowsDifferenceAdvice || ShowsDryRunAdvice || IsDryRunActive)
-        ? string.Empty : ApplyBlockReason;
+        ? MotifAppStrings.ProposalApplyFinishSteps : ApplyBlockReason;
 
     partial void OnCardChanged(ProposalCardViewModel? value)
     {

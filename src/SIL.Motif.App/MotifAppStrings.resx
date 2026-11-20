@@ -7419,6 +7419,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalComparisonLimit" xml:space="preserve"><value>Two Proposals are already checked. Uncheck one first.</value></data>
   <data name="MotifApp.ProposalApplyConfirm" xml:space="preserve"><value>Apply This Proposal to FieldWorks?</value></data>
   <data name="MotifApp.ProposalApplyDeferredNotice" xml:space="preserve"><value>This Proposal is Deferred.</value></data>
+  <data name="MotifApp.ProposalApplyFinishSteps" xml:space="preserve"><value>Finish the steps above, then apply.</value></data>
   <data name="MotifApp.ProposalApplyPrepare" xml:space="preserve"><value>Apply…</value></data>
   <data name="MotifApp.ProposalRefreshEvidence" xml:space="preserve"><value>Refresh Evidence</value></data>
   <data name="MotifApp.ProposalCheckForComparison" xml:space="preserve"><value>Compare {0}</value></data>

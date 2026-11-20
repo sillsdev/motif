@@ -8,7 +8,7 @@
              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalApply}">
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
     <views:CopyableTextBlock Text="{Binding ApplyDisplayReason}" IsVisible="{Binding !!ApplyDisplayReason}" TextWrapping="Wrap" />
-    <views:CopyableTextBlock x:Name="ApplyLossNotice" Text="{Binding ApplyLossNotice}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock x:Name="ApplyLossNotice" Text="{Binding ApplyLossNotice}" IsVisible="{Binding !!ApplyLossNotice}" TextWrapping="Wrap" />
     <StackPanel IsVisible="{Binding IsPending}" Spacing="{DynamicResource Intent.Space.Related}">
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ReviewApplyMeasuring}"
                                IsVisible="{Binding PendingMeasurement.IsMeasuring}" TextWrapping="Wrap" />

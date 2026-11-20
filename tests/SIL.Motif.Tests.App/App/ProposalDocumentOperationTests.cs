@@ -114,4 +114,32 @@ public sealed class ProposalDocumentOperationTests
         Assert.Equal("CEB approved words · " + 1718.ToString("N0", System.Globalization.CultureInfo.CurrentCulture) +
             " words · 18 changed approval", ProposalDocumentViewModel.DifferenceDetail(summary));
     }
+
+    [Fact]
+    public async Task AnUntriedProposalSaysWhyApplyIsGreyInsteadOfLeavingAGap()
+    {
+        var op = new ProposalOperationView("op/one", LexicalSenseOperationKinds.SetGloss, "sense/one", null,
+            [], """{"ws":"en","text":"sales (demo)"}""");
+        var detail = new ProposalDetailProjection("one", "proposed", "Change the gloss", null, "intent/one", [op]);
+        var fake = new FakeCommandClient
+        {
+            ShowProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(detail)),
+        };
+        var context = WorkspaceContextTests.NewContext(fake);
+        await context.OpenProjectAsync("project.fwdata");
+        var documents = new OpenProposalDocuments(context);
+        try
+        {
+            var document = documents.Open("one");
+            await document.RefreshAsync();
+
+            Assert.False(document.TriedChecked);
+            Assert.Equal("Finish the steps above, then apply.", document.ApplyDisplayReason);
+        }
+        finally
+        {
+            await documents.StopAsync();
+            await context.StopProjectWorkAsync();
+        }
+    }
 }
