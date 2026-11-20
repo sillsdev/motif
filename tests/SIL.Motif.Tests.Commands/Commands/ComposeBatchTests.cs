@@ -515,6 +515,24 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void ARulePlacedAfterALabelAnEarlierIntentInTheBatchCreatesPassesPreflightAndApplies()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        var phoneme = StartDraft(path, "anchored");
+        var before = ReadDraft(path, "anchored").Operations.Count;
+
+        var batch = ProposalCommands.ComposeBatch(new(path, Version, "anchored", Raw(
+            RuleEntry(phoneme, "first", "\"as\": \"firstrule\""),
+            RuleEntry(phoneme, "second", null, "{\"after\": \"@firstrule\"}"))));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        Assert.True(ReadDraft(path, "anchored").Operations.Count > before);
+        Assert.Equal(ReadDraft(path, "anchored").Operations.Count, batch.Value!.OperationCount);
+    }
+
+    [Fact]
     public void ABatchReportsEveryStaticProblemAtOnce()
     {
         using var cache = pristine.NewScratch();

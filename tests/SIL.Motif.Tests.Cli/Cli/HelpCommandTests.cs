@@ -27,6 +27,31 @@ public sealed class HelpCommandTests
         Assert.Empty(failures);
     }
 
+    [Fact]
+    public void HelpResolvesEveryCatalogedMultiWordCommandToItsOwnPage()
+    {
+        var failures = CatalogedCommandNames().Where(IsPlainMultiWord)
+            .Where(code => !HelpOpensWith(code, []))
+            .ToArray();
+
+        Assert.Empty(failures);
+    }
+
+    [Fact]
+    public void ACommandFollowedByAnArgumentIsNotShadowedByAShorterCommand()
+    {
+        var names = CatalogedCommandNames();
+        var failures = names.Where(IsPlainMultiWord)
+            .Select(code => (Code: code, Shorter: code[..code.LastIndexOf(' ')]))
+            .Where(pair => names.Contains(pair.Shorter, StringComparer.Ordinal))
+            .Where(pair => !HelpOpensWith(pair.Code, []) || !HelpOpensWith(pair.Shorter, ["notaword"]))
+            .Select(pair => pair.Code)
+            .ToArray();
+
+        Assert.Empty(failures);
+        Assert.Contains(names, name => IsPlainMultiWord(name) && names.Contains(name[..name.LastIndexOf(' ')], StringComparer.Ordinal));
+    }
+
     [Theory]
     [InlineData("suffix")]
     [InlineData("prefix")]
@@ -469,6 +494,23 @@ public sealed class HelpCommandTests
             .ToDictionary(entry => entry.GetProperty("code").GetString()!, StringComparer.Ordinal);
         foreach (var name in new[] { "dry-run --wait", "parsimony --dry-run --wait" })
             Assert.Contains("--wait", commands[name].GetRawText(), StringComparison.Ordinal);
+    }
+
+    private static string[] CatalogedCommandNames() => HelpCatalog.Load().Entries
+        .Where(entry => entry.Kind == HelpEntryKind.Command)
+        .Select(entry => entry.Code)
+        .Concat(CommandCatalog.All.Select(command => command.Name))
+        .Distinct(StringComparer.Ordinal)
+        .ToArray();
+
+    private static bool IsPlainMultiWord(string code) =>
+        code.Contains(' ', StringComparison.Ordinal) && !code.Split(' ').Any(word => word.StartsWith('-'));
+
+    private static bool HelpOpensWith(string code, string[] trailing)
+    {
+        var result = Run(true, true, ["help", .. code.Split(' '), .. trailing]);
+        var title = HelpCatalog.Load().Find(HelpEntryKind.Command, code)?.Title ?? code;
+        return result.ExitCode == 0 && result.Output.Split('\n')[0].TrimEnd('\r') == title;
     }
 
     private static CliRun Run(params string[] arguments) => Run(false, arguments);

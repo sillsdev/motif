@@ -45,6 +45,7 @@ using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Parsimony;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Runtime.Review;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Scheduling;
 using SIL.Motif.Worker.Store;
@@ -1087,6 +1088,42 @@ public sealed class TrialJobHandlerTests : IDisposable
         var ledger = TrialReviewEvidence.ReadJob(_database, job.JobId)!;
         Assert.Empty(ledger.BeforeWarnings!);
         Assert.Single(ledger.AfterWarnings!);
+    }
+
+    [Fact]
+    public async Task AReusedBaselineCheckWithNoParserIdentityStillPairsTheWarningsAndPublishesIntegerCounts()
+    {
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "reused baseline check");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var inputs = new FrozenReviewInputs(ProjectWorkspaceKey.Compute(_project), proposalId.Value, "scope", "evidence", null, [], [],
+            [new ReviewPlannedCase("case", "word", UnanalysedWordform, null, null, [], [])]);
+        var reference = ReviewInputArtifacts.Store(_database, new(inputs, new Dictionary<string, byte[]>()) { Baseline = _token });
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform], reviewInputs: reference);
+        new TrialGrammarCheckRepository(_database).SaveBaselineCheck(_token, new GrammarCheckResponse([], true), "stored-identity");
+        var calls = 0;
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            grammarHealth: (_, _, _, _) =>
+            {
+                Interlocked.Increment(ref calls);
+                return Task.FromResult<GrammarCheckResponse?>(new GrammarCheckResponse(
+                    [new GrammarWarning(GrammarDiagnosticLevel.Warning, "label", [], [], "warning") { Code = "warning" }], true));
+            });
+
+        var finished = RunAndFinish(handler, job);
+
+        Assert.Equal(JobStatus.Completed, finished.Status);
+        Assert.Equal(1, calls);
+        Assert.Contains("\"name\":\"grammar-health-baseline\",\"seconds\":0,\"note\":\"reused\"", finished.ResultJson);
+        var ledger = TrialReviewEvidence.ReadJob(_database, job.JobId)!;
+        Assert.Empty(ledger.BeforeWarnings!);
+        Assert.Single(ledger.AfterWarnings!);
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(job.JobId));
+        var warnings = new ReviewReportRepository(_database).ReadManifest(id)!.Summary.Summary.Warnings;
+        Assert.Equal(1, warnings.NewCount);
+        Assert.Equal(0, warnings.ResolvedCount);
+        Assert.Null(warnings.Unavailable);
     }
 
     [Fact]

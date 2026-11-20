@@ -483,6 +483,69 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
         finally { Directory.Delete(root, recursive: true); }
     }
 
+    [Fact]
+    public async Task AWordsTrialCountsATextAttestedGainAsAttestedAndAnInventedOneAsGenerated()
+    {
+        const string invented = "motifinvented";
+        string path;
+        string attested;
+        using (var cache = pristine.NewScratch())
+        {
+            SeededProject.SeedText(cache, pristine.Seed);
+            attested = SeededProject.UnanalysedWordForm;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString(invented, cache.DefaultVernWs)));
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var root = Directory.CreateTempSubdirectory("motif-review-attested-").FullName;
+        try
+        {
+            var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+            Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+            var draft = SIL.Motif.Commands.ProposalCommands.New(new(path, "1.0", "capture-revision", null));
+            Assert.True(draft.Succeeded, draft.Refusal?.Message);
+            var project = new ProjectLocator(path, Path.GetFileNameWithoutExtension(path));
+            using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+                MotifSchema.CurrentSchema, new Version(1, 0));
+            AddWordChange(new ProposalRepository(database), "unrelated");
+            var request = new EnqueueTrialRequest(path, "1.0", draft.Value!.ProposalId, Words: [attested, invented]);
+            var frozen = SIL.Motif.Commands.JobCommands.FreezeTrialProposal(request);
+            Assert.True(frozen.Succeeded, frozen.Refusal?.Message);
+            var words = SIL.Motif.Commands.JobCommands.ResolveTrialWords(frozen.Value!);
+            Assert.True(words.Succeeded, words.Refusal?.Message);
+            var captured = ReviewTrialCapture.Capture(frozen.Value!, words.Value, null);
+            Assert.True(captured.Succeeded, captured.Refusal?.Message);
+            var reference = captured.Value!.ReviewInputs!;
+            var inputs = ReviewInputArtifacts.Read(database, reference).Inputs;
+            var attestedCase = Assert.Single(inputs.Cases, item => item.Word == attested);
+            var inventedCase = Assert.Single(inputs.Cases, item => item.Word == invented);
+            Assert.True(attestedCase.Attested);
+            Assert.False(inventedCase.Attested);
+
+            const string job = "job/attested-words";
+            new JobRepository(database).RecordInterrupted(job, inputs.ProjectKey, "trial",
+                JsonSerializer.Serialize(new TrialJobInput(JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(),
+                    proposalId = draft.Value.ProposalId, operations = Array.Empty<object>() }), null, ReviewInputs: reference), MotifJson.CreateOptions()),
+                "{}", "2026-01-01T00:00:00Z", JobStatus.Failed);
+            const string form = "11111111-1111-1111-1111-111111111111";
+            const string msa = "33333333-3333-3333-3333-333333333333";
+            TrialReviewObservation Observe(string key, string word, bool parses) => new(key, word, "complete",
+                new ParseWordEvidence("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false,
+                    parses ? [new ParseAnalysis([new ParseMorph(form, msa, null, null)])] : [], []));
+            TrialReviewEvidence.Save(database, new TrialReviewLedger(job, reference,
+                [Observe(attestedCase.CaseKey, attested, false), Observe(inventedCase.CaseKey, invented, false)],
+                [Observe(attestedCase.CaseKey, attested, true), Observe(inventedCase.CaseKey, invented, true)], []));
+
+            var id = await new TrialReviewPublisher(database).PublishAsync(new ReviewPublishRequest(job));
+            var gains = Assert.IsType<GainSummary>(new ReviewReportRepository(database).ReadManifest(id)!.Summary.Summary.Gains);
+            Assert.True(gains.AttestedGained >= 1);
+            Assert.True(gains.GeneratedGained >= 1);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     private static void AddWordChange(ProposalRepository repository, string word)
     {
         var id = SIL.Motif.Contract.Ids.CanonicalId.FromGuid(Guid.NewGuid()).Value;
