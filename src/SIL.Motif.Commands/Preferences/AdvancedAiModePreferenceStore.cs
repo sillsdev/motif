@@ -34,6 +34,8 @@ public sealed class FileAdvancedAiModePreferenceStore : IAdvancedAiModePreferenc
         "Then restart the Motif MCP server and reconnect the assistant so it reads the changed startup setting.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private const int ReplaceAttempts = 10;
+    private static readonly TimeSpan ReplaceRetryDelay = TimeSpan.FromMilliseconds(20);
     private readonly string _path;
 
     /// <summary>Creates a preference store for the supplied file path.</summary>
@@ -63,7 +65,9 @@ public sealed class FileAdvancedAiModePreferenceStore : IAdvancedAiModePreferenc
             try
             {
                 if (!File.Exists(_path)) return true;
-                using var document = JsonDocument.Parse(File.ReadAllText(_path));
+                using var stream = new FileStream(_path, FileMode.Open, FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete);
+                using var document = JsonDocument.Parse(stream);
                 return document.RootElement.ValueKind == JsonValueKind.Object &&
                     (!document.RootElement.TryGetProperty("advancedAiMode", out var value) ||
                      value.ValueKind == JsonValueKind.True);
@@ -90,11 +94,30 @@ public sealed class FileAdvancedAiModePreferenceStore : IAdvancedAiModePreferenc
                 JsonSerializer.Serialize(stream, new PreferenceDocument(enabled), JsonOptions);
                 stream.Flush(flushToDisk: true);
             }
-            File.Move(temporaryPath, _path, overwrite: true);
+            ReplaceWithRetry(temporaryPath);
         }
         finally
         {
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
+    }
+
+    // Retries briefly: a reader holding the file open can still block the replace on Windows.
+    private void ReplaceWithRetry(string temporaryPath)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                if (File.Exists(_path)) File.Replace(temporaryPath, _path, null);
+                else File.Move(temporaryPath, _path);
+                return;
+            }
+            catch (Exception exception) when (attempt < ReplaceAttempts &&
+                exception is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(ReplaceRetryDelay * attempt);
+            }
         }
     }
 
