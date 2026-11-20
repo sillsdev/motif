@@ -40,7 +40,7 @@ internal sealed record LedgerJoin(
 
 internal static class LedgerJoiner
 {
-    public static string Key(string word) => word.Normalize(NormalizationForm.FormD);
+    public static string Key(string word) => SIL.Motif.Contract.Dispositions.WordTypeKey.Of(word);
 
     public static LedgerJoin Join(LedgerFile ledger, LedgerSidecar sidecar, PinnedFrequencyList frequency,
         string? declaredFrequencySha256 = null)

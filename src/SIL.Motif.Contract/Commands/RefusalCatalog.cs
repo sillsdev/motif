@@ -702,6 +702,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.HypothesisNotFound, FailureReason.NotFound,
             Command("list hypotheses", Caller("project"))),
         Spec(RefusalCodes.HypothesisRule, FailureReason.Refused),
+        Spec(RefusalCodes.DispositionInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.DispositionContradiction, FailureReason.Refused),
         Spec(RefusalCodes.RequestNoRequest, FailureReason.Refused),
         Spec(RefusalCodes.RequestNotFound, FailureReason.NotFound,
             Command("list requests", Caller("project"))),

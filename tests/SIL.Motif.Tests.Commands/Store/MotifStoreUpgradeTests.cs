@@ -249,6 +249,40 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void UpgradeKeepsWordTypeDispositionsStandingAndEndedWithTheirProvenance()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+            Execute(old, """
+                INSERT INTO WordTypeDispositions (FormKey, Form, Category, Evidence, Intended, RecordedBy, RecordedUtc, EndedUtc, EndedKind, EndedBy, EndedNote)
+                    VALUES ('nairobi', 'Nairobi', 'name', 'a town', NULL, 'ana', '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z', 'replaced', 'ben', NULL),
+                           ('nairobi', 'Nairobi', 'loan', 'borrowed', NULL, 'ben', '2026-01-02T00:00:00Z', NULL, NULL, NULL, NULL),
+                           ('recieve', 'recieve', 'misspelling', 'typo', 'receive', 'ana', '2026-01-03T00:00:00Z', NULL, NULL, NULL, NULL);
+                """);
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Equal(3, report.Carried["WordTypeDispositions"]);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal("loan", Text(upgraded, "SELECT Category FROM WordTypeDispositions WHERE FormKey = 'nairobi' AND EndedUtc IS NULL;"));
+        Assert.Equal("replaced|ben", Text(upgraded, "SELECT EndedKind || '|' || EndedBy FROM WordTypeDispositions WHERE FormKey = 'nairobi' AND EndedUtc IS NOT NULL;"));
+        Assert.Equal("receive|ana", Text(upgraded, "SELECT Intended || '|' || RecordedBy FROM WordTypeDispositions WHERE FormKey = 'recieve';"));
+    }
+
+    [Fact]
+    public void UpgradeFromAStoreWithoutTheDispositionTableCreatesItEmpty()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source)) Execute(old, "DROP TABLE WordTypeDispositions;");
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Equal(0, report.Carried["WordTypeDispositions"]);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal(0, Count(upgraded, "WordTypeDispositions"));
+    }
+
+    [Fact]
     public void UpgradeCarriesProposalPicturesWithTheirBytes()
     {
         CreateCurrentSchemaAsOld();

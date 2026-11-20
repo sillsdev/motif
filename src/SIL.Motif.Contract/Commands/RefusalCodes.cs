@@ -277,6 +277,10 @@ public static class RefusalCodes
     public const string HypothesisInvalid = "hypothesis.invalid";
     public const string HypothesisNotFound = "hypothesis.not-found";
     public const string HypothesisRule = "hypothesis.rule";
+    /// <summary>A disposition request names no form, a malformed form, an unknown category, no evidence, or a wrong intended form.</summary>
+    public const string DispositionInvalid = "disposition.invalid";
+    /// <summary>A word type already stands with another disposition and the write did not ask to replace it.</summary>
+    public const string DispositionContradiction = "disposition.contradiction";
     public const string RequestNoRequest = "request.no-request";
     public const string RequestNotFound = "request.not-found";
     public const string RequestNotOpen = "request.not-open";
