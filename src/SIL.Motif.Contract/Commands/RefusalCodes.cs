@@ -649,6 +649,15 @@ public static class RefusalCodes
     /// <summary>The Draft is being tried; wait for the try to finish before discarding it.</summary>
     public const string DraftTrialRunning = "draft.trial-running";
 
+    /// <summary>A lexical-entry read named no entry or sense id.</summary>
+    public const string LexicalEntryNoId = "lexical-entry.no-id";
+    /// <summary>A lexical-entry read named an id that is not a portable id.</summary>
+    public const string LexicalEntryInvalidId = "lexical-entry.invalid-id";
+    /// <summary>A lexical-entry read named more ids than one call reads.</summary>
+    public const string LexicalEntryTooManyIds = "lexical-entry.too-many-ids";
+    /// <summary>The current Baseline file is missing, so lexical entries cannot be read.</summary>
+    public const string LexicalEntryBaselineUnavailable = "lexical-entry.baseline-unavailable";
+
     /// <summary>Reading grammar objects needs a Baseline and the project has none.</summary>
     public const string GrammarReadBaselineMissing = "grammar-read.baseline-missing";
     /// <summary>The current Baseline file is missing, so grammar objects cannot be read.</summary>

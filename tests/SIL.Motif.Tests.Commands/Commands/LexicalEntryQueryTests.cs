@@ -2,6 +2,7 @@ using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.LcmUtils;
@@ -92,13 +93,13 @@ public sealed class LexicalEntryQueryTests(PristineProjectFixture pristine) : ID
     public void ReadingWithoutABaselineOrWithBadIdsIsRefused()
     {
         Capture();
-        Assert.Equal("lexical-entry.invalid-id", LexicalEntryQuery.Query(new LexicalEntryRequest(_path, ["not an id"])).Refusal!.Code);
-        Assert.Equal("lexical-entry.no-id", LexicalEntryQuery.Query(new LexicalEntryRequest(_path, [])).Refusal!.Code);
+        Assert.Equal(RefusalCodes.LexicalEntryInvalidId, LexicalEntryQuery.Query(new LexicalEntryRequest(_path, ["not an id"])).Refusal!.Code);
+        Assert.Equal(RefusalCodes.LexicalEntryNoId, LexicalEntryQuery.Query(new LexicalEntryRequest(_path, [])).Refusal!.Code);
         var tooMany = Enumerable.Range(0, LexicalEntryQuery.MaxIds + 1).Select(_ => CanonicalId.Mint().Value).ToArray();
-        Assert.Equal("lexical-entry.too-many-ids", LexicalEntryQuery.Query(new LexicalEntryRequest(_path, tooMany)).Refusal!.Code);
+        Assert.Equal(RefusalCodes.LexicalEntryTooManyIds, LexicalEntryQuery.Query(new LexicalEntryRequest(_path, tooMany)).Refusal!.Code);
 
         using var scratch = pristine.NewScratch();
         var none = LexicalEntryQuery.Query(new LexicalEntryRequest(scratch.ProjectId.Path, [Id(pristine.Seed.FirstEntryId)]));
-        Assert.Equal("baseline.missing", none.Refusal!.Code);
+        Assert.Equal(RefusalCodes.BaselineMissing, none.Refusal!.Code);
     }
 }

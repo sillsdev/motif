@@ -24,30 +24,30 @@ public static class LexicalEntryQuery
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Ids is null || request.Ids.Count == 0)
-            return Refused("lexical-entry.no-id", FailureReason.InvalidArgument, "Name at least one entry or sense id.");
+            return Refused(RefusalCodes.LexicalEntryNoId, FailureReason.InvalidArgument, "Name at least one entry or sense id.");
         if (request.Ids.Count > MaxIds)
-            return Refused("lexical-entry.too-many-ids", FailureReason.InvalidArgument,
+            return Refused(RefusalCodes.LexicalEntryTooManyIds, FailureReason.InvalidArgument,
                 $"Read at most {MaxIds} ids at a time.");
         var parsed = new List<(string Id, CanonicalId Canonical)>();
         foreach (var raw in request.Ids)
         {
             var id = raw?.Trim() ?? "";
             if (!CanonicalId.TryParse(id, out var canonical))
-                return Refused("lexical-entry.invalid-id", FailureReason.InvalidArgument,
+                return Refused(RefusalCodes.LexicalEntryInvalidId, FailureReason.InvalidArgument,
                     $"'{id}' is not a portable id. Use an id from a Proposal change or from motif_lexicon.");
             parsed.Add((id, canonical));
         }
 
         return ProjectStoreCommand.ReadExisting(request.ProjectPath,
-            Refused("baseline.missing", FailureReason.NotFound, "Motif has no saved copy of this project to read yet."),
+            Refused(RefusalCodes.BaselineMissing, FailureReason.NotFound, "Motif has no saved copy of this project to read yet."),
             (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (baseline is null)
-                return Refused("baseline.missing", FailureReason.NotFound,
+                return Refused(RefusalCodes.BaselineMissing, FailureReason.NotFound,
                     "Motif has no saved copy of this project to read yet.");
             if (!File.Exists(baseline.FwDataPath))
-                return Refused("baseline.unavailable", FailureReason.StoreInconsistent,
+                return Refused(RefusalCodes.LexicalEntryBaselineUnavailable, FailureReason.StoreInconsistent,
                     "Motif's saved copy of this project is missing from disk.");
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
             var lookups = parsed.Select(item => Read(reader.Cache, item.Id, item.Canonical)).ToArray();
