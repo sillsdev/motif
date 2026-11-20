@@ -79,6 +79,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.ClearSourceCurrentAsync)] = "current set --clear",
             [nameof(ICommandClient.StageSourceAddAsync)] = "source add",
             [nameof(ICommandClient.StageSourceContextAsync)] = "source set-context",
+            [nameof(ICommandClient.StageRecordImportAsync)] = "import",
         };
 
     // A store-writing client method must map to a catalogued CLI verb.
