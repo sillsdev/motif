@@ -353,6 +353,11 @@ public static class HelpCommand
             foreach (var usage in UsageLines(entry.Code))
                 output.WriteLine(NormalizeUsage(usage));
         }
+        if (kind == HelpEntryKind.Command && entry.Code.StartsWith("compose-", StringComparison.Ordinal))
+        {
+            output.WriteLine("Intent schema: motif find-composer --goal \"<what you want to do>\" --detail detailed --json " +
+                "lists this command's closed intent shape; motif help " + entry.Code + " --full gives examples and field rules.");
+        }
         output.WriteLine("Online: " + entry.Url);
         var fullCode = kind == HelpEntryKind.Guide ? "guide:" + entry.Code : entry.Code;
         output.WriteLine("Expanded help: motif help " + fullCode + " --full");

@@ -552,6 +552,17 @@ public sealed class HelpCommandTests
         Assert.Empty(failures);
     }
 
+    [Fact]
+    public void ComposeHelpTellsWhereTheIntentSchemaAndTheCitationLimitAre()
+    {
+        var result = Run(true, true, "compose-author-lexical-entry", "--help");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("--intent", result.Output, StringComparison.Ordinal);
+        Assert.Contains("find-composer", result.Output, StringComparison.Ordinal);
+        Assert.Contains("--full", result.Output, StringComparison.Ordinal);
+    }
+
     private static string[] CatalogedCommandNames() => HelpCatalog.Load().Entries
         .Where(entry => entry.Kind == HelpEntryKind.Command)
         .Select(entry => entry.Code)
