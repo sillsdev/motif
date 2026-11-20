@@ -7427,7 +7427,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalEvidenceListedCount" xml:space="preserve"><value>Listed Words: {0}</value></data>
   <data name="MotifApp.ProposalEvidenceCompleteCount" xml:space="preserve"><value>Words in This Text: {0}</value></data>
   <data name="MotifApp.ProposalDraft" xml:space="preserve"><value>Draft</value></data>
-  <data name="MotifApp.ProposalReady" xml:space="preserve"><value>Ready</value></data>
+  <data name="MotifApp.ProposalWaiting" xml:space="preserve"><value>Waiting</value></data>
   <data name="MotifApp.ProposalDeferred" xml:space="preserve"><value>Deferred</value></data>
   <data name="MotifApp.ProposalDeclined" xml:space="preserve"><value>Declined</value></data>
   <data name="MotifApp.ProposalSuperseded" xml:space="preserve"><value>Superseded</value></data>

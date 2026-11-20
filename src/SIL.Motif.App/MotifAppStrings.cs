@@ -3937,7 +3937,7 @@ public static class MotifAppStrings
     public static string ProposalEvidenceListedCount => Text("MotifApp.ProposalEvidenceListedCount");
     public static string ProposalEvidenceCompleteCount => Text("MotifApp.ProposalEvidenceCompleteCount");
     public static string ProposalDraft => Text("MotifApp.ProposalDraft");
-    public static string ProposalReady => Text("MotifApp.ProposalReady");
+    public static string ProposalWaiting => Text("MotifApp.ProposalWaiting");
     public static string ProposalDeferred => Text("MotifApp.ProposalDeferred");
     public static string ProposalDeclined => Text("MotifApp.ProposalDeclined");
     public static string ProposalSuperseded => Text("MotifApp.ProposalSuperseded");

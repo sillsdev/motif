@@ -175,7 +175,7 @@ public sealed class ProposalsPageModelTests
         var untriedRow = page.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/untried");
         var pendingRow = page.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/pending");
 
-        Assert.Equal("Ready", triedRow.TableStatusText);
+        Assert.Equal("Waiting", triedRow.TableStatusText);
         Assert.Equal("10 → 9", triedRow.TableApprovedKeptText);
         Assert.Equal("10 of 12 → 9 of 12", triedRow.ApprovedKept!.Value);
         Assert.Equal("10", noAfterRow.TableApprovedKeptText);
@@ -451,7 +451,7 @@ public sealed class ProposalsPageModelTests
         var card = new ProposalCardViewModel(Card("p/ready", "Ready", ProposalGroup.WaitingForYou,
             standing: TrialStanding.Current));
 
-        Assert.Equal("Ready", card.TableStatusText);
+        Assert.Equal("Waiting", card.TableStatusText);
         Assert.False(card.TableStatusIsLook);
         Assert.Equal("This Proposal is ready for review.", card.DetailsStatusSentence);
     }
@@ -720,7 +720,7 @@ public sealed class ProposalsPageModelTests
     }
 
     [Theory]
-    [InlineData("proposed", false, "Ready")]
+    [InlineData("proposed", false, "Waiting")]
     [InlineData("proposed", true, "Draft")]
     [InlineData("deferred", false, "Deferred")]
     [InlineData("applied", false, "Applied")]

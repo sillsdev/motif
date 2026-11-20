@@ -79,7 +79,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         Detail is not { } detail ? Card?.StatusWord ?? string.Empty :
         detail.DraftName is not null && !IsDecided(detail.Status) ? MotifAppStrings.ProposalDraft : detail.Status switch
         {
-            "proposed" => MotifAppStrings.ProposalReady,
+            "proposed" => MotifAppStrings.ProposalWaiting,
             "deferred" => MotifAppStrings.ProposalDeferred,
             "applied" => MotifAppStrings.ProposalApplied,
             "rejected" => MotifAppStrings.ProposalDeclined,

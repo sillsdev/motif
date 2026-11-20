@@ -1,6 +1,6 @@
 # Review a Proposal
 
-Select a Proposal in **Proposals**. Read its Rationale and supported effects above **Comments**. You can keep several documents open, including Drafts and Ready Proposals, without sharing their edits or Trial results.
+Select a Proposal in **Proposals**. Read its Rationale and supported effects above **Comments**. You can keep several documents open, including Drafts and Waiting Proposals, without sharing their edits or Trial results.
 
 The evidence names its Text and any limits. **Will Fill In** requires complete searches on both sides. **Will Change** requires an actual reading or spelling acceptance change. The window does not infer approved places lost from a regression count. Missing detail is unavailable, and incomplete listings do not establish a total of zero.
 

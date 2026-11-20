@@ -15,7 +15,7 @@ public sealed partial class ProposalDocumentViewModel
     public bool HasStatusSentence => _statusSentence.Length > 0;
     public bool ShowsReadySentence => _statusSentence == MotifAppStrings.ProposalStatusReady;
     public bool ShowsTrialStatusSentence => HasStatusSentence && !ShowsReadySentence;
-    public bool ShowsLifecycleStatus => StatusText.Length > 0 && StatusText != MotifAppStrings.ProposalReady;
+    public bool ShowsLifecycleStatus => StatusText.Length > 0 && StatusText != MotifAppStrings.ProposalWaiting;
     public string? StatusActionText => _statusActionText;
     public ICommand? StatusActionCommand => _statusActionCommand;
     public bool HasStatusAction => _statusActionText is not null && _statusActionCommand is not null;
