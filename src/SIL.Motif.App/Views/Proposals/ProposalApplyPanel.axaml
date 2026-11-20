@@ -21,7 +21,7 @@
             IsVisible="{Binding OffersRemoveNonFitting}" HorizontalAlignment="Left" />
     <Button AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalPrepareApply}"
             Content="{x:Static app:MotifAppStrings.ProposalApplyPrepare}" Command="{Binding PrepareApplyCommand}"
-            IsVisible="{Binding CanAddComment}" HorizontalAlignment="Left" />
+            IsVisible="{Binding ShowsPrepareApply}" HorizontalAlignment="Left" />
     <StackPanel IsVisible="{Binding IsConfirmingApply}" Spacing="{DynamicResource Intent.Space.Related}">
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalApplyConfirm}" TextWrapping="Wrap" />
       <views:CopyableTextBlock x:Name="ApplyBackupNotice" Text="{x:Static app:MotifAppStrings.ApplyBackupNotice}" TextWrapping="Wrap" />

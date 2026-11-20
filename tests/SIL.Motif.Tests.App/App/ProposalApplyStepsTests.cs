@@ -54,6 +54,34 @@ public sealed class ProposalApplyStepsTests
         new AppliedLogEntrySummary("published/one", "now", "Person", "intent/one"));
 
     [Fact]
+    public async Task TheApplyButtonStepsAsideWhileItsConfirmationIsOpenSoOnlyOneApplyShows()
+    {
+        await using var opened = await OpenMeasuredPendingAsync();
+        Assert.True(opened.Document.ShowsPrepareApply);
+
+        await opened.Document.PrepareApplyCommand.ExecuteAsync(null);
+
+        Assert.True(opened.Document.IsConfirmingApply);
+        Assert.False(opened.Document.ShowsPrepareApply);
+        opened.Document.CancelApplyCommand.Execute(null);
+        Assert.True(opened.Document.ShowsPrepareApply);
+    }
+
+    [Fact]
+    [Fact]
+    public async Task ApplyReappearsWhenEvidenceChangesUnderAnOpenConfirmation()
+    {
+        await using var opened = await OpenMeasuredPendingAsync();
+        await opened.Document.PrepareApplyCommand.ExecuteAsync(null);
+        Assert.False(opened.Document.ShowsPrepareApply);
+
+        opened.Document.InvalidateEvidence();
+
+        Assert.False(opened.Document.IsConfirmingApply);
+        Assert.True(opened.Document.ShowsPrepareApply);
+    }
+
+    [Fact]
     public async Task CancellingThePreparedApplyClosesTheQuestionAndWritesNothing()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -216,6 +244,8 @@ public sealed class ProposalApplyStepsTests
         Assert.False(opened.Document.HasReceipt);
         Assert.Equal("apply.refused", opened.Document.ApplyRefusal?.Code);
         Assert.Equal(0, opened.Refreshes);
+        Assert.False(opened.Document.IsConfirmingApply);
+        Assert.True(opened.Document.ShowsPrepareApply);
     }
 
     [Fact]

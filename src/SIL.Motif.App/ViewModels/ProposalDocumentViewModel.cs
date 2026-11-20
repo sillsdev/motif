@@ -119,7 +119,9 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     [ObservableProperty] private string _reviewProgress = string.Empty;
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private bool _isOutdated;
-    [ObservableProperty] private bool _isConfirmingApply;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsPrepareApply))]
+    private bool _isConfirmingApply;
     private object? _diagnosticsContent;
     public object? DiagnosticsContent
     {
@@ -148,6 +150,9 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     public RationaleEditorModel? UnsavedEditor =>
         RationaleEditor is { HasUnsavedChanges: true } rationale ? rationale :
         Comments.FirstOrDefault(editor => editor.HasUnsavedChanges);
+    /// <summary>Whether Apply… shows: not while its confirmation is open, so one Apply is on screen.</summary>
+    public bool ShowsPrepareApply => CanAddComment && !IsConfirmingApply;
+
     public bool CanPrepareApply => CanAddComment && !IsDryRunActive && !IsCheckingChanges &&
         !_context.ProposalApply.IsApplying && PrepareBlockReason is null;
     /// <summary>Whether Check These Changes is running, from its first step to its closing read.</summary>
@@ -228,6 +233,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(IsPending));
         OnPropertyChanged(nameof(CanAddComment));
+        OnPropertyChanged(nameof(ShowsPrepareApply));
         AddCommentCommand.NotifyCanExecuteChanged();
         FreezeEditorsIfClosed();
         RaiseApply();
@@ -238,6 +244,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(CanAddComment));
+        OnPropertyChanged(nameof(ShowsPrepareApply));
         AddCommentCommand.NotifyCanExecuteChanged();
         RaiseApply();
     }
