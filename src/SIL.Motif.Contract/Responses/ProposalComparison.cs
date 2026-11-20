@@ -1,11 +1,16 @@
+using System.Buffers;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>
-/// The bounded summary of a side-by-side comparison of Proposals. Every number is measured from the retained Trial
-/// before/after evidence of each Proposal; nothing here is measured against approved analyses.
-/// <c>Snapshot</c> is a digest of the exact Trial job IDs read, in column order; pass it back with a page.
+/// The bounded summary of a side-by-side comparison of Proposals. Gained, lost and unchanged forms are measured from the
+/// retained Trial before/after evidence of each Proposal; the approved counts compare the project's human-approved
+/// analyses with those same Trial readings. <c>Snapshot</c> is a digest of the exact Trial job IDs and the approved
+/// analyses' snapshot read, in column order; pass it back with a page.
+/// <c>ApprovedSkippedOtherAgents</c> counts analyses approved only by a human agent other than the default user agent;
+/// they are not counted as approved.
 /// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ProposalComparison(
@@ -18,9 +23,10 @@ public sealed record ProposalComparison(
     [property: JsonRequired] int RowsTotal,
     [property: JsonRequired] int Pages,
     [property: JsonRequired] bool Complete,
-    [property: JsonRequired] IReadOnlyList<CompareLimitation> Limitations)
+    [property: JsonRequired] IReadOnlyList<CompareLimitation> Limitations,
+    [property: JsonRequired] int ApprovedSkippedOtherAgents)
 {
-    /// <summary>The value of <see cref="Basis"/>: each column's own Trial before and after, not approved analyses.</summary>
+    /// <summary>The value of <see cref="Basis"/>: gains and losses come from each column's own Trial before and after.</summary>
     public const string TrialBeforeAfter = "trial-before-after";
 
     /// <summary>The most Proposals one call may compare.</summary>
@@ -43,14 +49,58 @@ public sealed record ProposalComparison(
 /// <param name="Unchanged">Measured forms with no gain and no loss.</param>
 /// <param name="NotMeasured">Forms in the comparison's domain this Trial did not measure on both sides.</param>
 /// <param name="Incomplete">Measured forms whose search stopped early on either side.</param>
-[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+/// <param name="ApprovedKept">Approved analyses whose word this Trial's after side still yields, by <c>ReadingSignature.ApprovalKept</c>.</param>
+/// <param name="ApprovedLost">Approved analyses this Trial's before side yielded and its after side no longer does.</param>
+[JsonConverter(typeof(CompareColumn.CompactConverter))]
 public sealed record CompareColumn(
     [property: JsonRequired] string ProposalId,
     [property: JsonRequired] int Gained,
     [property: JsonRequired] int Lost,
     [property: JsonRequired] int Unchanged,
     [property: JsonRequired] int NotMeasured,
-    [property: JsonRequired] int Incomplete);
+    [property: JsonRequired] int Incomplete,
+    [property: JsonRequired] int ApprovedKept,
+    [property: JsonRequired] int ApprovedLost)
+{
+    private static readonly string[] Names =
+        ["proposalId", "gained", "lost", "unchanged", "notMeasured", "incomplete", "approvedKept", "approvedLost"];
+
+    /// <summary>Writes each column on one line so eight columns of five-digit counts stay within the summary's byte limit.</summary>
+    internal sealed class CompactConverter : JsonConverter<CompareColumn>
+    {
+        public override CompareColumn Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            using var document = JsonDocument.ParseValue(ref reader);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object || root.EnumerateObject().Count() != Names.Length)
+                throw new JsonException("A comparison column has exactly its eight members.");
+            int Count(string name) => root.TryGetProperty(name, out var value) && value.TryGetInt32(out var number)
+                ? number : throw new JsonException($"The column member {name} must be an integer.");
+            return new(root.TryGetProperty(Names[0], out var id) && id.ValueKind == JsonValueKind.String ? id.GetString()!
+                    : throw new JsonException("The column needs a Proposal ID."),
+                Count(Names[1]), Count(Names[2]), Count(Names[3]), Count(Names[4]), Count(Names[5]), Count(Names[6]), Count(Names[7]));
+        }
+
+        public override void Write(Utf8JsonWriter writer, CompareColumn value, JsonSerializerOptions options)
+        {
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var line = new Utf8JsonWriter(buffer))
+            {
+                line.WriteStartObject();
+                line.WriteString(Names[0], value.ProposalId);
+                line.WriteNumber(Names[1], value.Gained);
+                line.WriteNumber(Names[2], value.Lost);
+                line.WriteNumber(Names[3], value.Unchanged);
+                line.WriteNumber(Names[4], value.NotMeasured);
+                line.WriteNumber(Names[5], value.Incomplete);
+                line.WriteNumber(Names[6], value.ApprovedKept);
+                line.WriteNumber(Names[7], value.ApprovedLost);
+                line.WriteEndObject();
+            }
+            writer.WriteRawValue(buffer.WrittenSpan, skipInputValidation: true);
+        }
+    }
+}
 
 /// <summary>A typed reason the totals may not mean what they seem to. Count is the number of columns it touches.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -61,6 +111,9 @@ public sealed record CompareLimitation([property: JsonRequired] string Code, [pr
 
     /// <summary>Some Trials stopped early, so their gains and losses are partial.</summary>
     public const string IncompleteTrial = "incomplete-trial";
+
+    /// <summary>Some approved analyses were left out of the approved counts because only another human agent approved them.</summary>
+    public const string ApprovedOtherAgents = "approved-other-agents";
 }
 
 /// <summary>A page of form rows in the frozen order: diverging first, then writing system and form key.</summary>
@@ -83,10 +136,15 @@ public sealed record CompareRow(
     [property: JsonRequired] bool Diverges,
     [property: JsonRequired] IReadOnlyList<CompareCell> Cells);
 
-/// <summary>What one column's Trial observed for one form. A form the Trial did not measure is never unchanged.</summary>
+/// <summary>
+/// What one column's Trial observed for one form. A form the Trial did not measure is never unchanged. The approved
+/// IDs are the approved analyses' own ReadingSignature IDs, sense included.
+/// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CompareCell(
     [property: JsonRequired] bool Measured,
     [property: JsonRequired] bool Complete,
     [property: JsonRequired] IReadOnlyList<string> GainedIds,
-    [property: JsonRequired] IReadOnlyList<string> LostIds);
+    [property: JsonRequired] IReadOnlyList<string> LostIds,
+    [property: JsonRequired] IReadOnlyList<string> ApprovedKeptIds,
+    [property: JsonRequired] IReadOnlyList<string> ApprovedLostIds);

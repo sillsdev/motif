@@ -9,8 +9,15 @@ namespace SIL.Motif.Host.HandAnalysis;
 
 /// <summary>One human-approved analysis: its native ids, bundle facts and Reading identity when the bundles verify.</summary>
 /// <param name="Signature">Null when the analysis has no morph bundles or a bundle does not verify; never guessed.</param>
+/// <param name="Forms">The wordform's text by writing-system id, each in NFD; empty when the fact is built without them.</param>
 public sealed record ApprovedAnalysisFact(Guid AnalysisId, Guid WordformId, Guid EvaluationId, Guid AgentId,
-    ImmutableArray<BundleFact> Bundles, ReadingSignature? Signature, string? UnsignedCause);
+    ImmutableArray<BundleFact> Bundles, ReadingSignature? Signature, string? UnsignedCause,
+    ImmutableDictionary<string, string>? Forms = null)
+{
+    /// <summary>The wordform's text in one writing system, in NFD, or null when it has none there.</summary>
+    public string? FormIn(string writingSystemId) =>
+        Forms is not null && Forms.TryGetValue(writingSystemId, out var form) ? form : null;
+}
 
 /// <summary>Why an approved analysis carries no Reading identity.</summary>
 public static class ApprovedUnsignedCause
@@ -97,6 +104,7 @@ public sealed class ApprovedReadingSet
         {
             ct.ThrowIfCancellationRequested();
             wordforms++;
+            var forms = Forms(cache, wordform);
             var approved = wordform.HumanApprovedAnalyses.ToHashSet();
             foreach (var analysis in approved)
             {
@@ -105,7 +113,7 @@ public sealed class ApprovedReadingSet
                 var cause = signature is not null ? null
                     : analysis.MorphBundlesOS.Count == 0 ? ApprovedUnsignedCause.NoMorphBundles
                     : ApprovedUnsignedCause.UnverifiedBundle;
-                facts.Add(new(analysis.Guid, wordform.Guid, evaluation.Guid, userAgent.Guid, Bundles(analysis), signature, cause));
+                facts.Add(new(analysis.Guid, wordform.Guid, evaluation.Guid, userAgent.Guid, Bundles(analysis), signature, cause, forms));
             }
 
             foreach (var analysis in wordform.AnalysesOC.Where(item => !approved.Contains(item) &&
@@ -118,6 +126,15 @@ public sealed class ApprovedReadingSet
         }
 
         return new([.. facts.OrderBy(fact => fact.AnalysisId)], wordforms, skippedCount, skipped.ToImmutable());
+    }
+
+    private static ImmutableDictionary<string, string> Forms(LcmCache cache, IWfiWordform wordform)
+    {
+        var forms = ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        foreach (var ws in wordform.Form.AvailableWritingSystemIds)
+            if (wordform.Form.get_String(ws)?.Text is { Length: > 0 } text)
+                forms[cache.WritingSystemFactory.GetStrFromWs(ws)] = text.Normalize(NormalizationForm.FormD);
+        return forms.ToImmutable();
     }
 
     private static ImmutableArray<BundleFact> Bundles(IWfiAnalysis analysis) =>

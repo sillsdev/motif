@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Proposal comparison from each Trial's own before and after, not against approved analyses",
+  "title": "Proposal comparison: each Trial's own before and after, with the approved analyses each Proposal keeps and loses",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "basis", "snapshot", "columns", "formsCompared", "formsDiverging", "rowsTotal", "pages", "complete", "limitations"],
+  "required": ["schemaVersion", "basis", "snapshot", "columns", "formsCompared", "formsDiverging", "rowsTotal", "pages", "complete", "limitations", "approvedSkippedOtherAgents"],
   "properties": {
     "schemaVersion": {"const": 1},
     "basis": {"const": "trial-before-after"},
-    "snapshot": {"type": "string", "pattern": "^[0-9a-f]{12}$", "description": "Digest of the exact Trial job IDs read; pass it with --page so every page reads the same Trials."},
+    "snapshot": {"type": "string", "pattern": "^[0-9a-f]{12}$", "description": "Digest of the exact Trial job IDs and the approved-analyses snapshot read; pass it with --page so every page reads the same Trials and approvals."},
     "columns": {
       "type": "array",
       "minItems": 2,
@@ -15,14 +15,16 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["proposalId", "gained", "lost", "unchanged", "notMeasured", "incomplete"],
+        "required": ["proposalId", "gained", "lost", "unchanged", "notMeasured", "incomplete", "approvedKept", "approvedLost"],
         "properties": {
           "proposalId": {"type": "string", "minLength": 1},
           "gained": {"type": "integer", "minimum": 0},
           "lost": {"type": "integer", "minimum": 0},
           "unchanged": {"type": "integer", "minimum": 0},
           "notMeasured": {"type": "integer", "minimum": 0},
-          "incomplete": {"type": "integer", "minimum": 0}
+          "incomplete": {"type": "integer", "minimum": 0},
+          "approvedKept": {"type": "integer", "minimum": 0, "description": "Approved analyses (by the default user agent) the Trial's after side still yields; one that was not yielded before and is after counts as kept."},
+          "approvedLost": {"type": "integer", "minimum": 0, "description": "Approved analyses the Trial's before side yielded and its after side no longer does, when both sides finished. One not yielded before is never lost."}
         }
       }
     },
@@ -31,6 +33,7 @@
     "rowsTotal": {"type": "integer", "minimum": 0},
     "pages": {"type": "integer", "minimum": 0},
     "complete": {"type": "boolean"},
+    "approvedSkippedOtherAgents": {"type": "integer", "minimum": 0, "description": "Analyses approved only by a human agent other than the default user agent; they are not counted as approved."},
     "limitations": {
       "type": "array",
       "items": {
@@ -38,7 +41,7 @@
         "additionalProperties": false,
         "required": ["code", "count"],
         "properties": {
-          "code": {"enum": ["not-measured", "incomplete-trial"]},
+          "code": {"enum": ["not-measured", "incomplete-trial", "approved-other-agents"]},
           "count": {"type": "integer", "minimum": 1, "description": "The number of columns (Proposals) the limitation touches; per-column form counts are in columns."}
         }
       }
@@ -71,12 +74,14 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["measured", "complete", "gainedIds", "lostIds"],
+            "required": ["measured", "complete", "gainedIds", "lostIds", "approvedKeptIds", "approvedLostIds"],
             "properties": {
               "measured": {"type": "boolean"},
               "complete": {"type": "boolean"},
               "gainedIds": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
-              "lostIds": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+              "lostIds": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+              "approvedKeptIds": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "description": "ReadingSignature IDs (sense included) of approved analyses the after side yields."},
+              "approvedLostIds": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "description": "ReadingSignature IDs (sense included) of approved analyses yielded before and not after."}
             }
           }
         }

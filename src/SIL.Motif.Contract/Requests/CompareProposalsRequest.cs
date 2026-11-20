@@ -1,6 +1,6 @@
 namespace SIL.Motif.Contract.Requests;
 
-/// <summary>Compares the Trial before/after evidence of two to eight Proposals; it measures nothing and changes nothing.</summary>
+/// <summary>Compares two to eight Proposals by their Trial before/after evidence and the approved analyses each keeps and loses; it measures nothing and changes nothing.</summary>
 /// <param name="ProjectPath">The known project whose paired store retains the Trial evidence.</param>
 /// <param name="ProposalIds">Two to eight distinct Proposal IDs. Each uses its newest completed Trial.</param>
 /// <param name="At">The Baseline digest every Trial must have been measured on. Omit to use the one they share.</param>
