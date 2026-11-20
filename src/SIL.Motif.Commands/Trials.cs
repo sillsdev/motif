@@ -129,6 +129,10 @@ public static class Trials
             if (completion is null) continue;
             var dropped = completion.DroppedGrammar
                 ?? DroppedGrammar.NotChecked("The Trial recorded no dropped-grammar check.");
+            if (!dropped.Checked)
+                dropped = DroppedGrammar.NotChecked((dropped.NotCheckedReason ?? "No reason was recorded.").TrimEnd('.') +
+                    ", in Trial job " + candidate.Job.JobId + " (read `motif jobs show " + candidate.Job.JobId +
+                    " --project <fwdata>`)");
             foreach (var assessmentId in completion.AssessmentIds) byAssessment.TryAdd(assessmentId, dropped);
         }
         return byAssessment;

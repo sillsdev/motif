@@ -88,6 +88,23 @@ public sealed class TrialDroppedGrammarByAssessmentTests : IDisposable
     }
 
     [Fact]
+    public void AnUncheckedGrammarNamesTheTrialJobAndWhereToReadItsFailure()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.RecordAssessment(proposal, "after", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "cancelled-trial", ["after"],
+            droppedGrammar: DroppedGrammar.NotChecked("The parser run was cancelled."));
+
+        var dropped = Trials.DroppedGrammarByAssessment(fixture.Database, fixture.Project, proposal.Id)["after"];
+
+        Assert.False(dropped.Checked);
+        Assert.Contains("The parser run was cancelled", dropped.NotCheckedReason, StringComparison.Ordinal);
+        Assert.Contains("cancelled-trial", dropped.NotCheckedReason, StringComparison.Ordinal);
+        Assert.Contains("jobs show cancelled-trial", dropped.NotCheckedReason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AnAssessmentNoTrialRecordedHasNoEntry()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
