@@ -66,6 +66,36 @@ public static class FootprintProbe
         return FootprintDigest.Compute(entries);
     }
 
+    /// <summary>
+    /// Reads, per operation id, the current state of each field the operation changes. An operation whose target
+    /// this Proposal creates, whose target is gone, or whose kind has no readable field is left out rather than failing the read.
+    /// </summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<ExpectedEffect>> ReadCurrentValues(LcmCache cache, Proposal proposal)
+    {
+        var values = new Dictionary<string, IReadOnlyList<ExpectedEffect>>(System.StringComparer.Ordinal);
+        var mintedTargets = FootprintPlan.TargetsMintedWithinProposal(proposal);
+        var movedByEarlierOperation = OperationsOnObjectsMovedByEarlierMerges(cache, proposal);
+        foreach (var operation in proposal.Operations)
+        {
+            if (!FootprintPlan.ParticipatesInFootprint(operation, mintedTargets)) continue;
+            if (operation.Target is { } target &&
+                !cache.ServiceLocator.ObjectRepository.TryGetObject(target.ToGuid(), out _)) continue;
+            try
+            {
+                var handler = OperationHandlerRegistry.Resolve(operation.Kind, "the current value read");
+                values[operation.OperationId.Value] = movedByEarlierOperation.Contains(operation.OperationId)
+                    ? LexSenseRemoveHandler.Instance.ReadMovedFootprintEffects(cache, operation)
+                    : OperationEffectCapture.ReadFootprint(handler, cache, operation);
+            }
+            catch (System.Exception ex) when (ex is System.InvalidOperationException or System.ArgumentException
+                or System.NotSupportedException or PreconditionRefusal)
+            {
+                // No readable current value for this operation; the others still read.
+            }
+        }
+        return values;
+    }
+
     /// <summary>The operations on an object an earlier merge moves onto its survivor.</summary>
     private static HashSet<CanonicalId> OperationsOnObjectsMovedByEarlierMerges(LcmCache cache, Proposal proposal)
     {

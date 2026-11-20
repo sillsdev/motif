@@ -91,7 +91,11 @@ public static class CommandTextRenderer
                 sb.AppendLine($"      after:     {op.AfterJson}");
             if (op.Citation is not null)
                 sb.AppendLine($"      cites:     {op.Citation}");
+            foreach (var current in op.Current ?? [])
+                sb.AppendLine($"      current:   {current.Field} {JsonSerializer.Serialize(current.Value)}");
         }
+        if (projection.CurrentUnavailable is not null)
+            sb.AppendLine($"  currentUnavailable:  {projection.CurrentUnavailable}");
         return sb.ToString();
     }
 

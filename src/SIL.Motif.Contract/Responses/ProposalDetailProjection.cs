@@ -30,6 +30,13 @@ public sealed record ProposalOperationView(
     [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string? StorageIdOverride { get; init; }
 
+    /// <summary>
+    /// The project's current value of each field this operation changes, read from the saved project with no Trial.
+    /// Present only when the read asked for current values and the operation's field could be read; null otherwise.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<CurrentFieldValue>? Current { get; init; }
+
     /// <summary>Projects the operation's authored intent into the shared response.</summary>
     public static ProposalOperationView From(OperationEnvelope operation) =>
         new(operation.OperationId.Value, operation.Kind, operation.Target?.Value, operation.EntityId?.Value,
@@ -41,6 +48,12 @@ public sealed record ProposalOperationView(
             StorageIdOverride = operation.StorageIdOverride?.Value,
         };
 }
+
+/// <summary>One field an operation changes and the value the project holds for it now.</summary>
+/// <param name="Target">The portable identity of the entity that holds the field.</param>
+/// <param name="Field">The canonical field name, such as <c>lexical/sense/gloss</c>.</param>
+/// <param name="Value">The current value as alternatives keyed by writing-system tag; empty when the field holds nothing.</param>
+public sealed record CurrentFieldValue(string Target, string Field, IReadOnlyDictionary<string, string> Value);
 
 /// <summary>The portable identities of the preceding and following neighbors of an operation.</summary>
 public sealed record OperationPlacementView(string? After, string? Before);
@@ -118,6 +131,7 @@ public sealed record CommentView(
 /// <param name="DraftRevision">The SHA-256 revision of the exact stored Draft JSON bytes, or <c>null</c> for a committed revision.</param>
 /// <param name="Comments">The Proposal's Comments, oldest first.</param>
 /// <param name="CommentsChanged">Whether the person wrote a Comment after the builder last wrote the Rationale or a Comment.</param>
+/// <param name="CurrentUnavailable">Why current values were asked for and not read, such as no saved project; null otherwise.</param>
 public sealed record ProposalDetailProjection(
     string ProposalId,
     string Status,
@@ -132,4 +146,6 @@ public sealed record ProposalDetailProjection(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? DraftRevision = null,
     IReadOnlyList<CommentView>? Comments = null,
-    bool CommentsChanged = false);
+    bool CommentsChanged = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? CurrentUnavailable = null);

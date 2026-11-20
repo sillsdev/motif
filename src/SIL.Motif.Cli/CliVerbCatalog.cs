@@ -270,7 +270,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "list", "list", new[] { "list --project <fwdata> [--all | --status <status>] [--json]" }),
         new CliVerbDescriptor(
-            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--json]" }),
+            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "preflight", "preflight",
             new[] { "preflight --project <fwdata> <proposalId> [--json]" }),

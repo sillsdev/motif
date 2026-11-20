@@ -861,9 +861,10 @@ try
 
         case "show":
             if (!flags.TryGetValue("project", out var showProject) || positionals.Count != 1)
-                return Usage("Usage: motif show --project <fwdata> <proposalId> [--json]", asJson);
+                return Usage("Usage: motif " + UsageLineFor("show"), asJson);
             result = RenderProposal(
-                ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0])));
+                ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0],
+                    flags.ContainsKey("current"))));
             break;
 
         case "pending-changes":
@@ -3839,7 +3840,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose" or "replace" or "skip-refused")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose" or "replace" or "skip-refused" or "current")
             {
                 flags[name] = "true";
                 continue;

@@ -2023,7 +2023,7 @@
   },
   {
     "name": "motif_proposals",
-    "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: A Draft name or the exact canonical identity of a Draft or finalized Proposal.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.",
+    "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change\u0027s field holds now. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: A Draft name or the exact canonical identity of a Draft or finalized Proposal.\nWithCurrent: Also reads, from the saved project, the value each change\u0027s field holds now, with no Trial.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2034,6 +2034,10 @@
         "include_set_aside": {
           "type": "boolean",
           "description": "Also list applied, rejected, superseded and deferred."
+        },
+        "current": {
+          "type": "boolean",
+          "description": "With proposal: also read the value each change\u0027s field holds in the saved project now, before any Trial."
         },
         "detail": {
           "type": "string",

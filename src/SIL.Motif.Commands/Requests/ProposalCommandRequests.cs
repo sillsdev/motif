@@ -497,7 +497,8 @@ public sealed record ListProposalsRequest(string FwDataPath, string ProductVersi
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">A Draft name or the exact canonical identity of a Draft or finalized Proposal.</param>
-public sealed record ShowProposalRequest(string FwDataPath, string ProductVersion, string ProposalId);
+/// <param name="WithCurrent">Also reads, from the saved project, the value each change's field holds now, with no Trial.</param>
+public sealed record ShowProposalRequest(string FwDataPath, string ProductVersion, string ProposalId, bool WithCurrent = false);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

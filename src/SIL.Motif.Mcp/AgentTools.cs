@@ -1030,13 +1030,14 @@ internal static class AgentTools
             AgentClass.Read,
             Schema.Object([("proposal", Schema.String("A Draft name or Proposal id to show in full. Omit to list."), false),
                 ("include_set_aside", Schema.Boolean("Also list applied, rejected, superseded and deferred."), false),
+                ("current", Schema.Boolean("With proposal: also read the value each change's field holds in the saved project now, before any Trial."), false),
                 ..Schema.Verbosity()]),
             true,
             true,
             true,
             true,
             (c, a, ct) => Task.FromResult(a.Optional("proposal") is { } id
-                ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id)))
+                ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id, a.Flag("current"))))
                 : ToolOutcome.From(ProposalStandingsCommand.Read(
                     new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside")), c.JobParserPath)))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
 

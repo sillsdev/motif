@@ -1613,25 +1613,30 @@ public static partial class ProposalCommands
             CommandOutcome<ProposalDetailProjection>.Refused(ProposalLoadRefusal(new KeyNotFoundException($"Proposal '{request.ProposalId}' was not found."))),
             (database, project) =>
         {
-            var result = BuildProposalDetail(new ProposalRepository(database), request.ProposalId, database);
+            SIL.Motif.Contract.Model.Proposal? content = null;
+            var result = BuildProposalDetail(new ProposalRepository(database), request.ProposalId, database,
+                request.WithCurrent ? seen => content = seen : null);
             if (!result.Succeeded) return result;
             var detail = result.Value!;
-            return CommandOutcome<ProposalDetailProjection>.Success(detail with
+            detail = detail with
             {
                 Comments = detail.Comments?.Select(comment => comment with
                 {
                     Findings = ProposalTexts.Check(database, project, comment.Markdown).Findings,
                 }).ToArray(),
-            });
+            };
+            return CommandOutcome<ProposalDetailProjection>.Success(
+                request.WithCurrent && content is not null ? ProposalCurrentValues.Attach(database, project, detail, content) : detail);
         });
 
     internal static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
-        IProposalRepository repository, string proposalSelector, MotifDatabase? marksDatabase = null)
+        IProposalRepository repository, string proposalSelector, MotifDatabase? marksDatabase = null,
+        Action<SIL.Motif.Contract.Model.Proposal>? sawContent = null)
     {
         try
         {
             if (!CanonicalId.TryParse(proposalSelector, out var canonicalId))
-                return BuildDraftDetail(repository, repository.GetDraft(proposalSelector), marksDatabase);
+                return BuildDraftDetail(repository, repository.GetDraft(proposalSelector), marksDatabase, sawContent);
 
             ProposalRecord current;
             try
@@ -1640,12 +1645,13 @@ public static partial class ProposalCommands
             }
             catch (KeyNotFoundException) when (repository.DraftNameExists(proposalSelector))
             {
-                return BuildDraftDetail(repository, repository.GetDraft(proposalSelector), marksDatabase);
+                return BuildDraftDetail(repository, repository.GetDraft(proposalSelector), marksDatabase, sawContent);
             }
             if (current.DraftName is not null)
-                return BuildDraftDetail(repository, current, marksDatabase);
+                return BuildDraftDetail(repository, current, marksDatabase, sawContent);
 
             var (record, envelope) = repository.GetFinalized(canonicalId);
+            sawContent?.Invoke(envelope);
             var manifest = ProposalRecordMapping.ToManifest(record, CommentsOf(marksDatabase, canonicalId));
             return CommandOutcome<ProposalDetailProjection>.Success(ProposalDetailProjectionBuilder.Build(
                 canonicalId.Value, manifest, envelope, RationaleLookedAt(marksDatabase, manifest),
@@ -1671,7 +1677,8 @@ public static partial class ProposalCommands
         digest => repository.GetRevisionContent(proposalId, digest);
 
     private static CommandOutcome<ProposalDetailProjection> BuildDraftDetail(
-        IProposalRepository repository, ProposalRecord record, MotifDatabase? marksDatabase)
+        IProposalRepository repository, ProposalRecord record, MotifDatabase? marksDatabase,
+        Action<SIL.Motif.Contract.Model.Proposal>? sawContent = null)
     {
         var draftJson = record.ProposalJson ??
             throw new InvalidDataException("Stored Draft content must not be empty.");
@@ -1679,6 +1686,7 @@ public static partial class ProposalCommands
             throw new InvalidDataException("Stored Draft name must not be empty.");
         var draft = DeserializeDraft(draftJson);
         var proposal = ProposalJsonParser.Parse(BuildProposalJson(draft));
+        sawContent?.Invoke(proposal);
         var manifest = ProposalRecordMapping.ToManifest(record with { Label = draft.Label },
             CommentsOf(marksDatabase, record.ProposalId));
         var detail = ProposalDetailProjectionBuilder.Build(record.ProposalId.Value, manifest, proposal,
