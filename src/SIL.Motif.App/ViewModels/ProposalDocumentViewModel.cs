@@ -337,8 +337,14 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
 
     private async Task UntrackWhenDoneAsync(Task read)
     {
-        await read.ConfigureAwait(true);
-        lock (_reads) _reads.Remove(read);
+        try
+        {
+            await read.ConfigureAwait(true);
+        }
+        finally
+        {
+            lock (_reads) _reads.Remove(read);
+        }
     }
 
     // A refused read leaves no evidence to stand on, so the old Difference goes unless a make is running.

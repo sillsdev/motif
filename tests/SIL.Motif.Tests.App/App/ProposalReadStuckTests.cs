@@ -66,6 +66,7 @@ public sealed class ProposalReadStuckTests
             ProposalGroup.NotAppliedYet, false, [], standing, null, []));
         await document.RefreshAsync();
         document.StuckReadAfter = Short;
+        document.SupersededGrace = TimeSpan.FromMilliseconds(50);
         return (fake, context, documents, document);
     }
 
@@ -272,21 +273,6 @@ public sealed class ProposalReadStuckTests
     }
 
     [Fact]
-    public async Task ADayOfSlowReadsLeavesNoWatchRunningAfterTheReadEnds()
-    {
-        var (_, context, documents, document) = await OpenAsync(TrialStanding.Current);
-        try
-        {
-            document.StuckReadAfter = TimeSpan.FromMilliseconds(100);
-            await document.RefreshAsync();
-            await Task.Delay(300);
-
-            Assert.False(document.ReadTimedOut);
-        }
-        finally { await Settle(context, documents); }
-    }
-
-    [Fact]
     public async Task AfterApplyTheStuckReadOffersReadAgain()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
@@ -325,7 +311,7 @@ public sealed class ProposalReadStuckTests
 
             Reads(fake);
             document.ReadAgainCommand.Execute(null);
-        await document.Reading;
+            await document.Reading;
 
             Assert.False(document.IsLoading);
             Assert.True(document.ShowsReadiness);

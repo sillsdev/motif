@@ -1,5 +1,5 @@
-using CommunityToolkit.Mvvm.ComponentModel;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace SIL.Motif.App.ViewModels;
@@ -16,7 +16,8 @@ public sealed partial class ProposalDocumentViewModel
     [NotifyPropertyChangedFor(nameof(ShowsReadingLine), nameof(ShowsReadStuck))]
     private bool _readTimedOut;
 
-    internal TimeSpan SupersededGrace { get; set; } = TimeSpan.FromMilliseconds(250);
+    /// <summary>How long a superseded read may take to unwind before its callers stop waiting for it.</summary>
+    internal TimeSpan SupersededGrace { get; set; } = TimeSpan.FromSeconds(3);
 
     /// <summary>Whether the plain "Reading Proposal" line shows: a read is running and still within its bound.</summary>
     public bool ShowsReadingLine => IsLoading && !ReadTimedOut;
@@ -48,7 +49,11 @@ public sealed partial class ProposalDocumentViewModel
             var read = ReadAsync(generation, cancellation);
             // A superseded read gets a moment to unwind before its callers stop waiting for it.
             if (await Task.WhenAny(read, superseded.Task).ConfigureAwait(true) != read)
-                await Task.WhenAny(read, Task.Delay(SupersededGrace)).ConfigureAwait(true);
+            {
+                using var grace = new CancellationTokenSource();
+                await Task.WhenAny(read, Task.Delay(SupersededGrace, grace.Token)).ConfigureAwait(true);
+                grace.Cancel();
+            }
         }
         finally
         {
