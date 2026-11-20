@@ -120,7 +120,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private bool _isOutdated;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowsPrepareApply))]
+    [NotifyPropertyChangedFor(nameof(ShowsPrepareApply), nameof(ShowsDeferredApplyNotice))]
     private bool _isConfirmingApply;
     private object? _diagnosticsContent;
     public object? DiagnosticsContent
@@ -152,6 +152,12 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         Comments.FirstOrDefault(editor => editor.HasUnsavedChanges);
     /// <summary>Whether Apply… shows: not while its confirmation is open, so one Apply is on screen.</summary>
     public bool ShowsPrepareApply => CanAddComment && !IsConfirmingApply;
+
+    /// <summary>Whether the Proposal is Deferred, which the Apply confirmation says.</summary>
+    public bool IsDeferred => Detail?.Status == "deferred" || Card?.Card.Status == "deferred";
+
+    /// <summary>Whether the Apply confirmation names that this Proposal is Deferred.</summary>
+    public bool ShowsDeferredApplyNotice => IsConfirmingApply && IsDeferred;
 
     public bool CanPrepareApply => CanAddComment && !IsDryRunActive && !IsCheckingChanges &&
         !_context.ProposalApply.IsApplying && PrepareBlockReason is null;
@@ -231,6 +237,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         Evidence.SetLostApproved(IsPending || value?.Card.Group == ProposalGroup.SetAside ? null : value?.Card.Trial);
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(IsDeferred));
+        OnPropertyChanged(nameof(ShowsDeferredApplyNotice));
         OnPropertyChanged(nameof(IsPending));
         OnPropertyChanged(nameof(CanAddComment));
         OnPropertyChanged(nameof(ShowsPrepareApply));
@@ -243,6 +251,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         RefreshOperationDisplay();
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(IsDeferred));
+        OnPropertyChanged(nameof(ShowsDeferredApplyNotice));
         OnPropertyChanged(nameof(CanAddComment));
         OnPropertyChanged(nameof(ShowsPrepareApply));
         AddCommentCommand.NotifyCanExecuteChanged();

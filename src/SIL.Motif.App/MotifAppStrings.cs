@@ -3928,6 +3928,7 @@ public static class MotifAppStrings
     public static string ProposalComparisonHint => Text("MotifApp.ProposalComparisonHint");
     public static string ProposalComparisonLimit => Text("MotifApp.ProposalComparisonLimit");
     public static string ProposalApplyConfirm => Text("MotifApp.ProposalApplyConfirm");
+    public static string ProposalApplyDeferredNotice => Text("MotifApp.ProposalApplyDeferredNotice");
     public static string ProposalApplyPrepare => Text("MotifApp.ProposalApplyPrepare");
     public static string ProposalRefreshEvidence => Text("MotifApp.ProposalRefreshEvidence");
     public static string ProposalCheckForComparison => Text("MotifApp.ProposalCheckForComparison");

@@ -68,7 +68,6 @@ public sealed class ProposalApplyStepsTests
     }
 
     [Fact]
-    [Fact]
     public async Task ApplyReappearsWhenEvidenceChangesUnderAnOpenConfirmation()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -79,6 +78,23 @@ public sealed class ProposalApplyStepsTests
 
         Assert.False(opened.Document.IsConfirmingApply);
         Assert.True(opened.Document.ShowsPrepareApply);
+    }
+
+    [Fact]
+    public async Task TheConfirmationOfADeferredProposalSaysSoAndOtherConfirmationsDoNot()
+    {
+        await using var opened = await OpenMeasuredPendingAsync();
+        await opened.Document.PrepareApplyCommand.ExecuteAsync(null);
+        Assert.True(opened.Document.IsConfirmingApply);
+        Assert.False(opened.Document.ShowsDeferredApplyNotice);
+        opened.Document.CancelApplyCommand.Execute(null);
+
+        opened.Document.Card = new ProposalCardViewModel(opened.Document.Card!.Card with { Status = "deferred" });
+        await opened.Document.PrepareApplyCommand.ExecuteAsync(null);
+
+        Assert.True(opened.Document.IsConfirmingApply);
+        Assert.True(opened.Document.ShowsDeferredApplyNotice);
+        Assert.Equal("This Proposal is Deferred.", MotifAppStrings.ProposalApplyDeferredNotice);
     }
 
     [Fact]
