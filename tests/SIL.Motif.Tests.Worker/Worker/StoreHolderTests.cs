@@ -87,12 +87,60 @@ public sealed class StoreHolderTests : IDisposable
         Assert.Null(RunnerIdentity.ReadLive(root));
 
         RunnerIdentity.Publish(root);
-        Assert.Equal((Environment.ProcessId, RunnerIdentity.BuildId), RunnerIdentity.ReadLive(root));
+        Assert.Equal((Environment.ProcessId, RunnerIdentity.BuildId, RunnerProcess.SelfStartText), RunnerIdentity.ReadLive(root));
 
         var deadPid = DeadPid();
         File.WriteAllText(RunnerIdentity.PathFor(root), deadPid + "\nold build");
         Assert.Null(RunnerIdentity.ReadLive(root));
     }
+
+    [Fact]
+    public void DisposingAnOlderMarkLeavesTheRecordOfItsReplacement()
+    {
+        var store = Path.Combine(_directory, "demo.motif.db");
+        var older = StoreHolder.Publish(store, "/old/root");
+        using var newer = StoreHolder.Publish(store, "/new/root");
+
+        older.Dispose();
+
+        Assert.Equal("/new/root", Assert.Single(StoreHolder.ReadLive(store)).Root);
+    }
+
+    [Fact]
+    public void AHolderRecordIsNamedAfterThisProcessStartTime()
+    {
+        var store = Path.Combine(_directory, "demo.motif.db");
+        using var mark = StoreHolder.Publish(store, "/the/root");
+
+        var holder = Assert.Single(StoreHolder.ReadLive(store));
+
+        Assert.True(RunnerProcess.SameStart(holder.StartedUtc, RunnerProcess.StartOf(Environment.ProcessId)!.Value));
+        Assert.Empty(Directory.GetFiles(_directory, "*.tmp-holder-*"));
+    }
+
+    [Fact]
+    public void AnUnreadableRecordOfALiveProcessIsKeptAndOneOfADeadProcessIsRemoved()
+    {
+        var store = Path.Combine(_directory, "demo.motif.db");
+        var live = StoreHolder.PathFor(store, Environment.ProcessId);
+        var deadPid = DeadPid();
+        var dead = StoreHolder.PathFor(store, deadPid);
+        File.WriteAllText(live, "");
+        File.WriteAllText(dead, "");
+
+        Assert.Empty(StoreHolder.ReadLive(store));
+
+        Assert.True(File.Exists(live));
+        Assert.False(File.Exists(dead));
+    }
+
+    [Theory]
+    [InlineData("2026-11-20T10:00:01.0000000+00:00", true)]
+    [InlineData("2026-11-20T10:00:09.0000000+00:00", false)]
+    [InlineData("", false)]
+    [InlineData("garbage", false)]
+    public void ARecordedStartMatchesOnlyWithinASmallTolerance(string recorded, bool expected) =>
+        Assert.Equal(expected, RunnerProcess.SameStart(recorded, DateTimeOffset.Parse("2026-11-20T10:00:00Z")));
 
     private static int DeadPid()
     {

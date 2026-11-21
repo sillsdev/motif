@@ -31,6 +31,12 @@ public interface IWorkerProcessControl
 
     /// <summary>Ends <paramref name="pid"/> and returns whether it had exited within <paramref name="patience"/>.</summary>
     bool Terminate(int pid, TimeSpan patience);
+
+    /// <summary>When the live process <paramref name="pid"/> started, or null when it is gone or unreadable.</summary>
+    DateTimeOffset? StartTimeOf(int pid);
+
+    /// <summary>The parent of this process, or null when the system does not say.</summary>
+    int? ParentPid { get; }
 }
 
 /// <summary>Ends the background runner that holds a project store or the current worker root.</summary>
@@ -46,7 +52,7 @@ public static class WorkerStopCommand
         IWorkerProcessControl processes)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var targets = new List<StoppedWorker>();
+        var targets = new List<(StoppedWorker Worker, string Started)>();
         string? storePath = null;
         string? projectPath = null;
         if (request.ProjectPath is { } named)
@@ -56,33 +62,63 @@ public static class WorkerStopCommand
             projectPath = located.Value!.FullFwDataPath;
             storePath = ProjectDatabaseCatalog.DatabasePathFor(located.Value);
             foreach (var holder in StoreHolder.ReadLive(storePath, pid => processes.NameOf(pid) is not null))
-                targets.Add(new StoppedWorker(holder.Pid, holder.Build, holder.Root, "stopped"));
+                targets.Add((new StoppedWorker(holder.Pid, holder.Build, holder.Root, "stopped"), holder.StartedUtc));
         }
         else if (RunnerIdentity.ReadLive(root, pid => processes.NameOf(pid) is not null) is { } runner)
         {
-            targets.Add(new StoppedWorker(runner.Pid, runner.Build, root, "stopped"));
+            targets.Add((new StoppedWorker(runner.Pid, runner.Build, root, "stopped"), runner.StartedUtc));
         }
 
         var results = new List<StoppedWorker>();
         var failed = new List<int>();
-        foreach (var target in targets.DistinctBy(target => target.Pid))
+        var unverified = new List<int>();
+        foreach (var (target, started) in targets.DistinctBy(item => item.Worker.Pid))
         {
-            if (target.Pid == Environment.ProcessId || processes.NameOf(target.Pid) is not { } name ||
-                !LooksLikeRunner(name))
+            if (target.Pid == Environment.ProcessId || target.Pid == processes.ParentPid)
             {
-                if (storePath is not null) StoreHolder.Remove(storePath, target.Pid);
+                results.Add(target with { Outcome = "skipped" });
+                continue;
+            }
+            var name = processes.NameOf(target.Pid);
+            if (name is null || !LooksLikeRunner(name))
+            {
+                Prune(storePath, root, target.Pid);
+                results.Add(target with { Outcome = "skipped" });
+                continue;
+            }
+            if (processes.StartTimeOf(target.Pid) is not { } actual)
+            {
+                unverified.Add(target.Pid);
+                continue;
+            }
+            if (!RunnerProcess.SameStart(started, actual))
+            {
+                Prune(storePath, root, target.Pid);
                 results.Add(target with { Outcome = "skipped" });
                 continue;
             }
             if (processes.Terminate(target.Pid, ExitPatience))
             {
-                if (storePath is not null) StoreHolder.Remove(storePath, target.Pid);
+                Prune(storePath, root, target.Pid);
                 results.Add(target);
             }
             else
             {
                 failed.Add(target.Pid);
             }
+        }
+
+        if (unverified.Count != 0)
+        {
+            var facts = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["pids"] = string.Join(",", unverified),
+                ["stopped"] = string.Join(",", results.Where(item => item.Outcome == "stopped").Select(item => item.Pid)),
+            };
+            if (projectPath is not null) facts["fwDataPath"] = projectPath;
+            return CommandOutcome<WorkerStopResponse>.Refused(new Refusal(RefusalCodes.WorkerStopFailed, FailureReason.Refused,
+                "The process (pid " + string.Join(", ", unverified) + ") could not be confirmed as the recorded runner, " +
+                "so it was not stopped. Stop it from the operating system if it is the runner.", facts));
         }
 
         if (failed.Count != 0)
@@ -100,6 +136,12 @@ public static class WorkerStopCommand
         }
 
         return CommandOutcome<WorkerStopResponse>.Success(new WorkerStopResponse(root, projectPath, results));
+    }
+
+    private static void Prune(string? storePath, string root, int pid)
+    {
+        if (storePath is not null) StoreHolder.Remove(storePath, pid);
+        else RunnerIdentity.Remove(root, pid);
     }
 
     private static bool LooksLikeRunner(string processName)
@@ -120,6 +162,25 @@ public static class WorkerStopCommand
                 return process.HasExited ? null : process.ProcessName;
             }
             catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+            {
+                return null;
+            }
+        }
+
+        public DateTimeOffset? StartTimeOf(int pid) => RunnerProcess.StartOf(pid);
+
+        public int? ParentPid { get; } = ReadParentPid();
+
+        private static int? ReadParentPid()
+        {
+            try
+            {
+                var stat = File.ReadAllText("/proc/self/stat");
+                var fields = stat[(stat.LastIndexOf(')') + 2)..].Split(' ');
+                return int.Parse(fields[1], System.Globalization.CultureInfo.InvariantCulture);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+                FormatException or ArgumentOutOfRangeException or IndexOutOfRangeException)
             {
                 return null;
             }

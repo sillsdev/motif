@@ -7,7 +7,7 @@ namespace SIL.Motif.Worker.Store;
 /// <param name="Pid">The runner's process id.</param>
 /// <param name="Build">The build identity of the runner (see <see cref="RunnerIdentity.BuildId"/>).</param>
 /// <param name="Root">The worker root the runner serves.</param>
-/// <param name="StartedUtc">When the runner opened the store, as an ISO 8601 UTC time.</param>
+/// <param name="StartedUtc">When the runner process started, as an ISO 8601 UTC time; empty when unknown.</param>
 public sealed record StoreHolderInfo(int Pid, string Build, string Root, string StartedUtc);
 
 /// <summary>
@@ -28,19 +28,23 @@ public static class StoreHolder
         storePath + Suffix + pid.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Records this process as a holder of <paramref name="storePath"/>; best-effort.</summary>
-    /// <returns>A handle that removes the record when disposed.</returns>
+    /// <returns>A handle that removes the record when disposed, if the record is still its own.</returns>
     public static IDisposable Publish(string storePath, string root)
     {
         var path = PathFor(storePath, Environment.ProcessId);
+        var token = Guid.NewGuid().ToString("N");
+        var temp = storePath + ".tmp-holder-" + token;
         try
         {
-            File.WriteAllText(path, string.Join("\n", Environment.ProcessId.ToString(CultureInfo.InvariantCulture),
-                RunnerIdentity.BuildId, root, DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)));
+            File.WriteAllText(temp, string.Join("\n", Environment.ProcessId.ToString(CultureInfo.InvariantCulture),
+                RunnerIdentity.BuildId, root, RunnerProcess.SelfStartText, token));
+            File.Move(temp, path, overwrite: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
+            TryDelete(temp);
         }
-        return new Mark(path);
+        return new Mark(path, token);
     }
 
     /// <summary>The live holders of <paramref name="storePath"/>, oldest first; files of dead processes are removed.</summary>
@@ -58,14 +62,18 @@ public static class StoreHolder
         foreach (var file in files)
         {
             var holder = Parse(file);
-            if (holder is not null && isAlive(holder.Pid)) holders.Add(holder);
-            else TryDelete(file);
+            if (holder is not null) { if (isAlive(holder.Pid)) holders.Add(holder); else TryDelete(file); }
+            else if (PidOf(file) is not { } named || !isAlive(named)) TryDelete(file);
         }
         return holders.OrderBy(holder => holder.StartedUtc, StringComparer.Ordinal).ToArray();
     }
 
     /// <summary>Removes every record that names <paramref name="pid"/> beside <paramref name="storePath"/>.</summary>
     public static void Remove(string storePath, int pid) => TryDelete(PathFor(storePath, pid));
+
+    private static int? PidOf(string file) =>
+        int.TryParse(file[(file.LastIndexOf(Suffix, StringComparison.Ordinal) + Suffix.Length)..], NumberStyles.None,
+            CultureInfo.InvariantCulture, out var pid) ? pid : null;
 
     private static StoreHolderInfo? Parse(string file)
     {
@@ -99,13 +107,24 @@ public static class StoreHolder
 
     private sealed class Mark : IDisposable
     {
+        private readonly string _token;
         private string? _path;
 
-        public Mark(string path) => _path = path;
+        public Mark(string path, string token)
+        {
+            _path = path;
+            _token = token;
+        }
 
         public void Dispose()
         {
-            if (Interlocked.Exchange(ref _path, null) is { } path) TryDelete(path);
+            if (Interlocked.Exchange(ref _path, null) is not { } path) return;
+            try
+            {
+                var lines = File.ReadAllLines(path);
+                if (lines.Length > 4 && lines[4] == _token) File.Delete(path);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
         }
     }
 }
