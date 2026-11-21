@@ -41,6 +41,8 @@ public static class GrammarReadProjectionBuilder
 
         var matches = Objects(cache, request.Kind)
             .Where(item => Matches(item, request.Query))
+            .Where(item => MatchesExact(item, request.Exact))
+            .Where(item => MatchesMorphType(item, request.MorphType))
             .Where(item => MatchesId(item, request.Id))
             .OrderBy(SortKey, StringComparer.OrdinalIgnoreCase)
             .ThenBy(item => item.Id, StringComparer.Ordinal)
@@ -168,6 +170,22 @@ public static class GrammarReadProjectionBuilder
         var text = query.Trim().Normalize(NormalizationForm.FormD);
         return SearchTerms(item).Any(term =>
             term?.Normalize(NormalizationForm.FormD).Contains(text, StringComparison.OrdinalIgnoreCase) == true);
+    }
+
+    private static bool MatchesExact(GrammarReadItem item, string? exact) =>
+        string.IsNullOrWhiteSpace(exact) || FormMatch.Any(exact, ExactTerms(item));
+
+    private static IEnumerable<string?> ExactTerms(GrammarReadItem item) => item is GrammarLexicalEntryRead entry
+        ? [entry.Headword, .. Forms(entry).Select(form => form.Form)]
+        : SearchTerms(item);
+
+    private static bool MatchesMorphType(GrammarReadItem item, string? morphTypes)
+    {
+        if (string.IsNullOrWhiteSpace(morphTypes)) return true;
+        if (item is not GrammarLexicalEntryRead entry) return false;
+        return morphTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Any(wanted =>
+            string.Equals(wanted, entry.MorphTypeId, StringComparison.Ordinal) ||
+            string.Equals(wanted, entry.MorphType, StringComparison.OrdinalIgnoreCase));
     }
 
     private static IEnumerable<string?> SearchTerms(GrammarReadItem item) => item switch

@@ -1916,7 +1916,7 @@
   },
   "grammar read": {
     "title": "Read grammar objects",
-    "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features or lexical entries from the current Baseline. Use an exact canonical id or a name query, and page through larger lists.",
+    "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features or lexical entries from the current Baseline. Use an exact canonical id, an exact form or a name query, and page through larger lists.",
     "source": "Authored from the typed grammar read contract."
   },
   "difference produce": {

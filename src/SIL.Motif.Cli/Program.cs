@@ -2770,7 +2770,8 @@ try
         case "grammar":
             if (positionals.Count == 1 && positionals[0] == "read")
             {
-                if (flags.Keys.Any(name => name is not ("project" or "kind" or "id" or "query" or "offset" or "limit" or "json")) ||
+                if (flags.Keys.Any(name => name is not ("project" or "kind" or "id" or "query" or "offset" or "limit" or "json" or "exact" or
+                    "morph-type" or "page")) ||
                     !flags.TryGetValue("project", out var grammarReadProject) ||
                     !flags.TryGetValue("kind", out var grammarReadKindText) ||
                     !Enum.TryParse<GrammarReadKind>(grammarReadKindText, ignoreCase: false, out var grammarReadKind) ||
@@ -2783,13 +2784,24 @@ try
                     flags.TryGetValue("limit", out var grammarReadLimitText) &&
                     !int.TryParse(grammarReadLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out grammarReadLimit))
                     return Usage(UsageLineFor("grammar read"), asJson);
+                if (flags.TryGetValue("page", out var grammarReadPageText))
+                {
+                    if (flags.ContainsKey("offset"))
+                        return Usage("Give --page or --offset, not both.", asJson);
+                    if (!int.TryParse(grammarReadPageText, NumberStyles.None, CultureInfo.InvariantCulture, out var grammarReadPage) ||
+                        grammarReadPage < 1 || (long)(grammarReadPage - 1) * Math.Max(grammarReadLimit, 1) > int.MaxValue)
+                        return Usage("--page must be a positive integer.", asJson);
+                    grammarReadOffset = (grammarReadPage - 1) * grammarReadLimit;
+                }
                 var grammarRead = GrammarReadQuery.Query(new GrammarReadRequest(
                     grammarReadProject,
                     grammarReadKind,
                     flags.GetValueOrDefault("id"),
                     flags.GetValueOrDefault("query"),
                     grammarReadOffset,
-                    grammarReadLimit));
+                    grammarReadLimit,
+                    flags.GetValueOrDefault("exact"),
+                    flags.GetValueOrDefault("morph-type")));
                 if (asJson || !grammarRead.Succeeded)
                     result = RenderCommand(grammarRead, asJson);
                 else

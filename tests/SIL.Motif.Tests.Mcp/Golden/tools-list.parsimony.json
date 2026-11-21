@@ -60,9 +60,17 @@
           "type": "string",
           "description": "Only objects whose name or abbreviation contains this text."
         },
+        "exact": {
+          "type": "string",
+          "description": "Only objects whose name or abbreviation equals this text, ignoring case."
+        },
+        "id": {
+          "type": "string",
+          "description": "Only the object with this canonical id."
+        },
         "offset": {
           "type": "integer",
-          "description": "Items to skip, for the next page.",
+          "description": "Items to skip; a result\u0027s nextOffset is the value for the next page.",
           "minimum": 0,
           "maximum": 100000
         },

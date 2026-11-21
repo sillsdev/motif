@@ -31,6 +31,9 @@ public sealed record GrammarReadResponse(
 
     /// <summary>The number of objects returned on this page.</summary>
     public int Returned => Items.Count;
+
+    /// <summary>The offset that starts the next page, or <see langword="null"/> when this page ends the matches.</summary>
+    public int? NextOffset => Offset + Items.Count < Total ? Offset + Items.Count : null;
 }
 
 /// <summary>One typed object returned by a grammar read.</summary>

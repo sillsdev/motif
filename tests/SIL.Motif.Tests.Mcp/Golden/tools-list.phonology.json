@@ -84,9 +84,17 @@
           "type": "string",
           "description": "Only objects whose name or abbreviation contains this text."
         },
+        "exact": {
+          "type": "string",
+          "description": "Only objects whose name or abbreviation equals this text, ignoring case."
+        },
+        "id": {
+          "type": "string",
+          "description": "Only the object with this canonical id."
+        },
         "offset": {
           "type": "integer",
-          "description": "Items to skip, for the next page.",
+          "description": "Items to skip; a result\u0027s nextOffset is the value for the next page.",
           "minimum": 0,
           "maximum": 100000
         },
@@ -128,6 +136,10 @@
           "type": "string",
           "description": "Text the headword, a gloss or a form contains."
         },
+        "exact": {
+          "type": "string",
+          "description": "Only entries whose headword or a form equals this text, ignoring case; a bare \u0027zi\u0027 also finds the affix \u0027zi-\u0027, while \u0027zi-\u0027 finds only that prefix."
+        },
         "morphType": {
           "type": "array",
           "items": {
@@ -157,7 +169,7 @@
         },
         "offset": {
           "type": "integer",
-          "description": "Entries to skip, for the next page.",
+          "description": "Entries to skip; a result\u0027s nextOffset is the value for the next page.",
           "minimum": 0,
           "maximum": 100000
         },

@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Projection;
+using SIL.Motif.Projection.Grammar;
 using SIL.Motif.Runner.Retirement;
 
 namespace SIL.Motif.Mcp;
@@ -58,6 +59,7 @@ internal static class LexiconReader
         if (!detailed) HoistSharedGlossWs(page, result);
         result["offset"] = offset;
         result["returned"] = page.Length;
+        if (offset + page.Length < matches.Count) result["nextOffset"] = offset + page.Length;
         result["entries"] = new JsonArray(page.Select(entry => (JsonNode)entry).ToArray());
         return result;
     }
@@ -194,8 +196,10 @@ internal static class LexiconReader
 /// <param name="Headword">Text the headword starts with.</param>
 /// <param name="HeadwordContains">Text the headword contains.</param>
 /// <param name="HasGloss">True keeps entries with a gloss, false keeps those without one.</param>
+/// <param name="Exact">Text the headword or a form equals; a bare form also equals its marked affix headword.</param>
 internal sealed record LexiconFilter(string? Query = null, IReadOnlyList<string>? MorphTypesOrNull = null, bool? Affix = null,
-    string? Category = null, string? Headword = null, string? HeadwordContains = null, bool? HasGloss = null)
+    string? Category = null, string? Headword = null, string? HeadwordContains = null, bool? HasGloss = null,
+    string? Exact = null)
 {
     public bool Matches(LcmCache cache, ILexEntry entry, string? entryHeadword, Func<IPartOfSpeech, string?> categoryName)
     {
@@ -213,6 +217,11 @@ internal sealed record LexiconFilter(string? Query = null, IReadOnlyList<string>
         if (HeadwordContains is { } part && !headword.Contains(Fold(part), StringComparison.Ordinal)) return false;
         if (HasGloss is { } wantGloss &&
             entry.AllSenses.Any(sense => !string.IsNullOrEmpty(GrammarReader.Text(cache, sense.Gloss))) != wantGloss)
+            return false;
+        if (Exact is { } exact && !FormMatch.Same(exact, entryHeadword) &&
+            !FormMatch.Any(exact, entry.LexemeFormOA is { } lexeme
+                ? entry.AlternateFormsOS.Prepend(lexeme).Select(form => WritingSystemTextReader.First(cache, form.Form).Text)
+                : entry.AlternateFormsOS.Select(form => WritingSystemTextReader.First(cache, form.Form).Text)))
             return false;
         if (Query is { } text) return Folded(text, headword, cache, entry);
         return true;

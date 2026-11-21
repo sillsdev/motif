@@ -29,12 +29,31 @@ internal static class GrammarReader
         return new JsonObject { ["counts"] = counts, ["kinds"] = new JsonArray(Kinds.Select(k => (JsonNode)k).ToArray()) };
     }
 
-    /// <summary>The items of <paramref name="kind"/> whose label contains <paramref name="query"/>, if one is given.</summary>
-    public static JsonObject Read(LcmCache cache, string kind, string? query, bool detailed)
+    /// <summary>
+    /// The items of <paramref name="kind"/> whose label contains <paramref name="query"/>, whose name or
+    /// abbreviation equals <paramref name="exact"/>, or whose canonical id is <paramref name="id"/>, if given.
+    /// </summary>
+    public static JsonObject Read(LcmCache cache, string kind, string? query, bool detailed, string? exact = null,
+        string? id = null)
     {
         var all = Items(cache, kind, detailed)
-            .Where(item => string.IsNullOrWhiteSpace(query) || Matches(item, query)).ToList();
+            .Where(item => string.IsNullOrWhiteSpace(query) || Matches(item, query))
+            .Where(item => string.IsNullOrWhiteSpace(exact) ||
+                FormMatch.Any(exact, [item["name"]?.ToString(), item["abbreviation"]?.ToString()]))
+            .Where(item => id is null || string.Equals(item["id"]?.ToString(), id, StringComparison.Ordinal)).ToList();
         return new JsonObject { ["kind"] = kind, ["total"] = all.Count, ["items"] = new JsonArray(all.ToArray()) };
+    }
+
+    /// <summary>One page of <paramref name="result"/>'s items, with the offset that starts the next page if any.</summary>
+    public static JsonObject Page(JsonObject result, int offset, int limit)
+    {
+        var items = (JsonArray)result["items"]!;
+        var page = items.Skip(offset).Take(limit).Select(item => item!.DeepClone()).ToArray();
+        result["offset"] = offset;
+        result["returned"] = page.Length;
+        if (offset + page.Length < items.Count) result["nextOffset"] = offset + page.Length;
+        result["items"] = new JsonArray(page);
+        return result;
     }
 
     private static bool Matches(JsonObject item, string query) =>

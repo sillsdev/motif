@@ -21,6 +21,9 @@ internal static class GrammarReadTextRenderer
         foreach (var item in response.Items.Take(TextListLimit)) RenderItem(text, item);
         AppendOverflow(text, response.Items.Count);
         if (response.Items.Count == 0) text.AppendLine("No matching objects.");
+        var shown = Math.Min(response.Items.Count, TextListLimit);
+        if (response.Offset + shown < response.Total)
+            text.AppendLine($"Next page: --offset {response.Offset + shown} --limit {response.Limit}");
         return text.ToString();
     }
 

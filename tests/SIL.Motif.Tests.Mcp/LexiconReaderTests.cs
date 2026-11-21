@@ -302,6 +302,27 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
         Assert.Equal(2, negative["returned"]!.GetValue<int>());
     }
 
+    [Fact]
+    public void ExactEqualsTheHeadwordOrAFormNotJustContainsItAndABareFormFindsTheMarkedAffix()
+    {
+        Assert.Equal(["an"], Headwords(Read(new LexiconFilter(Exact: "AN"))));
+        Assert.Equal(["mag"], Headwords(Read(new LexiconFilter(Exact: "mag-"))));
+        Assert.Equal(["mag"], Headwords(Read(new LexiconFilter(Exact: "mag"))));
+        Assert.Empty(Headwords(Read(new LexiconFilter(Exact: "ma"))));
+        Assert.Empty(Headwords(Read(new LexiconFilter(Exact: "-mag"))));
+        Assert.Equal(["kaon"], Headwords(Read(new LexiconFilter(Exact: "kaon", MorphTypesOrNull: ["root"]))));
+        Assert.Empty(Headwords(Read(new LexiconFilter(Exact: "kaon", MorphTypesOrNull: ["prefix"]))));
+    }
+
+    [Fact]
+    public void ANextOffsetNamesTheNextPageUntilTheLastOneWhichOmitsIt()
+    {
+        Assert.Equal(3, Read(new LexiconFilter(), limit: 3)["nextOffset"]!.GetValue<int>());
+        Assert.Equal(6, Read(new LexiconFilter(), limit: 3, offset: 3)["nextOffset"]!.GetValue<int>());
+        Assert.False(Read(new LexiconFilter(), limit: 3, offset: 6).ContainsKey("nextOffset"));
+        Assert.False(Read(new LexiconFilter(), offset: 100).ContainsKey("nextOffset"));
+    }
+
     private string CanonicalIdOf(string name)
     {
         Fill();

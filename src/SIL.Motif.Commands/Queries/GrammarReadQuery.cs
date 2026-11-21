@@ -27,6 +27,14 @@ public static class GrammarReadQuery
             return Invalid("An exact id must be a canonical entity id.");
         if (request.Id is not null && request.Query is not null)
             return Invalid("Choose either an exact id or a name query, not both.");
+        if (request.Id is not null && (request.Exact is not null || request.MorphType is not null))
+            return Invalid("An exact id is read on its own; drop the exact form and morph type filters.");
+        if (request.Exact is not null && request.Query is not null)
+            return Invalid("Choose either an exact form or a name query, not both.");
+        if (request.Exact is not null && string.IsNullOrWhiteSpace(request.Exact))
+            return Invalid("An exact form cannot be empty.");
+        if (request.MorphType is not null && request.Kind != GrammarReadKind.lexical_entry)
+            return Invalid("A morph type filter applies to lexical entries only.");
         if (request.Offset is < 0 or > MaximumOffset)
             return Invalid($"The offset must be between 0 and {MaximumOffset}.");
         if (request.Limit is < 1 or > MaximumPageSize)
