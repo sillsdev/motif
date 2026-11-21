@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -36,11 +37,8 @@ public static class GrammarReadQuery
             return Invalid("An exact form cannot be empty.");
         if (request.MorphType is not null && request.Kind != GrammarReadKind.lexical_entry)
             return Invalid("A morph type filter applies to lexical entries only.");
-        var proposalId = string.IsNullOrWhiteSpace(request.At) || request.At == "baseline" ? null : request.At;
-        if (request.At is not null && string.IsNullOrWhiteSpace(request.At))
-            return Invalid("--at cannot be empty; give 'baseline' or a Proposal id.");
-        if (proposalId is not null && !CanonicalId.TryParse(proposalId, out _))
-            return Invalid($"'{request.At}' is neither 'baseline' nor a Proposal id.");
+        if (ValidateAt(request.At, out var proposalId) is { } badAt)
+            return CommandOutcome<GrammarReadResponse>.Refused(badAt);
         if (request.Offset is < 0 or > MaximumOffset)
             return Invalid($"The offset must be between 0 and {MaximumOffset}.");
         if (request.Limit is < 1 or > MaximumPageSize)
@@ -58,8 +56,7 @@ public static class GrammarReadQuery
                 return Read(trialReader.Cache, request).Map(page => page with
                 {
                     At = traced.Value.TracedAgainst,
-                    AtLabel = $"the grammar the latest Trial of this Proposal ran against (Trial job {traced.Value.TrialJobId}), " +
-                        "with the Proposal's edits applied; not the Baseline",
+                    AtLabel = TrialCopyLabel(traced.Value.TrialJobId),
                 });
             }
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
@@ -87,6 +84,49 @@ public static class GrammarReadQuery
             });
         });
     }
+
+    /// <summary>
+    /// Checks a read's <c>at</c> value. Returns the refusal for an empty or malformed value, else null with
+    /// <paramref name="proposalId"/> set to the Proposal to read at, or null for the Baseline. The refusal names the
+    /// caller's own <paramref name="parameterName"/>.
+    /// </summary>
+    public static Refusal? ValidateAt(string? at, out string? proposalId, string parameterName = "--at")
+    {
+        proposalId = string.IsNullOrWhiteSpace(at) || at == "baseline" ? null : at;
+        if (at is not null && string.IsNullOrWhiteSpace(at))
+            return new Refusal("grammar-read.invalid-request", FailureReason.InvalidArgument,
+                $"{parameterName} cannot be empty; give 'baseline' or a Proposal id.");
+        if (proposalId is not null && !CanonicalId.TryParse(proposalId, out _))
+            return new Refusal("grammar-read.invalid-request", FailureReason.InvalidArgument,
+                $"'{at}' is neither 'baseline' nor a Proposal id.");
+        return null;
+    }
+
+    /// <summary>
+    /// Runs <paramref name="read"/> on the copy of the grammar that <paramref name="proposalId"/>'s latest Trial ran
+    /// against, and stamps <c>at</c> and <c>atLabel</c> on the result so the copy is not taken for the Baseline.
+    /// </summary>
+    public static CommandOutcome<JsonObject> ReadAtProposal(string projectPath, string proposalId,
+        Func<LcmCache, CommandOutcome<JsonObject>> read) =>
+        ProjectStoreCommand.ReadExisting(projectPath,
+            CommandOutcome<JsonObject>.Refused(new Refusal("grammar-read.baseline-missing", FailureReason.NotFound,
+                "Capture a Baseline before reading project grammar objects.")),
+            (database, project) =>
+            {
+                var traced = TracedGrammar.Resolve(database, project, proposalId);
+                if (!traced.Succeeded) return CommandOutcome<JsonObject>.Refused(traced.Refusal!);
+                using var trialReader = BaselineReadCache.Open(traced.Value!.FwDataPath);
+                return read(trialReader.Cache).Map(result =>
+                {
+                    result["at"] = traced.Value.TracedAgainst;
+                    result["atLabel"] = TrialCopyLabel(traced.Value.TrialJobId);
+                    return result;
+                });
+            });
+
+    private static string TrialCopyLabel(string? trialJobId) =>
+        $"the grammar the latest Trial of this Proposal ran against (Trial job {trialJobId}), " +
+        "with the Proposal's edits applied; not the Baseline";
 
     private static CommandOutcome<GrammarReadResponse> Read(LcmCache cache, GrammarReadRequest request)
     {

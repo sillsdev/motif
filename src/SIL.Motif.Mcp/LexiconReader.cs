@@ -56,6 +56,9 @@ internal static class LexiconReader
             },
             ["showing"] = $"Showing {page.Length} of {matches.Count} entries from offset {offset}.",
         };
+        if (filter.MorphTypesOrNull is not { Count: > 0 } &&
+            GrammarReadProjectionBuilder.ExactNote(filter.Exact, matches.Select(entry => (headwords[entry], GrammarReader.Id(entry)))) is { } note)
+            result["exactNote"] = note;
         if (!detailed) HoistSharedGlossWs(page, result);
         result["offset"] = offset;
         result["returned"] = page.Length;

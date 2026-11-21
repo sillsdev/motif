@@ -162,6 +162,8 @@ internal static class AgentTools
                 ("exact", Schema.String("Only objects whose name or abbreviation equals this text, ignoring case."), false),
                 ("id", Schema.String("Only the object with this canonical id."), false),
                 ("offset", Schema.Integer("Items to skip; a result's nextOffset is the value for the next page.", 0, 100000), false),
+                ("at", Schema.String("What to read: 'baseline' (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal's edits applied. " +
+                    "The result returns at, and for a Proposal also atLabel: the Trial's copy of the grammar, not the Baseline."), false),
                 ..Schema.Verbosity()]),
             true,
             true,
@@ -174,7 +176,7 @@ internal static class AgentTools
             AgentClass.Read,
             Schema.Object([("query", Schema.String("Text the headword, a gloss or a form contains."), false),
                 ("exact", Schema.String("Only entries whose headword or a form equals this text, ignoring case; " +
-                    "a bare 'zi' also finds the affix 'zi-', while 'zi-' finds only that prefix."), false),
+                    "a bare 'zi' also finds the affix 'zi-' and exactNote says so, while 'zi-' finds only that prefix."), false),
                 ("morphType", Schema.StringArray("Only entries of these morph types, such as 'stem', 'root', 'prefix' or 'suffix'."), false),
                 ("affix", Schema.Boolean("True keeps affix entries (prefix, suffix, infix, circumfix and the like); false keeps the rest."), false),
                 ("category", Schema.String("Only entries with an analysis in this category, by exact name or id."), false),
@@ -182,6 +184,8 @@ internal static class AgentTools
                 ("headwordContains", Schema.String("Only entries whose headword contains this text."), false),
                 ("hasGloss", Schema.Boolean("True keeps entries with a gloss; false keeps those without one."), false),
                 ("offset", Schema.Integer("Entries to skip; a result's nextOffset is the value for the next page.", 0, 100000), false),
+                ("at", Schema.String("What to read: 'baseline' (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal's edits applied. " +
+                    "The result returns at, and for a Proposal also atLabel: the Trial's copy of the grammar, not the Baseline."), false),
                 ..Schema.Verbosity()]),
             true,
             true,
@@ -1658,7 +1662,7 @@ internal static class AgentTools
         var detailed = args.Optional("detail") == "detailed";
         var offset = args.Int("offset", 0);
         var limit = args.Int("limit", 25);
-        var outcome = BaselineReads.Read(context.ProjectPath, cache => kind is null
+        var outcome = BaselineReads.ReadAt(context.ProjectPath, args.Optional("at"), cache => kind is null
             ? GrammarReader.Summary(cache) : GrammarReader.Page(GrammarReader.Read(cache, kind, args.Optional("query"),
                 detailed, args.Optional("exact"), args.Optional("id")), offset, limit));
         return ToolOutcome.From(outcome, kind is null
@@ -1673,7 +1677,8 @@ internal static class AgentTools
         var filter = new LexiconFilter(args.Optional("query"), args.List("morphType"), args.OptionalBoolean("affix"),
             args.Optional("category"), args.Optional("headword"), args.Optional("headwordContains"),
             args.OptionalBoolean("hasGloss"), args.Optional("exact"));
-        var outcome = BaselineReads.ReadLexicon(context.ProjectPath, filter, args.Int("limit", 25), args.Int("offset", 0), detailed);
+        var outcome = BaselineReads.ReadLexicon(context.ProjectPath, filter, args.Int("limit", 25), args.Int("offset", 0), detailed,
+            args.Optional("at"));
         return ToolOutcome.From(outcome, "Narrow with morphType, affix, category or headword, or page on with offset. " +
             "Concise entries carry the entry and sense ids changes need; detail=detailed adds allomorphs and grammatical info.");
     }
