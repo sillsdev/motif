@@ -98,6 +98,10 @@
           "minimum": 0,
           "maximum": 100000
         },
+        "at": {
+          "type": "string",
+          "description": "What to read: \u0027baseline\u0027 (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal\u0027s edits applied. The result returns at, and for a Proposal also atLabel: the Trial\u0027s copy of the grammar, not the Baseline."
+        },
         "detail": {
           "type": "string",
           "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
@@ -138,7 +142,7 @@
         },
         "exact": {
           "type": "string",
-          "description": "Only entries whose headword or a form equals this text, ignoring case; a bare \u0027zi\u0027 also finds the affix \u0027zi-\u0027, while \u0027zi-\u0027 finds only that prefix."
+          "description": "Only entries whose headword or a form equals this text, ignoring case; a bare \u0027zi\u0027 also finds the affix \u0027zi-\u0027 and exactNote says so, while \u0027zi-\u0027 finds only that prefix."
         },
         "morphType": {
           "type": "array",
@@ -172,6 +176,10 @@
           "description": "Entries to skip; a result\u0027s nextOffset is the value for the next page.",
           "minimum": 0,
           "maximum": 100000
+        },
+        "at": {
+          "type": "string",
+          "description": "What to read: \u0027baseline\u0027 (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal\u0027s edits applied. The result returns at, and for a Proposal also atLabel: the Trial\u0027s copy of the grammar, not the Baseline."
         },
         "detail": {
           "type": "string",

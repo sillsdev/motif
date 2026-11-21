@@ -74,6 +74,10 @@
           "minimum": 0,
           "maximum": 100000
         },
+        "at": {
+          "type": "string",
+          "description": "What to read: \u0027baseline\u0027 (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal\u0027s edits applied. The result returns at, and for a Proposal also atLabel: the Trial\u0027s copy of the grammar, not the Baseline."
+        },
         "detail": {
           "type": "string",
           "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
