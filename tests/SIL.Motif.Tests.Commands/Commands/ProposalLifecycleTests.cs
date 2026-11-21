@@ -1,10 +1,14 @@
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -294,6 +298,97 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
 
         Assert.Equal("proposal.has-draft", applied.Refusal?.Code);
         Assert.Equal(SIL.Motif.Contract.Responses.FailureReason.Refused, applied.Refusal?.Reason);
+    }
+
+    [Fact]
+    public void WithdrawingAProposalCancelsItsDryRunAndTrialAndLeavesAnotherProposalsJobsQueued()
+    {
+        var path = NewProject();
+        var withdrawn = Draft(path, "withdrawn-jobs");
+        var kept = Draft(path, "kept-jobs");
+        var dryRun = Queue(JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(path, Version, withdrawn)));
+        var trial = Queue(JobCommands.EnqueueTrial(new EnqueueTrialRequest(path, Version, withdrawn, Words: ["word"])));
+        var other = Queue(JobCommands.EnqueueTrial(new EnqueueTrialRequest(path, Version, kept, Words: ["word"])));
+
+        var result = ProposalLifecycleCommand.Withdraw(new WithdrawProposalRequest(path, withdrawn));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(new[] { dryRun, trial }.Order(), result.Value!.CancelledJobIds!.Order());
+        Assert.Equal(JobStatus.Cancelled, JobStatusOf(path, dryRun));
+        Assert.Equal(JobStatus.Cancelled, JobStatusOf(path, trial));
+        Assert.Equal(JobStatus.Queued, JobStatusOf(path, other));
+    }
+
+    [Fact]
+    public void DecliningAProposalCancelsItsQueuedTrial()
+    {
+        var (path, id) = Finalized("declined-jobs");
+        var trial = Queue(JobCommands.EnqueueTrial(new EnqueueTrialRequest(path, Version, id, Words: ["word"])));
+
+        var result = ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, id, "No."));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(trial, Assert.Single(result.Value!.CancelledJobIds!));
+        Assert.Equal(JobStatus.Cancelled, JobStatusOf(path, trial));
+    }
+
+    [Fact]
+    public void AWithdrawnProposalsRunningTrialIsReportedAsAskedToStopNotCancelled()
+    {
+        var path = NewProject();
+        var id = Draft(path, "running-jobs");
+        var trial = Queue(JobCommands.EnqueueTrial(new EnqueueTrialRequest(path, Version, id, Words: ["word"])));
+        using (var database = ProjectMotifDatabase.Open(path))
+            new JobRepository(database).Transition(trial, JobStatus.Running);
+
+        var result = ProposalLifecycleCommand.Withdraw(new WithdrawProposalRequest(path, id));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Null(result.Value!.CancelledJobIds);
+        Assert.Equal(trial, Assert.Single(result.Value.CancelRequestedJobIds!));
+        using var check = ProjectMotifDatabase.Open(path);
+        var job = new JobRepository(check).Get(trial)!;
+        Assert.Equal(JobStatus.Running, job.Status);
+        Assert.True(job.CancellationRequested);
+    }
+
+    [Fact]
+    public void AJobThatCannotBeCancelledIsReportedWithItsReasonNotDropped()
+    {
+        var path = NewProject();
+        var id = Draft(path, "failing-cancel");
+        var trial = Queue(JobCommands.EnqueueTrial(new EnqueueTrialRequest(path, Version, id, Words: ["word"])));
+
+        var result = ProposalLifecycleCommand.CancelOpenJobs(path, id, request => CommandOutcome<JobStatusResponse>.Refused(
+            new Refusal("store.busy", FailureReason.Refused, "The project store is busy.")));
+
+        Assert.Equal(trial, Assert.Single(result.Failed));
+        Assert.Empty(result.Cancelled);
+        Assert.Contains("The project store is busy.", result.Warning, StringComparison.Ordinal);
+        Assert.Equal(JobStatus.Queued, JobStatusOf(path, trial));
+    }
+
+    [Fact]
+    public void AClosedProposalWithNoJobsReportsNoneCancelled()
+    {
+        var (path, id) = Finalized("no-jobs");
+
+        var result = ProposalLifecycleCommand.Withdraw(new WithdrawProposalRequest(path, id));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Null(result.Value!.CancelledJobIds);
+    }
+
+    private static string Queue(CommandOutcome<JobEnqueuedResponse> queued)
+    {
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        return queued.Value!.JobId;
+    }
+
+    private static JobStatus JobStatusOf(string path, string jobId)
+    {
+        using var database = ProjectMotifDatabase.Open(path);
+        return new JobRepository(database).Get(jobId)!.Status;
     }
 
     private static string[] ListedIds(string path)

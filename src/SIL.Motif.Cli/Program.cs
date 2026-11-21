@@ -824,7 +824,7 @@ try
             if (!flags.TryGetValue("project", out var rejectProject) || positionals.Count != 1)
                 return Usage("Usage: motif reject --project <fwdata> <proposalId>", asJson);
             result = RenderProposal(
-                ProposalCommands.Reject(new RejectRequest(rejectProject, CliProductVersion(), positionals[0])),
+                ProposalLifecycleCommand.Decline(new DeclineProposalRequest(rejectProject, positionals[0])),
                 successAsJson: false);
             break;
 

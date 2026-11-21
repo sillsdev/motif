@@ -14,6 +14,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -871,6 +872,21 @@ public sealed class ProposalWorkflowTests : IDisposable
     {
         using var cache = new FwDataProjectLoader().LoadScratchCache(_fwDataPath);
         Assert.Equal(expectedCount, ProjectAppliedLog.ReadAll(cache).Count);
+    }
+
+    [Fact]
+    public void TheRejectVerbCancelsTheProposalsQueuedTrialLikeDecline()
+    {
+        var id = FinalizeSetGloss("reject-verb-jobs", CanonicalId.FromGuid(_seed.FirstSenseId).Value, "a gloss");
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id, Words: ["word"]));
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+
+        var run = RunCli("1", "reject", "--project", _fwDataPath, id);
+
+        Assert.True(run.ExitCode == 0, run.Error + run.Output);
+        Assert.Contains(queued.Value!.JobId, run.Output, StringComparison.Ordinal);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        Assert.Equal(JobStatus.Cancelled, new JobRepository(database).Get(queued.Value.JobId)!.Status);
     }
 
     private string FinalizeSetGloss(

@@ -256,8 +256,21 @@ public static class ProposalCommandRenderer
         return sb.ToString();
     }
 
-    internal static string RenderStatusChanged(ProposalStatusChangedResponse response) =>
-        $"Proposal {response.ProposalId} is now '{response.Status}'.{Environment.NewLine}";
+    internal static string RenderStatusChanged(ProposalStatusChangedResponse response)
+    {
+        var text = $"Proposal {response.ProposalId} is now '{response.Status}'.{Environment.NewLine}";
+        if (response.CancelledJobIds is { Count: > 0 } cancelled)
+            text += $"Cancelled its queued job(s): {string.Join(", ", cancelled)}.{Environment.NewLine}";
+        if (response.CancelRequestedJobIds is { Count: > 0 } requested)
+            text += $"Asked its running job(s) to stop: {string.Join(", ", requested)}; " +
+                $"they end cancelled once the runner acts.{Environment.NewLine}";
+        if (response.CancelFailedJobIds is { Count: > 0 } failed)
+            text += $"Could not cancel its job(s): {string.Join(", ", failed)}. " +
+                $"Run `motif jobs cancel <jobId>`.{Environment.NewLine}";
+        if (response.CancelWarning is { } warning)
+            text += $"warning: {warning}{Environment.NewLine}";
+        return text;
+    }
 
     internal static string RenderTextChanged(ProposalTextChangedResponse response)
     {

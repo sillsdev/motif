@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -128,6 +129,79 @@ public static class ProposalLifecycleCommand
     internal const string ReviewDraftPrefix = "review/";
 
     private static CommandOutcome<ProposalStatusChangedResponse> Close(string projectPath, string proposalId,
+        string status, string? reason = null)
+    {
+        var closed = CloseCore(projectPath, proposalId, status, reason);
+        if (!closed.Succeeded) return closed;
+        var jobs = CancelOpenJobs(projectPath, closed.Value!.ProposalId, request => JobCommands.Cancel(request));
+        return jobs.IsEmpty ? closed : CommandOutcome<ProposalStatusChangedResponse>.Success(closed.Value with
+        {
+            CancelledJobIds = jobs.Cancelled.Count == 0 ? null : jobs.Cancelled,
+            CancelRequestedJobIds = jobs.Requested.Count == 0 ? null : jobs.Requested,
+            CancelFailedJobIds = jobs.Failed.Count == 0 ? null : jobs.Failed,
+            CancelWarning = jobs.Warning,
+        });
+    }
+
+    internal sealed record JobCancellations(List<string> Cancelled, List<string> Requested, List<string> Failed,
+        string? Warning)
+    {
+        public bool IsEmpty => Cancelled.Count + Requested.Count + Failed.Count == 0 && Warning is null;
+    }
+
+    /// <summary>
+    /// Cancels a closed Proposal's open Dry Run and Trial jobs, as `jobs cancel` does. A queued job ends Cancelled;
+    /// a running one is only asked to stop; a refusal is reported with its reason.
+    /// </summary>
+    internal static JobCancellations CancelOpenJobs(string projectPath, string proposalId,
+        Func<CancelJobRequest, CommandOutcome<JobStatusResponse>> cancel)
+    {
+        var version = MotifProductVersion.CurrentText;
+        var result = new JobCancellations([], [], [], null);
+        var matching = ProjectStoreCommand.Run(projectPath, version, (database, _) =>
+        {
+            var found = new List<string>();
+            foreach (var job in new JobRepository(database).ListActive())
+                if (JobProposalId(job) == proposalId) found.Add(job.JobId);
+            return CommandOutcome<IReadOnlyList<string>>.Success(found);
+        });
+        if (!matching.Succeeded)
+            return result with { Warning = "Could not look for the Proposal's jobs to cancel: " + matching.Refusal!.Message };
+        var reasons = new List<string>();
+        foreach (var jobId in matching.Value!)
+        {
+            var outcome = cancel(new CancelJobRequest(projectPath, jobId, version));
+            if (outcome.Succeeded)
+                (outcome.Value!.Status == JobStatus.Cancelled ? result.Cancelled : result.Requested).Add(jobId);
+            else if (outcome.Refusal!.Code != "job.already-finished")
+            {
+                result.Failed.Add(jobId);
+                reasons.Add(jobId + ": " + outcome.Refusal.Message);
+            }
+        }
+        return reasons.Count == 0 ? result : result with { Warning = string.Join(" ", reasons) };
+    }
+
+    private static string? JobProposalId(JobRecord job)
+    {
+        try
+        {
+            return job.Kind switch
+            {
+                JobCommands.DryRunKind => DryRunJobInput.ParseWithoutSourceCheck(job.InputJson).Proposal.ProposalId,
+                JobCommands.TrialKind => ProposalJsonParser.Parse(TrialJobInput.Parse(job.InputJson).ProposalJson)
+                    .ProposalId.Value,
+                _ => null,
+            };
+        }
+        catch (Exception exception) when (exception is InvalidDataException or JsonException or FormatException
+            or ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private static CommandOutcome<ProposalStatusChangedResponse> CloseCore(string projectPath, string proposalId,
         string status, string? reason = null)
     {
         var version = MotifProductVersion.CurrentText;

@@ -170,7 +170,16 @@ public sealed record ProposalSplitResponse(
     string SourceProposalId, IReadOnlyList<SplitDraftResult> Drafts, int ForcedSeveredEdgeCount);
 
 /// <summary>A Proposal moved to a new status (<c>defer</c>, <c>reject</c>, or <c>supersede</c>).</summary>
-public sealed record ProposalStatusChangedResponse(string ProposalId, string Status, string? RelatedProposalId);
+/// <param name="ProposalId">The Proposal that moved.</param>
+/// <param name="Status">The status it moved to.</param>
+/// <param name="RelatedProposalId">The Proposal that replaced it on <c>supersede</c>; null otherwise.</param>
+/// <param name="CancelledJobIds">The queued Dry Run and Trial jobs a decline or withdrawal cancelled; null when none.</param>
+/// <param name="CancelRequestedJobIds">The running ones it asked to stop; they end Cancelled once their runner acts.</param>
+/// <param name="CancelFailedJobIds">The ones it could not cancel, so a person can run `jobs cancel`; null when none.</param>
+/// <param name="CancelWarning">Why a job could not be cancelled or found, for example the store was busy; else null.</param>
+public sealed record ProposalStatusChangedResponse(string ProposalId, string Status, string? RelatedProposalId,
+    IReadOnlyList<string>? CancelledJobIds = null, IReadOnlyList<string>? CancelRequestedJobIds = null,
+    IReadOnlyList<string>? CancelFailedJobIds = null, string? CancelWarning = null);
 
 /// <summary>One picture attached to a Proposal, without its bytes.</summary>
 /// <param name="PictureId">The picture's number, which a remove or a read names.</param>
