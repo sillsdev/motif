@@ -59,6 +59,12 @@ public static class StoreHolder
         string[] files;
         try { files = Directory.GetFiles(directory, Path.GetFileName(storePath) + Suffix + "*"); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return []; }
+        try
+        {
+            foreach (var temp in Directory.GetFiles(directory, Path.GetFileName(storePath) + ".tmp-holder-*"))
+                if (DateTime.UtcNow - File.GetLastWriteTimeUtc(temp) > TimeSpan.FromMinutes(1)) TryDelete(temp);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
         foreach (var file in files)
         {
             var holder = Parse(file);

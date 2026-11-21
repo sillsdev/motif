@@ -17,8 +17,9 @@ public sealed record WorkerStopRequest(string? ProjectPath = null);
 /// <param name="Pid">The runner's process id.</param>
 /// <param name="Build">The build the runner records, or empty when none is recorded.</param>
 /// <param name="Root">The worker root the runner serves, or empty when none is recorded.</param>
-/// <param name="Outcome"><c>stopped</c>, or <c>skipped</c> when the pid no longer names a Motif runner.</param>
-public sealed record StoppedWorker(int Pid, string Build, string Root, string Outcome);
+/// <param name="Outcome"><c>stopped</c>, or <c>skipped</c> when the pid was not confirmed as the recorded runner.</param>
+/// <param name="Note">Why a skipped process was left alone, with how to end it by hand; empty for a stopped one.</param>
+public sealed record StoppedWorker(int Pid, string Build, string Root, string Outcome, string Note = "");
 
 /// <summary>The runners <c>worker stop</c> found, and the worker root and project it looked under.</summary>
 public sealed record WorkerStopResponse(string Root, string? ProjectPath, IReadOnlyList<StoppedWorker> Workers);
@@ -71,7 +72,7 @@ public static class WorkerStopCommand
 
         var results = new List<StoppedWorker>();
         var failed = new List<int>();
-        var unverified = new List<int>();
+        var unverified = new List<(int Pid, string Name, string Why)>();
         foreach (var (target, started) in targets.DistinctBy(item => item.Worker.Pid))
         {
             if (target.Pid == Environment.ProcessId || target.Pid == processes.ParentPid)
@@ -80,21 +81,37 @@ public static class WorkerStopCommand
                 continue;
             }
             var name = processes.NameOf(target.Pid);
-            if (name is null || !LooksLikeRunner(name))
+            if (name is null)
             {
                 Prune(storePath, root, target.Pid);
-                results.Add(target with { Outcome = "skipped" });
+                results.Add(target with { Outcome = "skipped", Note = "it has already exited" });
+                continue;
+            }
+            if (!LooksLikeRunner(name))
+            {
+                Prune(storePath, root, target.Pid);
+                results.Add(target with { Outcome = "skipped", Note = "it is no longer a Motif runner (now " + name + ")" });
+                continue;
+            }
+            var recorded = DateTimeOffset.TryParse(started, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.RoundtripKind, out _);
+            if (!recorded)
+            {
+                unverified.Add((target.Pid, name, "its record has no start time to compare"));
                 continue;
             }
             if (processes.StartTimeOf(target.Pid) is not { } actual)
             {
-                unverified.Add(target.Pid);
+                unverified.Add((target.Pid, name, "its start time cannot be read"));
                 continue;
             }
             if (!RunnerProcess.SameStart(started, actual))
             {
-                Prune(storePath, root, target.Pid);
-                results.Add(target with { Outcome = "skipped" });
+                results.Add(target with
+                {
+                    Outcome = "skipped",
+                    Note = "process identity changed (pid reused or clock stepped); if it is the runner, " + KillHint(target.Pid),
+                });
                 continue;
             }
             if (processes.Terminate(target.Pid, ExitPatience))
@@ -112,13 +129,14 @@ public static class WorkerStopCommand
         {
             var facts = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                ["pids"] = string.Join(",", unverified),
+                ["pids"] = string.Join(",", unverified.Select(item => item.Pid)),
                 ["stopped"] = string.Join(",", results.Where(item => item.Outcome == "stopped").Select(item => item.Pid)),
             };
             if (projectPath is not null) facts["fwDataPath"] = projectPath;
             return CommandOutcome<WorkerStopResponse>.Refused(new Refusal(RefusalCodes.WorkerStopFailed, FailureReason.Refused,
-                "The process (pid " + string.Join(", ", unverified) + ") could not be confirmed as the recorded runner, " +
-                "so it was not stopped. Stop it from the operating system if it is the runner.", facts));
+                string.Join(" ", unverified.Select(item => "Process " + item.Pid + " (" + item.Name +
+                    ") was not stopped because " + item.Why + "; its record was kept. If it is the runner, " +
+                    KillHint(item.Pid))), facts));
         }
 
         if (failed.Count != 0)
@@ -137,6 +155,9 @@ public static class WorkerStopCommand
 
         return CommandOutcome<WorkerStopResponse>.Success(new WorkerStopResponse(root, projectPath, results));
     }
+
+    private static string KillHint(int pid) =>
+        "end it from the operating system: `kill " + pid + "` (Linux, macOS) or `taskkill /PID " + pid + " /F` (Windows).";
 
     private static void Prune(string? storePath, string root, int pid)
     {

@@ -70,7 +70,7 @@ public sealed class WorkerStopCommandTests : IDisposable
     }
 
     [Fact]
-    public void AReusedPidWithADifferentStartTimeIsSkippedAndItsRecordPruned()
+    public void ALivePidWhoseStartTimeDiffersIsSkippedWithAReasonAndAKillHintAndKeepsItsRecord()
     {
         var project = Project("recycled");
         var store = Path.Combine(_root, "recycled.motif.db");
@@ -81,12 +81,16 @@ public sealed class WorkerStopCommandTests : IDisposable
 
         Assert.True(stopped.Succeeded, stopped.Refusal?.Message);
         Assert.Empty(processes.Terminated);
-        Assert.Equal("skipped", Assert.Single(stopped.Value!.Workers).Outcome);
-        Assert.Empty(Directory.GetFiles(_root, "*.holder-*"));
+        var worker = Assert.Single(stopped.Value!.Workers);
+        Assert.Equal("skipped", worker.Outcome);
+        Assert.Contains("process identity changed (pid reused or clock stepped)", worker.Note);
+        Assert.Contains("kill 4401", worker.Note);
+        Assert.Contains("taskkill /PID 4401 /F", worker.Note);
+        Assert.Single(Directory.GetFiles(_root, "*.holder-*"));
     }
 
     [Fact]
-    public void AReusedPidInTheRunnerIdentityIsSkippedAndTheRecordPruned()
+    public void AReusedPidInTheRunnerIdentityIsSkippedAndTheRecordKept()
     {
         File.WriteAllText(RunnerIdentity.PathFor(_root), "4402\nthe build\n" + Started);
         var processes = new FakeProcesses { Names = { [4402] = "SIL.Motif.Worker" }, Starts = { [4402] = StartedAt.AddDays(1) } };
@@ -95,11 +99,11 @@ public sealed class WorkerStopCommandTests : IDisposable
 
         Assert.Empty(processes.Terminated);
         Assert.Equal("skipped", Assert.Single(stopped.Value!.Workers).Outcome);
-        Assert.False(File.Exists(RunnerIdentity.PathFor(_root)));
+        Assert.True(File.Exists(RunnerIdentity.PathFor(_root)));
     }
 
     [Fact]
-    public void ARecordWithoutAStartTimeCannotBeVerifiedSoItsProcessIsLeftAlone()
+    public void ARecordWithoutAParseableStartTimeOnALivePidIsRefusedWithAKillHintAndKept()
     {
         var project = Project("legacy");
         var store = Path.Combine(_root, "legacy.motif.db");
@@ -109,7 +113,12 @@ public sealed class WorkerStopCommandTests : IDisposable
         var stopped = WorkerStopCommand.Run(new WorkerStopRequest(project), "/unused", processes);
 
         Assert.Empty(processes.Terminated);
-        Assert.Equal("skipped", Assert.Single(stopped.Value!.Workers).Outcome);
+        Assert.Equal(RefusalCodes.WorkerStopFailed, stopped.Refusal!.Code);
+        Assert.Equal("4403", stopped.Refusal.Facts["pids"]);
+        Assert.Contains("SIL.Motif.Worker", stopped.Refusal.Message);
+        Assert.Contains("kill 4403", stopped.Refusal.Message);
+        Assert.Contains("taskkill /PID 4403 /F", stopped.Refusal.Message);
+        Assert.Single(Directory.GetFiles(_root, "*.holder-*"));
     }
 
     [Fact]

@@ -134,6 +134,22 @@ public sealed class StoreHolderTests : IDisposable
         Assert.False(File.Exists(dead));
     }
 
+    [Fact]
+    public void AStaleTemporaryHolderFileIsRemovedAndAFreshOneIsKept()
+    {
+        var store = Path.Combine(_directory, "demo.motif.db");
+        var stale = store + ".tmp-holder-old";
+        var fresh = store + ".tmp-holder-new";
+        File.WriteAllText(stale, "x");
+        File.WriteAllText(fresh, "x");
+        File.SetLastWriteTimeUtc(stale, DateTime.UtcNow.AddMinutes(-5));
+
+        StoreHolder.ReadLive(store);
+
+        Assert.False(File.Exists(stale));
+        Assert.True(File.Exists(fresh));
+    }
+
     [Theory]
     [InlineData("2026-11-20T10:00:01.0000000+00:00", true)]
     [InlineData("2026-11-20T10:00:09.0000000+00:00", false)]

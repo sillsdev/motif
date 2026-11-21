@@ -969,7 +969,7 @@ public static class CommandTextRenderer
                 r.ProjectPath ?? r.Root) + Environment.NewLine;
         return string.Concat(r.Workers.Select(worker => string.Format(CultureInfo.CurrentCulture,
             worker.Outcome == "stopped" ? CliStrings.WorkerStopStopped : CliStrings.WorkerStopSkipped,
-            worker.Pid, worker.Build, worker.Root) + Environment.NewLine));
+            worker.Pid, worker.Build, worker.Root, worker.Note) + Environment.NewLine));
     }
 
     private static string RenderStorePrune(StorePruneResponse r)
