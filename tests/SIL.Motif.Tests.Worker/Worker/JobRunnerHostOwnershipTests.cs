@@ -220,7 +220,8 @@ public sealed class JobRunnerHostOwnershipTests
                 new RunnerOptions { Root = root }, new FakeInvoker(), "retiring-owner",
                 CancellationToken.None, activity);
             Assert.Null(empty.JobId);
-            Assert.True(runtimes.TryGet(key, out _));
+            Assert.False(runtimes.TryGet(key, out _));
+            runtimes.GetOrOpen(project);
             Assert.False(activity.HasActiveWork);
             Assert.True(activity.TryRetire());
             Assert.False(activity.TryBeginSweep());

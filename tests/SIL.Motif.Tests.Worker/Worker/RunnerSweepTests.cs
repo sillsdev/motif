@@ -405,7 +405,7 @@ public sealed class RunnerSweepTests : IDisposable
             _options with { ParserPath = oldParser }, new FakeInvoker(), OwnerId, CancellationToken.None, activity,
             runClaimedAsync: (_, _) => Task.CompletedTask);
 
-        var failed = runtime.Jobs.Get("stranded-trial")!;
+        var failed = _runtimes.GetOrOpen(runtime.Project).Jobs.Get("stranded-trial")!;
         Assert.Equal(JobStatus.Failed, failed.Status);
         Assert.Equal(JobFailureCategory.Infrastructure, failed.FailureCategory);
         using var result = System.Text.Json.JsonDocument.Parse(failed.ResultJson!);
@@ -441,7 +441,7 @@ public sealed class RunnerSweepTests : IDisposable
             _options with { ParserPath = oldParser }, new FakeInvoker(), OwnerId, CancellationToken.None, activity,
             runClaimedAsync: (_, _) => Task.CompletedTask);
 
-        var failed = runtime.Jobs.Get("orphan")!;
+        var failed = _runtimes.GetOrOpen(runtime.Project).Jobs.Get("orphan")!;
         Assert.Equal(JobStatus.Failed, failed.Status);
         Assert.Contains("job.parser-unavailable", failed.ResultJson);
         Assert.False(outcome.HasActiveWork);
@@ -605,6 +605,282 @@ public sealed class RunnerSweepTests : IDisposable
             new FakeInvoker(), OwnerId, CancellationToken.None,
             runClaimedAsync: (_, _) => Task.CompletedTask, reportWarning: recovered.Add);
         Assert.Empty(recovered);
+    }
+
+    [Fact]
+    public async Task AProjectWithNoActiveJobIsReleasedAtTheEndOfTheSweepSoAnExclusiveStoreLeaseCanBeTaken()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var idle = SeedProject(known, "idle-project");
+        var key = idle.WorkspaceKey;
+        var leasePath = idle.Database.FullPath + ".use.lock";
+
+        await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, CancellationToken.None, runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        Assert.False(_runtimes.TryGet(key, out _));
+        using var exclusive = new FileStream(leasePath, FileMode.OpenOrCreate, FileAccess.Read, FileShare.None, 1,
+            FileOptions.None);
+    }
+
+    [Fact]
+    public async Task AProjectWithAnActiveJobKeepsItsStoreOpenAfterTheSweep()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var busy = SeedProject(known, "busy-project");
+        SeedJob(busy, "busy-job", queueOrder: 1.0);
+
+        await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, CancellationToken.None, runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        Assert.True(_runtimes.TryGet(busy.WorkspaceKey, out _));
+    }
+
+    [Fact]
+    public async Task AKnownProjectThatFailsToBeSweptThreeSweepsInARowNoLongerKeepsTheRunnerAlive()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var broken = SeedProject(known, "broken-project");
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
+        var warnings = new List<string>();
+        var outcomes = new List<bool>();
+
+        for (var sweep = 0; sweep < 4; sweep++)
+        {
+            var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
+                new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+                runClaimedAsync: (_, _) => Task.CompletedTask,
+                listActive: _ => throw new Microsoft.Data.Sqlite.SqliteException("schema is newer", 1),
+                reportWarning: warnings.Add);
+            outcomes.Add(outcome.HasActiveWork);
+        }
+
+        Assert.Equal(new[] { true, true, false, false }, outcomes);
+        Assert.Equal(4, warnings.Count(warning => warning.Contains(broken.Project.FullFwDataPath,
+            StringComparison.Ordinal)));
+        Assert.False(activity.HasActiveWork);
+    }
+
+    [Fact]
+    public async Task AProjectThatRecoversBetweenFailuresStartsItsFailureCountOver()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        SeedProject(known, "flaky-project");
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity(TimeSpan.Zero);
+        var failing = new[] { true, true, false, true, true };
+        var outcomes = new List<bool>();
+
+        foreach (var fail in failing)
+        {
+            var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
+                new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+                runClaimedAsync: (_, _) => Task.CompletedTask,
+                listActive: runtime => fail
+                    ? throw new Microsoft.Data.Sqlite.SqliteException("database is locked", 5)
+                    : runtime.Jobs.ListActive(runtime.WorkspaceKey),
+                reportWarning: _ => { });
+            outcomes.Add(outcome.HasActiveWork);
+        }
+
+        Assert.Equal(new[] { true, true, false, true, true }, outcomes);
+    }
+
+    [Fact]
+    public void AnIdleRuntimeWhoseStoreFileWasDeletedAndRecreatedIsReplacedByOneOpenOnTheNewFile()
+    {
+        if (OperatingSystem.IsWindows()) return; // Windows will not delete or move an open store.
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var stale = SeedProject(known, "rerun-project");
+        var path = stale.Database.FullPath;
+        var project = stale.Project;
+        Thread.Sleep(50);
+        foreach (var suffix in new[] { "", "-wal", "-shm" })
+            if (File.Exists(path + suffix)) File.Delete(path + suffix);
+        using (var second = new ProjectRuntimeRegistry(
+                   new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)),
+                   (jobs, key) => new WorkerRecoveryCoordinator(new WorkerRecovery(jobs),
+                       new WorkspaceCleaner(WorkspaceOwnership.Bootstrap(Path.Combine(_root, "owned-second")))),
+                   new ProjectRuntimeActivity()))
+            second.GetOrOpen(project);
+
+        var fresh = _runtimes.GetOrOpen(project);
+
+        Assert.NotSame(stale, fresh);
+        Assert.Equal(ProjectRuntimeAdmission.Disposed, stale.Admission);
+        Assert.False(fresh.StoreFileReplaced);
+    }
+
+    [Fact]
+    public void ARuntimeWithAnActiveJobIsNotDroppedWhenItsStoreFileIsReplaced()
+    {
+        if (OperatingSystem.IsWindows()) return; // Windows will not delete or move an open store.
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var busy = SeedProject(known, "rerun-busy");
+        SeedJob(busy, "keep-me", queueOrder: 1.0);
+        var path = busy.Database.FullPath;
+        // The open runtime keeps the old file alive, so the new one cannot reuse its inode.
+        File.Move(path, path + ".old");
+        File.WriteAllText(path, "not the same file");
+        Assert.True(busy.StoreFileReplaced);
+
+        Assert.Same(busy, _runtimes.GetOrOpen(busy.Project));
+    }
+
+    [Fact]
+    public async Task AThrowingStoreReleaseIsReportedAndStillLetsTheSweepEndAndTheRunnerRetire()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        SeedProject(known, "release-throws");
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
+        var warnings = new List<string>();
+
+        await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options, new FakeInvoker(),
+            OwnerId, CancellationToken.None, activity, reportWarning: warnings.Add,
+            releaseStore: _ => throw new AggregateException(new IOException("dispose failed")));
+
+        Assert.Contains(warnings, warning => warning.Contains("could not be released", StringComparison.Ordinal));
+        Assert.True(activity.TryRetire());
+    }
+
+    [Fact]
+    public async Task WhileAJobRunsTheStoresOfTheOtherProjectsAreAlreadyReleased()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var running = SeedProject(known, "long-job");
+        var other = SeedProject(known, "other-idle");
+        SeedJob(running, "long", queueOrder: 1.0);
+        var otherLease = other.Database.FullPath + ".use.lock";
+        var otherKey = other.WorkspaceKey;
+        var runningKey = running.WorkspaceKey;
+        var otherReleased = false;
+        var runningKept = false;
+
+        await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options, new FakeInvoker(),
+            OwnerId, CancellationToken.None, runClaimedAsync: (_, _) =>
+            {
+                otherReleased = !_runtimes.TryGet(otherKey, out _);
+                using var exclusive = new FileStream(otherLease, FileMode.OpenOrCreate, FileAccess.Read,
+                    FileShare.None, 1, FileOptions.None);
+                runningKept = _runtimes.TryGet(runningKey, out _);
+                return Task.CompletedTask;
+            });
+
+        Assert.True(otherReleased);
+        Assert.True(runningKept);
+    }
+
+    [Fact]
+    public async Task AnIdleStoreIsNotReopenedUntilItsFilesChange()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var idle = SeedProject(known, "quiet-project");
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity(TimeSpan.FromMinutes(5));
+        var opened = 0;
+        var countedThisSweep = false;
+        Func<ProjectRuntime, IReadOnlyList<JobRecord>> countOpens = runtime =>
+        {
+            if (!countedThisSweep) opened++;
+            countedThisSweep = true;
+            return runtime.Jobs.ListActive(runtime.WorkspaceKey);
+        };
+        Task<SIL.Motif.Worker.WorkerRuntime.SweepOutcome> Sweep()
+        {
+            countedThisSweep = false;
+            return SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
+                new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+                runClaimedAsync: (_, _) => Task.CompletedTask, listActive: countOpens);
+        }
+
+        await Sweep();
+        await Sweep();
+        await Sweep();
+        Assert.Equal(1, opened);
+
+        SeedJob(_runtimes.GetOrOpen(idle.Project), "arrives", queueOrder: 1.0);
+        var outcome = await Sweep();
+
+        Assert.Equal(2, opened);
+        Assert.Equal("arrives", outcome.JobId);
+    }
+
+    [Fact]
+    public async Task AnIdleStoreIsRevisitedOnceTheRevisitIntervalHasPassed()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        SeedProject(known, "revisited-project");
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity(TimeSpan.Zero);
+        var opened = 0;
+
+        for (var sweep = 0; sweep < 3; sweep++)
+        {
+            var counted = false;
+            await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
+                new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+                listActive: runtime =>
+                {
+                    if (!counted) opened++;
+                    counted = true;
+                    return runtime.Jobs.ListActive(runtime.WorkspaceKey);
+                });
+        }
+
+        Assert.Equal(3, opened);
+    }
+
+    [Fact]
+    public void ACompactionHoldKeepsTheStoreOpenUntilItIsDisposedThenReleasesIt()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var project = SeedProject(known, "compacting-project");
+        var key = project.WorkspaceKey;
+        var record = known.List().Single(entry => entry.WorkspaceKey == key);
+        _runtimes.TryReleaseIfIdle(key);
+
+        var hold = SIL.Motif.Worker.WorkerRuntime.OpenForCompaction(_runtimes, record, CancellationToken.None);
+
+        Assert.NotNull(hold);
+        Assert.False(_runtimes.TryReleaseIfIdle(key));
+        Assert.True(_runtimes.TryGet(key, out _));
+        hold!.Dispose();
+        Assert.False(_runtimes.TryGet(key, out _));
+    }
+
+    [Fact]
+    public void CompactingEveryKnownStoreVisitsReleasedStoresAndDisposesEachHold()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var first = SeedProject(known, "compact-a");
+        SeedProject(known, "compact-b");
+        _runtimes.TryReleaseIfIdle(first.WorkspaceKey);
+        var disposed = 0;
+
+        var visited = SIL.Motif.Worker.WorkerRuntime.CompactOpenStores(known,
+            record => SIL.Motif.Worker.WorkerRuntime.OpenForCompaction(_runtimes, record, CancellationToken.None) is
+                { } hold
+                ? new SIL.Motif.Worker.WorkerRuntime.CompactionHold(hold.Database,
+                    new Disposer(() => { disposed++; hold.Dispose(); }))
+                : null,
+            CancellationToken.None);
+
+        Assert.Equal(2, visited);
+        Assert.Equal(2, disposed);
+    }
+
+    private sealed class Disposer(Action dispose) : IDisposable
+    {
+        public void Dispose() => dispose();
     }
 
     private ProjectRuntime SeedProject(KnownProjectRegistry known, string identity)

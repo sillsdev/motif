@@ -138,17 +138,56 @@ internal static class WorkerRuntime
         while (!cancellationToken.IsCancellationRequested)
         {
             SweepUserDataWhenDue(root, knownProjects, cancellationToken, Console.Error.WriteLine);
-            CompactOpenStoresWhenDue(root, knownProjects,
-                key => runtimes.TryGet(key, out var runtime) ? runtime.Database : null, cancellationToken,
+            CompactHeldStoresWhenDue(root, knownProjects,
+                known => OpenForCompaction(runtimes, known, cancellationToken), cancellationToken,
                 Console.Error.WriteLine);
             try { await Task.Delay(MaintenancePoll, cancellationToken).ConfigureAwait(false); }
             catch (OperationCanceledException) { return; }
         }
     }
 
-    // Compaction has its own daily stamp, so a failed or slow sweep does not hold it back.
+    /// <summary>A store held for compaction: while the lease lives, no sweep can release the store under it.</summary>
+    internal sealed record CompactionHold(MotifDatabase Database, IDisposable Lease) : IDisposable
+    {
+        public void Dispose() => Lease.Dispose();
+    }
+
+    // Opens a Known project's store under an operation lease, so release cannot dispose it mid-compaction.
+    internal static CompactionHold? OpenForCompaction(Projects.ProjectRuntimeRegistry runtimes,
+        KnownProjectRecord known, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(known.FullFwDataPath)) return null;
+        var project = new ProjectLocator(known.FullFwDataPath, Path.GetFileNameWithoutExtension(known.FullFwDataPath));
+        var runtime = runtimes.GetOrOpen(project);
+        var operation = runtime.AcquireOperationAsync(cancellationToken).GetAwaiter().GetResult();
+        return new CompactionHold(runtime.Database, new ActionDisposable(() =>
+        {
+            operation.Dispose();
+            runtimes.TryReleaseIfIdle(runtime.WorkspaceKey);
+        }));
+    }
+
+    private sealed class ActionDisposable(Action dispose) : IDisposable
+    {
+        public void Dispose() => dispose();
+    }
+
     internal static void CompactOpenStoresWhenDue(string root, KnownProjectRegistry knownProjects,
-        Func<string, MotifDatabase?> openStore, CancellationToken cancellationToken, Action<string>? report = null)
+        Func<string, MotifDatabase?> openStore, CancellationToken cancellationToken, Action<string>? report = null) =>
+        CompactHeldStoresWhenDue(root, knownProjects,
+            known => openStore(known.WorkspaceKey) is { } database ? new CompactionHold(database, NoLease.Instance) : null,
+            cancellationToken, report);
+
+    private sealed class NoLease : IDisposable
+    {
+        public static readonly NoLease Instance = new();
+        public void Dispose() { }
+    }
+
+    // Compaction has its own daily stamp, so a failed or slow sweep does not hold it back.
+    internal static void CompactHeldStoresWhenDue(string root, KnownProjectRegistry knownProjects,
+        Func<KnownProjectRecord, CompactionHold?> openStore, CancellationToken cancellationToken,
+        Action<string>? report = null)
     {
         try
         {
@@ -164,9 +203,10 @@ internal static class WorkerRuntime
         }
     }
 
-    // Rewrites open stores no parse holds; counts the open stores it visited, and a failing store is skipped alone.
-    internal static int CompactOpenStores(KnownProjectRegistry knownProjects, Func<string, MotifDatabase?> openStore,
-        CancellationToken cancellationToken, Action<string>? report = null)
+    // Rewrites stores no parse holds; counts the stores it visited, and a failing store is skipped alone.
+    internal static int CompactOpenStores(KnownProjectRegistry knownProjects,
+        Func<KnownProjectRecord, CompactionHold?> openStore, CancellationToken cancellationToken,
+        Action<string>? report = null)
     {
         var visited = 0;
         foreach (var project in knownProjects.List())
@@ -174,13 +214,13 @@ internal static class WorkerRuntime
             if (cancellationToken.IsCancellationRequested) break;
             try
             {
-                var database = openStore(project.WorkspaceKey);
-                if (database is null) continue;
+                using var hold = openStore(project);
+                if (hold is null) continue;
                 visited++;
-                using var lease = ProjectParseLease.TryAcquire(database);
+                using var lease = ProjectParseLease.TryAcquire(hold.Database);
                 if (lease is null) continue;
-                if (StoreCompaction.CompactWhenWorthwhile(database, lease))
-                    report?.Invoke("store compaction: rewrote " + database.FullPath);
+                if (StoreCompaction.CompactWhenWorthwhile(hold.Database, lease))
+                    report?.Invoke("store compaction: rewrote " + hold.Database.FullPath);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
@@ -369,6 +409,68 @@ internal static class WorkerRuntime
         private bool _sweeping;
         private bool _retired;
         private bool _yieldToOtherParser;
+        private readonly Dictionary<string, int> _consecutiveFailures = new(StringComparer.Ordinal);
+
+        /// A project that has failed this many sweeps running is reported but no longer keeps the runner alive.
+        internal const int FailuresBeforeIdle = 3;
+
+        /// <summary>Records that a project failed this sweep; true while it should still keep the runner alive.</summary>
+        public bool PinsRunner(string projectPath, HashSet<string> failedThisSweep)
+        {
+            lock (_gate)
+            {
+                if (failedThisSweep.Add(projectPath))
+                    _consecutiveFailures[projectPath] = _consecutiveFailures.GetValueOrDefault(projectPath) + 1;
+                return _consecutiveFailures[projectPath] < FailuresBeforeIdle;
+            }
+        }
+
+        private readonly Dictionary<string, (string Stamp, long Tick)> _idleStores = new(StringComparer.Ordinal);
+        private readonly TimeSpan _idleRevisit;
+
+        public SweepActivity(TimeSpan? idleRevisit = null) => _idleRevisit = idleRevisit ?? TimeSpan.FromSeconds(5);
+
+        /// <summary>Notes a store that was just released idle, with the state of its files.</summary>
+        public void RememberIdleStore(string storePath)
+        {
+            var stamp = StoreStamp(storePath);
+            lock (_gate) _idleStores[storePath] = (stamp, Environment.TickCount64);
+        }
+
+        /// <summary>True while a released store's files are unchanged and it was last visited recently.</summary>
+        public bool CanSkipIdleStore(string storePath)
+        {
+            lock (_gate)
+            {
+                if (!_idleStores.TryGetValue(storePath, out var seen)) return false;
+                if (Environment.TickCount64 - seen.Tick < _idleRevisit.TotalMilliseconds &&
+                    StoreStamp(storePath) == seen.Stamp) return true;
+                _idleStores.Remove(storePath);
+                return false;
+            }
+        }
+
+        // A write to an idle store lands in its file or its write-ahead log, so a change shows in one of the two.
+        private static string StoreStamp(string storePath)
+        {
+            var parts = new List<string>();
+            foreach (var path in new[] { storePath, storePath + "-wal" })
+            {
+                var info = new FileInfo(path);
+                parts.Add(info.Exists ? info.Length + "@" + info.LastWriteTimeUtc.Ticks : "-");
+            }
+            return string.Join("|", parts);
+        }
+
+        /// <summary>Starts the count over for every project that did not fail this sweep.</summary>
+        public void ForgetRecoveredProjects(HashSet<string> failedThisSweep)
+        {
+            lock (_gate)
+            {
+                foreach (var path in _consecutiveFailures.Keys.Where(path => !failedThisSweep.Contains(path)).ToList())
+                    _consecutiveFailures.Remove(path);
+            }
+        }
 
         public bool HasActiveWork
         {
@@ -454,22 +556,35 @@ internal static class WorkerRuntime
         Func<JobRecord, CancellationToken, Task>? runClaimedAsync = null,
         Func<Task>? scannedAsync = null,
         Func<Projects.ProjectRuntime, IReadOnlyList<JobRecord>>? listActive = null,
-        Action<string>? reportWarning = null)
+        Action<string>? reportWarning = null,
+        Func<string, bool>? releaseStore = null)
     {
         activity ??= new SweepActivity();
         // A retired runner starts nothing: the row stays queued for the runner its enqueue kicked.
         if (!activity.TryBeginSweep()) return new SweepOutcome(null, false);
         var outcome = new SweepOutcome(null, true);
+        var warn = reportWarning ?? Console.Error.WriteLine;
+        var touched = new List<SweptStore>();
+        var failedPaths = new HashSet<string>(StringComparer.Ordinal);
+        var release = releaseStore ?? runtimes.TryReleaseIfIdle;
         try
         {
             outcome = await SweepCoreAsync(knownProjects, runtimes, lanes, options, invoker, ownerId,
-                cancellationToken, activity, runClaimedAsync, scannedAsync, listActive,
-                reportWarning ?? Console.Error.WriteLine).ConfigureAwait(false);
+                cancellationToken, activity, runClaimedAsync, scannedAsync, listActive, warn, touched,
+                failedPaths, release).ConfigureAwait(false);
             return outcome;
         }
         finally
         {
-            activity.EndSweep(outcome.HasActiveWork, outcome.YieldToOtherParser, outcome.Handover);
+            try
+            {
+                activity.ForgetRecoveredProjects(failedPaths);
+                ReleaseIdleStores(release, touched, failedPaths, activity, warn);
+            }
+            finally
+            {
+                activity.EndSweep(outcome.HasActiveWork, outcome.YieldToOtherParser, outcome.Handover);
+            }
         }
     }
 
@@ -477,7 +592,8 @@ internal static class WorkerRuntime
         Projects.ProjectRuntimeRegistry runtimes, Scheduling.ProjectLaneRegistry lanes, RunnerOptions options,
         IPanGlossInvoker invoker, string ownerId, CancellationToken cancellationToken, SweepActivity activity,
         Func<JobRecord, CancellationToken, Task>? runClaimedAsync, Func<Task>? scannedAsync,
-        Func<Projects.ProjectRuntime, IReadOnlyList<JobRecord>>? listActive, Action<string> reportWarning)
+        Func<Projects.ProjectRuntime, IReadOnlyList<JobRecord>>? listActive, Action<string> reportWarning,
+        List<SweptStore> touched, HashSet<string> failedPaths, Func<string, bool> releaseStore)
     {
         var opened = new List<(Projects.ProjectRuntime Runtime, JobRunnerLoop Loop)>();
         var hasActiveWork = false;
@@ -498,7 +614,11 @@ internal static class WorkerRuntime
             {
                 var project = new ProjectLocator(known.FullFwDataPath,
                     Path.GetFileNameWithoutExtension(known.FullFwDataPath));
+                var storePath = ProjectDatabaseCatalog.DatabasePathFor(project);
+                // A store seen idle is left closed until its files change, or the revisit interval passes.
+                if (activity.CanSkipIdleStore(storePath)) continue;
                 var runtime = runtimes.GetOrOpen(project);
+                touched.Add(new SweptStore(runtime.WorkspaceKey, storePath, known.FullFwDataPath));
                 ReconcileParkedJobs(runtime, DateTimeOffset.UtcNow, listActive);
                 var active = listActive?.Invoke(runtime) ?? runtime.Jobs.ListActive(runtime.WorkspaceKey);
                 // Work pinned to another parser neither keeps this runner alive nor can it run; hand it over.
@@ -533,7 +653,7 @@ internal static class WorkerRuntime
             catch (Exception exception)
             {
                 allKnownProjectsOpened = false;
-                hasActiveWork = true;
+                hasActiveWork |= activity.PinsRunner(known.FullFwDataPath, failedPaths);
                 ReportProjectSweepFailure(known.FullFwDataPath, "be swept", exception, reportWarning);
             }
         }
@@ -567,7 +687,7 @@ internal static class WorkerRuntime
             }
             catch (Exception exception)
             {
-                hasActiveWork = true;
+                hasActiveWork |= activity.PinsRunner(candidate.Runtime.Project.FullFwDataPath, failedPaths);
                 ReportProjectSweepFailure(candidate.Runtime.Project.FullFwDataPath,
                     "read its next job", exception, reportWarning);
             }
@@ -587,13 +707,16 @@ internal static class WorkerRuntime
             try { claimed = candidate.Loop.TryClaim(); }
             catch (Exception exception)
             {
-                hasActiveWork = true;
+                hasActiveWork |= activity.PinsRunner(candidate.Runtime.Project.FullFwDataPath, failedPaths);
                 ReportProjectSweepFailure(candidate.Runtime.Project.FullFwDataPath,
                     "claim its next job", exception, reportWarning);
                 continue;
             }
             if (claimed is null) continue;
             activity.Set(true);
+            // A long job must not keep every other project's store leased for its whole run.
+            ReleaseIdleStores(releaseStore, touched.Where(store => store.Key != candidate.Runtime.WorkspaceKey),
+                failedPaths, activity, reportWarning);
             if (runClaimedAsync is null)
                 await candidate.Loop.RunClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
             else
@@ -602,6 +725,28 @@ internal static class WorkerRuntime
         }
         return new SweepOutcome(null, hasActiveWork, yieldToOtherParser && !hasActiveWork, handover);
     }
+
+    /// A store that no job needs is closed at the end of the sweep, so it holds no use lease between sweeps.
+    private static void ReleaseIdleStores(Func<string, bool> releaseStore, IEnumerable<SweptStore> stores,
+        HashSet<string> failedPaths, SweepActivity activity, Action<string> reportWarning)
+    {
+        foreach (var store in stores.DistinctBy(store => store.Key, StringComparer.Ordinal).ToList())
+        {
+            try
+            {
+                if (releaseStore(store.Key) && !failedPaths.Contains(store.ProjectPath))
+                    activity.RememberIdleStore(store.StorePath);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                reportWarning("warning: Project store '" + store.StorePath + "' could not be released (" +
+                    exception.Message + "). It will be retried next sweep.");
+            }
+        }
+    }
+
+    /// <summary>A project store a sweep opened: its runtime key, its file and the project it belongs to.</summary>
+    internal readonly record struct SweptStore(string Key, string StorePath, string ProjectPath);
 
     private static void ReportProjectSweepFailure(string path, string step, Exception exception,
         Action<string> reportWarning) => reportWarning("warning: Known project '" + path + "' could not " +

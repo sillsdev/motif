@@ -108,6 +108,7 @@ public sealed class ProjectRuntimeRegistry : IDisposable
         ArgumentNullException.ThrowIfNull(project);
         var canonical = project;
         var key = ProjectWorkspaceKey.Compute(canonical);
+        if (CachedStoreFileReplaced(key)) TryReleaseIfIdle(key);
         var lifecycle = _lifecycles.GetOrAdd(key, static _ => new object());
         lock (lifecycle)
         {
@@ -127,6 +128,13 @@ public sealed class ProjectRuntimeRegistry : IDisposable
                 throw;
             }
         }
+    }
+
+    private bool CachedStoreFileReplaced(string key)
+    {
+        if (!_runtimes.TryGetValue(key, out var lazy) || !lazy.IsValueCreated) return false;
+        try { return lazy.Value.StoreFileReplaced; }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return false; }
     }
 
     /// <summary>Tries to find an already-open runtime without opening a database.</summary>

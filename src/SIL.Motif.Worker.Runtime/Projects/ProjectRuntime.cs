@@ -23,6 +23,7 @@ public sealed class ProjectRuntime : IDisposable
     private readonly ProjectOperationGate _operations = new();
     private readonly Func<bool> _hasLiveHost;
     private readonly Func<bool> _hasPendingEvents;
+    private readonly StoreFileIdentity? _storeIdentity;
     private int _activeOperations;
     private bool _draining;
     private bool _disposed;
@@ -35,6 +36,7 @@ public sealed class ProjectRuntime : IDisposable
         Database = database;
         Jobs = jobs;
         Baselines = baselines;
+        _storeIdentity = StoreFileIdentity.Read(database.FullPath);
         _hasLiveHost = hasLiveHost;
         _hasPendingEvents = hasPendingEvents;
         Admission = ProjectRuntimeAdmission.Opening;
@@ -61,6 +63,13 @@ public sealed class ProjectRuntime : IDisposable
     {
         get { lock (_state) return _activeOperations != 0; }
     }
+
+    /// <summary>
+    /// Whether the store file is gone or is a different file (another device and inode, or file index) from the one this runtime opened. The pooled connections
+    /// keep the old file open, so a runtime in that state reads and writes a file nobody else sees.
+    /// </summary>
+    internal bool StoreFileReplaced => _storeIdentity is { } opened &&
+        opened.IsReplacedBy(StoreFileIdentity.Read(Database.FullPath));
 
     internal static ProjectRuntime Open(ProjectLocator project, string workspaceKey,
         ProjectDatabaseCatalog catalog,
