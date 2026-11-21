@@ -20,6 +20,8 @@ The stored result keeps its `gate` and `report.losses`: `newNoParseWords` and `n
 
 When a word had a Baseline analysis but its spelling cannot be segmented by the candidate phoneme inventory, the parser may mark it `skipped`. This is a named loss, including any confirmed readings it lost, rather than a pass or an unknown search result. Malformed evidence cannot establish that loss. A listed intended inventory loss is covered by the Trial's saved expected losses.
 
+`report.regressions` names up to 10 lost or regressed words per cause with their analyses before and after, the count of the rest and a `nextStep` to page them; see [Trial a Proposal](cmd:trial). The printed `Unexpected losses` list stops at 10 words (`--json` lists all).
+
 Sets required by `[gate] word-sets` are measured even with `--review-set none`; [config show](cmd:config%20show) documents the declaration. Held second readings are named in `report.heldWords`, independently of the detail budget. Independently approve the added reading and run a fresh Trial to clear that hold. Older reports without compact gate facts are unmeasured: use `proposal trial --refresh-report` with retained inputs, or rerun the Trial.
 
 Add `--wait-terminal` to cancel the exact Trial at the wait deadline and return after its execution and parser processes have stopped. The `job.wait-timeout` refusal reports the terminal job `status` and `jobId`. With an ordinary wait, the Trial can keep running after the wait expires.

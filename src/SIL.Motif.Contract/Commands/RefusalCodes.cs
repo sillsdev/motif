@@ -479,6 +479,12 @@ public static class RefusalCodes
     public const string TrialProposalGone = "trial.proposal-gone";
     /// <summary>A Motif update is being installed, so no Trial can be queued until it finishes.</summary>
     public const string TrialUpdateInProgress = "trial.update-in-progress";
+    /// <summary><c>--touched</c> was asked without a word list, or with all words, so there is no list to add the touched words to.</summary>
+    public const string TrialTouchedNeedsWords = "trial.touched-needs-words";
+    /// <summary><c>--touched</c> found no stored Baseline Assessment matching the current Baseline to read analyses from.</summary>
+    public const string TrialTouchedNoBaseline = "trial.touched-no-baseline";
+    /// <summary><c>--touched</c> resolved none of the Proposal's edited objects to an allomorph or grammatical info in the Baseline.</summary>
+    public const string TrialTouchedNoObjects = "trial.touched-no-objects";
 
     public const string RejectionTraceRequestInvalid = "rejection-trace.request-invalid";
     public const string RejectionTraceUnsupported = "rejection-trace.unsupported";

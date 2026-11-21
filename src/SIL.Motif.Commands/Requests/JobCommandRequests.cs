@@ -34,6 +34,12 @@ public sealed record EnqueueTrialRequest(
     /// <summary>Words the author declares as intended losses before this Trial is queued.</summary>
     public IReadOnlyList<string>? ExpectedLosses { get; init; }
 
+    /// <summary>
+    /// Adds to <see cref="Words"/> every attested word whose Baseline analysis uses an object the Proposal edits;
+    /// needs <see cref="Words"/>.
+    /// </summary>
+    public bool Touched { get; init; }
+
     /// <summary>The named review sets to include, or null to include every configured set.</summary>
     public IReadOnlyList<string>? ReviewSetIds { get; init; }
 

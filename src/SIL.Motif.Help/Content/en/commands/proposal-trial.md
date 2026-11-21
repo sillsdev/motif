@@ -18,6 +18,8 @@ The stored result keeps its `gate` and `report.losses`: `newNoParseWords` and `n
 
 When a word had a Baseline analysis but its spelling cannot be segmented by the candidate phoneme inventory, the parser may mark it `skipped`. This is a named loss, including any confirmed readings it lost, rather than a pass or an unknown search result. Malformed evidence cannot establish that loss. A listed intended inventory loss is covered by the Trial's saved expected losses.
 
+The summary names lost and regressed words in `report.regressions`: at most 10 per cause, each with its analyses before and after, then the count of the rest and the `nextStep` command that pages them all.
+
 A new second reading on an attested word is named in `report.heldWords` and keeps the gate unmeasured until independent approval and a fresh Trial. The held names survive the detail budget too. Observed stops with no morphology packet retain their producer outcome; undispatched cases receive no invented stop.
 
 Older reports without compact gate facts are explicitly unmeasured. Use `--refresh-report` to rebuild from exact retained evidence, or rerun the Trial if those inputs are unavailable. Autonomous Apply requires a [declared gate](cmd:config%20show), its current required scope and policy, and a green newest Trial for the live project state.

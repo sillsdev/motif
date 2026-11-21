@@ -22,7 +22,8 @@ public enum BaselineMode
 /// <summary>A queued Trial and, when it has no Baseline Assessments, why.</summary>
 /// <param name="Job">The queued Trial job.</param>
 /// <param name="BaselineWarning">Null when the Trial carries its Baseline; otherwise why it will have no Difference.</param>
-public sealed record TrialEnqueued(JobEnqueuedResponse Job, string? BaselineWarning);
+/// <param name="Touched">The touched words a <c>--touched</c> Trial added; null when it did not ask.</param>
+public sealed record TrialEnqueued(JobEnqueuedResponse Job, string? BaselineWarning, TouchedWords? Touched = null);
 
 /// <summary>
 /// Queues a Trial together with its Baseline Assessments: the Trial's words are assessed against the project's
@@ -45,8 +46,16 @@ public static class TrialWorkflow
 
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request, string managedRoot,
         string? parserPath, BaselineMode mode, CancellationToken cancellationToken, bool requireExplicitRefresh) =>
+        TouchedNeedsWords(request) is { } noWords ? CommandOutcome<TrialEnqueued>.Refused(noWords) :
         EnqueueWithUpdateGate(() => TrialBaselines.WithAdmission(request = request.WithPrequeueClock(), (admission, busy) =>
         {
+            TouchedWords? touched = null;
+            if (request.Touched)
+            {
+                var expanded = ExpandTouched(request);
+                if (!expanded.Succeeded) return CommandOutcome<TrialEnqueued>.Refused(expanded.Refusal!);
+                (request, touched) = (expanded.Value!.Request, expanded.Value.Touched);
+            }
             var resolved = JobCommands.ResolveTrialWords(request);
             if (!resolved.Succeeded) return CommandOutcome<TrialEnqueued>.Refused(resolved.Refusal!);
             if (resolved.Value is null && !request.AllWords && mode == BaselineMode.Required &&
@@ -59,14 +68,33 @@ public static class TrialWorkflow
                     (mode == BaselineMode.Required || baseline.Refusal!.Code == RefusalCodes.ChangeRefreshRequired))
                     return CommandOutcome<TrialEnqueued>.Refused(baseline.Refusal!);
             }
-            return EnqueueCore(request,
+            var enqueued = EnqueueCore(request,
                 (words, limits, writingSystem, onPartial, earlier, onDispatched) => busy is null
                     ? TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken,
                         limits, admission, writingSystem, onPartial, earlier, onDispatched, requireExplicitRefresh,
                         request.NoBackground)
                     : CommandOutcome<AssessCommandResponse>.Refused(busy),
                 mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate(), admission);
+            return touched is null || !enqueued.Succeeded ? enqueued
+                : CommandOutcome<TrialEnqueued>.Success(enqueued.Value! with { Touched = touched });
         }));
+
+    private sealed record ExpandedTrial(EnqueueTrialRequest Request, TouchedWords Touched);
+
+    private static Refusal? TouchedNeedsWords(EnqueueTrialRequest request) =>
+        request.Touched && (request.Words is not { Count: > 0 } || request.AllWords)
+            ? new Refusal(RefusalCodes.TrialTouchedNeedsWords, FailureReason.InvalidArgument,
+                "--touched adds to a word list, and none was given. Next: pass --words <file>, or leave --touched out.")
+            : null;
+
+    // The touched words join the caller's own list, which keeps its order and comes first.
+    private static CommandOutcome<ExpandedTrial> ExpandTouched(EnqueueTrialRequest request)
+    {
+        var touched = TrialTouchedWords.Resolve(request.FwDataPath, request.ProductVersion, request.ProposalId);
+        if (!touched.Succeeded) return CommandOutcome<ExpandedTrial>.Refused(touched.Refusal!);
+        var words = request.Words!.Concat(touched.Value!.Words).Distinct(StringComparer.Ordinal).ToArray();
+        return CommandOutcome<ExpandedTrial>.Success(new ExpandedTrial(request with { Words = words }, touched.Value!));
+    }
 
     /// <summary>As the public overload, with the Baseline measurement supplied by the caller.</summary>
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request,

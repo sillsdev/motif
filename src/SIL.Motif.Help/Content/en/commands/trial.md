@@ -16,6 +16,8 @@ After Motif's own Apply, the next Trial captures a new Baseline. After a save ma
 
 A new second reading on an attested word is held for review: `report.heldWords` lists the words and the gate is `unmeasured` until the added reading is independently approved and a fresh Trial captures that approval. The named holds, losses and attributed stops survive the detail budget, including stops with no morphology packet. An undispatched case remains not measured and has no invented per-word stop.
 
+A Trial that loses words or confirmed readings names them in `report.regressions` (the summary prints them as `Regressed words`). There is one group per cause, `new-word-failures` (no parse, or an Approved reading lost) and `confirmed-readings-lost`. A group lists at most 10 words, each with its reading counts and its analyses before and after (up to three per side; `no analysis` when the word no longer parses), then the count of the rest and a `nextStep` command that pages all of them: `motif proposal trial --project <fwdata> <proposalId> --detail full --section wordforms --flag <cause> --limit 200`. The text summary also stops the `Unexpected losses` and `Expected losses` lists at 10 words; `--json` gives every one. It names the words and what changed for them, not the operation that caused it.
+
 Older saved reports without compact gate facts are explicitly `unmeasured`. Use `--refresh-report` to rebuild named facts from the original retained evidence, or rerun the Trial when those inputs are unavailable. Motif never guesses lost-word names from counts.
 
 Autonomous Apply also requires a [declared gate](cmd:config%20show), the current declaration and exact required word-set scope, a green newest Trial, and unchanged live project and writing-system state.
@@ -25,6 +27,10 @@ Autonomous Apply also requires a [declared gate](cmd:config%20show), the current
 `motif trial --project <fwdata> <proposalId> --words <file> --no-base-sample --wait` (MCP `no_base_sample`) parses exactly the words in the file and adds no review word set, including the sets `[gate] word-sets` requires. Use it in development loops of up to 500 chosen words; run the ordinary Trial, with its base sample, once per round. It needs `--words`, and it cannot be combined with `--all-words` or `--review-set`.
 
 The report and the saved Trial record `sample: "working-set"` (an ordinary Trial records `stratified`) with `sampleWords` and `wordListDigest`. A working-set Trial is never a gate or a baseline: it has no declared gate, Autonomous Apply and ordinary Apply readiness ignore it, and `difference produce` refuses it. `proposal compare` compares working-set Trials only with each other, over the same `wordListDigest`.
+
+## Touched words
+
+`--touched` (MCP `touched`) needs `--words` and adds to the list every attested word whose stored Baseline analysis uses an object the Proposal edits, so a change to a stem or affix is measured on the words that carry it, not only on the words you chose. The Proposal's touched objects are each operation's target, the owner a create adds to and the neighbours an ordering is placed against. An entry stands for its lexeme form, alternate forms and grammatical infos, a sense for its grammatical info, and an environment for the allomorphs that use it. Matching is by exact id, never by spelling, against the Baseline Assessment of the current Baseline, so it reaches only the words that Assessment holds and ignores a disapproved analysis. At most 500 words are added; standard error says how many matched and were not added. It is refused with `trial.touched-needs-words` without `--words`, `trial.touched-no-baseline` when no Assessment matches the Baseline, and `trial.touched-no-objects` when no edited object is in the Baseline (a Proposal that only creates new objects touches no existing word). Rules and other objects a reading does not name are not matched.
 
 ## Foreground-only
 

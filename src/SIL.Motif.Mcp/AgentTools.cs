@@ -912,6 +912,7 @@ internal static class AgentTools
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("review_sets", Schema.StringArray("Named review sets to include."), false),
                 ("expect_loss", Schema.StringArray("Words the change intends to lose, frozen when the Trial is queued. They are reported in the saved gate and do not make it a loss; any other lost word does. A resumed Trial cannot change them."), false),
+                ("touched", Schema.Boolean("True adds to words every attested word whose Baseline analysis uses an allomorph, entry or sense the Proposal edits (matched by id, at most 500). Needs words or wordsFile; not with job."), false),
                 ("no_base_sample", Schema.Boolean("True measures exactly the words given in words or wordsFile and adds no review word set: a working-set Trial for a development loop, recorded as sample working-set. It is never a gate and is compared only with another working-set Trial over the same list. Needs words; not with negative_words, review_sets or job."), false),
                 ("no_background", Schema.Boolean("True keeps the Trial foreground only: any Baseline recapture runs inline and no Parsimony job is queued after the Trial commits, so nothing commits after the tool returns. Not with job."), false),
                 ("wait_seconds", Schema.Integer("How long to wait. Default 40.", 1, 300), false),
@@ -929,7 +930,7 @@ internal static class AgentTools
                     ["Scope"] = null, ["AllWords"] = null,
                     ["ExpectedDraftRevision"] = null, ["Limits"] = null, ["BaselineAssessmentIds"] = null,
                     ["ReviewSetIds"] = null, ["ExpectedLosses"] = "expect_loss", ["NoBackground"] = "no_background",
-                    ["NoBaseSample"] = "no_base_sample",
+                    ["NoBaseSample"] = "no_base_sample", ["Touched"] = "touched",
                     ["ProjectKey"] = null, ["EffectiveDetail"] = null, ["EffectiveSide"] = null,
                 } },
 
@@ -1821,7 +1822,7 @@ internal static class AgentTools
         var waitForTerminal = args.Flag("wait_terminal");
         var wait = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         var job = args.Optional("job");
-        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss") || args.Has("no_background") || args.Has("no_base_sample")))
+        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss") || args.Has("no_background") || args.Has("no_base_sample") || args.Has("touched")))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "A resumed Trial cannot change its inputs.");
         if (job is null)
         {
@@ -1836,7 +1837,8 @@ internal static class AgentTools
             var request = new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion, proposal,
                 Words: words.Length == 0 ? null : words, NegativeWords: negatives, NoBackground: args.Flag("no_background"),
                 NoBaseSample: noBaseSample)
-                { ReviewSetIds = args.Has("review_sets") ? args.List("review_sets") : null, ExpectedLosses = args.List("expect_loss") };
+                { ReviewSetIds = args.Has("review_sets") ? args.List("review_sets") : null, ExpectedLosses = args.List("expect_loss"),
+                    Touched = args.Flag("touched") };
             var queued = await Task.Run(() => TrialWorkflow.Enqueue(request,
                 RunnerOptions.ResolveRoot(), context.JobParserPath, BaselineMode.Required, cancellation), cancellation);
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
