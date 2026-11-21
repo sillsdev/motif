@@ -30,6 +30,14 @@ public sealed record GrammarReadResponse(
     /// <summary>Whether the live project file has a later save time than this Baseline.</summary>
     public bool IsStale { get; init; }
 
+    /// <summary>What was read: <c>baseline</c>, or <c>proposal &lt;id&gt;</c> for a Proposal's Trial copy.</summary>
+    public string? At { get; init; }
+
+    /// <summary>
+    /// For a bare exact form that also matched marked affix headwords: which ones, and how to match only one kind.
+    /// </summary>
+    public string? ExactNote { get; init; }
+
     /// <summary>The number of objects returned on this page.</summary>
     public int Returned => Items.Count;
 

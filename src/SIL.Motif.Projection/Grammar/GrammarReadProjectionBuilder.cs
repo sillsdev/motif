@@ -50,7 +50,22 @@ public static class GrammarReadProjectionBuilder
             : filtered.OrderBy(SortKey, StringComparer.OrdinalIgnoreCase).ThenBy(item => item.Id, StringComparer.Ordinal);
         var matches = ordered.ToArray();
         var items = matches.Skip(request.Offset).Take(request.Limit).ToArray();
-        return new GrammarReadResponse(request.Kind, matches.Length, request.Offset, request.Limit, items);
+        return new GrammarReadResponse(request.Kind, matches.Length, request.Offset, request.Limit, items)
+        {
+            ExactNote = ExactNote(request.Exact, matches),
+        };
+    }
+
+    private static string? ExactNote(string? exact, GrammarReadItem[] matches)
+    {
+        if (string.IsNullOrWhiteSpace(exact)) return null;
+        var marked = matches.OfType<GrammarLexicalEntryRead>()
+            .Where(entry => FormMatch.MatchesOnlyByMarker(exact, [entry.Headword])).ToArray();
+        if (marked.Length == 0) return null;
+        var shown = marked.Take(5).Select(entry => entry.Headword ?? entry.Id);
+        var more = marked.Length > 5 ? $" and {marked.Length - 5} more" : string.Empty;
+        return $"'{exact.Trim()}' also matched {marked.Length} marked affix headword(s): {string.Join(", ", shown)}{more}. " +
+            $"Give the marker (for example '{(marked[0].Headword ?? exact).Trim()}') to match only that form.";
     }
 
     /// <summary>The morph type names a morph type filter accepts, in the project's order.</summary>

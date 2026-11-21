@@ -27,6 +27,17 @@ public static class FormMatch
     public static bool Any(string? wanted, IEnumerable<string?> candidates) =>
         candidates.Any(candidate => Same(wanted, candidate));
 
+    /// <summary>
+    /// Whether <paramref name="wanted"/> reaches one of <paramref name="candidates"/> only through the bare-form rule:
+    /// the candidate carries a marker the wanted text lacks and none equals the text itself.
+    /// </summary>
+    public static bool MatchesOnlyByMarker(string? wanted, IEnumerable<string?> candidates)
+    {
+        var list = candidates.ToArray();
+        return list.Any(candidate => Same(wanted, candidate)) &&
+            !list.Any(candidate => candidate is not null && Fold(candidate) == Fold(wanted!));
+    }
+
     private static string Fold(string text) =>
         text.Trim().Normalize(NormalizationForm.FormD).ToLowerInvariant();
 }

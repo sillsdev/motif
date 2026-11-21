@@ -2796,7 +2796,7 @@ try
             if (positionals.Count == 1 && positionals[0] == "read")
             {
                 if (flags.Keys.Any(name => name is not ("project" or "kind" or "id" or "query" or "offset" or "limit" or "json" or "exact" or
-                    "morph-type" or "page")) ||
+                    "morph-type" or "page" or "at")) ||
                     !flags.TryGetValue("project", out var grammarReadProject) ||
                     !flags.TryGetValue("kind", out var grammarReadKindText) ||
                     !Enum.TryParse<GrammarReadKind>(grammarReadKindText == "phonological_rules" ? "phonological_rule" : grammarReadKindText,
@@ -2827,7 +2827,8 @@ try
                     grammarReadOffset,
                     grammarReadLimit,
                     flags.GetValueOrDefault("exact"),
-                    flags.GetValueOrDefault("morph-type")));
+                    flags.GetValueOrDefault("morph-type"),
+                    flags.GetValueOrDefault("at")));
                 if (asJson || !grammarRead.Succeeded)
                     result = RenderCommand(grammarRead, asJson);
                 else

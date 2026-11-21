@@ -512,7 +512,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "grammar read --project <fwdata> --kind <phoneme|natural_class|environment|part_of_speech|inflection_feature|lexical_entry|phonological_rule> " +
-                "[--id <canonicalId> | --query <text> | --exact <form>] [--morph-type <name>[,<name>]] [--limit <1-100>] [--offset <n> | --page <N>] [--json]",
+                "[--id <canonicalId> | --query <text> | --exact <form>] [--morph-type <name>[,<name>]] [--at baseline|<proposalId>] [--limit <1-100>] [--offset <n> | --page <N>] [--json]",
             }),
         new CliVerbDescriptor(
             "Project", "timing", "timing",

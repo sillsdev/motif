@@ -93,6 +93,47 @@ public sealed class GrammarReadLookupTests(PristineProjectFixture pristine) : ID
     }
 
     [Fact]
+    public void ABareExactFormSaysItAlsoMatchedTheMarkedAffixAndAMarkedFormSaysNothing()
+    {
+        using var project = CaptureProject();
+
+        using var bare = Read(project.FwDataPath, "lexical_entry", "--exact", "zi");
+        var note = bare.RootElement.GetProperty("exactNote").GetString()!;
+        Assert.Contains("zi-", note, StringComparison.Ordinal);
+        Assert.Contains("marker", note, StringComparison.Ordinal);
+
+        using var stemOnly = Read(project.FwDataPath, "lexical_entry", "--exact", "ka");
+        Assert.False(stemOnly.RootElement.TryGetProperty("exactNote", out var none) && none.ValueKind == JsonValueKind.String);
+
+        using var marked = Read(project.FwDataPath, "lexical_entry", "--exact", "zi-");
+        Assert.False(marked.RootElement.TryGetProperty("exactNote", out var markedNote) && markedNote.ValueKind == JsonValueKind.String);
+
+        var text = CliInProcess.Run(_root, null, developerCommands: true,
+            ["grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--exact", "zi"]);
+        Assert.Equal(0, text.ExitCode);
+        Assert.Contains("also matched 1 marked affix headword(s): zi-", text.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AtBaselineReadsTheBaselineAndAnythingElseThatIsNotAProposalIdOrHasNoTrialIsRefused()
+    {
+        using var project = CaptureProject();
+
+        using var baseline = Read(project.FwDataPath, "lexical_entry", "--exact", "ka", "--at", "baseline");
+        Assert.Equal("baseline", baseline.RootElement.GetProperty("at").GetString());
+
+        var notAnId = CliInProcess.Run(_root, null, developerCommands: true,
+            ["grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--at", "last-week", "--json"]);
+        Assert.NotEqual(0, notAnId.ExitCode);
+        Assert.Contains("grammar-read.invalid-request", notAnId.Output + notAnId.Error, StringComparison.Ordinal);
+
+        var noTrial = CliInProcess.Run(_root, null, developerCommands: true,
+            ["grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--at", "AaHnUob1K5UlJwJZtEhh_w", "--json"]);
+        Assert.NotEqual(0, noTrial.ExitCode);
+        Assert.Contains("trial.none", noTrial.Output + noTrial.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MorphTypeNarrowsEntriesByNameOrCanonicalIdAndAcceptsSeveralNames()
     {
         using var project = CaptureProject();

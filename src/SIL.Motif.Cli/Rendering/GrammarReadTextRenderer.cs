@@ -18,6 +18,8 @@ internal static class GrammarReadTextRenderer
             ? $"Baseline: {baseline.ProjectIdentity}; {(response.IsStale ? "saved since capture" : "current")}; " +
                 $"snapshot {baseline.SemanticSnapshotDigest}; bundle {baseline.BundleDigest}; captured {baseline.CapturedUtc}."
             : $"Baseline identity unavailable; {(response.IsStale ? "saved since capture" : "current")}.");
+        if (response.At is not null) text.AppendLine($"Read at: {response.At}.");
+        if (response.ExactNote is not null) text.AppendLine($"Note: {response.ExactNote}");
         foreach (var item in response.Items.Take(TextListLimit)) RenderItem(text, item);
         AppendOverflow(text, response.Items.Count);
         if (response.Items.Count == 0) text.AppendLine("No matching objects.");

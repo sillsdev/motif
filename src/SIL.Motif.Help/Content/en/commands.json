@@ -1961,7 +1961,7 @@
   },
   "grammar read": {
     "title": "Read grammar objects",
-    "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features, lexical entries or phonological rules from the current Baseline. Use an exact canonical id, an exact form or a name query, and page through larger lists.",
+    "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features, lexical entries or phonological rules from the current Baseline, or with --at <proposalId> from the grammar that Proposal's latest Trial ran against. Use an exact canonical id, an exact form or a name query, and page through larger lists. A bare exact form such as zi also matches the affix headword zi-, and the result says so; write the marker to match only the marked form.",
     "source": "Authored from the typed grammar read contract."
   },
   "difference produce": {

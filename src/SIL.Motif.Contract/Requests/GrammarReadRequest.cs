@@ -41,6 +41,10 @@ public enum GrammarReadKind
 /// Lexical entries only: morph type names, separated by commas, or canonical morph type ids, that the lexeme
 /// form must have, such as <c>prefix,suffix</c>.
 /// </param>
+/// <param name="At">
+/// What to read: <c>baseline</c> (or absent) for the current Baseline, or a Proposal id for the grammar its latest
+/// Trial ran against.
+/// </param>
 public sealed record GrammarReadRequest(
     string ProjectPath,
     GrammarReadKind Kind,
@@ -49,4 +53,5 @@ public sealed record GrammarReadRequest(
     int Offset = 0,
     int Limit = 25,
     string? Exact = null,
-    string? MorphType = null);
+    string? MorphType = null,
+    string? At = null);
