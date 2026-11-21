@@ -151,4 +151,28 @@ public sealed record ProposalDetailProjection(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? CurrentUnavailable = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    AppliedRecordView? AppliedRecord = null);
+    AppliedRecordView? AppliedRecord = null)
+{
+    /// <summary>Every operation the Proposal holds, when <see cref="Operations"/> is one page of them; null when it is all of them.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? OperationTotal { get; init; }
+
+    /// <summary>How many operations precede this page; null when <see cref="Operations"/> is not a page.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? OperationOffset { get; init; }
+
+    /// <summary>The offset that starts the next page of operations; null at the end or when this is not a page.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? NextOffset { get; init; }
+
+    /// <summary>One page of the operations, with the total and the offset that starts the next page.</summary>
+    public ProposalDetailProjection Window(int offset, int limit)
+    {
+        var page = ResultPaging.Window(Operations, offset, limit);
+        return this with
+        {
+            Operations = page, OperationTotal = Operations.Count, OperationOffset = offset,
+            NextOffset = ResultPaging.NextOffset(offset, page.Count, Operations.Count),
+        };
+    }
+}

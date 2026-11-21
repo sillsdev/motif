@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
@@ -55,6 +56,10 @@ public sealed record ComposedIntentResult(
 {
     /// <summary>The canonical identities this batch intent's operations create.</summary>
     public IReadOnlyList<CreatedObject> CreatedObjects { get; init; } = [];
+
+    /// <summary>The operations this intent added, when <see cref="Operations"/> lists only some of them; null when it lists all.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? OperationTotal { get; init; }
 }
 
 /// <summary>
@@ -62,7 +67,55 @@ public sealed record ComposedIntentResult(
 /// Draft's operation count afterwards.
 /// </summary>
 public sealed record ComposedBatchResponse(
-    string DraftName, IReadOnlyList<ComposedIntentResult> Intents, int OperationCount);
+    string DraftName, IReadOnlyList<ComposedIntentResult> Intents, int OperationCount)
+{
+    /// <summary>The most operations a bounded response lists across all its intents.</summary>
+    public const int ListedOperationLimit = 25;
+
+    /// <summary>The intents the call composed, when <see cref="Intents"/> is cut; null when it lists all of them.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? IntentTotal { get; init; }
+
+    /// <summary>The operations the call added across all its intents, when the listing is cut; null otherwise.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? OperationsAdded { get; init; }
+
+    /// <summary>How to read what the cut left out; null when nothing was cut.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NextStep { get; init; }
+
+    /// <summary>
+    /// The first <paramref name="operationLimit"/> operations and intents, in intent order. A listed intent keeps its
+    /// index, verb and operation count, and the totals name what was cut; the Draft's own operations page through <c>show</c>.
+    /// </summary>
+    public ComposedBatchResponse Bounded(int operationLimit = ListedOperationLimit)
+    {
+        var added = Intents.Sum(intent => intent.Operations.Count);
+        if (added <= operationLimit && Intents.Count <= operationLimit) return this;
+        var budget = operationLimit;
+        var kept = new List<ComposedIntentResult>(operationLimit);
+        foreach (var intent in Intents.Take(operationLimit))
+        {
+            var operations = intent.Operations.Take(budget).ToArray();
+            budget -= operations.Length;
+            var cut = operations.Length < intent.Operations.Count;
+            kept.Add(intent with
+            {
+                Operations = operations,
+                OperationTotal = cut ? intent.Operations.Count : null,
+                CreatedObjects = cut ? intent.CreatedObjects.Take(operations.Length).ToArray() : intent.CreatedObjects,
+                RelatedObjects = cut ? null : intent.RelatedObjects,
+            });
+        }
+        return this with
+        {
+            Intents = kept, IntentTotal = Intents.Count, OperationsAdded = added,
+            NextStep = $"Listed {kept.Sum(intent => intent.Operations.Count)} of {added} operations in {kept.Count} of " +
+                $"{Intents.Count} intents. Read the rest with: " +
+                $"motif show {DraftName} --project <fwdata> --offset 0 --limit {ResultPaging.HeavyRowLimit}",
+        };
+    }
+}
 
 /// <summary>
 /// A <c>lexical/lexSense/setGloss</c> operation appended by <c>promote-gloss</c>, evidenced by a

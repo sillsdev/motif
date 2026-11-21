@@ -447,12 +447,12 @@
   },
   "warnings": {
     "title": "Read grammar warnings",
-    "description": "Reads stored grammar findings and allomorph refusals from parsing, with filters by code or warning level. Confirmed uses of Selection words stay separate from spelling and membership matches.",
+    "description": "Reads stored grammar findings and allomorph refusals from parsing, with filters by code or warning level. Confirmed uses of Selection words stay separate from spelling and membership matches. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "grammar check": {
     "title": "Check a grammar",
-    "description": "Runs the grammar checker against the project's current Baseline and stores its findings. Use warnings to read those findings afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it.",
+    "description": "Runs the grammar checker against the project's current Baseline and stores its findings; use warnings to read them afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "timing": {
@@ -1482,7 +1482,7 @@
   },
   "compose-batch": {
     "title": "Compose many intents",
-    "description": "Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and a Rationale are still required before Finalize. Only a person can Apply.",
+    "description": "Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and a Rationale are still required before Finalize. Only a person can Apply. The report lists the first 25 operations and says how to read the rest with show.",
     "source": "Hand-written from command behavior.",
     "guides": [
       "workflow"
@@ -1906,7 +1906,7 @@
   },
   "show": {
     "title": "Show a Proposal",
-    "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change's field holds now, and an Applied Proposal carries its appliedRecord: the effects and evidence counts Apply saved. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It does not change the FieldWorks project.",
+    "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change's field holds now, and an Applied Proposal carries its appliedRecord: the effects and evidence counts Apply saved. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It returns the first 10 operations and names the next offset; --limit, --offset, --page and --all read the rest. It does not change the FieldWorks project.",
     "source": "Authored from the typed command contract."
   },
   "parsimony --dry-run": {
@@ -2086,7 +2086,7 @@
   },
   "list": {
     "title": "List Proposals",
-    "description": "Lists open Proposals and Drafts, including each identity, label and status. Add --all to include closed ones, or --status to list one status.",
+    "description": "Lists open Proposals and Drafts, including each identity, label and status. Add --all to include closed ones, or --status to list one status. It returns the first 25 and names the next offset; --limit, --offset and --page read the rest.",
     "source": "The shared command catalog and typed request contract."
   },
   "proposals": {

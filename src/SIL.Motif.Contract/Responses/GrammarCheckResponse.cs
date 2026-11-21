@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
@@ -36,6 +37,44 @@ public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings
     /// <summary>The exact Baseline, Selection, parser, source-save time, and check time recorded with these findings.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public GrammarCheckProvenance? Provenance { get; init; }
+
+    /// <summary>The findings of every level, when <see cref="Findings"/> is one page of them; null when it is all of them.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? FindingsTotal { get; init; }
+
+    /// <summary>The error-level findings among all of them, when <see cref="Findings"/> is one page; null otherwise.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ErrorTotal { get; init; }
+
+    /// <summary>The warning-level findings among all of them, when <see cref="Findings"/> is one page; null otherwise.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? WarningTotal { get; init; }
+
+    /// <summary>The information-level findings among all of them, when <see cref="Findings"/> is one page; null otherwise.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? InformationTotal { get; init; }
+
+    /// <summary>How many findings precede this page; null when <see cref="Findings"/> is not a page.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? FindingsOffset { get; init; }
+
+    /// <summary>The offset that starts the next page of findings; null at the end or when this is not a page.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? NextOffset { get; init; }
+
+    /// <summary>One page of the findings, keeping the per-level totals of all of them.</summary>
+    public GrammarCheckResponse Window(int offset, int limit)
+    {
+        var page = ResultPaging.Window(Findings, offset, limit);
+        return this with
+        {
+            Findings = page, FindingsTotal = Findings.Count, FindingsOffset = offset,
+            ErrorTotal = Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error),
+            WarningTotal = Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Warning),
+            InformationTotal = Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information),
+            NextOffset = ResultPaging.NextOffset(offset, page.Count, Findings.Count),
+        };
+    }
 }
 
 /// <summary>A Motif observation about a completed grammar check that is not a parser finding.</summary>

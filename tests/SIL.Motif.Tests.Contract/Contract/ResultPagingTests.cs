@@ -1,0 +1,155 @@
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
+using Xunit;
+
+namespace SIL.Motif.Tests.Contract;
+
+/// <summary>A capped read keeps its total, names the next offset, and treats a window past the end as an empty page.</summary>
+public sealed class ResultPagingTests
+{
+    private static GrammarWarning Finding(int index, GrammarDiagnosticLevel level) =>
+        new(level, "label", [], [], "finding " + index) { Code = "code-" + index % 3 };
+
+    [Theory]
+    [InlineData(0, 1, true)]
+    [InlineData(0, 200, true)]
+    [InlineData(-1, 10, false)]
+    [InlineData(0, 0, false)]
+    [InlineData(0, 201, false)]
+    public void TheWindowRangeIsOneRuleForEveryCappedRead(int offset, int limit, bool valid) =>
+        Assert.Equal(valid, ResultPaging.IsValid(offset, limit));
+
+    [Fact]
+    public void ThePageAfterTheLastRowHasNoNextOffset()
+    {
+        Assert.Equal(25, ResultPaging.NextOffset(0, 25, 60));
+        Assert.Equal(60, ResultPaging.NextOffset(35, 25, 100));
+        Assert.Null(ResultPaging.NextOffset(50, 10, 60));
+        Assert.Null(ResultPaging.NextOffset(99, 0, 60));
+    }
+
+    [Fact]
+    public void ProposalListPagesConcatenateToTheFullListAndNameTheTotal()
+    {
+        var all = Enumerable.Range(0, 60).Select(i => new ProposalListItem("proposal/" + i, "draft", "label " + i)).ToArray();
+        var list = new ProposalListProjection(all);
+        var seen = new List<string>();
+        for (var offset = 0; ; )
+        {
+            var page = list.Window(offset, 25);
+            Assert.Equal(60, page.Total);
+            Assert.Equal(offset, page.Offset);
+            seen.AddRange(page.Proposals.Select(item => item.ProposalId));
+            if (page.NextOffset is not { } next) break;
+            offset = next;
+        }
+        Assert.Equal(all.Select(item => item.ProposalId), seen);
+
+        var pastEnd = list.Window(500, 25);
+        Assert.Empty(pastEnd.Proposals);
+        Assert.Equal(60, pastEnd.Total);
+        Assert.Null(pastEnd.NextOffset);
+    }
+
+    [Fact]
+    public void ProposalDetailPagesItsOperationsAndKeepsTheRest()
+    {
+        var operations = Enumerable.Range(0, 23).Select(i =>
+            new ProposalOperationView("op" + i, "lexical/lexSense/setGloss", null, null, [], null)).ToArray();
+        var detail = new ProposalDetailProjection("proposal/one", "draft", "label", null, null, operations);
+
+        var page = detail.Window(10, 10);
+
+        Assert.Equal(23, page.OperationTotal);
+        Assert.Equal(10, page.OperationOffset);
+        Assert.Equal(20, page.NextOffset);
+        Assert.Equal("op10", page.Operations[0].OperationId);
+        Assert.Equal("proposal/one", page.ProposalId);
+        Assert.Null(detail.Window(20, 10).NextOffset);
+        Assert.Equal(3, detail.Window(20, 10).Operations.Count);
+        Assert.Null(detail.OperationTotal);
+    }
+
+    [Fact]
+    public void WarningsPageKeepsEveryCountAndTheCodeRows()
+    {
+        var findings = Enumerable.Range(0, 30)
+            .Select(i => Finding(i, i % 2 == 0 ? GrammarDiagnosticLevel.Warning : GrammarDiagnosticLevel.Information)).ToArray();
+        var byKind = new[] { new GrammarWarningSummary("code-0", null, GrammarDiagnosticLevel.Warning, 10) };
+        var response = new WarningsResponse(true, true, findings, byKind, 15, 15);
+
+        var page = response.Window(0, 10);
+
+        Assert.Equal(10, page.Findings.Count);
+        Assert.Equal(30, page.TotalCount);
+        Assert.Equal(30, page.FindingsTotal);
+        Assert.Equal(10, page.NextOffset);
+        Assert.Same(byKind, page.ByKind);
+        Assert.Equal(15, page.WarningCount);
+        Assert.Equal(30, response.TotalCount);
+        Assert.Null(response.NextOffset);
+        Assert.Null(response.Window(30, 10).NextOffset);
+        Assert.Empty(response.Window(500, 10).Findings);
+    }
+
+    [Fact]
+    public void GrammarCheckPageKeepsThePerLevelTotals()
+    {
+        var findings = Enumerable.Range(0, 40).Select(i => Finding(i, (GrammarDiagnosticLevel)(i % 3))).ToArray();
+        var response = new GrammarCheckResponse(findings, true);
+
+        var page = response.Window(10, 10);
+
+        Assert.Equal(10, page.Findings.Count);
+        Assert.Equal(40, page.FindingsTotal);
+        Assert.Equal(20, page.NextOffset);
+        Assert.Equal(findings.Count(f => f.Severity == GrammarDiagnosticLevel.Error), page.ErrorTotal);
+        Assert.Equal(findings.Count(f => f.Severity == GrammarDiagnosticLevel.Warning), page.WarningTotal);
+        Assert.Equal(40, page.ErrorTotal + page.WarningTotal + page.InformationTotal);
+    }
+
+    [Fact]
+    public void ABatchWithinTheCapIsReturnedAsItIs()
+    {
+        var batch = Batch(intents: 5, operationsEach: 4);
+
+        Assert.Same(batch, batch.Bounded());
+    }
+
+    [Fact]
+    public void ALargeBatchListsTheFirstOperationsAndAccountsForTheRest()
+    {
+        var batch = Batch(intents: 400, operationsEach: 5);
+
+        var bounded = batch.Bounded();
+
+        Assert.Equal(ComposedBatchResponse.ListedOperationLimit, bounded.Intents.Sum(intent => intent.Operations.Count));
+        Assert.True(bounded.Intents.Count <= ComposedBatchResponse.ListedOperationLimit);
+        Assert.Equal(400, bounded.IntentTotal);
+        Assert.Equal(2000, bounded.OperationsAdded);
+        Assert.Equal(2000, bounded.OperationCount);
+        Assert.Contains("motif show d --project <fwdata> --offset 0", bounded.NextStep, StringComparison.Ordinal);
+        Assert.All(bounded.Intents.Where(intent => intent.Operations.Count < 5), intent => Assert.Equal(5, intent.OperationTotal));
+        Assert.Equal(400, batch.Intents.Count);
+    }
+
+    [Fact]
+    public void AnOverlongRefusalKeepsItsStartAndSaysHowMuchWasCut()
+    {
+        var message = new string('x', 5000);
+
+        Assert.Equal(message, RefusalText.Bound(message));
+        var terminal = RefusalText.ForTerminal(message);
+        Assert.StartsWith(new string('x', RefusalText.TextLimit), terminal, StringComparison.Ordinal);
+        Assert.Contains("3,000 more characters not shown; add --json", terminal, StringComparison.Ordinal);
+        var facts = RefusalText.Bound(new Dictionary<string, string> { ["a"] = new string('y', 20000), ["b"] = "short" });
+        Assert.Contains("4,000 more characters", facts["a"], StringComparison.Ordinal);
+        Assert.Equal("short", facts["b"]);
+    }
+
+    private static ComposedBatchResponse Batch(int intents, int operationsEach) => new("d",
+        Enumerable.Range(0, intents).Select(i => new ComposedIntentResult(i, "compose-author-phoneme", "composer",
+            Enumerable.Range(0, operationsEach).Select(o => new OperationSummary($"op{i}-{o}", "lexical/create")).ToArray()))
+            .ToArray(),
+        intents * operationsEach);
+}

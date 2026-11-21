@@ -131,23 +131,25 @@ internal static class AgentTools
             AgentClass.Read,
             Schema.Object([("kind", Schema.String("Only findings with this code."), false),
                 ("left_out", Schema.Boolean("Only findings that explain words left out of the analysis."), false),
-                ..Schema.Verbosity()]),
+                ..Schema.Paging(), ..Schema.Verbosity()]),
             true,
             true,
             true,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(WarningsCommand.Warnings(
-                new WarningsRequest(c.ProjectPath, a.Optional("kind"), a.Flag("left_out")))))) { Requests = [typeof(WarningsRequest)] },
+                new WarningsRequest(c.ProjectPath, a.Optional("kind"), a.Flag("left_out")))
+                .Map(warnings => a.Page(warnings, warnings.Window))))) { Requests = [typeof(WarningsRequest)] },
 
         new("motif_check_grammar",
             string.Empty,
             AgentClass.Evaluate,
-            Schema.Object(Schema.Verbosity()),
+            Schema.Object([..Schema.Paging(), ..Schema.Verbosity()]),
             false,
             true,
             true,
             true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(GrammarCheckQuery.Query(new GrammarCheckRequest(c.ProjectPath), ct)))) { Requests = [typeof(GrammarCheckRequest)] },
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(GrammarCheckQuery.Query(new GrammarCheckRequest(c.ProjectPath), ct)
+                .Map(check => a.Page(check, check.Window))))) { Requests = [typeof(GrammarCheckRequest)] },
 
         // Read
         new("motif_grammar",
@@ -1068,13 +1070,14 @@ internal static class AgentTools
             Schema.Object([("proposal", Schema.String("A Draft name or Proposal id to show in full. Omit to list."), false),
                 ("include_set_aside", Schema.Boolean("Also list applied, rejected, superseded and deferred."), false),
                 ("current", Schema.Boolean("With proposal: also read the value each change's field holds in the saved project now, before any Trial."), false),
-                ..Schema.Verbosity()]),
+                ..Schema.Paging(), ..Schema.Verbosity()]),
             true,
             true,
             true,
             true,
             (c, a, ct) => Task.FromResult(a.Optional("proposal") is { } id
-                ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id, a.Flag("current"))))
+                ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id, a.Flag("current")))
+                    .Map(detail => a.Page(detail, detail.Window)))
                 : ToolOutcome.From(ProposalStandingsCommand.Read(
                     new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside")), c.JobParserPath)))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
 

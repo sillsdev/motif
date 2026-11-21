@@ -125,7 +125,7 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Commands", "new", "new",
-            new[] { "new --project <fwdata> --draft <name> [--label <text>] [--request <requestId>]" }),
+            new[] { "new --project <fwdata> --draft <name> [--label <text>] [--request <requestId>] [--json]" }),
         new CliVerbDescriptor("Commands", "import", "import",
             new[] { "import --project <fwdata> --file <path> [--draft <name>] [--page <n>] [--json]" }),
         new CliVerbDescriptor("Commands", "pending-changes", "pending-changes",
@@ -276,9 +276,9 @@ public static class CliVerbCatalog
             "Commands", "supersede", "supersede",
             new[] { "supersede --project <fwdata> <proposalId> <supersededByProposalId>" }),
         new CliVerbDescriptor(
-            "Commands", "list", "list", new[] { "list --project <fwdata> [--all | --status <status>] [--json]" }),
+            "Commands", "list", "list", new[] { "list --project <fwdata> [--all | --status <status>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
         new CliVerbDescriptor(
-            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current] [--json]" }),
+            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "preflight", "preflight",
             new[] { "preflight --project <fwdata> <proposalId> [--json]" }),
@@ -491,7 +491,7 @@ public static class CliVerbCatalog
                 "proposal trial --project <fwdata> <proposalId> --latest [--json]" }),
         new CliVerbDescriptor(
             "Project", "warnings", "warnings",
-            new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--json]" }),
+            new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
         new CliVerbDescriptor(
             "Project", "difference", "difference produce",
             new[] { "difference produce --project <fwdata> --proposal <id> --text <guid> [--job <id>] [--reference human|source-validated] [--json]" }),
@@ -506,7 +506,7 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Project", "grammar", "grammar check",
-            new[] { "grammar check --project <fwdata> [--stored-analyses budget|all|off] [--json]" }),
+            new[] { "grammar check --project <fwdata> [--stored-analyses budget|all|off] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
         new CliVerbDescriptor(
             "Project", "grammar", "grammar read",
             new[]

@@ -949,8 +949,8 @@ public static class CommandTextRenderer
         if (asJson)
         {
             var envelope = new FailureEnvelope(
-                refusal.Reason, refusal.Message, refusal.Facts.Count > 0 ? refusal.Facts : null, refusal.Code,
-                refusal.ParserDiagnostic);
+                refusal.Reason, RefusalText.Bound(refusal.Message),
+                refusal.Facts.Count > 0 ? RefusalText.Bound(refusal.Facts) : null, refusal.Code, refusal.ParserDiagnostic);
             return new CommandResult(
                 FailureEnvelope.ExitCodeFor(refusal.Reason),
                 ProjectionJson.Serialize(envelope) + Environment.NewLine, refusal.Reason);
@@ -958,7 +958,7 @@ public static class CommandTextRenderer
 
         var prefix = refusal.Code.StartsWith("corpus.", StringComparison.Ordinal) ? "" : "error: ";
         return new CommandResult(
-            FailureEnvelope.ExitCodeFor(refusal.Reason), prefix + refusal.Message + Environment.NewLine,
+            FailureEnvelope.ExitCodeFor(refusal.Reason), prefix + RefusalText.ForTerminal(refusal.Message) + Environment.NewLine,
             refusal.Reason);
     }
 
@@ -1885,7 +1885,7 @@ public static class CommandTextRenderer
             if (CandidateLine(touched.ByMembershipOnly, touched.BySpellingOnly) is { } candidates)
                 text.AppendLine($"Not counted: {candidates}");
         }
-        foreach (var kind in response.ByKind)
+        foreach (var kind in response.ByKind.Take(KindRowLimit))
         {
             text.AppendLine($"  {kind.Code}: {kind.Count:N0} {kind.Level.ToWireValue()}" +
                 (kind.YourWords is not { } words ? string.Empty : kind.WordAttributionComplete == true
@@ -1894,6 +1894,7 @@ public static class CommandTextRenderer
             if (CandidateLine(kind.ByMembershipOnly ?? 0, kind.BySpellingOnly ?? 0) is { } candidates)
                 text.AppendLine($"    Not counted: {candidates}");
         }
+        AppendMoreKinds(text, response.ByKind.Count);
         foreach (var finding in response.Findings)
         {
             text.AppendLine($"  {finding.Text}");
@@ -1937,7 +1938,26 @@ public static class CommandTextRenderer
                     text.AppendLine($"    Spelling candidates; not confirmed uses of the phoneme: {WordList(spelled)}");
             }
         }
+        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextOffset);
         return text.ToString();
+    }
+
+    private const int KindRowLimit = 20;
+
+    private static void AppendMoreKinds(StringBuilder text, int kinds)
+    {
+        if (kinds > KindRowLimit)
+            text.AppendLine($"  and {kinds - KindRowLimit:N0} more finding codes; --json lists every one.");
+    }
+
+    private static void AppendFindingsPage(StringBuilder text, int? offset, int shown, int? total, int? next)
+    {
+        if (offset is not { } from || total is not { } all) return;
+        text.AppendLine(shown == 0
+            ? $"No findings at offset {from} of {all:N0}."
+            : $"Showing findings {from + 1:N0}-{from + shown:N0} of {all:N0}.");
+        if (next is { } following)
+            text.AppendLine($"Next: --offset {following} --limit {ResultPaging.HeavyRowLimit}, or --all for every finding.");
     }
 
     private static string TouchedLine(WarningWordsTouched touched) => touched.IsComplete
@@ -2002,21 +2022,24 @@ public static class CommandTextRenderer
         if (!response.HasBaseline)
             return "No Baseline has been captured. Run: motif baseline capture --project <fwdata>" + Environment.NewLine;
 
-        var errorCount = response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error);
-        var warningCount = response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Warning);
-        var informationCount = response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information);
+        var errorCount = response.ErrorTotal ?? response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error);
+        var warningCount = response.WarningTotal ?? response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Warning);
+        var informationCount = response.InformationTotal ??
+            response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information);
         var text = new StringBuilder();
-        text.AppendLine($"Grammar findings: {response.Findings.Count:N0} " +
+        text.AppendLine($"Grammar findings: {response.FindingsTotal ?? response.Findings.Count:N0} " +
             $"({CountLabel(errorCount, "error", "errors")}, {CountLabel(warningCount, "warning", "warnings")}, " +
             $"{informationCount:N0} information)");
         text.AppendLine(CheckedInventory(response.CheckedLexemeCount, response.CheckedRuleCount));
         if (response.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine(detail);
         foreach (var advisory in response.Advisories)
             text.AppendLine($"Advisory: {advisory.Message}");
-        foreach (var summary in response.Summary)
+        foreach (var summary in response.Summary.Take(KindRowLimit))
             text.AppendLine($"  {summary.Code}: {summary.Count:N0} {summary.Level.ToWireValue()}");
+        AppendMoreKinds(text, response.Summary.Count);
         foreach (var finding in response.Findings)
             text.AppendLine($"  {finding.Text}");
+        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextOffset);
         return text.ToString();
     }
 

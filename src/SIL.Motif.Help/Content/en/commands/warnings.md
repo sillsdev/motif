@@ -71,3 +71,7 @@ Without a matching Assessment, supported routes say **evidence unavailable**; th
 
 - [Check a grammar](cmd:grammar%20check) records fresh findings.
 - [Read the project Overview](cmd:overview) includes the warning count with other stored evidence.
+
+## Output size
+
+`warnings` returns the first 10 findings. The counts, the per-code rows (`byKind`) and the word attribution always describe every finding; `findingsTotal`, `findingsOffset` and, when more remain, `nextOffset` say which page this is. The text ends with the `--offset` that reads the next page. `--limit <1-200>` sets the page size, `--offset <n>` or `--page <N>` picks the page, and `--all` returns every finding (MCP `all: true`). Narrow with `--kind` before paging. An offset or limit outside that range is refused with `paging.invalid`. The text lists the 20 largest finding codes and names how many more `--json` holds.

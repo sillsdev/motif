@@ -371,6 +371,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.ProgressTextNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.DraftRevisionConflict, FailureReason.Refused,
             Command("show", Caller("project"), ("proposal", NextArg.Fact("draftName")))),
+        Spec(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, NextStep.Repeat()),
         Spec(RefusalCodes.EvidenceInvalidPage, FailureReason.InvalidArgument, NextStep.Repeat()),
         Spec(RefusalCodes.EvidenceUnknownTier, FailureReason.InvalidArgument, NextStep.Repeat()),
         Spec(RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,

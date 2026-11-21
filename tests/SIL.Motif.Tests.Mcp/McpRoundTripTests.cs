@@ -1185,6 +1185,40 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task ShowingAProposalPagesItsOperationsAndNamesTheNextOffset()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "paged-draft"),
+            ("label", "A paged draft"), ("rationale", "Many phonemes."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+        var batched = await session.CallAsync("motif_compose_batch", ("draft", "paged-draft"), ("intents",
+            Enumerable.Range(0, 14).Select(i => (object)new
+            {
+                verb = "compose-author-phoneme", intent = new { name = "Pg" + i, representations = new[] { "pg" + i } },
+            }).ToArray()));
+        Assert.True(batched.GetProperty("ok").GetBoolean(), batched.ToString());
+
+        var first = (await session.CallAsync("motif_proposals", ("proposal", proposalId))).GetProperty("result");
+        Assert.Equal(10, first.GetProperty("operations").GetArrayLength());
+        Assert.True(first.GetProperty("operationTotal").GetInt32() >= 14);
+        Assert.Equal(10, first.GetProperty("nextOffset").GetInt32());
+
+        var rest = (await session.CallAsync("motif_proposals", ("proposal", proposalId), ("offset", 10), ("limit", 200)))
+            .GetProperty("result");
+        Assert.Equal(first.GetProperty("operationTotal").GetInt32() - 10, rest.GetProperty("operations").GetArrayLength());
+        Assert.False(rest.TryGetProperty("nextOffset", out _));
+
+        var everything = (await session.CallAsync("motif_proposals", ("proposal", proposalId), ("all", true), ("limit", 200)))
+            .GetProperty("result");
+        Assert.Equal(first.GetProperty("operationTotal").GetInt32(), everything.GetProperty("operations").GetArrayLength());
+
+        var refused = await session.Client.CallToolAsync("motif_proposals", new Dictionary<string, object?>
+            { ["project"] = project.FwDataPath, ["proposal"] = proposalId, ["offset"] = -1 });
+        Assert.True(refused.IsError, refused.StructuredContent?.ToString());
+    }
+
+    [Fact]
     public async Task ProposalCommentsNoticeDoesNotRecreateAUseLeaseRemovedAfterTheToolRead()
     {
         using var project = new WalkthroughProject(pristine);

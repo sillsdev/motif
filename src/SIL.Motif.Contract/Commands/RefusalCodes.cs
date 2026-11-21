@@ -140,6 +140,9 @@ public static class RefusalCodes
     public const string ConfigInvalid = "config.invalid";
     public const string DraftRevisionConflict = "draft.revision-conflict";
 
+    /// <summary>A capped read's offset, limit or page is out of range or contradicts another paging flag.</summary>
+    public const string PagingInvalid = "paging.invalid";
+
     public const string EvidenceInvalidPage = "evidence.invalid-page";
     public const string EvidenceUnknownTier = "evidence.unknown-tier";
     /// <summary>An export cursor is not one an earlier page of the same export returned.</summary>

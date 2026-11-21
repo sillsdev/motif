@@ -34,6 +34,7 @@ public static class ProposalCommandRenderer
 
     private static CommandResult RenderSuccess<T>(T value, bool asJson, bool includeEffects) where T : class
     {
+        if (value is ComposedBatchResponse batch) value = (T)(object)batch.Bounded();
         if (asJson)
             return new CommandResult(0, ProjectionJson.Serialize(value) + Environment.NewLine);
 
@@ -148,15 +149,15 @@ public static class ProposalCommandRenderer
         if (asJson)
         {
             var envelope = new FailureEnvelope(
-                refusal.Reason, refusal.Message, refusal.Facts.Count > 0 ? refusal.Facts : null, refusal.Code,
-                refusal.ParserDiagnostic);
+                refusal.Reason, RefusalText.Bound(refusal.Message), refusal.Facts.Count > 0 ? RefusalText.Bound(refusal.Facts) : null,
+                refusal.Code, refusal.ParserDiagnostic);
             return new CommandResult(
                 FailureEnvelope.ExitCodeFor(refusal.Reason),
                 ProjectionJson.Serialize(envelope) + Environment.NewLine, refusal.Reason);
         }
 
         return new CommandResult(
-            FailureEnvelope.ExitCodeFor(refusal.Reason), "error: " + refusal.Message + Environment.NewLine,
+            FailureEnvelope.ExitCodeFor(refusal.Reason), "error: " + RefusalText.ForTerminal(refusal.Message) + Environment.NewLine,
             refusal.Reason);
     }
 
@@ -205,16 +206,17 @@ public static class ProposalCommandRenderer
     private static string RenderComposedBatch(ComposedBatchResponse r)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Composed {r.Intents.Count} intent(s) against draft '{r.DraftName}': " +
-            $"{r.Intents.Sum(intent => intent.Operations.Count)} operation(s) added.");
+        sb.AppendLine($"Composed {r.IntentTotal ?? r.Intents.Count} intent(s) against draft '{r.DraftName}': " +
+            $"{r.OperationsAdded ?? r.Intents.Sum(intent => intent.Operations.Count)} operation(s) added.");
         foreach (var intent in r.Intents)
         {
-            sb.AppendLine($"  [{intent.Index}] {intent.Verb}: {intent.Operations.Count} operation(s)");
+            sb.AppendLine($"  [{intent.Index}] {intent.Verb}: {intent.OperationTotal ?? intent.Operations.Count} operation(s)");
             foreach (var op in intent.Operations)
                 sb.AppendLine(op.EntityId is { } created
                     ? $"    {op.OperationId}  ({op.Kind}) creates {created}"
                     : $"    {op.OperationId}  ({op.Kind})");
         }
+        if (r.NextStep is { } nextStep) sb.AppendLine(nextStep);
         sb.AppendLine($"Draft now has {r.OperationCount} operation(s).");
         return sb.ToString();
     }

@@ -59,3 +59,7 @@ There is no limit by intent or operation count.
 ## Changing many stems at once
 
 The per-stem composers take one target each, and a batch is how a whole clean-up becomes one Proposal. Put one intent per stem in the file, for example `compose-set-stem-part-of-speech` to retype hundreds of stems (each with its own `expectedPartOfSpeech`) and, to stop stems parsing, retype or delete them (the do-not-parse flag changes no parse). Mix verbs freely; `compose-edit-derivational-affix-restriction` takes `alsoMsas` and `compose-add-exception-features` takes `msas`, so those two need only one intent for a list. Give the Draft its own Rationale before Finalize.
+
+## Output size
+
+The report lists the first 25 operations across its intents, and at most 25 intents, whatever the batch added. Every listed intent keeps its index, verb and operation count; `intentTotal`, `operationsAdded` and `nextStep` say what was cut, and the text names it too. The Draft holds every operation: read them in pages with [`show`](cmd:show) (`--offset`, `--limit`, `--all`). `--json` returns the same bounded report. Do not rerun the batch to see the rest: it would add the operations again.

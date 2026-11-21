@@ -42,5 +42,31 @@ public sealed record WarningsResponse(
     public GrammarCheckProvenance? Provenance { get; init; }
 
     /// <summary>The number of findings after the requested filters.</summary>
-    public int TotalCount => Findings.Count;
+    public int TotalCount => FindingsTotal ?? Findings.Count;
+
+    /// <summary>The findings behind <see cref="TotalCount"/>, when <see cref="Findings"/> is one page of them; null when it is all of them.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? FindingsTotal { get; init; }
+
+    /// <summary>How many findings precede this page; null when <see cref="Findings"/> is not a page.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? FindingsOffset { get; init; }
+
+    /// <summary>The offset that starts the next page of findings; null at the end or when this is not a page.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? NextOffset { get; init; }
+
+    /// <summary>
+    /// One page of the findings. The counts, the per-code rows and the word attribution still describe all of them,
+    /// and each code row keeps its count, so the page never hides how many findings exist.
+    /// </summary>
+    public WarningsResponse Window(int offset, int limit)
+    {
+        var page = ResultPaging.Window(Findings, offset, limit);
+        return this with
+        {
+            Findings = page, FindingsTotal = Findings.Count, FindingsOffset = offset,
+            NextOffset = ResultPaging.NextOffset(offset, page.Count, Findings.Count),
+        };
+    }
 }

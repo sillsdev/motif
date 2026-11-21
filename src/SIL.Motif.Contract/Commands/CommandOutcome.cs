@@ -27,4 +27,8 @@ public sealed record CommandOutcome<T> where T : class?
     public static CommandOutcome<T> Success(T? value) => new(value, null);
 
     public static CommandOutcome<T> Refused(Refusal refusal) => new(default, refusal);
+
+    /// <summary>The same outcome with <paramref name="change"/> applied to its value; a refusal passes through untouched.</summary>
+    public CommandOutcome<T> Map(Func<T, T> change) =>
+        Succeeded && Value is not null ? Success(change(Value)) : this;
 }

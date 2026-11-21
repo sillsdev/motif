@@ -352,8 +352,7 @@ try
                 return Usage("Usage: motif " + CliVerbCatalog.ComposerUsage(typedVerb), asJson);
             result = RenderProposal(
                 ProposalCommands.ComposeIntent(new(typedProject, CliProductVersion(), typedDraft, typedVerb,
-                    typedIntent, commandCitation)),
-                successAsJson: false);
+                    typedIntent, commandCitation)));
             break;
 
         case "open":
@@ -391,12 +390,11 @@ try
 
         case "new":
             if (!flags.TryGetValue("project", out var newProject) || !flags.TryGetValue("draft", out var newDraftName))
-                return Usage("Usage: motif new --project <fwdata> --draft <name> [--label <text>] [--request <requestId>]", asJson);
+                return Usage("Usage: motif new --project <fwdata> --draft <name> [--label <text>] [--request <requestId>] [--json]", asJson);
             result = RenderProposal(
                 ProposalCommands.New(new NewDraftRequest(
                     newProject, CliProductVersion(), newDraftName, flags.GetValueOrDefault("label"),
-                    flags.GetValueOrDefault("request"))),
-                successAsJson: false);
+                    flags.GetValueOrDefault("request"))));
             break;
 
         case "import":
@@ -530,7 +528,7 @@ try
             if (!File.Exists(batchFile))
                 return Usage($"The --intents file '{batchFile}' does not exist.", asJson);
             result = RenderProposal(ProposalCommands.ComposeBatch(new ComposeBatchRequest(
-                batchProject, CliProductVersion(), batchDraft, File.ReadAllText(batchFile))), successAsJson: false);
+                batchProject, CliProductVersion(), batchDraft, File.ReadAllText(batchFile))));
             break;
 
         case "compose":
@@ -861,18 +859,32 @@ try
             }
             if (!flags.TryGetValue("project", out var listProject) ||
                 flags.TryGetValue("status", out var listStatus) && string.IsNullOrWhiteSpace(listStatus))
-                return Usage("Usage: motif list --project <fwdata> [--all | --status <status>] [--json]", asJson);
+                return Usage("Usage: motif " + UsageLineFor("list"), asJson);
+            var (listWindow, listPagingRefusal) = PagingFlags.Read(flags, ResultPaging.DefaultLimit, allowAll: false);
+            if (listPagingRefusal is not null)
+            {
+                result = RenderProposal(CommandOutcome<ProposalListProjection>.Refused(listPagingRefusal));
+                break;
+            }
             result = RenderProposal(
                 ProposalCommands.List(new ListProposalsRequest(listProject, CliProductVersion(),
-                    flags.ContainsKey("all"), flags.GetValueOrDefault("status"))));
+                    flags.ContainsKey("all"), flags.GetValueOrDefault("status"))).Map(
+                    list => list.Window(listWindow.Offset, listWindow.Limit)));
             break;
 
         case "show":
             if (!flags.TryGetValue("project", out var showProject) || positionals.Count != 1)
                 return Usage("Usage: motif " + UsageLineFor("show"), asJson);
+            var (showWindow, showPagingRefusal) = PagingFlags.Read(flags, ResultPaging.HeavyRowLimit);
+            if (showPagingRefusal is not null)
+            {
+                result = RenderProposal(CommandOutcome<ProposalDetailProjection>.Refused(showPagingRefusal));
+                break;
+            }
             result = RenderProposal(
                 ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0],
-                    flags.ContainsKey("current"))));
+                    flags.ContainsKey("current"))).Map(detail => showWindow.All
+                    ? detail : detail.Window(showWindow.Offset, showWindow.Limit)));
             break;
 
         case "pending-changes":
@@ -2725,9 +2737,16 @@ try
             if (!flags.TryGetValue("project", out var warningsProject) ||
                 (flags.TryGetValue("kind", out var warningKind) && string.IsNullOrWhiteSpace(warningKind)))
                 return Usage(UsageLineFor("warnings"), asJson);
+            var (warningsWindow, warningsPagingRefusal) = PagingFlags.Read(flags, ResultPaging.HeavyRowLimit);
+            if (warningsPagingRefusal is not null)
+            {
+                result = RenderCommand(CommandOutcome<WarningsResponse>.Refused(warningsPagingRefusal));
+                break;
+            }
             result = RenderCommand(WarningsCommand.Warnings(new WarningsRequest(
                 warningsProject, flags.GetValueOrDefault("kind"), flags.ContainsKey("left-out"),
-                flags.GetValueOrDefault("proposal"))));
+                flags.GetValueOrDefault("proposal"))).Map(warnings => warningsWindow.All
+                ? warnings : warnings.Window(warningsWindow.Offset, warningsWindow.Limit)));
             break;
 
         case "difference":
@@ -2830,8 +2849,15 @@ try
                 };
                 if (storedAnalyses is null) return Usage(UsageLineFor("grammar check"), asJson);
             }
+            var (checkWindow, checkPagingRefusal) = PagingFlags.Read(flags, ResultPaging.HeavyRowLimit);
+            if (checkPagingRefusal is not null)
+            {
+                result = RenderCommand(CommandOutcome<GrammarCheckResponse>.Refused(checkPagingRefusal));
+                break;
+            }
             result = RunWithConsoleCancellation(token => RenderCommand(
-                GrammarCheckQuery.Query(new GrammarCheckRequest(grammarProject, StoredAnalyses: storedAnalyses), token)));
+                GrammarCheckQuery.Query(new GrammarCheckRequest(grammarProject, StoredAnalyses: storedAnalyses), token)
+                    .Map(check => checkWindow.All ? check : check.Window(checkWindow.Offset, checkWindow.Limit))));
             break;
 
         case "timing":
