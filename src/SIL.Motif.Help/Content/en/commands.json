@@ -1077,6 +1077,41 @@
       "Give a new meaning its first example"
     ]
   },
+  "compose-add-sense": {
+    "title": "Add a sense to an entry",
+    "description": "Adds one new sense, with a gloss, to an entry that exists, pointing it at one of the entry's own analyses so the analysis and alternate forms stay shared; Motif stages a Draft for a person to review and Apply. An entry with one analysis needs no analysis field; an entry with several refuses and lists their ids. It refuses an unknown entry, an analysis the entry lacks, a writing system the project does not have, and a gloss the entry already has.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "entry": "Id of the existing entry that gains the sense.",
+      "gloss": "Gloss of the new sense.",
+      "analysisWs": "Analysis writing system tag of the gloss and definition.",
+      "definition": "Optional definition of the new sense.",
+      "analysis": "Optional id of one of the entry's analyses that the sense points at. Needed only when the entry has more than one."
+    },
+    "goals": [
+      "Give a verb a second meaning without a homograph entry",
+      "Add a sense under the analysis an entry already has",
+      "Record a further gloss for a lexeme found in the texts"
+    ],
+    "redirect": "Use when the entry's existing analysis suits the new meaning. A new meaning that needs its own grammatical analysis: compose-add-morphosyntax-analysis with gloss. A meaning that is a separate word: compose-author-lexical-entry."
+  },
+  "compose-set-sense-msa": {
+    "title": "Re-point a meaning's analysis",
+    "description": "Points a meaning, top level or nested, at a different analysis of the same entry, keeping all its content; Motif stages a Draft for a person to review and Apply. If no sense would use the old analysis afterwards, LibLCM removes it, and the operation's rationale says so. It refuses an analysis of another entry, a stem analysis on an affix, an affix analysis on a stem, a meaning that already uses the analysis, and an old analysis something else still refers to.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "sense": "Id of the sense whose analysis changes.",
+      "analysis": "Id of an analysis that the sense's own entry already has."
+    },
+    "goals": [
+      "Move a particle meaning off the verb analysis",
+      "Choose the analysis that suits a meaning",
+      "Re-file a meaning without deleting it"
+    ],
+    "redirect": "Use when the entry already has the analysis. An analysis the entry lacks: compose-add-morphosyntax-analysis with senses. A sense that should be an entry of its own: compose-move-sense-to-entry."
+  },
   "compose-remove-alternate-form": {
     "title": "Remove an alternate form",
     "description": "Removes one alternate form (allomorph) of an entry that nothing refers to; Motif stages a Draft for a person to review and Apply. It refuses the lexeme form and a form that a parser analysis or any other object refers to.",
@@ -1614,7 +1649,7 @@
       "suffix-prefix-slots",
       "workflow"
     ],
-    "redirect": "Use when one form serves two categories. Changing the one analysis an entry has from one affix kind to another: compose-change-affix-kind. A brand-new entry: compose-author-lexical-entry."
+    "redirect": "Use when one form serves two categories. For a sense under its analysis: compose-add-sense. For an affix kind change: compose-change-affix-kind. A new entry: compose-author-lexical-entry."
   },
   "compose-author-allomorph-required-features": {
     "title": "Add Required Features",

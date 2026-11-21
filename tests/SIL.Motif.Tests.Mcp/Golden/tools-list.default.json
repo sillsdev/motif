@@ -5259,6 +5259,125 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-add-sense"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-add-sense.",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "description": "Id of the existing entry that gains the sense."
+                      },
+                      "gloss": {
+                        "type": "string",
+                        "description": "Gloss of the new sense."
+                      },
+                      "analysisWs": {
+                        "type": "string",
+                        "description": "Analysis writing system tag of the gloss and definition."
+                      },
+                      "definition": {
+                        "type": "string",
+                        "description": "Optional definition of the new sense."
+                      },
+                      "analysis": {
+                        "type": "string",
+                        "description": "Optional id of one of the entry\u0027s analyses that the sense points at. Needed only when the entry has more than one."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "entry",
+                      "gloss",
+                      "analysisWs"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-set-sense-msa"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-sense-msa.",
+                    "properties": {
+                      "sense": {
+                        "type": "string",
+                        "description": "Id of the sense whose analysis changes."
+                      },
+                      "analysis": {
+                        "type": "string",
+                        "description": "Id of an analysis that the sense\u0027s own entry already has."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "sense",
+                      "analysis"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-merge-lexical-entries"
                     ]
                   },
@@ -12844,7 +12963,7 @@
   },
   {
     "name": "motif_add_morphosyntax_analysis",
-    "description": "Add a grammatical analysis. Research first: motif_guide topic suffix-prefix-slots or workflow; check best practice. Use when one form serves two categories. Changing the one analysis an entry has from one affix kind to another: compose-change-affix-kind. A brand-new entry: compose-author-lexical-entry. Stages one more grammatical info on an entry that already has one, as FieldWorks holds it: an entry owns any number of analyses, each sense points at one, and the parser loads every analysis of the entry as its own rule or stem. One suffix entry can then serve two categories. A derivational analysis can name its one From inflection class, so an entry with one analysis per class attaches to several classes. The new analysis can take existing senses of the entry, a new sense with a gloss, or neither. It refuses a stem analysis on an affix, an affix analysis on a stem, and a sense that belongs to another entry. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-add-morphosyntax-analysis. Agent class: Draft.",
+    "description": "Add a grammatical analysis. Research first: motif_guide topic suffix-prefix-slots or workflow; check best practice. Use when one form serves two categories. For a sense under its analysis: compose-add-sense. For an affix kind change: compose-change-affix-kind. A new entry: compose-author-lexical-entry. Stages one more grammatical info on an entry that already has one, as FieldWorks holds it: an entry owns any number of analyses, each sense points at one, and the parser loads every analysis of the entry as its own rule or stem. One suffix entry can then serve two categories. A derivational analysis can name its one From inflection class, so an entry with one analysis per class attaches to several classes. The new analysis can take existing senses of the entry, a new sense with a gloss, or neither. It refuses a stem analysis on an affix, an affix analysis on a stem, and a sense that belongs to another entry. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-add-morphosyntax-analysis. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {

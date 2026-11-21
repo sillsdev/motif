@@ -113,7 +113,7 @@ public static class AddMorphoSyntaxAnalysisComposer
         if ((intent.Senses is null || intent.Senses.Count == 0) && intent.Gloss is null)
             throw new InvalidOperationException(
                 $"'{ConstructName}': give 'senses' or 'gloss', because an analysis no sense uses is removed by FieldWorks the next time the project is checked or opened.");
-        RequireNotDuplicate(entry, msa, fromClass);
+        RequireNotDuplicate(entry, msa, fromClass, intent);
 
         var senseIds = (intent.Senses ?? []).Select(LexicalFormAuthoring.Normalize).ToArray();
         if (senseIds.Select(id => id.ToGuid()).Distinct().Count() != senseIds.Length)
@@ -176,12 +176,13 @@ public static class AddMorphoSyntaxAnalysisComposer
         }
     }
 
-    private static void RequireNotDuplicate(ILexEntry entry, LexicalEntryMsa msa, CanonicalId? fromClass)
+    private static void RequireNotDuplicate(
+        ILexEntry entry, LexicalEntryMsa msa, CanonicalId? fromClass, AddMorphoSyntaxAnalysisIntent intent)
     {
         var slots = (msa.Slots ?? []).Select(id => id.ToGuid()).Order().ToArray();
         var wantedFeatures = (msa.ExceptionFeatures ?? []).Select(id => id.ToGuid()).ToHashSet();
         // LibLCM's EqualsMsa also compares feature requirements and exception features, so these tell analyses apart.
-        var found = entry.MorphoSyntaxAnalysesOC.Any(existing => existing switch
+        var found = entry.MorphoSyntaxAnalysesOC.FirstOrDefault(existing => existing switch
         {
             IMoStemMsa stem => msa.Kind == LexicalEntryMsaKind.Stem && stem.PartOfSpeechRA?.Guid == msa.Category.ToGuid()
                 && stem.InflectionClassRA?.Guid == msa.InflectionClass?.ToGuid() && !Any(stem.MsFeaturesOA)
@@ -197,10 +198,18 @@ public static class AddMorphoSyntaxAnalysisComposer
                 && plain.PartOfSpeechRA?.Guid == msa.Category.ToGuid(),
             _ => false,
         });
-        if (found)
-            throw new InvalidOperationException(
-                $"'{ConstructName}': entry '{CanonicalId.FromGuid(entry.Guid).Value}' already has an identical analysis (same category, classes, slots, feature requirements and exception features); point its senses at that one instead, " +
-                "or give that analysis its feature requirements or exception features first so the new one can differ by them.");
+        if (found is null) return;
+        var entryId = CanonicalId.FromGuid(entry.Guid).Value;
+        var foundId = CanonicalId.FromGuid(found.Guid).Value;
+        var next = intent.Gloss is not null
+            ? $"To add that sense there, run compose-add-sense with {{\"entry\":\"{entryId}\",\"gloss\":\"{intent.Gloss}\"," +
+              $"\"analysisWs\":\"{intent.AnalysisWritingSystem}\",\"analysis\":\"{foundId}\"}}."
+            : intent.Senses is { Count: > 0 }
+                ? $"To point those senses there, run compose-set-sense-msa with {{\"sense\":\"{intent.Senses[0].Value}\",\"analysis\":\"{foundId}\"}} for each."
+                : $"Point senses at it with compose-set-sense-msa, or add a sense to it with compose-add-sense (\"analysis\":\"{foundId}\").";
+        throw new InvalidOperationException(
+            $"'{ConstructName}': entry '{entryId}' already has an identical analysis '{foundId}' (same category, classes, slots, feature requirements and exception features). {next} " +
+            "To keep both, give that analysis its feature requirements or exception features first so the new one can differ by them.");
     }
 
     private static bool HasFeatureRequirements(IMoMorphSynAnalysis msa) => msa switch
@@ -214,7 +223,7 @@ public static class AddMorphoSyntaxAnalysisComposer
 
     private static bool Any(IFsFeatStruc? structure) => structure is { FeatureSpecsOC.Count: > 0 };
 
-    private static Dictionary<Guid, string> RequireNoRemainingReferences(ILexEntry entry, CanonicalId[] senseIds)
+    internal static Dictionary<Guid, string> RequireNoRemainingReferences(ILexEntry entry, CanonicalId[] senseIds)
     {
         var moved = senseIds.Select(id => id.ToGuid()).ToHashSet();
         var notes = new Dictionary<Guid, string>();

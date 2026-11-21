@@ -46,3 +46,7 @@ motif compose-add-morphosyntax-analysis --project language.fwdata --draft split-
 The original sense stays on the original analysis and `gloss` adds a second sense for the new one, so an entry with one sense ends with two. Give the second sense a real gloss, because it lands in FieldWorks. Do not move the only sense to the new analysis with `senses`: the old analysis then loses its last sense and is dropped, and the split becomes a retag.
 
 Each analysis is its own stem to the parser, so neither rule fires on the other's outcome. Checked with the real parser on a stem with a syncope rule before a d-to-r rule: with both tags on one analysis only the syncope form parsed, and after the split both forms parsed. See the [workflow guide](guide:encoding/workflow).
+
+## When the entry already has the analysis
+
+The command refuses an analysis identical to one the entry has, and the refusal names the existing analysis and the next command: `compose-add-sense` to add a sense under it, or `compose-set-sense-msa` to point existing senses at it.

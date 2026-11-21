@@ -139,6 +139,12 @@ public sealed class AddMorphoSyntaxAnalysisComposerTests : IDisposable
             new(_suffix, new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, _verb), Gloss: "again",
                 AnalysisWritingSystem: gloss)));
         Assert.Contains("identical analysis", same.Message, StringComparison.Ordinal);
+        Assert.Contains("compose-add-sense with {\"entry\":\"" + _suffix.Value, same.Message, StringComparison.Ordinal);
+        Assert.Contains("\"analysis\":\"" + _firstMsa.Value + "\"", same.Message, StringComparison.Ordinal);
+        var bySenses = Assert.Throws<InvalidOperationException>(() => AddMorphoSyntaxAnalysisComposer.Build(_cache,
+            new(_suffix, new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, _verb),
+                Senses: [Id(Get<ILexEntry>(_cache, _suffix).SensesOS[0])])));
+        Assert.Contains("compose-set-sense-msa with {\"sense\":", bySenses.Message, StringComparison.Ordinal);
 
         var one = AddInflectionClass(_cache, _verb, "Class 1");
         var two = AddInflectionClass(_cache, _verb, "Class 2");

@@ -389,11 +389,13 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(81, verbs.Length);
+        Assert.Equal(83, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
             "compose-delete-empty-sense",
+            "compose-add-sense",
+            "compose-set-sense-msa",
             "compose-link-variant",
             "compose-strip-variant-senses",
             "compose-author-variant-entry",

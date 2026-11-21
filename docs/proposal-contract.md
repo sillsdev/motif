@@ -616,6 +616,8 @@ judged. The effects are `lexical/lexSense/examples` of both senses, each with a 
 writing system with its translations, and both senses with their entries and glosses. The composers are
 `compose-move-example` and `compose-add-example`, CLI-first.
 
+`compose-add-sense` and `compose-set-sense-msa` add no operation kind. The first lowers to `lexical/lexEntry/createSenses` with a gloss, an optional definition and `lexical/lexSense/setMorphoSyntaxAnalysis` pointing at one of the entry's existing analyses; the second lowers to that last operation alone, for a sense of the same entry. Both refuse an analysis that is not owned by the sense's entry and name the next command in the refusal.
+
 `lexical/lexEntry/remove` targets one `LexEntry` and has the closed `after` shape `{ "lexicon": "<id>" }`, the project's lexicon, which a different value makes stale. It deletes the entry with
 everything it owns (lexeme form, alternate forms, senses, examples, analyses, entry references). LibLCM would silently
 unlink every reference to the entry, so the operation refuses an entry when any object outside it refers to the entry

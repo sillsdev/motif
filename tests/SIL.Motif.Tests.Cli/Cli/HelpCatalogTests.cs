@@ -111,6 +111,8 @@ public sealed class HelpCatalogTests
         ["compose-delete-text-segment-note"] = "removes a Note of a text segment, a text clean-up rather than a grammar rule",
         ["compose-move-example"] = "moves an example sentence to another sense, a lexical clean-up rather than a grammar rule",
         ["compose-add-example"] = "adds an example sentence to a sense, a lexical addition rather than a grammar rule",
+        ["compose-add-sense"] = "adds a sense to an existing entry, a lexical addition rather than a grammar rule",
+        ["compose-set-sense-msa"] = "points a sense at another analysis of its entry, a lexical restructuring rather than a grammar rule",
         ["compose-move-sense-to-entry"] = "moves a sense into an entry of its own, a lexical restructuring rather than a grammar rule",
         ["compose-link-variant"] = "links existing entries and senses rather than encoding a grammar rule",
         ["compose-make-variant-of"] = "links existing entries rather than encoding a grammar rule",

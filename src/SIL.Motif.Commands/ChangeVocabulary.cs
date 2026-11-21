@@ -147,6 +147,8 @@ public static class ChangeVocabulary
             ["AuthorPartOfSpeech"] = ("Add category", "Add a part of speech"),
             ["AuthorLexicalEntry"] = ("Add entry", "Add a dictionary entry"),
             ["AddMorphoSyntaxAnalysis"] = ("Add analysis", "Add a grammatical analysis to an entry"),
+            ["AddSense"] = ("Add sense to", "Add a sense to an existing entry"),
+            ["SetSenseMsa"] = ("Change analysis of sense", "Point a sense at another analysis of its entry"),
             ["AuthorCircumfix"] = ("Add circumfix", "Add a circumfix entry with a prefix part and a suffix part"),
             ["AuthorAlternateForm"] = ("Add alternate form", "Add an alternate form to an entry"),
             ["AuthorAffixProcessAllomorph"] = ("Add process allomorph", "Add an affix process allomorph to an entry"),

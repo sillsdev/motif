@@ -17,6 +17,8 @@ A sense is one meaning of an entry, with its gloss and definition. A word with s
 4. `compose-delete-sense` deletes a sense or sub-sense that carries content, with its sub-senses and examples; an entry's only sense (unless the entry stays a variant of a stem) and a sense something refers to are refused.
 5. `compose-move-example` moves an example, with its translations, to another sense, in the same entry or another; an example something refers to is refused.
 6. `compose-add-example` adds a new example, with text in one or more writing systems and optional translations, to a sense.
+7. `compose-add-sense` adds a sense, with a gloss and optional definition, to an entry that exists, sharing one of its analyses.
+8. `compose-set-sense-msa` points an existing sense at another analysis of the same entry; the sense keeps its content.
 
 ## Pitfalls
 

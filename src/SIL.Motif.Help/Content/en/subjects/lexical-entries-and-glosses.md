@@ -27,6 +27,7 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 14. `compose-merge-lexical-entries` merges one entry into another, as Merge Entry does in FieldWorks, so the two become one entry.
 14. `compose-move-example` moves an example, with its translations, to another sense, in the same entry or another, refusing an example something refers to.
 15. `compose-add-example` adds a new example, with text in one or more writing systems and optional translations, to a sense.
+15. `compose-add-sense` adds a sense to an existing entry under one of its analyses, so a second meaning needs no homograph. `compose-set-sense-msa` points an existing sense at another analysis of its entry.
 16. `compose-rewrite-lexeme-form` rewrites existing lexeme forms in a guarded batch. Use `foldStressMarks=false` and explicit new forms when underlying distinctions condition the grammar.
 17. `compose-edit-allomorph-form` edits one ordinary alternate in place, guarded by its expected owner and current text, while keeping its conditions and references.
 18. `compose-edit-citation-form` retains a selected source headword separately from parser forms, guarded by its current text.
@@ -56,7 +57,7 @@ Give the tag the licence as the source states it, with the source name and revis
 
 ## Splitting one lexeme into homographs
 
-A homograph is a separate entry with the same lexeme form, not a second analysis of one entry. To add one beside an entry that exists (`talikud` the banana beside `talikud` the verb to turn), use `compose-author-lexical-entry` with the same form and a different gloss and analysis; Motif allows it and Dry Run reports nothing wrong. To pull a meaning out of an entry that already holds several senses, use `compose-move-sense-to-entry`, which gives the sense an entry of its own with a copy of its analysis; an entry's only sense cannot move, and `compose-add-morphosyntax-analysis` only adds a second analysis to the same entry. Name the right homograph in later intents with `lookup:entry:FORM|GLOSS`, or read its id from the lexicon.
+A homograph is a separate entry with the same lexeme form, not a second analysis of one entry. To add one beside an entry that exists (`talikud` the banana beside `talikud` the verb to turn), use `compose-author-lexical-entry` with the same form and a different gloss and analysis; Motif allows it and Dry Run reports nothing wrong. To pull a meaning out of an entry that already holds several senses, use `compose-move-sense-to-entry`, which gives the sense an entry of its own with a copy of its analysis; an entry's only sense cannot move, and `compose-add-morphosyntax-analysis` only adds a second analysis to the same entry. A second meaning of the same word is not a homograph: `compose-add-sense` adds it to the entry. Name the right homograph in later intents with `lookup:entry:FORM|GLOSS`, or read its id from the lexicon.
 
 ## Pitfalls
 

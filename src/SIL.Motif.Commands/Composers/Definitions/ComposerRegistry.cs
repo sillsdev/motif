@@ -15,6 +15,8 @@ internal static class ComposerDefinitions
         new MoveSenseToEntryDefinition(),
         new MoveExampleDefinition(),
         new AddExampleDefinition(),
+        new AddSenseDefinition(),
+        new SetSenseMsaDefinition(),
         new DeleteSenseDefinition(),
         new DeleteLexicalEntryDefinition(),
         new MergeLexicalEntriesDefinition(),
