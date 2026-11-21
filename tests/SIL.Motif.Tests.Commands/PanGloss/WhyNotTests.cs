@@ -303,8 +303,19 @@ public sealed class WhyNotTests : IDisposable
         var rejected = WhyNotFixtures.Report("{\"expect\":[],\"result\":\"rejected\",\"failure\":null,\"stop\":null}");
         var unknown = WhyNotFixtures.Report("{\"expect\":[],\"result\":\"unknown\",\"failure\":null,\"stop\":null}");
         var outOfRange = WhyNotFixtures.Report(WhyNotFixtures.Accepted).Replace("\"best\":0", "\"best\":3");
-        foreach (var report in new[] { rejected, unknown, outOfRange })
+        var acceptedWithoutAnalysis = WhyNotFixtures.Report("{\"expect\":[],\"result\":\"accepted\",\"analysis\":null,\"failure\":null,\"stop\":null}");
+        var unmetWithoutTarget = WhyNotFixtures.Report("{\"expect\":[],\"result\":\"rejected\",\"failure\":{\"kind\":\"environment_unmet\",\"plain\":\"x.\",\"object\":null,\"environment\":null}}");
+        foreach (var report in new[] { rejected, unknown, outOfRange, acceptedWithoutAnalysis, unmetWithoutTarget })
             Assert.False(WhyNotProjection.TryProject(report, "kibakek", "baseline", OneCandidate, [], out _, out _));
+    }
+
+    [Fact]
+    public void AnAnyOfFailurePointsItsOwnTargetAtTheListAndAnAbsentProvenanceStaysNull()
+    {
+        var anyOf = Project(WhyNotFixtures.Report(WhyNotFixtures.EnvironmentAnyOfUnmet), OneCandidate).Candidates[0].Rejection!;
+        Assert.Equal("see environments: 2 targets", anyOf.Environment!.FieldWorksTarget);
+        var bare = WhyNotFixtures.NoMorphMatch.Replace("\"provenance\": \"derived\",", string.Empty, StringComparison.Ordinal);
+        Assert.Null(Project(WhyNotFixtures.Report(bare), OneCandidate).Candidates[0].Rejection!.Provenance);
     }
 
     [Fact]

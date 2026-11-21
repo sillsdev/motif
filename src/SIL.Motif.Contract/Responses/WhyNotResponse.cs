@@ -70,7 +70,7 @@ public sealed record WhyNotFeature(string Path, string Required, string Actual);
 /// <param name="Kind">The failure kind, such as <c>no_morph_match</c>.</param>
 /// <param name="Plain">One English sentence from PanGloss, shortened to <see cref="WhyNotLimits.MaxSentence"/> characters.</param>
 /// <param name="Position">The 0-based position in the candidate, or null when the failure is about the whole word.</param>
-/// <param name="Provenance"><c>hc_reported</c> when HermitCrab raised it, <c>derived</c> when PanGloss inferred it.</param>
+/// <param name="Provenance"><c>hc_reported</c> when HermitCrab raised it, <c>derived</c> when PanGloss inferred it, null when the report says neither.</param>
 /// <param name="Morphs">The morphs involved, at most <see cref="WhyNotLimits.MaxMorphs"/>.</param>
 /// <param name="MorphsOmitted">How many involved morphs the cap left out.</param>
 /// <param name="Target">The grammar object a fix would touch, or null when no single object applies.</param>
@@ -85,7 +85,7 @@ public sealed record WhyNotRejection(
     string Kind,
     string Plain,
     int? Position,
-    string Provenance,
+    string? Provenance,
     IReadOnlyList<WhyNotMorph> Morphs,
     int MorphsOmitted,
     WhyNotTarget? Target,

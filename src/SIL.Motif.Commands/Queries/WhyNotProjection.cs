@@ -85,6 +85,11 @@ internal static class WhyNotProjection
                     var morphs = Morphs(derivation, "morphs", cut, out var omitted);
                     acceptance = new WhyNotAcceptance(morphs, omitted, Text(derivation, "category"));
                 }
+                if (acceptance is null)
+                {
+                    problem = "it is accepted but carries no analysis.";
+                    return null;
+                }
                 return new WhyNotCandidateResult(index, spelling, kind, acceptance, null, null, null);
             }
             case "rejected":
@@ -95,7 +100,13 @@ internal static class WhyNotProjection
                     problem = "it is rejected but names no failure kind and sentence.";
                     return null;
                 }
-                return new WhyNotCandidateResult(index, spelling, kind, null, Rejection(failure, failureKind, plain, cut), null, null);
+                var rejection = Rejection(failure, failureKind, plain, cut);
+                if (failureKind == "environment_unmet" && rejection.Environment is null && rejection.Target is null)
+                {
+                    problem = "it is an unmet environment but names neither the environment nor the object.";
+                    return null;
+                }
+                return new WhyNotCandidateResult(index, spelling, kind, null, rejection, null, null);
             }
             default:
             {
@@ -140,7 +151,10 @@ internal static class WhyNotProjection
                     }
                     choices.Add(new WhyNotEnvironmentChoice(Int(choice, "index"), Text(choice, "guid"), Text(choice, "text")));
                 }
-            environment = new WhyNotEnvironment(allomorphId, Int(env, "index"), left, right, guid, guid ?? NoFieldWorksTarget,
+            var pointer = choices.Count > 0
+                ? "see environments: " + choices.Count.ToString(CultureInfo.InvariantCulture) + " targets"
+                : guid ?? NoFieldWorksTarget;
+            environment = new WhyNotEnvironment(allomorphId, Int(env, "index"), left, right, guid, pointer,
                 Text(env, "text") is { } envText ? Shorten(envText, cut) : null, choices);
         }
         var features = new List<WhyNotFeature>();
@@ -157,7 +171,7 @@ internal static class WhyNotProjection
                     Text(feature, "actual") ?? string.Empty));
             }
         var members = Morphs(failure, "members", cut, out var membersOmitted);
-        return new WhyNotRejection(kind, Shorten(plain, cut), Int(failure, "position"), Text(failure, "provenance") ?? "derived",
+        return new WhyNotRejection(kind, Shorten(plain, cut), Int(failure, "position"), Text(failure, "provenance"),
             Morphs(failure, "morphs", cut, out var omitted), omitted, target, environment, Text(failure, "stem_name"),
             features, featuresOmitted, Int(failure, "alternatives"),
             members, membersOmitted);

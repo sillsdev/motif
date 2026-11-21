@@ -1,0 +1,79 @@
+{
+ "schema": "pangloss.whynot.v1",
+ "word": "ta",
+ "results": [
+  {
+   "expect": [
+    [
+     {
+      "morpheme": "7a0b9e7f-bf4e-4779-b7a5-964e27797ff1",
+      "guid": {
+       "entry_guid": "70c12f3a-1dc4-41ab-8f89-5930878091ef",
+       "msa_guid": "7a0b9e7f-bf4e-4779-b7a5-964e27797ff1"
+      }
+     }
+    ],
+    [
+     {
+      "morpheme": "daa2c777-b036-418d-a77e-6fe4104ef36f",
+      "guid": {
+       "entry_guid": "61838e45-edbd-4845-abe2-bce152b14e87",
+       "msa_guid": "daa2c777-b036-418d-a77e-6fe4104ef36f"
+      }
+     }
+    ]
+   ],
+   "result": "accepted",
+   "analysis": {
+    "analysis": {
+     "morphs": [
+      {
+       "morpheme": "7a0b9e7f-bf4e-4779-b7a5-964e27797ff1",
+       "allomorph": "ff188cef-8443-47a0-a054-cc545e55fa0e#0",
+       "guid": {
+        "entry_guid": "70c12f3a-1dc4-41ab-8f89-5930878091ef",
+        "msa_guid": "7a0b9e7f-bf4e-4779-b7a5-964e27797ff1"
+       },
+       "form_guid": "ff188cef-8443-47a0-a054-cc545e55fa0e"
+      },
+      {
+       "morpheme": "daa2c777-b036-418d-a77e-6fe4104ef36f",
+       "allomorph": "01a1f7a4-3410-155f-4422-da0ecd5025be#0",
+       "guid": {
+        "entry_guid": "61838e45-edbd-4845-abe2-bce152b14e87",
+        "msa_guid": "daa2c777-b036-418d-a77e-6fe4104ef36f"
+       },
+       "form_guid": "01a1f7a4-3410-155f-4422-da0ecd5025be"
+      }
+     ],
+     "root_index": 1,
+     "category": "681f7f35-bbcf-4de8-b526-c21a39fbb2cf",
+     "guessed": false
+    },
+    "used": [
+     {
+      "morpheme": "7a0b9e7f-bf4e-4779-b7a5-964e27797ff1",
+      "allomorph": "ff188cef-8443-47a0-a054-cc545e55fa0e#0",
+      "guid": {
+       "entry_guid": "70c12f3a-1dc4-41ab-8f89-5930878091ef",
+       "msa_guid": "7a0b9e7f-bf4e-4779-b7a5-964e27797ff1"
+      },
+      "form_guid": "ff188cef-8443-47a0-a054-cc545e55fa0e"
+     },
+     {
+      "morpheme": "daa2c777-b036-418d-a77e-6fe4104ef36f",
+      "allomorph": "01a1f7a4-3410-155f-4422-da0ecd5025be#0",
+      "guid": {
+       "entry_guid": "61838e45-edbd-4845-abe2-bce152b14e87",
+       "msa_guid": "daa2c777-b036-418d-a77e-6fe4104ef36f"
+      },
+      "form_guid": "01a1f7a4-3410-155f-4422-da0ecd5025be"
+     }
+    ]
+   },
+   "failure": null,
+   "stop": null
+  }
+ ],
+ "best": 0
+}

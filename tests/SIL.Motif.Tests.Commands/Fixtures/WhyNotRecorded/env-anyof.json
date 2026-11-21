@@ -1,0 +1,71 @@
+{
+ "schema": "pangloss.whynot.v1",
+ "word": "da",
+ "results": [
+  {
+   "expect": [
+    [
+     {
+      "morpheme": "00000000-0000-0000-0000-000000000102",
+      "guid": {
+       "entry_guid": "00000000-0000-0000-0000-000000000100",
+       "msa_guid": "00000000-0000-0000-0000-000000000102"
+      }
+     }
+    ]
+   ],
+   "result": "rejected",
+   "analysis": null,
+   "failure": {
+    "kind": "environment_unmet",
+    "plain": "allomorph 00000000-0000-0000-0000-000000000101#0 of 00000000-0000-0000-0000-000000000102 (\"run\") is not allowed where it surfaces, between \"\" and \"\" (none of the environments /[V]_, /t_ is met)",
+    "position": 0,
+    "hc_reason": "Environments",
+    "provenance": "hc_reported",
+    "object": {
+     "type": "allomorph",
+     "id": "00000000-0000-0000-0000-000000000101#0",
+     "guid": "00000000-0000-0000-0000-000000000101"
+    },
+    "morphs": [
+     {
+      "morpheme": "00000000-0000-0000-0000-000000000102",
+      "allomorph": "00000000-0000-0000-0000-000000000101#0",
+      "guid": {
+       "entry_guid": "00000000-0000-0000-0000-000000000100",
+       "msa_guid": "00000000-0000-0000-0000-000000000102"
+      },
+      "form_guid": "00000000-0000-0000-0000-000000000101"
+     }
+    ],
+    "environments": [
+     {
+      "allomorph_id": "00000000-0000-0000-0000-000000000101#0",
+      "guid": "00000000-0000-0000-0000-000000000017",
+      "text": "/[V]_",
+      "index": 0
+     },
+     {
+      "allomorph_id": "00000000-0000-0000-0000-000000000101#0",
+      "guid": "00000000-0000-0000-0000-000000000030",
+      "text": "/t_",
+      "index": 1
+     }
+    ],
+    "context": {
+     "left": "",
+     "right": "",
+     "provenance": "derived"
+    },
+    "environment": {
+     "allomorph_id": "00000000-0000-0000-0000-000000000101#0"
+    },
+    "stem_name": null,
+    "features": [],
+    "alternatives": null
+   },
+   "stop": null
+  }
+ ],
+ "best": 0
+}
