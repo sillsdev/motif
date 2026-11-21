@@ -68,7 +68,9 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
     /// The caller's output pipes are not kept open until the runner idles out. Windows marks this
     /// process's standard handles non-inheritable; Unix redirects and drains the runner's standard streams,
     /// pinned by
-    /// `ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked`.
+    /// `ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked`, and on Linux marks every other open descriptor
+    /// close-on-exec so a caller's lock dies with the caller, pinned by
+    /// `ALaunchedRunnerDoesNotInheritALockTheCallerHolds`.
     /// </remarks>
     public void Start(string projectPath, Action<string>? reportWarning = null)
     {
@@ -94,6 +96,7 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
             start.Environment.Remove("ICU_DATA");
             if (!isWindows)
             {
+                InheritedDescriptors.MarkCloseOnExec();
                 start.RedirectStandardInput = true;
                 start.RedirectStandardOutput = true;
                 start.RedirectStandardError = true;

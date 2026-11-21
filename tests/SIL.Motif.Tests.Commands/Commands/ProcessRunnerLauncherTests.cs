@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.InteropServices;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -160,6 +163,87 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Fact]
+    public void ALaunchedRunnerDoesNotInheritALockTheCallerHolds()
+    {
+        if (!OperatingSystem.IsLinux())
+            return;
+        var directory = Path.Combine(Path.GetTempPath(), "motif-fd-leak-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var lockFile = Path.Combine(directory, "caller.lock");
+        File.WriteAllText(lockFile, "");
+        var pidFile = Path.Combine(directory, "runner.pid");
+        var runner = Path.Combine(directory, "SIL.Motif.Worker");
+        File.WriteAllText(runner, "#!/bin/sh\necho $$ > '" + pidFile + ".tmp'\nmv '" + pidFile + ".tmp' '" + pidFile +
+            "'\nexec sleep 60\n");
+        File.SetUnixFileMode(runner, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        // Opened without O_CLOEXEC, as `flock <file> motif ...` leaves it.
+        var descriptor = FdLock.Open(lockFile);
+        Process? runnerProcess = null;
+        try
+        {
+            Assert.True(descriptor >= 0, "The lock file did not open.");
+            Assert.Equal(0, FdLock.Flock(descriptor, FdLock.Exclusive));
+            var launcher = new ProcessRunnerLauncher(IsolatedRunner.Options(Path.Combine(directory, "root")) with
+            {
+                WorkerExecutable = runner,
+            });
+
+            launcher.Start(Path.Combine(directory, "project.fwdata"));
+
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+            while (!File.Exists(pidFile) && DateTime.UtcNow < deadline)
+                Thread.Sleep(20);
+            Assert.True(File.Exists(pidFile), "The fake runner never started.");
+            runnerProcess = Process.GetProcessById(int.Parse(File.ReadAllText(pidFile).Trim(), CultureInfo.InvariantCulture));
+            // The caller closes its descriptor; the lock outlives that only in a process that inherited it.
+            FdLock.Close(descriptor);
+            descriptor = -1;
+            var other = FdLock.Open(lockFile);
+            try
+            {
+                Assert.Equal(0, FdLock.Flock(other, FdLock.Exclusive | FdLock.NonBlocking));
+            }
+            finally
+            {
+                FdLock.Close(other);
+            }
+        }
+        finally
+        {
+            try { runnerProcess?.Kill(); }
+            catch (InvalidOperationException) { }
+            runnerProcess?.Dispose();
+            FdLock.Close(descriptor);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static class FdLock
+    {
+        public const int Exclusive = 2;
+        public const int NonBlocking = 4;
+
+        public static int Open(string path) => open(path, 2);
+
+        public static int Flock(int descriptor, int operation) => flock(descriptor, operation);
+
+        public static void Close(int descriptor)
+        {
+            if (descriptor >= 0)
+                _ = close(descriptor);
+        }
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int open(string path, int flags);
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int flock(int fd, int operation);
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int close(int fd);
     }
 
     /// <summary>Only the variables a launcher could set or leak, so sibling tests do not race it.</summary>
