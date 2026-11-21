@@ -300,7 +300,7 @@ public sealed class GrammarReadLookupTests(PristineProjectFixture pristine) : ID
 
         using var rules = Read(project.FwDataPath, "phonological_rule", "--limit", "2");
         var first = rules.RootElement.GetProperty("items").EnumerateArray().ToArray();
-        Assert.Equal(["Zeta", "Alpha"], first.Select(item => item.GetProperty("name").GetString()).ToArray());
+        Assert.Equal(["Zeta", "Alpha"], first.Select(item => item.GetProperty("name").GetString()!).ToArray());
         Assert.Equal([1, 2], first.Select(item => item.GetProperty("position").GetInt32()).ToArray());
 
         using var rest = Read(project.FwDataPath, "phonological_rule", "--limit", "2", "--offset", "2");
