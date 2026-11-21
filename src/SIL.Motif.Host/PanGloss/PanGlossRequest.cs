@@ -364,6 +364,91 @@ public abstract record PanGlossRequest
     }
 
     /// <summary>
+    /// <c>pangloss why-not &lt;grammar&gt; &lt;word&gt; --expect-json &lt;file&gt; --json</c>: whether the word parses along
+    /// each expected morph sequence and, where it does not, the first failing constraint as a
+    /// <c>pangloss.whynot.v1</c> report on standard output. Candidates named by guid alone cannot be written in the JSON
+    /// input, so they travel as <c>--expect-guid</c> values. Needs a PanGloss whose <c>--describe</c> declares
+    /// <c>interfaces.whyNot</c>.
+    /// </summary>
+    /// <param name="GrammarPath">The grammar, or saved project, PanGloss answers against.</param>
+    /// <param name="Word">The single spelling the candidates were expected to parse.</param>
+    /// <param name="Candidates">The expected morph sequences, one to <see cref="MaxCandidates"/>.</param>
+    public sealed record WhyNot(string GrammarPath, string Word, IReadOnlyList<WhyNotCandidate> Candidates) : PanGlossRequest
+    {
+        /// <summary>The most candidates one call may judge.</summary>
+        public const int MaxCandidates = 16;
+
+        /// <summary>The largest report Motif reads back from standard output.</summary>
+        public const int MaxReportBytes = 1024 * 1024;
+
+        /// <summary>The time PanGloss may spend on each concrete morph sequence before it answers unknown.</summary>
+        public const int SequenceTimeoutMs = 30_000;
+
+        /// <summary>The scratch file name the candidates are written to.</summary>
+        public const string ExpectArtifactName = "expect.json";
+
+        /// <summary>The failure kinds the parser's description says it answers; set by the invoker, never by a caller.</summary>
+        internal IReadOnlyList<string> AnswerableKinds { get; init; } = [];
+
+        public override string Subcommand => "why-not";
+
+        internal override void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));
+            if (string.IsNullOrEmpty(Word) || Word.StartsWith('-')) throw new ArgumentException("Required.", nameof(Word));
+            if (Candidates.Count is < 1 or > MaxCandidates)
+                throw new ArgumentOutOfRangeException(nameof(Candidates), $"Must be 1 through {MaxCandidates}.");
+            if (WhyNotInput.Problem(Candidates) is { } problem) throw new ArgumentException(problem, nameof(Candidates));
+            if (!File.Exists(GrammarPath))
+                throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
+        }
+
+        internal override async Task PrepareAsync(string scratch, CancellationToken cancellationToken)
+        {
+            if (WhyNotInput.UsesJson(Candidates))
+                await File.WriteAllTextAsync(Path.Combine(scratch, ExpectArtifactName), WhyNotInput.ToJson(Candidates),
+                    cancellationToken).ConfigureAwait(false);
+        }
+
+        internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
+        {
+            startInfo.ArgumentList.Add(Subcommand);
+            startInfo.ArgumentList.Add(GrammarPath);
+            startInfo.ArgumentList.Add(Word);
+            if (WhyNotInput.UsesJson(Candidates))
+            {
+                startInfo.ArgumentList.Add("--expect-json");
+                startInfo.ArgumentList.Add(Path.Combine(scratch, ExpectArtifactName));
+            }
+            else
+            {
+                foreach (var candidate in Candidates)
+                {
+                    startInfo.ArgumentList.Add("--expect-guid");
+                    startInfo.ArgumentList.Add(WhyNotInput.ToGuidSpec(candidate));
+                }
+            }
+            startInfo.ArgumentList.Add("--json");
+            startInfo.ArgumentList.Add("--work-cap");
+            startInfo.ArgumentList.Add(ParserWorkLimit.Default.ToWorkCapArgument());
+            startInfo.ArgumentList.Add("--word-timeout-ms");
+            startInfo.ArgumentList.Add(SequenceTimeoutMs.ToString(CultureInfo.InvariantCulture));
+        }
+
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            if (string.IsNullOrWhiteSpace(standardOutput))
+                return new PanGlossOutcome.Incomplete("PanGloss wrote no why-not report.", standardError);
+            if (System.Text.Encoding.UTF8.GetByteCount(standardOutput) > MaxReportBytes)
+                return new PanGlossOutcome.Incomplete(
+                    $"The why-not report is over Motif's {MaxReportBytes}-byte limit.", standardError);
+            return new PanGlossOutcome.Completed(standardOutput, standardError, elapsed) { WhyNotKinds = AnswerableKinds };
+        }
+    }
+
+    /// <summary>
     /// <c>pangloss grammar-health &lt;grammar&gt; --fw-project &lt;project&gt; --stored-analyses &lt;mode&gt;</c>: a JSON
     /// grammar-health report on standard output. Omitting its optional output path keeps the report available
     /// when PanGloss exits nonzero to signal error-level diagnostics.

@@ -480,6 +480,11 @@
     "description": "Shows where PanGloss's parse of one word stopped, path by path, with each grammar object named by canonical id or marked unknown. Use it to see why a word does not parse.",
     "source": "Hand-written from command behavior."
   },
+  "why-not": {
+    "title": "Why a word did not parse",
+    "description": "Asks PanGloss whether a word parses as each morph sequence you expected, and for a rejection names the first failing constraint, the morphs and the grammar object it is about. Use it to see why a word did not parse as these morphs.",
+    "source": "Hand-written from command behavior."
+  },
   "generate": {
     "title": "Explain a generation",
     "description": "Refuses with a typed reason until the pinned PanGloss can trace generation. Use parse --trace to explain a word that does not parse.",

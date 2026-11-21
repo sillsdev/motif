@@ -30,6 +30,9 @@ public abstract record PanGlossOutcome
         /// <summary>Validated phonology evidence with independent invocation bindings.</summary>
         public Assess.PhonologyMeasurement? Phonology { get; init; }
         public string? MorphologyOutput { get; init; }
+
+        /// <summary>The failure kinds the parser declared it answers, kept with a why-not report.</summary>
+        public IReadOnlyList<string>? WhyNotKinds { get; init; }
         internal GrammarFactsArtifact? FactsArtifact { get; init; }
 
         /// <summary>The validated facts database written by a <c>facts</c> request.</summary>
@@ -97,6 +100,9 @@ public abstract record PanGlossOutcome
 
         /// <summary>Whether the cause is that no executable was found, rather than one that would not run.</summary>
         public bool ExecutableMissing { get; init; }
+
+        /// <summary>The parser capability the executable lacks, or null when the cause is something else.</summary>
+        public string? MissingCapability { get; init; }
     }
 
     /// <summary>The wall-clock cap expired and the process tree was killed.</summary>

@@ -10181,6 +10181,43 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_why_not",
+    "description": "Why a word did not parse. Asks PanGloss whether a word parses as each morph sequence you expected, and for a rejection names the first failing constraint, the morphs and the grammar object it is about. Use it to see why a word did not parse as these morphs.\nCommand: why-not. Agent class: Evaluate.\nword: The exact word form.\nexpect: One to 16 candidates, each morph,morph|morph,\u2026; see the why-not Help page for the spelling.\nat: baseline (the default) for the current published Baseline, or a Proposal id for its latest Trial copy.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "word": {
+          "type": "string",
+          "description": "The word that did not parse as expected."
+        },
+        "expect": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "One to 16 expected morph sequences. Write each as morph ids in surface order, \u0027,\u0027 between positions and \u0027|\u0027 between choices at a position, such as \u0027kib,ak|ik,ek\u0027. Name an entry by FieldWorks identity as \u0027entryGuid:msaGuid\u0027 (a GUID or a Motif id), check an id\u0027s identity with \u0027id=entryGuid:msaGuid\u0027, and pin an allomorph with \u0027id@allomorphId\u0027. One call reads candidates by id or by guid alone, not both."
+        },
+        "at": {
+          "type": "string",
+          "description": "\u0027baseline\u0027 (default) for the current Baseline, or a proposal id for that Draft or Proposal\u0027s latest Trial copy."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "word",
+        "expect",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_finalize_proposal",
     "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {

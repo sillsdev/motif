@@ -964,6 +964,26 @@ internal static class AgentTools
                 _ => "A path with attribution 'unknown' has no recorded stop; do not guess one. Fix the first named stop, then call motif_try_word.")))
             { Requests = [typeof(ParseTraceRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["At"] = "at", ["MaxPaths"] = "max_paths", ["ProjectPath"] = null } },
 
+        new("motif_why_not",
+            string.Empty,
+            AgentClass.Evaluate,
+            Schema.Object([("word", Schema.String("The word that did not parse as expected."), true),
+                ("expect", Schema.StringArray("One to 16 expected morph sequences. Write each as morph ids in surface order, ',' between " +
+                    "positions and '|' between choices at a position, such as 'kib,ak|ik,ek'. Name an entry by FieldWorks identity as " +
+                    "'entryGuid:msaGuid' (a GUID or a Motif id), check an id's identity with 'id=entryGuid:msaGuid', and pin an " +
+                    "allomorph with 'id@allomorphId'. One call reads candidates by id or by guid alone, not both."), true),
+                ("at", Schema.String("'baseline' (default) for the current Baseline, or a proposal id for that Draft or Proposal's latest Trial copy."), false)]),
+            false,
+            true,
+            true,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(
+                WhyNotQuery.Explain(new WhyNotRequest(c.ProjectPath, a.Required("word"), a.RequiredList("expect"), a.Optional("at")),
+                    c.ParserPath, ct),
+                _ => "A rejected candidate names the first failing constraint and the grammar object it is about; an unknown one says why PanGloss " +
+                    "could not tell, so do not guess a cause. Fix the first named failure, then call motif_try_word.")))
+            { Requests = [typeof(WhyNotRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["Expect"] = "expect", ["At"] = "at", ["ProjectPath"] = null } },
+
         new("motif_job",
             string.Empty,
             AgentClass.Read,

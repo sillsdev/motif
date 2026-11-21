@@ -317,6 +317,7 @@ public static class CommandCatalog
         new CommandDescriptor("trace --load", typeof(WordTraceLoadRequest), typeof(WordTraceResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("parse", typeof(ParseTraceRequest), typeof(RejectionTraceResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("generate", typeof(GenerateTraceRequest), typeof(RejectionTraceResponse), CommandSurface.Released, AgentClass.Evaluate) { ExposeAsAgentTool = false },
+        new CommandDescriptor("why-not", typeof(WhyNotRequest), typeof(WhyNotResponse), CommandSurface.Released, AgentClass.Evaluate),
 
         // HandoffCommand
         new CommandDescriptor("handoff", typeof(HandoffRequest), typeof(HandoffCommandResponse), CommandSurface.Released, AgentClass.HumanOnly),

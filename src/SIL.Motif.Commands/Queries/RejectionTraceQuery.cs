@@ -60,29 +60,10 @@ public static class RejectionTraceQuery
             using var parseLease = ProjectParseLease.TryAcquire(database);
             if (parseLease is null)
                 return CommandOutcome<RejectionTraceResponse>.Refused(ProjectParseLease.BusyRefusal());
-            var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = new BaselineRepository(database).GetCurrentPublished(workspaceKey);
-            if (proposalId is not null)
-            {
-                var trial = Trials.LatestFor(database, project, proposalId);
-                if (trial is null)
-                    return CommandOutcome<RejectionTraceResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,
-                        "No Trial is recorded for this Proposal."));
-                var scratchRoot = TrialScratchPath.ForJob(trial.JobId);
-                var scratchProject = TrialScratchPath.ProjectFile(scratchRoot);
-                if (scratchProject is null)
-                    return CommandOutcome<RejectionTraceResponse>.Refused(new Refusal("trial.scratch-gone",
-                        FailureReason.NotFound, "The Trial's details were cleared. Run the Trial again to bring them back."));
-                baseline = new BaselineRecord(workspaceKey, trial.Baseline, scratchRoot, scratchProject,
-                    baseline?.SourceLastWriteUtc ?? DateTimeOffset.MinValue, baseline?.PublishedUtc ?? DateTimeOffset.MinValue);
-            }
-            if (baseline is null)
-                return CommandOutcome<RejectionTraceResponse>.Refused(new Refusal(RefusalCodes.WordTraceNoBaseline,
-                    FailureReason.Refused,
-                    "The project has no Baseline yet. Run 'motif baseline capture --project <fwdata>' before tracing a word."));
-            var tracedAgainst = proposalId is null ? "baseline" : "proposal " + proposalId;
-            return Run(invoker, baseline.FwDataPath, request.ProjectPath, request.Word, maxPaths, tracedAgainst,
-                cancellationToken);
+            var resolved = TracedGrammar.Resolve(database, project, proposalId);
+            if (!resolved.Succeeded) return CommandOutcome<RejectionTraceResponse>.Refused(resolved.Refusal!);
+            return Run(invoker, resolved.Value!.FwDataPath, request.ProjectPath, request.Word, maxPaths,
+                resolved.Value.TracedAgainst, cancellationToken);
         });
     }
 

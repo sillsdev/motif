@@ -82,6 +82,14 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                             surface.Capabilities.Commands.TryGetValue("batch", out var batchCommand) &&
                             batchCommand.Flags.ContainsKey("--work-columns")
                                 ? batch with { WorkColumns = true } : request;
+                        if (request is PanGlossRequest.WhyNot whyNot && surface.IsValid && surface.Capabilities is { } described)
+                        {
+                            if (described.WhyNotRefusal() is { } incapable)
+                                return new PanGlossOutcome.Unavailable(
+                                    $"The installed PanGloss ('{_executable}') cannot answer why-not: {incapable}.")
+                                    { Containment = containment.Report, MissingCapability = "why-not" };
+                            effectiveRequest = whyNot with { AnswerableKinds = described.WhyNot!.Kinds };
+                        }
                         var admission = PanGlossSurface.CheckRequest(_executable, effectiveRequest, surface);
                         if (admission.Failure is { } probeFailure)
                             return probeFailure with { Containment = containment.Report };

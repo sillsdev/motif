@@ -17,6 +17,10 @@ public static class PanGlossInterfaceVersions
     public const string TraceDetailsSchemaId = "pangloss.trace-details.v5";
     /// <summary>The identifier advertised for bounded rejection diagnostics.</summary>
     public const string RejectionTraceSchemaId = "pangloss.diagnostic.v1";
+    /// <summary>The identifier a PanGloss declares at <c>interfaces.whyNot</c> and writes in every why-not report.</summary>
+    public const string WhyNotSchemaId = "pangloss.whynot.v1";
+    /// <summary>The id promise a why-not capability must make: every id in a report is a <c>grammar.xml</c> id.</summary>
+    public const string WhyNotIds = "grammar-xml";
     /// <summary>The capture modes the pinned release advertises for bounded rejection diagnostics.</summary>
     public static ImmutableArray<string> RejectionTraceModes { get; } = ["lineage"];
     /// <summary>The full SQLite cache version written by <c>batch --stats</c>, without compact storage.</summary>

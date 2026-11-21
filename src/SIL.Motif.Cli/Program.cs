@@ -2936,6 +2936,18 @@ try
             break;
         }
 
+        case "why-not":
+        {
+            if (!flags.TryGetValue("project", out var whyNotProject) || positionals.Count != 1 ||
+                !flags.TryGetValue("expect", out var whyNotExpect) || whyNotExpect == "true" ||
+                flags.Keys.Any(flag => flag is not ("project" or "expect" or "at" or "json" or "autonomous")))
+                return Usage("Usage: motif " + UsageLineFor("why-not"), asJson);
+            var whyNotAt = flags.GetValueOrDefault("at");
+            result = RunWithConsoleCancellation(token => RenderCommand(WhyNotQuery.Explain(
+                new WhyNotRequest(whyNotProject, positionals[0], ReadRepeatedFlagValues(flags, "expect"), whyNotAt), token)));
+            break;
+        }
+
         case "selection":
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var selectionProject))
                 return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default") +
@@ -3957,7 +3969,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
             else
             {
                 var value = tokens[++i];
-                flags[name] = name == "assessment" && flags.TryGetValue(name, out var previous)
+                flags[name] = name is "assessment" or "expect" && flags.TryGetValue(name, out var previous)
                     ? previous + "\n" + value
                     : value;
             }

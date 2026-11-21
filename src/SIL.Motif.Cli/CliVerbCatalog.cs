@@ -561,6 +561,14 @@ public static class CliVerbCatalog
                 "grammar objects named by canonical id, or by an explicit unknown where PanGloss could not bind them.",
             }),
         new CliVerbDescriptor(
+            "Trace", "why-not", "why-not",
+            new[]
+            {
+                "why-not <word> --project <fwdata> --expect <morphs> [--expect <morphs> ...] [--at <baseline|proposal-id>] [--json]",
+                "Whether PanGloss parses the word as each expected morph sequence, and for a rejection the first failing",
+                "constraint with the morphs and grammar object it is about. Write a candidate as kib,ak|ik,ek.",
+            }),
+        new CliVerbDescriptor(
             "Trace", "generate", "generate",
             new[]
             {

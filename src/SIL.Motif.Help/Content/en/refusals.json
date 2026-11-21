@@ -36,6 +36,26 @@
     "why": "The trace did not finish or was larger than Motif keeps. Lower the cap on paths and try again.",
     "source": "Hand-written from the rejection-trace capture limit."
   },
+  "why-not.request-invalid": {
+    "why": "Motif cannot send this question. Give one word with no spaces and one to 16 candidates written like kib,ak|ik,ek; name every choice by morph id, or every choice by entry:msa guid, not both in one call.",
+    "source": "Hand-written from the why-not request check."
+  },
+  "why-not.parser-unsupported": {
+    "why": "The installed PanGloss cannot answer why-not: its --describe does not declare the why-not capability Motif reads. Install a PanGloss release that does, then try again.",
+    "source": "Hand-written from the why-not capability check."
+  },
+  "why-not.input-refused": {
+    "why": "PanGloss refused the question and said why, such as an unknown morph id or a guid that is not the morph's. Read its reason, correct the candidate, and try again.",
+    "source": "Hand-written from PanGloss's why-not input errors."
+  },
+  "why-not.malformed": {
+    "why": "PanGloss wrote a why-not report Motif cannot use, or one that does not match the candidates asked. Update Motif and PanGloss together, then try again.",
+    "source": "Hand-written from the why-not report reader."
+  },
+  "why-not.unfinished": {
+    "why": "PanGloss did not finish the why-not question or wrote no report. Try fewer candidates or choices, then try again.",
+    "source": "Hand-written from the why-not run outcomes."
+  },
   "project.startup-busy": {
     "why": "Wait for the Motif task using the project to finish, then repeat the command.",
     "source": "Hand-written from the project startup refusal."

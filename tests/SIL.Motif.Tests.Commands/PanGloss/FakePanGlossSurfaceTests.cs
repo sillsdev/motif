@@ -194,10 +194,11 @@ public sealed class FakePanGlossSurfaceTests
                 { ParserWorkLimit = SIL.Motif.Contract.Assess.ParserWorkLimit.Default },
         ];
         if (!includeFacts) requests = requests.Where(request => request is not PanGlossRequest.Facts).ToArray();
-        // Both trace requests are checked by AssertTraceCommandIsDeclared; this walker cannot express an "=file" flag.
+        // Trace requests are checked elsewhere; WhyNot is not in the 0.27.0 pin.
         var requestTypes = typeof(PanGlossRequest).GetNestedTypes()
             .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type) && type != typeof(PanGlossRequest.Trace) &&
-                type != typeof(PanGlossRequest.RejectionTrace) && type != typeof(PanGlossRequest.PhonologyExamples))
+                type != typeof(PanGlossRequest.RejectionTrace) && type != typeof(PanGlossRequest.PhonologyExamples) &&
+                type != typeof(PanGlossRequest.WhyNot))
             .Where(type => includeFacts || type != typeof(PanGlossRequest.Facts))
             .OrderBy(type => type.Name);
         Assert.Equal(requestTypes, requests.Where(request => request is not PanGlossRequest.Trace)

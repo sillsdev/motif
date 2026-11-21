@@ -143,6 +143,7 @@ public static class CommandTextRenderer
             HandoffCommandResponse r => RenderHandoff(r),
             WordTraceResponse r => RenderTrace(r),
             RejectionTraceResponse r => RenderRejectionTrace(r),
+            WhyNotResponse r => WhyNotRenderer.Render(r),
             FormsQueryResponse r => RenderFormsQuery(r),
             GrammarReadResponse r => GrammarReadTextRenderer.Render(r),
             ProjectStoreResetResponse r => r.Deleted

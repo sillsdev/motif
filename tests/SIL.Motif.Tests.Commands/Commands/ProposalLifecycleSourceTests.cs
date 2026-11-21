@@ -27,6 +27,7 @@ public sealed class ProposalLifecycleSourceTests
         ["SIL.Motif.Worker.Runtime/Store/HypothesisRepository.cs"] = "a hypothesis ledger status, not a Proposal's",
         ["SIL.Motif.Contract/Responses/ProjectStanding.cs"] = "a form's standing in the project, not a Proposal's",
         ["SIL.Motif.Contract/Query/QuerySources.cs"] = "the applied-count column name of the objects query source",
+        ["SIL.Motif.Commands/Queries/WhyNotProjection.cs"] = "the parser's result words in a why-not report",
         ["SIL.Motif.Commands/Queries/RejectionTraceProjection.cs"] = "the parser's path outcome words in a rejection trace",
         ["SIL.Motif.Commands/Queries/RejectionTraceSentences.cs"] = "the parser's event reason words in a rejection trace",
         ["SIL.Motif.Commands/Queries/FormsQueryCommand.cs"] = "the applied-count column of the objects query source",

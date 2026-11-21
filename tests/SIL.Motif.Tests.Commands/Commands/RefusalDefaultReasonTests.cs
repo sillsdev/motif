@@ -49,6 +49,7 @@ public sealed class RefusalDefaultReasonTests
     // Codes whose reason the scan cannot resolve from a refusal construction.
     private static readonly Dictionary<string, string> NotDeterminable = new(StringComparer.Ordinal)
     {
+        ["why-not.input-refused"] = "reason not determinable statically: chosen from the parser execution refusal in WhyNotQuery.Shape",
         ["coverage.empty-file"] = "reason not determinable statically: chosen from the ledger refusal code in CoverageCommands.CodeFor",
         ["coverage.bad-header"] = "reason not determinable statically: chosen from the ledger refusal code in CoverageCommands.CodeFor",
         ["coverage.wrong-field-count"] = "reason not determinable statically: chosen from the ledger refusal code in CoverageCommands.CodeFor",

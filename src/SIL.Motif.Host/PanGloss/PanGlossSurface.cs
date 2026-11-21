@@ -13,8 +13,25 @@ internal sealed record PanGlossSurfaceCheck(
 
 internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
-    bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null)
+    bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null,
+    PanGlossWhyNotCapability? WhyNot = null)
 {
+    /// <summary>
+    /// Why this parser cannot answer why-not, or null when it can: the description must expose a visible
+    /// <c>why-not</c> command and declare <c>interfaces.whyNot</c> with Motif's schema and the <c>grammar-xml</c> id promise.
+    /// </summary>
+    internal string? WhyNotRefusal()
+    {
+        if (!Commands.TryGetValue("why-not", out var command) || command.Hidden)
+            return "its description has no why-not command";
+        if (WhyNot is null) return "its description declares no interfaces.whyNot";
+        if (WhyNot.Schema != PanGlossInterfaceVersions.WhyNotSchemaId)
+            return $"it declares why-not schema '{WhyNot.Schema ?? "none"}', and Motif reads {PanGlossInterfaceVersions.WhyNotSchemaId}";
+        return WhyNot.Ids == PanGlossInterfaceVersions.WhyNotIds
+            ? null
+            : $"it declares why-not ids '{WhyNot.Ids ?? "none"}', and Motif needs {PanGlossInterfaceVersions.WhyNotIds}";
+    }
+
     internal string? ValidateRequest(PanGlossRequest request)
     {
         if ((request is PanGlossRequest.Facts or PanGlossRequest.GrammarHealth { FactsContextJson: not null }) && !FactsContractSupported)
@@ -70,6 +87,13 @@ internal sealed record PanGlossCapabilities(
             : null;
     }
 }
+
+/// <summary>What <c>interfaces.whyNot</c> declares.</summary>
+/// <param name="Schema">The report schema id, or null when the key is missing.</param>
+/// <param name="Ids">The id promise, or null when the key is missing.</param>
+/// <param name="Kinds">The failure kinds the parser answers; every other kind comes back unknown.</param>
+/// <param name="SuiteRows">Whether the parser also runs the shared suite's why-not rows.</param>
+internal sealed record PanGlossWhyNotCapability(string? Schema, string? Ids, ImmutableArray<string> Kinds, bool SuiteRows);
 
 internal sealed record PanGlossCommandCapabilities(
     bool Hidden, ImmutableArray<string> Positionals, ImmutableDictionary<string, bool> Flags);
@@ -180,7 +204,31 @@ internal static class PanGlossSurface
         int? batchTsv = root.TryGetProperty("interfaces", out interfaces) &&
             interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("batchTsv", out var batchElement) &&
             batchElement.ValueKind == JsonValueKind.Number && batchElement.TryGetInt32(out var batchVersion) ? batchVersion : null;
-        return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv);
+        return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv,
+            ReadWhyNot(root));
+    }
+
+    private static PanGlossWhyNotCapability? ReadWhyNot(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("whyNot", out var whyNot) || whyNot.ValueKind != JsonValueKind.Object)
+            return null;
+        string? Text(string name) =>
+            whyNot.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        var kinds = ImmutableArray.CreateBuilder<string>();
+        if (whyNot.TryGetProperty("kinds", out var list) && list.ValueKind == JsonValueKind.Array)
+            foreach (var kind in list.EnumerateArray())
+                if (kind.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(kind.GetString()))
+                    kinds.Add(kind.GetString()!);
+        var suite = whyNot.TryGetProperty("suiteRows", out var rows) && rows.ValueKind == JsonValueKind.True;
+        return new PanGlossWhyNotCapability(Text("schema"), Text("ids"), kinds.ToImmutable(), suite);
+    }
+
+    /// <summary>Reads one <c>--describe</c> document; the seam tests drive with a recorded description.</summary>
+    internal static PanGlossCapabilities? ReadDescription(string json, out string? detail)
+    {
+        using var description = JsonDocument.Parse(json);
+        return Validate(description.RootElement, out detail);
     }
 
     private static bool HasFactsIdentity(JsonElement root)
