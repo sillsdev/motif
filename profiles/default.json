@@ -55,6 +55,7 @@
     { "tool": "motif_list_requests" },
     { "tool": "motif_disposition_show" },
     { "tool": "motif_disposition_list" },
+    { "tool": "motif_coverage" },
     { "tool": "motif_add_affix_process" },
     { "tool": "motif_add_affix_process_allomorph" },
     { "tool": "motif_add_feature_value" },

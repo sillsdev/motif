@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "stamp": {
+    "grammarRevision": "rev-a",
+    "ledgerSha256": "d7b5b6a6925ba337686fc7ee058b1bbdb0e32bc7c27fcdb76fcc23feb3cd8798",
+    "frequencySha256": "238c432033f4d9bd341318ea24cddf09cd7cda2c7fde44f2f725daf8ba8ab86e",
+    "tokenizerId": "t@1"
+  },
+  "done": {
+    "verdict": "unmeasured",
+    "accounted": {
+      "verdict": "unmeasured",
+      "reasons": [
+        "recurring-open-unproved",
+        "recurring-types-without-current-check"
+      ],
+      "counts": {
+        "recurringOpenTypes": 1,
+        "recurringOpenTokens": 2,
+        "recurringOpenCurrentTypes": 0,
+        "recurringOpenStaleTypes": 1,
+        "openSingletonTypes": 1,
+        "openSingletonTokens": 1,
+        "unresolvedRecurringTypes": 3,
+        "recurringLostStaleTypes": 0,
+        "recurringUnsupportedDispositionTypes": 0
+      }
+    },
+    "correct": {
+      "verdict": "unmeasured",
+      "reasons": [
+        "audit-sample-absent"
+      ],
+      "counts": {}
+    },
+    "stable": {
+      "verdict": "unmeasured",
+      "reasons": [
+        "protected-set-absent"
+      ],
+      "counts": {}
+    }
+  },
+  "byState": {
+    "expected": {
+      "current": {
+        "types": 0,
+        "tokens": 0
+      },
+      "stale": {
+        "types": 0,
+        "tokens": 0
+      }
+    },
+    "unverified": {
+      "current": {
+        "types": 0,
+        "tokens": 0
+      },
+      "stale": {
+        "types": 1,
+        "tokens": 3
+      }
+    },
+    "disposition": {
+      "current": {
+        "types": 0,
+        "tokens": 0
+      },
+      "stale": {
+        "types": 1,
+        "tokens": 4
+      }
+    },
+    "open": {
+      "current": {
+        "types": 0,
+        "tokens": 0
+      },
+      "stale": {
+        "types": 2,
+        "tokens": 3
+      }
+    },
+    "lost": {
+      "current": {
+        "types": 0,
+        "tokens": 0
+      },
+      "stale": {
+        "types": 0,
+        "tokens": 0
+      }
+    }
+  },
+  "open": {
+    "recurring": {
+      "types": 1,
+      "tokens": 2
+    },
+    "singletons": {
+      "types": 1,
+      "tokens": 1
+    },
+    "byMechanism": {
+      "clitic": {
+        "types": 1,
+        "current": 0,
+        "stale": 1
+      },
+      "compounding": {
+        "types": 1,
+        "current": 0,
+        "stale": 1
+      }
+    },
+    "ranked": [
+      {
+        "word": "beta",
+        "weight": 2,
+        "mechanism": "compounding",
+        "stale": true
+      }
+    ],
+    "rankedTotal": 1,
+    "mechanismTotal": 2
+  }
+}

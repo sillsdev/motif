@@ -1,0 +1,16 @@
+Done: unmeasured (accounted unmeasured [recurring-open-unproved, recurring-types-without-current-check]; correct unmeasured [audit-sample-absent]; stable unmeasured [protected-set-absent]).
+Grammar revision rev-a; tokenizer t@1.
+
+State           current types   stale types   current tokens   stale tokens
+expected                    0             0                0              0
+unverified                  0             1                0              3
+disposition                 0             1                0              4
+open                        0             2                0              3
+lost                        0             0                0              0
+
+Open: 1 recurring types (2 tokens), 1 singleton types.
+Open by mechanism:
+  clitic  1 (0 current, 1 stale)
+  compounding  1 (0 current, 1 stale)
+Top recurring Open types (1 of 1):
+  beta  2  compounding  stale

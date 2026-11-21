@@ -2625,6 +2625,25 @@ try
             break;
         }
 
+        case "coverage":
+        {
+            var coverageUsage = UsageLineFor("coverage");
+            if (positionals.Count != 0 || !flags.TryGetValue("project", out var coverageProject) ||
+                !flags.TryGetValue("ledger", out var coverageLedger) || !flags.TryGetValue("sidecar", out var coverageSidecar) ||
+                !flags.TryGetValue("frequency", out var coverageFrequency) ||
+                flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "ledger" or "sidecar" or "frequency" or
+                    "frequency-format" or "audit-dir" or "protected" or "limit" or "tokens")))
+                return Usage(coverageUsage, asJson);
+            var coverageLimit = CoverageCommands.DefaultLimit;
+            if (flags.TryGetValue("limit", out var coverageLimitText) &&
+                !int.TryParse(coverageLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out coverageLimit))
+                return Usage("--limit must be a positive integer.", asJson);
+            result = RenderCommand(CoverageCommands.Coverage(new CoverageRequest(coverageProject, CliProductVersion(), coverageLedger,
+                coverageSidecar, coverageFrequency, flags.GetValueOrDefault("frequency-format"), flags.GetValueOrDefault("audit-dir"),
+                flags.GetValueOrDefault("protected"), coverageLimit, flags.ContainsKey("tokens"))));
+            break;
+        }
+
         case "disposition":
         {
             var dispositionCommand = positionals.Count > 0 ? positionals[0] : "";
@@ -3854,7 +3873,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose" or "replace" or "skip-refused" or "current")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "verbose" or "replace" or "skip-refused" or "current" or "tokens")
             {
                 flags[name] = "true";
                 continue;

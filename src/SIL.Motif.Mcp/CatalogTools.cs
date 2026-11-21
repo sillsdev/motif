@@ -183,6 +183,14 @@ internal static class CatalogTools
             properties["limit"]!["default"] = WordTypeDispositionCommands.DefaultLimit;
             properties["page"]!["minimum"] = 1;
         }
+        if (command.RequestType == typeof(CoverageRequest))
+        {
+            var properties = schema["properties"]!.AsObject();
+            properties["frequencyFormat"] = Schema.String("The frequency list's shape; a .json file is read as json by default.", [.. CoverageCommands.FrequencyFormats]);
+            properties["limit"]!["minimum"] = 1;
+            properties["limit"]!["maximum"] = CoverageCommands.MaxLimit;
+            properties["limit"]!["default"] = CoverageCommands.DefaultLimit;
+        }
         if (command.RequestType == typeof(GdrShowRequest))
         {
             var format = Schema.String("json returns rich text runs; fw-md returns the whole record as FieldWorks Markdown.", "json", "fw-md");

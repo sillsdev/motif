@@ -228,6 +228,69 @@ public sealed class CatalogExecutionTests
         finally { Directory.Delete(root, true); }
     }
 
+    [Fact]
+    public void CoverageIsOneReadToolWhoseSchemaNamesItsThreeFilesAndBoundsItsLimit()
+    {
+        var command = CommandCatalog.All.Single(item => item.Name == "coverage");
+        Assert.Equal(AgentClass.Read, command.Agent);
+        var generated = CatalogTools.Prepare(CatalogTools.Create(command));
+        var actual = AgentTools.All.Single(tool => tool.Name == generated.Name);
+        Assert.Equal("motif_coverage", actual.Name);
+        Assert.True(JsonNode.DeepEquals(generated.InputSchema, actual.InputSchema));
+        var properties = actual.InputSchema["properties"]!;
+        Assert.Equal(["frequencyPath", "ledgerPath", "project", "sidecarPath"],
+            actual.InputSchema["required"]!.AsArray().Select(item => item!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray());
+        Assert.Equal(["tsv", "tsv-header", "json"],
+            properties["frequencyFormat"]!["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ToArray());
+        Assert.Equal((1, 200, 50), (properties["limit"]!["minimum"]!.GetValue<int>(), properties["limit"]!["maximum"]!.GetValue<int>(),
+            properties["limit"]!["default"]!.GetValue<int>()));
+        Assert.Contains("is not the report verb's coverage kind", actual.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CoverageToolReadsLedgerFilesAndRefusesAMalformedOneWithACoverageCode()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-catalog-coverage-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var project = Path.Combine(root, "project.fwdata");
+        File.WriteAllText(project, "");
+        var pin = new string('a', 64);
+        var ledger = Path.Combine(root, "ledger.tsv");
+        File.WriteAllText(ledger, "word\ttokens\tstate\texpected_readings\tclass\tevidence\tprovenance\tgrammar_revision\n" +
+            "beta\t2\tOpen\t\tcompounding\t\tp\trev-a\n");
+        var sidecar = Path.Combine(root, "ledger.meta.json");
+        File.WriteAllText(sidecar, "{\"tokenizerId\":\"t@1\",\"tokenizerSha256\":\"" + pin + "\",\"fold\":\"none\"," +
+            "\"normalization\":\"NFC\",\"sourceIds\":[\"s1\"],\"scopeFilter\":\"all\",\"frequencySource\":\"f\"," +
+            "\"grammarRevision\":\"rev-a\",\"rowCount\":1,\"tokenSum\":2}");
+        var frequency = Path.Combine(root, "freq.tsv");
+        File.WriteAllText(frequency, "beta\t2\n");
+        try
+        {
+            var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            var tool = AgentTools.All.Single(item => item.Name == "motif_coverage");
+            ToolArgs Args(string ledgerPath) => new(new JsonObject
+            {
+                ["ledgerPath"] = ledgerPath, ["sidecarPath"] = sidecar, ["frequencyPath"] = frequency, ["limit"] = 5,
+            }, tool.ArgumentNames);
+
+            var result = await tool.Run(context, Args(ledger), CancellationToken.None);
+
+            Assert.Null(result.Refusal);
+            var value = result.Value!;
+            Assert.Equal("unmeasured", value["done"]!["verdict"]!.GetValue<string>());
+            Assert.Equal(1, value["open"]!["byMechanism"]!["compounding"]!["types"]!.GetValue<int>());
+            Assert.Equal(1, value["schemaVersion"]!.GetValue<int>());
+
+            File.WriteAllText(ledger, "not a ledger\n");
+            var refused = await tool.Run(context, Args(ledger), CancellationToken.None);
+
+            Assert.Equal("coverage.bad-header", refused.Refusal?.Code);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
     private sealed class RecordingRunner(string root) : IJobRunnerLauncher
     {
         public JobRunnerLaunchOptions Options { get; } = new(root, null);

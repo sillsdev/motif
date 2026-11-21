@@ -329,6 +329,9 @@ public static class CliVerbCatalog
                 "[--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]",
             }),
         new CliVerbDescriptor("Reports", "report", "report --list-kinds", NoUsage),
+        new CliVerbDescriptor("Reports", "coverage", "coverage",
+            new[] { "coverage --project <fwdata> --ledger <tsv> --sidecar <json> --frequency <file> [--frequency-format tsv|tsv-header|json] " +
+                "[--audit-dir <dir>] [--protected <file>] [--limit <1-200>] [--tokens] [--json]" }),
         new CliVerbDescriptor("Reports", "parsimony", "parsimony",
             new[] { "parsimony --project <fwdata> [--measure <measure-id>|all] [--group grammar|text|all] " +
                 "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] [--json]" }),

@@ -79,6 +79,11 @@
     "description": "Lists the report kinds accepted by report --kind. Run it first when you need to choose a report for stored evidence.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "coverage": {
+    "title": "Measure word type coverage",
+    "description": "Reads a lane ledger, its sidecar and a pinned frequency list and reports where every word type stands (Expected, Unverified, Disposition, Open or Lost), what is still Open by mechanism, and the three Done tests. It reads and never writes, takes saved checks and dispositions from the Motif store, and is not the report verb's coverage kind, the share of words the parser analysed.",
+    "source": "Hand-written from command behavior."
+  },
   "parsimony": {
     "title": "Review grammar parsimony",
     "description": "Runs a registered Parsimony measure, every measure with --measure all, or a whole group with --group grammar|text|all, over the current Baseline, or compares a completed Proposal Dry Run against that Baseline. Candidate evidence uses a private copy and stores before and after Reports. Use parsimony measures to list checks and their evidence needs.",

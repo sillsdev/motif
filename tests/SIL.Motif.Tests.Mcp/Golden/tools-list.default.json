@@ -11231,6 +11231,68 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_coverage",
+    "description": "Measure word type coverage. Reads a lane ledger, its sidecar and a pinned frequency list and reports where every word type stands (Expected, Unverified, Disposition, Open or Lost), what is still Open by mechanism, and the three Done tests. It reads and never writes, takes saved checks and dispositions from the Motif store, and is not the report verb\u0027s coverage kind, the share of words the parser analysed.\nCommand: coverage. Agent class: Read.\nLedgerPath: The lane ledger TSV: the eight columns word, tokens, state, expected_readings, class, evidence, provenance, grammar_revision.\nSidecarPath: The ledger\u0027s sidecar JSON, which pins the tokenizer, fold, normalization, grammar revision, row count and token sum.\nFrequencyPath: The pinned frequency list: two tab-separated columns of word and count, or a JSON object of word to count.\nFrequencyFormat: tsv (the default; a .json file is read as json), tsv-header when the first line is a header, or json.\nAuditDirectory: A frozen audit sample directory; without it the Correct check is unmeasured.\nProtectedSetPath: A protected-set file; without it the Stable check is unmeasured.\nLimit: The most recurring Open types to rank, from 1 to 200. The default is 50.\nTokens: Also report the share of eligible tokens carried by Open singletons.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "ledgerPath": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "sidecarPath": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "frequencyPath": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "frequencyFormat": {
+          "type": "string",
+          "description": "The frequency list\u0027s shape; a .json file is read as json by default.",
+          "enum": [
+            "tsv",
+            "tsv-header",
+            "json"
+          ]
+        },
+        "auditDirectory": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "protectedSetPath": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        },
+        "tokens": {
+          "type": "boolean",
+          "description": "Value for the request field."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "ledgerPath",
+        "sidecarPath",
+        "frequencyPath",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_add_affix_process",
     "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts, inserts phonemes, inserts a segment of a natural class, or copies a part with the features of a feature class laid over it: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
     "inputSchema": {

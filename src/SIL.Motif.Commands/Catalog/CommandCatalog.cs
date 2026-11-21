@@ -403,6 +403,8 @@ public static class CommandCatalog
             CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("disposition list", typeof(ListDispositionsRequest), typeof(ListDispositionsResponse),
             CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("coverage", typeof(CoverageRequest), typeof(CoverageResponse),
+            CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("apply --proposal", typeof(ApplyProposalRequest), typeof(ApplyPendingResult),
             CommandSurface.Released, AgentClass.HumanOnly),
     };
