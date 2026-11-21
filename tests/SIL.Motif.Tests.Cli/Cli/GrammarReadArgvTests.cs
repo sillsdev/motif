@@ -313,6 +313,7 @@ public sealed class GrammarReadArgvTests(PristineProjectFixture pristine) : IDis
     private static readonly string[] Kinds =
     [
         "phoneme", "natural_class", "environment", "part_of_speech", "inflection_feature", "lexical_entry",
+        "phonological_rule",
     ];
 
     private JsonDocument Read(string projectPath, string kind, string? id = null, string? query = null,

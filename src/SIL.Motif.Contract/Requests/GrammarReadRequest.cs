@@ -20,6 +20,9 @@ public enum GrammarReadKind
 
     /// <summary>Lexical entries, senses, forms and grammatical information.</summary>
     lexical_entry,
+
+    /// <summary>Phonological rules with the whole intent a rule edit guards against.</summary>
+    phonological_rule,
 }
 
 /// <summary>Reads a page of one authored object kind from a project's current Baseline.</summary>

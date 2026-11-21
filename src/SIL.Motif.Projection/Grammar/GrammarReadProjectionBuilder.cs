@@ -65,8 +65,17 @@ public static class GrammarReadProjectionBuilder
             .Select(feature => ReadFeature(cache, feature)),
         GrammarReadKind.lexical_entry => cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
             .Select(entry => ReadEntry(cache, entry)),
+        GrammarReadKind.phonological_rule => cache.LangProject.PhonologicalDataOA.PhonRulesOS
+            .Select(rule => ReadRule(cache, rule)),
         _ => [],
     };
+
+    private static GrammarPhonologicalRuleRead ReadRule(LcmCache cache, IPhSegmentRule rule)
+    {
+        var facts = ReadPhonologicalRule(rule, detailed: true);
+        return new GrammarPhonologicalRuleRead(Id(rule), Text(cache, rule.Name), rule.ClassName, rule.Disabled,
+            facts["rightHandSideCount"]?.GetValue<int>(), facts["intent"]?.DeepClone());
+    }
 
     private static GrammarPhonemeRead ReadPhoneme(LcmCache cache, IPhPhoneme phoneme) => new(
         Id(phoneme), Text(cache, phoneme.Name), phoneme.CodesOS.SelectMany(code =>
@@ -196,6 +205,7 @@ public static class GrammarReadProjectionBuilder
         GrammarPartOfSpeechRead category => [category.Name, category.Abbreviation],
         GrammarInflectionFeatureRead feature => [feature.Name, feature.Abbreviation,
             .. feature.Values.Select(value => value.Name)],
+        GrammarPhonologicalRuleRead rule => [rule.Name],
         GrammarLexicalEntryRead entry => [entry.Headword, entry.MorphType,
             .. entry.Senses.Select(sense => sense.Gloss),
             .. Forms(entry).Select(form => form.Form)],
@@ -210,6 +220,7 @@ public static class GrammarReadProjectionBuilder
         GrammarPartOfSpeechRead category => category.Name ?? category.Abbreviation ?? string.Empty,
         GrammarInflectionFeatureRead feature => feature.Name ?? feature.Abbreviation ?? string.Empty,
         GrammarLexicalEntryRead entry => entry.Headword ?? string.Empty,
+        GrammarPhonologicalRuleRead rule => rule.Name ?? string.Empty,
         _ => string.Empty,
     };
 

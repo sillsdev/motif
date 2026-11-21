@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Requests;
@@ -44,6 +45,7 @@ public sealed record GrammarReadResponse(
 [JsonDerivedType(typeof(GrammarPartOfSpeechRead), "part_of_speech")]
 [JsonDerivedType(typeof(GrammarInflectionFeatureRead), "inflection_feature")]
 [JsonDerivedType(typeof(GrammarLexicalEntryRead), "lexical_entry")]
+[JsonDerivedType(typeof(GrammarPhonologicalRuleRead), "phonological_rule")]
 public abstract record GrammarReadItem(string Id);
 
 /// <summary>A phoneme and the writing-system representations authored for it.</summary>
@@ -182,3 +184,21 @@ public sealed record GrammarGrammaticalInfoRead(
     string Kind,
     GrammarNamedObjectRead? PartOfSpeech,
     GrammarNamedObjectRead? ResultPartOfSpeech);
+
+/// <summary>A phonological rule and the authoring intent its edit guard copies.</summary>
+/// <param name="Id">The rule's canonical id.</param>
+/// <param name="Name">The rule's name.</param>
+/// <param name="RuleKind">The LibLCM rule class.</param>
+/// <param name="Disabled">Whether the rule is switched off.</param>
+/// <param name="RightHandSideCount">The number of outcomes of a regular rule.</param>
+/// <param name="Intent">
+/// The rule's intent as the edit verbs read it, or <see langword="null"/> when a context or applicability
+/// reference has a shape the composer cannot express.
+/// </param>
+public sealed record GrammarPhonologicalRuleRead(
+    string Id,
+    string? Name,
+    string RuleKind,
+    bool Disabled,
+    int? RightHandSideCount,
+    JsonNode? Intent) : GrammarReadItem(Id);

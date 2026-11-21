@@ -199,4 +199,48 @@ public sealed class GrammarReadLookupTests(PristineProjectFixture pristine) : ID
             "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--page", "0");
         Assert.NotEqual(0, zero.ExitCode);
     }
+
+    [Fact]
+    public void PhonologicalRulesAreReadWithTheIntentAnEditGuardNeeds()
+    {
+        Guid ruleId = Guid.Empty;
+        using var project = new WalkthroughProject(pristine, _root, configure: (cache, _, _) =>
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var services = cache.ServiceLocator;
+                var data = cache.LangProject.PhonologicalDataOA;
+                var set = services.GetInstance<IPhPhonemeSetFactory>().Create();
+                data.PhonemeSetsOS.Add(set);
+                var rule = services.GetInstance<IPhRegularRuleFactory>().Create();
+                data.PhonRulesOS.Add(rule);
+                rule.Name.set_String(cache.DefaultAnalWs, "Nasal assimilation");
+                ruleId = rule.Guid;
+                foreach (var letter in new[] { "n", "m" })
+                {
+                    var phoneme = services.GetInstance<IPhPhonemeFactory>().Create();
+                    set.PhonemesOC.Add(phoneme);
+                    phoneme.Name.set_String(cache.DefaultVernWs, letter);
+                    var context = services.GetInstance<IPhSimpleContextSegFactory>().Create();
+                    if (letter == "n") rule.StrucDescOS.Add(context);
+                    else rule.RightHandSidesOS.Single().StrucChangeOS.Add(context);
+                    context.FeatureStructureRA = phoneme;
+                }
+            }));
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+
+        var id = SIL.Motif.Contract.Ids.CanonicalId.FromGuid(ruleId).Value;
+        using var byId = Read(project.FwDataPath, "phonological_rule", "--id", id);
+        var item = Assert.Single(byId.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal("phonological_rule", item.GetProperty("kind").GetString());
+        Assert.Equal(id, item.GetProperty("id").GetString());
+        Assert.Equal("Nasal assimilation", item.GetProperty("name").GetString());
+        Assert.Equal(1, item.GetProperty("rightHandSideCount").GetInt32());
+        Assert.Single(item.GetProperty("intent").GetProperty("input").EnumerateArray());
+        Assert.Single(item.GetProperty("intent").GetProperty("output").EnumerateArray());
+
+        using var plural = Read(project.FwDataPath, "phonological_rules", "--exact", "nasal assimilation");
+        Assert.Equal(1, plural.RootElement.GetProperty("total").GetInt32());
+        Assert.Equal("phonological_rule", plural.RootElement.GetProperty("kind").GetString());
+    }
 }

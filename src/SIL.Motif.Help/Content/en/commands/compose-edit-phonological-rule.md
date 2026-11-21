@@ -13,6 +13,8 @@ motif compose-edit-phonological-rule --project language.fwdata --draft widen-rul
 
 The command replaces the rule's contexts and keeps everything else. Use `rightHandSides` for a rule with multiple outcomes; the `output`, `left` and `right` shorthand is ambiguous there and is refused. Dry Run and Trial the Proposal on words the rule should and should not change, then Finalize it for a person to review and Apply. The command stages operations in a Draft and does not change the saved FieldWorks project.
 
+From the CLI, read `motif grammar read --project language.fwdata --kind phonological_rule --json`; the same fields come back. To move a rule in the order rather than edit it, use [Reorder sound rules](cmd:compose-order-phonological-rules).
+
 For an agent, read `motif_grammar(kind="phonological_rules", detail="detailed")` first. Each rule has an `id` and an `intent` containing `name`, `direction`, `input`, `output`, `left` and `right`. Use the `id` as `rule` and copy the whole `intent` into `expected` when staging the edit through `motif_compose_batch` (verb `compose-edit-phonological-rule`), or `motif_edit_phonological_rule` in a profile that exposes it; the order of every item is checked. For example, change an Output of m d to n k while guarding the two current items:
 
 ```sh

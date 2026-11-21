@@ -511,7 +511,7 @@ public static class CliVerbCatalog
             "Project", "grammar", "grammar read",
             new[]
             {
-                "grammar read --project <fwdata> --kind <phoneme|natural_class|environment|part_of_speech|inflection_feature|lexical_entry> " +
+                "grammar read --project <fwdata> --kind <phoneme|natural_class|environment|part_of_speech|inflection_feature|lexical_entry|phonological_rule> " +
                 "[--id <canonicalId> | --query <text> | --exact <form>] [--morph-type <name>[,<name>]] [--limit <1-100>] [--offset <n> | --page <N>] [--json]",
             }),
         new CliVerbDescriptor(

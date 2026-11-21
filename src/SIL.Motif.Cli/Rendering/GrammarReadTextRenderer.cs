@@ -64,6 +64,13 @@ internal static class GrammarReadTextRenderer
                     text.AppendLine($"  Value: {Display(value.Name)}  {value.Id}");
                 AppendOverflow(text, feature.Values.Count);
                 break;
+            case GrammarPhonologicalRuleRead rule:
+                text.AppendLine($"{Display(rule.Name)}  {rule.Id}  {rule.RuleKind}{(rule.Disabled ? "  disabled" : string.Empty)}");
+                if (rule.RightHandSideCount is { } outcomes) text.AppendLine($"  Outcomes: {outcomes}");
+                text.AppendLine(rule.Intent is null
+                    ? "  Intent: not expressible by the edit verbs"
+                    : "  Intent: use --json for the whole intent an edit guard copies");
+                break;
             case GrammarLexicalEntryRead entry:
                 text.AppendLine($"{Display(entry.Headword)}  {entry.Id}");
                 if (entry.LexemeForm is { } lexeme) RenderForm(text, "Lexeme form", lexeme);

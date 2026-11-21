@@ -2774,7 +2774,8 @@ try
                     "morph-type" or "page")) ||
                     !flags.TryGetValue("project", out var grammarReadProject) ||
                     !flags.TryGetValue("kind", out var grammarReadKindText) ||
-                    !Enum.TryParse<GrammarReadKind>(grammarReadKindText, ignoreCase: false, out var grammarReadKind) ||
+                    !Enum.TryParse<GrammarReadKind>(grammarReadKindText == "phonological_rules" ? "phonological_rule" : grammarReadKindText,
+                        ignoreCase: false, out var grammarReadKind) ||
                     !Enum.IsDefined(grammarReadKind))
                     return Usage(UsageLineFor("grammar read"), asJson);
                 var grammarReadOffset = 0;
