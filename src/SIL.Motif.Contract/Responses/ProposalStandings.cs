@@ -1,3 +1,4 @@
+using System.Linq;
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>Where a Proposal stands for the person deciding what to look at next.</summary>
@@ -146,6 +147,10 @@ public sealed record ProposalStandings(IReadOnlyList<ProposalCard> Proposals, in
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? Total { get; init; }
 
+    /// <summary>How many stored items could not be read when <see cref="Unreadable"/> lists only the first of them; null otherwise.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? UnreadableTotal { get; init; }
+
     /// <summary>How many Proposals this page skipped; null when it is not a page.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? Offset { get; init; }
@@ -161,6 +166,8 @@ public sealed record ProposalStandings(IReadOnlyList<ProposalCard> Proposals, in
         return this with
         {
             Proposals = page, Total = Proposals.Count, Offset = offset,
+            Unreadable = Unreadable.Count > ResultPaging.DefaultLimit ? [.. Unreadable.Take(ResultPaging.DefaultLimit)] : Unreadable,
+            UnreadableTotal = Unreadable.Count > ResultPaging.DefaultLimit ? Unreadable.Count : null,
             NextOffset = ResultPaging.NextOffset(offset, page.Count, Proposals.Count),
         };
     }

@@ -72,11 +72,24 @@ public sealed class OutputBoundsCliTests : IDisposable
         var text = Run("list", "--project", _project, "--limit", "10");
         Assert.Contains("Showing 1-10 of 30.", text.Output, StringComparison.Ordinal);
         Assert.Contains("Next: motif list --project " + _project + " --offset 10 --limit 10", text.Output, StringComparison.Ordinal);
+        var allStatuses = Run("list", "--project", _project, "--all", "--limit", "10").Output;
+        Assert.Contains(" --all --offset 10 --limit 10", allStatuses, StringComparison.Ordinal);
         var pastEndText = Run("list", "--project", _project, "--offset", "100").Output;
         Assert.Contains("0 shown; 30 proposals; last offset 29", pastEndText, StringComparison.Ordinal);
         Assert.DoesNotContain("No proposals in store", pastEndText, StringComparison.Ordinal);
         var byPage = Run("list", "--project", _project, "--limit", "10", "--page", "3");
         Assert.Contains("Showing 21-30 of 30.", byPage.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheNextStepQuotesAPathWithSpacesAndKeepsOtherFlags()
+    {
+        var flags = new Dictionary<string, string>
+            { ["project"] = "/tmp/my project/a.fwdata", ["kind"] = "bad-code", ["left-out"] = "true", ["limit"] = "50", ["json"] = "true" };
+
+        var step = SIL.Motif.Cli.PagingFlags.NextCommand("warnings", [], flags, 50, 50);
+
+        Assert.Equal("motif warnings --project \"/tmp/my project/a.fwdata\" --kind bad-code --left-out --offset 50 --limit 50", step);
     }
 
     [Theory]

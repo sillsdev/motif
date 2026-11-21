@@ -50,15 +50,19 @@ internal static class PagingFlags
         static (PagingWindow, Refusal?) Fail(string message) => (default, PagingWindow.Invalid(message));
     }
 
-    /// <summary>The command that reads the page after this one, repeating the caller's own flags and page size.</summary>
+    /// <summary>
+    /// The command that reads the page after this one, repeating the caller's own flags and page size;
+    /// <paramref name="keepAll"/> keeps <c>--all</c> for a verb where it selects rows rather than lifting the page.
+    /// </summary>
     internal static string NextCommand(
-        string verb, IReadOnlyList<string> positionals, IReadOnlyDictionary<string, string> flags, int next, int limit)
+        string verb, IReadOnlyList<string> positionals, IReadOnlyDictionary<string, string> flags, int next, int limit,
+        bool keepAll = false)
     {
         var parts = new List<string> { "motif", verb };
         parts.AddRange(positionals.Select(Quote));
         foreach (var (name, value) in flags)
         {
-            if (name is "offset" or "limit" or "page" or "all" or "json") continue;
+            if (name is "offset" or "limit" or "page" or "json" || name == "all" && !keepAll) continue;
             parts.Add("--" + name);
             if (value != "true") parts.Add(Quote(value));
         }

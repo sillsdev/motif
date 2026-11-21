@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace SIL.Motif.Contract.Commands;
@@ -33,13 +34,37 @@ public static class RefusalText
             ? facts
             : facts.ToDictionary(pair => pair.Key, pair => Bound(pair.Value, limit), StringComparer.Ordinal);
 
-    private static string Cut(string text, int limit, string hint)
+    private static string Cut(string text, int limit, string hint, bool seekNext = true)
     {
         if (text.Length <= limit) return text;
-        var next = text.LastIndexOf(NextMarker, StringComparison.Ordinal);
-        var tailLength = next >= 0 ? Math.Min(text.Length - next, limit / 2) : limit / 4;
-        var head = limit - tailLength;
-        var omitted = text.Length - head - tailLength;
-        return text[..head] + $" … ({omitted:N0} chars omitted{hint}) " + text[^tailLength..];
+        var starts = StringInfo.ParseCombiningCharacters(text);
+        var next = seekNext ? text.LastIndexOf(NextMarker, StringComparison.Ordinal) : -1;
+        int tailStart;
+        string tail;
+        if (next >= 0)
+        {
+            tailStart = next;
+            tail = text.Length - next > limit / 2 ? Cut(text[next..], limit / 2, "", seekNext: false) : text[next..];
+        }
+        else
+        {
+            tailStart = After(starts, text.Length, text.Length - limit / 4);
+            tail = text[tailStart..];
+        }
+        var head = Before(starts, limit - tail.Length);
+        if (head >= tailStart) return text[..tailStart] + tail;
+        return text[..head] + $" … ({tailStart - head:N0} chars omitted{hint}) " + tail;
+    }
+
+    private static int Before(int[] starts, int index)
+    {
+        var found = Array.BinarySearch(starts, index);
+        return found >= 0 ? index : starts[Math.Max(0, ~found - 1)];
+    }
+
+    private static int After(int[] starts, int length, int index)
+    {
+        var found = Array.BinarySearch(starts, index);
+        return found >= 0 ? index : ~found < starts.Length ? starts[~found] : length;
     }
 }

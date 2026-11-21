@@ -104,6 +104,59 @@ public sealed class ResultPagingTests
         Assert.EndsWith("Next: run motif baseline capture.", RefusalText.Bound(message, 1000), StringComparison.Ordinal);
     }
 
+    private static bool WellFormed(string text)
+    {
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (char.IsHighSurrogate(text[i]) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1])) i++;
+            else if (char.IsSurrogate(text[i])) return false;
+        }
+        return true;
+    }
+
+    [Fact]
+    public void ARefusalCutNeverSplitsASurrogatePairOrAGraphemeCluster()
+    {
+        var atHead = new string('x', 749) + "\U0001F600" + new string('y', 5000);
+        var atTail = new string('x', 5000) + "\U0001F600" + new string('y', 249);
+        var cluster = new string('x', 748) + "e\u0301\u0302" + new string('y', 5000);
+
+        foreach (var text in new[] { atHead, atTail, cluster })
+        {
+            var cut = RefusalText.Bound(text, 1000);
+            Assert.True(WellFormed(cut), cut);
+            Assert.Contains("chars omitted", cut, StringComparison.Ordinal);
+        }
+        Assert.StartsWith(new string('x', 749) + " ", RefusalText.Bound(atHead, 1000), StringComparison.Ordinal);
+        Assert.DoesNotContain("\u0301", RefusalText.Bound(cluster, 1000).Split(" … ")[0].Substring(745), StringComparison.Ordinal);
+        Assert.StartsWith("[a.b] ", RefusalText.ForTerminal(atTail + atHead, "a.b"), StringComparison.Ordinal);
+        Assert.True(WellFormed(RefusalText.ForTerminal(atTail + atHead, "a.b")));
+    }
+
+    [Fact]
+    public void AnOversizeNextSentenceKeepsItsLabelAndItsEnd()
+    {
+        var message = new string('x', 3000) + " Next: START " + new string('n', 5000) + " END";
+
+        var cut = RefusalText.Bound(message, 1000);
+
+        Assert.Contains("Next: START", cut, StringComparison.Ordinal);
+        Assert.EndsWith(" END", cut, StringComparison.Ordinal);
+        Assert.True(cut.Length < 1200, cut.Length.ToString());
+    }
+
+    [Fact]
+    public void TheStandingsKeepAtMostOnePageOfUnreadableItemsAndCountTheRest()
+    {
+        var unreadable = Enumerable.Range(0, 60).Select(i => new UnreadableProposal("p" + i, "l", "bad")).ToArray();
+        var standings = new ProposalStandings([], 0) { Unreadable = unreadable };
+
+        var page = standings.Window(0, 25);
+
+        Assert.Equal(ResultPaging.DefaultLimit, page.Unreadable.Count);
+        Assert.Equal(60, page.UnreadableTotal);
+    }
+
     [Fact]
     public void GrammarCheckListsErrorsFirstWhateverOrderTheParserGaveThem()
     {

@@ -870,7 +870,7 @@ try
                 ProposalCommands.List(new ListProposalsRequest(listProject, CliProductVersion(),
                     flags.ContainsKey("all"), flags.GetValueOrDefault("status"))).Map(
                     list => list.Window(listWindow.Offset, listWindow.Limit).WithNextStep(
-                        next => PagingFlags.NextCommand("list", [], flags, next, listWindow.Limit))));
+                        next => PagingFlags.NextCommand("list", [], flags, next, listWindow.Limit, keepAll: true))));
             break;
 
         case "show":

@@ -1224,6 +1224,55 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task TheProposalsListIsPagedAndNamesTheNextOffset()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        for (var i = 0; i < 3; i++)
+            await session.CallAsync("motif_start_proposal", ("draft", "listed-" + i), ("label", "L" + i), ("rationale", "r"));
+
+        var first = (await session.CallAsync("motif_proposals", ("limit", 1))).GetProperty("result");
+
+        Assert.Equal(1, first.GetProperty("proposals").GetArrayLength());
+        Assert.True(first.GetProperty("total").GetInt32() >= 3);
+        Assert.Equal(1, first.GetProperty("nextOffset").GetInt32());
+    }
+
+    [Fact]
+    public async Task ComposingManyIntentsReturnsOneBoundedSummary()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        await session.CallAsync("motif_start_proposal", ("draft", "bulk"), ("label", "Bulk"), ("rationale", "Many."));
+
+        var batched = (await session.CallAsync("motif_compose_batch", ("draft", "bulk"), ("intents",
+            Enumerable.Range(0, 40).Select(i => (object)new
+            {
+                verb = "compose-author-phoneme", intent = new { name = "Bk" + i, representations = new[] { "bk" + i } },
+            }).ToArray()))).GetProperty("result");
+
+        Assert.True(batched.GetProperty("intents").GetArrayLength() <= 25);
+        Assert.Equal(40, batched.GetProperty("intentTotal").GetInt32());
+        Assert.True(batched.GetProperty("operationCount").GetInt32() >= 40);
+    }
+
+    [Fact]
+    public void AnOverlongRefusalIsBoundedInTheModelTextAndTheStructuredContent()
+    {
+        var message = new string('m', 30_000) + " Next: ask the person.";
+        var refusal = new SIL.Motif.Contract.Commands.Refusal("tool.invalid-argument",
+            SIL.Motif.Contract.Responses.FailureReason.InvalidArgument, message);
+
+        var text = RefusalMapper.Text(refusal);
+        var structured = RefusalMapper.ToResult(refusal).StructuredContent!.Value.GetProperty("message").GetString()!;
+
+        Assert.True(text.Length < 4_000, text.Length.ToString());
+        Assert.Contains("chars omitted", text, StringComparison.Ordinal);
+        Assert.True(structured.Length < 17_000, structured.Length.ToString());
+        Assert.EndsWith("Next: ask the person.", structured, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ProposalCommentsNoticeDoesNotRecreateAUseLeaseRemovedAfterTheToolRead()
     {
         using var project = new WalkthroughProject(pristine);
