@@ -65,7 +65,7 @@ internal static class GrammarReadTextRenderer
                 AppendOverflow(text, feature.Values.Count);
                 break;
             case GrammarPhonologicalRuleRead rule:
-                text.AppendLine($"{Display(rule.Name)}  {rule.Id}  {rule.RuleKind}{(rule.Disabled ? "  disabled" : string.Empty)}");
+                text.AppendLine($"{rule.Position}. {Display(rule.Name)}  {rule.Id}  {rule.RuleKind}{(rule.Disabled ? "  disabled" : string.Empty)}");
                 if (rule.RightHandSideCount is { } outcomes) text.AppendLine($"  Outcomes: {outcomes}");
                 text.AppendLine(rule.Intent is null
                     ? "  Intent: not expressible by the edit verbs"

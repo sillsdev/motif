@@ -53,6 +53,10 @@ public static class GrammarReadQuery
                     "The current Baseline file is missing. Capture a new Baseline before reading grammar objects.");
 
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+            if (request.MorphType is not null &&
+                GrammarReadProjectionBuilder.UnknownMorphTypes(reader.Cache, request.MorphType) is { Count: > 0 } unknown)
+                return Invalid($"Unknown morph type {string.Join(", ", unknown.Select(name => $"'{name}'"))}. " +
+                    $"Morph types are: {string.Join(", ", GrammarReadProjectionBuilder.MorphTypeNames(reader.Cache))}.");
             var response = GrammarReadProjectionBuilder.Build(reader.Cache, request);
             var projectSave = File.Exists(project.FullFwDataPath)
                 ? new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero)

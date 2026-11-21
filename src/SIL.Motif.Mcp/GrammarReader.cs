@@ -76,8 +76,8 @@ internal static class GrammarReader
             {
                 ["pattern"] = environment.StringRepresentation?.Text,
             })),
-        "phonological_rules" => cache.LangProject.PhonologicalDataOA.PhonRulesOS.Select(rule =>
-            Item(cache, rule, rule.Name, null, GrammarReadProjectionBuilder.ReadPhonologicalRule(rule, detailed))),
+        "phonological_rules" => cache.LangProject.PhonologicalDataOA.PhonRulesOS.Select((rule, index) =>
+            Item(cache, rule, rule.Name, null, RuleFacts(rule, index + 1, detailed))),
         "features" => cache.LangProject.MsFeatureSystemOA.FeaturesOC.Select(feature =>
             Item(cache, feature, feature.Name, feature.Abbreviation, FeatureFacts(feature))),
         "phonological_features" => cache.LangProject.PhFeatureSystemOA.FeaturesOC.Select(feature =>
@@ -95,6 +95,15 @@ internal static class GrammarReader
             Item(cache, type, type.Name, type.Abbreviation, null)),
         _ => throw new ArgumentException($"Unknown grammar kind '{kind}'."),
     };
+
+    /// <summary>A rule's facts, led by its 1-based place in the application order.</summary>
+    private static JsonObject RuleFacts(IPhSegmentRule rule, int position, bool detailed)
+    {
+        var facts = new JsonObject { ["position"] = position };
+        foreach (var (key, value) in GrammarReadProjectionBuilder.ReadPhonologicalRule(rule, detailed).ToList())
+            facts[key] = value?.DeepClone();
+        return facts;
+    }
 
     private static JsonObject Item(LcmCache cache, ICmObject target, IMultiAccessorBase? name,
         IMultiAccessorBase? abbreviation, JsonObject? facts)

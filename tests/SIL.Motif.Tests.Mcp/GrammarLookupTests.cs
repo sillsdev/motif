@@ -32,8 +32,11 @@ public sealed class GrammarLookupTests(PristineProjectFixture pristine) : IDispo
         return ids.ToArray();
     }
 
-    private static string[] Names(JsonObject result) => result["items"]!.AsArray()
-        .Select(item => item!["name"]!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray();
+    private static string[] Names(JsonObject result, bool keepOrder = false)
+    {
+        var names = result["items"]!.AsArray().Select(item => item!["name"]!.GetValue<string>());
+        return (keepOrder ? names : names.Order(StringComparer.Ordinal)).ToArray();
+    }
 
     [Fact]
     public void ExactEqualsTheNameOrAbbreviationWhereAQueryOnlyContainsIt()
@@ -70,5 +73,42 @@ public sealed class GrammarLookupTests(PristineProjectFixture pristine) : IDispo
         var last = GrammarReader.Page(GrammarReader.Read(_cache, "categories", null, false), first["total"]!.GetValue<int>() - 1, 2);
         Assert.Equal(1, last["returned"]!.GetValue<int>());
         Assert.False(last.ContainsKey("nextOffset"));
+    }
+
+    [Fact]
+    public void PagesConcatenatedAreTheUnpagedListInOrderWithNoGapOrRepeat()
+    {
+        AddCategories("Noun", "Verb", "Adjective", "Adverb", "Particle");
+        var expected = Names(GrammarReader.Read(_cache, "categories", null, false), keepOrder: true);
+
+        var paged = new List<string>();
+        var offset = 0;
+        while (true)
+        {
+            var page = GrammarReader.Page(GrammarReader.Read(_cache, "categories", null, false), offset, 2);
+            paged.AddRange(Names(page, keepOrder: true));
+            if (page["nextOffset"] is not { } next) break;
+            offset = next.GetValue<int>();
+        }
+
+        Assert.Equal(expected, paged);
+    }
+
+    [Fact]
+    public void PhonologicalRulesKeepApplicationOrderAndCarryTheirPosition()
+    {
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            foreach (var name in new[] { "Zeta", "Alpha" })
+            {
+                var rule = _cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create();
+                _cache.LangProject.PhonologicalDataOA.PhonRulesOS.Add(rule);
+                rule.Name.set_String(_cache.DefaultAnalWs, name);
+            }
+        });
+
+        var items = GrammarReader.Read(_cache, "phonological_rules", null, false)["items"]!.AsArray();
+        Assert.Equal(["Zeta", "Alpha"], items.Select(item => item!["name"]!.GetValue<string>()).ToArray());
+        Assert.Equal([1, 2], items.Select(item => item!["position"]!.GetValue<int>()).ToArray());
     }
 }

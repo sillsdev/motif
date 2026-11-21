@@ -39,16 +39,33 @@ public static class GrammarReadProjectionBuilder
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(request);
 
-        var matches = Objects(cache, request.Kind)
+        var filtered = Objects(cache, request.Kind)
             .Where(item => Matches(item, request.Query))
             .Where(item => MatchesExact(item, request.Exact))
             .Where(item => MatchesMorphType(item, request.MorphType))
-            .Where(item => MatchesId(item, request.Id))
-            .OrderBy(SortKey, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(item => item.Id, StringComparer.Ordinal)
-            .ToArray();
+            .Where(item => MatchesId(item, request.Id));
+        // Phonological rules apply in project order, so that order, not the name, is the page order.
+        var ordered = request.Kind == GrammarReadKind.phonological_rule
+            ? filtered.OrderBy(item => ((GrammarPhonologicalRuleRead)item).Position)
+            : filtered.OrderBy(SortKey, StringComparer.OrdinalIgnoreCase).ThenBy(item => item.Id, StringComparer.Ordinal);
+        var matches = ordered.ToArray();
         var items = matches.Skip(request.Offset).Take(request.Limit).ToArray();
         return new GrammarReadResponse(request.Kind, matches.Length, request.Offset, request.Limit, items);
+    }
+
+    /// <summary>The morph type names a morph type filter accepts, in the project's order.</summary>
+    public static IReadOnlyList<string> MorphTypeNames(LcmCache cache) =>
+        cache.LangProject.LexDbOA.MorphTypesOA.PossibilitiesOS.Select(type => Text(cache, type.Name))
+            .OfType<string>().ToArray();
+
+    /// <summary>The names in the comma-separated <paramref name="morphTypes"/> that are not a morph type name or id.</summary>
+    public static IReadOnlyList<string> UnknownMorphTypes(LcmCache cache, string morphTypes)
+    {
+        var known = cache.LangProject.LexDbOA.MorphTypesOA.PossibilitiesOS
+            .SelectMany(type => new[] { Text(cache, type.Name), Id(type) }).OfType<string>().ToArray();
+        return morphTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(wanted => !known.Any(name => string.Equals(name, wanted, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
     }
 
     private static IEnumerable<GrammarReadItem> Objects(LcmCache cache, GrammarReadKind kind) => kind switch
@@ -66,14 +83,14 @@ public static class GrammarReadProjectionBuilder
         GrammarReadKind.lexical_entry => cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
             .Select(entry => ReadEntry(cache, entry)),
         GrammarReadKind.phonological_rule => cache.LangProject.PhonologicalDataOA.PhonRulesOS
-            .Select(rule => ReadRule(cache, rule)),
+            .Select((rule, index) => ReadRule(cache, rule, index + 1)),
         _ => [],
     };
 
-    private static GrammarPhonologicalRuleRead ReadRule(LcmCache cache, IPhSegmentRule rule)
+    private static GrammarPhonologicalRuleRead ReadRule(LcmCache cache, IPhSegmentRule rule, int position)
     {
         var facts = ReadPhonologicalRule(rule, detailed: true);
-        return new GrammarPhonologicalRuleRead(Id(rule), Text(cache, rule.Name), rule.ClassName, rule.Disabled,
+        return new GrammarPhonologicalRuleRead(Id(rule), Text(cache, rule.Name), position, rule.ClassName, rule.Disabled,
             facts["rightHandSideCount"]?.GetValue<int>(), facts["intent"]?.DeepClone());
     }
 

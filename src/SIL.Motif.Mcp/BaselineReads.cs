@@ -6,6 +6,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Baselines;
+using SIL.Motif.Projection.Grammar;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 
@@ -32,16 +33,25 @@ internal static class BaselineReads
     /// <summary>A lexicon page with the captured source of its entries and filtered count.</summary>
     public static CommandOutcome<JsonObject> ReadLexicon(string projectPath, LexiconFilter filter,
         int limit, int offset, bool detailed) =>
-        Read(projectPath, (cache, baseline) =>
+        ReadOutcome(projectPath, (cache, baseline) =>
         {
+            if (filter.MorphTypesOrNull is { Count: > 0 } types &&
+                GrammarReadProjectionBuilder.UnknownMorphTypes(cache, string.Join(",", types)) is { Count: > 0 } unknown)
+                return Refused("grammar-read.invalid-request", FailureReason.InvalidArgument,
+                    $"Unknown morph type {string.Join(", ", unknown.Select(name => $"'{name}'"))}. " +
+                    $"Morph types are: {string.Join(", ", GrammarReadProjectionBuilder.MorphTypeNames(cache))}.");
             var result = LexiconReader.Read(cache, filter, limit, offset, detailed);
             result["source"] = JsonNode.Parse(ProjectionJson.Serialize(new BaselineReadSource(
                 baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc)));
-            return result;
+            return CommandOutcome<JsonObject>.Success(result);
         }, SharedReaders);
 
     private static CommandOutcome<JsonObject> Read(
         string projectPath, Func<LcmCache, BaselineRecord, JsonObject> read, BaselineReadSession readers) =>
+        ReadOutcome(projectPath, (cache, baseline) => CommandOutcome<JsonObject>.Success(read(cache, baseline)), readers);
+
+    private static CommandOutcome<JsonObject> ReadOutcome(string projectPath,
+        Func<LcmCache, BaselineRecord, CommandOutcome<JsonObject>> read, BaselineReadSession readers) =>
         ProjectStoreCommand.ReadExisting(projectPath,
             Refused("baseline.missing", FailureReason.NotFound,
                 "Motif has no saved copy of this project to read yet."), (database, project) =>
@@ -56,7 +66,7 @@ internal static class BaselineReads
                     "Motif's saved copy of this project is missing from disk.");
 
             return readers.Read(projectKey, baseline.Token, baseline.FwDataPath,
-                cache => CommandOutcome<JsonObject>.Success(read(cache, baseline)));
+                cache => read(cache, baseline));
         });
 
     static BaselineReads() =>

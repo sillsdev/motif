@@ -1622,6 +1622,12 @@ internal static class AgentTools
         if (kind is not null && !GrammarReader.Kinds.Contains(kind))
             return ToolOutcome.Refused("grammar.unknown-kind", FailureReason.InvalidArgument,
                 $"'{kind}' is not a grammar kind. Kinds are: {string.Join(", ", GrammarReader.Kinds)}.");
+        if (args.Optional("exact") is not null && args.Optional("query") is not null)
+            return ToolOutcome.Refused("grammar-read.invalid-request", FailureReason.InvalidArgument,
+                "Choose either an exact form or a name query, not both.");
+        if (args.Optional("id") is not null && (args.Optional("exact") is not null || args.Optional("query") is not null))
+            return ToolOutcome.Refused("grammar-read.invalid-request", FailureReason.InvalidArgument,
+                "An id is read on its own; drop the exact form and name query.");
         var detailed = args.Optional("detail") == "detailed";
         var offset = args.Int("offset", 0);
         var limit = args.Int("limit", 25);

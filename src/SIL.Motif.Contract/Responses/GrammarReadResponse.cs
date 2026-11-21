@@ -188,6 +188,7 @@ public sealed record GrammarGrammaticalInfoRead(
 /// <summary>A phonological rule and the authoring intent its edit guard copies.</summary>
 /// <param name="Id">The rule's canonical id.</param>
 /// <param name="Name">The rule's name.</param>
+/// <param name="Position">The rule's 1-based place in the project's application order.</param>
 /// <param name="RuleKind">The LibLCM rule class.</param>
 /// <param name="Disabled">Whether the rule is switched off.</param>
 /// <param name="RightHandSideCount">The number of outcomes of a regular rule.</param>
@@ -198,6 +199,7 @@ public sealed record GrammarGrammaticalInfoRead(
 public sealed record GrammarPhonologicalRuleRead(
     string Id,
     string? Name,
+    int Position,
     string RuleKind,
     bool Disabled,
     int? RightHandSideCount,

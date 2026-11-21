@@ -204,6 +204,32 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             block.Text == "You have 1 open Motif Request. Call motif_list_requests to review it.");
     }
 
+    [Fact]
+    public async Task LookupReadsRefuseAnUnknownMorphTypeAndConflictingSelectorsInsteadOfReturningNothing()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+
+        async Task<System.Text.Json.JsonElement> Refused(string tool, params (string, object?)[] arguments)
+        {
+            var response = await session.Client.CallToolAsync(tool, arguments.Prepend(("project", (object?)project.FwDataPath))
+                .ToDictionary(pair => pair.Item1, pair => pair.Item2));
+            Assert.True(response.IsError, response.StructuredContent?.ToString());
+            return response.StructuredContent!.Value;
+        }
+
+        var lexicon = await Refused("motif_lexicon", ("morphType", new[] { "prefx" }));
+        Assert.Equal("grammar-read.invalid-request", lexicon.GetProperty("code").GetString());
+        Assert.Contains("prefix", lexicon.GetProperty("message").GetString(), StringComparison.Ordinal);
+
+        var both = await Refused("motif_grammar", ("kind", "categories"), ("exact", "Noun"), ("query", "Noun"));
+        Assert.Equal("grammar-read.invalid-request", both.GetProperty("code").GetString());
+        var withId = await Refused("motif_grammar", ("kind", "categories"), ("exact", "Noun"), ("id", "AaHnUob1K5UlJwJZtEhh_w"));
+        Assert.Equal("grammar-read.invalid-request", withId.GetProperty("code").GetString());
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("json")]

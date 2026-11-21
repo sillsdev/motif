@@ -243,4 +243,69 @@ public sealed class GrammarReadLookupTests(PristineProjectFixture pristine) : ID
         Assert.Equal(1, plural.RootElement.GetProperty("total").GetInt32());
         Assert.Equal("phonological_rule", plural.RootElement.GetProperty("kind").GetString());
     }
+
+    [Theory]
+    [InlineData("prefx")]
+    [InlineData("prefixes")]
+    [InlineData("prefix,suffx")]
+    public void AnUnknownMorphTypeIsRefusedWithTheValidNamesNotAnEmptyResult(string morphType)
+    {
+        using var project = CaptureProject();
+        var result = CliInProcess.Run(_root, null, developerCommands: true,
+            "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--morph-type", morphType, "--json");
+        Assert.NotEqual(0, result.ExitCode);
+        var output = result.Output + result.Error;
+        Assert.Contains("grammar-read.invalid-request", output, StringComparison.Ordinal);
+        Assert.Contains("Unknown morph type", output, StringComparison.Ordinal);
+        Assert.Contains("prefix", output, StringComparison.Ordinal);
+        Assert.Contains("suffix", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThePagesConcatenatedAreTheUnpagedListInTheSameOrder()
+    {
+        using var project = CaptureProject();
+
+        using var all = Read(project.FwDataPath, "lexical_entry", "--limit", "100");
+        var expected = all.RootElement.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetString()!).ToArray();
+        Assert.True(expected.Length >= 6);
+
+        var paged = new List<string>();
+        int? offset = 0;
+        while (offset is { } next)
+        {
+            using var page = Read(project.FwDataPath, "lexical_entry", "--limit", "2", "--offset", next.ToString());
+            paged.AddRange(page.RootElement.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetString()!));
+            offset = page.RootElement.TryGetProperty("nextOffset", out var token) ? token.GetInt32() : null;
+        }
+
+        Assert.Equal(expected, paged);
+    }
+
+    [Fact]
+    public void PhonologicalRulesComeBackInApplicationOrderWithTheirPositionNotSortedByName()
+    {
+        using var project = new WalkthroughProject(pristine, _root, configure: (cache, _, _) =>
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                foreach (var name in new[] { "Zeta", "Alpha", "Mid" })
+                {
+                    var rule = cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create();
+                    cache.LangProject.PhonologicalDataOA.PhonRulesOS.Add(rule);
+                    rule.Name.set_String(cache.DefaultAnalWs, name);
+                }
+            }));
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+
+        using var rules = Read(project.FwDataPath, "phonological_rule", "--limit", "2");
+        var first = rules.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Equal(["Zeta", "Alpha"], first.Select(item => item.GetProperty("name").GetString()).ToArray());
+        Assert.Equal([1, 2], first.Select(item => item.GetProperty("position").GetInt32()).ToArray());
+
+        using var rest = Read(project.FwDataPath, "phonological_rule", "--limit", "2", "--offset", "2");
+        var last = Assert.Single(rest.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal("Mid", last.GetProperty("name").GetString());
+        Assert.Equal(3, last.GetProperty("position").GetInt32());
+    }
 }
