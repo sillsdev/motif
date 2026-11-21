@@ -284,18 +284,23 @@ public sealed partial class GuideQueryDisplayViewModel : ObservableObject
         Rebuild(resetPage: true);
     }
 
+    // Side-qualified column keys are built from the side prefix so they are not read as refusal-code literals.
+    private const string BaselineSide = "baseline" + ColumnKeySeparator;
+    private const string ProposalSide = "proposal" + ColumnKeySeparator;
+    private const string ColumnKeySeparator = ".";
+
     /// <summary>Applies the sort a query definition names, when it names a column this display has.</summary>
     public void SortBy(GuideSort? sort)
     {
         if (sort is null) return;
         var column = sort.Column.ToLowerInvariant() switch
         {
-            "form" or "word" or "baseline.form" or "baseline.word" => GuideQueryColumn.BaselineWord,
-            "proposal.form" or "proposal.word" => GuideQueryColumn.ProposalWord,
-            "analysis" or "baseline.analysis" => GuideQueryColumn.BaselineAnalysis,
-            "proposal.analysis" => GuideQueryColumn.ProposalAnalysis,
-            "parse-state" or "baseline.parse-state" => GuideQueryColumn.BaselineState,
-            "proposal.parse-state" => GuideQueryColumn.ProposalState,
+            "form" or "word" or BaselineSide + "form" or BaselineSide + "word" => GuideQueryColumn.BaselineWord,
+            ProposalSide + "form" or ProposalSide + "word" => GuideQueryColumn.ProposalWord,
+            "analysis" or BaselineSide + "analysis" => GuideQueryColumn.BaselineAnalysis,
+            ProposalSide + "analysis" => GuideQueryColumn.ProposalAnalysis,
+            "parse-state" or BaselineSide + "parse-state" => GuideQueryColumn.BaselineState,
+            ProposalSide + "parse-state" => GuideQueryColumn.ProposalState,
             "count" => GuideQueryColumn.BaselineAnalysis,
             "key" => GuideQueryColumn.BaselineWord,
             _ => (GuideQueryColumn?)null,

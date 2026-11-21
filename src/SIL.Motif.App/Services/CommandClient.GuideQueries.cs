@@ -17,7 +17,7 @@ public sealed partial class CommandClient
             if (cancellationToken.IsCancellationRequested) return WaitCancelled<FormsQueryResponse>();
             if (!QueryRunLine.TryParseRun(request.Line, out var line, out var refusal)) return CommandOutcome<FormsQueryResponse>.Refused(refusal);
             if (line.Query is not { } query) return CommandOutcome<FormsQueryResponse>.Refused(
-                new Refusal("guide-query.not-a-query", FailureReason.InvalidArgument, MotifAppStrings.GuideQueryGroupLine));
+                new Refusal(RefusalCodes.GuideQueryRunInvalid, FailureReason.InvalidArgument, MotifAppStrings.GuideQueryGroupLine));
             return FormsQueryCommand.Run(new FormsQueryRequest(request.ProjectPath, MotifProductVersion.CurrentText, query.Record),
                 parserPath: _options.ParserPath);
         }, CancellationToken.None);
