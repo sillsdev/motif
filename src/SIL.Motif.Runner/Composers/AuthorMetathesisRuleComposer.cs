@@ -29,7 +29,7 @@ public static class AuthorMetathesisRuleComposer
         AuthorPhonologicalRuleComposer.RequireContextLength(intent.Right, "right");
         AuthorPhonologicalRuleComposer.ValidateBoundaryMarkers(cache, intent.Left, intent.Right);
         var data = cache.LangProject.PhonologicalDataOA;
-        AuthorPhonologicalRuleComposer.ValidatePlacement(data, intent.Placement);
+        var placement = AuthorPhonologicalRuleComposer.ResolvePlacement(data, intent.Placement);
 
         var left = ResolveEnvironment(cache, intent.Left, isLeft: true);
         var right = ResolveEnvironment(cache, intent.Right, isLeft: false);
@@ -41,7 +41,7 @@ public static class AuthorMetathesisRuleComposer
         var boundaryOperations = AuthorPhonologicalRuleComposer.EnsureBoundaries(cache, builder, left, right);
         var dataId = SoundSystemAuthoring.Id(data);
         var ruleId = builder.Create(PhPhonDataPhonRulesOperationKinds.Create, dataId,
-            new { @class = "PhMetathesisRule" }, intent.Placement);
+            new { @class = "PhMetathesisRule" }, placement);
         builder.Text(PhSegmentRuleNameOperationKinds.SetName, ruleId, cache, cache.DefaultAnalWs, intent.Name);
         builder.Add(PhSegmentRuleDirectionOperationKinds.SetDirection, ruleId, new { value = direction });
 

@@ -2,6 +2,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Composers;
 using SIL.Motif.Model.Effects;
 
 namespace SIL.Motif.Runner.Operations;
@@ -47,18 +48,35 @@ internal static class AlphaRuleExpansionWarnings
 
         foreach (var rule in rules.Values)
         {
-            var variables = Variables(rule);
-            var combinations = variables.Aggregate(1L, (total, item) => Math.Min(total * Math.Max(item.Values, 1), int.MaxValue));
-            if (combinations <= CombinationLimit) continue;
-            var features = string.Join(", ", variables.Select(item => $"{Name(item.Feature)} ({item.Values} values)"));
-            var warning = $"Rule '{RuleName(rule)}' has {variables.Count} {DryRunWarningMarkers.AlphaRuleExpansion} {features}: the parser tries each " +
-                $"variable with every value of its feature, up to {combinations} combinations for this rule on every word that reaches it, " +
-                "so it can be slow enough that a Trial stops words. A rule over one natural class per value group avoids the expansion; " +
-                "if the Trial stops words, remove this rule first.";
+            var variables = Variables(rule).Select(item => (Name(item.Feature), item.Values)).ToArray();
+            if (Warning(RuleName(rule), variables) is not { } warning) continue;
             effects.Add(new(CanonicalId.FromGuid(rule.Guid), "dryRunWarning", new Dictionary<string, string>(),
                 new Dictionary<string, string> { ["warning"] = warning },
                 System.Text.Json.JsonSerializer.SerializeToElement(new { warning })));
         }
+    }
+
+    /// <summary>The warning for a rule whose variables multiply past the limit, or null when it is cheap enough.</summary>
+    internal static string? Warning(string ruleName, IReadOnlyList<(string Feature, int Values)> variables)
+    {
+        var combinations = variables.Aggregate(1L, (total, item) => Math.Min(total * Math.Max(item.Values, 1), int.MaxValue));
+        if (combinations <= CombinationLimit) return null;
+        var features = string.Join(", ", variables.Select(item => $"{item.Feature} ({item.Values} values)"));
+        return $"Rule '{ruleName}' has {variables.Count} {DryRunWarningMarkers.AlphaRuleExpansion} {features}: the parser tries each " +
+            $"variable with every value of its feature, up to {combinations} combinations for this rule on every word that reaches it, " +
+            "so it can be slow enough that a Trial stops words. A rule over one natural class per value group avoids the expansion; " +
+            "if the Trial stops words, remove this rule first.";
+    }
+
+    /// <summary>The alpha variables an authored rule names, each with the values its feature takes in <paramref name="cache"/>.</summary>
+    internal static IReadOnlyList<(string Feature, int Values)> Variables(LcmCache cache, IEnumerable<PhonologicalRuleVariable> uses)
+    {
+        var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
+        var result = new List<(string, int)>();
+        foreach (var group in uses.GroupBy(use => use.Variable, StringComparer.Ordinal))
+            if (repository.TryGetObject(group.First().Feature.ToGuid(), out var found) && found is IFsClosedFeature feature)
+                result.Add((Name(feature), feature.ValuesOC.Count));
+        return result;
     }
 
     internal static string RuleName(IPhSegmentRule rule) =>

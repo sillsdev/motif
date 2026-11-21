@@ -80,8 +80,12 @@ public static partial class ProposalCommands
             AuthorEnvironmentComposer.Build(cache, AuthorEnvironmentIntentParser.Parse(input))),
         new("compose-author-phonological-rule", "AuthorPhonologicalRule", ["phonological-rules"], (cache, input, _) =>
                 AuthorPhonologicalRuleComposer.Build(cache, AuthorPhonologicalRuleIntentParser.Parse(input)),
-            RelatedObjects: (cache, input) => MultiMemberOutputWarning.Read(cache,
-                AuthorPhonologicalRuleIntentParser.Parse(input).Outcomes.SelectMany(outcome => outcome.Output))),
+            RelatedObjects: (cache, input) =>
+            {
+                var intent = AuthorPhonologicalRuleIntentParser.Parse(input);
+                return MultiMemberOutputWarning.Read(cache, intent.Outcomes.SelectMany(outcome => outcome.Output))
+                    .Concat(AlphaRuleComposeWarning.Read(cache, intent)).ToArray();
+            }),
         new("compose-author-metathesis-rule", "AuthorMetathesisRule", ["phonological-rules"], (cache, input, _) =>
             AuthorMetathesisRuleComposer.Build(cache, AuthorMetathesisRuleIntentParser.Parse(input))),
         new("compose-author-part-of-speech", "AuthorPartOfSpeech", ["lexical-entries-and-glosses", "inflection-classes", "affix-slots-and-templates"], (cache, input, _) =>

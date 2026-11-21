@@ -32,7 +32,7 @@ public static class AuthorPhonologicalRuleComposer
         FeatureRuleAuthoring.Validate(cache, intent);
         var data = cache.LangProject.PhonologicalDataOA;
 
-        ValidatePlacement(data, intent.Placement);
+        var placement = ResolvePlacement(data, intent.Placement);
         var input = intent.Input.Select(item => ResolveRuleItem(cache, item, plannedNaturalClass)).ToArray();
         var outcomes = intent.Outcomes.Select(o => ResolveOutcome(cache, o, plannedNaturalClass)).ToArray();
 
@@ -42,7 +42,7 @@ public static class AuthorPhonologicalRuleComposer
 
         var dataId = SoundSystemAuthoring.Id(data);
         var ruleId = builder.Create(PhPhonDataPhonRulesOperationKinds.Create, dataId,
-            new { @class = "PhRegularRule" }, intent.Placement, authoredRuleId);
+            new { @class = "PhRegularRule" }, placement, authoredRuleId);
         var create = builder.Operations[^1];
         if (prerequisites is { Count: > 0 }) AddDependencies(builder.Operations, create, prerequisites);
         builder.Text(PhSegmentRuleNameOperationKinds.SetName, ruleId, cache, cache.DefaultAnalWs, intent.Name);
@@ -396,23 +396,44 @@ public static class AuthorPhonologicalRuleComposer
         _ => throw new InvalidOperationException("A reserved boundary representation was not recognized."),
     };
 
-    internal static void ValidatePlacement(IPhPhonData data, Placement? placement)
+    /// <summary>Checks the anchors against the live order and returns the placement with both neighbours derived.</summary>
+    internal static Placement? ResolvePlacement(IPhPhonData data, Placement? placement)
     {
         if (data.PhonRulesOS.Count == 0)
         {
             if (placement is not null)
                 throw new InvalidOperationException("The first rule cannot name a neighboring rule for placement.");
-            return;
+            return null;
         }
         if (placement is null)
-            throw new InvalidOperationException("A nonempty rule sequence requires declared placement beside existing rules.");
+            throw new InvalidOperationException("A nonempty rule sequence requires declared placement beside existing rules. " +
+                $"Name the rule before the gap (after) or the rule after it (before). {DescribeOrder(data)}");
         var rules = data.PhonRulesOS.Select(rule => rule.Guid).ToArray();
         var afterIndex = placement.After is { } after ? Array.IndexOf(rules, after.ToGuid()) : -1;
-        var beforeIndex = placement.Before is { } before ? Array.IndexOf(rules, before.ToGuid()) : rules.Length;
-        if ((placement.After is not null && afterIndex < 0) || (placement.Before is not null && beforeIndex < 0) ||
-            beforeIndex != afterIndex + 1)
-            throw new InvalidOperationException("Rule placement anchors are stale or are not adjacent in the current order.");
+        var beforeIndex = placement.Before is { } before ? Array.IndexOf(rules, before.ToGuid()) : -1;
+        if (placement.After is not null && afterIndex < 0)
+            throw Refused(data, placement, $"anchor after '{placement.After.Value.Value}' is not in the live order");
+        if (placement.Before is not null && beforeIndex < 0)
+            throw Refused(data, placement, $"anchor before '{placement.Before.Value.Value}' is not in the live order");
+        if (placement.After is not null && placement.Before is not null && beforeIndex != afterIndex + 1)
+            throw Refused(data, placement, "the two anchors are not adjacent in the live order");
+        var gap = placement.Before is not null ? beforeIndex : afterIndex + 1;
+        CanonicalId? derivedAfter = placement.After ?? (gap > 0 ? CanonicalId.FromGuid(rules[gap - 1]) : null);
+        CanonicalId? derivedBefore = placement.Before ?? (gap < rules.Length ? CanonicalId.FromGuid(rules[gap]) : null);
+        return new Placement(derivedAfter, derivedBefore);
     }
+
+    private static InvalidOperationException Refused(IPhPhonData data, Placement placement, string reason) =>
+        new($"Rule placement anchors are stale or are not adjacent in the current order: {reason}. " +
+            $"Anchors given: after {placement.After?.Value ?? "(none)"}, before {placement.Before?.Value ?? "(none)"}. " +
+            $"{DescribeOrder(data)} A single anchor is enough: use before or after with one rule from this order.");
+
+    private static string DescribeOrder(IPhPhonData data) => "Live rule order: " + string.Join("; ",
+        data.PhonRulesOS.Select((rule, index) => $"{index + 1}. {CanonicalId.FromGuid(rule.Guid).Value} " +
+            $"'{RuleLabel(rule)}'")) + ".";
+
+    private static string RuleLabel(ICmObject rule) => rule is IPhSegmentRule segment
+        ? AlphaRuleExpansionWarnings.RuleName(segment) : "(compound rule)";
 
     internal static int DirectionValue(PhonologicalRuleDirection direction) => direction switch
     {
