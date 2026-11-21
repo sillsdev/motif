@@ -86,6 +86,9 @@ public static class WhyNotQuery
             case PanGlossOutcome.Refused refused:
                 return CommandOutcome<WhyNotResponse>.Refused(
                     ParserExecutionRefusal.From(RefusalCodes.WhyNotInputRefused, projectPath, refused));
+            case PanGlossOutcome.Unavailable { MissingCapability: "why-not-guid-choices" } incapable:
+                return Refuse(RefusalCodes.WhyNotParserUnsupported, FailureReason.Refused,
+                    incapable.Detail + " Update PanGloss to a release after 0.27.0 that declares it (why-not slice 4), or name every morph by its id.");
             case PanGlossOutcome.Unavailable { MissingCapability: not null } incapable:
                 return Refuse(RefusalCodes.WhyNotParserUnsupported, FailureReason.Refused,
                     incapable.Detail + " Update PanGloss to a release whose --describe declares interfaces.whyNot.");

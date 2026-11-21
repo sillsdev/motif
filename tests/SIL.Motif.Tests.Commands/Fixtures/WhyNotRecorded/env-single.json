@@ -18,7 +18,7 @@
    "analysis": null,
    "failure": {
     "kind": "environment_unmet",
-    "plain": "allomorph 00000000-0000-0000-0000-000000000111#0 of 00000000-0000-0000-0000-000000000102 (\"run\") is not allowed in the synthesized form \"dad\" (phonological rules later make it \"dat\"), between \"\" and \"\" (environment /[V]_)",
+    "plain": "dat 'run' is not allowed in the synthesized form \"dad\" (phonological rules later make it \"dat\"), between \"\" and \"\" (environment /[V]_)",
     "position": 0,
     "hc_reason": "Environments",
     "provenance": "hc_reported",

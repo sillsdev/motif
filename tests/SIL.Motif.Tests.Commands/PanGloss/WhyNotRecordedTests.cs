@@ -60,6 +60,8 @@ public sealed class WhyNotRecordedTests
         Assert.NotNull(capabilities);
         Assert.Null(capabilities.WhyNotRefusal());
         Assert.Equal(["no_morph_match", "environment_unmet", "adhoc_prohibition"], capabilities.WhyNot!.Kinds.ToArray());
+        Assert.True(capabilities.WhyNot.ExpectGuidChoices);
+        Assert.Null(capabilities.GuidChoiceRefusal([Cand("a")]));
         var request = new PanGlossRequest.WhyNot("g.fwdata", "ta", [Cand("a")]);
         Assert.Null(PanGlossSurface.CheckRequest("pangloss", request, new PanGlossSurfaceCheck(true, string.Empty, capabilities)).Failure);
     }
@@ -92,6 +94,7 @@ public sealed class WhyNotRecordedTests
         Assert.Equal(P + "000000000111", rejection.Target!.FieldWorksGuid);
         Assert.Equal(P + "000000000017", rejection.Environment!.FieldWorksGuid);
         Assert.Equal("/[V]_", rejection.Environment.Text);
+        Assert.StartsWith("dat 'run' is not allowed in the synthesized form", rejection.Plain, StringComparison.Ordinal);
         Assert.Equal(0, rejection.Environment.Index);
         Assert.Equal(P + "000000000111", rejection.Morphs.Single().FormGuid);
     }
@@ -109,6 +112,7 @@ public sealed class WhyNotRecordedTests
     public void ARealProhibitionKeepsItsRuleGuidAndBothMembers()
     {
         var rejection = Rejection("adhoc");
+        Assert.Equal("ta- 'PA' forbids da 'run'", rejection.Plain);
         Assert.Equal(P + "0000000009a1", rejection.Target!.FieldWorksGuid);
         Assert.Equal([P + "000000000201", P + "000000000101"], rejection.Members!.Select(m => m.FormGuid));
     }

@@ -311,6 +311,7 @@
    "schema": "pangloss.whynot.v1",
    "ids": "grammar-xml",
    "suiteRows": true,
+   "expectGuidChoices": true,
    "kinds": [
     "no_morph_match",
     "environment_unmet",

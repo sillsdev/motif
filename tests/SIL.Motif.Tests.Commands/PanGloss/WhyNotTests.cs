@@ -143,6 +143,29 @@ public sealed class WhyNotTests : IDisposable
     }
 
     [Fact]
+    public void AGuidOnlyChoiceNeedsTheExpectGuidChoicesFlagButIdChoicesDoNot()
+    {
+        var guidOnly = new[] { Parse($"{Entry}:{Msa}") };
+        var old = PanGlossSurface.ReadDescription(WhyNotFixtures.Describe(WhyNotFixtures.DeclaredWhyNot), out _)!;
+        var flagged = PanGlossSurface.ReadDescription(WhyNotFixtures.Describe(
+            WhyNotFixtures.DeclaredWhyNot.Replace("\"suiteRows\": true,", "\"suiteRows\": true, \"expectGuidChoices\": true,")), out _)!;
+        Assert.False(old.WhyNot!.ExpectGuidChoices);
+        Assert.True(flagged.WhyNot!.ExpectGuidChoices);
+        Assert.Contains("expectGuidChoices", old.GuidChoiceRefusal(guidOnly), StringComparison.Ordinal);
+        Assert.Null(old.GuidChoiceRefusal(OneCandidate));
+        Assert.Null(flagged.GuidChoiceRefusal(guidOnly));
+    }
+
+    [Fact]
+    public void AGuidChoiceRefusalReadsAsAParserUnsupportedRefusalNamingTheNeededBuild()
+    {
+        var outcome = new PanGlossOutcome.Unavailable("x cannot read a choice named by guid alone.") { MissingCapability = "why-not-guid-choices" };
+        var shaped = WhyNotQuery.Shape(outcome, "p.fwdata", "kibakek", OneCandidate, "baseline");
+        Assert.Equal(RefusalCodes.WhyNotParserUnsupported, shaped.Refusal!.Code);
+        Assert.Contains("after 0.27.0", shaped.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TheInvokerRefusesAParserWithoutTheCapabilityBeforeItRunsAnything()
     {
         var grammar = Path.Combine(_root, "g.fwdata");

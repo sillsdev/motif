@@ -45,6 +45,10 @@ public static partial class WhyNotInput
     /// <summary>Whether <paramref name="text"/> is a textual GUID in the lowercase form PanGloss's schema requires.</summary>
     public static bool IsGuid(string text) => GuidText.IsMatch(text);
 
+    /// <summary>Whether any choice is named by guid alone, which needs a PanGloss that declares <c>expectGuidChoices</c>.</summary>
+    public static bool HasGuidOnlyChoice(IReadOnlyList<WhyNotCandidate> candidates) =>
+        candidates.Any(candidate => candidate.Positions.Any(position => position.Any(choice => choice.Morpheme is null)));
+
     /// <summary>The reason this set of candidates cannot be sent in one call, or null when it can.</summary>
     public static string? Problem(IReadOnlyList<WhyNotCandidate> candidates)
     {

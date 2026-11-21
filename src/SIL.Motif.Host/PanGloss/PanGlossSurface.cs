@@ -32,6 +32,12 @@ internal sealed record PanGlossCapabilities(
             : $"it declares why-not ids '{WhyNot.Ids ?? "none"}', and Motif needs {PanGlossInterfaceVersions.WhyNotIds}";
     }
 
+    /// <summary>Why these candidates cannot be sent, when one is named by guid alone and the parser does not declare it reads that.</summary>
+    internal string? GuidChoiceRefusal(IReadOnlyList<WhyNotCandidate> candidates) =>
+        WhyNotInput.HasGuidOnlyChoice(candidates) && WhyNot is { ExpectGuidChoices: false }
+            ? "its description does not declare interfaces.whyNot.expectGuidChoices"
+            : null;
+
     internal string? ValidateRequest(PanGlossRequest request)
     {
         if ((request is PanGlossRequest.Facts or PanGlossRequest.GrammarHealth { FactsContextJson: not null }) && !FactsContractSupported)
@@ -93,7 +99,7 @@ internal sealed record PanGlossCapabilities(
 /// <param name="Ids">The id promise, or null when the key is missing.</param>
 /// <param name="Kinds">The failure kinds the parser answers; every other kind comes back unknown.</param>
 /// <param name="SuiteRows">Whether the parser also runs the shared suite's why-not rows.</param>
-internal sealed record PanGlossWhyNotCapability(string? Schema, string? Ids, ImmutableArray<string> Kinds, bool SuiteRows);
+internal sealed record PanGlossWhyNotCapability(string? Schema, string? Ids, ImmutableArray<string> Kinds, bool SuiteRows, bool ExpectGuidChoices = false);
 
 internal sealed record PanGlossCommandCapabilities(
     bool Hidden, ImmutableArray<string> Positionals, ImmutableDictionary<string, bool> Flags);
@@ -221,7 +227,8 @@ internal static class PanGlossSurface
                 if (kind.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(kind.GetString()))
                     kinds.Add(kind.GetString()!);
         var suite = whyNot.TryGetProperty("suiteRows", out var rows) && rows.ValueKind == JsonValueKind.True;
-        return new PanGlossWhyNotCapability(Text("schema"), Text("ids"), kinds.ToImmutable(), suite);
+        var guidChoices = whyNot.TryGetProperty("expectGuidChoices", out var flag) && flag.ValueKind == JsonValueKind.True;
+        return new PanGlossWhyNotCapability(Text("schema"), Text("ids"), kinds.ToImmutable(), suite, guidChoices);
     }
 
     /// <summary>Reads one <c>--describe</c> document; the seam tests drive with a recorded description.</summary>

@@ -88,6 +88,10 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                                 return new PanGlossOutcome.Unavailable(
                                     $"The installed PanGloss ('{_executable}') cannot answer why-not: {incapable}.")
                                     { Containment = containment.Report, MissingCapability = "why-not" };
+                            if (described.GuidChoiceRefusal(whyNot.Candidates) is { } noGuidChoices)
+                                return new PanGlossOutcome.Unavailable(
+                                    $"The installed PanGloss ('{_executable}') cannot read a choice named by guid alone: {noGuidChoices}.")
+                                    { Containment = containment.Report, MissingCapability = "why-not-guid-choices" };
                             effectiveRequest = whyNot with { AnswerableKinds = described.WhyNot!.Kinds };
                         }
                         var admission = PanGlossSurface.CheckRequest(_executable, effectiveRequest, surface);

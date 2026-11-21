@@ -18,7 +18,7 @@
    "analysis": null,
    "failure": {
     "kind": "environment_unmet",
-    "plain": "allomorph 00000000-0000-0000-0000-000000000101#0 of 00000000-0000-0000-0000-000000000102 (\"run\") is not allowed where it surfaces, between \"\" and \"\" (none of the environments /[V]_, /t_ is met)",
+    "plain": "da 'run' is not allowed where it surfaces, between \"\" and \"\" (none of the environments /[V]_, /t_ is met)",
     "position": 0,
     "hc_reason": "Environments",
     "provenance": "hc_reported",

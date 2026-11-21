@@ -27,7 +27,7 @@
    "analysis": null,
    "failure": {
     "kind": "adhoc_prohibition",
-    "plain": "00000000-0000-0000-0000-000000000202 (\"PA\") [00000000-0000-0000-0000-000000000201#0] forbids 00000000-0000-0000-0000-000000000102 (\"run\") [00000000-0000-0000-0000-000000000101#0]",
+    "plain": "ta- 'PA' forbids da 'run'",
     "position": 0,
     "hc_reason": "AllomorphCoOccurrenceRules",
     "provenance": "hc_reported",

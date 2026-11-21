@@ -11,7 +11,7 @@ motif why-not kibakek --project <fwdata> --expect kib,ak,ek --expect kib,ak|ik,e
 - `,` separates positions, in surface order. `|` offers several choices at one position, and the answer says which one worked.
 - A morph is its `grammar.xml` id. `id@allomorph-id` pins an allomorph.
 - To name a morph by FieldWorks identity, write `entryGuid:msaGuid`; each side is a GUID or a Motif id. `id=entryGuid:msaGuid` gives the id and has PanGloss check the guids belong to it.
-- Candidates by id and by guid can share one call. Pinning an allomorph on a guid-only choice works only when the guid names a single morpheme; otherwise PanGloss refuses it.
+- Candidates by id and by guid can share one call; naming a morph by guid alone needs a PanGloss that declares `interfaces.whyNot.expectGuidChoices`, and Motif refuses the call otherwise. Pinning an allomorph on a guid-only choice works only when the guid names a single morpheme; otherwise PanGloss refuses it.
 - Up to 16 candidates, 32 positions each and 16 choices per position. `--expect` repeats.
 
 ## What you get
