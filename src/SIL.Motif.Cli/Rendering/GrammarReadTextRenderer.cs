@@ -14,11 +14,13 @@ internal static class GrammarReadTextRenderer
     {
         var text = new StringBuilder();
         text.AppendLine($"Grammar objects: {response.Kind} ({response.Returned} of {response.Total}; offset {response.Offset}, limit {response.Limit})");
-        text.AppendLine(response.Baseline is { } baseline
-            ? $"Baseline: {baseline.ProjectIdentity}; {(response.IsStale ? "saved since capture" : "current")}; " +
-                $"snapshot {baseline.SemanticSnapshotDigest}; bundle {baseline.BundleDigest}; captured {baseline.CapturedUtc}."
-            : $"Baseline identity unavailable; {(response.IsStale ? "saved since capture" : "current")}.");
-        if (response.At is not null) text.AppendLine($"Read at: {response.At}.");
+        if (response.AtLabel is null)
+            text.AppendLine(response.Baseline is { } baseline
+                ? $"Baseline: {baseline.ProjectIdentity}; {(response.IsStale ? "saved since capture" : "current")}; " +
+                    $"snapshot {baseline.SemanticSnapshotDigest}; bundle {baseline.BundleDigest}; captured {baseline.CapturedUtc}."
+                : $"Baseline identity unavailable; {(response.IsStale ? "saved since capture" : "current")}.");
+        if (response.At is not null)
+            text.AppendLine(response.AtLabel is null ? $"Read at: {response.At}." : $"Read at: {response.At}: {response.AtLabel}.");
         if (response.ExactNote is not null) text.AppendLine($"Note: {response.ExactNote}");
         foreach (var item in response.Items.Take(TextListLimit)) RenderItem(text, item);
         AppendOverflow(text, response.Items.Count);

@@ -12,7 +12,8 @@ namespace SIL.Motif.Commands.Queries;
 /// <summary>The staged FieldWorks snapshot a word-level PanGloss question is asked of, and what to call it.</summary>
 /// <param name="FwDataPath">The snapshot PanGloss reads: the published Baseline copy, or a Trial's scratch copy.</param>
 /// <param name="TracedAgainst"><c>baseline</c>, or <c>proposal &lt;id&gt;</c>.</param>
-internal sealed record TracedGrammar(string FwDataPath, string TracedAgainst)
+/// <param name="TrialJobId">The Trial job whose scratch copy this is, or null for the Baseline.</param>
+internal sealed record TracedGrammar(string FwDataPath, string TracedAgainst, string? TrialJobId = null)
 {
     /// <summary>
     /// The one route every single-word PanGloss question takes to its grammar: the current published Baseline, or the
@@ -40,6 +41,7 @@ internal sealed record TracedGrammar(string FwDataPath, string TracedAgainst)
             return CommandOutcome<TracedGrammar>.Refused(new Refusal(RefusalCodes.WordTraceNoBaseline, FailureReason.Refused,
                 "The project has no Baseline yet. Run 'motif baseline capture --project <fwdata>' before tracing a word."));
         return CommandOutcome<TracedGrammar>.Success(
-            new TracedGrammar(baseline.FwDataPath, proposalId is null ? "baseline" : "proposal " + proposalId));
+            new TracedGrammar(baseline.FwDataPath, proposalId is null ? "baseline" : "proposal " + proposalId,
+                proposalId is null ? null : Trials.LatestFor(database, project, proposalId)?.JobId));
     }
 }

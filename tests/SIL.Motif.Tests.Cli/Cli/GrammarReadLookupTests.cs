@@ -105,13 +105,16 @@ public sealed class GrammarReadLookupTests(PristineProjectFixture pristine) : ID
         using var stemOnly = Read(project.FwDataPath, "lexical_entry", "--exact", "ka");
         Assert.False(stemOnly.RootElement.TryGetProperty("exactNote", out var none) && none.ValueKind == JsonValueKind.String);
 
+        using var narrowed = Read(project.FwDataPath, "lexical_entry", "--exact", "zi", "--morph-type", "prefix");
+        Assert.False(narrowed.RootElement.TryGetProperty("exactNote", out var narrowedNote) && narrowedNote.ValueKind == JsonValueKind.String);
+
         using var marked = Read(project.FwDataPath, "lexical_entry", "--exact", "zi-");
         Assert.False(marked.RootElement.TryGetProperty("exactNote", out var markedNote) && markedNote.ValueKind == JsonValueKind.String);
 
         var text = CliInProcess.Run(_root, null, developerCommands: true,
             ["grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--exact", "zi"]);
         Assert.Equal(0, text.ExitCode);
-        Assert.Contains("also matched 1 marked affix headword(s): zi-", text.Output, StringComparison.Ordinal);
+        Assert.Contains("also matched 1 marked headword(s): zi-", text.Output, StringComparison.Ordinal);
     }
 
     [Fact]

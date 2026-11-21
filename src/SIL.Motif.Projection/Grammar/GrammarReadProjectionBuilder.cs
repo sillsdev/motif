@@ -52,7 +52,7 @@ public static class GrammarReadProjectionBuilder
         var items = matches.Skip(request.Offset).Take(request.Limit).ToArray();
         return new GrammarReadResponse(request.Kind, matches.Length, request.Offset, request.Limit, items)
         {
-            ExactNote = ExactNote(request.Exact, matches),
+            ExactNote = string.IsNullOrWhiteSpace(request.MorphType) ? ExactNote(request.Exact, matches) : null,
         };
     }
 
@@ -62,10 +62,10 @@ public static class GrammarReadProjectionBuilder
         var marked = matches.OfType<GrammarLexicalEntryRead>()
             .Where(entry => FormMatch.MatchesOnlyByMarker(exact, [entry.Headword])).ToArray();
         if (marked.Length == 0) return null;
-        var shown = marked.Take(5).Select(entry => entry.Headword ?? entry.Id);
-        var more = marked.Length > 5 ? $" and {marked.Length - 5} more" : string.Empty;
-        return $"'{exact.Trim()}' also matched {marked.Length} marked affix headword(s): {string.Join(", ", shown)}{more}. " +
-            $"Give the marker (for example '{(marked[0].Headword ?? exact).Trim()}') to match only that form.";
+        var names = marked.Select(entry => entry.Headword ?? entry.Id).ToArray();
+        return $"'{exact.Trim()}' also matched {marked.Length} marked headword(s): {string.Join(", ", names)}. " +
+            "Give the marker (for example " + string.Join(" or ", names.Take(3).Select(name => $"'{name.Trim()}'")) +
+            ") to match only that form.";
     }
 
     /// <summary>The morph type names a morph type filter accepts, in the project's order.</summary>

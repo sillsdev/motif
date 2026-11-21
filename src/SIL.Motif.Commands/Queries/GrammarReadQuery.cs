@@ -55,7 +55,12 @@ public static class GrammarReadQuery
                 var traced = TracedGrammar.Resolve(database, project, proposalId);
                 if (!traced.Succeeded) return CommandOutcome<GrammarReadResponse>.Refused(traced.Refusal!);
                 using var trialReader = BaselineReadCache.Open(traced.Value!.FwDataPath);
-                return Read(trialReader.Cache, request).Map(page => page with { At = traced.Value.TracedAgainst });
+                return Read(trialReader.Cache, request).Map(page => page with
+                {
+                    At = traced.Value.TracedAgainst,
+                    AtLabel = $"the grammar the latest Trial of this Proposal ran against (Trial job {traced.Value.TrialJobId}), " +
+                        "with the Proposal's edits applied; not the Baseline",
+                });
             }
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (baseline is null)
