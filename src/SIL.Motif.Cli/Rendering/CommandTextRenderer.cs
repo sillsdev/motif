@@ -69,6 +69,7 @@ public static class CommandTextRenderer
             CorpusDetailProjection p => ProjectionText.Render(p),
             ProjectConfigurationProjection p => ProjectionText.Render(p),
             StorePruneResponse r => RenderStorePrune(r),
+            WorkerStopResponse r => RenderWorkerStop(r),
             StoreRelocateResponse r => string.Format(CultureInfo.CurrentCulture,
                 r.Changed ? CliStrings.StoreRelocateFormat : CliStrings.StoreRelocateUnchangedFormat,
                 r.OldProjectPath, r.NewProjectPath, r.IdentityEvidence) +
@@ -958,6 +959,17 @@ public static class CommandTextRenderer
         return new CommandResult(
             FailureEnvelope.ExitCodeFor(refusal.Reason), prefix + refusal.Message + Environment.NewLine,
             refusal.Reason);
+    }
+
+    private static string RenderWorkerStop(WorkerStopResponse r)
+    {
+        if (r.Workers.Count == 0)
+            return string.Format(CultureInfo.CurrentCulture, r.ProjectPath is null
+                ? CliStrings.WorkerStopNoneForRoot : CliStrings.WorkerStopNoneForProject,
+                r.ProjectPath ?? r.Root) + Environment.NewLine;
+        return string.Concat(r.Workers.Select(worker => string.Format(CultureInfo.CurrentCulture,
+            worker.Outcome == "stopped" ? CliStrings.WorkerStopStopped : CliStrings.WorkerStopSkipped,
+            worker.Pid, worker.Build, worker.Root) + Environment.NewLine));
     }
 
     private static string RenderStorePrune(StorePruneResponse r)

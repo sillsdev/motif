@@ -104,9 +104,10 @@ public static partial class StoreRelocateCommand
         }
         catch (MotifStoreLockException exception)
         {
-            return Refused(RefusalCodes.ProjectBusy, FailureReason.Busy,
+            var busy = Refused(RefusalCodes.ProjectBusy, FailureReason.Busy,
                 "The project store is in use by another Motif process. Close it and try again.",
                 project.FullFwDataPath, storePath, exception.Message);
+            return CommandOutcome<StoreRelocateResponse>.Refused(ProjectStoreCommand.NamingHolders(busy.Refusal!, storePath));
         }
         catch (MotifStoreVersionException exception)
         {

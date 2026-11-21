@@ -174,8 +174,9 @@ public static class ProjectStoreCommand
         }
         catch (MotifStoreLockException exception)
         {
-            return CommandOutcome<T>.Refused(
-                new Refusal("project.busy", FailureReason.Busy, "The project store is in use.", OperationFacts(fwDataPath, exception)));
+            return CommandOutcome<T>.Refused(NamingHolders(
+                new Refusal("project.busy", FailureReason.Busy, "The project store is in use.",
+                    OperationFacts(fwDataPath, exception)), ProjectDatabaseCatalog.DatabasePathFor(project)));
         }
         catch (IOException exception)
         {
@@ -343,6 +344,30 @@ public static class ProjectStoreCommand
         var facts = OperationFacts(fwDataPath, exception);
         facts[RefusalFactNames.StoreLockMissing] = lockPath;
         return facts;
+    }
+
+    /// <summary>
+    /// Adds the runner that has <paramref name="storePath"/> open to a busy refusal: its pid, build and root as facts,
+    /// and the command that stops it in the message. The refusal is unchanged when no live runner is recorded.
+    /// </summary>
+    internal static Refusal NamingHolders(Refusal refusal, string storePath)
+    {
+        var holders = StoreHolder.ReadLive(storePath);
+        if (holders.Count == 0) return refusal;
+        var first = holders[0];
+        var facts = new Dictionary<string, string>(refusal.Facts, StringComparer.Ordinal)
+        {
+            ["holderPid"] = first.Pid.ToString(CultureInfo.InvariantCulture),
+            ["holderBuild"] = first.Build,
+            ["holderRoot"] = first.Root,
+            ["holderStartedUtc"] = first.StartedUtc,
+            ["holderPids"] = string.Join(",", holders.Select(holder => holder.Pid)),
+        };
+        var target = refusal.Facts.TryGetValue("fwDataPath", out var fwDataPath) ? "\"" + fwDataPath + "\"" : "<fwdata>";
+        var message = refusal.Message + " It is held by the background runner pid " + first.Pid + " (build " + first.Build +
+            ", worker root " + first.Root + (holders.Count > 1 ? "; " + (holders.Count - 1) + " more also hold it" : "") +
+            "). Stop it with `motif worker stop --project " + target + "`, or wait for it to go idle.";
+        return new Refusal(refusal.Code, refusal.Reason, message, facts, refusal.ParserDiagnostic);
     }
 
     internal static Dictionary<string, string> OperationFacts(string fwDataPath, Exception exception)

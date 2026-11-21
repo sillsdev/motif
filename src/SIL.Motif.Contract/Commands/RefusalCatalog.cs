@@ -457,6 +457,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.ProjectBackupUnreadable, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProjectBusy, FailureReason.Busy,
             NextStep.Repeat()),
+        Spec(RefusalCodes.WorkerStopFailed, FailureReason.Refused,
+            NextStep.PersonStep()),
         Spec(RefusalCodes.ProjectStartupBusy, FailureReason.Busy,
             NextStep.Repeat()),
         Spec(RefusalCodes.ProjectInUse, FailureReason.Busy,

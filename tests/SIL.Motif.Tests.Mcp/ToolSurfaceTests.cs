@@ -207,6 +207,7 @@ public sealed class ToolSurfaceTests
             "wordform dispose",
             "wordform dispose --from-file",
             "wordform undispose",
+            "worker stop",
         }, optedOut);
 
         var artifactInventory = Assert.Single(CommandCatalog.All,

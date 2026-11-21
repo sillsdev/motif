@@ -75,7 +75,7 @@ internal static class WorkerRuntime
         var ownership = WorkspaceOwnership.Bootstrap(options.Root);
         host.ConfigureWorkspaces(ownership);
         var ownerId = "runner-" + Environment.ProcessId.ToString();
-        var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current);
+        var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current, options.Root);
         var runtimes = host.CreateRuntimeRegistry(catalog,
             (jobs, key) =>
             {

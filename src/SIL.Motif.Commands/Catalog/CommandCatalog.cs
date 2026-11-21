@@ -332,6 +332,7 @@ public static class CommandCatalog
         new CommandDescriptor("jobs show", typeof(ShowJobRequest), typeof(JobStatusResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("jobs assessments", typeof(JobAssessmentsRequest), typeof(JobAssessmentsResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("jobs list", typeof(ListActiveJobsRequest), typeof(JobQueueListResponse), CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("worker stop", typeof(WorkerStopRequest), typeof(WorkerStopResponse), CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("jobs cancel", typeof(CancelJobRequest), typeof(JobStatusResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("jobs requeue", typeof(RequeueJobRequest), typeof(JobStatusResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("jobs move", typeof(MoveJobRequest), typeof(JobStatusResponse), CommandSurface.Released, AgentClass.HumanOnly),

@@ -38,6 +38,26 @@ public static class RunnerIdentity
         }
     }
 
+    /// <summary>The live runner <paramref name="root"/> records, or null when none is recorded or its process has exited.</summary>
+    public static (int Pid, string Build)? ReadLive(string root, Func<int, bool>? isAlive = null)
+    {
+        string[] lines;
+        try
+        {
+            var path = PathFor(root);
+            if (!File.Exists(path)) return null;
+            lines = File.ReadAllLines(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+        if (lines.Length < 2 || !int.TryParse(lines[0], NumberStyles.None, CultureInfo.InvariantCulture, out var pid) ||
+            !(isAlive ?? IsAlive)(pid))
+            return null;
+        return (pid, lines[1].Trim());
+    }
+
     /// <summary>The warning for a live runner of another build holding <paramref name="root"/>, or null.</summary>
     public static string? StaleWarning(string root)
     {

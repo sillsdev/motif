@@ -101,7 +101,7 @@ public static class JobWait
                 DateTimeOffset.UtcNow - waitStarted >= stallAfter)
             {
                 stallReported = true;
-                reportStall(StallMessage(jobId, stallAfter, timeout));
+                reportStall(StallMessage(jobId, stallAfter, timeout, version));
             }
             if (timeout is { } limit && elapsed.Elapsed >= limit)
             {
@@ -219,7 +219,7 @@ public static class JobWait
                         !observedJob.ClaimLost && started.Elapsed >= stallAfter)
                     {
                         reportStall = null;
-                        await Task.Run(() => notice(StallMessage(request.JobId, stallAfter, timeout)), phase)
+                        await Task.Run(() => notice(StallMessage(request.JobId, stallAfter, timeout, request.ProductVersion)), phase)
                             .WaitAsync(phase).ConfigureAwait(false);
                     }
 
@@ -243,11 +243,12 @@ public static class JobWait
         (job.Status == JobStatus.Queued || job.ClaimLost) && (immediately || sinceWake >= rewake) ||
         immediately && job.Status is JobStatus.WaitingForBaseline or JobStatus.WaitingForProjectHost;
 
-    private static string StallMessage(string jobId, TimeSpan stallAfter, TimeSpan? timeout) =>
+    private static string StallMessage(string jobId, TimeSpan stallAfter, TimeSpan? timeout, string productVersion) =>
         "warning: job '" + jobId + "' has been queued for " + (int)stallAfter.TotalSeconds +
         " seconds and no runner has claimed it. The background runner may not have started, or may not " +
-        "know this project (a project tag collision stops it being recorded; see 'motif project tag'). " +
-        "Still waiting" + (timeout is { } shown ? " for up to " + shown : "") + ".";
+        "know this project (a project tag collision stops it being recorded; see 'motif project tag')." +
+        (QueueBlocker.Find(jobId, productVersion)?.Describe() ?? "") +
+        " Still waiting" + (timeout is { } shown ? " for up to " + shown : "") + ".";
 
     private sealed record ExecutionRelease(bool CleanupComplete);
 
@@ -397,14 +398,20 @@ public static class JobWait
                     ? "Motif cancelled the job."
                     : "Motif requested cancellation of the job.";
         }
-        if (unclaimed) facts["unclaimed"] = "true";
+        QueueBlocker? blocker = null;
+        if (unclaimed)
+        {
+            facts["unclaimed"] = "true";
+            blocker = await Task.Run(() => QueueBlocker.Find(jobId, productVersion)).ConfigureAwait(false);
+            blocker?.AddFacts(facts);
+        }
         if (status.ClaimLost)
             message += " The runner that claimed it stopped, so nothing is working on it. Run any Motif command that " +
                 "queues work, or start `SIL.Motif.Worker`, to restart one; it takes the job back.";
         if (unclaimed)
             message += " No runner has claimed it: the background runner may not have started, may have exited, " +
                 "or an existing runner may not be sweeping this project. Start `SIL.Motif.Worker`, or run a " +
-                "command that queues work, to wake one.";
+                "command that queues work, to wake one." + (blocker?.Describe() ?? "");
         if (status.StageProgress is { } stage)
             message += " The last observed stage was '" + stage.Stage + "'" +
                 (string.IsNullOrWhiteSpace(stage.Detail) ? "." : " (" + stage.Detail + ").");

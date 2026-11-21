@@ -540,6 +540,11 @@
     "description": "Lists jobs across Known projects in queue order. Use it to see which work will run next or find a job id for inspection.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "worker stop": {
+    "title": "Stop the background runner",
+    "description": "Ends the background runner that holds a project's store open, or the one for the current worker root, so a store upgrade or a stuck queue can proceed. Jobs it was running are taken back by the next runner.",
+    "source": "Hand-written from the runner holder and stop behavior."
+  },
   "jobs cancel": {
     "title": "Cancel a job",
     "description": "Requests cancellation of a queued or running job. Use it when the work is no longer needed, then inspect the final state with jobs show.",

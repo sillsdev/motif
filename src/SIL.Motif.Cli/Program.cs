@@ -3101,6 +3101,12 @@ try
             result = RenderCommand(ProjectSetupCommands.Skip(new SkipSetupRequest(setupProject)));
             break;
 
+        case "worker":
+            if (positionals is not ["stop"] || flags.Keys.Any(flag => flag is not ("project" or "json")))
+                return Usage(UsageLineFor("worker stop"), asJson);
+            result = RenderCommand(WorkerStopCommand.Run(new WorkerStopRequest(flags.GetValueOrDefault("project"))));
+            break;
+
         case "store":
             if (positionals.Count == 1 && positionals[0] == "upgrade")
             {

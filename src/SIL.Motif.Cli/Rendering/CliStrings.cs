@@ -9,6 +9,10 @@ internal static class CliStrings
     internal static string StoreRelocateFormat => Resources.GetString(nameof(StoreRelocateFormat))!;
     internal static string StoreRelocateOldStillExists => Resources.GetString(nameof(StoreRelocateOldStillExists))!;
     internal static string StoreRelocateUnchangedFormat => Resources.GetString(nameof(StoreRelocateUnchangedFormat))!;
+    internal static string WorkerStopStopped => Resources.GetString(nameof(WorkerStopStopped))!;
+    internal static string WorkerStopSkipped => Resources.GetString(nameof(WorkerStopSkipped))!;
+    internal static string WorkerStopNoneForRoot => Resources.GetString(nameof(WorkerStopNoneForRoot))!;
+    internal static string WorkerStopNoneForProject => Resources.GetString(nameof(WorkerStopNoneForProject))!;
     internal static string StorePruneFormat => Resources.GetString(nameof(StorePruneFormat))!;
     internal static string StorePruneSizeIncomplete => Resources.GetString(nameof(StorePruneSizeIncomplete))!;
     internal static string StorePruneIncomplete => Resources.GetString(nameof(StorePruneIncomplete))!;

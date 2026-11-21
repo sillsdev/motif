@@ -79,7 +79,8 @@ public static class ProjectStoreReset
         }
         catch (MotifStoreLockException exception)
         {
-            return Refused("project.busy", FailureReason.Busy, "The project store is in use.", request.ProjectPath, storePath, exception.Message);
+            var busy = Refused("project.busy", FailureReason.Busy, "The project store is in use.", request.ProjectPath, storePath, exception.Message);
+            return CommandOutcome<ProjectStoreResetResponse>.Refused(ProjectStoreCommand.NamingHolders(busy.Refusal!, storePath));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

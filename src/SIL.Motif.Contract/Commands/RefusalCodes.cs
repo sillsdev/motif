@@ -354,6 +354,8 @@ public static class RefusalCodes
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
+    /// <summary>A runner that <c>worker stop</c> ended did not exit within the wait.</summary>
+    public const string WorkerStopFailed = "worker.stop-failed";
     public const string ProjectStartupBusy = "project.startup-busy";
     public const string ProjectInUse = "project.in-use";
     public const string ProjectInvalid = "project.invalid";

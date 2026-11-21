@@ -24,13 +24,16 @@ public sealed class ProjectRuntime : IDisposable
     private readonly Func<bool> _hasLiveHost;
     private readonly Func<bool> _hasPendingEvents;
     private readonly StoreFileIdentity? _storeIdentity;
+    private readonly IDisposable? _holderMark;
     private int _activeOperations;
     private bool _draining;
     private bool _disposed;
 
     private ProjectRuntime(ProjectLocator project, string workspaceKey, MotifDatabase database,
-        JobRepository jobs, BaselineRepository baselines, Func<bool> hasLiveHost, Func<bool> hasPendingEvents)
+        JobRepository jobs, BaselineRepository baselines, Func<bool> hasLiveHost, Func<bool> hasPendingEvents,
+        IDisposable? holderMark)
     {
+        _holderMark = holderMark;
         Project = project;
         WorkspaceKey = workspaceKey;
         Database = database;
@@ -84,7 +87,7 @@ public sealed class ProjectRuntime : IDisposable
         var jobs = new JobRepository(database);
         var baselines = new BaselineRepository(database);
         var runtime = new ProjectRuntime(project, workspaceKey, database, jobs, baselines,
-            hasLiveHost ?? (() => false), hasPendingEvents ?? (() => false));
+            hasLiveHost ?? (() => false), hasPendingEvents ?? (() => false), catalog.PublishHolder(project));
         try
         {
             runtime.Admission = ProjectRuntimeAdmission.Recovering;
@@ -217,6 +220,7 @@ public sealed class ProjectRuntime : IDisposable
             if (gateFailure is not null) throw new AggregateException(gateFailure, exception);
             throw;
         }
+        finally { _holderMark?.Dispose(); }
         if (gateFailure is not null) throw gateFailure;
     }
 

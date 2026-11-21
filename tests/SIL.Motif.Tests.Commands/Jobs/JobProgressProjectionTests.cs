@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
@@ -279,6 +280,25 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task AStallNamesTheJobAnotherProjectHasAheadOfIt()
+    {
+        var ahead = CreateRunningTrial(out var aheadProject, leaveQueued: true);
+        var behind = CreateRunningTrial(out var behindProject, leaveQueued: true);
+        foreach (var path in new[] { aheadProject, behindProject })
+            KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, Path.GetFileNameWithoutExtension(path));
+        SetQueueOrder(aheadProject, ahead, -1e12);
+        var notices = new List<string>();
+
+        await JobWait.WaitAsync(behindProject, behind, null, CancellationToken.None, TimeSpan.FromMilliseconds(900),
+            MotifProductVersion.CurrentText, reportStall: notices.Add, stallNoticeAfter: TimeSpan.FromMilliseconds(300));
+
+        var notice = Assert.Single(notices);
+        Assert.Contains("ahead of it in the queue", notice, StringComparison.Ordinal);
+        Assert.Contains("first: " + ahead, notice, StringComparison.Ordinal);
+        Assert.Contains(aheadProject, notice, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AWaitOnAClaimedJobDoesNotWakeAnotherRunner()
     {
         var jobId = CreateRunningTrial(out var fwDataPath);
@@ -545,6 +565,19 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
         }
 
         return jobId;
+    }
+
+    private static void SetQueueOrder(string fwDataPath, string jobId, double queueOrder)
+    {
+        var project = ProjectStoreCommand.Locate(fwDataPath);
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection(
+            "Data Source=" + ProjectDatabaseCatalog.DatabasePathFor(project));
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Jobs SET QueueOrder = $order WHERE JobId = $id;";
+        command.Parameters.AddWithValue("$order", queueOrder);
+        command.Parameters.AddWithValue("$id", jobId);
+        command.ExecuteNonQuery();
     }
 
     private static void WriteProgress(string fwDataPath, string jobId, string progressJson)
