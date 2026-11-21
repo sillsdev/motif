@@ -23,8 +23,12 @@ public sealed class WorkerStopCommandTests : IDisposable
         var project = Project("held");
         var store = Path.Combine(_root, "held.motif.db");
         WriteHolder(store, 4101, "build-a", "/root/a", Started);
-        WriteHolder(store, 4102, "build-b", "/root/b", Started);
-        var processes = new FakeProcesses { Names = { [4101] = "SIL.Motif.Worker", [4102] = "SIL.Motif.Worker" } };
+        WriteHolder(store, 4102, "build-b", "/root/b", "2026-11-20T11:00:00.0000000+00:00");
+        var processes = new FakeProcesses
+        {
+            Names = { [4101] = "SIL.Motif.Worker", [4102] = "SIL.Motif.Worker" },
+            Starts = { [4102] = StartedAt.AddHours(1) },
+        };
 
         var stopped = WorkerStopCommand.Run(new WorkerStopRequest(project), "/unused", processes);
 
@@ -99,7 +103,7 @@ public sealed class WorkerStopCommandTests : IDisposable
     {
         var project = Project("legacy");
         var store = Path.Combine(_root, "legacy.motif.db");
-        WriteHolder(store, 4403, "build-a", "/root/a", "");
+        WriteHolder(store, 4403, "build-a", "/root/a", "unknown");
         var processes = new FakeProcesses { Names = { [4403] = "SIL.Motif.Worker" } };
 
         var stopped = WorkerStopCommand.Run(new WorkerStopRequest(project), "/unused", processes);
