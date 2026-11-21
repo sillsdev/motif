@@ -366,8 +366,8 @@ public abstract record PanGlossRequest
     /// <summary>
     /// <c>pangloss why-not &lt;grammar&gt; &lt;word&gt; --expect-json &lt;file&gt; --json</c>: whether the word parses along
     /// each expected morph sequence and, where it does not, the first failing constraint as a
-    /// <c>pangloss.whynot.v1</c> report on standard output. Candidates named by guid alone cannot be written in the JSON
-    /// input, so they travel as <c>--expect-guid</c> values. Needs a PanGloss whose <c>--describe</c> declares
+    /// <c>pangloss.whynot.v1</c> report on standard output. A choice named by guid alone is written as a
+    /// <c>guid</c>-only JSON choice, so id and guid candidates share one call. Needs a PanGloss whose <c>--describe</c> declares
     /// <c>interfaces.whyNot</c>.
     /// </summary>
     /// <param name="GrammarPath">The grammar, or saved project, PanGloss answers against.</param>
@@ -405,9 +405,8 @@ public abstract record PanGlossRequest
 
         internal override async Task PrepareAsync(string scratch, CancellationToken cancellationToken)
         {
-            if (WhyNotInput.UsesJson(Candidates))
-                await File.WriteAllTextAsync(Path.Combine(scratch, ExpectArtifactName), WhyNotInput.ToJson(Candidates),
-                    cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(Path.Combine(scratch, ExpectArtifactName), WhyNotInput.ToJson(Candidates),
+                cancellationToken).ConfigureAwait(false);
         }
 
         internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
@@ -415,19 +414,8 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(Subcommand);
             startInfo.ArgumentList.Add(GrammarPath);
             startInfo.ArgumentList.Add(Word);
-            if (WhyNotInput.UsesJson(Candidates))
-            {
-                startInfo.ArgumentList.Add("--expect-json");
-                startInfo.ArgumentList.Add(Path.Combine(scratch, ExpectArtifactName));
-            }
-            else
-            {
-                foreach (var candidate in Candidates)
-                {
-                    startInfo.ArgumentList.Add("--expect-guid");
-                    startInfo.ArgumentList.Add(WhyNotInput.ToGuidSpec(candidate));
-                }
-            }
+            startInfo.ArgumentList.Add("--expect-json");
+            startInfo.ArgumentList.Add(Path.Combine(scratch, ExpectArtifactName));
             startInfo.ArgumentList.Add("--json");
             startInfo.ArgumentList.Add("--work-cap");
             startInfo.ArgumentList.Add(ParserWorkLimit.Default.ToWorkCapArgument());

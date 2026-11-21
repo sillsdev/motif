@@ -1,0 +1,47 @@
+[
+ [
+  [
+   {
+    "guid": {
+     "entry_guid": "70c12f3a-1dc4-41ab-8f89-5930878091ef",
+     "msa_guid": "7a0b9e7f-bf4e-4779-b7a5-964e27797ff1"
+    }
+   }
+  ],
+  [
+   {
+    "morpheme": "daa2c777-b036-418d-a77e-6fe4104ef36f"
+   }
+  ]
+ ],
+ [
+  [
+   {
+    "morpheme": "00a0c9ec-4803-4d2b-9965-efb93ab11569"
+   }
+  ],
+  [
+   {
+    "morpheme": "7a0b9e7f-bf4e-4779-b7a5-964e27797ff1"
+   }
+  ]
+ ],
+ [
+  [
+   {
+    "guid": {
+     "entry_guid": "a2d73c79-b176-4d30-8740-1876cae5e003",
+     "msa_guid": "00a0c9ec-4803-4d2b-9965-efb93ab11569"
+    }
+   }
+  ],
+  [
+   {
+    "guid": {
+     "entry_guid": "70c12f3a-1dc4-41ab-8f89-5930878091ef",
+     "msa_guid": "7a0b9e7f-bf4e-4779-b7a5-964e27797ff1"
+    }
+   }
+  ]
+ ]
+]

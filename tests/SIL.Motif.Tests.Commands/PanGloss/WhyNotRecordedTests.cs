@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.PanGloss;
 
 /// <summary>
 /// Output of a real <c>pangloss 0.27.0</c> built from the why-not-s3 branch (head b5dd2637a): <c>--describe</c>, and
-/// <c>why-not --expect-guid ... --json</c> on a Motif test project (accepted, no_morph_match) and on PanGloss's own
+/// <c>why-not --expect-json ... --json</c> on a Motif test project (accepted, no_morph_match) and on PanGloss's own
 /// guid fixture project (environments, prohibition). Nothing is edited.
 /// </summary>
 public sealed class WhyNotRecordedTests
@@ -31,6 +31,26 @@ public sealed class WhyNotRecordedTests
     {
         Assert.True(WhyNotProjection.TryProject(Recorded(name), "w", "baseline", [Cand("a")], [], out var response, out var error), error);
         return response!.Candidates.Single().Rejection!;
+    }
+
+    [Fact]
+    public void AMixedIdAndGuidCallIsWrittenAsTheDocumentPanGlossAnsweredAndItsReportProjects()
+    {
+        const string a = "70c12f3a-1dc4-41ab-8f89-5930878091ef:7a0b9e7f-bf4e-4779-b7a5-964e27797ff1";
+        const string c = "a2d73c79-b176-4d30-8740-1876cae5e003:00a0c9ec-4803-4d2b-9965-efb93ab11569";
+        var candidates = new[]
+        {
+            Cand(a + ",daa2c777-b036-418d-a77e-6fe4104ef36f"),
+            Cand("00a0c9ec-4803-4d2b-9965-efb93ab11569,7a0b9e7f-bf4e-4779-b7a5-964e27797ff1"),
+            Cand(c + "," + a),
+        };
+        using var written = System.Text.Json.JsonDocument.Parse(WhyNotInput.ToJson(candidates));
+        using var recorded = System.Text.Json.JsonDocument.Parse(Recorded("mixed-expect"));
+        Assert.Equal(recorded.RootElement.GetRawText().Replace(" ", "").Replace("\n", ""), written.RootElement.GetRawText());
+
+        Assert.True(WhyNotProjection.TryProject(Recorded("mixed"), "ta", "baseline", candidates, [], out var response, out var error), error);
+        Assert.Equal(["accepted", "rejected", "rejected"], response!.Candidates.Select(r => r.Result));
+        Assert.Equal(0, response.Best);
     }
 
     [Fact]

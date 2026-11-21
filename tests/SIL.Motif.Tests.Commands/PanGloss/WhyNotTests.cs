@@ -81,7 +81,6 @@ public sealed class WhyNotTests : IDisposable
     public void IdCandidatesGoAsOneJsonDocumentWithGuidsAndAllomorphs()
     {
         var candidates = new[] { Parse("kib,ak@ak-1|ik"), Parse($"kib=11111111-1111-1111-1111-111111111111:{Msa}") };
-        Assert.True(WhyNotInput.UsesJson(candidates));
         using var json = JsonDocument.Parse(WhyNotInput.ToJson(candidates));
         var first = json.RootElement[0];
         Assert.Equal("ak-1", first[1][0].GetProperty("allomorph").GetString());
@@ -94,14 +93,17 @@ public sealed class WhyNotTests : IDisposable
     }
 
     [Fact]
-    public void GuidOnlyCandidatesGoAsExpectGuidAndCannotBeMixedWithIds()
+    public void GuidOnlyChoicesCarryOnlyAGuidAndMixWithIdChoicesInOneDocument()
     {
-        var guidOnly = new[] { Parse($"{Entry}:{Msa},{Entry}:{Msa}|{Msa}:{Entry}") };
-        Assert.False(WhyNotInput.UsesJson(guidOnly));
-        Assert.Null(WhyNotInput.Problem(guidOnly));
-        Assert.Equal($"{Entry}:{Msa},{Entry}:{Msa}|{Msa}:{Entry}", WhyNotInput.ToGuidSpec(guidOnly[0]));
-        Assert.NotNull(WhyNotInput.Problem([guidOnly[0], Parse("kib,ak")]));
-        Assert.NotNull(WhyNotInput.Problem([Parse($"{Entry}:{Msa}@a1")]));
+        var candidates = new[] { Parse($"{Entry}:{Msa},{Msa}:{Entry}|kib"), Parse("kib,ak"), Parse($"{Entry}:{Msa}@a1") };
+        Assert.Null(WhyNotInput.Problem(candidates));
+        using var json = JsonDocument.Parse(WhyNotInput.ToJson(candidates));
+        var first = json.RootElement[0][0][0];
+        Assert.False(first.TryGetProperty("morpheme", out _));
+        Assert.Equal(Entry, first.GetProperty("guid").GetProperty("entry_guid").GetString());
+        Assert.Equal("kib", json.RootElement[0][1][1].GetProperty("morpheme").GetString());
+        Assert.Equal("kib", json.RootElement[1][0][0].GetProperty("morpheme").GetString());
+        Assert.Equal("a1", json.RootElement[2][0][0].GetProperty("allomorph").GetString());
     }
 
     [Fact]
@@ -114,12 +116,6 @@ public sealed class WhyNotTests : IDisposable
             "--work-cap", "20000000", "--word-timeout-ms", "30000"], startInfo.ArgumentList);
         await request.PrepareAsync(_root, CancellationToken.None);
         Assert.Contains("\"kib\"", File.ReadAllText(Path.Combine(_root, "expect.json")));
-
-        var byGuid = new PanGlossRequest.WhyNot("g.fwdata", "kibakek", [Parse($"{Entry}:{Msa}"), Parse($"{Msa}:{Entry}")]);
-        var guidArguments = new System.Diagnostics.ProcessStartInfo();
-        byGuid.AddArguments(guidArguments, _root);
-        Assert.Equal(["--expect-guid", $"{Entry}:{Msa}", "--expect-guid", $"{Msa}:{Entry}"],
-            guidArguments.ArgumentList.Skip(3).Take(4));
     }
 
     [Fact]
@@ -354,12 +350,10 @@ public sealed class WhyNotTests : IDisposable
     }
 
     [Fact]
-    public void TooManyCandidatesAndAMixedCallAreRefused()
+    public void TooManyCandidatesAreRefused()
     {
         var many = Enumerable.Repeat("kib,ak", WhyNotLimits.MaxCandidates + 1).ToArray();
         Assert.Equal(RefusalCodes.WhyNotRequestInvalid,
             WhyNotQuery.Explain(new WhyNotRequest("p.fwdata", "kibak", many), parserPath: null).Refusal!.Code);
-        Assert.Equal(RefusalCodes.WhyNotRequestInvalid,
-            WhyNotQuery.Explain(new WhyNotRequest("p.fwdata", "kibak", ["kib,ak", $"{Entry}:{Msa}"]), parserPath: null).Refusal!.Code);
     }
 }

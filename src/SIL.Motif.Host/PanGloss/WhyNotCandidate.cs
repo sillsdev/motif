@@ -37,20 +37,13 @@ public sealed record WhyNotCandidate(IReadOnlyList<IReadOnlyList<WhyNotChoice>> 
     public string Spelling => string.Join(',', Positions.Select(position => string.Join('|', position.Select(c => c.Spelling))));
 }
 
-/// <summary>Turns candidates into the argument shape the pinned PanGloss accepts, and says when it cannot.</summary>
+/// <summary>Turns candidates into the <c>--expect-json</c> document PanGloss reads, and says when it cannot.</summary>
 public static partial class WhyNotInput
 {
     private static readonly Regex GuidText = GuidPattern();
 
     /// <summary>Whether <paramref name="text"/> is a textual GUID in the lowercase form PanGloss's schema requires.</summary>
     public static bool IsGuid(string text) => GuidText.IsMatch(text);
-
-    /// <summary>
-    /// Whether every choice carries a <c>grammar.xml</c> id, so one <c>--expect-json</c> document can carry the call.
-    /// A choice named by guid alone has no such form: the input schema requires <c>morpheme</c>.
-    /// </summary>
-    public static bool UsesJson(IReadOnlyList<WhyNotCandidate> candidates) =>
-        candidates.All(candidate => candidate.Positions.All(position => position.All(choice => choice.HasId)));
 
     /// <summary>The reason this set of candidates cannot be sent in one call, or null when it can.</summary>
     public static string? Problem(IReadOnlyList<WhyNotCandidate> candidates)
@@ -70,20 +63,10 @@ public static partial class WhyNotInput
                     return "A guid is not a lowercase 8-4-4-4-12 hexadecimal GUID.";
             }
         }
-        if (UsesJson(candidates)) return null;
-        foreach (var candidate in candidates)
-        {
-            var choices = candidate.Positions.SelectMany(position => position).ToArray();
-            if (choices.Any(choice => choice.HasId))
-                return "PanGloss reads one call's candidates by morph id (with optional guids) or by guid alone. " +
-                    "Split the call, or give every choice a morph id.";
-            if (choices.Any(choice => choice.Allomorph is not null))
-                return "An allomorph can be pinned only on a choice that has a morph id.";
-        }
         return null;
     }
 
-    /// <summary>The <c>--expect-json</c> document for candidates every choice of which has a morph id.</summary>
+    /// <summary>The <c>--expect-json</c> document for the candidates; a choice named by guid alone carries only <c>guid</c>.</summary>
     public static string ToJson(IReadOnlyList<WhyNotCandidate> candidates)
     {
         using var stream = new MemoryStream();
@@ -99,7 +82,7 @@ public static partial class WhyNotInput
                     foreach (var choice in position)
                     {
                         writer.WriteStartObject();
-                        writer.WriteString("morpheme", choice.Morpheme);
+                        if (choice.Morpheme is not null) writer.WriteString("morpheme", choice.Morpheme);
                         if (choice.Allomorph is not null) writer.WriteString("allomorph", choice.Allomorph);
                         if (choice.EntryGuid is not null)
                         {
@@ -118,10 +101,6 @@ public static partial class WhyNotInput
         }
         return Encoding.UTF8.GetString(stream.ToArray());
     }
-
-    /// <summary>The <c>--expect-guid</c> value for one candidate every choice of which is named by guid alone.</summary>
-    public static string ToGuidSpec(WhyNotCandidate candidate) => string.Join(',',
-        candidate.Positions.Select(position => string.Join('|', position.Select(c => $"{c.EntryGuid}:{c.MsaGuid}"))));
 
     [GeneratedRegex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", RegexOptions.CultureInvariant)]
     private static partial Regex GuidPattern();
