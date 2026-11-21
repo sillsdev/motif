@@ -17,7 +17,7 @@ With `--project`, it stops every runner that records itself as holding that proj
 
 ## What it prints
 
-One line for each runner it ended, with its pid, build and worker root, for example `Stopped the runner (pid 4121, build 0.31.0 [3f2a], worker root /home/ann/.local/share/SIL/Motif).` A recorded pid that now belongs to some other program is left alone and reported. When no runner is running it says so and still succeeds. `--json` returns the same facts as `workers`.
+One line for each runner it ended, with its pid, build and worker root, for example `Stopped the runner (pid 4121, build 0.31.0 [3f2a], worker root /home/ann/.local/share/SIL/Motif).` It ends a process only when its name and start time match the record. A pid that now belongs to another program, or whose start time differs, is left alone and reported with the reason and the operating system command (`kill <pid>`, `taskkill /PID <pid> /F`) to end it by hand if it is the runner. A live process whose record carries no start time, or whose start time cannot be read, makes the command refuse with `worker.stop-failed` and the same hint; its record is kept. When no runner is running it says so and still succeeds. `--json` returns the same facts as `workers`.
 
 The runner is ended at once. A job it was running stays Running until the next runner takes it back, so wait for that rather than cancelling it. If the runner is still alive ten seconds later the command refuses with `worker.stop-failed` and names the pid.
 
