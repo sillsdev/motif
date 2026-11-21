@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.Tests.TestFixtures;
 using System;
 using System.IO;
@@ -310,6 +311,12 @@ public sealed class ReleaseSurfaceTests : IDisposable
                 Assert.True(result.ExitCode == 0, result.Error);
                 Assert.Empty(result.Error);
                 Assert.NotNull(ProjectionJson.Deserialize<JobQueueListResponse>(result.Output));
+            }
+            else if (name == "worker stop")
+            {
+                Assert.True(result.ExitCode == 0, result.Error);
+                Assert.Empty(result.Error);
+                Assert.Empty(JsonDocument.Parse(result.Output).RootElement.GetProperty("workers").EnumerateArray());
             }
             else
             {
