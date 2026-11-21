@@ -316,6 +316,50 @@ public sealed class TrialReviewCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task ASummaryNamesRegressedWordsWithBeforeAndAfterAnalysesAndCountsTheRest()
+    {
+        CreateInterrupted();
+        var original = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var repository = new ReviewReportRepository(_database);
+        var summary = repository.ReadManifest(original)!.Summary;
+        ReadingRow Reading(Side side, params (string Form, string Gloss)[] morphs) => new(null, side, IdentityState.Unavailable,
+            morphs.Select(morph => new Morph(null, null, [], morph.Form, morph.Gloss)).ToArray(), true, [], []);
+        var cases = Enumerable.Range(0, 12).Select(i => new ReviewCaseDelta("case-" + i, "key-" + i, "word-" + i, "ws",
+            true, false, false, [], [ReviewFlagId.NewWordFailures], [], [])
+        {
+            Before = new(Completion.Complete, true, [], [], [], []),
+            After = new(Completion.Complete, false, [], [], [], []),
+            Readings = [Reading(Side.Before, ("kwish", "go"), ("isha", "CAUS"))],
+        }).Append(new ReviewCaseDelta("case-kept", "key-kept", "kept", "ws", false, false, false, [], [], [], [])
+        {
+            Before = new(Completion.Complete, true, [], [], [], []),
+            After = new(Completion.Complete, true, [], [], [], []),
+        }).ToArray();
+        async IAsyncEnumerable<ReviewCaseDelta> Rows()
+        {
+            foreach (var item in cases) { yield return item; await Task.Yield(); }
+        }
+        var id = await repository.PublishAsync(new ReviewReportPublication("project", _proposal.Value, Job,
+            "sha256:regressions", summary, [], 5_000_000), Rows());
+        var commands = new TrialReviewCommands(_database);
+        var report = Assert.IsType<AvailableTrialResult>(commands.Read(new ReviewReadRequest(
+            "project", _proposal.Value, ReportId: id.Value)).Value).Report;
+        var group = Assert.Single(Assert.IsType<TrialRegressions>(report.Regressions).Groups);
+        Assert.Equal("new-word-failures", group.Cause);
+        Assert.Equal(12, group.Total);
+        Assert.Equal(TrialRegressions.WordsPerGroup, group.Words.Count);
+        Assert.Equal(2, group.Remaining);
+        Assert.Contains("--flag new-word-failures", group.NextStep);
+        Assert.DoesNotContain(group.Words, word => word.Word == "kept");
+        var first = group.Words[0];
+        Assert.Equal(["kwish (go) + isha (CAUS)"], first.Before);
+        Assert.Empty(first.After);
+        var failures = Assert.IsType<AvailableTrialResult>(commands.Read(new ReviewReadRequest("project", _proposal.Value,
+            ReportId: id.Value, Detail: DetailLevel.Failures)).Value).Report;
+        Assert.Null(failures.Regressions);
+    }
+
+    [Fact]
     public async Task CoverageFailuresSelectAffectedWeightedTokensAndUncoveredCells()
     {
         CreateInterrupted();

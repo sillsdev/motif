@@ -9,6 +9,7 @@ namespace SIL.Motif.Cli.Rendering;
 public static class TrialReviewTextRenderer
 {
     private const int TextListLimit = 10;
+    private const int RegressionTextWords = 2;
 
     /// <summary>Renders a saved report, pending Trial, or absence of a Trial.</summary>
     public static string Render(TrialReviewResult result) => result switch
@@ -39,9 +40,10 @@ public static class TrialReviewTextRenderer
         if (report.Gate is { } gate)
         {
             text.AppendLine("Gate: " + gate.State.ToString().ToLowerInvariant() + (gate.Reason is null ? "" : "; " + gate.Reason));
-            if (gate.ExpectedLosses.Count > 0) text.AppendLine("Expected losses: " + string.Join(", ", gate.ExpectedLosses));
-            if (gate.UnexpectedLosses.Count > 0) text.AppendLine("Unexpected losses: " + string.Join(", ", gate.UnexpectedLosses));
+            if (gate.ExpectedLosses.Count > 0) text.AppendLine("Expected losses: " + Capped(gate.ExpectedLosses));
+            if (gate.UnexpectedLosses.Count > 0) text.AppendLine("Unexpected losses: " + Capped(gate.UnexpectedLosses));
         }
+        if (report.Regressions is { } regressions) AppendRegressions(text, regressions);
         if (report.Losses is { } losses)
         {
             if (losses.NewNoParseWords.Count > 0) text.AppendLine("New no-parse words: " + string.Join(", ", losses.NewNoParseWords));
@@ -116,6 +118,35 @@ public static class TrialReviewTextRenderer
         }
         return text.ToString();
     }
+
+    internal static string RenderLossList(IReadOnlyList<string> words) => Capped(words);
+
+    internal static string RenderRegressions(TrialRegressions regressions)
+    {
+        var text = new StringBuilder();
+        AppendRegressions(text, regressions);
+        return text.ToString();
+    }
+
+    private static string Capped(IReadOnlyList<string> words) => words.Count <= TextListLimit
+        ? string.Join(", ", words)
+        : string.Join(", ", words.Take(TextListLimit)) + $" and {words.Count - TextListLimit:N0} more; use --json for all";
+
+    private static void AppendRegressions(StringBuilder text, TrialRegressions regressions)
+    {
+        var parts = regressions.Groups.Select(group =>
+        {
+            var shown = group.Words.Take(RegressionTextWords).Select(word => $"{word.Word} ({Analyses(word.Before)} -> " +
+                (word.AfterReadingCount == 0 && word.After.Count == 0 ? "no analysis" : Analyses(word.After)) + ")").ToList();
+            var rest = group.Total - shown.Count;
+            return $"{group.Cause}: {group.Total:N0}: {string.Join("; ", shown)}" +
+                (rest > 0 ? $"; and {rest:N0} more. Next: {group.NextStep}" : "");
+        }).ToList();
+        if (parts.Count > 0) text.AppendLine("Regressed words, " + string.Join(" || ", parts));
+    }
+
+    private static string Analyses(IReadOnlyList<string> analyses) =>
+        analyses.Count == 0 ? "not retained" : string.Join(" | ", analyses);
 
     private static void AppendGains(StringBuilder text, GainSummary gains)
     {

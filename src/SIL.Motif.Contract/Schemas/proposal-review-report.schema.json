@@ -289,6 +289,39 @@
       "required": ["policyDigest", "scopeDigest", "wordSets"],
       "additionalProperties": false
     },
+    "TrialRegressions": {
+      "type": "object",
+      "properties": {
+        "groups": { "type": "array", "items": { "$ref": "#/$defs/RegressionGroup" } }
+      },
+      "required": ["groups"],
+      "additionalProperties": false
+    },
+    "RegressionGroup": {
+      "type": "object",
+      "properties": {
+        "cause": { "type": "string" },
+        "total": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "remaining": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "words": { "type": "array", "items": { "$ref": "#/$defs/RegressedWord" } },
+        "nextStep": { "type": "string" }
+      },
+      "required": ["cause", "total", "remaining", "words", "nextStep"],
+      "additionalProperties": false
+    },
+    "RegressedWord": {
+      "type": "object",
+      "properties": {
+        "word": { "type": "string" },
+        "caseKey": { "type": "string" },
+        "beforeReadingCount": { "type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991 },
+        "afterReadingCount": { "type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991 },
+        "before": { "type": "array", "items": { "type": "string" } },
+        "after": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["word", "caseKey", "beforeReadingCount", "afterReadingCount", "before", "after"],
+      "additionalProperties": false
+    },
     "TrialLosses": {
       "type": "object",
       "properties": {
@@ -353,6 +386,7 @@
       "properties": {
         "stoppedWords": { "type": "array", "items": { "$ref": "#/$defs/TrialStoppedWord" } },
         "heldWords": { "type": "array", "items": { "type": "string" } },
+        "regressions": { "$ref": "#/$defs/TrialRegressions" },
         "declaredGate": { "$ref": "#/$defs/TrialGateDeclaration" },
         "gate": { "$ref": "#/$defs/TrialGate" },
         "losses": { "$ref": "#/$defs/TrialLosses" },

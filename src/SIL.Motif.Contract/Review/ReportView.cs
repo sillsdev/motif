@@ -237,6 +237,10 @@ public sealed record ReportView(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public TrialLosses? Losses { get; init; }
 
+    /// <summary>The lost or regressed words, named with their analyses before and after, capped per group; null when none or not retained.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TrialRegressions? Regressions { get; init; }
+
     /// <summary>Attested words held for review of a new second reading, outside the optional detail index.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? HeldWords { get; init; }

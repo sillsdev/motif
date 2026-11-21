@@ -82,6 +82,8 @@ public sealed class TrialReviewCommands(MotifDatabase database, string? parserPa
             Detail = request.EffectiveDetail,
             Freshness = Freshness(stored.Summary.Pins, request.JobId is null && request.ReportId is null ? job : null),
         };
+        if (request.EffectiveDetail == DetailLevel.Summary)
+            report = report with { Regressions = TrialRegressionReader.Read(repository, report, request.ProposalId) };
         if (request.EffectiveDetail == DetailLevel.Failures)
         {
             try { report = report with { Sections = FailureSections(repository, report, request.Section, request.Set) }; }
