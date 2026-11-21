@@ -1824,6 +1824,7 @@ internal static class AgentTools
         var job = args.Optional("job");
         if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss") || args.Has("no_background") || args.Has("no_base_sample") || args.Has("touched")))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "A resumed Trial cannot change its inputs.");
+        TouchedWords? touched = null;
         if (job is null)
         {
             var negatives = args.List("negative_words");
@@ -1843,6 +1844,7 @@ internal static class AgentTools
                 RunnerOptions.ResolveRoot(), context.JobParserPath, BaselineMode.Required, cancellation), cancellation);
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             job = queued.Value!.Job.JobId;
+            touched = queued.Value.Touched;
         }
         var waited = await Task.Run(() => JobCommands.WaitForJob(
             new WaitForJobRequest(context.ProjectPath, job, context.ProductVersion, wait, waitForTerminal), context.StartRunner,
@@ -1850,8 +1852,13 @@ internal static class AgentTools
             wakeImmediately: true));
         if (!waited.Succeeded && (waitForTerminal || waited.Refusal!.Code is not ("job.wait-timeout" or "job.wait-cancelled")))
             return ToolOutcome.Refused(waited.Refusal!);
-        return TrialReviewTools.ReadJob(context, proposal, job);
+        return WithTouched(TrialReviewTools.ReadJob(context, proposal, job), touched);
     }
+
+    /// <summary>The touched counts and any targets the match could not follow ride in the next step, beside the report.</summary>
+    internal static ToolOutcome WithTouched(ToolOutcome read, TouchedWords? touched) =>
+        touched is null || read.Refusal is not null ? read
+            : read with { Next = touched.Describe() + (read.Next is null ? "" : " " + read.Next) };
 
     // A wait that ran out is progress, not a failure: say where the job is and how to keep waiting.
     private static ToolOutcome? StillRunning(ServerContext context, Refusal refusal, string job)

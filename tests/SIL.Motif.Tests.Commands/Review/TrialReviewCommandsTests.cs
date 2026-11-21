@@ -359,6 +359,24 @@ public sealed class TrialReviewCommandsTests : IDisposable
         Assert.Null(failures.Regressions);
     }
 
+    [Theory]
+    [InlineData(typeof(KeyNotFoundException))]
+    [InlineData(typeof(InvalidDataException))]
+    [InlineData(typeof(IOException))]
+    public async Task AnUnreadableRegressionBlockLeavesTheSummaryAndSaysSo(Type failure)
+    {
+        CreateInterrupted();
+        var original = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var report = Assert.IsType<AvailableTrialResult>(new TrialReviewCommands(_database).Read(new ReviewReadRequest(
+            "project", _proposal.Value)).Value).Report;
+        var degraded = TrialRegressionReader.Attach(report, () => throw (Exception)Activator.CreateInstance(failure)!);
+        Assert.Null(degraded.Regressions);
+        Assert.Equal(report.Summary, degraded.Summary);
+        Assert.Contains(degraded.Limitations, limitation => limitation.Code == TrialRegressionReader.UnavailableCode);
+        Assert.Throws<InvalidOperationException>(() =>
+            TrialRegressionReader.Attach(report, () => throw new InvalidOperationException()));
+    }
+
     [Fact]
     public async Task CoverageFailuresSelectAffectedWeightedTokensAndUncoveredCells()
     {

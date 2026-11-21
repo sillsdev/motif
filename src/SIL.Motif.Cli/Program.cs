@@ -1171,9 +1171,7 @@ try
                 if (!queued.Succeeded)
                     return RenderCommand(CommandOutcome<JobEnqueuedResponse>.Refused(queued.Refusal!), successAsJson: false);
                 if (queued.Value!.Touched is { } touched)
-                    error.WriteLine("touched: added " + touched.Words.Count + " word(s) that use " + touched.ObjectCount +
-                        " edited object(s)" + (touched.NotAdded > 0
-                            ? "; " + touched.NotAdded + " more matched and were not added (cap " + TrialTouchedWords.Cap + ")" : ""));
+                    error.WriteLine(touched.Describe());
                 if (queued.Value!.BaselineWarning is { } reason)
                     error.WriteLine(
                         "warning: the Trial has no Baseline Assessment, so `difference produce` will refuse it: " + reason);

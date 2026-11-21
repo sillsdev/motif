@@ -92,7 +92,7 @@ public static class TrialWorkflow
     {
         var touched = TrialTouchedWords.Resolve(request.FwDataPath, request.ProductVersion, request.ProposalId);
         if (!touched.Succeeded) return CommandOutcome<ExpandedTrial>.Refused(touched.Refusal!);
-        var words = request.Words!.Concat(touched.Value!.Words).Distinct(StringComparer.Ordinal).ToArray();
+        var words = TrialTouchedWords.Merge(request.Words!, touched.Value!.Words);
         return CommandOutcome<ExpandedTrial>.Success(new ExpandedTrial(request with { Words = words }, touched.Value!));
     }
 

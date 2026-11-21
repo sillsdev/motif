@@ -15,6 +15,27 @@ internal static class TrialRegressionReader
         (ReviewFlagId.ConfirmedReadingsLost, "confirmed-readings-lost"),
     ];
 
+    /// <summary>The Limitation code a report carries when its regressed words could not be read.</summary>
+    internal const string UnavailableCode = "regressions-unavailable";
+
+    /// <summary>
+    /// Adds the regressed words to <paramref name="report"/>. An old or partly purged report that cannot give them
+    /// keeps its summary and gains a Limitation saying so, because the words are an extra and never a reason to fail.
+    /// </summary>
+    internal static ReportView Attach(ReviewReportRepository repository, ReportView report, string proposalId) =>
+        Attach(report, () => Read(repository, report, proposalId));
+
+    /// <summary>As the repository overload, with the read supplied.</summary>
+    internal static ReportView Attach(ReportView report, Func<TrialRegressions?> read)
+    {
+        try { return report with { Regressions = read() }; }
+        catch (Exception exception) when (exception is KeyNotFoundException or InvalidDataException or IOException)
+        {
+            return report with { Limitations = [.. report.Limitations, new Limitation(UnavailableCode, ["wordforms"],
+                "The regressed words could not be read from this report's saved word detail.", [])] };
+        }
+    }
+
     /// <summary>Null when no word regressed or the report keeps no word detail to read them from.</summary>
     internal static TrialRegressions? Read(ReviewReportRepository repository, ReportView report, string proposalId)
     {
