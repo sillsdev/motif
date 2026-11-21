@@ -58,7 +58,7 @@ internal static class Schema
     public static (string, JsonObject, bool)[] Paging() =>
     [
         ("offset", Integer("How many rows to skip; a result that was cut names the offset of the next page as nextOffset.", 0, int.MaxValue), false),
-        ("all", Boolean("Return every row instead of one page; the page size stays the default of 10 without it."), false),
+        ("all", Boolean("Return every row instead of one page; the page size is limit, or the default, without it."), false),
     ];
 
     /// <summary>The <c>detail</c> and <c>limit</c> properties every tool with a verbosity choice shares.</summary>
@@ -66,6 +66,6 @@ internal static class Schema
     [
         ("detail", String("'concise' (default) drops empty fields and long lists; 'detailed' returns everything.",
             "concise", "detailed"), false),
-        ("limit", Integer("The most list items to return in concise mode. Default 25.", 1, 200), false),
+        ("limit", Integer("Page size for paged reads (findings, operations: default 10; proposals list: default 25), and the most list items in concise mode elsewhere (default 25).", 1, 200), false),
     ];
 }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 
@@ -47,5 +48,28 @@ internal static class PagingFlags
             int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value);
 
         static (PagingWindow, Refusal?) Fail(string message) => (default, PagingWindow.Invalid(message));
+    }
+
+    /// <summary>The command that reads the page after this one, repeating the caller's own flags and page size.</summary>
+    internal static string NextCommand(
+        string verb, IReadOnlyList<string> positionals, IReadOnlyDictionary<string, string> flags, int next, int limit)
+    {
+        var parts = new List<string> { "motif", verb };
+        parts.AddRange(positionals.Select(Quote));
+        foreach (var (name, value) in flags)
+        {
+            if (name is "offset" or "limit" or "page" or "all" or "json") continue;
+            parts.Add("--" + name);
+            if (value != "true") parts.Add(Quote(value));
+        }
+        parts.Add("--offset");
+        parts.Add(next.ToString(CultureInfo.InvariantCulture));
+        parts.Add("--limit");
+        parts.Add(limit.ToString(CultureInfo.InvariantCulture));
+        return string.Join(' ', parts);
+
+        static string Quote(string text) =>
+            text.Length > 0 && text.All(character => !char.IsWhiteSpace(character) && character != '"') ? text
+                : "\"" + text.Replace("\"", "\\\"") + "\"";
     }
 }

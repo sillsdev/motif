@@ -62,17 +62,26 @@ public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NextOffset { get; init; }
 
+    /// <summary>The command that reads the next page with the caller's own flags; null at the end or when not set.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NextStep { get; init; }
+
+    /// <summary>This page with the command for the next one, built from its offset; unchanged at the end.</summary>
+    public GrammarCheckResponse WithNextStep(System.Func<int, string> step) =>
+        NextOffset is { } next ? this with { NextStep = step(next) } : this;
+
     /// <summary>One page of the findings, keeping the per-level totals of all of them.</summary>
     public GrammarCheckResponse Window(int offset, int limit)
     {
-        var page = ResultPaging.Window(Findings, offset, limit);
+        var ordered = Findings.OrderBy(finding => finding.Severity).ToList();
+        var page = ResultPaging.Window(ordered, offset, limit);
         return this with
         {
             Findings = page, FindingsTotal = Findings.Count, FindingsOffset = offset,
             ErrorTotal = Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error),
             WarningTotal = Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Warning),
             InformationTotal = Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information),
-            NextOffset = ResultPaging.NextOffset(offset, page.Count, Findings.Count),
+            NextOffset = ResultPaging.NextOffset(offset, page.Count, ordered.Count),
         };
     }
 }

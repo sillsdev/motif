@@ -958,7 +958,7 @@ public static class CommandTextRenderer
 
         var prefix = refusal.Code.StartsWith("corpus.", StringComparison.Ordinal) ? "" : "error: ";
         return new CommandResult(
-            FailureEnvelope.ExitCodeFor(refusal.Reason), prefix + RefusalText.ForTerminal(refusal.Message) + Environment.NewLine,
+            FailureEnvelope.ExitCodeFor(refusal.Reason), prefix + RefusalText.ForTerminal(refusal.Message, refusal.Code) + Environment.NewLine,
             refusal.Reason);
     }
 
@@ -1938,7 +1938,7 @@ public static class CommandTextRenderer
                     text.AppendLine($"    Spelling candidates; not confirmed uses of the phoneme: {WordList(spelled)}");
             }
         }
-        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextOffset);
+        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextOffset, response.NextStep);
         return text.ToString();
     }
 
@@ -1950,14 +1950,14 @@ public static class CommandTextRenderer
             text.AppendLine($"  and {kinds - KindRowLimit:N0} more finding codes; --json lists every one.");
     }
 
-    private static void AppendFindingsPage(StringBuilder text, int? offset, int shown, int? total, int? next)
+    private static void AppendFindingsPage(StringBuilder text, int? offset, int shown, int? total, int? next, string? step)
     {
         if (offset is not { } from || total is not { } all) return;
         text.AppendLine(shown == 0
             ? $"No findings at offset {from} of {all:N0}."
             : $"Showing findings {from + 1:N0}-{from + shown:N0} of {all:N0}.");
         if (next is { } following)
-            text.AppendLine($"Next: --offset {following} --limit {ResultPaging.HeavyRowLimit}, or --all for every finding.");
+            text.AppendLine($"Next: {step ?? $"--offset {following} --limit {shown}"}, or --all for every finding.");
     }
 
     private static string TouchedLine(WarningWordsTouched touched) => touched.IsComplete
@@ -2039,7 +2039,7 @@ public static class CommandTextRenderer
         AppendMoreKinds(text, response.Summary.Count);
         foreach (var finding in response.Findings)
             text.AppendLine($"  {finding.Text}");
-        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextOffset);
+        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextOffset, response.NextStep);
         return text.ToString();
     }
 

@@ -27,16 +27,20 @@ public static class CommandTextRenderer
         var sb = new StringBuilder();
         if (projection.Proposals.Count == 0)
         {
-            sb.AppendLine("No proposals in store.");
+            sb.AppendLine(projection.Total is { } known && known > 0 && projection.Offset is { } at
+                ? $"0 shown; {known:N0} proposals; last offset {Math.Max(0, known - 1)} (asked for offset {at})."
+                : "No proposals in store.");
             return sb.ToString();
         }
 
         foreach (var item in projection.Proposals)
             sb.AppendLine($"{item.ProposalId}  {item.Status,-8}  {item.Label}");
         if (projection.Total is { } total && projection.Offset is { } offset)
-            sb.AppendLine(projection.NextOffset is { } next
-                ? $"Showing {offset + 1}-{offset + projection.Proposals.Count} of {total:N0}. Next: --offset {next} --limit {ResultPaging.DefaultLimit}"
-                : $"Showing {offset + 1}-{offset + projection.Proposals.Count} of {total:N0}.");
+        {
+            sb.AppendLine($"Showing {offset + 1}-{offset + projection.Proposals.Count} of {total:N0}.");
+            if (projection.NextOffset is { } next)
+                sb.AppendLine("Next: " + (projection.NextStep ?? $"--offset {next} --limit {projection.Proposals.Count}"));
+        }
         return sb.ToString();
     }
 
@@ -83,7 +87,9 @@ public static class CommandTextRenderer
             sb.AppendLine($"  extensions:          {JsonSerializer.Serialize(extensions.RootElement)}");
         }
         sb.AppendLine(projection.OperationTotal is { } operationTotal && projection.OperationOffset is { } operationOffset
-            ? $"  operations (showing {Math.Min(operationOffset + 1, operationTotal):N0}-{operationOffset + projection.Operations.Count:N0} of {operationTotal:N0}):"
+            ? (projection.Operations.Count == 0
+                ? $"  operations (none at offset {operationOffset:N0}; {operationTotal:N0} in all):"
+                : $"  operations (showing {operationOffset + 1:N0}-{operationOffset + projection.Operations.Count:N0} of {operationTotal:N0}):")
             : $"  operations ({projection.Operations.Count}):");
         foreach (var op in projection.Operations)
         {
@@ -102,7 +108,8 @@ public static class CommandTextRenderer
                 sb.AppendLine($"      current:   {current.Field} {JsonSerializer.Serialize(current.Value)}");
         }
         if (projection.NextOffset is { } nextOperation)
-            sb.AppendLine($"  more operations: --offset {nextOperation} --limit {ResultPaging.HeavyRowLimit}, or --all for every operation");
+            sb.AppendLine("  more operations: " + (projection.NextStep ?? $"--offset {nextOperation} --limit {projection.Operations.Count}") +
+                ", or --all for every operation");
         if (projection.CurrentUnavailable is not null)
             sb.AppendLine($"  currentUnavailable:  {projection.CurrentUnavailable}");
         if (projection.AppliedRecord is { } applied)

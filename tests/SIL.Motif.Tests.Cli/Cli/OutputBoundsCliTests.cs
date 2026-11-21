@@ -70,7 +70,11 @@ public sealed class OutputBoundsCliTests : IDisposable
         Assert.Equal(30, pastEnd["total"]!.GetValue<int>());
 
         var text = Run("list", "--project", _project, "--limit", "10");
-        Assert.Contains("Showing 1-10 of 30. Next: --offset 10 --limit 25", text.Output, StringComparison.Ordinal);
+        Assert.Contains("Showing 1-10 of 30.", text.Output, StringComparison.Ordinal);
+        Assert.Contains("Next: motif list --project " + _project + " --offset 10 --limit 10", text.Output, StringComparison.Ordinal);
+        var pastEndText = Run("list", "--project", _project, "--offset", "100").Output;
+        Assert.Contains("0 shown; 30 proposals; last offset 29", pastEndText, StringComparison.Ordinal);
+        Assert.DoesNotContain("No proposals in store", pastEndText, StringComparison.Ordinal);
         var byPage = Run("list", "--project", _project, "--limit", "10", "--page", "3");
         Assert.Contains("Showing 21-30 of 30.", byPage.Output, StringComparison.Ordinal);
     }
@@ -142,7 +146,8 @@ public sealed class OutputBoundsCliTests : IDisposable
 
         var text = Run("show", "d", "--project", _project);
         Assert.Contains($"operations (showing 1-10 of {added})", text.Output, StringComparison.Ordinal);
-        Assert.Contains("more operations: --offset 10 --limit 10, or --all for every operation", text.Output, StringComparison.Ordinal);
+        Assert.Contains("more operations: motif show d --project " + _project + " --offset 10 --limit 10, or --all for every operation",
+            text.Output, StringComparison.Ordinal);
     }
 
     [Fact]

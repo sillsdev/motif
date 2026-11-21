@@ -141,4 +141,27 @@ public sealed record ProposalStandings(IReadOnlyList<ProposalCard> Proposals, in
     /// <see cref="Proposals"/> and <see cref="SetAsideCount"/>.
     /// </summary>
     public IReadOnlyList<UnreadableProposal> Unreadable { get; init; } = [];
+
+    /// <summary>How many Proposals matched in all when this is a page of them; null when it is not a page.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? Total { get; init; }
+
+    /// <summary>How many Proposals this page skipped; null when it is not a page.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? Offset { get; init; }
+
+    /// <summary>The offset that starts the next page; null at the end or when this is not a page.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? NextOffset { get; init; }
+
+    /// <summary>One page of the Proposals, with the total and the offset that starts the next page.</summary>
+    public ProposalStandings Window(int offset, int limit)
+    {
+        var page = ResultPaging.Window(Proposals, offset, limit);
+        return this with
+        {
+            Proposals = page, Total = Proposals.Count, Offset = offset,
+            NextOffset = ResultPaging.NextOffset(offset, page.Count, Proposals.Count),
+        };
+    }
 }

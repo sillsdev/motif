@@ -127,11 +127,11 @@ internal sealed class ToolArgs
     /// <paramref name="whole"/> when <c>all</c> is set, otherwise the page <paramref name="window"/> cuts from the
     /// <c>offset</c> and <c>limit</c> arguments, refusing a window outside the range every paged read accepts.
     /// </summary>
-    public T Page<T>(T whole, Func<int, int, T> window)
+    public T Page<T>(T whole, Func<int, int, T> window, int defaultLimit = SIL.Motif.Contract.Responses.ResultPaging.HeavyRowLimit)
     {
         if (Flag("all")) return whole;
         var offset = Int("offset", 0);
-        var limit = Int("limit", SIL.Motif.Contract.Responses.ResultPaging.HeavyRowLimit);
+        var limit = Int("limit", defaultLimit);
         if (!SIL.Motif.Contract.Responses.ResultPaging.IsValid(offset, limit))
             throw new ToolArgumentException(SIL.Motif.Contract.Commands.RefusalCodes.PagingInvalid,
                 $"Use an offset of zero or more and a limit from 1 to {SIL.Motif.Contract.Responses.ResultPaging.MaxLimit}.");

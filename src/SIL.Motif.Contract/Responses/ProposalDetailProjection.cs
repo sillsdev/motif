@@ -165,6 +165,14 @@ public sealed record ProposalDetailProjection(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NextOffset { get; init; }
 
+    /// <summary>The command that reads the next page with the caller's own flags; null at the end or when not set.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NextStep { get; init; }
+
+    /// <summary>This page with the command for the next one, built from its offset; unchanged at the end.</summary>
+    public ProposalDetailProjection WithNextStep(System.Func<int, string> step) =>
+        NextOffset is { } next ? this with { NextStep = step(next) } : this;
+
     /// <summary>One page of the operations, with the total and the offset that starts the next page.</summary>
     public ProposalDetailProjection Window(int offset, int limit)
     {

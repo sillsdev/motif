@@ -1079,7 +1079,8 @@ internal static class AgentTools
                 ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id, a.Flag("current")))
                     .Map(detail => a.Page(detail, detail.Window)))
                 : ToolOutcome.From(ProposalStandingsCommand.Read(
-                    new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside")), c.JobParserPath)))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
+                    new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside")), c.JobParserPath)
+                    .Map(standings => a.Page(standings, standings.Window, SIL.Motif.Contract.Responses.ResultPaging.DefaultLimit))))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
 
         new("motif_activity",
             string.Empty,
@@ -1421,7 +1422,7 @@ internal static class AgentTools
             throw new ToolArgumentException("tool.invalid-argument", exception.Message);
         }
         return ToolOutcome.From(ProposalCommands.Compose(new(context.ProjectPath, context.ProductVersion,
-                arguments.Required("proposal"), parsed, arguments.List("remove"))),
+                arguments.Required("proposal"), parsed, arguments.List("remove"))).Map(batch => batch.Bounded()),
             result => $"Draft now has {result.OperationCount} changes from {result.Intents.Count} steps. " +
                 "Dry Run the Draft, then Finalize for a person to Apply.");
     }
@@ -1459,8 +1460,10 @@ internal static class AgentTools
             if (SourceAiGuard.Check(arguments.Required("draft"), intent!["verb"]!.GetValue<string>()) is { } needsProposal)
                 return ToolOutcome.Refused(needsProposal);
         return ToolOutcome.From(ProposalCommands.ComposeBatch(new(context.ProjectPath, context.ProductVersion,
-                arguments.Required("draft"), arguments.IntentJson("intents"))),
-            result => $"Draft now has {result.OperationCount} changes from {result.Intents.Count} intents. Dry Run the Draft, then Finalize for a person to Apply.");
+                arguments.Required("draft"), arguments.IntentJson("intents"))).Map(batch => batch.Bounded()),
+            result => $"Draft now has {result.OperationCount} changes from {result.IntentTotal ?? result.Intents.Count} intents; " +
+                "the first operations are listed, motif_proposals with proposal set to the draft reads the rest. " +
+                "Dry Run the Draft, then Finalize for a person to Apply.");
     }
 
     private static (string Verb, JsonObject Schema)? BatchIntentSchema(string verb, JsonObject toolSchema)

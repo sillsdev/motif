@@ -1467,7 +1467,7 @@
         },
         "limit": {
           "type": "integer",
-          "description": "The most list items to return in concise mode. Default 25.",
+          "description": "Page size for paged reads (findings, operations: default 10; proposals list: default 25), and the most list items in concise mode elsewhere (default 25).",
           "minimum": 1,
           "maximum": 200
         },

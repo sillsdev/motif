@@ -76,9 +76,9 @@ internal static class RefusalMapper
     /// <summary>The error text a model reads: code and sentence, then facts, then the <c>Next:</c> line.</summary>
     public static string Text(Refusal refusal, IReadOnlyList<ExposedTool>? exposed = null, JsonObject? callerArgs = null)
     {
-        var text = new StringBuilder().Append(refusal.Code).Append(": ").Append(refusal.Message);
+        var text = new StringBuilder().Append(refusal.Code).Append(": ").Append(RefusalText.Bound(refusal.Message, RefusalText.TextLimit));
         foreach (var (key, value) in refusal.Facts.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-            text.Append('\n').Append(key).Append(": ").Append(value);
+            text.Append('\n').Append(key).Append(": ").Append(RefusalText.Bound(value, RefusalText.TextLimit));
         return text.Append("\nNext: ").Append(NextFor(refusal, exposed, callerArgs)).ToString();
     }
 
@@ -92,8 +92,8 @@ internal static class RefusalMapper
             ["ok"] = false,
             ["code"] = refusal.Code,
             ["reason"] = refusal.Reason.ToString(),
-            ["message"] = refusal.Message,
-            ["facts"] = new JsonObject(refusal.Facts.Select(pair =>
+            ["message"] = RefusalText.Bound(refusal.Message),
+            ["facts"] = new JsonObject(RefusalText.Bound(refusal.Facts).Select(pair =>
                 new KeyValuePair<string, JsonNode?>(pair.Key, pair.Value))),
             ["next"] = NextFor(refusal, exposed, callerArgs),
         }),

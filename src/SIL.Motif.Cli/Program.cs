@@ -869,7 +869,8 @@ try
             result = RenderProposal(
                 ProposalCommands.List(new ListProposalsRequest(listProject, CliProductVersion(),
                     flags.ContainsKey("all"), flags.GetValueOrDefault("status"))).Map(
-                    list => list.Window(listWindow.Offset, listWindow.Limit)));
+                    list => list.Window(listWindow.Offset, listWindow.Limit).WithNextStep(
+                        next => PagingFlags.NextCommand("list", [], flags, next, listWindow.Limit))));
             break;
 
         case "show":
@@ -884,7 +885,8 @@ try
             result = RenderProposal(
                 ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0],
                     flags.ContainsKey("current"))).Map(detail => showWindow.All
-                    ? detail : detail.Window(showWindow.Offset, showWindow.Limit)));
+                    ? detail : detail.Window(showWindow.Offset, showWindow.Limit).WithNextStep(
+                        next => PagingFlags.NextCommand("show", positionals, flags, next, showWindow.Limit))));
             break;
 
         case "pending-changes":
@@ -2746,7 +2748,8 @@ try
             result = RenderCommand(WarningsCommand.Warnings(new WarningsRequest(
                 warningsProject, flags.GetValueOrDefault("kind"), flags.ContainsKey("left-out"),
                 flags.GetValueOrDefault("proposal"))).Map(warnings => warningsWindow.All
-                ? warnings : warnings.Window(warningsWindow.Offset, warningsWindow.Limit)));
+                ? warnings : warnings.Window(warningsWindow.Offset, warningsWindow.Limit).WithNextStep(
+                    next => PagingFlags.NextCommand("warnings", [], flags, next, warningsWindow.Limit))));
             break;
 
         case "difference":
@@ -2857,7 +2860,8 @@ try
             }
             result = RunWithConsoleCancellation(token => RenderCommand(
                 GrammarCheckQuery.Query(new GrammarCheckRequest(grammarProject, StoredAnalyses: storedAnalyses), token)
-                    .Map(check => checkWindow.All ? check : check.Window(checkWindow.Offset, checkWindow.Limit))));
+                    .Map(check => checkWindow.All ? check : check.Window(checkWindow.Offset, checkWindow.Limit).WithNextStep(
+                        next => PagingFlags.NextCommand("grammar check", [], flags, next, checkWindow.Limit)))));
             break;
 
         case "timing":

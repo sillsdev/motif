@@ -93,6 +93,30 @@ public sealed class ResultPagingTests
     }
 
     [Fact]
+    public void AnOverlongRefusalKeepsItsNextTail()
+    {
+        var message = new string('x', 5000) + " Next: run motif baseline capture.";
+
+        var terminal = RefusalText.ForTerminal(message, "a.b");
+
+        Assert.StartsWith("[a.b] ", terminal, StringComparison.Ordinal);
+        Assert.EndsWith("Next: run motif baseline capture.", terminal, StringComparison.Ordinal);
+        Assert.EndsWith("Next: run motif baseline capture.", RefusalText.Bound(message, 1000), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GrammarCheckListsErrorsFirstWhateverOrderTheParserGaveThem()
+    {
+        var findings = Enumerable.Range(0, 30).Select(i => Finding(i, i < 25 ? GrammarDiagnosticLevel.Information : GrammarDiagnosticLevel.Error)).ToArray();
+
+        var page = new GrammarCheckResponse(findings, true).Window(0, 10);
+
+        Assert.Equal(5, page.Findings.Count(f => f.Severity == GrammarDiagnosticLevel.Error));
+        Assert.Equal(GrammarDiagnosticLevel.Error, page.Findings[0].Severity);
+        Assert.Equal(GrammarDiagnosticLevel.Information, page.Findings[5].Severity);
+    }
+
+    [Fact]
     public void GrammarCheckPageKeepsThePerLevelTotals()
     {
         var findings = Enumerable.Range(0, 40).Select(i => Finding(i, (GrammarDiagnosticLevel)(i % 3))).ToArray();
@@ -140,10 +164,11 @@ public sealed class ResultPagingTests
 
         Assert.Equal(message, RefusalText.Bound(message));
         var terminal = RefusalText.ForTerminal(message);
-        Assert.StartsWith(new string('x', RefusalText.TextLimit), terminal, StringComparison.Ordinal);
-        Assert.Contains("3,000 more characters not shown; add --json", terminal, StringComparison.Ordinal);
+        Assert.True(terminal.Length < RefusalText.TextLimit + 120, terminal.Length.ToString());
+        Assert.Contains("chars omitted; add --json for the whole message", terminal, StringComparison.Ordinal);
         var facts = RefusalText.Bound(new Dictionary<string, string> { ["a"] = new string('y', 20000), ["b"] = "short" });
-        Assert.Contains("4,000 more characters", facts["a"], StringComparison.Ordinal);
+        Assert.Contains("chars omitted", facts["a"], StringComparison.Ordinal);
+        Assert.True(facts["a"].Length < 16100);
         Assert.Equal("short", facts["b"]);
     }
 

@@ -111,6 +111,37 @@ public sealed class OutputBoundsTextTests
 
         Assert.True(text.Length < 2300, text.Length.ToString());
         Assert.Contains("add --json for the whole message", text, StringComparison.Ordinal);
-        Assert.Contains("more characters not shown", json, StringComparison.Ordinal);
+        Assert.Contains("chars omitted", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ARefusalKeepsItsNextTailWhenTheMiddleIsCut()
+    {
+        var message = new string('m', 10_000) + " Next: run motif baseline capture --project p.fwdata.";
+        var refusal = new Refusal("coverage.failed", FailureReason.InvalidArgument, message);
+
+        var text = ProposalCommandRenderer.Render(CommandOutcome<DraftCreatedResponse>.Refused(refusal), asJson: false).Output;
+        var json = ProposalCommandRenderer.Render(
+            CommandOutcome<DraftCreatedResponse>.Refused(new Refusal(
+                "coverage.failed", FailureReason.InvalidArgument, new string('m', 40_000) + " Next: do it.")), asJson: true).Output;
+
+        Assert.True(text.Length < 2300, text.Length.ToString());
+        Assert.Contains("[coverage.failed]", text, StringComparison.Ordinal);
+        Assert.Contains("Next: run motif baseline capture --project p.fwdata.", text, StringComparison.Ordinal);
+        Assert.Contains("Next: do it.", json, StringComparison.Ordinal);
+        Assert.Contains("\"code\": \"coverage.failed\"", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AShowPastTheEndSaysNoOperationsAtThatOffsetInsteadOfABackwardsRange()
+    {
+        var operations = Enumerable.Range(0, 5).Select(i =>
+            new ProposalOperationView("op" + i, "lexical/lexSense/setGloss", null, null, [], null)).ToArray();
+        var detail = new ProposalDetailProjection("p", "draft", "label", null, null, operations);
+        var text = ProposalCommandRenderer.Render(
+            CommandOutcome<ProposalDetailProjection>.Success(detail.Window(100, 10)), asJson: false).Output;
+
+        Assert.Contains("operations (none at offset 100; 5 in all):", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("showing", text, StringComparison.Ordinal);
     }
 }

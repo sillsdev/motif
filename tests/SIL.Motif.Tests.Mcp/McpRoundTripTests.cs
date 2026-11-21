@@ -1213,6 +1213,11 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             .GetProperty("result");
         Assert.Equal(first.GetProperty("operationTotal").GetInt32(), everything.GetProperty("operations").GetArrayLength());
 
+        var standings = (await session.CallAsync("motif_proposals", ("limit", 1), ("offset", 5))).GetProperty("result");
+        Assert.Equal(0, standings.GetProperty("proposals").GetArrayLength());
+        Assert.True(standings.GetProperty("total").GetInt32() >= 1);
+        Assert.Equal(5, standings.GetProperty("offset").GetInt32());
+
         var refused = await session.Client.CallToolAsync("motif_proposals", new Dictionary<string, object?>
             { ["project"] = project.FwDataPath, ["proposal"] = proposalId, ["offset"] = -1 });
         Assert.True(refused.IsError, refused.StructuredContent?.ToString());

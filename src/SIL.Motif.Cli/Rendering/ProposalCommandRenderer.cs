@@ -157,7 +157,7 @@ public static class ProposalCommandRenderer
         }
 
         return new CommandResult(
-            FailureEnvelope.ExitCodeFor(refusal.Reason), "error: " + RefusalText.ForTerminal(refusal.Message) + Environment.NewLine,
+            FailureEnvelope.ExitCodeFor(refusal.Reason), "error: " + RefusalText.ForTerminal(refusal.Message, refusal.Code) + Environment.NewLine,
             refusal.Reason);
     }
 

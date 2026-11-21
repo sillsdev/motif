@@ -44,6 +44,7 @@ public sealed class ComposeAllomorphRequiredFeaturesTests(PristineProjectFixture
                 "--intent", JsonSerializer.Serialize(new { allomorph = form.Value }), "--json");
             Assert.True(result.ExitCode == 0, result.Error);
             Assert.Contains("\"draftName\": \"required-features\"", result.Output, StringComparison.Ordinal);
+            Assert.Contains("\"operationCount\": 1", result.Output, StringComparison.Ordinal);
             using var database = SIL.Motif.Tests.TestFixtures.ProjectMotifDatabase.Open(path);
             var draft = new SIL.Motif.Worker.Store.ProposalRepository(database).GetDraft("required-features");
             var document = ProposalCommands.DeserializeDraft(draft.ProposalJson!);
