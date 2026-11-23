@@ -326,7 +326,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             }
         }
 
-        /// <summary>Appends after the last member as FieldWorks does (VectorReferenceLauncher.cs:287; ADR 0003).</summary>
+        /// <summary>Appends after the last member (FieldWorks VectorReferenceLauncher.cs:287, ADR 0003).</summary>
         private bool AppendsToTheEnd(string type, string key, string? member, Placement? placement)
         {
             if (placement is not { After: not null, Before: null } ||
