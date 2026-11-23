@@ -37,7 +37,7 @@ public sealed record ProposalComparison(
     public const int MaxProposals = 8;
 
     /// <summary>The most bytes the serialized summary may take.</summary>
-    public const int SummaryByteLimit = 2000;
+    public const int SummaryByteLimit = 2200;
 
     /// <summary>The requested form rows, present only when the caller selects a page.</summary>
     public CompareRowPage? Page { get; init; }

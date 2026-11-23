@@ -40,7 +40,7 @@ public sealed class ProposalCompareRealApprovalsTests
     }
 
     [Fact]
-    public async Task TheRealApprovedAnalysisLoaderCountsKeptAndLostApprovalsOnARealProject()
+    public async Task TheRealApprovedAnalysisLoaderCountsSignedApprovalsAndReportsUnverifiedOnesAsUncounted()
     {
         using var fixture = new ReviewAcceptanceFixture();
         var index = new FwHandAnalysisIndex(new Sources(fixture.Project));
@@ -48,13 +48,14 @@ public sealed class ProposalCompareRealApprovalsTests
         var facts = ((IApprovedReadingSource)snapshot).Approved.Analyses;
         await snapshot.DisposeAsync();
         Assert.Equal(2, facts.Length);
-        var ws = Assert.Single(facts.Select(fact => fact.Forms!.Keys.Single()).Distinct());
-        var both = facts.Select(fact => fact.Signature!).ToArray();
+        var signed = Assert.Single(facts, fact => fact.Signature is not null);
+        var (ws, form) = signed.Forms!.First();
+        var signature = signed.Signature!;
         string[] ids = [];
         var staged = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, project) =>
         {
-            var drops = AddTrial(database, project, [new("approved", [], []) { WritingSystemId = ws, BeforeSignatures = both, AfterSignatures = [both[0]] }]);
-            var keeps = AddTrial(database, project, [new("approved", [], []) { WritingSystemId = ws, BeforeSignatures = both, AfterSignatures = both }]);
+            var drops = AddTrial(database, project, [new(form, [], []) { WritingSystemId = ws, BeforeSignatures = [signature], AfterSignatures = [] }]);
+            var keeps = AddTrial(database, project, [new(form, [], []) { WritingSystemId = ws, BeforeSignatures = [signature], AfterSignatures = [signature] }]);
             ids = [drops, keeps];
             RecordBaseline(database, project, fixture.Project);
             return CommandOutcome<string>.Success("");
@@ -66,12 +67,13 @@ public sealed class ProposalCompareRealApprovalsTests
         var loadsAfterSummary = ProposalCompareReads.BaselineLoads;
         var page = ProposalCompareReads.Read(new(fixture.Project, ids, Page: 1, Snapshot: summary.Snapshot)).Value!;
 
-        Assert.Equal([2, 0], [summary.ApprovedTotal, summary.ApprovedUncounted]);
-        Assert.Equal([1, 1], [summary.Columns[0].ApprovedKept, summary.Columns[0].ApprovedLost]);
-        Assert.Equal([2, 0], [summary.Columns[1].ApprovedKept, summary.Columns[1].ApprovedLost]);
-        Assert.True(summary.Complete, string.Join(",", summary.Limitations.Select(item => item.Code)));
+        Assert.Equal([2, 1], [summary.ApprovedTotal, summary.ApprovedUncounted]);
+        Assert.Equal([0, 1], [summary.Columns[0].ApprovedKept, summary.Columns[0].ApprovedLost]);
+        Assert.Equal([1, 0], [summary.Columns[1].ApprovedKept, summary.Columns[1].ApprovedLost]);
+        Assert.Contains(summary.Limitations, item => item.Code == "approved-uncounted");
+        Assert.False(summary.Complete);
         Assert.Equal(summary.Snapshot, page.Snapshot);
-        Assert.Equal(2, page.Page!.Rows.Single().Cells[1].ApprovedKeptIds.Count);
+        Assert.Single(page.Page!.Rows);
         Assert.InRange(loadsAfterSummary - loadsBefore, 0, 1);
         Assert.Equal(loadsAfterSummary, ProposalCompareReads.BaselineLoads);
     }

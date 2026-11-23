@@ -44,7 +44,7 @@
         "required": ["code", "count"],
         "properties": {
           "code": {"enum": ["not-measured", "incomplete-trial", "approved-other-agents", "approved-uncounted", "trial-stale", "trial-superseded", "parser-version-differs"]},
-          "detail": {"type": "string", "maxLength": 80, "description": "For parser-version-differs, the distinct PanGloss versions the Trials recorded."},
+          "detail": {"type": "string", "maxLength": 40, "description": "For parser-version-differs, the distinct PanGloss versions the Trials recorded."},
           "count": {"type": "integer", "minimum": 1, "description": "The number of columns (Proposals) the limitation touches; per-column form counts are in columns."}
         }
       }

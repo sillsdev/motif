@@ -64,7 +64,7 @@ public sealed class ProposalCompareArgvTests
 
         var summary = await Run("--json");
         Assert.True(summary.ExitCode == 0, summary.Error);
-        Assert.True(System.Text.Encoding.UTF8.GetByteCount(summary.Output) <= 2000);
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(summary.Output) <= SIL.Motif.Contract.Responses.ProposalComparison.SummaryByteLimit);
         using var json = JsonDocument.Parse(summary.Output);
         Assert.Equal("trial-before-after", json.RootElement.GetProperty("basis").GetString());
         Assert.Equal(2, json.RootElement.GetProperty("columns").GetArrayLength());

@@ -462,21 +462,8 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
     private static string JobOf(MotifDatabase database, ProjectLocator project, string proposal, int index = 0) =>
         SIL.Motif.Commands.Trials.NewestFirst(SIL.Motif.Commands.Trials.JobsFor(database, project, CanonicalId.Parse(proposal)))[index].JobId;
 
-    private static void UpdateProposal(MotifDatabase database, string proposal, string digest, string? supersededBy = null)
-    {
-        using var connection = database.OpenConnection();
-        using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE Proposals SET CurrentIntentDigest=$digest, Status=$status, SupersededBy=$by WHERE ProposalId=$id;";
-        command.Parameters.AddWithValue("$id", proposal);
-        command.Parameters.AddWithValue("$digest", digest);
-        command.Parameters.AddWithValue("$status", supersededBy is null ? "proposed" : "superseded");
-        command.Parameters.AddWithValue("$by", (object?)supersededBy ?? DBNull.Value);
-        command.ExecuteNonQuery();
-    }
-
-    private static string TrialDigest(MotifDatabase database, ProjectLocator project, string proposal) =>
-        SIL.Motif.Contract.Canonicalization.IntentDigest.Compute(SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(
-            SIL.Motif.Worker.Jobs.TrialJobInput.Parse(new SIL.Motif.Worker.Jobs.JobRepository(database).Get(JobOf(database, project, proposal))!.InputJson).ProposalJson));
+    private static string StoredJson(MotifDatabase database, string proposal) =>
+        new SIL.Motif.Worker.Store.ProposalRepository(database).Get(CanonicalId.Parse(proposal)).ProposalJson!;
 
     [Fact]
     public void ApprovalsWithNoSignatureOrOnUnmeasuredFormsAreUncountedAndMakeTheComparisonIncomplete()
@@ -491,7 +478,7 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
             Assert.DoesNotContain(counted.Limitations, item => item.Code == "approved-uncounted");
 
             var summary = Compare(project, [a, b],
-                approved: Approvals([Approved(1, "f1"), unsigned, Approved(1, "f2"), Approved(1, "elsewhere")])).Value!;
+                approved: Approvals([Approved(1, "f1"), unsigned, Approved(1, "f2"), Approved(1, "elsewhere")], "stamp-2")).Value!;
 
             Assert.Equal(4, summary.ApprovedTotal);
             Assert.Equal(3, summary.ApprovedUncounted);
@@ -509,7 +496,7 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
             var b = AddTrial(database, project, [F("f1", [1], [1, 2])]);
             Assert.DoesNotContain(Compare(project, [a, b]).Value!.Limitations, item => item.Code == "trial-stale");
 
-            UpdateProposal(database, b, "sha256:" + new string('9', 64));
+            SaveProposal(database, b, OtherProposalJson(b));
             var summary = Compare(project, [a, b]).Value!;
 
             Assert.Equal(new CompareLimitation("trial-stale", 1), Assert.Single(summary.Limitations));
@@ -526,13 +513,13 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
             AddTrial(database, project, [F("f1", [1], [1, 2])], a, minute: 2, completed: false);
             var b = AddTrial(database, project, [F("f1", [1], [1, 2])]);
             var c = AddTrial(database, project, [F("f1", [1], [1, 2])]);
-            UpdateProposal(database, c, TrialDigest(database, project, c), supersededBy: a);
+            SaveProposal(database, c, StoredJson(database, c), supersededBy: a);
 
             Assert.DoesNotContain(Compare(project, [a, b]).Value!.Limitations, item => item.Code == "trial-superseded");
             using (var connection = database.OpenConnection())
             using (var command = connection.CreateCommand())
             {
-                command.CommandText = "UPDATE Jobs SET Status='running' WHERE Status='failed';";
+                command.CommandText = "UPDATE Jobs SET Status='running', ArchivedUtc=NULL, ResultJson=NULL, FailureCategory='none' WHERE Status='failed';";
                 command.ExecuteNonQuery();
             }
             Assert.Equal(new CompareLimitation("trial-superseded", 1), Assert.Single(Compare(project, [a, b]).Value!.Limitations));
@@ -550,7 +537,7 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
             using (var connection = database.OpenConnection())
             using (var command = connection.CreateCommand())
             {
-                command.CommandText = "DELETE FROM Proposals WHERE ProposalId=$id;";
+                command.CommandText = "DELETE FROM ProposalRevisions WHERE ProposalId=$id; DELETE FROM Proposals WHERE ProposalId=$id;";
                 command.Parameters.AddWithValue("$id", b);
                 command.ExecuteNonQuery();
             }

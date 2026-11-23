@@ -55,15 +55,7 @@ public static class ProposalCompareExports
             command.Parameters.AddWithValue("$id", jobId);
             command.ExecuteNonQuery();
         }
-        using (var connection = database.OpenConnection())
-        using (var command = connection.CreateCommand())
-        {
-            command.CommandText = "INSERT OR IGNORE INTO Proposals (ProposalId,CurrentIntentDigest,Status) VALUES ($id,$digest,'proposed');";
-            command.Parameters.AddWithValue("$id", proposalId);
-            command.Parameters.AddWithValue("$digest", SIL.Motif.Contract.Canonicalization.IntentDigest.Compute(
-                SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(proposalJson)));
-            command.ExecuteNonQuery();
-        }
+        SaveProposal(database, proposalId, proposalJson);
         var list = forms.ToList();
         var words = list.Select((spec, index) => new TrialExportWord("case/" + index, spec.WritingSystemId, spec.Form, [],
             [new TrialExportForm(spec.Form, "key/" + spec.Form, "submitted", TrialExportStatus.Accepted, "ok", [],
@@ -78,9 +70,33 @@ public static class ProposalCompareExports
         return proposalId;
     }
 
+    /// <summary>Stores the Proposal's current revision, so a Trial's revision matches it unless the test changes the content.</summary>
+    public static void SaveProposal(MotifDatabase database, string proposalId, string proposalJson, string? supersededBy = null)
+    {
+        var revision = FrozenProposalRevision.Create(proposalJson);
+        var repository = new SIL.Motif.Worker.Store.ProposalRepository(database);
+        repository.SaveRevision(new SIL.Motif.Worker.Store.ProposalRevisionRecord(
+            CanonicalId.Parse(proposalId), revision.IntentDigest, revision.ProposalJson, "proposed", null, null, null));
+        if (supersededBy is null) return;
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Proposals SET Status='superseded', SupersededBy=$by WHERE ProposalId=$id;";
+        command.Parameters.AddWithValue("$by", supersededBy);
+        command.Parameters.AddWithValue("$id", proposalId);
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>A Proposal document whose intent digest differs from the one <see cref="AddTrial"/> stores.</summary>
+    public static string OtherProposalJson(string proposalId) => JsonSerializer.Serialize(new
+    {
+        contractVersions = new Dictionary<string, string> { ["lexical"] = "1.0" }, proposalId,
+        operations = new[] { new { operationId = CanonicalId.Mint("operation/").Value, kind = "lexical/lexSense/setGloss",
+            target = CanonicalId.FromGuid(Guid.NewGuid()).Value, after = new { ws = "en", text = "changed" } } },
+    });
+
     private static TrialExportSide Side(FormSpec spec, int[] readings, IReadOnlyList<ReadingSignature>? signatures) =>
         new("complete", spec.Dispatched, spec.Complete, TrialExportStatus.Accepted, "ok", [],
-            (signatures ?? [.. readings.Select(Signature)]).Select(signature => new TrialExportReading(signature.Id, signature,
+            (signatures ?? [.. (readings ?? []).Select(Signature)]).Select(signature => new TrialExportReading(signature.Id, signature,
                 ReadingAcceptance.LexiconBacked, [])).ToArray());
 
     /// <summary>
