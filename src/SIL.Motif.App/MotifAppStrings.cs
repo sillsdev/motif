@@ -2887,6 +2887,16 @@ public static class MotifAppStrings
 
     public static string RefusalRejectionTraceCaptureLimit => Text("MotifApp.RefusalRejectionTraceCaptureLimit");
 
+    public static string RefusalWhyNotRequestInvalid => Text("MotifApp.RefusalWhyNotRequestInvalid");
+
+    public static string RefusalWhyNotParserUnsupported => Text("MotifApp.RefusalWhyNotParserUnsupported");
+
+    public static string RefusalWhyNotInputRefused => Text("MotifApp.RefusalWhyNotInputRefused");
+
+    public static string RefusalWhyNotMalformed => Text("MotifApp.RefusalWhyNotMalformed");
+
+    public static string RefusalWhyNotUnfinished => Text("MotifApp.RefusalWhyNotUnfinished");
+
     public static string RefusalWordTraceCancelled => Text("MotifApp.RefusalWordTraceCancelled");
 
     public static string RefusalWordTraceMalformedDiagnostic => Text("MotifApp.RefusalWordTraceMalformedDiagnostic");
