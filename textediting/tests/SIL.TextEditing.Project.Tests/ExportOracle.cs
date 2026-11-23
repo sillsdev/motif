@@ -54,10 +54,11 @@ namespace SIL.TextEditing.Project.Tests
         static string CustomKey(string owner, string name)
         {
             var key = new StringBuilder("custom-" + owner + "-");
-            foreach (var rune in name.EnumerateRunes())
+            for (int i = 0; i < name.Length; i++)
             {
-                string text = rune.ToString();
-                bool escape = rune.Value < 0x20 || (rune.Value >= 0x7F && rune.Value < 0xA0) || char.IsWhiteSpace(text, 0) || "./#%\\:*?\"<>|".Contains(text) || rune.Value >= 0xFFFE && rune.Value <= 0xFFFF || rune.Value == 0xFEFF;
+                string text = char.IsHighSurrogate(name[i]) && i + 1 < name.Length ? name.Substring(i++, 2) : name[i].ToString();
+                int value = char.ConvertToUtf32(text, 0);
+                bool escape = value < 0x20 || (value >= 0x7F && value < 0xA0) || char.IsWhiteSpace(text, 0) || "./#%\\:*?\"<>|".Contains(text) || (value >= 0xFFFE && value <= 0xFFFF) || value == 0xFEFF;
                 if (!escape) key.Append(text);
                 else foreach (byte b in Encoding.UTF8.GetBytes(text)) key.Append('%').Append(b.ToString("X2"));
             }
