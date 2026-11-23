@@ -43,6 +43,10 @@ public sealed class GuideQueryDocument
         return new GuideQueryDocument(text.ToString(), ranges);
     }
 
+    /// <summary>Reads stored Markdown, such as a Proposal's Rationale, whose blocks are fenced lines in the text itself.</summary>
+    public static GuideQueryDocument FromMarkdown(string? markdown) =>
+        From((markdown ?? "").Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'));
+
     /// <summary>
     /// The paragraphs from <paramref name="first"/> to <paramref name="last"/> that <paramref name="span"/> covers exactly;
     /// false when the block starts or ends inside a paragraph that also holds other text.

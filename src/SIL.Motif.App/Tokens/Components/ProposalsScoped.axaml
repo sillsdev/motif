@@ -29,6 +29,12 @@
   <Style Selector="WrapPanel.proposalInspectorActions">
     <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
+  <Style Selector="Border.proposalSense.target">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+  </Style>
+  <Style Selector="Border.proposalSense.target :is(TextBlock)">
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Strong}" />
+  </Style>
   <Style Selector=":is(TextBlock).proposalNumber.moved">
     <Setter Property="FontWeight" Value="Bold" />
   </Style>

@@ -578,6 +578,14 @@
   },
   {
     "view": "Proposals/ProposalDocument",
+    "name": "ProposalSenseItems",
+    "source": "SenseItemList",
+    "mode": "finite",
+    "reason": "The senses of one entry, listed beside the change that targets one of them.",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalDocument",
     "name": "ProposalAppliedEffects",
     "source": "AppliedEffects",
     "mode": "paged",

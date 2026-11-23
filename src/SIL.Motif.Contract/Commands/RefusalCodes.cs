@@ -790,6 +790,12 @@ public static class RefusalCodes
     /// <summary>A reference write names an object outside the possibility list FieldWorks offers for the field.</summary>
     public const string ReferenceWrongList = "reference.wrong-list";
 
+    /// <summary>A reference write names an object of a class the field does not refer to.</summary>
+    public const string ReferenceWrongClass = "reference.wrong-class";
+
+    /// <summary>A reference write names an object the project does not contain.</summary>
+    public const string ReferenceUnknown = "reference.unknown";
+
     /// <summary>A custom-field operation names a field the target's class does not have.</summary>
     public const string CustomFieldMissing = "custom-field.missing";
     /// <summary>A custom-field operation names a stock field, which its own kinds write.</summary>

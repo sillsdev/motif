@@ -109,11 +109,36 @@ without a disk file are serialized from the supplied cache.
 
 ## Compact persistence and import provenance
 
-The SQLite development format is version 5. It adds the complete-record create encoding
+The SQLite development format is version 6. Version 5 added the complete-record create encoding
 under Harmony model version 1. Version 4 stores open in place and keep model version 0
 for granular imports and edits. Readers refuse history authored under a newer model version.
 For earlier development formats, reimport the external project into a fresh store.
 Harmony remains the stock package.
+Format 6 adds two additive tables, `RecordStoreCertificate` and `RecordContentIdentity`. A version 5 store still
+reads without being changed and is upgraded in place, inside its first write's transaction; an older reader refuses
+version 6 with the usual format refusal. The certificate is written in the same transaction as every publication
+and guarded write and holds the revision, the four published digests, the exact replay accumulators of the
+`Commits` and `ChangeEntities` rows, how they were obtained (`full-import`, `full-verify`, `incremental`), the
+store file's identity (a hash of its first commit) and a crash flag. The flag is committed alone before a write
+begins and cleared by the write's own commit. A cold handle's first write trusts the certificate and extends the stored
+replay digest, with no history scan, only when the certificate equals the state row, the flag is clear and the
+identity is this file; any other case, and `VerifyAsync`, scan every row and re-certify. `RecordStore.Verification`
+reports `Certified`, `Full` or `Uncertified`. A certificate detects accidental damage and a copy from another file;
+it is not authentication, and rows it was not asked to re-read stay unverified until `VerifyAsync`. `VerifyAsync`
+compares the state row, the certificate and a fresh computation and names the table that disagrees. `RecordContentIdentity`
+maps each stored value's SHA-256 to its content row, so the first write of a handle finds an existing value through
+the table instead of hashing every row; a write that adds content still re-hashes the content root (0.2 to 0.3 s on
+Cebuano). History is never pruned: the replay digest still covers every commit and change row.
+A certificate that does not match the state row is untrusted, never refused: the write does the full scan, compares
+the computed digests with the state row, refuses on any mismatch (so tampered history is never re-certified), and
+otherwise re-certifies. The first write on a format 5 store pays a one-time upgrade after its revision and value
+checks pass: it indexes every content value (about 14 s on Cebuano under load) while it holds the write lock, tells
+`RecordStore.Progress` before it starts and sets `UpgradedFormat` when it commits. `VerifyAsync` scans without the writer
+lock and takes it only to re-certify, refusing if the store changed meanwhile. List operations compare the old history
+with the stored replay digest before they republish, so they never absorb damage; they commit history and
+publication separately, and a crash between them sets the flag and leaves history ahead of the point, which the store
+refuses to open until it is regenerated from a copy. `VerifyAsync` compares the whole content identity table with the
+stored values; `RebuildContentIdentitiesAsync` repairs it.
 Its change and snapshot columns use bounded, versioned binary converters; GUID
 columns contain 16 network-order bytes. Immutable typed field payloads, initialization
 layouts, writing-system definitions and native vector provenance share one content

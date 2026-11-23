@@ -6,9 +6,12 @@ using SIL.Motif.Runner.Operations;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>One authored operation and the values that can be shown for it.</summary>
-public sealed record ProposalOperationRow(string Title, string Target, string Values, string Senses = "")
+public sealed record ProposalOperationRow(string Title, string Target, string Values, string Senses = "",
+    string SensesHeading = "", IReadOnlyList<ProposalSenseItem>? SenseItems = null)
 {
     public bool HasSenses => Senses.Length != 0;
+    /// <summary>The entry's senses to list, the targeted one marked.</summary>
+    public IReadOnlyList<ProposalSenseItem> SenseItemList => SenseItems ?? [];
     public bool HasTarget => Target.Length != 0;
     public bool HasValues => Values.Length != 0;
 
@@ -38,7 +41,7 @@ public sealed record ProposalOperationRow(string Title, string Target, string Va
             Format(MotifAppStrings.ProposalChangeValueWithWritingSystem, ws, value);
 
         return new ProposalOperationRow(ProposalOperationSentence.For(operation, 0), target, values,
-            names.Senses(identity) ?? string.Empty);
+            names.Senses(identity) ?? string.Empty, names.SensesHeading(identity) ?? string.Empty, names.SenseItems(identity));
 
         string? Property(string key) => payload is { } data && data.TryGetProperty(key, out var property)
             ? property.ValueKind switch

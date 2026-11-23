@@ -76,6 +76,8 @@ Harmony model version 1, and indexes rebuilt in the same transaction. Measured i
 
 - Slice 1: Cebuano 715.7 s to 122.8 s; Indonesian 42.7 s to 14.4 s.
 - Slice 2: Cebuano 84.4 s to 57.8 s (re-measured baseline); Indonesian 13.0 s to 8.3 s.
+- Slice 3b adds format 6 (certificate row, crash flag, persisted content identity); the first write on a cold handle
+  extends the stored replay digest instead of rescanning history. See [record-store.md](../record-store.md).
 - A separate measurement: the M1 slice 4c Cebuano wrapper store import took 90.9 s on a shared machine.
 
 Slice 1 cut Cebuano peak RSS from 17.0 to 7.6 GiB. Slice 2 left it at about 8.2 to 8.6 GB, a level set by export, so

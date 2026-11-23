@@ -4016,6 +4016,7 @@ public static class MotifAppStrings
     public static string ProposalCurrentUnavailable => Text("MotifApp.ProposalCurrentUnavailable");
     public static string ProposalEntryNoHeadword => Text("MotifApp.ProposalEntryNoHeadword");
     public static string ProposalEntrySensesLine => Text("MotifApp.ProposalEntrySensesLine");
+    public static string ProposalEntrySensesHeading => Text("MotifApp.ProposalEntrySensesHeading");
     public static string ProposalEntrySenseItem => Text("MotifApp.ProposalEntrySenseItem");
     public static string ProposalEntrySenseChangedHere => Text("MotifApp.ProposalEntrySenseChangedHere");
     public static string ProposalEntrySenseNoGloss => Text("MotifApp.ProposalEntrySenseNoGloss");
@@ -4252,6 +4253,12 @@ public static class MotifAppStrings
     public static string GuideExamplesHeading => Text("MotifApp.GuideExamplesHeading");
     public static string GuideStaleNotice => Text("MotifApp.GuideStaleNotice");
     public static string GuideQueriesHeading => Text("MotifApp.GuideQueriesHeading");
+    public static string RefusalQueryAsOfUnavailable => Text("MotifApp.RefusalQueryAsOfUnavailable");
+    public static string RefusalQueryInvalid => Text("MotifApp.RefusalQueryInvalid");
+    public static string RefusalQueryNoTrialRows => Text("MotifApp.RefusalQueryNoTrialRows");
+    public static string RefusalGuideQueryRunInvalid => Text("MotifApp.RefusalGuideQueryRunInvalid");
+    public static string RefusalGuideQueryRunNotReadOnly => Text("MotifApp.RefusalGuideQueryRunNotReadOnly");
+    public static string ProposalQuerySaveUnsupported => Text("MotifApp.ProposalQuerySaveUnsupported");
     public static string GuideQueryRun => Text("MotifApp.GuideQueryRun");
     public static string GuideQueryEdit => Text("MotifApp.GuideQueryEdit");
     public static string GuideQuerySave => Text("MotifApp.GuideQuerySave");

@@ -52,6 +52,19 @@ internal sealed class ProposalEntryNames
             : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalEntryHeadword, headword);
     }
 
+    /// <summary>The entry's senses one to an item, the one the change targets marked; empty when there are none to list.</summary>
+    public IReadOnlyList<ProposalSenseItem> SenseItems(string? id)
+    {
+        if (Find(id) is not { Senses.Count: > 0 } lookup) return [];
+        return [.. lookup.Senses.Select(sense => new ProposalSenseItem(
+            string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalEntrySenseItem, sense.Outline,
+                sense.Gloss ?? MotifAppStrings.ProposalEntrySenseNoGloss).Trim(), SameId(sense.SenseId, lookup.SenseId)))];
+    }
+
+    /// <summary>"Senses of palit:", the line above <see cref="SenseItems"/>; null when the entry has no senses to list.</summary>
+    public string? SensesHeading(string? id) => Find(id) is { Senses.Count: > 0 } lookup
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalEntrySensesHeading, Headword(lookup)) : null;
+
     /// <summary>"Senses of palit: 1 sell; 2 buy (changed here)", or null when the entry has no senses to list.</summary>
     public string? Senses(string? id)
     {
@@ -77,3 +90,6 @@ internal sealed class ProposalEntryNames
     private static bool SameId(string? left, string? right) => left is not null && right is not null &&
         CanonicalId.TryParse(left, out var a) && CanonicalId.TryParse(right, out var b) && a == b;
 }
+
+/// <summary>One sense in an entry's list, and whether the change under review targets it.</summary>
+public sealed record ProposalSenseItem(string Text, bool IsTarget);

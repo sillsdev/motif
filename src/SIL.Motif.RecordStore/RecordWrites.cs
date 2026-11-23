@@ -39,14 +39,16 @@ public sealed partial class RecordStore
         string expectedRevision, Guid clientId)
     {
         using var writer = AcquireWriter();
+        var start = await BeginWriteAsync();
         await using var transaction = await database.Database.BeginTransactionAsync();
         var writingStarted = false;
+        var committed = false;
         try
         {
             var verified = await PointAsync();
             var state = verified.State;
             if (state.Revision != expectedRevision) throw new StaleRevisionException("Field write belongs to another store revision.");
-            var replay = verified.Replay ?? await ReplayIntegrity.ScanAsync(database, Workers);
+            var (replay, scanned) = verified.Replay is { } kept ? (kept, false) : await ReplayForWriteAsync(start, state);
             if (state.ReplayDigest != replay.Final()) throw new InvalidDataException("History is corrupt; the field write was refused.");
             var record = verified.Records.GetValueOrDefault(target)
                 ?? throw new InvalidOperationException("A field write requires a known native record.");
@@ -59,13 +61,20 @@ public sealed partial class RecordStore
             ValidateField(type, field, value, verified.Records, verified.Index.UsageSchema);
             if (!verified.Index.Incoming([target]).NativeComplete)
                 throw new InvalidOperationException("A field write requires complete native reference closure.");
-            if (JsonElement.DeepEquals(prior, value)) return state.Revision;
+            if (JsonElement.DeepEquals(prior, value))
+            {
+                // Nothing is written, so nothing it prepared may stay behind.
+                await transaction.RollbackAsync();
+                await AbandonWriteAsync(start);
+                return state.Revision;
+            }
             // Only a non-owning single reference carries an index edge; other supported types have none.
             NativeReference? removed = type == 24 && prior.ValueKind != JsonValueKind.Null ? new(target, field, -1, prior.GetGuid(), false) : null;
             NativeReference? added = type == 24 && value.ValueKind != JsonValueKind.Null ? new(target, field, -1, value.GetGuid(), false) : null;
             var updated = (GenericRecord)record.Copy();
             updated.Values[key] = value.Clone();
             var expectedItem = SnapshotItem(updated);
+            await UpgradeInTransactionAsync();
             writingStarted = true;
             var commit = await model.AddChange(clientId, new SetRecordValue(target, key, value));
             database.ChangeTracker.Clear();
@@ -74,6 +83,7 @@ public sealed partial class RecordStore
                 throw new InvalidDataException("The field write did not produce its prepared state.");
             var revision = await CommitRevisionAsync();
             var extended = await ReplayIntegrity.ExtendAsync(database, replay, commit.Id);
+            WriteStageReached?.Invoke(WriteStage.HistoryWritten);
             var snapshot = verified.Snapshot.Remove(SnapshotItem(record)).Add(expectedItem);
             var index = verified.IndexDigest.WithEdge(removed, added);
             await ReferencePersistence.ApplyAsync(database, removed, added);
@@ -84,10 +94,16 @@ public sealed partial class RecordStore
             stored.SnapshotDigest = snapshot.Final("snapshot");
             stored.ContentDigest = content.Digest();
             stored.Published = true;
+            await StageCertificateAsync(stored, extended, scanned ? CertificateProvenance.FullVerify : CertificateProvenance.Incremental);
             await database.SaveChangesAsync();
+            WriteStageReached?.Invoke(WriteStage.StateWritten);
             var published = await database.Set<StoreState>().AsNoTracking().SingleAsync();
             database.ChangeTracker.Clear();
             await transaction.CommitAsync();
+            committed = true;
+            CompleteUpgrade();
+            if (verified.Replay is null) Verification = scanned ? StoreVerification.Full : StoreVerification.Certified;
+            WriteStageReached?.Invoke(WriteStage.Committed);
             var records = new Dictionary<Guid, GenericRecord>(verified.Records) { [target] = updated };
             point = new VerifiedPoint(published, records, verified.Index.WithEdge(revision, removed, added), snapshot, index)
             { Replay = extended, Anchors = verified.Anchors, WritingSystems = verified.WritingSystems, ProjectId = verified.ProjectId };
@@ -95,10 +111,15 @@ public sealed partial class RecordStore
         }
         catch
         {
-            requiresReopen |= writingStarted;
+            requiresReopen |= writingStarted | committed;
             if (writingStarted) point = null;
             database.ChangeTracker.Clear();
-            await transaction.RollbackAsync();
+            if (!committed)
+            {
+                AbandonUpgrade();
+                await transaction.RollbackAsync();
+                if (!writingStarted) await TryAbandonWriteAsync(start);
+            }
             throw;
         }
     }

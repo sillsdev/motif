@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Runner.Resolution;
 using SIL.LCModel;
 
 namespace SIL.Motif.Runner.Operations;
@@ -36,10 +37,7 @@ internal static class ReferenceCollectionFieldLowering
         string kind, string field, Func<LcmCache, ICmPossibilityList?> list)
         where TRef : ICmPossibility
     {
-        var member = ReferenceFieldLowering.Resolve<TRef>(cache, memberId, kind);
-        if (member.OwningList.Guid != list(cache)?.Guid)
-            throw new ReferenceFieldRefusal(RefusalCodes.ReferenceWrongList, kind, field,
-                $"Referenced object '{memberId.Value}' is not in the list {field} takes.");
+        var member = ListBoundReference.Resolve<TRef>(cache, memberId, kind, field, list(cache)?.Guid ?? Guid.Empty);
         if (!collection.Contains(member))
             collection.Add(member);
     }
@@ -47,7 +45,7 @@ internal static class ReferenceCollectionFieldLowering
     public static void ApplyRemoveRef<TRef>(LcmCache cache, ICollection<TRef> collection, CanonicalId memberId, string kind)
         where TRef : ICmObject
     {
-        var member = ReferenceFieldLowering.Resolve<TRef>(cache, memberId, kind);
-        collection.Remove(member);
+        if (ListBoundReference.Find(cache, memberId, kind, kind) is TRef member)
+            collection.Remove(member);
     }
 }
