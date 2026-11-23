@@ -11244,7 +11244,7 @@
   },
   {
     "name": "motif_proposal_compare",
-    "description": "Compare Proposals. Compares two to eight Proposals side by side from each one\u0027s Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project\u0027s approved analyses and measures nothing.\nCommand: proposal compare. Agent class: Read.\nProposalIds: Two to eight distinct Proposal IDs. Each uses its newest completed Trial.\nAt: The Baseline digest every Trial must have been measured on. Omit to use the one they share.\nPage: The one-based page of form rows to read. Omit for the compact summary.\nSnapshot: The snapshot token from an earlier summary. Page calls pass it so every page reads the same Trials.",
+    "description": "Compare Proposals. Compares two to eight Proposals side by side from each one\u0027s Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project\u0027s approved analyses and measures nothing.\nCommand: proposal compare. Agent class: Read.\nProposalIds: Two to eight distinct Proposal IDs. Each uses its newest completed Trial unless pins one.\nAt: The Baseline digest every Trial must have been measured on. Omit to use the one they share.\nPage: The one-based page of form rows to read. Omit for the compact summary.\nSnapshot: The snapshot token from an earlier summary. Page calls pass it so every page reads the same Trials.\nJobs: Trial job IDs that pin a Proposal\u0027s column to that exact completed Trial. At most one per Proposal, each naming one of the Proposals; the rest use their newest.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -11269,6 +11269,14 @@
         "snapshot": {
           "type": "string",
           "description": "Value for the request field."
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Value for the request field."
+          },
+          "description": "Declared items."
         },
         "project": {
           "type": "string",
