@@ -78,8 +78,6 @@ public static class TextParagraphFields
             owner => ((IRnGenericRec)owner).PersonalNotesOA, (owner, text) => ((IRnGenericRec)owner).PersonalNotesOA = text),
         ["RnGenericRec.ResearchPlan"] = new(owner => owner is IRnGenericRec,
             owner => ((IRnGenericRec)owner).ResearchPlanOA, (owner, text) => ((IRnGenericRec)owner).ResearchPlanOA = text),
-        ["RnGenericRec.VersionHistory"] = new(owner => owner is IRnGenericRec,
-            owner => ((IRnGenericRec)owner).VersionHistoryOA, (owner, text) => ((IRnGenericRec)owner).VersionHistoryOA = text),
     };
 
     /// <summary>Every editable field, as <c>Class.Field</c>.</summary>

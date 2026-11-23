@@ -514,8 +514,6 @@ Covered	RnGenericRec	title	RnGenericRec.Title	SetPlainRich	system/rnGenericRec/s
 Covered	RnGenericRec	title	RnGenericRec.Title	ClearRich	system/rnGenericRec/clearTitle	-	-
 Covered	RnGenericRec	type	RnGenericRec.Type	Set	system/rnGenericRec/setType	-	-
 Covered	RnGenericRec	type	RnGenericRec.Type	Clear	system/rnGenericRec/clearType	-	-
-Covered	RnGenericRec	version-history	RnGenericRec.VersionHistory	SetRich	text/setParagraphs	-	-
-Covered	RnGenericRec	version-history	RnGenericRec.VersionHistory	ClearRich	text/setParagraphs	-	-
 CoveredNotLowered	FsFeatStruc	feature-specs	FsFeatStruc.FeatureSpecs	RemoveObject	grammar/fsFeatStruc/deleteFeatureSpecs	delete-composer	-
 CoveredNotLowered	LexEntry	allomorphs	LexEntry.AlternateForms	RemoveObject	lexical/lexEntry/removeAlternateForm	delete-composer	-
 CoveredNotLowered	LexEntry	lexeme-form	LexEntry.LexemeForm	RemoveObject	lexical/lexEntry/deleteLexemeForm	delete-composer	-
@@ -1302,6 +1300,8 @@ OtherFields	RnGenericRec	text	RnGenericRec.Text	Clear	none	NoOperationKind	-
 OtherFields	RnGenericRec	time-of-event	RnGenericRec.TimeOfEvent	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	time-of-event	RnGenericRec.TimeOfEvent	RemoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	title	RnGenericRec.Title	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	version-history	RnGenericRec.VersionHistory	SetRich	none	NoOperationKind	-
+OtherFields	RnGenericRec	version-history	RnGenericRec.VersionHistory	ClearRich	none	NoOperationKind	-
 OtherFields	RnRoledPartic	participants	RnRoledPartic.Participants	AddReference	none	NoOperationKind	-
 OtherFields	RnRoledPartic	participants	RnRoledPartic.Participants	RemoveReference	none	NoOperationKind	-
 OtherFields	RnRoledPartic	role	RnRoledPartic.Role	Set	none	NoOperationKind	-
@@ -1788,8 +1788,6 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	text/setParagraphs	RnGenericRec	PersonalNotes	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	RnGenericRec	ResearchPlan	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	RnGenericRec	ResearchPlan	SetRich	Forbidden	-		Unspecified	False
-# Handler	text/setParagraphs	RnGenericRec	VersionHistory	ClearRich	Forbidden	-		Unspecified	False
-# Handler	text/setParagraphs	RnGenericRec	VersionHistory	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setRichString	CmDomainQ	ExampleSentences	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setRichString	CmDomainQ	ExampleSentences	SetPlainRich	Forbidden	-		Unspecified	True
 # Handler	text/setRichString	CmDomainQ	ExampleSentences	SetRich	Forbidden	-		Unspecified	False

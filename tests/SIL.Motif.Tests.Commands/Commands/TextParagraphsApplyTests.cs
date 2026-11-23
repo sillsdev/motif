@@ -521,7 +521,7 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
 
         Assert.Contains("Text.Contents", inventory);
         string[] notebookSections = ["Conclusions", "Discussion", "ExternalMaterials", "FurtherQuestions", "Hypothesis",
-            "PersonalNotes", "ResearchPlan", "VersionHistory"];
+            "PersonalNotes", "ResearchPlan"];
         Assert.Equal(inventory.Where(field => field != "Text.Contents")
             .Concat(notebookSections.Select(section => "RnGenericRec." + section)).Order(), TextParagraphFields.Names.Order());
     }
