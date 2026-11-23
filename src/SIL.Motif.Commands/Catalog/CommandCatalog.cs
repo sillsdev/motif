@@ -57,6 +57,7 @@ public static class CommandCatalog
         new CommandDescriptor("analyses", typeof(ManualAnalysesRequest), typeof(AnalysisAggregateProjection), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("new", typeof(NewDraftRequest), typeof(DraftCreatedResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("import", typeof(RecordImportRequest), typeof(RecordImportResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
+        new CommandDescriptor("record export", typeof(RecordExportRequest), typeof(RecordExportResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("pending-changes", typeof(PendingChangesRequest),
             typeof(PendingChangesSnapshot), CommandSurface.Developer, AgentClass.Read),
         new CommandDescriptor("put-pending-change", typeof(PutPendingChangeRequest),

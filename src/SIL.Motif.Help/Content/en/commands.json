@@ -2018,6 +2018,12 @@
     ],
     "redirect": "Export the record again, redo the edits, and import that file."
   },
+  "record export": {
+    "title": "Export a record file",
+    "description": "Writes one record, or every record of a kind, from the saved project as the record file that import reads, and counts every value the file leaves out. It never changes the project. If the project changes after an export, export the record again and redo the edits; there is no merge.",
+    "source": "Authored from the record-file format and the typed command contract.",
+    "redirect": "Edit the file and import it; if the project changed first, export the record again and redo the edits; there is no merge."
+  },
   "new": {
     "title": "Start a Proposal",
     "description": "Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.",

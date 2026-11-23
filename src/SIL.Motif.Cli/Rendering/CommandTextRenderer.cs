@@ -157,6 +157,7 @@ public static class CommandTextRenderer
             WordReadStateResponse r => RenderWordReadState(r),
             WritingSystemsResponse r => RenderWritingSystems(r),
             RecordImportResponse r => RenderRecordImport(r),
+            RecordExportResponse r => RenderRecordExport(r),
             GdrListResponse r => RenderGdrList(r),
             GdrShowResponse r => RenderGdrShow(r),
             GdrCheckResponse r => RenderGdrCheck(r),
@@ -1612,6 +1613,18 @@ public static class CommandTextRenderer
             if (CandidateLine(touched.ByMembershipOnly, touched.BySpellingOnly) is { } candidates)
                 text.AppendLine($"           Not counted: {candidates}");
         }
+        return text.ToString();
+    }
+
+    private static string RenderRecordExport(RecordExportResponse r)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Wrote {r.WrittenCount:N0} of {r.RecordCount:N0} {r.RecordKind} record file(s) to {r.OutPath}. The project was not changed.");
+        if (r.NotWrittenCount > 0) text.AppendLine($"  not written: {r.NotWrittenCount:N0}");
+        text.AppendLine($"  left out of the file(s): {r.UnexportedCount:N0} value(s)");
+        foreach (var item in r.Unexported)
+            text.AppendLine($"  {item.Count:N0} x {item.Class}.{item.Field}: {item.Reason}");
+        text.AppendLine(r.Next);
         return text.ToString();
     }
 

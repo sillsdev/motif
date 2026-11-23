@@ -583,5 +583,54 @@ namespace SIL.TextEditing.Project.Tests
             Assert.Throws<ArgumentException>(() => exporter.ExportAll("lists/item"));
             Assert.Throws<ArgumentException>(() => exporter.Export(fixture.Cache.LangProject.Guid));
         }
+
+        [Fact]
+        public void OneRecordThatFailsIsReportedAndTheOthersStillExport()
+        {
+            using var fixture = new ProjectFixture();
+            int integer = AddCustom(fixture.Cache, "LexEntry", "Count", CellarPropertyType.Integer);
+            int text = AddCustom(fixture.Cache, "LexEntry", "Remark", CellarPropertyType.Unicode);
+            int date = AddCustom(fixture.Cache, "LexEntry", "Seen", CellarPropertyType.GenDate);
+            var entries = new[] { MakeEntry(fixture, integer, text, date), MakeEntry(fixture, integer, text, date), MakeEntry(fixture, integer, text, date) };
+            var (exporter, _) = Exporter(fixture, ProjectRecordSchema.LexiconEntryOverlay);
+            var bad = entries[1].Guid;
+            exporter.BeforeRecord = record => { if (record.Guid == bad) throw new NullReferenceException("simulated failure"); };
+
+            var all = exporter.ExportAll("lexicon/entry");
+
+            Assert.Equal(3, all.Count);
+            var failed = Assert.Single(all, e => e.Text == null);
+            Assert.Equal(bad, failed.Guid);
+            Assert.Equal("/lexicon/" + bad.ToString("D"), failed.Path);
+            var report = Assert.Single(failed.Unexported);
+            Assert.Equal(bad, report.Object);
+            Assert.Equal("(record)", report.Field);
+            Assert.Contains("NullReferenceException", report.Reason);
+            Assert.Equal(2, all.Count(e => e.Text != null));
+            foreach (var good in all.Where(e => e.Text != null)) ReadsBackClean(exporter, good);
+        }
+
+        [Fact]
+        public void ACustomFieldNamedLikeModelPlumbingIsReportedNotSkippedByName()
+        {
+            using var fixture = new ProjectFixture();
+            int stamp = AddCustom(fixture.Cache, "LexEntry", "Guid", CellarPropertyType.Time);
+            int owner = AddCustom(fixture.Cache, "LexEntry", "Owner", CellarPropertyType.Unicode);
+            ILexEntry entry = null!;
+            fixture.Change(() =>
+            {
+                entry = fixture.Cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                var data = Data(fixture.Cache);
+                data.SetTime(entry.Hvo, stamp, 635000000000000000L);
+                data.SetUnicode(entry.Hvo, owner, "kept", 4);
+            });
+            var (exporter, _) = Exporter(fixture, ProjectRecordSchema.LexiconEntryOverlay);
+
+            var export = exporter.Export(entry.Guid);
+
+            Assert.Contains(export.Unexported, u => u.Object == entry.Guid && u.Field == "Guid" && u.Value != null);
+            Assert.Equal("kept", ((RecordScalar)export.Document.Data["custom-LexEntry-Owner"]!).Text);
+            Assert.DoesNotContain(export.Unexported, u => u.Object == entry.Guid && u.Field == "Owner");
+        }
     }
 }

@@ -118,6 +118,9 @@ namespace SIL.TextEditing.Project
             _objects = new LinkMapper(_paths);
         }
 
+        /// <summary>Runs before each record of <see cref="ExportAll"/>, so a test can make one record fail.</summary>
+        internal Action<ICmObject>? BeforeRecord { get; set; }
+
         internal ProjectRecordSchemaResult Result => _result;
         internal LcmCache Cache => _cache;
 
@@ -170,12 +173,33 @@ namespace SIL.TextEditing.Project
             }
             var outside = roots.FirstOrDefault(r => found.Roots.All(t => t.Name != r.ClassName));
             if (outside != null) throw new InvalidOperationException(outside.ClassName + " is not a root class of " + found.Name + ", and would have been left out.");
-            var exports = roots.Select(r => Export(found, r)).ToList();
+            var exports = roots.Select(r => ExportOrReport(found, r)).ToList();
             // Two records never share a path: a path that more than one record has takes the first eight hex digits of its record's GUID.
             var shared = new HashSet<string>(exports.GroupBy(e => e.Path, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key), StringComparer.Ordinal);
             if (shared.Count > 0)
                 exports = exports.Select(e => shared.Contains(e.Path) ? e.WithPath(WithGuidSuffix(e.Path, e.Guid)) : e).ToList();
             return exports.OrderBy(e => e.Path, StringComparer.Ordinal).ThenBy(e => e.Guid).ToList();
+        }
+
+        /// <summary>One record that cannot be exported is reported in its own <see cref="ProjectRecordExport.Unexported"/> and leaves the rest of the batch alone.</summary>
+        ProjectRecordExport ExportOrReport(RecordKind kind, ICmObject root)
+        {
+            try { BeforeRecord?.Invoke(root); return Export(kind, root); }
+            catch (Exception e) when (!(e is OutOfMemoryException) && !(e is StackOverflowException))
+            {
+                var data = new RecordObject { Guid = root.Guid };
+                var document = new RecordDocument(kind.Name) { Data = data };
+                var unexported = new[] { new UnexportedValue(root.Guid, root.ClassName, "(record)", "The record could not be exported: " + e.GetType().Name + ": " + e.Message, null) };
+                return new ProjectRecordExport(kind.Name, root.Guid, FallbackPath(kind, root.Guid), null, document, unexported);
+            }
+        }
+
+        static string FallbackPath(RecordKind kind, Guid guid)
+        {
+            var segments = new List<string> { kind.Name.Split('/')[0] };
+            while (segments.Count < kind.PathSegments - 1) segments.Add("unowned");
+            segments.Add(guid.ToString("D"));
+            return new ProjectPath(segments.ToArray()).ToString();
         }
 
         static string WithGuidSuffix(string path, Guid guid)
@@ -558,18 +582,21 @@ namespace SIL.TextEditing.Project
         {
             foreach (int flid in _managed.GetFields(classId, true, -1).OrderBy(f => f))
             {
-                string name = _metadata.GetFieldName(flid);
-                if (Plumbing.Contains("|" + name + "|") || skip.Contains("|" + name + "|") || _metadata.get_IsVirtual(flid)) continue;
+                if (IsPlumbing(flid) || IsNamed(flid, skip) || _metadata.get_IsVirtual(flid)) continue;
                 Report(obj, flid, reason, run);
             }
         }
+
+        /// <summary>The model's own bookkeeping fields. A custom field is never plumbing, whatever it is called.</summary>
+        bool IsPlumbing(int flid) => IsNamed(flid, Plumbing);
+
+        bool IsNamed(int flid, string names) => !_managed.IsCustom(flid) && names.Contains("|" + _metadata.GetFieldName(flid) + "|");
 
         void ReportExcluded(ICmObject obj, IEnumerable<int> excluded, ExportRun run)
         {
             foreach (int flid in excluded.Distinct().OrderBy(f => f))
             {
-                string name = _metadata.GetFieldName(flid);
-                if (Plumbing.Contains("|" + name + "|") || _metadata.get_IsVirtual(flid)) continue;
+                if (IsPlumbing(flid) || _metadata.get_IsVirtual(flid)) continue;
                 Report(obj, flid, ExcludedReason((CellarPropertyType)_metadata.GetFieldType(flid)), run);
             }
         }

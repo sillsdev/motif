@@ -5,6 +5,9 @@ the entry composers, and carries its source and licence with it. Motif owns no o
 
 **Status:** Accepted, 2026-11-17.
 
+**Amended 2026-11-23:** D1 names LIFT the only format for bringing a lexicon from outside a project; a record file is
+a second, separate thing, Motif's own round-trip edit format.
+
 ## Context
 
 Grammar builds need thousands of stems from outside sources: a GPL-licensed lexc source for one language, glosses
@@ -16,7 +19,7 @@ sources must travel with the data into the project.
 
 ## Decisions
 
-### D1. LIFT is the only import format
+### D1. LIFT is the only import format for a lexicon from outside
 
 `motif lexicon import` reads a `.lift` file and nothing else; there is no format option. Other sources (lexc,
 Wiktionary JSONL, TSV, SFM) are converted to LIFT by tools outside Motif, as fetching already lives outside Motif
@@ -24,6 +27,14 @@ Wiktionary JSONL, TSV, SFM) are converted to LIFT by tools outside Motif, as fet
 a 0.14 or 0.15 file is refused with "convert to 0.13". The alternatives were a Motif-defined record schema
 (rejected: a second format for converters to track) and FieldWorks' own LIFT merge (rejected: it creates categories,
 classes and features that Motif must not invent, and it bypasses Draft, Trial and the gates).
+
+Amendment: this rule is about lexicons that come from outside a project, and LIFT stays the interchange format for
+them. A record file is not an interchange format. It is Motif's own round-trip edit format: `motif record export`
+writes a record of the saved project as a file, a person or agent edits it, and `motif import` plans the edits back
+against that same project, lowering them to Draft operations and never applying them. A record file carries the
+digest of the record as exported and is refused whole when the project changed since, so it is not read for a
+different project and is not a source for converters to target. Nothing in this ADR's other decisions changes: a
+lexicon from outside enters as LIFT through the entry composers.
 
 ### D2. Validation first, with the referenced libraries
 

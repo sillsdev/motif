@@ -183,6 +183,14 @@ FieldWorks field. Other sources are converted to LIFT by tools outside Motif. It
 from the no-loss checks ([ADR 0033](docs/adr/0033-lexicon-import-accepts-only-lift-and-lowers-through-composers.md)).
 _Avoid_: merge (FieldWorks' LIFT merge is a different thing), JSONL import, dictionary load
 
+**Record file**:
+Motif's own round-trip edit format for one record of the saved project (a lexicon entry, a notebook record or a list
+item): `motif record export` writes it, a person or agent edits it, and `motif import` plans the edits back as Draft
+operations. It lists every value it leaves out, and it is refused whole once the project changes after the export; it
+is not an interchange format, and a lexicon from outside still enters as LIFT
+([ADR 0033](docs/adr/0033-lexicon-import-accepts-only-lift-and-lowers-through-composers.md) D1).
+_Avoid_: export file (Apply's read-back and Trial exports are different), LIFT file, backup
+
 **Attribution**:
 The source and licence of imported lexicon data, kept in the project: a short tag `<source>@<revision> <licence>` in
 each entry's Bibliography, and one notice in the project's Description. It adds no new FieldWorks field

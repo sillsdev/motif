@@ -286,6 +286,26 @@ internal static class AgentTools
             },
         },
 
+        new("motif_record_export",
+            string.Empty,
+            AgentClass.Read,
+            Schema.Object([("out", Schema.String("Where to write: the file for one record, or the folder for all of them. Under the project's folder or the working directory; an existing file is not replaced."), true),
+                ("recordId", Schema.String("The GUID of the one record to export. Leave it out with all."), false),
+                ("kind", Schema.String("The record kind. Default lexicon/entry.", "lexicon/entry", "notebook/record", "lists/item"), false),
+                ("all", Schema.Boolean("Export every root record of the kind, one file each."), false)]),
+            false,
+            false,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ExportRecord(c, a)))
+        {
+            Requests = [typeof(RecordExportRequest)],
+            FieldNames = new Dictionary<string, string?>
+            {
+                ["OutPath"] = "out", ["RecordId"] = "recordId", ["Kind"] = "kind", ["All"] = "all",
+            },
+        },
+
         new("motif_guide",
             string.Empty,
             AgentClass.Read,
@@ -1541,6 +1561,15 @@ internal static class AgentTools
         contexts["items"]!.AsObject()["properties"]!.AsObject()["naturalClass"] =
             Schema.String("Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation.");
         return contexts;
+    }
+
+    private static ToolOutcome ExportRecord(ServerContext context, ToolArgs args)
+    {
+        var path = args.Required("out");
+        if (RecordImportCommand.RefuseOutsideAgentRoots(context.ProjectPath, path, Directory.GetCurrentDirectory(), forWrite: true) is { } refusal)
+            return ToolOutcome.Refused(refusal);
+        return ToolOutcome.From(RecordExportCommand.Run(new RecordExportRequest(
+            context.ProjectPath, path, args.Optional("recordId"), args.Optional("kind"), args.OptionalBoolean("all") ?? false)));
     }
 
     private static ToolOutcome ImportRecord(ServerContext context, ToolArgs args)
