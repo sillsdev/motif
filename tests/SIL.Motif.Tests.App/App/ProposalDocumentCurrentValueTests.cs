@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -29,6 +30,23 @@ public sealed class ProposalDocumentCurrentValueTests
 
         Assert.Equal("Gloss (en): now sales; proposed sales (demo)", Assert.Single(opened.Document.OperationRows).Values);
         Assert.True(Assert.Single(fake.ShowProposalRequests).WithCurrent);
+    }
+
+    [Fact]
+    public async Task WhenTheCurrentValuesCannotBeReadThePageSaysSo()
+    {
+        var unread = new ProposalDetailProjection("one", "proposed", "Change the gloss", null, "intent/one",
+            [GlossOperation([new("sense/one", "lexical/sense/gloss", new Dictionary<string, string>())])],
+            CurrentUnavailable: "The saved project could not be read: x");
+        var fake = new FakeCommandClient
+        {
+            ShowProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(unread)),
+        };
+
+        await using var opened = await Open(fake);
+
+        Assert.Equal(MotifAppStrings.ProposalCurrentUnavailable, opened.Document.CurrentUnavailableNotice);
+        Assert.DoesNotContain("could not be read: x", opened.Document.CurrentUnavailableNotice!, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -281,8 +281,12 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         FreezeEditorsIfClosed();
         RaiseApply();
     }
+    /// <summary>Says the current values could not be read, or null when they were or were not asked for.</summary>
+    public string? CurrentUnavailableNotice => Detail?.CurrentUnavailable is null ? null : MotifAppStrings.ProposalCurrentUnavailable;
+
     partial void OnDetailChanged(ProposalDetailProjection? value)
     {
+        OnPropertyChanged(nameof(CurrentUnavailableNotice));
         RefreshOperationDisplay();
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(StatusText));

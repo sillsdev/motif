@@ -7516,6 +7516,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalAppliedByOther" xml:space="preserve"><value>Applied on {0} by {1}, without a person pressing Apply here.</value></data>
   <data name="MotifApp.ProposalAppliedEvidenceHeading" xml:space="preserve"><value>What was known when it was applied</value></data>
   <data name="MotifApp.ProposalAppliedEvidenceFormat" xml:space="preserve"><value>{0} · {1} words · {2} places in the Text · {3} improved · {4} could be worse</value><comment>One saved Difference: {0} is the Text, {1}-{4} are counts.</comment></data>
+  <data name="MotifApp.ProposalCurrentUnavailable" xml:space="preserve"><value>Motif could not read the current saved values, so only the proposed values are shown.</value><comment>Shown when the saved project could not be read for the old values.</comment></data>
   <data name="MotifApp.ProposalAppliedNoEvidence" xml:space="preserve"><value>No Difference was saved before it was applied.</value></data>
   <data name="MotifApp.ProposalReceiptFieldWorksNote" xml:space="preserve"><value>FieldWorks shows this change the next time you open the project.</value></data>
   <data name="MotifApp.ProposalReceiptCopy" xml:space="preserve"><value>Copy Receipt ID</value></data>

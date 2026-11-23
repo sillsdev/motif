@@ -39,6 +39,7 @@
         </views:ProgressiveItemsControl.ItemTemplate>
       </views:ProgressiveItemsControl>
     </StackPanel>
+    <views:CopyableTextBlock Classes="muted" Text="{Binding CurrentUnavailableNotice}" IsVisible="{Binding CurrentUnavailableNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
     <views:RefusalBlock DataContext="{Binding EntryRefusal}" />
     <StackPanel x:Name="ProposalAppliedRecord" IsVisible="{Binding HasAppliedRecord}" Spacing="{DynamicResource Intent.Space.Related}">
       <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalAppliedHeading}" />
