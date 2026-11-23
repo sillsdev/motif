@@ -40,13 +40,13 @@ public sealed class ProposalCompareRealApprovalsTests
     }
 
     [Fact]
-    public void TheRealApprovedAnalysisLoaderCountsKeptAndLostApprovalsOnARealProject()
+    public async Task TheRealApprovedAnalysisLoaderCountsKeptAndLostApprovalsOnARealProject()
     {
         using var fixture = new ReviewAcceptanceFixture();
         var index = new FwHandAnalysisIndex(new Sources(fixture.Project));
-        var snapshot = index.PinAsync(Guid.NewGuid(), null, CancellationToken.None).AsTask().GetAwaiter().GetResult().Value!;
+        var snapshot = (await index.PinAsync(Guid.NewGuid(), null, CancellationToken.None)).Value!;
         var facts = ((IApprovedReadingSource)snapshot).Approved.Analyses;
-        snapshot.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        await snapshot.DisposeAsync();
         Assert.Equal(2, facts.Length);
         var ws = Assert.Single(facts.Select(fact => fact.Forms!.Keys.Single()).Distinct());
         var both = facts.Select(fact => fact.Signature!).ToArray();
