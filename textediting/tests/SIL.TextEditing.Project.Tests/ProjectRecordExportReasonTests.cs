@@ -49,8 +49,8 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             var export = ExportNotebookRecord(fixture, (record, para) => record.ConclusionsOA.RightToLeft = true);
-            var lost = Assert.Single(export.Unexported, u => u.Reason.Contains(ExportReasons.StTextProperty));
-            Assert.Equal("RightToLeft", lost.Field);
+            var lost = export.Unexported.Where(u => u.Reason.Contains(ExportReasons.StTextProperty)).Select(u => u.Field).OrderBy(f => f, StringComparer.Ordinal);
+            Assert.Equal(new[] { "DateModified", "RightToLeft" }, lost);
         }
 
         [Fact]
