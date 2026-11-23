@@ -23,7 +23,6 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
     public void Dispose()
     {
         RecordImportCommand.BeforeStage = null;
-        ProjectReadCache.ScratchRoot = null;
         try { Directory.Delete(_folder, recursive: true); }
         catch (IOException) { }
     }
@@ -315,14 +314,21 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
         var (project, file, _) = Fixture(wrongList: true);
         var root = Path.Combine(_folder, "scratch");
         ProjectReadCache.ScratchRoot = root;
-        var located = ProjectStoreCommand.LocateProject(project).Value!;
+        try
+        {
+            var located = ProjectStoreCommand.LocateProject(project).Value!;
 
-        Assert.True(RecordImportCommand.Run(new(project, file)).Succeeded);
-        Assert.True(RecordImportCommand.Run(new(project, file, "import-scratch")).Succeeded);
-        File.WriteAllText(Path.Combine(_folder, "unknown.md"), "");
-        Assert.False(RecordImportCommand.Run(new(project, Path.Combine(_folder, "unknown.md"))).Succeeded);
-        Assert.Throws<InvalidOperationException>(() =>
-            ProjectReadCache.ReadSaved<int>(located, (_, _) => throw new InvalidOperationException("forced")));
+            Assert.True(RecordImportCommand.Run(new(project, file)).Succeeded);
+            Assert.True(RecordImportCommand.Run(new(project, file, "import-scratch")).Succeeded);
+            File.WriteAllText(Path.Combine(_folder, "unknown.md"), "");
+            Assert.False(RecordImportCommand.Run(new(project, Path.Combine(_folder, "unknown.md"))).Succeeded);
+            Assert.Throws<InvalidOperationException>(() =>
+                ProjectReadCache.ReadSaved<int>(located, (_, _) => throw new InvalidOperationException("forced")));
+        }
+        finally
+        {
+            ProjectReadCache.ScratchRoot = null;
+        }
 
         Assert.True(!Directory.Exists(root) || !Directory.EnumerateFileSystemEntries(root).Any());
     }
