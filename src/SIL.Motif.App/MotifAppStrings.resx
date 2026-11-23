@@ -4889,6 +4889,38 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>The explanation did not finish in time. Try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.WhyNotUnfinished. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalFormsExplainRequestInvalid" xml:space="preserve">
+    <value>That root or word cannot be explained. Check what you named, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.FormsExplainRequestInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalFormsExplainParserUnsupported" xml:space="preserve">
+    <value>This explanation needs a newer PanGloss than the one Motif uses. Update Motif and PanGloss together, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.FormsExplainParserUnsupported. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalFormsExplainMorphemeUnresolved" xml:space="preserve">
+    <value>Motif could not find that morpheme in the project. Check the spelling or name its entry and analysis exactly.</value>
+    <comment>Sentence the window shows when the command refuses with code C.FormsExplainMorphemeUnresolved. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalFormsExplainMorphemeAmbiguous" xml:space="preserve">
+    <value>More than one entry or analysis matches that morpheme. Name the one you mean exactly.</value>
+    <comment>Sentence the window shows when the command refuses with code C.FormsExplainMorphemeAmbiguous. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalFormsExplainParserRefused" xml:space="preserve">
+    <value>PanGloss refused the request to generate forms. Open the details to read its reason.</value>
+    <comment>Sentence the window shows when the command refuses with code C.FormsExplainParserRefused. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalFormsExplainMalformed" xml:space="preserve">
+    <value>PanGloss wrote a generation answer Motif cannot read. Update Motif and PanGloss together, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.FormsExplainMalformed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalFormsExplainUnfinished" xml:space="preserve">
+    <value>The explanation did not finish. Try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.FormsExplainUnfinished. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalFormsExplainNoReading" xml:space="preserve">
+    <value>PanGloss gave this word no analysis Motif could generate from. Try another word.</value>
+    <comment>Sentence the window shows when the command refuses with code C.FormsExplainNoReading. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalWordTraceCancelled" xml:space="preserve">
     <value>Trying the word was cancelled.</value>
     <comment>Sentence the window shows when the command refuses with code C.WordTraceCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
