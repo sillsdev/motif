@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SIL.LCModel;
 using SIL.Motif.Commands.Records;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
@@ -25,19 +26,29 @@ public static partial class ProposalCommands
     /// </summary>
     public static CommandOutcome<RecordImportStaged> StageRecordImport(string projectPath, string draftName,
         ProjectRecordSchemaResult schema, ProjectRecordPlan plan) =>
+        StageRecordImport(projectPath, draftName, plan.Export?.Base ?? "",
+            cache => new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan));
+
+    /// <summary>
+    /// Stages what <paramref name="lower"/> returns for the scratch project the compose reads. The caller's delegate is where a
+    /// preview is compared with the project as the stage sees it, so it can refuse by throwing <see cref="RecordImportChangedException"/>.
+    /// </summary>
+    internal static CommandOutcome<RecordImportStaged> StageRecordImport(string projectPath, string draftName,
+        string recordFile, Func<LcmCache, RecordLowering> lower) =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             RecordLowering? lowering = null;
             try
             {
-                var lowerer = new RecordChangeSetLowerer(schema, new RecordWritableFields(schema));
-                var authored = JsonSerializer.SerializeToElement(new { recordFile = plan.Export?.Base ?? "" });
+                var authored = JsonSerializer.SerializeToElement(new { recordFile });
                 var steps = new List<ComposeStep>
                 {
                     new(null, "RecordImport", (cache, _) =>
                     {
-                        lowering = lowerer.Lower(cache, plan);
-                        return (authored, lowering.Operations);
+                        lowering = lower(cache);
+                        // The count travels with the Draft so a partial stage never reads as a plain success.
+                        var refused = lowering.Refusals.Count + lowering.PlanRefusals.Count;
+                        return (JsonSerializer.SerializeToElement(new { recordFile, refusedChanges = refused }), lowering.Operations);
                     }, Authored: authored),
                     // The empty step makes the batch validate the last operation against the scratch project.
                     new(null, "Validate", (_, _) => (JsonSerializer.SerializeToElement(new { }), Array.Empty<OperationEnvelope>())),

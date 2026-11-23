@@ -153,6 +153,13 @@ public sealed record ProposalDetailProjection(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     AppliedRecordView? AppliedRecord = null)
 {
+    /// <summary>
+    /// How many changes a record-file import left out of this Proposal because they were refused; null when the Proposal
+    /// holds no record import. Zero means every change in the file was staged.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? RecordImportRefused { get; init; }
+
     /// <summary>Every operation the Proposal holds, when <see cref="Operations"/> is one page of them; null when it is all of them.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? OperationTotal { get; init; }

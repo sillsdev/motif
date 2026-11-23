@@ -331,6 +331,15 @@ public static class RefusalCodes
     public const string RecordImportChangeRefused = "record-import.change-refused";
     /// <summary>The record file cannot be read from the path given.</summary>
     public const string RecordImportFileUnreadable = "record-import.file-unreadable";
+    /// <summary>The project changed between the preview and the stage, so what would be staged is no longer what was previewed.</summary>
+    public const string RecordImportChangedSincePreview = "record-import.changed-since-preview";
+
+    /// <summary>Strict was asked for without a Draft name, so there is no stage for it to govern.</summary>
+    public const string RecordImportStrictNeedsDraft = "record-import.strict-needs-draft";
+
+    /// <summary>Strict mode refused to stage an import in which some change was refused.</summary>
+    public const string RecordImportStrictRefused = "record-import.strict-refused";
+
     /// <summary>Staging was asked for, but the file lowers to no operation, so no Draft was made.</summary>
     public const string RecordImportNothingToStage = "record-import.nothing-to-stage";
     /// <summary>The page asked for is not a page number from 1.</summary>
