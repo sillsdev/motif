@@ -34,7 +34,9 @@ namespace SIL.Motif.Tests.App.RealClient;
 public sealed class ProposalQueryEndToEndTests(PristineProjectFixture pristine)
 {
     private const string Query = "```motif-query\nid: alternates\ntitle: Alternate forms\n" +
-        "run: motif query forms --where kind=alternate --sort baseline.form\n```\n\n```motif-show\nquery: alternates\nshow: table\n```";
+        "run: motif query forms --where kind=alternate --sort baseline.form\n```\n\n```motif-show\nquery: alternates\nshow: table\n```\n\n" +
+        "```motif-query\nid: stems\ntitle: Stems\nrun: motif query forms --where kind=lexeme\n```\n\n" +
+        "```motif-show\nquery: stems\nshow: table\n```";
 
     [Fact]
     public async Task AProposalWithACompletedTrialShowsItsCurrentValuesAndBothSidesOfItsQuery()
@@ -67,14 +69,22 @@ public sealed class ProposalQueryEndToEndTests(PristineProjectFixture pristine)
                 Assert.Contains("motif-query", document.RationaleEditor!.Markdown);
                 Assert.StartsWith("Sense 1 of", Assert.Single(document.OperationRows).Target, StringComparison.Ordinal);
 
-                var block = Assert.Single(document.Queries.Blocks);
-                Assert.True(block.Notice.Length == 0, block.Notice);
+                Assert.Equal(["alternates", "stems"], document.Queries.Blocks.Select(item => item.Id));
+                Assert.All(document.Queries.Blocks, item => Assert.True(item.Notice.Length == 0, item.Notice));
+                var block = document.Queries.Blocks[0];
                 var display = Assert.Single(block.Displays);
                 Assert.True(display.ShowsProposal);
                 Assert.False(display.HasProposalPending);
                 var kaonan = Assert.Single(display.Rows, row => row.BaselineWord == "kaonan");
                 Assert.True(kaonan.ProposalIsWord);
                 Assert.Contains("kaonan", display.Rows.Select(row => row.ProposalWord));
+
+                // baha is only in the Trial copy: a Proposal-only row shows that side did not fall back to the Baseline.
+                var stems = Assert.Single(document.Queries.Blocks[1].Displays);
+                Assert.False(stems.HasProposalPending);
+                var baha = Assert.Single(stems.Rows, row => row.ProposalWord == "baha");
+                Assert.NotEqual("baha", baha.BaselineWord);
+                Assert.DoesNotContain(stems.Rows, row => row.BaselineWord == "baha");
             }
             finally
             {
@@ -106,7 +116,7 @@ public sealed class ProposalQueryEndToEndTests(PristineProjectFixture pristine)
             await document.RefreshAsync();
             await document.Queries.Running;
 
-            var display = Assert.Single(Assert.Single(document.Queries.Blocks).Displays);
+            var display = Assert.Single(document.Queries.Blocks[0].Displays);
             Assert.True(display.HasProposalPending);
             Assert.Contains(display.Rows, row => row.BaselineWord == "kaonan");
         }
