@@ -47,7 +47,7 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
     {
         var line = (result.Error + "\n" + result.Output).Split('\n').FirstOrDefault(item => item.TrimStart().StartsWith('{'));
         Assert.True(line is not null, "no failure envelope in: " + result.Error + result.Output);
-        return ProjectionJson.Deserialize<FailureEnvelope>(line!)!.Code;
+        return ProjectionJson.Deserialize<FailureEnvelope>(line!)!.Code ?? "";
     }
 
     public static TheoryData<string> CaseKinds()
