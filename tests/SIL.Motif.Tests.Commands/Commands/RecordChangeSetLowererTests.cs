@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.TextEditing.Markdown.Records;
@@ -1061,7 +1062,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     {
         var operation = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), kind,
             target: CanonicalId.FromGuid(target ?? _entry.Guid), after: JsonSerializer.SerializeToElement(after));
-        var refusal = Assert.ThrowsAny<SIL.Motif.Runner.Execution.ProposalRefusalException>(() => ScratchDryRun.Of(_cache, Proposal([operation])));
+        var refusal = Assert.ThrowsAny<ProposalRefusalException>(() => ScratchDryRun.Of(_cache, Proposal([operation])));
         Assert.Equal(code, refusal.Code);
         Assert.Contains(code, RefusalCatalog.Specs.Keys);
     }
@@ -1289,8 +1290,8 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
         var wrongClass = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "lexical/lexSense/addRefSemanticDomains",
             target: CanonicalId.FromGuid(_sense.Guid), after: JsonSerializer.SerializeToElement(new { member = CanonicalId.FromGuid(parent.Guid).Value }));
-        var failure = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, Proposal([wrongClass])));
-        Assert.Contains("is not a CmSemanticDomain (it is a CmPossibility)", failure.Message);
+        var failure = Assert.ThrowsAny<ProposalRefusalException>(() => ScratchDryRun.Of(_cache, Proposal([wrongClass])));
+        Assert.Equal(RefusalCodes.ReferenceWrongClass, failure.Code);
     }
 
     private OperationEnvelope SenseSetOp(string kind, ICmObject member, ICmObject? target = null) =>
@@ -1343,5 +1344,85 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             new { member = CanonicalId.FromGuid(usage.Guid).Value });
         RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexEntry/addRefDialectLabels",
             new { member = CanonicalId.FromGuid(_publication.Guid).Value });
+    }
+
+    private string Outcome(string kind, object after, Guid? target = null)
+    {
+        var operation = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), kind,
+            target: CanonicalId.FromGuid(target ?? _entry.Guid), after: JsonSerializer.SerializeToElement(after));
+        try
+        {
+            ScratchDryRun.Of(_cache, Proposal([operation]));
+            return "accepted";
+        }
+        catch (ProposalRefusalException refusal)
+        {
+            return refusal.Code;
+        }
+        catch (InvalidOperationException)
+        {
+            return "InvalidOperationException";
+        }
+    }
+
+    /// <summary>One row per (site, verb, member); the settled behaviour is that only a write checks the list, and a remove never does.</summary>
+    [Fact]
+    public void EveryReferenceSiteChecksListMembershipOnWritesAndNeverOnRemoves()
+    {
+        NewListItem(StatusList);
+        var statusItem = CanonicalId.FromGuid(StatusList().PossibilitiesOS[0].Guid).Value;
+        var inList = CanonicalId.FromGuid(UnheldPublication().Guid).Value;
+        var otherList = CanonicalId.FromGuid(NewPartOfSpeech()).Value;
+        var notAPossibility = CanonicalId.FromGuid(_entry.Guid).Value;
+        var unknown = CanonicalId.FromGuid(Guid.NewGuid()).Value;
+        var rows = new List<(string Row, string Actual, string Expected)>
+        {
+            ("stock set, in list", Outcome("lexical/lexSense/setStatus", new { @ref = statusItem }, _sense.Guid), "accepted"),
+            ("stock set, other list", Outcome("lexical/lexSense/setStatus", new { @ref = otherList }, _sense.Guid), "reference.wrong-list"),
+            ("stock set, wrong class", Outcome("lexical/lexSense/setStatus", new { @ref = notAPossibility }, _sense.Guid), "reference.wrong-class"),
+            ("stock add, in list", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = inList }), "accepted"),
+            ("stock add, other list", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = otherList }), "reference.wrong-list"),
+            ("stock add, wrong class", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = notAPossibility }), "reference.wrong-class"),
+            ("stock remove, in list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = inList }), "accepted"),
+            ("stock remove, other list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = otherList }), "accepted"),
+            ("stock remove, wrong class", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = notAPossibility }), "accepted"),
+            ("custom set, in list", Outcome("customField/setReference", new { field = "ZedReference", @ref = inList }), "accepted"),
+            ("custom set, other list", Outcome("customField/setReference", new { field = "ZedReference", @ref = otherList }), "custom-field.wrong-list"),
+            ("custom set, wrong class", Outcome("customField/setReference", new { field = "ZedReference", @ref = notAPossibility }), "custom-field.wrong-class"),
+            ("custom add, in list", Outcome("customField/addReference", new { field = "ZedReferences", member = inList }), "accepted"),
+            ("custom add, other list", Outcome("customField/addReference", new { field = "ZedReferences", member = otherList }), "custom-field.wrong-list"),
+            ("custom add, wrong class", Outcome("customField/addReference", new { field = "ZedReferences", member = notAPossibility }), "custom-field.wrong-class"),
+            ("custom remove, in list", Outcome("customField/removeReference", new { field = "ZedReferences", member = inList }), "accepted"),
+            ("custom remove, other list", Outcome("customField/removeReference", new { field = "ZedReferences", member = otherList }), "accepted"),
+            ("stock set, unknown id", Outcome("lexical/lexSense/setStatus", new { @ref = unknown }, _sense.Guid), "reference.unknown"),
+            ("stock add, unknown id", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = unknown }), "reference.unknown"),
+            ("stock remove, unknown id", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = unknown }), "reference.unknown"),
+            ("custom set, unknown id", Outcome("customField/setReference", new { field = "ZedReference", @ref = unknown }), "reference.unknown"),
+            ("custom add, unknown id", Outcome("customField/addReference", new { field = "ZedReferences", member = unknown }), "reference.unknown"),
+            ("custom remove, unknown id", Outcome("customField/removeReference", new { field = "ZedReferences", member = unknown }), "reference.unknown"),
+            ("custom remove, wrong class", Outcome("customField/removeReference", new { field = "ZedReferences", member = notAPossibility }), "accepted"),
+        };
+        Assert.Equal(rows.Select(r => r.Row + " => " + r.Expected), rows.Select(r => r.Row + " => " + r.Actual));
+    }
+
+    [Fact]
+    public void ARemoveOfAMemberTheFieldDoesNotHoldReportsNoChange()
+    {
+        var other = CanonicalId.FromGuid(NewPartOfSpeech()).Value;
+        var wrongClass = CanonicalId.FromGuid(_sense.Guid).Value;
+        foreach (var (kind, after) in new (string, object)[]
+        {
+            ("lexical/lexEntry/removeRefDoNotPublishIn", new { member = other }),
+            ("lexical/lexEntry/removeRefDoNotPublishIn", new { member = wrongClass }),
+            ("customField/removeReference", new { field = "ZedReferences", member = other }),
+            ("customField/removeReference", new { field = "ZedReferences", member = wrongClass }),
+        })
+        {
+            var operation = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), kind,
+                target: CanonicalId.FromGuid(_entry.Guid), after: JsonSerializer.SerializeToElement(after));
+            var effects = ScratchDryRun.Of(_cache, Proposal([operation])).ExpectedEffects;
+            Assert.NotEmpty(effects);
+            Assert.All(effects, effect => Assert.Equal(effect.Before.Values, effect.After.Values));
+        }
     }
 }

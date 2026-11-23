@@ -156,7 +156,8 @@ public sealed class LexEntryReferenceCollectionOperationsTests : IDisposable
 
         var proposal = BuildProposal(LexEntryDoNotPublishInOperationKinds.AddRefDoNotPublishIn, target, wrongTypeId);
 
-        var ex = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, proposal));
+        var ex = Assert.ThrowsAny<SIL.Motif.Runner.Execution.ProposalRefusalException>(() => ScratchDryRun.Of(_cache, proposal));
+        Assert.Equal(SIL.Motif.Contract.Commands.RefusalCodes.ReferenceWrongClass, ex.Code);
         Assert.Contains("not a CmPossibility", ex.Message);
     }
 
