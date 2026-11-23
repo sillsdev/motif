@@ -106,4 +106,30 @@ public sealed class RecordExportToolTests(PristineProjectFixture pristine) : IDi
         Assert.False(File.Exists(outside));
         Assert.False(File.Exists(Path.Combine(_folder, "escape.md")));
     }
+
+    [Fact]
+    public async Task TheCliAndTheToolWriteTheSameBytesAndReturnTheSameCounts()
+    {
+        var (path, entry) = Fixture();
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "export-parity");
+        var profile = new ToolProfile("export-parity", null, null, "concise", [], AllTools: true);
+        var projectFolder = Path.GetDirectoryName(path)!;
+        var viaCli = Path.Combine(projectFolder, "cli.md");
+        var viaTool = Path.Combine(projectFolder, "tool.md");
+
+        var cli = CliInProcess.Run(RunnerOptions.ResolveRoot(), FakeParser.ExecutablePath, true,
+            "record", "export", "--project", path, "--out", viaCli, "--record", entry.ToString("D"), "--json");
+        Assert.True(cli.ExitCode == 0, cli.Error);
+        var called = await MotifMcpServer.CallAsync(Context(path, profile), MotifMcpServer.Expose(profile), "motif_record_export",
+            Args(("project", path), ("out", viaTool), ("recordId", entry.ToString("D"))), CancellationToken.None);
+        Assert.False(called.IsError == true, called.StructuredContent?.ToString());
+
+        Assert.Equal(File.ReadAllBytes(viaCli), File.ReadAllBytes(viaTool));
+        var fromCli = JsonNode.Parse(cli.Output)!.AsObject();
+        var fromTool = JsonNode.Parse(called.StructuredContent!.Value.GetRawText())!["result"]!.AsObject();
+        fromCli.Remove("outPath");
+        fromTool.Remove("outPath");
+        Assert.True(JsonNode.DeepEquals(fromCli, fromTool), fromCli.ToJsonString() + "\n" + fromTool.ToJsonString());
+    }
 }

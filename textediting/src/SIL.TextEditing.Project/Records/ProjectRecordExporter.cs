@@ -189,7 +189,7 @@ namespace SIL.TextEditing.Project
             {
                 var data = new RecordObject { Guid = root.Guid };
                 var document = new RecordDocument(kind.Name) { Data = data };
-                var unexported = new[] { new UnexportedValue(root.Guid, root.ClassName, "(record)", "The record could not be exported: " + e.GetType().Name + ": " + e.Message, null) };
+                var unexported = new[] { new UnexportedValue(root.Guid, root.ClassName, "(record)", "The record could not be exported (" + e.GetType().Name + "); the exception text is withheld because it can quote project values.", null) };
                 return new ProjectRecordExport(kind.Name, root.Guid, FallbackPath(kind, root.Guid), null, document, unexported);
             }
         }

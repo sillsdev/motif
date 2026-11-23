@@ -90,9 +90,7 @@ public static class RecordExportCommand
         {
             if (record is null) Directory.CreateDirectory(request.OutPath);
             else if (System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(request.OutPath)) is { Length: > 0 } folder) Directory.CreateDirectory(folder);
-            foreach (var target in targets)
-                using (var stream = new FileStream(target.Path, FileMode.CreateNew, FileAccess.Write))
-                    stream.Write(new UTF8Encoding(false).GetBytes(target.Export.Text!));
+            WriteAll(targets.Select(target => (target.Path, target.Export.Text!)).ToList());
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException
             or NotSupportedException)
@@ -111,6 +109,33 @@ public static class RecordExportCommand
         return CommandOutcome<RecordExportResponse>.Success(new(kindName, exports.Count, written.Count, exports.Count - written.Count,
             groups.Sum(group => group.Count), groups, request.OutPath,
             "Edit the file, then run import --file to plan it. If the project changes first, export again and redo the edits."));
+    }
+
+    /// <summary>Writes temporary files, then renames them all, so a failure leaves none.</summary>
+    private static void WriteAll(IReadOnlyList<(string Path, string Text)> files)
+    {
+        var temps = new List<(string Temp, string Path)>();
+        var moved = new List<string>();
+        try
+        {
+            foreach (var (path, text) in files)
+            {
+                var temp = path + ".tmp-" + Guid.NewGuid().ToString("N");
+                temps.Add((temp, path));
+                File.WriteAllBytes(temp, new UTF8Encoding(false).GetBytes(text));
+            }
+            foreach (var (temp, path) in temps)
+            {
+                File.Move(temp, path, overwrite: false);
+                moved.Add(path);
+            }
+        }
+        catch
+        {
+            foreach (var (temp, _) in temps) File.Delete(temp);
+            foreach (var path in moved) File.Delete(path);
+            throw;
+        }
     }
 
     /// <summary>The first schema kind rooted at the object's class, or null if none.</summary>

@@ -415,6 +415,7 @@ try
             if (positionals is not ["export"] || !flags.TryGetValue("project", out var recordExportProject) ||
                 !flags.TryGetValue("out", out var recordExportOut) || recordExportOut is "true" or "" ||
                 flags.Keys.Any(key => key is not ("project" or "out" or "record" or "all" or "kind" or "json")) ||
+                flags.TryGetValue("all", out var recordExportAll) && recordExportAll != "true" ||
                 flags.TryGetValue("record", out var recordExportId) && recordExportId == "true" ||
                 flags.TryGetValue("kind", out var recordExportKind) && recordExportKind == "true")
                 return Usage(UsageLineFor("record export"), asJson);

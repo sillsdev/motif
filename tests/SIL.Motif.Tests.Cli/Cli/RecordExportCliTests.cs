@@ -21,6 +21,7 @@ public sealed class RecordExportCliTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-export-cli-" + Guid.NewGuid().ToString("N"));
     private readonly string _project;
     private readonly Guid _entry;
+    private readonly int _total;
 
     public RecordExportCliTests(PristineProjectFixture pristine)
     {
@@ -28,6 +29,8 @@ public sealed class RecordExportCliTests : IDisposable
         using var cache = pristine.NewScratch();
         _project = cache.ProjectId.Path;
         Guid entryId = default;
+        var seeded = cache.ServiceLocator.GetInstance<ILexEntryRepository>().Count;
+        _total = seeded + 2;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             var services = cache.ServiceLocator;
@@ -102,8 +105,8 @@ public sealed class RecordExportCliTests : IDisposable
         var exported = Run("record", "export", "--project", _project, "--out", folder, "--all");
 
         Assert.True(exported.ExitCode == 0, exported.Error + exported.Output);
-        Assert.Equal(2, Directory.GetFiles(folder).Length);
-        Assert.Contains("Wrote 2 of 2 lexicon/entry record file(s)", exported.Output, StringComparison.Ordinal);
+        Assert.Equal(_total, Directory.GetFiles(folder).Length);
+        Assert.Contains($"Wrote {_total} of {_total} lexicon/entry record file(s)", exported.Output, StringComparison.Ordinal);
         Assert.Contains("left out of the file(s)", exported.Output, StringComparison.Ordinal);
         Assert.Contains("export again", exported.Output, StringComparison.Ordinal);
         foreach (var file in Directory.GetFiles(folder))

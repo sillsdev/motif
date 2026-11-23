@@ -594,7 +594,7 @@ namespace SIL.TextEditing.Project.Tests
             var entries = new[] { MakeEntry(fixture, integer, text, date), MakeEntry(fixture, integer, text, date), MakeEntry(fixture, integer, text, date) };
             var (exporter, _) = Exporter(fixture, ProjectRecordSchema.LexiconEntryOverlay);
             var bad = entries[1].Guid;
-            exporter.BeforeRecord = record => { if (record.Guid == bad) throw new NullReferenceException("simulated failure"); };
+            exporter.BeforeRecord = record => { if (record.Guid == bad) throw new NullReferenceException("secret-headword-value"); };
 
             var all = exporter.ExportAll("lexicon/entry");
 
@@ -606,6 +606,7 @@ namespace SIL.TextEditing.Project.Tests
             Assert.Equal(bad, report.Object);
             Assert.Equal("(record)", report.Field);
             Assert.Contains("NullReferenceException", report.Reason);
+            Assert.DoesNotContain("secret-headword-value", report.Reason);
             Assert.Equal(2, all.Count(e => e.Text != null));
             foreach (var good in all.Where(e => e.Text != null)) ReadsBackClean(exporter, good);
         }
@@ -628,6 +629,7 @@ namespace SIL.TextEditing.Project.Tests
 
             var export = exporter.Export(entry.Guid);
 
+            ReadsBackClean(exporter, export);
             Assert.Contains(export.Unexported, u => u.Object == entry.Guid && u.Field == "Guid" && u.Value != null);
             Assert.Equal("kept", ((RecordScalar)export.Document.Data["custom-LexEntry-Owner"]!).Text);
             Assert.DoesNotContain(export.Unexported, u => u.Object == entry.Guid && u.Field == "Owner");
