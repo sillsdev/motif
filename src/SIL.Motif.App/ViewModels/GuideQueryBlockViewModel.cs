@@ -177,7 +177,7 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
             if (generation != _generation || cancellation.IsCancellationRequested) return;
             if (!outcome.Succeeded || outcome.Value is not { } response)
             {
-                Fail(outcome.Refusal is { } refused ? WindowRefusal.From(refused, refused.Message).Sentence : MotifAppStrings.GuideQueryNoAnswer);
+                Fail(outcome.Refusal is { } refused ? Describe(refused) : MotifAppStrings.GuideQueryNoAnswer);
                 return;
             }
             var (run, unreadable) = GuideQueryRun.From(response);
@@ -204,6 +204,14 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
         _running?.Cancel();
         IsRunning = false;
         OnPropertyChanged(nameof(Status));
+    }
+
+    // A line the author can fix keeps the command's detail under the sentence; a state of the Proposal is the sentence alone.
+    private static string Describe(Refusal refusal)
+    {
+        var shown = WindowRefusal.From(refusal, refusal.Message);
+        return refusal.Code is RefusalCodes.QueryInvalid or RefusalCodes.GuideQueryRunInvalid or RefusalCodes.GuideQueryRunNotReadOnly
+            && shown.Details is { Length: > 0 } details ? shown.Sentence + " " + details : shown.Sentence;
     }
 
     private void Fail(string message)

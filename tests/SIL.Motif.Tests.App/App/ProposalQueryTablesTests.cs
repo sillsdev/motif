@@ -72,6 +72,21 @@ public sealed class ProposalQueryTablesTests
     }
 
     [Fact]
+    public async Task AnInvalidFilterShowsTheSentenceAndWhatTheCommandSaidAboutIt()
+    {
+        var fake = Fake(BothAnswer);
+        fake.GuideQueryHandler = (_, _) => Task.FromResult(CommandOutcome<SIL.Motif.Commands.Queries.FormsQueryResponse>.Refused(
+            new Refusal(RefusalCodes.QueryInvalid, FailureReason.InvalidArgument, "The column 'bogus' is not a forms column.")));
+
+        await using var opened = await ProposalEntryContextTests.Open(fake);
+        await opened.Document.Queries.Running;
+
+        var notice = Assert.Single(opened.Document.Queries.Blocks).Notice;
+        Assert.Contains(MotifAppStrings.RefusalQueryInvalid, notice);
+        Assert.Contains("'bogus' is not a forms column", notice);
+    }
+
+    [Fact]
     public async Task EditingAndRunningAProposalQueryWorksButSavingSaysTheProposalCannotHoldItYet()
     {
         var fake = Fake(BothAnswer);
@@ -115,11 +130,8 @@ public sealed class ProposalQueryTablesTests
 
     [Theory]
     [InlineData(RefusalCodes.QueryAsOfUnavailable)]
-    [InlineData(RefusalCodes.QueryInvalid)]
     [InlineData(RefusalCodes.QueryNoTrialRows)]
-    [InlineData(RefusalCodes.GuideQueryRunInvalid)]
-    [InlineData(RefusalCodes.GuideQueryRunNotReadOnly)]
-    public async Task ARefusedRunSaysWhyInTheWindowsWordsNotTheCommands(string code)
+    public async Task AStateRefusalSaysWhyInTheWindowsWordsNotTheCommands(string code)
     {
         var fake = Fake(BothAnswer);
         fake.GuideQueryHandler = (_, _) => Task.FromResult(CommandOutcome<SIL.Motif.Commands.Queries.FormsQueryResponse>.Refused(
