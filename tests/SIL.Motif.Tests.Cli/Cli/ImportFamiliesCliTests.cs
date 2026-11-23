@@ -43,6 +43,13 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
 
     private static string Hash(string project) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(project)));
 
+    private static string CodeOf(CliProcessResult result)
+    {
+        var line = (result.Error + "\n" + result.Output).Split('\n').FirstOrDefault(item => item.TrimStart().StartsWith('{'));
+        Assert.True(line is not null, "no failure envelope in: " + result.Error + result.Output);
+        return ProjectionJson.Deserialize<FailureEnvelope>(line!)!.Code;
+    }
+
     public static TheoryData<string> CaseKinds()
     {
         var data = new TheoryData<string>();
@@ -184,14 +191,14 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
         var node = JsonNode.Parse(dry.Output)!;
         Assert.Equal(0, node["operationCount"]!.GetValue<int>());
         Assert.Equal(1, node["refusalCount"]!.GetValue<int>());
-        Assert.Equal(RefusalCodes.ReferenceWrongList,
+        Assert.Equal(RefusalCodes.RecordImportChangeRefused,
             Assert.Single(node["refusals"]!.AsArray())!["code"]!.GetValue<string>());
         var change = Assert.Single(node["changes"]!.AsArray())!;
         Assert.Equal("refused", change["status"]!.GetValue<string>());
-        Assert.Equal(RefusalCodes.ReferenceWrongList, change["refusalCode"]!.GetValue<string>());
+        Assert.Equal(RefusalCodes.RecordImportChangeRefused, change["refusalCode"]!.GetValue<string>());
         var text = Run("import", "--project", project, "--file", file);
-        Assert.Contains("REFUSED " + RefusalCodes.ReferenceWrongList, text.Output, StringComparison.Ordinal);
-        Assert.Contains("refused " + RefusalCodes.ReferenceWrongList, text.Output, StringComparison.Ordinal);
+        Assert.Contains("REFUSED " + RefusalCodes.RecordImportChangeRefused, text.Output, StringComparison.Ordinal);
+        Assert.Contains("refused " + RefusalCodes.RecordImportChangeRefused, text.Output, StringComparison.Ordinal);
 
         var staged = Run("import", "--project", project, "--file", file, "--draft", "refused", "--json");
         Assert.NotEqual(0, staged.ExitCode);
@@ -216,7 +223,7 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
         var node = JsonNode.Parse(staged.Output)!;
         Assert.Equal(1, node["operationCount"]!.GetValue<int>());
         Assert.Equal(1, node["refusalCount"]!.GetValue<int>());
-        Assert.Equal(RefusalCodes.ReferenceWrongList, node["refusals"]![0]!["code"]!.GetValue<string>());
+        Assert.Equal(RefusalCodes.RecordImportChangeRefused, node["refusals"]![0]!["code"]!.GetValue<string>());
         var text = Run("import", "--project", project, "--file", file, "--draft", "mixed-text");
         Assert.True(text.ExitCode == 0, text.Error + text.Output);
         Assert.Contains("1 change(s) refused and not staged", text.Output, StringComparison.Ordinal);
@@ -240,7 +247,7 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
 
             var json = Run("import", "--project", project, "--file", file, "--draft", "strict", "--strict", "--json");
             Assert.NotEqual(0, json.ExitCode);
-            Assert.Equal(RefusalCodes.RecordImportStrictRefused, ProjectionJson.Deserialize<FailureEnvelope>(json.Error)!.Code);
+            Assert.Equal(RefusalCodes.RecordImportStrictRefused, CodeOf(json));
             Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), json.ExitCode);
             var text = Run("import", "--project", project, "--file", file, "--draft", "strict", "--strict");
             Assert.NotEqual(0, text.ExitCode);

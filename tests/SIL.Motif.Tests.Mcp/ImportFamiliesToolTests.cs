@@ -200,7 +200,7 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
         Assert.Equal(0, dry.Result!["operationCount"]!.GetValue<int>());
         Assert.Equal(1, dry.Result["refusalCount"]!.GetValue<int>());
         var code = dry.Result["refusals"]![0]!["code"]!.GetValue<string>();
-        Assert.Equal(RefusalCodes.ReferenceWrongList, code);
+        Assert.Equal(RefusalCodes.RecordImportChangeRefused, code);
         var cli = scenario.Import();
         Assert.True(cli.ExitCode == 0, cli.Error + cli.Output);
         Assert.Equal(code, JsonNode.Parse(cli.Output)!["refusals"]![0]!["code"]!.GetValue<string>());
