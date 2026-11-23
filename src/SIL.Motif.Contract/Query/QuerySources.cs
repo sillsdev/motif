@@ -57,6 +57,21 @@ public static class QuerySources
         _ => false,
     };
 
+    /// <summary>Every column a source accepts in a predicate, with its type: <c>text</c>, <c>set</c> or <c>numeric</c>; ordered by name.</summary>
+    public static IReadOnlyList<(string Name, string Type)> Columns(string source)
+    {
+        var names = new List<string> { "id" };
+        if (source == Forms) names.AddRange(FormQuery.FormColumnNames);
+        else names.AddRange(StoredColumns(source));
+        if (IsTextSource(source))
+        {
+            names.AddRange(["shape", "syllables", "fold"]);
+            for (var count = 1; count <= 8; count++) names.AddRange([$"initial:{count}", $"final:{count}"]);
+        }
+        return [.. names.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Select(name => (name,
+            IsNumeric(source, name) ? "numeric" : (source == Forms ? FormQuery.IsFormSet(name) : IsStoredSet(source, name)) ? "set" : "text"))];
+    }
+
     internal static string SortColumn(string source) => source switch { Stems => "form", Uses => "target", _ => "label" };
 }
 

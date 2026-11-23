@@ -20,6 +20,9 @@ public sealed record FormsQueryRequest(string FwDataPath, string ProductVersion,
 public sealed record FormsQueryResponse(string TrialId, string GrammarHash, string BundleId, bool IsStale,
     int UnresolvedVariants, QueryResult Result)
 {
+    /// <summary>The version of the query language and answer shape this response follows.</summary>
+    public string SchemaVersion { get; init; } = QueryDocument.Version;
+
     /// <summary>What the facts did not measure that this query's source would otherwise present as complete.</summary>
     public IReadOnlyList<string> NotMeasured { get; init; } = [];
 

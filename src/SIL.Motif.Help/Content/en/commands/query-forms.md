@@ -9,6 +9,27 @@ motif query forms --project "project.fwdata" --where kind=alternate --where 'cha
 motif query forms --project "project.fwdata" --where kind=alternate --group letters.dropped --json
 ```
 
+A `--where` can also be a boolean expression: predicates `column op value` joined by `and`, `or` and `not`, with parentheses. `not` binds tighter than `and`, which binds tighter than `or`. The text ops are `is`, `not`, `in`, `not in`, `has`, `<`, `>`, `~` (unanchored regular expression), `matches` (a regular expression that must match the whole value), `exists` and `missing`. A value is a bare word or a double-quoted string, and `in`, `not in` and `has` take comma-separated values. A `--where` that starts with `(` or `not `, or that holds the words `and` or `or` and parses as an expression, is read as an expression; every other `--where` is read as a v1 selector first, so a v1 line keeps its meaning. Wrap a single predicate in parentheses to force the expression reading, for example `--where "(kind not in a,b)"`.
+
+```powershell
+motif query forms --project "project.fwdata" --where "kind is variant or (kind is alternate and tokens > 5)" --limit 20
+```
+
+`--limit` keeps at most that many rows, groups or ids. A `--as-of` run takes a conjunction of `is`, `not`, `in`, `has`, `<`, `>` and `~` selectors only.
+
+## The JSON form: `--query-json` and `--schema`
+
+`motif query --project "project.fwdata" --query-json <file|->` runs one `motif.query.v2` document, from a file or from standard input with `-`, and takes no other query flag. `motif query --schema` prints its JSON Schema, which is generated from the same records the engine reads; it lists every op, source and column with its type, and the reserved kinds. The MCP tool `motif_query` takes the same document as its `query` argument. Every response carries `schemaVersion`.
+
+```json
+{ "version": "motif.query.v2", "from": "forms",
+  "where": { "and": [ { "field": "kind", "op": "in", "value": ["alternate", "variant"] },
+                      { "not": { "field": "form", "op": "regex", "value": "sa.*" } } ] },
+  "limit": 50 }
+```
+
+A predicate is `{field, op, value}` with op `eq`, `ne`, `in`, `nin`, `lt`, `gt`, `has`, `regex`, `contains` or `exists`. `regex` must match the whole value and `contains` matches anywhere; both use the non-backtracking engine and are limited to 256 characters. An op that does not fit its column (`lt` on text, `has` on a single value, `regex` on a number) is refused with `query.op-type-mismatch`. `morph`, `seq`, `phon`, `env` and `realizes` are reserved: a document that uses one is refused with `query.not-yet-available`. A malformed document is refused with `query.document-invalid`, naming the path.
+
 `--group` accepts comma-separated columns, `--min-count` filters groups, and `--examples` selects examples ordered by form. `--ids` includes ids for use by other commands. `--trial` selects the Trial whose evidence is available; only one evidence bundle has query rows. Token frequency is not available in this phase. Forms use the project's graphemes; `--raw-letters` uses individual characters instead.
 
 ## Reading the Baseline or a Proposal: `--as-of` and `--sides both`
