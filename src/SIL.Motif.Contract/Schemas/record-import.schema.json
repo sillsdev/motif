@@ -189,14 +189,14 @@
         },
         "operations": {
           "type": "array",
-          "maxItems": 5,
+          "maxItems": 3,
           "items": {
             "$ref": "#/$defs/Operation"
           }
         },
         "refusals": {
           "type": "array",
-          "maxItems": 5,
+          "maxItems": 3,
           "items": {
             "$ref": "#/$defs/Refusal"
           }
@@ -209,7 +209,7 @@
         },
         "changes": {
           "type": "array",
-          "maxItems": 5,
+          "maxItems": 3,
           "items": {
             "$ref": "#/$defs/Change"
           }

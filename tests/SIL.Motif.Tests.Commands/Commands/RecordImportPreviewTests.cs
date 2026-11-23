@@ -260,10 +260,10 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
         File.WriteAllText(file, text.Replace("zzedited", new string('\u00e9', 400), StringComparison.Ordinal)
             .Replace("zzgloss", new string('\u4e2d', 400), StringComparison.Ordinal));
 
-        for (var page = 1; page <= 3; page++)
+        for (var page = 1; page <= 4; page++)
         {
             var response = RecordImportCommand.Run(new(project, file, null, page)).Value!;
-            Assert.Equal(3, response.PageCount);
+            Assert.Equal(4, response.PageCount);
             Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(response)) <= RecordImportPaging.SummaryBytes, "page " + page);
         }
     }

@@ -8,6 +8,6 @@ A file made from another schema (for example, a custom field was added after the
 
 Each change that has no operation is listed with its code: `record-import.change-refused` (the importer declines it), `record-import.field-uncovered` (no operation kind writes this field), `record-import.shape-unsupported`, `record-import.value-stale` (the project's value is no longer the one the file started from) or `record-import.not-executable`.
 
-The summary stays within 2 KB. Changes, operations and refusals are listed five to a page; `--page <n>` reads the next page. `--json` and the MCP tool `motif_import_record` return the same `RecordImportResponse`.
+The summary stays within 2 KB. Changes, operations and refusals are listed three to a page; `--page <n>` reads the next page. `--json` and the MCP tool `motif_import_record` return the same `RecordImportResponse`.
 
 Each listed change has a `status` (`staged` or `refused`, with the refusal code). Its old and new values are the file's text, not the operation's value, and they are project text.

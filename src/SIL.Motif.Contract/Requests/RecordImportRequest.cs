@@ -16,7 +16,7 @@ public sealed record RecordImportRequest(string ProjectPath, string FilePath, st
 public static class RecordImportPaging
 {
     /// <summary>The changes, and separately the operations and the refusals, listed on one page.</summary>
-    public const int PageSize = 5;
+    public const int PageSize = 3;
 
     /// <summary>The longest text kept in a listed refusal reason, class, field or operation kind, before the response is fitted to <see cref="SummaryBytes"/>.</summary>
     public const int TextLength = 90;

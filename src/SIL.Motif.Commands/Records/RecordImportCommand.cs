@@ -216,7 +216,7 @@ public static partial class RecordImportCommand
                     Reason = Clip(row.Reason, length)! }).ToList(), draftName, proposalId,
                 pageChanges.Select((change, offset) => ChangeRow(change, length,
                     lowering.RefusedChanges?.GetValueOrDefault((page - 1) * size + offset))).ToList());
-            if (length <= 4 || ProjectionJson.ToUtf8Bytes(response).Length <= RecordImportPaging.SummaryBytes)
+            if (length <= 1 || ProjectionJson.ToUtf8Bytes(response).Length <= RecordImportPaging.SummaryBytes)
                 return response;
         }
     }

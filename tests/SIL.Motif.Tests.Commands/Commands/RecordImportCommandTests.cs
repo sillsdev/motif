@@ -316,20 +316,20 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         var (project, file, _, _, _) = Fixture(7, EditGloss);
         var seen = new List<string>();
 
-        for (var page = 1; page <= 2; page++)
+        for (var page = 1; page <= 3; page++)
         {
             var outcome = RecordImportCommand.Run(new(project, file, null, page));
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
             Assert.Equal(7, outcome.Value!.OperationCount);
-            Assert.Equal(2, outcome.Value.PageCount);
+            Assert.Equal(3, outcome.Value.PageCount);
             Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(outcome.Value)) <= RecordImportPaging.SummaryBytes);
             seen.AddRange(outcome.Value.Operations.Select(operation => operation.OperationId));
         }
         Assert.Equal(7, seen.Count);
         Assert.Equal(7, seen.Distinct().Count());
-        var past = RecordImportCommand.Run(new(project, file, null, 3));
+        var past = RecordImportCommand.Run(new(project, file, null, 4));
         Assert.Equal(RefusalCodes.RecordImportInvalidPage, past.Refusal!.Code);
-        Assert.Equal("2", past.Refusal.Facts["pageCount"]);
+        Assert.Equal("3", past.Refusal.Facts["pageCount"]);
     }
 
     [Fact]
