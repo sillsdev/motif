@@ -36,7 +36,7 @@ public sealed record ProposalComparison(
     /// <summary>The most Proposals one call may compare.</summary>
     public const int MaxProposals = 8;
 
-    /// <summary>The most bytes the serialized summary may take.</summary>
+    /// <summary>The most bytes the serialized summary may take. The budget began at 2000 for eight columns of counts and four limitations; the approved total, the uncounted figure and three more limitations measure 2111 bytes in the worst case, so 2200 keeps the summary small while leaving headroom.</summary>
     public const int SummaryByteLimit = 2200;
 
     /// <summary>The requested form rows, present only when the caller selects a page.</summary>
@@ -112,7 +112,16 @@ public sealed record CompareLimitation([property: JsonRequired] string Code, [pr
 {
     /// <summary>Names the versions or the revision behind the limitation, when the code needs more than a count.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Detail { get; init; }
+    public string? Detail
+    {
+        get => _detail;
+        init => _detail = value is { Length: > MaxDetailLength } ? value[..(MaxDetailLength - 3)] + "..." : value;
+    }
+
+    private readonly string? _detail;
+
+    /// <summary>The most characters a limitation's detail keeps; longer text is cut with an ellipsis.</summary>
+    public const int MaxDetailLength = 40;
 
     /// <summary>Writes each limitation on one line so seven of them stay within the summary's byte limit.</summary>
     internal sealed class CompactConverter : JsonConverter<CompareLimitation>

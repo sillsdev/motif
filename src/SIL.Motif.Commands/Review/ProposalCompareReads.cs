@@ -332,7 +332,6 @@ public static class ProposalCompareReads
         var sidesDiffer = versions.Count(version => version is { } pair && pair.Before != pair.After);
         if (distinct.Length < 2 && sidesDiffer == 0) return null;
         var detail = string.Join(" | ", distinct);
-        if (detail.Length > 40) detail = detail[..37] + "...";
         return new CompareLimitation(CompareLimitation.ParserVersionDiffers, sidesDiffer > 0 ? sidesDiffer : columns.Count)
         {
             Detail = detail.Length == 0 ? null : detail,

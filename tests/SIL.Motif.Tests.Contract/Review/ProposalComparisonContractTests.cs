@@ -18,7 +18,7 @@ public sealed class ProposalComparisonContractTests
             [new(CompareLimitation.NotMeasured, 99999), new(CompareLimitation.IncompleteTrial, 8),
                 new(CompareLimitation.ApprovedOtherAgents, 8), new(CompareLimitation.ApprovedUncounted, 8),
                 new(CompareLimitation.TrialStale, 8), new(CompareLimitation.TrialSuperseded, 8),
-                new(CompareLimitation.ParserVersionDiffers, 8) { Detail = new string('v', 40) }], 99999, 99999, 99999);
+                new(CompareLimitation.ParserVersionDiffers, 8) { Detail = new string('v', 80) }], 99999, 99999, 99999);
         if (!withPage) return summary;
         var cells = all.Select((_, index) => new CompareCell(true, true, [Digest('1')], index == 0 ? [Digest('2')] : [], [Digest('3')], index == 0 ? [Digest('4')] : [])).ToArray();
         return summary with { Page = new CompareRowPage(1, null, [new CompareRow(null, "form", "key", true, cells)]) };
@@ -50,5 +50,6 @@ public sealed class ProposalComparisonContractTests
     {
         var bytes = ProjectionJson.ToUtf8Bytes(Sample(ProposalComparison.MaxProposals, withPage: false)).Length;
         Assert.InRange(bytes, 1, ProposalComparison.SummaryByteLimit);
+        Assert.Equal(CompareLimitation.MaxDetailLength, new CompareLimitation("x", 1) { Detail = new string('v', 80) }.Detail!.Length);
     }
 }
