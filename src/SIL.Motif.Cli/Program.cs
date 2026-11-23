@@ -400,15 +400,16 @@ try
         case "import":
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var importProject) ||
                 !flags.TryGetValue("file", out var importFile) ||
-                flags.Keys.Any(key => key is not ("project" or "file" or "draft" or "page" or "json")) ||
-                flags.TryGetValue("draft", out var importDraft) && importDraft == "true")
+                flags.Keys.Any(key => key is not ("project" or "file" or "draft" or "page" or "strict" or "json")) ||
+                flags.TryGetValue("draft", out var importDraft) && importDraft == "true" ||
+                flags.ContainsKey("strict") && !flags.ContainsKey("draft"))
                 return Usage(UsageLineFor("import"), asJson);
             var importPage = 1;
             if (flags.TryGetValue("page", out var importPageText) &&
                 (!int.TryParse(importPageText, NumberStyles.None, CultureInfo.InvariantCulture, out importPage) || importPage < 1))
                 return Usage(UsageLineFor("import"), asJson);
             result = RenderCommand(RecordImportCommand.Run(new RecordImportRequest(
-                importProject, importFile, flags.GetValueOrDefault("draft"), importPage)));
+                importProject, importFile, flags.GetValueOrDefault("draft"), importPage, flags.ContainsKey("strict"))));
             break;
 
         case "add-set-gloss":
@@ -3983,7 +3984,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict")
             {
                 flags[name] = "true";
                 continue;

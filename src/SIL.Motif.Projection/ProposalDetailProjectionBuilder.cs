@@ -45,7 +45,29 @@ public static class ProposalDetailProjectionBuilder
         return new ProposalDetailProjection(
             proposalId, manifest.Status, manifest.Label, rationale, manifest.CurrentIntentDigest, operations,
             manifest.SupersededBy, envelope.Extensions?.GetRawText(), Comments: comments,
-            CommentsChanged: PersonCommentIsNewer(manifest));
+            CommentsChanged: PersonCommentIsNewer(manifest))
+        {
+            RecordImportRefused = RecordImportRefusedIn(envelope),
+        };
+    }
+
+    /// <summary>The refused-change count the import stored in composer provenance, or null if none.</summary>
+    private static int? RecordImportRefusedIn(Proposal envelope)
+    {
+        if (envelope.Extensions is not { ValueKind: System.Text.Json.JsonValueKind.Object } extensions ||
+            !extensions.TryGetProperty("composers", out var composers) ||
+            composers.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return null;
+        int? total = null;
+        foreach (var entry in composers.EnumerateArray())
+        {
+            if (entry.ValueKind != System.Text.Json.JsonValueKind.Object ||
+                !entry.TryGetProperty("composer", out var name) || name.GetString() != "RecordImport" ||
+                !entry.TryGetProperty("input", out var input) || input.ValueKind != System.Text.Json.JsonValueKind.Object)
+                continue;
+            total = (total ?? 0) + (input.TryGetProperty("refusedChanges", out var count) && count.TryGetInt32(out var number) ? number : 0);
+        }
+        return total;
     }
 
     /// <summary>
