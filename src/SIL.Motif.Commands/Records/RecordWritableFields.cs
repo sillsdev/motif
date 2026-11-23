@@ -94,7 +94,9 @@ public sealed class RecordWritableFields : IWritableFields
             return new(UncoveredFieldReason.NotUserEditable, classification);
         if (field.Computed)
             return new(UncoveredFieldReason.ComputedField);
-        return binding.IsCustom && CustomFieldCatalog.TypeOf(field) is null ? new(UncoveredFieldReason.CustomField) : null;
+        if (binding.IsCustom && CustomFieldCatalog.TypeOf(field) is null)
+            return new(field.Kind == RecordFieldKind.Rich && field.Paragraphs ? UncoveredFieldReason.CustomStText : UncoveredFieldReason.CustomField);
+        return null;
     }
 
     private sealed record Candidate(string Kind, FieldWriteCapability Write);
