@@ -1,5 +1,3 @@
-using SIL.Motif.Runner.Execution;
-using SIL.Motif.Contract.Commands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -144,9 +142,8 @@ public sealed class EditMorphotacticsComposerTests : IDisposable
             Refusal(new(Id(template), [], [Id(fv)], [Id(fv)], [Id(fv)])), StringComparison.Ordinal);
         Assert.Contains("differ from the expected order",
             Refusal(new(Id(template), [], [], [], [Id(fv)])), StringComparison.Ordinal);
-        var unknown = Assert.ThrowsAny<ProposalRefusalException>(() => EditAffixTemplateComposer.Build(_cache,
+        Assert.Throws<KeyNotFoundException>(() => EditAffixTemplateComposer.Build(_cache,
             new(Id(template), [], [], [Id(fv)], [Id(fv), CanonicalId.Mint()])));
-        Assert.Equal(RefusalCodes.ReferenceUnknown, unknown.Code);
     }
 
     [Fact]

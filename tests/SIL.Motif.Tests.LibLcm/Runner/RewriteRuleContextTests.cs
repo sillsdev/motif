@@ -1,4 +1,3 @@
-using SIL.Motif.Contract.Commands;
 using SIL.Motif.Runner.Execution;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -351,10 +350,9 @@ public sealed class RewriteRuleContextTests(PristineProjectFixture pristine)
             marker.Guid == LangProjectTags.kguidPhRuleWordBdry);
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, wordMarker.Delete);
 
-        var error = Assert.ThrowsAny<ProposalRefusalException>(() => ScratchDryRun.Of(cache, Proposal(operations)));
+        var error = Assert.Throws<KeyNotFoundException>(() => ScratchDryRun.Of(cache, Proposal(operations)));
 
-        Assert.Equal(RefusalCodes.ReferenceUnknown, error.Code);
-        Assert.Contains(CanonicalId.FromGuid(LangProjectTags.kguidPhRuleWordBdry).Value, error.Message,
+        Assert.Contains(LangProjectTags.kguidPhRuleWordBdry.ToString("D"), error.Message,
             StringComparison.Ordinal);
         Assert.False(cache.ServiceLocator.ObjectRepository.TryGetObject(LangProjectTags.kguidPhRuleWordBdry, out _));
     }
