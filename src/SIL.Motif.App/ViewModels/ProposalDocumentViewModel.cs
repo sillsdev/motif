@@ -451,11 +451,13 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     {
         if (Detail is not { } detail)
         {
+            RefreshAppliedRecord(null);
             OperationRows = [];
             SharedEffectSummaries = [];
             return;
         }
         // An Applied Proposal keeps its recorded old-to-new values although the project has since moved on.
+        RefreshAppliedRecord(detail);
         var effects = ShownEffects(detail);
         var byOperation = effects.Where(effect => effect.OperationIds.Count == 1)
             .ToLookup(effect => effect.OperationIds[0], StringComparer.Ordinal);

@@ -4050,6 +4050,12 @@ public static class MotifAppStrings
     public static string ProposalSelectedNameFormat => Text("MotifApp.ProposalSelectedNameFormat");
     public static string ProposalReceiptFormat => Text("MotifApp.ProposalReceiptFormat");
     public static string ProposalReceiptByYouFormat => Text("MotifApp.ProposalReceiptByYouFormat");
+    public static string ProposalAppliedHeading => Text("MotifApp.ProposalAppliedHeading");
+    public static string ProposalAppliedByYou => Text("MotifApp.ProposalAppliedByYou");
+    public static string ProposalAppliedByOther => Text("MotifApp.ProposalAppliedByOther");
+    public static string ProposalAppliedEvidenceHeading => Text("MotifApp.ProposalAppliedEvidenceHeading");
+    public static string ProposalAppliedEvidenceFormat => Text("MotifApp.ProposalAppliedEvidenceFormat");
+    public static string ProposalAppliedNoEvidence => Text("MotifApp.ProposalAppliedNoEvidence");
     public static string ProposalReceiptFieldWorksNote => Text("MotifApp.ProposalReceiptFieldWorksNote");
     public static string ProposalReceiptCopy => Text("MotifApp.ProposalReceiptCopy");
     public static string ProposalReceiptCopied => Text("MotifApp.ProposalReceiptCopied");

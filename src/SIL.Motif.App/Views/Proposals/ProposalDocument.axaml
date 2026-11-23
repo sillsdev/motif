@@ -40,6 +40,24 @@
       </views:ProgressiveItemsControl>
     </StackPanel>
     <views:RefusalBlock DataContext="{Binding EntryRefusal}" />
+    <StackPanel x:Name="ProposalAppliedRecord" IsVisible="{Binding HasAppliedRecord}" Spacing="{DynamicResource Intent.Space.Related}">
+      <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalAppliedHeading}" />
+      <views:CopyableTextBlock Text="{Binding AppliedHeading}" TextWrapping="Wrap" />
+      <views:ProgressiveItemsControl x:Name="ProposalAppliedEffects" FullItemsSource="{Binding AppliedEffects}">
+        <views:ProgressiveItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+        </views:ProgressiveItemsControl.ItemTemplate>
+      </views:ProgressiveItemsControl>
+      <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalAppliedEvidenceHeading}" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalAppliedNoEvidence}"
+                               IsVisible="{Binding !HasAppliedEvidence}" TextWrapping="Wrap" />
+      <views:ProgressiveItemsControl x:Name="ProposalAppliedEvidence" FullItemsSource="{Binding AppliedEvidence}"
+                                     IsVisible="{Binding HasAppliedEvidence}">
+        <views:ProgressiveItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+        </views:ProgressiveItemsControl.ItemTemplate>
+      </views:ProgressiveItemsControl>
+    </StackPanel>
     <StackPanel x:Name="ProposalStatusBlock" Classes="proposalStatus" IsVisible="{Binding ShowsStatus}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalStatus}"
                 Spacing="{DynamicResource Intent.Space.Related}">

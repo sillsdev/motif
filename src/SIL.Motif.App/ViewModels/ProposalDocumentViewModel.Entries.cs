@@ -21,7 +21,10 @@ public sealed partial class ProposalDocumentViewModel
             .Select(operation => operation.Target)
             .Concat(ShownEffects(detail)
                 .Where(effect => effect.Field.StartsWith("lexical/", StringComparison.Ordinal))
-                .Select(effect => effect.CanonicalId)));
+                .Select(effect => effect.CanonicalId))
+            .Concat((detail.AppliedRecord?.Effects ?? [])
+                .Where(effect => effect.Field.StartsWith("lexical/", StringComparison.Ordinal))
+                .Select(effect => effect.Target)));
         var key = string.Join('|', ids) + "@" + _context.Baseline?.Token?.SemanticIdentity;
         if (key == _entryNamesKey) return;
         if (ids.Count == 0)
