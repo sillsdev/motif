@@ -29,6 +29,8 @@ public sealed partial class ProposalDocumentViewModel
         Queries.Show(GuideQueryDocument.FromMarkdown(markdown));
     }
 
-    private static string QueriesKey(ProposalDetailProjection detail, string markdown) =>
-        detail.Status + "\n" + detail.ProposalId + "\n" + markdown;
+    // The Proposal side reads the latest Trial, so a Trial that finishes, or a newer one, is a new key.
+    private string QueriesKey(ProposalDetailProjection detail, string markdown) =>
+        _review?.Trial is { } trial ? trial.JobId + "/" + trial.Status + "\n" + detail.ProposalId + "\n" + markdown
+            : "none\n" + detail.ProposalId + "\n" + markdown;
 }

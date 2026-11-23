@@ -401,12 +401,12 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             else RationaleEditor = new RationaleEditorModel(_context, detail);
             ReconcileComments(detail);
             FreezeEditorsIfClosed();
-            ShowQueries(detail);
             var review = await _context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(ProjectPath,
                 ProposalId), cancellation.Token).ConfigureAwait(true);
             if (!Current(generation) || cancellation.IsCancellationRequested) return;
             if (!review.Succeeded) DetailRefusal = WindowRefusal.From(review.Refusal!);
             _review = review.Succeeded && review.Value!.ProposalId == ProposalId ? review.Value : null;
+            ShowQueries(detail);
             var words = _review?.Entries.OfType<WordChangeEntry>().ToArray() ?? [];
             OperationDescriptions = detail.Operations.Select(operation => ProposalOperationSentence.For(operation,
                 words.Where(word => word.OperationIds.Contains(operation.OperationId))

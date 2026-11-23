@@ -71,6 +71,31 @@ public sealed class ProposalQueryTablesTests
         Assert.Equal(["baha"], display.Rows.Select(row => row.Id));
     }
 
+    private static TrialRecord Trial(string job, SIL.Motif.Contract.Jobs.JobStatus status) => new(job, "one", "intent/one",
+        WorkspaceContextTests.Assessment().Baseline.Token, null, new Dictionary<string, string>(), [], false, null, status,
+        null, TrialFreshness.Current);
+
+    private static ProposalReviewResponse ReviewWith(TrialRecord? trial) =>
+        new("one", "intent/one", "revision/one", [], trial, null, [], 0);
+
+    [Fact]
+    public async Task ATrialThatCompletesAfterThePageOpenedRunsTheTablesAgain()
+    {
+        var fake = Fake(PendingAnswer);
+        fake.Review = ReviewWith(null);
+        await using var opened = await ProposalEntryContextTests.Open(fake);
+        await opened.Document.Queries.Running;
+        Assert.Single(fake.GuideQueryRequests);
+
+        fake.GuideQueryHandler = (_, _) => Task.FromResult(Answer(BothAnswer()));
+        fake.Review = ReviewWith(Trial("job/one", SIL.Motif.Contract.Jobs.JobStatus.Completed));
+        await opened.Document.RefreshAsync();
+        await opened.Document.Queries.Running;
+
+        Assert.Equal(2, fake.GuideQueryRequests.Count);
+        Assert.False(Assert.Single(Assert.Single(opened.Document.Queries.Blocks).Displays).HasProposalPending);
+    }
+
     [Fact]
     public async Task AnInvalidFilterShowsTheSentenceAndWhatTheCommandSaidAboutIt()
     {
