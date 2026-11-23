@@ -7472,6 +7472,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalEntryHeadword" xml:space="preserve"><value>Entry {0}</value></data>
   <data name="MotifApp.ProposalEntryNoHeadword" xml:space="preserve"><value>(no headword)</value></data>
   <data name="MotifApp.ProposalEntrySensesLine" xml:space="preserve"><value>Senses of {0}: {1}</value><comment>{0} is the headword, {1} the senses as '1 sell; 2 buy'.</comment></data>
+  <data name="MotifApp.ProposalEntrySensesHeading" xml:space="preserve"><value>Senses of {0}:</value><comment>{0} is the headword; the senses follow one to a line.</comment></data>
   <data name="MotifApp.ProposalEntrySenseItem" xml:space="preserve"><value>{0} {1}</value><comment>One sense in the list: its number, then its gloss.</comment></data>
   <data name="MotifApp.ProposalEntrySenseChangedHere" xml:space="preserve"><value>{0} (changed here)</value></data>
   <data name="MotifApp.ProposalEntrySenseNoGloss" xml:space="preserve"><value>(no gloss)</value></data>

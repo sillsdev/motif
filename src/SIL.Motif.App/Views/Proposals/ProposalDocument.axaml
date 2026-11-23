@@ -27,7 +27,18 @@
               <views:CopyableTextBlock Text="{Binding Title}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding Values}" IsVisible="{Binding HasValues}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Classes="muted" Text="{Binding Target}" IsVisible="{Binding HasTarget}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Classes="muted" Text="{Binding Senses}" IsVisible="{Binding HasSenses}" TextWrapping="Wrap" />
+              <StackPanel IsVisible="{Binding HasSenses}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                <views:CopyableTextBlock Classes="muted" Text="{Binding SensesHeading}" TextWrapping="Wrap" />
+                <ItemsControl x:Name="ProposalSenseItems" ItemsSource="{Binding SenseItemList}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ProposalSenseItem">
+                      <Border Classes="proposalSense" Classes.target="{Binding IsTarget}">
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding Text}" TextWrapping="Wrap" />
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
             </StackPanel>
           </DataTemplate>
         </views:ProgressiveItemsControl.ItemTemplate>

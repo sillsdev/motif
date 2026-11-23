@@ -36,6 +36,8 @@ public sealed class ProposalEntryContextTests
         Assert.Equal("Sense 2 of palit", row.Target);
         Assert.Equal("Senses of palit: 1 sell; 2 buy (changed here)", row.Senses);
         Assert.True(row.HasSenses);
+        Assert.Equal("Senses of palit:", row.SensesHeading);
+        Assert.Equal([("1 sell", false), ("2 buy", true)], row.SenseItemList.Select(item => (item.Text, item.IsTarget)));
         var request = Assert.Single(fake.LexicalEntryRequests);
         Assert.Equal([SenseTwo], request.Ids);
         Assert.Null(opened.Document.EntryRefusal);

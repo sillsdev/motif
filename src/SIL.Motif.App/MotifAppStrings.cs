@@ -4016,6 +4016,7 @@ public static class MotifAppStrings
     public static string ProposalCurrentUnavailable => Text("MotifApp.ProposalCurrentUnavailable");
     public static string ProposalEntryNoHeadword => Text("MotifApp.ProposalEntryNoHeadword");
     public static string ProposalEntrySensesLine => Text("MotifApp.ProposalEntrySensesLine");
+    public static string ProposalEntrySensesHeading => Text("MotifApp.ProposalEntrySensesHeading");
     public static string ProposalEntrySenseItem => Text("MotifApp.ProposalEntrySenseItem");
     public static string ProposalEntrySenseChangedHere => Text("MotifApp.ProposalEntrySenseChangedHere");
     public static string ProposalEntrySenseNoGloss => Text("MotifApp.ProposalEntrySenseNoGloss");
