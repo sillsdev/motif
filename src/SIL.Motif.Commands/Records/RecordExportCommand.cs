@@ -113,7 +113,7 @@ public static class RecordExportCommand
             "Edit the file, then run import --file to plan it. If the project changes first, export again and redo the edits."));
     }
 
-    /// <summary>The first kind of the schema that takes the object's class as a root, or null when the project has no such object.</summary>
+    /// <summary>The first schema kind rooted at the object's class, or null if none.</summary>
     private static SIL.TextEditing.Markdown.Records.RecordKind? KindOf(LcmCache cache, ProjectRecordSchemaResult schema, Guid record) =>
         cache.ServiceLocator.ObjectRepository.TryGetObject(record, out var obj)
             ? schema.Schema.Kinds.FirstOrDefault(kind => kind.Roots.Any(root => root.Name == obj.ClassName))
