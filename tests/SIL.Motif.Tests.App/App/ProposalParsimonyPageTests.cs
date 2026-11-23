@@ -14,7 +14,7 @@ public sealed class ProposalParsimonyPageTests
 {
     private const string ProjectPath = @"C:\projects\advice.fwdata";
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAProposalReadsItsStatusOnceAndChoosingAnotherReadsTheOther()
     {
         var (fake, _, page) = await OpenAsync(Card("p/one"), Card("p/two"));
@@ -34,7 +34,7 @@ public sealed class ProposalParsimonyPageTests
         Assert.All(fake.ProposalParsimonyStatusRequests, request => Assert.Equal(ProjectPath, request.FwDataPath));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APendingDraftIsNeverReadBecauseItHasNoTrial()
     {
         var (fake, _, page) = await OpenAsync(Card("p/mine", pending: true));
@@ -45,7 +45,7 @@ public sealed class ProposalParsimonyPageTests
         Assert.False(page.Parsimony.IsVisible);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ClearingTheProjectClosesTheSectionAndStopsReadingARunningJob()
     {
         var fake = new FakeCommandClient();
@@ -73,7 +73,7 @@ public sealed class ProposalParsimonyPageTests
         Assert.Equal(1, reads);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoppingThePageWorkStopsTheWatch()
     {
         var (_, _, page) = await OpenAsync(Card("p/one"));
@@ -85,7 +85,7 @@ public sealed class ProposalParsimonyPageTests
         Assert.Null(page.Parsimony.ProposalId);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(ProposalParsimonyFailureCategory.TimedOut)]
     [InlineData(ProposalParsimonyFailureCategory.ParserUnavailable)]
     [InlineData(ProposalParsimonyFailureCategory.Internal)]
@@ -113,7 +113,7 @@ public sealed class ProposalParsimonyPageTests
         Assert.True(context.ProposalApply.CanApply(null, null, null, null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedStatusIsNotCoupledToABlockedApply()
     {
         var fake = new FakeCommandClient();
@@ -134,7 +134,7 @@ public sealed class ProposalParsimonyPageTests
         Assert.Equal(before, ApplyFacts(context));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnExplicitWatchAfterATrialShowsQueuedRunningAndReady()
     {
         // The section is single-thread by design; on pool threads two watch continuations can interleave.

@@ -27,7 +27,7 @@ public sealed class ProposalBringBackTests
         return new Opened(fake, document, documents, context);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADeferredProposalOffersBringBackAndAWaitingOneDoesNot()
     {
         await using (var deferred = await Open("deferred"))
@@ -42,7 +42,7 @@ public sealed class ProposalBringBackTests
         Assert.False(waiting.Document.ShowsBringBack);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task BringingBackAsksTheStoreAndTheProposalReadsAsWaitingAgain()
     {
         await using var opened = await Open("deferred");
@@ -61,7 +61,7 @@ public sealed class ProposalBringBackTests
         Assert.Equal(1, brought);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheApplyConfirmationOfADeferredProposalOffersBringBackAndClosesWhenItIsUsed()
     {
         await using var opened = await Open("deferred");
@@ -77,7 +77,7 @@ public sealed class ProposalBringBackTests
         Assert.Single(opened.Fake.UndeferProposalRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedBringBackSaysWhyInPlainWordsAndLeavesTheProposalDeferred()
     {
         var fake = new FakeCommandClient
@@ -94,7 +94,7 @@ public sealed class ProposalBringBackTests
         Assert.Equal("deferred", opened.Document.Detail!.Status);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(RefusalCodes.ProposalInvalidStatus)]
     [InlineData(RefusalCodes.ProposalNotFound)]
     public async Task ARefusalThatMeansTheStatusMovedReadsTheProposalAgainSoTheStaleButtonGoes(string code)
@@ -114,7 +114,7 @@ public sealed class ProposalBringBackTests
         Assert.Equal(1, reloads);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheProposalsPageReloadsItsListWhenADocumentBringsItsProposalBack()
     {
         var fake = new FakeCommandClient { ProposalDetail = Detail("deferred") };
