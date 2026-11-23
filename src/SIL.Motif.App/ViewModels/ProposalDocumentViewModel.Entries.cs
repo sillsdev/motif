@@ -10,7 +10,7 @@ public sealed partial class ProposalDocumentViewModel
     private ProposalEntryNames _entryNames = ProposalEntryNames.None;
     private string? _entryNamesKey;
 
-    /// <summary>Why the entries and senses the Proposal touches could not be read from the Baseline; null when they were.</summary>
+    /// <summary>Why the entries could not be read from the Baseline, or null.</summary>
     [ObservableProperty] private WindowRefusal? _entryRefusal;
 
     // The entries and senses the changes name, read from the Baseline so a change can say "palit sense 2".
@@ -43,5 +43,6 @@ public sealed partial class ProposalDocumentViewModel
             names.Add(read.Value!.Lookups);
         }
         (_entryNames, _entryNamesKey, EntryRefusal) = (names, key, null);
+        RaiseStatus();
     }
 }

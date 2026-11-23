@@ -359,8 +359,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
 
     private bool Current(int generation) => !_stopped && generation == _generation && _context.ProjectPath == ProjectPath;
 
-    // Each change's current saved value stands in for the recorded old value until a Trial gives one; a decided
-    // Proposal keeps the values it recorded.
+    // Current saved values stand in for the old value until a Trial gives one.
     private bool ReadsCurrentValues => Card?.Card is not { } card || card.Trial is null && !IsDecided(card.Status);
 
     private async Task ReadAsync(int generation, CancellationTokenSource cancellation)
@@ -463,7 +462,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         OperationRows = detail.Operations.Select(operation =>
             ProposalOperationRow.For(operation, byOperation[operation.OperationId], _entryNames)).ToArray();
         SharedEffectSummaries = effects.Where(effect => effect.OperationIds.Count > 1 && effect.Changes.Count > 0)
-            .Select(ProposalEffectText.Shared).ToArray();
+            .Select(effect => ProposalEffectText.Shared(effect, _entryNames)).ToArray();
     }
 
     // The effects the page shows: an Applied Proposal keeps its recorded ones; otherwise a current Trial's.
