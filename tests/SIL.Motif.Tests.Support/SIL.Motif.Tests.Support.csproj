@@ -11,6 +11,7 @@
     <InternalsVisibleTo Include="SIL.Motif.Tests.App" />
     <InternalsVisibleTo Include="SIL.Motif.Tests.LibLcm" />
     <InternalsVisibleTo Include="SIL.Motif.Tests.Worker" />
+    <InternalsVisibleTo Include="SIL.Motif.Tests.RecordStore" />
     <InternalsVisibleTo Include="SIL.Motif.SampleProjects" />
   </ItemGroup>
 

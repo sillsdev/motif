@@ -66,6 +66,15 @@ public sealed partial class RecordStore
     /// <summary>Test hook: called as a guarded write passes each stage; throwing from it stops the write there.</summary>
     internal Action<WriteStage>? WriteStageReached { get; set; }
 
+    /// <summary>Test hook: awaited by <see cref="VerifyAsync"/> after its lock-free scan and before it asks for the writer lock.</summary>
+    internal Func<Task>? AfterVerifyScan { get; set; }
+
+    /// <summary>Test hook: awaited by <see cref="VerifyAsync"/> after it re-certified and before it returns.</summary>
+    internal Func<Task>? AfterVerifyCertified { get; set; }
+
+    /// <summary>Test hook: called as the history scan inside <see cref="VerifyAsync"/> starts each batch of rows.</summary>
+    internal Action<string, long>? VerifyScanBatchStarted { get; set; }
+
     /// <summary>Full history scans this handle ran for writes and publications.</summary>
     internal int HistoryScans { get; private set; }
 
@@ -81,8 +90,11 @@ public sealed partial class RecordStore
             : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes("motif-record-store-identity/" + first[0])));
     }
 
-    private static bool Trusted(StoreCertificate certificate, StoreState state, string? identity) =>
-        !certificate.WriteInProgress && identity is not null && certificate.StoreId == identity && state.Published &&
+    // The flag this handle set itself for a write that is in flight or was abandoned is not evidence of a crash.
+    private bool ownWriteFlag;
+
+    internal static bool Trusted(StoreCertificate certificate, StoreState state, string? identity, bool ignoreFlag = false) =>
+        (ignoreFlag || !certificate.WriteInProgress) && identity is not null && certificate.StoreId == identity && state.Published &&
         certificate.Revision == state.Revision && certificate.ReplayDigest == state.ReplayDigest &&
         certificate.SnapshotDigest == state.SnapshotDigest && certificate.ContentDigest == state.ContentDigest &&
         certificate.IndexDigest == state.IndexDigest &&
@@ -97,7 +109,7 @@ public sealed partial class RecordStore
         var first = database.Database.SqlQuery<string>($"SELECT hex(Id) || '/' || Hash AS Value FROM Commits ORDER BY rowid LIMIT 1").ToList();
         var identity = first.Count == 0 ? null
             : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes("motif-record-store-identity/" + first[0])));
-        return Trusted(certificate, state, identity) ? StoreVerification.Certified : StoreVerification.Uncertified;
+        return Trusted(certificate, state, identity, ownWriteFlag) ? StoreVerification.Certified : StoreVerification.Uncertified;
     }
 
     /// <summary>What a guarded write read before it set the crash flag.</summary>
@@ -111,7 +123,11 @@ public sealed partial class RecordStore
         if (certificate is null) return new(null, null, false);
         var identity = await StoreIdentityAsync();
         var setHere = !certificate.WriteInProgress;
-        if (setHere) await database.Database.ExecuteSqlRawAsync("UPDATE RecordStoreCertificate SET WriteInProgress = 1");
+        if (setHere)
+        {
+            await database.Database.ExecuteSqlRawAsync("UPDATE RecordStoreCertificate SET WriteInProgress = 1");
+            ownWriteFlag = true;
+        }
         return new(certificate, identity, setHere);
     }
 
@@ -130,7 +146,11 @@ public sealed partial class RecordStore
 
     private async Task AbandonWriteAsync(WriteStart start)
     {
-        if (start.FlagSetHere) await database.Database.ExecuteSqlRawAsync("UPDATE RecordStoreCertificate SET WriteInProgress = 0");
+        try
+        {
+            if (start.FlagSetHere) await database.Database.ExecuteSqlRawAsync("UPDATE RecordStoreCertificate SET WriteInProgress = 0");
+        }
+        finally { ownWriteFlag = false; }
     }
 
     /// <summary>The replay state a write extends: the certified one when trusted, else a full scan.</summary>
@@ -316,9 +336,11 @@ public sealed partial class RecordStore
     /// index, then compares each digest with the state row and the certificate. A disagreement throws and names the table
     /// at fault; nothing is changed. When everything agrees a writing handle re-certifies the point (provenance
     /// <c>full-verify</c>, crash flag cleared; a format 5 store is upgraded by this write) and every handle reports
-    /// <see cref="StoreVerification.Full"/>. A reader of an older format that only reads is never upgraded by reading.
+    /// <see cref="StoreVerification.Full"/>. It returns the exact state it verified. A reader of an older format that only reads is never upgraded by reading.
     /// </summary>
-    public async Task VerifyAsync(CancellationToken ct = default)
+    public Task VerifyAsync(CancellationToken ct = default) => VerifyCertifyingAsync(ct);
+
+    internal async Task<StoreState> VerifyCertifyingAsync(CancellationToken ct = default)
     {
         point = null;
         (StoreState state, ReplayState replay, VerifiedPoint acquired) result;
@@ -331,6 +353,7 @@ public sealed partial class RecordStore
         if (!readOnly)
         {
             // The scan ran without the writer lock; only the write that re-certifies needs it.
+            if (AfterVerifyScan is { } scanned) await scanned();
             using var writer = AcquireWriter();
             await using var transaction = await database.Database.BeginTransactionAsync(ct);
             try
@@ -338,6 +361,9 @@ public sealed partial class RecordStore
                 var now = await database.Set<StoreState>().AsNoTracking().SingleAsync(ct);
                 if (!now.SamePoint(state))
                     throw new InvalidOperationException("The store changed while it was being verified; run VerifyAsync again.");
+                // A crashed list operation commits history without moving the state row.
+                if (await CommitRevisionAsync(ct) != state.Revision)
+                    throw new InvalidOperationException("History changed while the store was being verified and is not published; the store was not re-certified.");
                 await UpgradeInTransactionAsync();
                 await StageCertificateAsync(state, replay, CertificateProvenance.FullVerify);
                 await database.SaveChangesAsync(ct);
@@ -355,6 +381,8 @@ public sealed partial class RecordStore
         }
         point = acquired with { Replay = replay };
         Verification = StoreVerification.Full;
+        if (AfterVerifyCertified is { } certified) await certified();
+        return state;
     }
 
     private async Task<string> NameRevisionDamageAsync(CancellationToken ct)
@@ -378,7 +406,7 @@ public sealed partial class RecordStore
             ReplayState? scanned = null;
             try { verified = await AcquireAsync(state, ct, (kind, digest) => { if (kind == "snapshot") snapshot = digest; else index = digest; }); }
             catch (InvalidDataException failure) { findings.Add("Snapshots: " + failure.Message); }
-            try { scanned = await ReplayIntegrity.ScanAsync(database, Workers, ct: ct); }
+            try { scanned = await ReplayIntegrity.ScanAsync(database, Workers, ct: ct, batchStarted: VerifyScanBatchStarted); }
             catch (InvalidDataException failure) { findings.Add("Commits or ChangeEntities: " + failure.Message); }
             try
             {

@@ -419,15 +419,17 @@ public sealed partial class RecordStore : IAsyncDisposable
     private Task<VerifiedPoint> PointAsync(CancellationToken ct = default) => ReadPublishedAsync(async state =>
         point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct), ct);
 
-    public async Task RebuildReferenceIndexAsync()
+    /// <summary>Cancelling before the single publishing transaction starts changes nothing; the transaction itself is not interrupted.</summary>
+    public async Task RebuildReferenceIndexAsync(CancellationToken ct = default)
     {
         using var writer = AcquireWriter();
         point = null;
-        var state = await PublishedStateAsync();
-        var records = await ReadRecordsAsync();
+        var state = await PublishedStateAsync(ct);
+        var records = await ReadRecordsAsync(ct);
         VerifySnapshots(state, records);
-        if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database, Workers))
+        if (state.ReplayDigest != (await ReplayIntegrity.ScanAsync(database, Workers, ct: ct)).Final())
             throw new InvalidDataException("History is corrupt; the reference index cannot be republished.");
+        ct.ThrowIfCancellationRequested();
         await PublishIndexAsync(records, state.Revision);
     }
 

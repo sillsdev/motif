@@ -238,7 +238,7 @@ public sealed class HandAnalysisSeededTests : IDisposable
             if (removeSidecars) RemoveSidecars();
             Assert.True(pin.IsCurrent);
             if (removeSidecars) RemoveSidecars();
-            await host.VerifyAsync();
+            await host.CheckPointAsync();
         }
         Assert.Equal(before, File.ReadAllBytes(Database));
         if (!removeSidecars || File.Exists(wal)) Assert.Equal(walBytes, File.ReadAllBytes(wal));

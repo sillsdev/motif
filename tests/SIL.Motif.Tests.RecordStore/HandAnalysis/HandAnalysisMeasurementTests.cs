@@ -38,7 +38,7 @@ internal static class HandAnalysisMeasurement
         double Lap() { var now = Stopwatch.GetTimestamp(); var ms = Stopwatch.GetElapsedTime(start, now).TotalMilliseconds; start = now; return ms; }
         await using var host = await HandAnalysisHost.OpenAsync(project.Store);
         Say($"open={Lap():F1} ms");
-        await host.VerifyAsync();
+        await host.CheckPointAsync();
         Say($"first pin, verification (store acquisition)={Lap():F1} ms");
         GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
         var before = GC.GetTotalMemory(true);
@@ -89,6 +89,43 @@ public sealed class HandAnalysisIndonesianMeasurementTests(ImportedProject proje
     [PrivateProjectFact("MOTIF_RECORD_STORE_INDONESIAN")]
     public Task IndonesianCostOfFirstPinAndWarmReads() =>
         HandAnalysisMeasurement.Run("Indonesian", project, output, project.Cache!.ServiceLocator.GetInstance<IWfiWordformRepository>().Count, 1000);
+}
+
+/// <summary>The phase timings of loading a point through the host, on a private copy of an already imported Cebuano store.</summary>
+public sealed class HandAnalysisHostPhaseMeasurementTests(ITestOutputHelper output)
+{
+    [PrivateProjectFact("MOTIF_RECORD_STORE_CEBUANO_STORE")]
+    public async Task CebuanoStatusPhaseTimings()
+    {
+        var source = Path.GetFullPath(Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_CEBUANO_STORE")!);
+        var root = Directory.CreateTempSubdirectory("motif-host-phases-").FullName;
+        try
+        {
+            foreach (var file in Directory.EnumerateFileSystemEntries(Path.GetDirectoryName(source)!, Path.GetFileName(source) + "*"))
+                if (File.Exists(file)) File.Copy(file, Path.Combine(root, Path.GetFileName(file)));
+            var store = Path.Combine(root, Path.GetFileName(source));
+            var log = Environment.GetEnvironmentVariable("MOTIF_RECORD_STORE_MEASURE_LOG");
+            void Say(string line)
+            {
+                line = "HAND host-phases " + line;
+                output.WriteLine(line);
+                if (log is not null) File.AppendAllText($"{log}.{Environment.ProcessId}", line + Environment.NewLine);
+            }
+            Say("load average=" + File.ReadAllText("/proc/loadavg").Trim());
+            var watch = Stopwatch.StartNew();
+            await using var host = await HandAnalysisHost.OpenAsync(store, new ExternalBasis("s", "p", "t"), loadPoint: true);
+            Say($"open + load point={watch.Elapsed.TotalMilliseconds:F0} ms");
+            var status = await host.StatusAsync();
+            foreach (var phase in status.Phases) Say($"phase {phase.Phase} start={phase.Start.TotalMilliseconds:F0} ms duration={phase.Duration.TotalMilliseconds:F0} ms");
+            Say($"readiness={status.Readiness} index={status.ReferenceIndex} verification={status.Current!.Verification}");
+            foreach (var table in status.Tables) Say($"table {table.Table}={table.State} ({table.Detail})");
+            watch.Restart();
+            await using var warm = await host.PinAsync(new ExternalBasis("s", "p", "t"), null);
+            Say($"warm pin={watch.Elapsed.TotalMilliseconds:F1} ms");
+            Say("load average after=" + File.ReadAllText("/proc/loadavg").Trim());
+        }
+        finally { Directory.Delete(root, true); }
+    }
 }
 
 [Collection(LcmCacheTestCollection.Name)]
