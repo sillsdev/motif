@@ -991,6 +991,24 @@ internal static class AgentTools
                     "could not tell, so do not guess a cause. Fix the first named failure, then call motif_try_word.")))
             { Requests = [typeof(WhyNotRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["Expect"] = "expect", ["At"] = "at", ["ProjectPath"] = null } },
 
+        new("motif_forms_explain",
+            string.Empty,
+            AgentClass.Evaluate,
+            Schema.Object([("morpheme", Schema.String("The root: an entry guid or Motif id, 'entryGuid:msaGuid', or a form in the lexicon. Give this or word."), false),
+                ("with", Schema.StringArray("Morphemes to generate with the root, in order, each named like the root. Only with morpheme."), false),
+                ("word", Schema.String("A word to parse; each of its analyses is generated from its own morphemes. Give this or morpheme."), false),
+                ("at", Schema.String("'baseline' (default) for the current Baseline, or a proposal id for that Draft or Proposal's latest Trial copy."), false)]),
+            true,
+            true,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(
+                FormsExplainQuery.Explain(new FormsExplainRequest(c.ProjectPath, a.Optional("morpheme"), a.List("with"),
+                    a.Optional("word"), a.Optional("at")), c.ParserPath, ct),
+                _ => "complete:false means PanGloss stopped at stopReason, so a missing form is not an impossible one; " +
+                    "do not claim a form cannot occur from an incomplete result.")))
+            { Requests = [typeof(FormsExplainRequest)], FieldNames = new Dictionary<string, string?> { ["Morpheme"] = "morpheme", ["With"] = "with", ["Word"] = "word", ["At"] = "at", ["ProjectPath"] = null } },
+
         new("motif_job",
             string.Empty,
             AgentClass.Read,

@@ -319,7 +319,8 @@ public static class CommandCatalog
         new CommandDescriptor("trace", typeof(WordTraceRequest), typeof(WordTraceResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("trace --load", typeof(WordTraceLoadRequest), typeof(WordTraceResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("parse", typeof(ParseTraceRequest), typeof(RejectionTraceResponse), CommandSurface.Released, AgentClass.Evaluate),
-        new CommandDescriptor("generate", typeof(GenerateTraceRequest), typeof(RejectionTraceResponse), CommandSurface.Released, AgentClass.Evaluate) { ExposeAsAgentTool = false },
+        new CommandDescriptor("generate", typeof(GenerateTraceRequest), typeof(FormsExplainResponse), CommandSurface.Released, AgentClass.Evaluate) { ExposeAsAgentTool = false },
+        new CommandDescriptor("forms explain", typeof(FormsExplainRequest), typeof(FormsExplainResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("why-not", typeof(WhyNotRequest), typeof(WhyNotResponse), CommandSurface.Released, AgentClass.Evaluate),
 
         // HandoffCommand

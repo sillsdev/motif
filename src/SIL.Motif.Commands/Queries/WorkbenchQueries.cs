@@ -207,12 +207,11 @@ public sealed record WordTraceRequest(string ProjectPath, string Word, string? P
 /// <param name="MaxPaths">The most terminal paths to show, 1 through 64; omitted shows 16.</param>
 public sealed record ParseTraceRequest(string ProjectPath, string Word, string? At = null, int? MaxPaths = null);
 
-/// <summary>Which entry to explain: where PanGloss's generation of it stopped, path by path.</summary>
+/// <summary>Which entry to explain: the forms PanGloss generates from it alone, with the rules that made each.</summary>
 /// <param name="ProjectPath">The recorded project path.</param>
-/// <param name="Entry">The canonical id of the entry or sense to generate from.</param>
+/// <param name="Entry">The root: an entry guid or Motif id, <c>entry:msa</c>, or a form in the lexicon.</param>
 /// <param name="At"><c>baseline</c> (the default) or a Proposal id.</param>
-/// <param name="MaxPaths">The most terminal paths to show, 1 through 64; omitted shows 16.</param>
-public sealed record GenerateTraceRequest(string ProjectPath, string Entry, string? At = null, int? MaxPaths = null);
+public sealed record GenerateTraceRequest(string ProjectPath, string Entry, string? At = null);
 
 /// <summary>Which saved trace file to read: a PanGloss trace document, as the window's Save diagnostic writes it.</summary>
 /// <param name="DiagnosticPath">The saved parser diagnostic to read.</param>

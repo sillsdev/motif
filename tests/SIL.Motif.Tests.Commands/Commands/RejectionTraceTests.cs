@@ -344,7 +344,7 @@ public sealed class RejectionTraceTests
     [InlineData(65)]
     public void APathCapOutsideOneToSixtyFourIsATypedRefusal(int cap)
     {
-        var result = RejectionTraceQuery.Generate(new GenerateTraceRequest("p", "id", null, cap));
+        var result = RejectionTraceQuery.Parse(new ParseTraceRequest("p", "word", null, cap));
 
         Assert.Equal(RefusalCodes.RejectionTraceRequestInvalid, result.Refusal!.Code);
     }
@@ -359,8 +359,6 @@ public sealed class RejectionTraceTests
 
         Assert.Equal(RefusalCodes.RejectionTraceRequestInvalid, result.Refusal!.Code);
         Assert.Contains(text, result.Refusal.Message);
-        Assert.Equal(RefusalCodes.RejectionTraceRequestInvalid,
-            RejectionTraceQuery.Generate(new GenerateTraceRequest("p", "id", null, -3)).Refusal!.Code);
     }
 
     [Fact]
@@ -388,15 +386,6 @@ public sealed class RejectionTraceTests
         Assert.False(subject.Resolved);
         Assert.Equal(2, subject.Ids.Count);
         Assert.StartsWith("unknown:", subject.Unknown);
-    }
-
-    [Fact]
-    public void GenerationRefusesAsUnsupportedWithASentence()
-    {
-        var result = RejectionTraceQuery.Generate(new GenerateTraceRequest("p", "entry-id"));
-
-        Assert.Equal(RefusalCodes.RejectionTraceUnsupported, result.Refusal!.Code);
-        Assert.Contains("traces parsing only", result.Refusal.Message);
     }
 
     [Fact]

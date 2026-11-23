@@ -573,8 +573,19 @@ public static class CliVerbCatalog
             "Trace", "generate", "generate",
             new[]
             {
-                "generate <entry-id> --project <fwdata> --trace [--at <baseline|proposal-id>] [--max-paths <1-64>] [--json]",
-                "Refuses with a typed reason until the pinned PanGloss can trace generation.",
+                "generate <root> --project <fwdata> --trace [--at <baseline|proposal-id>] [--json]",
+                "The forms PanGloss generates from one root alone, with the rules that made each; the same as forms explain <root>.",
+            }),
+        new CliVerbDescriptor(
+            "Trace", "forms", "forms explain",
+            new[]
+            {
+                "forms explain <root> --project <fwdata> [--with <morpheme> ...] [--at <baseline|proposal-id>] [--json|--md] OR " +
+                "motif forms explain --word <form> --project <fwdata> [--at <baseline|proposal-id>] [--json|--md]",
+                "Every form PanGloss generates for a root, alone or with the listed morphemes: each surface, the allomorphs",
+                "chosen, and the rules that fired in order with the word before and after each. With --word, parses the word and",
+                "explains each analysis from its own morphemes. A root is an entry guid or Motif id, entry:msa, or a form in the",
+                "lexicon. Says when a cap stopped the generation, so a missing form is never read as an impossible one.",
             }),
 
         new CliVerbDescriptor(

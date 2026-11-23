@@ -486,8 +486,13 @@
     "source": "Hand-written from command behavior."
   },
   "generate": {
-    "title": "Explain a generation",
-    "description": "Refuses with a typed reason until the pinned PanGloss can trace generation. Use parse --trace to explain a word that does not parse.",
+    "title": "Explain a root's forms",
+    "description": "Generates the forms of one root alone and shows the rules that made each, the same as forms explain with a root and nothing else. Use it for a quick look at what a stem becomes.",
+    "source": "Hand-written from command behavior."
+  },
+  "forms explain": {
+    "title": "Explain a morpheme's forms",
+    "description": "Asks PanGloss to generate every form of a root, alone or with the morphemes you list, and shows each surface, the allomorphs chosen and the rules that fired in order. Use it to see why a morpheme surfaces as it does, and to learn whether a cap stopped the generation.",
     "source": "Hand-written from command behavior."
   },
   "trace --load": {
