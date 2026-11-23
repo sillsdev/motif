@@ -27,7 +27,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             nameof(RecordDiagnosticIds.OutsideRoot), nameof(RecordDiagnosticIds.BlockNotAllowed),
         };
 
-        /// <summary>Each id with a conformance input that has it; the reader is run on that input here, and the id is asserted by its constant.</summary>
+        /// <summary>Each id with a conformance input that has it.</summary>
         static readonly (string Constant, string CaseId)[] Table =
         {
             (nameof(RecordDiagnosticIds.YamlSyntax), "records/02-traps.json::an unclosed [ as a front-matter value is a syntax error, not an exception"),
@@ -84,8 +84,9 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             Assert.True(uncovered.Count == 0, "no test asserts: " + string.Join(", ", uncovered));
             // An id listed as asserted elsewhere must still be named by a constant in another test file.
             string root = TestsRoot();
-            string others = string.Concat(Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories)
-                .Where(p => !p.EndsWith("RecordDiagnosticCodeTests.cs", StringComparison.Ordinal)).Select(File.ReadAllText));
+            string others = string.Join("\n", Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories)
+                .Where(p => !p.EndsWith("RecordDiagnosticCodeTests.cs", StringComparison.Ordinal)).SelectMany(File.ReadAllLines)
+                .Where(l => Regex.IsMatch(l, @"Assert|Check\(|\.Id ==")));
             foreach (string name in AssertedElsewhere)
                 Assert.True(Regex.IsMatch(others, @"RecordDiagnosticIds\." + name + @"\b"), name + " is not named by a constant in another test");
             Assert.Empty(AssertedElsewhere.Intersect(here));

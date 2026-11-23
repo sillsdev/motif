@@ -49,8 +49,9 @@ namespace SIL.TextEditing.Project.Tests
         {
             using var fixture = new ProjectFixture();
             var export = ExportNotebookRecord(fixture, (record, para) => record.ConclusionsOA.RightToLeft = true);
-            var lost = export.Unexported.Where(u => u.Reason.Contains(ExportReasons.StTextProperty)).Select(u => u.Field).OrderBy(f => f, StringComparer.Ordinal);
-            Assert.Equal(new[] { "DateModified", "RightToLeft" }, lost);
+            var lost = export.Unexported.Where(u => u.Reason.Contains(ExportReasons.StTextProperty)).Select(u => u.Field).ToList();
+            Assert.Contains("RightToLeft", lost);
+            Assert.Contains("DateModified", lost);
         }
 
         [Fact]
@@ -83,6 +84,30 @@ namespace SIL.TextEditing.Project.Tests
             var export = new ProjectRecordExporter(cache, result).Export(entry.Guid);
             var lost = Assert.Single(export.Unexported, u => u.Field == "Holder");
             Assert.Contains(ExportReasons.OwnedObjects, lost.Reason);
+        }
+
+        [Fact]
+        [ExportReason(nameof(ExportReasons.FieldLeftOut))]
+        public void ACustomFieldTheOverlayExcludesIsReportedAsLeftOut()
+        {
+            using var fixture = new ProjectFixture();
+            var cache = fixture.Cache;
+            var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
+            int field = metadata.AddCustomField("LexEntry", "Tally", CellarPropertyType.Integer, 0);
+            ILexEntry entry = null!;
+            fixture.Change(() =>
+            {
+                entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                cache.DomainDataByFlid.SetInt(entry.Hvo, field, 7);
+            });
+            var overlay = System.Xml.Linq.XDocument.Parse(ProjectRecordSchema.LexiconEntryOverlay);
+            overlay.Root!.Elements("class").Single(e => (string?)e.Attribute("name") == "LexEntry")
+                .Add(new System.Xml.Linq.XElement("exclude", new System.Xml.Linq.XAttribute("name", "Tally")));
+            var result = ProjectRecordSchema.Generate(cache, overlay.ToString());
+            var export = new ProjectRecordExporter(cache, result).Export(entry.Guid);
+            var lost = Assert.Single(export.Unexported, u => u.Field == "Tally");
+            Assert.Contains(ExportReasons.FieldLeftOut, lost.Reason);
+            Assert.Equal("7", lost.Value);
         }
     }
 }

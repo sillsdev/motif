@@ -23,12 +23,13 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         [Fact]
         public void EveryRefusalKindIsAssertedByATest()
         {
-            var assertion = new Regex(@"Assert|Single\(|\.Kind\s*==");
             var lines = Directory.GetFiles(TestsFolder(), "*.cs", SearchOption.AllDirectories)
                 .Where(p => !p.EndsWith("RecordRefusalKindGuardTests.cs", StringComparison.Ordinal) && p.IndexOf(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar, StringComparison.Ordinal) < 0)
-                .SelectMany(File.ReadAllLines).Where(l => assertion.IsMatch(l)).ToList();
+                .SelectMany(File.ReadAllLines).ToList();
+            // An assertion call that names the kind, or the plan tests' Single(plan, kind) helper, which asserts exactly one refusal of it.
             var missing = Enum.GetValues(typeof(RecordRefusalKind)).Cast<RecordRefusalKind>()
-                .Where(k => !lines.Any(l => Regex.IsMatch(l, @"RecordRefusalKind\." + k + @"\b"))).ToList();
+                .Where(k => !lines.Any(l => Regex.IsMatch(l, @"Assert\.\w+\(.*RecordRefusalKind\." + k + @"\b") || Regex.IsMatch(l, @"(?<![\w.])Single\(.*RecordRefusalKind\." + k + @"\b")))
+                .ToList();
             Assert.True(missing.Count == 0, "no test asserts: " + string.Join(", ", missing));
         }
     }
