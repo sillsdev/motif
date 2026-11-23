@@ -20,7 +20,7 @@ public sealed class ProposalsPageModelTests
     private static readonly BaselineToken Token = new("project-1", "sha256:" + new string('a', 64), "1",
         "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoppingProjectWorkCancelsAndJoinsProposalDetailReads()
     {
         var (fake, _, page) = await OpenAsync(Standings(
@@ -43,7 +43,7 @@ public sealed class ProposalsPageModelTests
         Assert.Null(page.Detail);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task GroupsFollowTheResponse()
     {
         var (fake, context, page) = await OpenAsync(Standings(
@@ -60,7 +60,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(WorkspacePage.Progress, context.CurrentPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ListGroupsPrepareTheThreeDenseTableSections()
     {
         var cards = new[]
@@ -102,7 +102,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(["Waiting for You"], page.ListGroups.Select(group => group.Title));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ResponsiveCaptureFixturePreservesHSectionsAndSelectedTrialValues()
     {
         var fake = new FakeCommandClient();
@@ -136,7 +136,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(8, page.Rows.OfType<ProposalCardViewModel>().Count());
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DenseTableSelectionUpdatesTheSelectedAccessibleRow()
     {
         var (fake, _, page) = await OpenAsync(Standings(
@@ -156,7 +156,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(AutomationIds.ForProposalActions(second.ProposalId), second.ActionsAutomationId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DenseTableNumbersUseOnlyTheStoredTrialAndKeepNoTrialWording()
     {
         var tried = Card("p/tried", "Tried", ProposalGroup.WaitingForYou, trial: Summary(TrialFreshness.Current),
@@ -188,7 +188,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("Draft", pendingRow.TableStatusText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnotherProposalCanBeChosenWithoutLosingAnUnsavedRationale()
     {
         var (fake, _, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
@@ -215,7 +215,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnotherProposalCanBeChosenWithoutLosingAnUnsavedComment()
     {
         var (fake, _, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
@@ -242,7 +242,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpenEntersProposalMode()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/waiting", "Waiting one",
@@ -256,7 +256,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(WorkspacePage.Proposals, context.CurrentPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReviewActionOpensTheProposalOnItsPage()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/waiting", "Waiting one",
@@ -269,7 +269,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(WorkspacePage.Proposals, context.CurrentPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACardWhoseDroppedGrammarWasNotCheckedOffersTryAgainWithoutCallingItsNumbersOld()
     {
         var (_, _, page) = await OpenAsync(Standings(Card("p/unchecked", "Unchecked",
@@ -283,7 +283,7 @@ public sealed class ProposalsPageModelTests
         WindowWordsTests.AssertWindowWords([card.StatusText]);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryAgainGoesThroughTheWindowsOneTryAgainAndFollowsTheTrial()
     {
         var (fake, _, page) = await OpenAsync(Standings(Card("p/stale", "Stale one",
@@ -301,7 +301,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(ProposalGroup.WaitingForYou, Assert.Single(page.Groups).Group);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryAgainAfterAnApplyRefreshesFirstAndQueuesNothingWhenTheRefreshFails()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/stale", "Stale one",
@@ -321,7 +321,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(WindowRefusal.RefreshFailedCode, context.TrialRun.StateFor("p/stale").Refusal?.Code);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryAgainAfterAnApplyQueuesTheTrialOnceTheRefreshCapturedABaseline()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/stale", "Stale one",
@@ -338,7 +338,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/stale", Assert.Single(fake.EnqueueTrialRequests).ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task InspectorNoticeDoesNotFollowAnOlderTrialAfterTheListRefreshes()
     {
         var first = Card("p/one", "One", ProposalGroup.WaitingForYou,
@@ -363,7 +363,7 @@ public sealed class ProposalsPageModelTests
         Assert.Null(page.SelectedProposal?.WorkNotice);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AGrammarProposalAndAnAnalysisProposalAskForTheSameThingFromThePage()
     {
         var (fake, _, page) = await OpenAsync(Standings(
@@ -377,7 +377,7 @@ public sealed class ProposalsPageModelTests
         Assert.All(fake.EnqueueTrialRequests, request => Assert.Null(request.Words));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACardSaysTryingWhileTheWindowsTryAgainRunsAndOffersNoSecondTry()
     {
         // The window sets Trying through the context it was made on, which a pool thread is not.
@@ -401,7 +401,7 @@ public sealed class ProposalsPageModelTests
         });
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedTryAgainShowsTheWindowsSentenceOnTheCard()
     {
         var (fake, _, page) = await OpenAsync(Standings(Card("p/a", "A", ProposalGroup.NeedsAnotherTry,
@@ -414,7 +414,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("The check did not finish. Try it again.", page.Groups[0].Cards[0].ShownRefusal?.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheBadgeCountsReadyProposalsRegardlessOfTrialStanding()
     {
         var (_, _, page) = await OpenAsync(Standings(
@@ -427,7 +427,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("3", page.Badge);
     }
 
-    [Fact]
+    [UiThreadFact]
     public void KindsTextUsesTheCommandsCountsInTheRightNumber()
     {
         Assert.Equal("2 rules · 1 allomorph · 3 parses approved", ProposalCardViewModel.KindsIn(
@@ -435,7 +435,7 @@ public sealed class ProposalsPageModelTests
                 new("parse-approved", 3, "3 parses approved")]));
     }
 
-    [Fact]
+    [UiThreadFact]
     public void AGenericKindCountDoesNotRepeatTheChangeCount()
     {
         var card = new ProposalCardViewModel(Card("p/closed", "Closed", ProposalGroup.SetAside,
@@ -445,7 +445,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(string.Empty, card.KindsText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public void ReadyIsNotPresentedAsAWarning()
     {
         var card = new ProposalCardViewModel(Card("p/ready", "Ready", ProposalGroup.WaitingForYou,
@@ -456,7 +456,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("This Proposal is ready for review.", card.DetailsStatusSentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SelectingAProposalDoesNotStartDiagnosticParsimonyReads()
     {
         var card = Card("p/closed", "Closed", ProposalGroup.SetAside,
@@ -472,7 +472,7 @@ public sealed class ProposalsPageModelTests
         Assert.Empty(fake.ProposalParsimonyStatusRequests);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(20.0, null)]
     [InlineData(20.1, "This Trial makes parsing about 21% more work than the Baseline.")]
     public async Task ReopenedInspectorShowsTheStoredTrialsWorkNotice(double percent, string? expected)
@@ -484,7 +484,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(expected, page.SelectedProposal!.WorkNotice);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NumbersShowBeforeAndAfterAndAChipNamesWhatWasLost()
     {
         var trial = Summary(TrialFreshness.Current);
@@ -505,7 +505,7 @@ public sealed class ProposalsPageModelTests
         Assert.False(card.NumbersAreOld);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheWorkNumberComparesParserWorkAndTheTimeComesLastLabelledAsTimeOnThisComputer()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -528,7 +528,7 @@ public sealed class ProposalsPageModelTests
         Assert.False(unavailable.Work.Moved);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ANumberTheTrialDidNotMeasureIsBlankAndTheCellNamesWhy()
     {
         var unmeasured = Summary(TrialFreshness.Current) with
@@ -549,7 +549,7 @@ public sealed class ProposalsPageModelTests
         Assert.Null(card.ApprovedKept!.Note);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFigureMeasuredOnOneSideOnlyNamesWhichSideInItsTextAndTooltip()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -573,7 +573,7 @@ public sealed class ProposalsPageModelTests
         Assert.Null(card.ApprovedKept!.Note);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(1040, false)]
     [InlineData(1100, true)]
     public async Task TheWorkNumberMovesOnlyPastFivePercentOfTheLargerCount(long trialWork, bool moved)
@@ -585,7 +585,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(moved, page.Groups[0].Cards[0].Work!.Moved);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NumbersFromAnEarlierTrySayWhatMadeThemOldInsteadOfRepeatingTheGroup()
     {
         var (_, _, page) = await OpenAsync(Standings(
@@ -605,7 +605,7 @@ public sealed class ProposalsPageModelTests
         Assert.DoesNotContain("Needs another try", baselineMoved.StatusText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedTrialSaysSoAndOffersTryAgain()
     {
         var (_, _, page) = await OpenAsync(Standings(Card("p/a", "A", ProposalGroup.NeedsAnotherTry,
@@ -618,7 +618,7 @@ public sealed class ProposalsPageModelTests
         Assert.True(card.CanTry);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ButtonIdsFollowTheProposalNotItsPlace()
     {
         var (_, _, page) = await OpenAsync(Standings(Card("p/a", "A", ProposalGroup.WaitingForYou),
@@ -628,7 +628,7 @@ public sealed class ProposalsPageModelTests
         Assert.NotEqual(page.Groups[0].Cards[0].OpenAutomationId, page.Groups[1].Cards[0].OpenAutomationId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ANeverTriedProposalIsOfferedTryItUnderItsOwnGroupWithoutRepeatingTheGroupName()
     {
         var (_, _, page) = await OpenAsync(Standings(Card("p/a", "A", ProposalGroup.NotTried)));
@@ -642,7 +642,7 @@ public sealed class ProposalsPageModelTests
         Assert.False(card.HasNumbers);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task YourChangesNotYetTriedSayNotTriedAndOfferTryIt()
     {
         var (_, _, page) = await OpenAsync(Standings(Card("p/mine", "Your changes", ProposalGroup.NotAppliedYet,
@@ -655,7 +655,7 @@ public sealed class ProposalsPageModelTests
         Assert.True(card.CanTry);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnAppliedProposalOffersNoTry()
     {
         var (_, _, page) = await OpenAsync(Standings(Card("p/done", "Done", ProposalGroup.SetAside)));
@@ -663,7 +663,7 @@ public sealed class ProposalsPageModelTests
         Assert.False(page.Groups[0].Cards[0].CanTry);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedReadShowsTheWindowsSentenceNotTheCommandsAndNeverSaysNoProposalsYet()
     {
         var fake = new FakeCommandClient();
@@ -681,7 +681,7 @@ public sealed class ProposalsPageModelTests
         Assert.DoesNotContain("motif proposals", page.ShownRefusal.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ThePageIsLoadingNotEmptyUntilTheFirstReadReturns()
     {
         var fake = new FakeCommandClient();
@@ -702,7 +702,7 @@ public sealed class ProposalsPageModelTests
         Assert.False(page.IsLoading);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshRegroupsTheOpenProposalUnderNeedsAnotherTry()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/a", "A", ProposalGroup.WaitingForYou)));
@@ -719,7 +719,7 @@ public sealed class ProposalsPageModelTests
         Assert.Empty(fake.EnqueueTrialRequests);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("proposed", false, "Waiting")]
     [InlineData("proposed", true, "Draft")]
     [InlineData("deferred", false, "Deferred")]
@@ -737,12 +737,12 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(word, card.StatusWord);
     }
 
-    [Fact]
+    [UiThreadFact]
     public void YourOwnChangesAreLabeledDraft() =>
         Assert.Equal(SIL.Motif.App.MotifAppStrings.ProposalDraft,
             new ProposalCardViewModel(Card("p/mine", "Mine", ProposalGroup.NotAppliedYet, pending: true)).StatusWord);
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("rejected", true)]
     [InlineData("superseded", true)]
     [InlineData("withdrawn", true)]
@@ -754,7 +754,7 @@ public sealed class ProposalsPageModelTests
             Status = status,
         }).CanDelete);
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("rejected", true)]
     [InlineData("withdrawn", true)]
     [InlineData("superseded", false)]
@@ -766,7 +766,7 @@ public sealed class ProposalsPageModelTests
             Status = status,
         }).CanReopen);
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReopenOpensTheProposalAgainAndReadsTheListAgain()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings(
@@ -779,7 +779,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(reads + 1, fake.ProposalStandingsRequests.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARowClickOrArrowKeySwitchesDocumentsWithoutLosingTheRationale()
     {
         var (fake, _, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
@@ -812,7 +812,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnsavedRationaleEditIsKeptWhileAReReadsDetailLoads()
     {
         var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
@@ -849,7 +849,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("Why. Typed.", editor.Text());
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedDetailReadPreservesTypingInTheOpenDocumentWhileAllowingSelection()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
@@ -876,7 +876,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AGroupFilterThatWouldHideAnUnsavedRationaleEditIsNotApplied()
     {
         var (fake, _, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
@@ -904,7 +904,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("Why. Typed.", editor.Text());
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARowsDeleteMenuKeepsTheOtherDocumentsUnsavedRationale()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings(
@@ -935,7 +935,7 @@ public sealed class ProposalsPageModelTests
         Assert.True(page.IsConfirmingDelete);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DeleteRemovesTheProposalAndReadsTheListAgain()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings(
@@ -949,7 +949,7 @@ public sealed class ProposalsPageModelTests
         Assert.Null(page.ShownRefusal);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task DeleteRetriesABusyProjectOnce(bool retrySucceeds)
@@ -967,7 +967,7 @@ public sealed class ProposalsPageModelTests
         else Assert.Equal("Motif is busy. Try again in a moment.", page.ShownRefusal?.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AskingToDeleteSelectsAndNamesTheProposalAndDeletesNothingUntilConfirmed()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings(
@@ -987,7 +987,7 @@ public sealed class ProposalsPageModelTests
         Assert.False(page.IsConfirmingDelete);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task KeepingTheProposalAfterAskingToDeleteItDeletesNothing()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings(
@@ -1001,7 +1001,7 @@ public sealed class ProposalsPageModelTests
         Assert.NotNull(page.SelectedProposal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAnotherProposalWithdrawsTheQuestionAboutDeleting()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings(
@@ -1018,7 +1018,7 @@ public sealed class ProposalsPageModelTests
         Assert.Empty(fake.DeleteProposalRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfirmingDeleteForAProposalThatCannotBeDeletedStillClearsTheQuestion()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings(
@@ -1036,7 +1036,7 @@ public sealed class ProposalsPageModelTests
         Assert.Empty(fake.DeleteProposalRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ShowClosedTogglesTheClosedProposals()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings([], 2));
@@ -1051,7 +1051,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("Show Closed (2)", page.SetAsideLinkText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ShowingClosedClearsAnActiveGroupFilter()
     {
         var waiting = Card("p/ready", "Ready", ProposalGroup.WaitingForYou);
@@ -1075,7 +1075,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("Hide Closed", page.SetAsideLinkText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedClosedFilterReadClearsThePreviousListAndSelection()
     {
         var openCard = Card("p/open", "Open", ProposalGroup.WaitingForYou);
@@ -1109,7 +1109,7 @@ public sealed class ProposalsPageModelTests
         Assert.False(page.HasSetAsideLink);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFilterThatStopsMatchingOffersAClearFilterRoute()
     {
         var openCard = Card("p/open", "Open", ProposalGroup.WaitingForYou);
@@ -1129,7 +1129,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(0, Assert.Single(page.GroupFilters, filter => filter.Filter == ProposalListFilter.Closed).Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFilterWithNoProposalsCannotBeSelected()
     {
         var (fake, _, page) = await OpenAsync(Standings(
@@ -1143,7 +1143,7 @@ public sealed class ProposalsPageModelTests
         Assert.Single(fake.ProposalStandingsRequests);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task UnsavedCommentsVetoProjectSwitchAndClear(bool existing)
@@ -1168,7 +1168,7 @@ public sealed class ProposalsPageModelTests
         Assert.Null(context.ProjectPath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RationaleCompareKeepsTheWorkspaceGuardUntilTheCommentEditIsFinished()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou)));
@@ -1208,7 +1208,7 @@ public sealed class ProposalsPageModelTests
         Assert.Null(context.ProjectPath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RereadKeepsTheEditedCommentAndRefreshesTheRest()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou)));
@@ -1235,7 +1235,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("One typed", editor.Text());
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task UnsavedCommentSurvivesDelayedReadAndRefusesRowAndFilter(bool existing)
@@ -1273,7 +1273,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/mine", page.SelectedProposal?.ProposalId);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task EditedCommentRemainsReachableWhenDeletedOrDecided(bool deleted)
@@ -1298,7 +1298,7 @@ public sealed class ProposalsPageModelTests
         else Assert.False(Assert.Single(page.Comments).CanStartEdit);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task RefusedCommentRereadAllowsLeavingTheUnavailableDetail(bool existing)
@@ -1323,7 +1323,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -1382,7 +1382,60 @@ public sealed class ProposalsPageModelTests
         Assert.Null(context.ProjectPath);
     }
 
-    [Fact]
+    // A reply from another thread must not move the page's state changes onto that thread.
+    [UiThreadFact]
+    public async Task APausedFilterChangesOnTheStartingThreadWhateverThreadTheReplyArrivesOn()
+    {
+        var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
+        var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
+        var (fake, context, page) = await OpenAsync(Standings(one, two));
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        var status = "proposed";
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, status, "Label", null, null, [], Comments: [comment])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/one");
+        await page.DetailReading;
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+        var editor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        status = "rejected";
+        var reply = new TaskCompletionSource<CommandOutcome<ProposalStandings>>();
+        var asked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnProposalStandings((_, _) =>
+        {
+            asked.TrySetResult();
+            return reply.Task;
+        });
+        var changedOn = new List<(int Thread, SynchronizationContext? Context)>();
+        page.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName == nameof(ProposalsPageModel.IsGroupFilterPaused))
+                lock (changedOn) changedOn.Add((Environment.CurrentManagedThreadId, SynchronizationContext.Current));
+        };
+
+        var reading = context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await asked.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        var replyThread = 0;
+        var replying = new Thread(() =>
+        {
+            replyThread = Environment.CurrentManagedThreadId;
+            reply.SetResult(CommandOutcome<ProposalStandings>.Success(new ProposalStandings([two], 1)));
+        });
+        replying.Start();
+        replying.Join();
+        await reading;
+        await page.DetailReading;
+        editor.CancelCommand.Execute(null);
+
+        Assert.NotEmpty(changedOn);
+        Assert.All(changedOn, change => Assert.NotNull(change.Context));
+        Assert.Single(changedOn.Select(change => change.Thread).Distinct());
+        Assert.DoesNotContain(replyThread, changedOn.Select(change => change.Thread));
+    }
+
+    [UiThreadFact]
     public async Task DecidedCommentStaysVisibleWhenClosedProposalsAreAlreadyLoaded()
     {
         var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
@@ -1417,7 +1470,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(ProposalListFilter.WaitingForYou, page.SelectedGroupFilter);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FilterStaysPausedUntilEveryRetainedEditIsFinished()
     {
         var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
@@ -1453,7 +1506,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SavingAReopenedCommentRestoresThePausedFilter()
     {
         var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
@@ -1492,7 +1545,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("Old typed", Assert.Single(fake.EditCommentRequests).Text);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ANewFilterChoiceWhilePausedIsNotOverwrittenAfterCancel()
     {
         var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
@@ -1525,7 +1578,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(ProposalListFilter.Closed, page.SelectedGroupFilter);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OverlappingRefreshesKeepTheEditedProposalAfterItIsDecided()
     {
         var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
@@ -1564,7 +1617,7 @@ public sealed class ProposalsPageModelTests
         Assert.False(editor.SaveCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RailBadgeWaitingChipAndProgressCountOneWaitingRule()
     {
         var ready = Card("p/ready", "Ready", ProposalGroup.WaitingForYou);
