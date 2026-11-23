@@ -21,6 +21,9 @@ public static class PanGlossInterfaceVersions
     public const string WhyNotSchemaId = "pangloss.whynot.v1";
     /// <summary>The id promise a why-not capability must make: every id in a report is a <c>grammar.xml</c> id.</summary>
     public const string WhyNotIds = "grammar-xml";
+    /// <summary>What a PanGloss must declare to generate forms with a rule trace, written for the refusal that names it.</summary>
+    public const string ServeGenerateNeeded =
+        "a PanGloss release after 0.27.0 whose --describe declares interfaces.serveOps.generate (sillsdev/PanGloss#434)";
     /// <summary>The capture modes the pinned release advertises for bounded rejection diagnostics.</summary>
     public static ImmutableArray<string> RejectionTraceModes { get; } = ["lineage"];
     /// <summary>The full SQLite cache version written by <c>batch --stats</c>, without compact storage.</summary>

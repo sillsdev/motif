@@ -14,8 +14,17 @@ internal sealed record PanGlossSurfaceCheck(
 internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
     bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null,
-    PanGlossWhyNotCapability? WhyNot = null)
+    PanGlossWhyNotCapability? WhyNot = null, PanGlossServeGenerateCapability? ServeGenerate = null)
 {
+    /// <summary>
+    /// Why this parser cannot answer a traced <c>generate</c> over <c>serve</c>, or null when it can: the description must
+    /// declare <c>interfaces.serveOps.generate</c> with <c>trace</c> true.
+    /// </summary>
+    internal string? ServeGenerateRefusal() =>
+        ServeGenerate is null ? "its description declares no interfaces.serveOps.generate"
+        : !ServeGenerate.Trace ? "it declares serveOps.generate without a rule trace"
+        : null;
+
     /// <summary>
     /// Why this parser cannot answer why-not, or null when it can: the description must expose a visible
     /// <c>why-not</c> command and declare <c>interfaces.whyNot</c> with Motif's schema and the <c>grammar-xml</c> id promise.
@@ -100,6 +109,12 @@ internal sealed record PanGlossCapabilities(
 /// <param name="Kinds">The failure kinds the parser answers; every other kind comes back unknown.</param>
 /// <param name="SuiteRows">Whether the parser also runs the shared suite's why-not rows.</param>
 internal sealed record PanGlossWhyNotCapability(string? Schema, string? Ids, ImmutableArray<string> Kinds, bool SuiteRows, bool ExpectGuidChoices = false);
+
+/// <summary>What <c>interfaces.serveOps.generate</c> declares.</summary>
+/// <param name="Version">The op's own version, or null when the key is missing.</param>
+/// <param name="Trace">Whether the op can return each surface's rule steps.</param>
+/// <param name="RequestSchema">The <c>generate --request</c> schema version the op reads, or null.</param>
+internal sealed record PanGlossServeGenerateCapability(int? Version, bool Trace, int? RequestSchema);
 
 internal sealed record PanGlossCommandCapabilities(
     bool Hidden, ImmutableArray<string> Positionals, ImmutableDictionary<string, bool> Flags);
@@ -211,7 +226,20 @@ internal static class PanGlossSurface
             interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("batchTsv", out var batchElement) &&
             batchElement.ValueKind == JsonValueKind.Number && batchElement.TryGetInt32(out var batchVersion) ? batchVersion : null;
         return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv,
-            ReadWhyNot(root));
+            ReadWhyNot(root), ReadServeGenerate(root));
+    }
+
+    private static PanGlossServeGenerateCapability? ReadServeGenerate(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("serveOps", out var ops) || ops.ValueKind != JsonValueKind.Object ||
+            !ops.TryGetProperty("generate", out var generate) || generate.ValueKind != JsonValueKind.Object)
+            return null;
+        int? Number(string name) =>
+            generate.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number &&
+            value.TryGetInt32(out var number) ? number : null;
+        return new PanGlossServeGenerateCapability(Number("version"),
+            generate.TryGetProperty("trace", out var trace) && trace.ValueKind == JsonValueKind.True, Number("requestSchema"));
     }
 
     private static PanGlossWhyNotCapability? ReadWhyNot(JsonElement root)
