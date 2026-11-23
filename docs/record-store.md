@@ -134,11 +134,29 @@ the computed digests with the state row, refuses on any mismatch (so tampered hi
 otherwise re-certifies. The first write on a format 5 store pays a one-time upgrade after its revision and value
 checks pass: it indexes every content value (about 14 s on Cebuano under load) while it holds the write lock, tells
 `RecordStore.Progress` before it starts and sets `UpgradedFormat` when it commits. `VerifyAsync` scans without the writer
-lock and takes it only to re-certify, refusing if the store changed meanwhile. List operations compare the old history
+lock and takes it only to re-certify, refusing if the store changed meanwhile or if commits exist that no state row
+publishes (a list operation that crashed after its history commit). List operations compare the old history
 with the stored replay digest before they republish, so they never absorb damage; they commit history and
-publication separately, and a crash between them sets the flag and leaves history ahead of the point, which the store
-refuses to open until it is regenerated from a copy. `VerifyAsync` compares the whole content identity table with the
-stored values; `RebuildContentIdentitiesAsync` repairs it.
+publication separately, and a crash between them sets the flag and leaves history ahead of the point. The store then
+refuses to open when the list operation added content; otherwise it opens but refuses every read and write with "The store
+index revision is unavailable". No store operation repairs this (`RegenerateAsync` starts from the same state read), so restore
+the file from a copy. `VerifyAsync` compares the whole content identity table with the
+stored values; `RebuildContentIdentitiesAsync` repairs it. A damaged certificate alone is repaired by the next write
+or `VerifyAsync`, which re-certify after a full scan.
+
+The hand-analysis host (`HandAnalysisHost`) serves pins of a published store read-only and reports what each Stamp
+claims. A store whose certificate matches the state row serves `Certified`; otherwise the host rescans history against
+the state row itself and serves `Full`, writing nothing. A Stamp is never `Uncertified`, and a pin keeps the claim it was made
+with. `OpenAsync` reports its phases (open, state, load, project, pin) and `StatusAsync` returns readiness (Opened, Verifying,
+Ready, Unavailable), the reference-index state, the phase timings and the state of every table. A pin that arrives while the
+point loads waits for it; nothing is served from an index that is not built. `RefreshAsync` builds the new point and puts it
+at the ring head in one step, so a pin sees the old point or the new one. `VerifyAsync` and `RebuildIndexAsync` open a
+short-lived read-write handle; verify takes the writer lock only to re-certify, and the host labels `Full` only the exact
+state that verify re-certified.
+
+The index state is reported in `StatusAsync` and readiness (Opening, Opened, Verifying, Ready, Unavailable), not on the
+Stamp. A pin waits for the index to be built and checked, so a Stamp exists only for a point whose index is built; it can
+never stand for an unbuilt index, and the Stamp needs no "not built" value.
 Its change and snapshot columns use bounded, versioned binary converters; GUID
 columns contain 16 network-order bytes. Immutable typed field payloads, initialization
 layouts, writing-system definitions and native vector provenance share one content

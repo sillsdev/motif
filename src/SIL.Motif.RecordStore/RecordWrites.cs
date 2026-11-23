@@ -40,7 +40,10 @@ public sealed partial class RecordStore
     {
         using var writer = AcquireWriter();
         var start = await BeginWriteAsync();
-        await using var transaction = await database.Database.BeginTransactionAsync();
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transactionStarted;
+        try { transactionStarted = await database.Database.BeginTransactionAsync(); }
+        catch { ownWriteFlag = false; throw; }
+        await using var transaction = transactionStarted;
         var writingStarted = false;
         var committed = false;
         try
@@ -101,6 +104,7 @@ public sealed partial class RecordStore
             database.ChangeTracker.Clear();
             await transaction.CommitAsync();
             committed = true;
+            ownWriteFlag = false;
             CompleteUpgrade();
             if (verified.Replay is null) Verification = scanned ? StoreVerification.Full : StoreVerification.Certified;
             WriteStageReached?.Invoke(WriteStage.Committed);
@@ -112,6 +116,7 @@ public sealed partial class RecordStore
         catch
         {
             requiresReopen |= writingStarted | committed;
+            ownWriteFlag = false;
             if (writingStarted) point = null;
             database.ChangeTracker.Clear();
             if (!committed)
