@@ -314,6 +314,26 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void ACustomFieldAddedAfterTheExportIsASchemaMismatchNotAStaleBase()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var before = LexiconExporter(fixture);
+            var text = before.Export(w.Entry.Guid).Text!;
+            AddCustom(fixture.Cache, "LexEntry", "AddedLater", CellarPropertyType.Integer);
+            var after = LexiconExporter(fixture);
+            Assert.NotEqual(before.Schema.Id, after.Schema.Id);
+
+            var plan = Plan(after, text);
+
+            Assert.True(plan.ChangeSet.IsRefusedWhole);
+            Assert.Empty(plan.ChangeSet.Changes);
+            Assert.Equal(ProjectRecordBaseVerdict.NotChecked, plan.BaseVerdict);
+            Assert.DoesNotContain(plan.ChangeSet.Refusals, r => r.Kind == RecordRefusalKind.StaleBase);
+            Assert.Contains(plan.ChangeSet.Refusals, r => r.Reason.Contains("fwmd.record.schema-mismatch", StringComparison.Ordinal));
+        }
+
+        [Fact]
         public void AChangeToAValueTheFileCannotShowStalesTheFileToo()
         {
             using var fixture = new ProjectFixture();

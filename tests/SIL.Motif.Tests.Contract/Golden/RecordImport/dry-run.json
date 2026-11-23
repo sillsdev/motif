@@ -23,5 +23,16 @@
       "object": "-CCCCCCCCCCCCCCCCCCCCCC",
       "reason": "No operation kind writes this field."
     }
+  ],
+  "changes": [
+    {
+      "kind": "Set",
+      "class": "LexSense",
+      "field": "gloss",
+      "object": "-CCCCCCCCCCCCCCCCCCCCCC",
+      "writingSystem": "en",
+      "old": "buy",
+      "new": "purchase"
+    }
   ]
 }

@@ -54,7 +54,7 @@ public static partial class RecordImportCommand
         var read = ProjectStoreCommand.RunOperation(request.ProjectPath, () =>
             ProjectReadCache.ReadSaved(located.Value!, (_, cache) =>
             {
-                return Plan(cache, text) is { } planned
+                return Plan(cache, text, validate: true) is { } planned
                     ? CommandOutcome<Planned>.Success(planned)
                     : CommandOutcome<Planned>.Refused(new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused,
                         "The file names no known record kind in its record: line, so it was not planned.",
@@ -66,7 +66,8 @@ public static partial class RecordImportCommand
         if (found.Plan.ChangeSet.IsRefusedWhole)
             return CommandOutcome<RecordImportResponse>.Refused(WholeFileRefusal(found));
 
-        var pages = PageCount(found.Lowering.Operations.Count, Refusals(found, found.Lowering).Count);
+        var pages = PageCount(found.Lowering.Operations.Count, Refusals(found, found.Lowering).Count,
+            found.Plan.ChangeSet.Changes.Count);
         if (request.Page > pages)
             return Refused(RefusalCodes.RecordImportInvalidPage, FailureReason.InvalidArgument,
                 $"The file has {pages} page(s); page {request.Page} does not exist.",
@@ -74,6 +75,11 @@ public static partial class RecordImportCommand
 
         if (request.DraftName is null)
             return CommandOutcome<RecordImportResponse>.Success(Summarize(found, found.Lowering, DryRun, request.Page, null, null));
+
+        if (request.Strict && Refusals(found, found.Lowering).Count > 0)
+            return Refused(RefusalCodes.RecordImportStrictRefused, FailureReason.Refused,
+                "Strict mode: the file has changes that were refused, so no Draft was made. Run it without a Draft name to list them.",
+                ("refusals", Refusals(found, found.Lowering).Count.ToString()));
 
         if (found.Lowering.Operations.Count == 0)
             return Refused(RefusalCodes.RecordImportNothingToStage, FailureReason.Refused,
@@ -83,7 +89,15 @@ public static partial class RecordImportCommand
 
         var created = ProposalCommands.New(new(request.ProjectPath, MotifProductVersion.CurrentText, request.DraftName, "Record import"));
         if (!created.Succeeded) return CommandOutcome<RecordImportResponse>.Refused(created.Refusal!);
-        var staged = ProposalCommands.StageRecordImport(request.ProjectPath, request.DraftName, found.Schema, found.Plan);
+        BeforeStage?.Invoke();
+        // The stage plans the file again against the project it reads and stages only if that is what was previewed.
+        var staged = ProposalCommands.StageRecordImport(request.ProjectPath, request.DraftName,
+            found.Plan.Export?.Base ?? "", cache =>
+            {
+                if (Plan(cache, text, validate: false) is not { } again || again.Digest != found.Digest)
+                    throw new RecordImportChangedException();
+                return found.Lowering;
+            });
         if (!staged.Succeeded)
         {
             // A Draft this command made and could not fill is not left behind.
@@ -103,9 +117,11 @@ public static partial class RecordImportCommand
             created.Value!.DraftName, created.Value.ProposalId));
     }
 
-    private sealed record Planned(ProjectRecordSchemaResult Schema, ProjectRecordPlan Plan, RecordLowering Lowering);
+    /// <param name="Lowering">What would be staged: the lowering less every change the scratch copy refused.</param>
+    /// <param name="Digest">Identifies the lowering before the scratch copy refused anything, so a stage can tell the project changed.</param>
+    private sealed record Planned(ProjectRecordSchemaResult Schema, ProjectRecordPlan Plan, RecordLowering Lowering, string Digest);
 
-    private static Planned? Plan(LcmCache cache, string text)
+    private static Planned? Plan(LcmCache cache, string text, bool validate)
     {
         var name = KindName(text);
         if (name is null) return null;
@@ -119,8 +135,8 @@ public static partial class RecordImportCommand
         }
         if (schema is null) return null;
         var plan = ProjectRecordImporter.Plan(cache, schema, text, new CatalogWritableFields(schema));
-        var lowering = new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
-        return new(schema, plan, lowering);
+        var full = new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
+        return new(schema, plan, validate ? ValidateOnScratch(cache, plan, full) : full, Digest(full.Operations));
     }
 
     /// <summary>The whole unquoted value of the front matter's record: line.</summary>
@@ -171,9 +187,11 @@ public static partial class RecordImportCommand
         var refusals = Refusals(found, lowering);
         var operations = lowering.Operations;
         var size = RecordImportPaging.PageSize;
-        var pageCount = PageCount(operations.Count, refusals.Count);
+        var changes = found.Plan.ChangeSet.Changes;
+        var pageCount = PageCount(operations.Count, refusals.Count, changes.Count);
         var pageOperations = operations.Skip((page - 1) * size).Take(size).ToList();
         var pageRefusals = refusals.Skip((page - 1) * size).Take(size).ToList();
+        var pageChanges = changes.Skip((page - 1) * size).Take(size).ToList();
         // Text is shortened until the response fits, so long or non-ASCII names stay within 2 KB.
         for (var length = RecordImportPaging.TextLength; ; length /= 2)
         {
@@ -184,14 +202,20 @@ public static partial class RecordImportCommand
                 pageOperations.Select(operation => new RecordImportOperation(operation.OperationId.Value,
                     Clip(operation.Kind, length)!, operation.Target?.Value)).ToList(),
                 pageRefusals.Select(row => row with { Class = Clip(row.Class, length), Field = Clip(row.Field, length)!,
-                    Reason = Clip(row.Reason, length)! }).ToList(), draftName, proposalId);
+                    Reason = Clip(row.Reason, length)! }).ToList(), draftName, proposalId,
+                pageChanges.Select(change => ChangeRow(change, length)).ToList());
             if (length <= 4 || ProjectionJson.ToUtf8Bytes(response).Length <= RecordImportPaging.SummaryBytes)
                 return response;
         }
     }
 
-    private static int PageCount(int operations, int refusals) =>
-        Math.Max(1, (Math.Max(operations, refusals) + RecordImportPaging.PageSize - 1) / RecordImportPaging.PageSize);
+    private static int PageCount(int operations, int refusals, int changes) =>
+        Math.Max(1, (Math.Max(Math.Max(operations, refusals), changes) + RecordImportPaging.PageSize - 1) / RecordImportPaging.PageSize);
+
+    private static RecordImportChange ChangeRow(RecordChange change, int length) =>
+        new(change.Kind.ToString(), Clip(change.ObjectType, length), Clip(change.Field, length)!,
+            change.ObjectGuid is { } guid ? CanonicalId.FromGuid(guid).Value : null,
+            Clip(change.WritingSystem, length), Clip(change.Old, length), Clip(change.New, length));
 
     /// <summary>Returns a refusal for an agent path that leaves the allowed roots.</summary>
     /// <returns>The refusal, or <see langword="null"/> when the path may be read.</returns>

@@ -25,9 +25,11 @@ public sealed class ImportCliTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-import-cli-" + Guid.NewGuid().ToString("N"));
     private readonly string _project;
     private readonly string _file;
+    private readonly PristineProjectFixture _pristine;
 
     public ImportCliTests(PristineProjectFixture pristine)
     {
+        _pristine = pristine;
         Directory.CreateDirectory(_root);
         using var cache = pristine.NewScratch();
         _project = cache.ProjectId.Path;
@@ -53,6 +55,39 @@ public sealed class ImportCliTests : IDisposable
         ((RecordAlternatives)sense0["gloss"]!).Add("en", new RecordScalar("zzedited"));
         _file = Path.Combine(_root, "entry.md");
         File.WriteAllText(_file, RecordFileWriter.Write(read.Document!, schema.Schema));
+    }
+
+
+    /// <summary>A saved project and a file that edits the gloss of seven senses, so the lists run to a second page.</summary>
+    private static (string Project, string File) SevenEdits(PristineProjectFixture pristine, string folder)
+    {
+        Directory.CreateDirectory(folder);
+        using var cache = pristine.NewScratch();
+        Guid entryId = default;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var entry = services.GetInstance<ILexEntryFactory>().Create();
+            entryId = entry.Guid;
+            var form = services.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = form;
+            form.Form.set_String(cache.DefaultVernWs, "zzword");
+            for (var index = 0; index < 7; index++)
+            {
+                var sense = services.GetInstance<ILexSenseFactory>().Create();
+                entry.SensesOS.Add(sense);
+                sense.Gloss.set_String(cache.DefaultAnalWs, "zzgloss" + index);
+            }
+        });
+        new FwDataProjectLoader().Save(cache);
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(cache, schema);
+        var read = RecordFileReader.Read(exporter.Export(entryId).Text!, schema.Schema, exporter.CreateReadOptions());
+        foreach (var item in ((RecordList)read.Document!.Data["senses"]!).Items)
+            ((RecordAlternatives)((RecordObject)item)["gloss"]!).Add("en", new RecordScalar("zzedited"));
+        var file = Path.Combine(folder, "seven.md");
+        File.WriteAllText(file, RecordFileWriter.Write(read.Document!, schema.Schema));
+        return (cache.ProjectId.Path, file);
     }
 
     public void Dispose()
@@ -154,5 +189,38 @@ public sealed class ImportCliTests : IDisposable
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Equal(RefusalCodes.RecordImportFileUnreadable, ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!.Code);
+    }
+
+    [Fact]
+    public void PageTwoListsTheRestAndAPastTheEndPageIsRefusedWithItsCode()
+    {
+        var (project, file) = SevenEdits(_pristine, Path.Combine(_root, "seven"));
+
+        var one = Run("import", "--project", project, "--file", file, "--json");
+        var two = Run("import", "--project", project, "--file", file, "--page", "2", "--json");
+
+        Assert.True(one.ExitCode == 0 && two.ExitCode == 0, one.Error + two.Error);
+        var first = JsonNode.Parse(one.Output)!;
+        var second = JsonNode.Parse(two.Output)!;
+        Assert.Equal(2, second["pageCount"]!.GetValue<int>());
+        Assert.Equal(2, second["page"]!.GetValue<int>());
+        Assert.Equal(5, first["operations"]!.AsArray().Count);
+        Assert.Equal(2, second["operations"]!.AsArray().Count);
+        Assert.Equal(5, first["changes"]!.AsArray().Count);
+        Assert.Equal(2, second["changes"]!.AsArray().Count);
+        var ids = first["operations"]!.AsArray().Concat(second["operations"]!.AsArray()).Select(item => item!["operationId"]!.GetValue<string>());
+        Assert.Equal(7, ids.Distinct().Count());
+        var past = Run("import", "--project", project, "--file", file, "--page", "3", "--json");
+        Assert.NotEqual(0, past.ExitCode);
+        Assert.Equal(RefusalCodes.RecordImportInvalidPage, ProjectionJson.Deserialize<FailureEnvelope>(past.Error)!.Code);
+    }
+
+    [Fact]
+    public void StrictIsASwitchThatAcceptsACleanFileAndIsAUsageErrorWithoutAValue()
+    {
+        var staged = Run("import", "--project", _project, "--file", _file, "--draft", "strict-clean", "--strict", "--json");
+
+        Assert.True(staged.ExitCode == 0, staged.Error + staged.Output);
+        Assert.Equal("draft", JsonNode.Parse(staged.Output)!["mode"]!.GetValue<string>());
     }
 }

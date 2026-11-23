@@ -39,8 +39,10 @@ public sealed record RecordLoweringRefusal(string Code, string Class, string Fie
 /// <param name="Operations">The operations, each with an id derived from the plan, so lowering one plan twice gives one intent digest.</param>
 /// <param name="Refusals">The plan's changes that have no operation, each named by (class, field).</param>
 /// <param name="PlanRefusals">The importer's own refusals, passed through untouched.</param>
+/// <param name="OperationChanges">For each operation, the index in the plan's changes of the change it came from; null when not tracked.</param>
 public sealed record RecordLowering(IReadOnlyList<OperationEnvelope> Operations,
-    IReadOnlyList<RecordLoweringRefusal> Refusals, IReadOnlyList<RecordRefusal> PlanRefusals);
+    IReadOnlyList<RecordLoweringRefusal> Refusals, IReadOnlyList<RecordRefusal> PlanRefusals,
+    IReadOnlyList<int>? OperationChanges = null);
 
 /// <summary>
 /// Lowers a planned record-file import to operations through the kinds the Runner catalog declares for each field
@@ -66,7 +68,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         }
         var seed = plan.Export?.Base ?? plan.RecordGuid?.ToString("D") ?? "";
         var lowered = LowerChanges(cache, seed, set.Changes);
-        return new(lowered.Operations, lowered.Refusals, set.Refusals);
+        return new(lowered.Operations, lowered.Refusals, set.Refusals, lowered.OperationChanges);
     }
 
     /// <summary>Lowers individual changes; <paramref name="seed"/> makes the operation ids, so one seed and one list give one intent digest.</summary>
@@ -77,7 +79,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         var run = new Run(schema, catalog, cache, seed, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown);
         for (var index = 0; index < changes.Count; index++)
             run.Lower(index, changes[index]);
-        return new(run.Operations, run.Refusals, []);
+        return new(run.Operations, run.Refusals, [], run.OperationChanges);
     }
 
     private sealed class Stop(RecordLoweringRefusal refusal) : Exception(refusal.Reason)
@@ -95,6 +97,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         private List<OperationEnvelope> _pending = [];
 
         internal List<OperationEnvelope> Operations { get; } = [];
+        internal List<int> OperationChanges { get; } = [];
         internal List<RecordLoweringRefusal> Refusals { get; } = [];
 
         internal void Lower(int index, RecordChange change)
@@ -107,6 +110,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             {
                 LowerChange(index, change);
                 Operations.AddRange(_pending);
+                OperationChanges.AddRange(_pending.Select(_ => index));
             }
             catch (Stop stop)
             {
