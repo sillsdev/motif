@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Host;
 using SIL.Motif.Host.HandAnalysis;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
