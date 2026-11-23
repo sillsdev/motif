@@ -58,7 +58,7 @@ public sealed class ImportCliTests : IDisposable
     }
 
 
-    /// <summary>A saved project and a file that edits the gloss of seven senses, so the lists run to a second page.</summary>
+    /// <summary>A saved project and a file editing seven senses' glosses, so lists span two pages.</summary>
     private static (string Project, string File) SevenEdits(PristineProjectFixture pristine, string folder)
     {
         Directory.CreateDirectory(folder);

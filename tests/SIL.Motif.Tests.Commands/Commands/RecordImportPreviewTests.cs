@@ -14,7 +14,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>The import dry run predicts the stage: what it lists is what a Draft holds, and what it refuses is never staged.</summary>
+/// <summary>Tests that the import dry run turns away each doomed change and that staging matches the preview.</summary>
 [Collection(LcmCacheParallelCollections.Group2)]
 public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : IDisposable
 {
@@ -27,10 +27,7 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
         catch (IOException) { }
     }
 
-    /// <summary>
-    /// A saved project whose entry has <paramref name="senses"/> senses, with the first glossed again in the file. With
-    /// <paramref name="wrongList"/> the last sense's status is set to a member of the sense-type list, which no status may hold.
-    /// </summary>
+    /// <summary>A project of <paramref name="senses"/> senses; wrongList sets an illegal status.</summary>
     private (string Project, string File, Guid Entry) Fixture(int senses = 2, bool wrongList = false, string? reference = null)
     {
         Directory.CreateDirectory(_folder);

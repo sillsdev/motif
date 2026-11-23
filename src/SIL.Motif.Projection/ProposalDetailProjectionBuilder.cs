@@ -51,7 +51,7 @@ public static class ProposalDetailProjectionBuilder
         };
     }
 
-    /// <summary>The refused-change count the record import stored in the Proposal's composer provenance, or null when it holds none.</summary>
+    /// <summary>The refused-change count the import stored in composer provenance, or null if none.</summary>
     private static int? RecordImportRefusedIn(Proposal envelope)
     {
         if (envelope.Extensions is not { ValueKind: System.Text.Json.JsonValueKind.Object } extensions ||

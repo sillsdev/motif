@@ -117,8 +117,7 @@ public static partial class RecordImportCommand
             created.Value!.DraftName, created.Value.ProposalId));
     }
 
-    /// <param name="Lowering">What would be staged: the lowering less every change the scratch copy refused.</param>
-    /// <param name="Digest">Identifies the lowering before the scratch copy refused anything, so a stage can tell the project changed.</param>
+    /// <param name="Digest">Taken before any refusal, so a stage can tell the project changed.</param>
     private sealed record Planned(ProjectRecordSchemaResult Schema, ProjectRecordPlan Plan, RecordLowering Lowering, string Digest);
 
     private static Planned? Plan(LcmCache cache, string text, bool validate)

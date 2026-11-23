@@ -25,7 +25,7 @@ public static partial class RecordImportCommand
     /// <summary>Tests change the project between the preview and the stage by setting this.</summary>
     internal static Action? BeforeStage { get; set; }
 
-    /// <summary>Identifies the operations a lowering produced, so a stage can check it would stage what was previewed.</summary>
+    /// <summary>Identifies the lowering's operations, so a stage can check what was previewed.</summary>
     private static string Digest(IReadOnlyList<OperationEnvelope> operations)
     {
         var text = new StringBuilder();
@@ -36,11 +36,7 @@ public static partial class RecordImportCommand
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
     }
 
-    /// <summary>
-    /// Tries the operations on the scratch copy in <paramref name="cache"/>, in the order Apply would run them, as the
-    /// stage does. A change whose operation the Runner refuses is refused here with its record, field and reason, together
-    /// with the changes that wait on it, so the stage never discovers it.
-    /// </summary>
+    /// <summary>Runs the operations on a scratch copy in Apply's order, so refusals surface early.</summary>
     private static RecordLowering ValidateOnScratch(LcmCache cache, ProjectRecordPlan plan, RecordLowering full)
     {
         if (full.Operations.Count == 0 || full.OperationChanges is not { } owners) return full;
