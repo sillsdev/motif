@@ -69,6 +69,14 @@ public sealed class RecordWritableFieldsTests : IDisposable
             notebookFields.Resolve("RnGenericRec", "title", RecordWriteVerb.SetRich));
         Assert.Equal(new WritableFieldResolution.Covered("text/setParagraphs"),
             notebookFields.Resolve("RnGenericRec", "description", RecordWriteVerb.SetRich));
+        foreach (var section in new[] { "conclusions", "discussion", "external-materials", "further-questions", "hypothesis",
+                     "personal-notes", "research-plan", "version-history" })
+            foreach (var verb in new[] { RecordWriteVerb.SetRich, RecordWriteVerb.ClearRich })
+                Assert.Equal(new WritableFieldResolution.Covered("text/setParagraphs"),
+                    notebookFields.Resolve("RnGenericRec", section, verb));
+        foreach (var verb in new[] { RecordWriteVerb.SetPlainRich, RecordWriteVerb.SetRich, RecordWriteVerb.ClearRich })
+            Assert.Equal(new WritableFieldResolution.Covered("text/setRichString"),
+                listFields.Resolve("CmDomainQ", "example-sentences", verb));
     }
 
     [Fact]

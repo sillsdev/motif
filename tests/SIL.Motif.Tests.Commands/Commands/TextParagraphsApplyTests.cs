@@ -513,15 +513,17 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void TheEditableFieldsAreTheInventorysStTextFieldsLessATextsContentsWithOneFieldPerClass()
+    public void TheEditableFieldsAreTheInventorysStTextFieldsAndTheNotebookSectionsLessATextsContents()
     {
         var inventory = ManifestTsvParser.Parse(RepoPaths.DefaultManifestPath())
             .Where(row => row.Scope == "in" && row.Kind == "owning" && row.Sig == "StText" && row.Card == "atomic")
             .Select(row => $"{row.Class}.{row.Field}").ToArray();
 
         Assert.Contains("Text.Contents", inventory);
-        Assert.Equal(inventory.Where(field => field != "Text.Contents").Order(), TextParagraphFields.Names.Order());
-        Assert.Equal(TextParagraphFields.Names.Count, TextParagraphFields.Names.Select(name => name.Split('.')[0]).Distinct().Count());
+        string[] notebookSections = ["Conclusions", "Discussion", "ExternalMaterials", "FurtherQuestions", "Hypothesis",
+            "PersonalNotes", "ResearchPlan", "VersionHistory"];
+        Assert.Equal(inventory.Where(field => field != "Text.Contents")
+            .Concat(notebookSections.Select(section => "RnGenericRec." + section)).Order(), TextParagraphFields.Names.Order());
     }
 
     [Theory]

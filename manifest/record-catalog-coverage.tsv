@@ -49,6 +49,9 @@ Covered	CmCustomItem	discussion	CmPossibility.Discussion	SetRich	text/setParagra
 Covered	CmCustomItem	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
 Covered	CmCustomItem	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
 Covered	CmCustomItem	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetPlainRich	text/setRichString	-	-
+Covered	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetRich	text/setRichString	-	-
+Covered	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	ClearRich	text/setRichString	-	-
 Covered	CmLocation	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
 Covered	CmLocation	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
 Covered	CmLocation	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
@@ -491,12 +494,28 @@ Covered	PhSimpleContextSeg	description	PhPhonContext.Description	SetRich	text/se
 Covered	PhSimpleContextSeg	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
 Covered	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Set	grammar/phSimpleContextSeg/setFeatureStructure	-	-
 Covered	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Clear	grammar/phSimpleContextSeg/clearFeatureStructure	-	-
+Covered	RnGenericRec	conclusions	RnGenericRec.Conclusions	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	conclusions	RnGenericRec.Conclusions	ClearRich	text/setParagraphs	-	-
 Covered	RnGenericRec	description	RnGenericRec.Description	SetRich	text/setParagraphs	-	-
 Covered	RnGenericRec	description	RnGenericRec.Description	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	discussion	RnGenericRec.Discussion	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	discussion	RnGenericRec.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	ClearRich	text/setParagraphs	-	-
 Covered	RnGenericRec	title	RnGenericRec.Title	SetPlainRich	system/rnGenericRec/setTitle	-	-
 Covered	RnGenericRec	title	RnGenericRec.Title	ClearRich	system/rnGenericRec/clearTitle	-	-
 Covered	RnGenericRec	type	RnGenericRec.Type	Set	system/rnGenericRec/setType	-	-
 Covered	RnGenericRec	type	RnGenericRec.Type	Clear	system/rnGenericRec/clearType	-	-
+Covered	RnGenericRec	version-history	RnGenericRec.VersionHistory	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	version-history	RnGenericRec.VersionHistory	ClearRich	text/setParagraphs	-	-
 CoveredNotLowered	FsFeatStruc	feature-specs	FsFeatStruc.FeatureSpecs	RemoveObject	grammar/fsFeatStruc/deleteFeatureSpecs	delete-composer	-
 CoveredNotLowered	LexEntry	allomorphs	LexEntry.AlternateForms	RemoveObject	lexical/lexEntry/removeAlternateForm	delete-composer	-
 CoveredNotLowered	LexEntry	lexeme-form	LexEntry.LexemeForm	RemoveObject	lexical/lexEntry/deleteLexemeForm	delete-composer	-
@@ -685,9 +704,6 @@ OtherFields	CmCustomItem	under-color	CmPossibility.UnderColor	Set	none	NoOperati
 OtherFields	CmCustomItem	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
 OtherFields	CmCustomItem	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
 OtherFields	CmCustomItem	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
-OtherFields	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetPlainRich	none	NoOperationKind	-
-OtherFields	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetRich	none	NoOperationKind	-
-OtherFields	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	ClearRich	none	NoOperationKind	-
 OtherFields	CmDomainQ	example-words	CmDomainQ.ExampleWords	SetAlternative	none	NoOperationKind	-
 OtherFields	CmDomainQ	example-words	CmDomainQ.ExampleWords	ClearAlternative	none	NoOperationKind	-
 OtherFields	CmDomainQ	question	CmDomainQ.Question	SetAlternative	none	NoOperationKind	-
@@ -1246,8 +1262,6 @@ OtherFields	PhSimpleContextSeg	name	PhPhonContext.Name	SetAlternative	none	NoOpe
 OtherFields	PhSimpleContextSeg	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
 OtherFields	RnGenericRec	anthro-codes	RnGenericRec.AnthroCodes	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	anthro-codes	RnGenericRec.AnthroCodes	RemoveReference	none	NoOperationKind	-
-OtherFields	RnGenericRec	conclusions	RnGenericRec.Conclusions	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	conclusions	RnGenericRec.Conclusions	ClearRich	none	NoOperationKind	-
 OtherFields	RnGenericRec	confidence	RnGenericRec.Confidence	Set	none	NoOperationKind	-
 OtherFields	RnGenericRec	confidence	RnGenericRec.Confidence	Clear	none	NoOperationKind	-
 OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	AddReference	none	NoOperationKind	-
@@ -1256,26 +1270,14 @@ OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	RemoveRef
 OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	MoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	cross-references	RnGenericRec.CrossReferences	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	cross-references	RnGenericRec.CrossReferences	RemoveReference	none	NoOperationKind	-
-OtherFields	RnGenericRec	discussion	RnGenericRec.Discussion	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	discussion	RnGenericRec.Discussion	ClearRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	ClearRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	ClearRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	ClearRich	none	NoOperationKind	-
 OtherFields	RnGenericRec	locations	RnGenericRec.Locations	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	locations	RnGenericRec.Locations	RemoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	participants	RnGenericRec.Participants	AddObject	none	NoOperationKind	-
 OtherFields	RnGenericRec	participants	RnGenericRec.Participants	RemoveObject	none	NoOperationKind	-
-OtherFields	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	ClearRich	none	NoOperationKind	-
 OtherFields	RnGenericRec	phrase-tags	RnGenericRec.PhraseTags	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	phrase-tags	RnGenericRec.PhraseTags	RemoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	reminders	RnGenericRec.Reminders	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	reminders	RnGenericRec.Reminders	RemoveReference	none	NoOperationKind	-
-OtherFields	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	ClearRich	none	NoOperationKind	-
 OtherFields	RnGenericRec	researchers	RnGenericRec.Researchers	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	researchers	RnGenericRec.Researchers	RemoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	restrictions	RnGenericRec.Restrictions	AddReference	none	NoOperationKind	-
@@ -1300,8 +1302,6 @@ OtherFields	RnGenericRec	text	RnGenericRec.Text	Clear	none	NoOperationKind	-
 OtherFields	RnGenericRec	time-of-event	RnGenericRec.TimeOfEvent	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	time-of-event	RnGenericRec.TimeOfEvent	RemoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	title	RnGenericRec.Title	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	version-history	RnGenericRec.VersionHistory	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	version-history	RnGenericRec.VersionHistory	ClearRich	none	NoOperationKind	-
 OtherFields	RnRoledPartic	participants	RnRoledPartic.Participants	AddReference	none	NoOperationKind	-
 OtherFields	RnRoledPartic	participants	RnRoledPartic.Participants	RemoveReference	none	NoOperationKind	-
 OtherFields	RnRoledPartic	role	RnRoledPartic.Role	Set	none	NoOperationKind	-
@@ -1772,8 +1772,27 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	text/setParagraphs	LexDb	Introduction	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	PhPhonContext	Description	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	PhPhonContext	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Conclusions	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Conclusions	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	RnGenericRec	Description	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	RnGenericRec	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Discussion	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Discussion	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	ExternalMaterials	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	ExternalMaterials	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	FurtherQuestions	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	FurtherQuestions	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Hypothesis	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Hypothesis	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	PersonalNotes	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	PersonalNotes	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	ResearchPlan	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	ResearchPlan	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	VersionHistory	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	VersionHistory	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmDomainQ	ExampleSentences	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmDomainQ	ExampleSentences	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	CmDomainQ	ExampleSentences	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setRichString	CmMedia	Label	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setRichString	CmMedia	Label	SetPlainRich	Forbidden	-		Unspecified	True
 # Handler	text/setRichString	CmMedia	Label	SetRich	Forbidden	-		Unspecified	False

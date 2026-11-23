@@ -21,8 +21,8 @@ public static partial class ProposalCommands
     /// Draft already holds for that field, creating the Draft when there is none (ADR 0006 decision 4).
     /// </summary>
     /// <remarks>
-    /// An edit that changes and removes nothing takes the field's earlier edit out of the Draft. Each editable class
-    /// has one editable field (<see cref="TextParagraphFields"/>), so the same target and kind is the same field.
+    /// An edit that changes and removes nothing takes the field's earlier edit out of the Draft.
+    /// The same target and field is the same edit.
     /// </remarks>
     public static CommandOutcome<ComposedOperationsResponse> StageTextParagraphs(StageTextParagraphsRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion ?? MotifProductVersion.CurrentText, (database, project) =>
@@ -133,7 +133,7 @@ public static partial class ProposalCommands
         operation.After is { } after && TextParagraphsPayload.FieldOf(after) == field;
 
     private static bool SameField(System.Text.Json.JsonElement authored, SIL.Motif.Contract.Model.OperationEnvelope operation) =>
-        ReplacementRule.SameTarget(TextParagraphsOperationKinds.Set).Matches(authored, operation);
+        IsFieldEdit(operation, CanonicalId.Parse(authored.GetProperty("target").GetString()!), authored.GetProperty("field").GetString()!);
 }
 
 /// <summary>The pending-changes Draft's edit of one rich-text field, or null when it holds none.</summary>
