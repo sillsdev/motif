@@ -96,6 +96,25 @@ public sealed partial class FakeCommandClient
         return Completed(new ProposalStatusChangedResponse(request.ProposalId, "deferred", null));
     }
 
+    public List<LexicalEntryRequest> LexicalEntryRequests { get; } = [];
+
+    /// <summary>The entries the Baseline holds, by the id a lookup is asked with; any other id is not found.</summary>
+    public Dictionary<string, LexicalEntryLookup> LexicalEntries { get; } = new(StringComparer.Ordinal);
+
+    public Refusal? LexicalEntryRefusal { get; set; }
+
+    public Task<CommandOutcome<LexicalEntryResponse>> ReadLexicalEntriesAsync(
+        LexicalEntryRequest request, CancellationToken cancellationToken)
+    {
+        LexicalEntryRequests.Add(request);
+        if (LexicalEntryRefusal is { } refusal)
+            return Task.FromResult(CommandOutcome<LexicalEntryResponse>.Refused(refusal));
+        var lookups = request.Ids.Select(id => LexicalEntries.TryGetValue(id, out var held) ? held :
+            new LexicalEntryLookup(id, false, null, null, null, [])).ToArray();
+        return Completed(new LexicalEntryResponse(lookups, WorkspaceContextTests.Assessment().Baseline.Token,
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
+    }
+
     public List<UndeferRequest> UndeferProposalRequests { get; } = [];
 
     /// <summary>What an undefer answers; null brings the Proposal back to Waiting as the store would.</summary>

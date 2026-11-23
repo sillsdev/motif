@@ -4225,12 +4225,14 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Sentence the window shows when the command refuses with code C.ProposalClosed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalNotFound" xml:space="preserve">
-  <data name="MotifApp.RefusalProposalInvalidStatus" xml:space="preserve"><value>This Proposal changed status while you were looking, so it was left as it is. Refresh the list to see where it stands.</value><comment>Sentence the window shows when the command refuses with code C.ProposalInvalidStatus.</comment></data>
-  <data name="MotifApp.RefusalProposalInconsistent" xml:space="preserve"><value>This Proposal could not be read, so nothing was changed.</value><comment>Sentence the window shows when the command refuses with code C.ProposalInconsistent.</comment></data>
-  <data name="MotifApp.RefusalProposalInvalidId" xml:space="preserve"><value>That Proposal's id is not one Motif can read, so nothing was changed.</value><comment>Sentence the window shows when the command refuses with code C.ProposalInvalidId.</comment></data>
     <value>These changes could not be found. Refresh the list and try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProposalNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalProposalInvalidStatus" xml:space="preserve"><value>This Proposal changed status while you were looking, so it was left as it is. Refresh the list to see where it stands.</value><comment>Sentence the window shows when the command refuses with code C.ProposalInvalidStatus.</comment></data>
+  <data name="MotifApp.RefusalProposalInvalidId" xml:space="preserve"><value>That Proposal's id is not one Motif can read, so nothing was changed.</value><comment>Sentence the window shows when the command refuses with code C.ProposalInvalidId.</comment></data>
+  <data name="MotifApp.RefusalLexicalEntryInvalidId" xml:space="preserve"><value>A change names an entry or sense that Motif cannot look up, so its headword and senses are not shown.</value><comment>Sentence the window shows when the command refuses with code C.LexicalEntryInvalidId.</comment></data>
+  <data name="MotifApp.RefusalLexicalEntryBaselineUnavailable" xml:space="preserve"><value>Motif's saved copy of the project is missing from disk, so entry headwords and senses are not shown. Refresh to make a new copy.</value><comment>Sentence the window shows when the command refuses with code C.LexicalEntryBaselineUnavailable.</comment></data>
+  <data name="MotifApp.RefusalBaselineMissing" xml:space="preserve"><value>Motif has no saved copy of this project to read yet, so entry headwords and senses are not shown. Refresh to make one.</value><comment>Sentence the window shows when the command refuses with code C.BaselineMissing.</comment></data>
   <data name="MotifApp.RefusalProposalCommentInvalid" xml:space="preserve">
     <value>That comment could not be saved. It needs some text, and a name can be at most 100 characters.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProposalCommentInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
@@ -7465,12 +7467,21 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalChangeHeading" xml:space="preserve"><value>Proposed changes</value></data>
   <data name="MotifApp.ProposalChangeSense" xml:space="preserve"><value>Sense {0}</value></data>
   <data name="MotifApp.ProposalChangeEntry" xml:space="preserve"><value>Entry {0}</value></data>
+  <data name="MotifApp.ProposalEntrySenseName" xml:space="preserve"><value>{0} sense {1}</value><comment>A sense named by its entry's headword and FieldWorks sense number, such as 'palit sense 2'.</comment></data>
+  <data name="MotifApp.ProposalEntryOfHeadword" xml:space="preserve"><value>Sense {0} of {1}</value></data>
+  <data name="MotifApp.ProposalEntryHeadword" xml:space="preserve"><value>Entry {0}</value></data>
+  <data name="MotifApp.ProposalEntryNoHeadword" xml:space="preserve"><value>(no headword)</value></data>
+  <data name="MotifApp.ProposalEntrySensesLine" xml:space="preserve"><value>Senses of {0}: {1}</value><comment>{0} is the headword, {1} the senses as '1 sell; 2 buy'.</comment></data>
+  <data name="MotifApp.ProposalEntrySenseItem" xml:space="preserve"><value>{0} {1}</value><comment>One sense in the list: its number, then its gloss.</comment></data>
+  <data name="MotifApp.ProposalEntrySenseChangedHere" xml:space="preserve"><value>{0} (changed here)</value></data>
+  <data name="MotifApp.ProposalEntrySenseNoGloss" xml:space="preserve"><value>(no gloss)</value></data>
   <data name="MotifApp.ProposalChangeTarget" xml:space="preserve"><value>Target {0}</value></data>
   <data name="MotifApp.ProposalChangeGloss" xml:space="preserve"><value>Gloss</value></data>
   <data name="MotifApp.ProposalChangeEmpty" xml:space="preserve"><value>(empty)</value></data>
   <data name="MotifApp.ProposalChangeTransition" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
   <data name="MotifApp.ProposalChangeNowProposed" xml:space="preserve"><value>{0}: now {1}; proposed {2}</value></data>
   <data name="MotifApp.ProposalChangeNowOnly" xml:space="preserve"><value>{0}: now {1}</value></data>
+  <data name="MotifApp.ProposalEntryNamedTransition" xml:space="preserve"><value>{0}: {1}</value><comment>A Dry Run change with the sense it changes named first, as 'palit sense 2: Gloss (en): buy → sell'.</comment></data>
   <data name="MotifApp.ProposalSharedEffect" xml:space="preserve"><value>Several changes contribute to the final result for {0}.</value></data>
   <data name="MotifApp.ProposalChangeFieldWithWritingSystem" xml:space="preserve"><value>{0} ({1})</value></data>
   <data name="MotifApp.ProposalChangeValue" xml:space="preserve"><value>Proposed value: {0}</value></data>

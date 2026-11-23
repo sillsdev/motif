@@ -2569,8 +2569,10 @@ public static class MotifAppStrings
 
     public static string RefusalProposalNotFound => Text("MotifApp.RefusalProposalNotFound");
     public static string RefusalProposalInvalidStatus => Text("MotifApp.RefusalProposalInvalidStatus");
-    public static string RefusalProposalInconsistent => Text("MotifApp.RefusalProposalInconsistent");
     public static string RefusalProposalInvalidId => Text("MotifApp.RefusalProposalInvalidId");
+    public static string RefusalLexicalEntryInvalidId => Text("MotifApp.RefusalLexicalEntryInvalidId");
+    public static string RefusalLexicalEntryBaselineUnavailable => Text("MotifApp.RefusalLexicalEntryBaselineUnavailable");
+    public static string RefusalBaselineMissing => Text("MotifApp.RefusalBaselineMissing");
 
     public static string CommentPlainText => Text("MotifApp.CommentPlainText");
     public static string CommentDelete => Text("MotifApp.CommentDelete");
@@ -4008,12 +4010,21 @@ public static class MotifAppStrings
     public static string ProposalChangeHeading => Text("MotifApp.ProposalChangeHeading");
     public static string ProposalChangeSense => Text("MotifApp.ProposalChangeSense");
     public static string ProposalChangeEntry => Text("MotifApp.ProposalChangeEntry");
+    public static string ProposalEntrySenseName => Text("MotifApp.ProposalEntrySenseName");
+    public static string ProposalEntryOfHeadword => Text("MotifApp.ProposalEntryOfHeadword");
+    public static string ProposalEntryHeadword => Text("MotifApp.ProposalEntryHeadword");
+    public static string ProposalEntryNoHeadword => Text("MotifApp.ProposalEntryNoHeadword");
+    public static string ProposalEntrySensesLine => Text("MotifApp.ProposalEntrySensesLine");
+    public static string ProposalEntrySenseItem => Text("MotifApp.ProposalEntrySenseItem");
+    public static string ProposalEntrySenseChangedHere => Text("MotifApp.ProposalEntrySenseChangedHere");
+    public static string ProposalEntrySenseNoGloss => Text("MotifApp.ProposalEntrySenseNoGloss");
     public static string ProposalChangeTarget => Text("MotifApp.ProposalChangeTarget");
     public static string ProposalChangeGloss => Text("MotifApp.ProposalChangeGloss");
     public static string ProposalChangeEmpty => Text("MotifApp.ProposalChangeEmpty");
     public static string ProposalChangeTransition => Text("MotifApp.ProposalChangeTransition");
     public static string ProposalChangeNowProposed => Text("MotifApp.ProposalChangeNowProposed");
     public static string ProposalChangeNowOnly => Text("MotifApp.ProposalChangeNowOnly");
+    public static string ProposalEntryNamedTransition => Text("MotifApp.ProposalEntryNamedTransition");
     public static string ProposalSharedEffect => Text("MotifApp.ProposalSharedEffect");
     public static string ProposalChangeFieldWithWritingSystem => Text("MotifApp.ProposalChangeFieldWithWritingSystem");
     public static string ProposalChangeValue => Text("MotifApp.ProposalChangeValue");

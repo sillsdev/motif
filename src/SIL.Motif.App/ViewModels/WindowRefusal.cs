@@ -98,7 +98,6 @@ public sealed partial record WindowRefusal
         [C.ProposalPictureInvalid] = () => string.Format(System.Globalization.CultureInfo.CurrentCulture,
             MotifAppStrings.RefusalProposalPictureInvalid, SIL.Motif.Commands.ProposalPictures.MaxSide,
             SIL.Motif.Commands.ProposalPictures.MaxPictures),
-        [C.ProposalInconsistent] = () => MotifAppStrings.RefusalProposalInconsistent,
         [C.ProposalInvalidId] = () => MotifAppStrings.RefusalProposalInvalidId,
         [C.ProposalInvalidStatus] = () => MotifAppStrings.RefusalProposalInvalidStatus,
         [C.ProposalNotFound] = () => MotifAppStrings.RefusalProposalNotFound,
@@ -138,6 +137,9 @@ public sealed partial record WindowRefusal
         [C.AssessmentExpired] = () => MotifAppStrings.RefusalAssessmentExpired,
 
         [C.BaselineBusy] = () => MotifAppStrings.RefusalBaselineBusy,
+        [C.BaselineMissing] = () => MotifAppStrings.RefusalBaselineMissing,
+        [C.LexicalEntryBaselineUnavailable] = () => MotifAppStrings.RefusalLexicalEntryBaselineUnavailable,
+        [C.LexicalEntryInvalidId] = () => MotifAppStrings.RefusalLexicalEntryInvalidId,
         [C.BaselineCopyUnloadable] = () => MotifAppStrings.RefusalBaselineCopyUnloadable,
         [C.BaselineOwnedRootViolation] = () => MotifAppStrings.RefusalBaselineOwnedRootViolation,
         [C.BaselineSourceIncomplete] = () => MotifAppStrings.RefusalBaselineSourceIncomplete,

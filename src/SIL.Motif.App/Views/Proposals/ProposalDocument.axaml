@@ -27,6 +27,7 @@
               <views:CopyableTextBlock Text="{Binding Title}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding Values}" IsVisible="{Binding HasValues}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Classes="muted" Text="{Binding Target}" IsVisible="{Binding HasTarget}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Classes="muted" Text="{Binding Senses}" IsVisible="{Binding HasSenses}" TextWrapping="Wrap" />
             </StackPanel>
           </DataTemplate>
         </views:ProgressiveItemsControl.ItemTemplate>
@@ -38,6 +39,7 @@
         </views:ProgressiveItemsControl.ItemTemplate>
       </views:ProgressiveItemsControl>
     </StackPanel>
+    <views:RefusalBlock DataContext="{Binding EntryRefusal}" />
     <StackPanel x:Name="ProposalStatusBlock" Classes="proposalStatus" IsVisible="{Binding ShowsStatus}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalStatus}"
                 Spacing="{DynamicResource Intent.Space.Related}">
