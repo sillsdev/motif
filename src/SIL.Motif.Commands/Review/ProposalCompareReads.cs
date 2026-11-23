@@ -207,7 +207,7 @@ public static class ProposalCompareReads
         return pins;
     }
 
-    // Stale: the Trial measured another revision of the Proposal than it has now. Superseded: a newer Trial attempt exists, or the Proposal was superseded.
+    // Stale means a different revision; superseded means a newer attempt or a superseded Proposal.
     private static (int Stale, int Superseded) Freshness(MotifDatabase database, List<Column> columns)
     {
         var repository = new ProposalRepository(database);
@@ -312,12 +312,12 @@ public static class ProposalCompareReads
         return new Join(summaryColumns, forms.Count, diverging, rows, limitations, uncounted);
     }
 
-    // An approval counts when it has a Reading identity and some Trial measured its word in one of its writing systems.
+    // An approval counts when signed and a Trial measured its word.
     private static bool Counted(ApprovedAnalysisFact fact, HashSet<(string Ws, string Form)> measured) =>
         fact.Signature is not null && fact.Forms is { } forms &&
         forms.Keys.Any(ws => fact.FormIn(ws) is { } form && measured.Contains((ws, form)));
 
-    // Versions differ between a Trial's two sides or between Trials; the count is the columns whose sides differ, else all columns.
+    // Count is the columns whose sides differ, else all columns.
     private static CompareLimitation? ParserVersions(MotifDatabase database, List<Column> columns)
     {
         var versions = columns.Select(column => TrialExportArtifact.ReadParserVersions(database, column.Receipt.JobId)).ToArray();
