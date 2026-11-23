@@ -5,6 +5,7 @@ using SIL.LCModel;
 using SIL.Motif.Commands.Records;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;

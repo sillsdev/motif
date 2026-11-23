@@ -8,6 +8,7 @@ using SIL.Motif.Commands.Records;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Mcp;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
