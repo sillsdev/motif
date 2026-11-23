@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Resolution;
 using SIL.Motif.Runner.Execution;
 
 namespace SIL.Motif.Runner.Operations;
@@ -10,6 +12,18 @@ namespace SIL.Motif.Runner.Operations;
 /// <summary>The one membership check for a reference that must come from a possibility list.</summary>
 internal static class ListBoundReference
 {
+    /// <summary>Resolves a reference that must be a <typeparamref name="TRef"/> owned by the field's list.</summary>
+    public static TRef Resolve<TRef>(LcmCache cache, CanonicalId id, string kind, string field, Guid list)
+        where TRef : ICmPossibility
+    {
+        var resolved = CanonicalIdResolver.Resolve(cache, id);
+        if (resolved is not TRef member)
+            throw new ReferenceFieldRefusal(RefusalCodes.ReferenceWrongClass, kind, field,
+                $"Referenced object '{id.Value}' is a {resolved.ClassName}, not a {typeof(TRef).Name.TrimStart('I')}.");
+        RequireInList(member, list, RefusalCodes.ReferenceWrongList, kind, field);
+        return member;
+    }
+
     /// <summary>Throws the refusal for a <paramref name="member"/> that <paramref name="list"/> does not own.</summary>
     public static void RequireInList(ICmObject member, Guid list, string code, string kind, string field)
     {

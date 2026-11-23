@@ -1235,8 +1235,8 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
         var wrongClass = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "lexical/lexSense/addRefSemanticDomains",
             target: CanonicalId.FromGuid(_sense.Guid), after: JsonSerializer.SerializeToElement(new { member = CanonicalId.FromGuid(parent.Guid).Value }));
-        var failure = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, Proposal([wrongClass])));
-        Assert.Contains("is not a CmSemanticDomain (it is a CmPossibility)", failure.Message);
+        var failure = Assert.ThrowsAny<SIL.Motif.Runner.Execution.ProposalRefusalException>(() => ScratchDryRun.Of(_cache, Proposal([wrongClass])));
+        Assert.Equal(RefusalCodes.ReferenceWrongClass, failure.Code);
     }
 
     private OperationEnvelope SenseSetOp(string kind, ICmObject member, ICmObject? target = null) =>
@@ -1323,10 +1323,10 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         {
             ("stock set, in list", Outcome("lexical/lexSense/setStatus", new { @ref = statusItem }, _sense.Guid), "accepted"),
             ("stock set, other list", Outcome("lexical/lexSense/setStatus", new { @ref = otherList }, _sense.Guid), "reference.wrong-list"),
-            ("stock set, wrong class", Outcome("lexical/lexSense/setStatus", new { @ref = notAPossibility }, _sense.Guid), "InvalidOperationException"),
+            ("stock set, wrong class", Outcome("lexical/lexSense/setStatus", new { @ref = notAPossibility }, _sense.Guid), "reference.wrong-class"),
             ("stock add, in list", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = inList }), "accepted"),
             ("stock add, other list", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = otherList }), "reference.wrong-list"),
-            ("stock add, wrong class", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = notAPossibility }), "InvalidOperationException"),
+            ("stock add, wrong class", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = notAPossibility }), "reference.wrong-class"),
             ("stock remove, in list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = inList }), "accepted"),
             ("stock remove, other list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = otherList }), "accepted"),
             ("stock remove, wrong class", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = notAPossibility }), "accepted"),

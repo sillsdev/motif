@@ -37,8 +37,7 @@ internal static class ReferenceCollectionFieldLowering
         string kind, string field, Func<LcmCache, ICmPossibilityList?> list)
         where TRef : ICmPossibility
     {
-        var member = ReferenceFieldLowering.Resolve<TRef>(cache, memberId, kind);
-        ListBoundReference.RequireInList(member, list(cache)?.Guid ?? Guid.Empty, RefusalCodes.ReferenceWrongList, kind, field);
+        var member = ListBoundReference.Resolve<TRef>(cache, memberId, kind, field, list(cache)?.Guid ?? Guid.Empty);
         if (!collection.Contains(member))
             collection.Add(member);
     }
