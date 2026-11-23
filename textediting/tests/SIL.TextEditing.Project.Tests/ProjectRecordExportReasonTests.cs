@@ -4,6 +4,7 @@ using SIL.LCModel;
 using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
+using SIL.LCModel.Infrastructure;
 using SIL.TextEditing.Markdown.Records;
 using Xunit;
 
