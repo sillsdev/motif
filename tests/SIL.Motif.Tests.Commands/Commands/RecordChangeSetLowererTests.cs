@@ -1290,4 +1290,56 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexEntry/addRefDialectLabels",
             new { member = CanonicalId.FromGuid(_publication.Guid).Value });
     }
+
+    private string Outcome(string kind, object after, Guid? target = null)
+    {
+        var operation = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), kind,
+            target: CanonicalId.FromGuid(target ?? _entry.Guid), after: JsonSerializer.SerializeToElement(after));
+        try
+        {
+            ScratchDryRun.Of(_cache, Proposal([operation]));
+            return "accepted";
+        }
+        catch (SIL.Motif.Runner.Execution.ProposalRefusalException refusal)
+        {
+            return refusal.Code;
+        }
+        catch (InvalidOperationException)
+        {
+            return "InvalidOperationException";
+        }
+    }
+
+    /// <summary>One row per (site, verb, member); the settled behaviour is that only a write checks the list, and a remove never does.</summary>
+    [Fact]
+    public void EveryReferenceSiteChecksListMembershipOnWritesAndNeverOnRemoves()
+    {
+        NewListItem(StatusList);
+        var statusItem = CanonicalId.FromGuid(StatusList().PossibilitiesOS[0].Guid).Value;
+        var inList = CanonicalId.FromGuid(UnheldPublication().Guid).Value;
+        var otherList = CanonicalId.FromGuid(NewPartOfSpeech()).Value;
+        var notAPossibility = CanonicalId.FromGuid(_entry.Guid).Value;
+        var rows = new List<(string Row, string Actual, string Expected)>
+        {
+            ("stock set, in list", Outcome("lexical/lexSense/setStatus", new { @ref = statusItem }, _sense.Guid), "accepted"),
+            ("stock set, other list", Outcome("lexical/lexSense/setStatus", new { @ref = otherList }, _sense.Guid), "reference.wrong-list"),
+            ("stock set, wrong class", Outcome("lexical/lexSense/setStatus", new { @ref = notAPossibility }, _sense.Guid), "InvalidOperationException"),
+            ("stock add, in list", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = inList }), "accepted"),
+            ("stock add, other list", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = otherList }), "reference.wrong-list"),
+            ("stock add, wrong class", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = notAPossibility }), "InvalidOperationException"),
+            ("stock remove, in list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = inList }), "accepted"),
+            ("stock remove, other list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = otherList }), "accepted"),
+            ("stock remove, wrong class", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = notAPossibility }), "InvalidOperationException"),
+            ("custom set, in list", Outcome("customField/setReference", new { field = "ZedReference", @ref = inList }), "accepted"),
+            ("custom set, other list", Outcome("customField/setReference", new { field = "ZedReference", @ref = otherList }), "custom-field.wrong-list"),
+            ("custom set, wrong class", Outcome("customField/setReference", new { field = "ZedReference", @ref = notAPossibility }), "custom-field.wrong-class"),
+            ("custom add, in list", Outcome("customField/addReference", new { field = "ZedReferences", member = inList }), "accepted"),
+            ("custom add, other list", Outcome("customField/addReference", new { field = "ZedReferences", member = otherList }), "custom-field.wrong-list"),
+            ("custom add, wrong class", Outcome("customField/addReference", new { field = "ZedReferences", member = notAPossibility }), "custom-field.wrong-class"),
+            ("custom remove, in list", Outcome("customField/removeReference", new { field = "ZedReferences", member = inList }), "accepted"),
+            ("custom remove, other list", Outcome("customField/removeReference", new { field = "ZedReferences", member = otherList }), "custom-field.wrong-list"),
+            ("custom remove, wrong class", Outcome("customField/removeReference", new { field = "ZedReferences", member = notAPossibility }), "custom-field.wrong-class"),
+        };
+        Assert.Equal(rows.Select(r => r.Row + " => " + r.Expected), rows.Select(r => r.Row + " => " + r.Actual));
+    }
 }
