@@ -185,7 +185,7 @@ public static class ProposalCompareReads
             if (job is null || job.ProjectKey != key || job.Kind != TrialJobHandler.TrialKind || job.Status != JobStatus.Completed)
             {
                 refusal = new Refusal(RefusalCodes.ProposalCompareTrialMissing, FailureReason.Refused,
-                    "A pinned job is not a completed Trial of this project.", new() { ["jobId"] = text ?? "" });
+                    "A pinned job is not a completed Trial of this project.", new Dictionary<string, string> { ["jobId"] = text ?? "" });
                 return pins;
             }
             CanonicalId owner;
@@ -193,14 +193,14 @@ public static class ProposalCompareReads
             catch (Exception exception) when (exception is InvalidDataException or JsonException or FormatException or ArgumentException)
             {
                 refusal = new Refusal(RefusalCodes.ProposalCompareTrialMissing, FailureReason.Refused,
-                    "A pinned Trial does not name a readable Proposal.", new() { ["jobId"] = job.JobId });
+                    "A pinned Trial does not name a readable Proposal.", new Dictionary<string, string> { ["jobId"] = job.JobId });
                 return pins;
             }
             if (!ids.Contains(owner) || !pins.TryAdd(owner, job))
             {
                 refusal = new Refusal(RefusalCodes.ProposalCompareProposalsInvalid, FailureReason.InvalidArgument,
                     "Pin at most one Trial per Proposal, and only a Trial of a Proposal this comparison names.",
-                    new() { ["jobId"] = job.JobId });
+                    new Dictionary<string, string> { ["jobId"] = job.JobId });
                 return pins;
             }
         }
