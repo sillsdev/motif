@@ -121,7 +121,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private bool _isOutdated;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowsPrepareApply), nameof(ShowsDeferredApplyNotice))]
+    [NotifyPropertyChangedFor(nameof(ShowsPrepareApply), nameof(ShowsDeferredApplyNotice), nameof(ShowsBringBack))]
     private bool _isConfirmingApply;
     private object? _diagnosticsContent;
     public object? DiagnosticsContent
@@ -273,6 +273,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(IsDeferred));
         OnPropertyChanged(nameof(ShowsDeferredApplyNotice));
+        RaiseBringBack();
         OnPropertyChanged(nameof(IsPending));
         OnPropertyChanged(nameof(CanAddComment));
         OnPropertyChanged(nameof(ShowsPrepareApply));
@@ -287,6 +288,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(IsDeferred));
         OnPropertyChanged(nameof(ShowsDeferredApplyNotice));
+        RaiseBringBack();
         OnPropertyChanged(nameof(CanAddComment));
         OnPropertyChanged(nameof(ShowsPrepareApply));
         AddCommentCommand.NotifyCanExecuteChanged();

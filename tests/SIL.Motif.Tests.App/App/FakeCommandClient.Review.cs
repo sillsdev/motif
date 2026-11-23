@@ -96,6 +96,21 @@ public sealed partial class FakeCommandClient
         return Completed(new ProposalStatusChangedResponse(request.ProposalId, "deferred", null));
     }
 
+    public List<UndeferRequest> UndeferProposalRequests { get; } = [];
+
+    /// <summary>What an undefer answers; null brings the Proposal back to Waiting as the store would.</summary>
+    public Refusal? UndeferRefusal { get; set; }
+
+    public Task<CommandOutcome<ProposalStatusChangedResponse>> UndeferProposalAsync(
+        UndeferRequest request, CancellationToken cancellationToken)
+    {
+        UndeferProposalRequests.Add(request);
+        if (UndeferRefusal is { } refusal)
+            return Task.FromResult(CommandOutcome<ProposalStatusChangedResponse>.Refused(refusal));
+        if (ProposalDetail is { } stored) ProposalDetail = stored with { Status = "proposed" };
+        return Completed(new ProposalStatusChangedResponse(request.ProposalId, "proposed", null));
+    }
+
     public List<ProposalReviewRequest> ProposalReviewRequests { get; } = [];
     public List<ProposalReviewRequest> ProposalReviewEntryCountRequests { get; } = [];
     public List<ReviewMarkRequest> ReviewMarkRequests { get; } = [];

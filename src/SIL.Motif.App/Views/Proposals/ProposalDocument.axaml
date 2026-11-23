@@ -11,6 +11,10 @@
   <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
     <views:CopyableTextBlock Classes="displayTitle" Text="{Binding Label}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding StatusText}" IsVisible="{Binding ShowsLifecycleStatus}" TextWrapping="Wrap" />
+    <Button Classes="secondary" Content="{x:Static app:MotifAppStrings.ProposalBringBack}" Command="{Binding BringBackCommand}"
+            AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalBringBack}"
+            IsVisible="{Binding ShowsBringBack}" HorizontalAlignment="Left" />
+    <views:RefusalBlock DataContext="{Binding BringBackRefusal}" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding Card.BuiltByText}" IsVisible="{Binding Card.HasBuilder}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding Card.ModelText}" IsVisible="{Binding Card.HasModel}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding Card.QuestionText}" IsVisible="{Binding Card.HasQuestion}" TextWrapping="Wrap" />

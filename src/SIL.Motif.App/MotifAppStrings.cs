@@ -2568,6 +2568,9 @@ public static class MotifAppStrings
     public static string RefusalProposalClosed => Text("MotifApp.RefusalProposalClosed");
 
     public static string RefusalProposalNotFound => Text("MotifApp.RefusalProposalNotFound");
+    public static string RefusalProposalInvalidStatus => Text("MotifApp.RefusalProposalInvalidStatus");
+    public static string RefusalProposalInconsistent => Text("MotifApp.RefusalProposalInconsistent");
+    public static string RefusalProposalInvalidId => Text("MotifApp.RefusalProposalInvalidId");
 
     public static string CommentPlainText => Text("MotifApp.CommentPlainText");
     public static string CommentDelete => Text("MotifApp.CommentDelete");
@@ -3995,6 +3998,7 @@ public static class MotifAppStrings
     public static string ProposalEvidenceCompleteCount => Text("MotifApp.ProposalEvidenceCompleteCount");
     public static string ProposalDraft => Text("MotifApp.ProposalDraft");
     public static string ProposalWaiting => Text("MotifApp.ProposalWaiting");
+    public static string ProposalBringBack => Text("MotifApp.ProposalBringBack");
     public static string ProposalDeferred => Text("MotifApp.ProposalDeferred");
     public static string ProposalDeclined => Text("MotifApp.ProposalDeclined");
     public static string ProposalSuperseded => Text("MotifApp.ProposalSuperseded");

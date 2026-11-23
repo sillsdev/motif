@@ -94,7 +94,11 @@ public sealed partial class ProposalsPageModel
 
     private void UnwatchDocuments()
     {
-        foreach (var document in _watchedDocuments) document.PropertyChanged -= OnDocumentChanged;
+        foreach (var document in _watchedDocuments)
+        {
+            document.PropertyChanged -= OnDocumentChanged;
+            document.BroughtBackToWaiting -= OnBroughtBackToWaiting;
+        }
         _watchedDocuments.Clear();
     }
 
@@ -103,7 +107,11 @@ public sealed partial class ProposalsPageModel
         if (card is null || Context.ProjectPath is null) return;
         var document = Documents.Open(card.ProposalId);
         document.Card = card;
-        if (_watchedDocuments.Add(document)) document.PropertyChanged += OnDocumentChanged;
+        if (_watchedDocuments.Add(document))
+        {
+            document.PropertyChanged += OnDocumentChanged;
+            document.BroughtBackToWaiting += OnBroughtBackToWaiting;
+        }
         NotifyDocument();
         DetailReading = ReadDocumentAsync(document, _rereading);
     }
@@ -125,6 +133,14 @@ public sealed partial class ProposalsPageModel
             nameof(OperationDescriptions), nameof(DetailRefusal), nameof(ReviewProgress), nameof(CanAddComment),
             nameof(Difference), nameof(Pictures), nameof(Parsimony) }) OnPropertyChanged(name);
         AddCommentCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>The list reload that follows a Proposal coming back to Waiting from its own page.</summary>
+    public Task ListReloading { get; private set; } = Task.CompletedTask;
+
+    private void OnBroughtBackToWaiting()
+    {
+        if (Context.ProjectPath is { } path) ListReloading = LoadAsync(path, CancellationToken.None);
     }
 
     private void OnDocumentChanged(object? sender, PropertyChangedEventArgs e)
@@ -149,6 +165,7 @@ public sealed partial class ProposalsPageModel
         if (document is null || !await Documents.CloseAsync(document).ConfigureAwait(true)) return;
         ComparisonContent = null;
         document.PropertyChanged -= OnDocumentChanged;
+        document.BroughtBackToWaiting -= OnBroughtBackToWaiting;
         _watchedDocuments.Remove(document);
         if (SelectedDocument is { } selected) SelectDocument(selected);
         else SetSelectedProposal(null);

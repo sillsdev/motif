@@ -4225,6 +4225,9 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Sentence the window shows when the command refuses with code C.ProposalClosed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalNotFound" xml:space="preserve">
+  <data name="MotifApp.RefusalProposalInvalidStatus" xml:space="preserve"><value>This Proposal changed status while you were looking, so it was left as it is. Refresh the list to see where it stands.</value><comment>Sentence the window shows when the command refuses with code C.ProposalInvalidStatus.</comment></data>
+  <data name="MotifApp.RefusalProposalInconsistent" xml:space="preserve"><value>This Proposal could not be read, so nothing was changed.</value><comment>Sentence the window shows when the command refuses with code C.ProposalInconsistent.</comment></data>
+  <data name="MotifApp.RefusalProposalInvalidId" xml:space="preserve"><value>That Proposal's id is not one Motif can read, so nothing was changed.</value><comment>Sentence the window shows when the command refuses with code C.ProposalInvalidId.</comment></data>
     <value>These changes could not be found. Refresh the list and try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProposalNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
@@ -7452,6 +7455,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalEvidenceCompleteCount" xml:space="preserve"><value>Words in This Text: {0}</value></data>
   <data name="MotifApp.ProposalDraft" xml:space="preserve"><value>Draft</value></data>
   <data name="MotifApp.ProposalWaiting" xml:space="preserve"><value>Waiting</value></data>
+  <data name="MotifApp.ProposalBringBack" xml:space="preserve"><value>Bring Back to Waiting</value><comment>Returns a Deferred Proposal to the Waiting list.</comment></data>
   <data name="MotifApp.ProposalDeferred" xml:space="preserve"><value>Deferred</value></data>
   <data name="MotifApp.ProposalDeclined" xml:space="preserve"><value>Declined</value></data>
   <data name="MotifApp.ProposalSuperseded" xml:space="preserve"><value>Superseded</value></data>

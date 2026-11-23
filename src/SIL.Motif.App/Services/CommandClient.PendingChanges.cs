@@ -35,6 +35,10 @@ public sealed partial class CommandClient
         DeferRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => ProposalCommands.Defer(request), cancellationToken);
 
+    public Task<CommandOutcome<ProposalStatusChangedResponse>> UndeferProposalAsync(
+        UndeferRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalCommands.Undefer(request), cancellationToken);
+
     public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken) =>
         // An already-cancelled token never starts the workflow.
