@@ -7705,6 +7705,12 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.GuideExamplesHeading" xml:space="preserve"><value>Examples from Your Texts</value></data>
   <data name="MotifApp.GuideStaleNotice" xml:space="preserve"><value>The project has been saved since this section was read. Your typing is safe.</value></data>
   <data name="MotifApp.GuideQueriesHeading" xml:space="preserve"><value>Grouping Commands</value></data>
+  <data name="MotifApp.RefusalQueryAsOfUnavailable" xml:space="preserve"><value>This query cannot be read for that Proposal. Run a Trial on it, or check that the project has a saved Baseline, then run the query again.</value></data>
+  <data name="MotifApp.RefusalQueryInvalid" xml:space="preserve"><value>The query is not valid. Check its filters and its sort, then run it again.</value></data>
+  <data name="MotifApp.RefusalQueryNoTrialRows" xml:space="preserve"><value>There is no Trial evidence to read yet. Run a Trial, then run the query again.</value></data>
+  <data name="MotifApp.RefusalGuideQueryRunInvalid" xml:space="preserve"><value>This query cannot be run from the window. Edit its run line to one read-only query line.</value></data>
+  <data name="MotifApp.RefusalGuideQueryRunNotReadOnly" xml:space="preserve"><value>This query would change something, and a query shown here may only read. Edit its run line to a read-only query.</value></data>
+  <data name="MotifApp.ProposalQuerySaveUnsupported" xml:space="preserve"><value>This Proposal's text cannot hold a query block yet, so the query cannot be saved here. Run it to see the table.</value></data>
   <data name="MotifApp.GuideQueryRun" xml:space="preserve"><value>Run</value></data>
   <data name="MotifApp.GuideQueryEdit" xml:space="preserve"><value>Edit Query</value></data>
   <data name="MotifApp.GuideQuerySave" xml:space="preserve"><value>Save Query</value></data>

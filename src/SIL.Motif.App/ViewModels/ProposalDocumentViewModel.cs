@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.GuideQueries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
@@ -41,6 +42,11 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             context.OpenWord, context.Commands.ProduceProposalDifferenceAsync,
             DifferenceTexts);
         Evidence = new ProposalEvidenceColumnsViewModel(Difference, context.TextStyles);
+        Queries = new GuideQueryTablesViewModel(new GuideQueryContext(proposalId), () => context.ProjectPath,
+            (request, token) => context.Commands.RunGuideQueryAsync(request, token), word => context.OpenWord(word))
+        {
+            SaveBody = (_, _) => Task.FromResult<string?>(MotifAppStrings.ProposalQuerySaveUnsupported),
+        };
         Parsimony = new ProposalParsimonyViewModel(context.Commands.ReadProposalParsimonyStatusAsync,
             parsimonyDelay, context.Commands.ReadParsimonyReportAsync, context.Commands.ReadParsimonyViewAsync);
         Pictures = new ProposalPicturesViewModel(context.Commands.ShowProposalPicturesAsync,
@@ -90,6 +96,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         };
     public ProposalDifferenceViewModel Difference { get; }
     public ProposalEvidenceColumnsViewModel Evidence { get; }
+    /// <summary>The query tables of the Proposal's Rationale: each <c>motif-query</c> run at the Baseline and at the Proposal.</summary>
+    public GuideQueryTablesViewModel Queries { get; }
     public ProposalParsimonyViewModel Parsimony { get; }
     public ProposalPicturesViewModel Pictures { get; }
     public Task Reading { get; private set; } = Task.CompletedTask;
@@ -393,6 +401,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             else RationaleEditor = new RationaleEditorModel(_context, detail);
             ReconcileComments(detail);
             FreezeEditorsIfClosed();
+            ShowQueries(detail);
             var review = await _context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(ProjectPath,
                 ProposalId), cancellation.Token).ConfigureAwait(true);
             if (!Current(generation) || cancellation.IsCancellationRequested) return;

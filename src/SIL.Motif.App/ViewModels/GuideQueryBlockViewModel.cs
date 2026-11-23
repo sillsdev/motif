@@ -177,7 +177,7 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
             if (generation != _generation || cancellation.IsCancellationRequested) return;
             if (!outcome.Succeeded || outcome.Value is not { } response)
             {
-                Fail(outcome.Refusal?.Message ?? MotifAppStrings.GuideQueryNoAnswer);
+                Fail(outcome.Refusal is { } refused ? WindowRefusal.From(refused, refused.Message).Sentence : MotifAppStrings.GuideQueryNoAnswer);
                 return;
             }
             var (run, unreadable) = GuideQueryRun.From(response);
