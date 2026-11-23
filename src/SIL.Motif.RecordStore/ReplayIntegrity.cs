@@ -6,8 +6,11 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace SIL.Motif.RecordStore;
 
 /// <summary>Order-independent digest of every history row plus the commit identities it covers.</summary>
-internal sealed record ReplayState(SetDigest Digest, IReadOnlySet<Guid> Commits)
+internal sealed record ReplayState(SetDigest CommitRows, SetDigest ChangeRows, IReadOnlySet<Guid> Commits)
 {
+    /// <summary>The digest over both tables; the two halves are kept so a failed check can name the table.</summary>
+    public SetDigest Digest => CommitRows.Combine(ChangeRows);
+
     public string Final() => Digest.Final("replay");
 }
 
@@ -29,13 +32,18 @@ internal static class ReplayIntegrity
         var width = workers ?? ParallelWork.DefaultWorkers;
         var commits = await Rows(database, "Commits", "", null, width, batchRows, ct, batchStarted);
         var changes = await Rows(database, "ChangeEntities", "", null, width, batchRows, ct, batchStarted);
-        return new(commits.Digest.Combine(changes.Digest), commits.Ids.ToHashSet());
+        return new(commits.Digest, changes.Digest, commits.Ids.ToHashSet());
     }
+
+    /// <summary>The identities of every commit row, in one cheap read of the identity column.</summary>
+    public static async Task<HashSet<Guid>> CommitIdsAsync(RecordDatabase database) =>
+        (await Rows(database, "Commits", "", null, 1, DefaultBatchRows, default, null, identitiesOnly: true)).Ids.ToHashSet();
 
     /// <summary>Adds the rows of the one commit this handle just wrote; any other unseen commit is refused.</summary>
     public static async Task<ReplayState> ExtendAsync(RecordDatabase database, ReplayState prior, Guid written)
     {
-        var digest = prior.Digest;
+        var commitRows = prior.CommitRows;
+        var changeRows = prior.ChangeRows;
         var commits = new HashSet<Guid>(prior.Commits);
         var existing = await Rows(database, "Commits", "", null, 1, DefaultBatchRows, default, null, identitiesOnly: true);
         var added = existing.Ids.Where(id => !commits.Contains(id)).ToList();
@@ -43,11 +51,11 @@ internal static class ReplayIntegrity
             throw new ForeignCommitException("History contains a commit this handle did not write; reopen and verify the store.");
         foreach (var id in added)
         {
-            digest = digest.Combine((await Rows(database, "Commits", "WHERE Id = $id", id, 1, DefaultBatchRows, default, null)).Digest);
-            digest = digest.Combine((await Rows(database, "ChangeEntities", "WHERE CommitId = $id", id, 1, DefaultBatchRows, default, null)).Digest);
+            commitRows = commitRows.Combine((await Rows(database, "Commits", "WHERE Id = $id", id, 1, DefaultBatchRows, default, null)).Digest);
+            changeRows = changeRows.Combine((await Rows(database, "ChangeEntities", "WHERE CommitId = $id", id, 1, DefaultBatchRows, default, null)).Digest);
             commits.Add(id);
         }
-        return new(digest, commits);
+        return new(commitRows, changeRows, commits);
     }
 
     /// <summary>Row encodings summed into a digest, and the commit identities seen.</summary>

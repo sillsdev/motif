@@ -78,6 +78,9 @@ internal sealed class NativeImportWriter(RecordDatabase database, RecordContent 
                 values.Parameters["$data"].Value = value.Data;
                 values.ExecuteNonQuery();
             }
+            if (content.PersistIdentities)
+                content.WriteIdentities((SqliteConnection)database.Database.GetDbConnection(),
+                    (SqliteTransaction)database.Database.CurrentTransaction!.GetDbTransaction());
             content.Saved();
             BatchWritten?.Invoke(database.Database.GetDbConnection().DataSource);
         }
