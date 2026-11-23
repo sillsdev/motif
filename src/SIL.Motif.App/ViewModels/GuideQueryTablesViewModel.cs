@@ -36,6 +36,9 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
     /// <summary>Stages a query's new body in the section's pending changes (query id, body); returns why not, or null.</summary>
     public Func<string, string, Task<string?>>? SaveBody { get; set; }
 
+    /// <summary>What a block says when it cannot be saved here, or null for the Guide's own wording.</summary>
+    public string? SaveUnavailableReason { get; set; }
+
     /// <summary>The blocks of the section shown, in document order.</summary>
     public ObservableCollection<GuideQueryBlockViewModel> Blocks { get; } = [];
 
@@ -67,7 +70,8 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
         var blocks = document.Blocks;
         foreach (var query in blocks.Queries)
             Blocks.Add(new GuideQueryBlockViewModel(query.Id, query.Title, document.BodyOf(query.Span),
-                blocks.Shows.Where(show => show.Query == query.Id).ToArray(), _context, _projectPath, _run, Save, _openWord, query.Sort));
+                blocks.Shows.Where(show => show.Query == query.Id).ToArray(), _context, _projectPath, _run, SaveBody is null ? null : Save, _openWord, query.Sort,
+                SaveUnavailableReason));
         ProblemsText = string.Join("\n", blocks.Diagnostics.Select(item =>
             string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GuideQueryProblemFormat, item.Line, item.Message)));
         HasBlocks = Blocks.Count > 0;

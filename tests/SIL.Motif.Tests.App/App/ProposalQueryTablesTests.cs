@@ -137,7 +137,7 @@ public sealed class ProposalQueryTablesTests
     }
 
     [Fact]
-    public async Task EditingAndRunningAProposalQueryWorksButSavingSaysTheProposalCannotHoldItYet()
+    public async Task EditingAndRunningAProposalQueryWorksAndSaveIsHiddenWithTheReasonGiven()
     {
         var fake = Fake(BothAnswer);
         await using var opened = await ProposalEntryContextTests.Open(fake);
@@ -148,9 +148,10 @@ public sealed class ProposalQueryTablesTests
         block.DraftText = block.DraftText.Replace("alternate", "lexeme", StringComparison.Ordinal);
         await block.RunCommand.ExecuteAsync(null);
         Assert.Contains("kind=lexeme", fake.GuideQueryRequests[^1].Line);
-        await block.SaveCommand.ExecuteAsync(null);
 
-        Assert.Contains(MotifAppStrings.ProposalQuerySaveUnsupported, block.Notice);
+        Assert.False(block.OffersSave);
+        Assert.False(block.ShowsSave);
+        Assert.Equal(MotifAppStrings.ProposalQuerySaveUnsupported, block.SaveReason);
         Assert.Empty(fake.SetRationaleRequests);
     }
 

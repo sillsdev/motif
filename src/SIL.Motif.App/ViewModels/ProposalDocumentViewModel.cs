@@ -45,7 +45,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         Queries = new GuideQueryTablesViewModel(new GuideQueryContext(proposalId), () => context.ProjectPath,
             (request, token) => context.Commands.RunGuideQueryAsync(request, token), word => context.OpenWord(word))
         {
-            SaveBody = (_, _) => Task.FromResult<string?>(MotifAppStrings.ProposalQuerySaveUnsupported),
+            SaveUnavailableReason = MotifAppStrings.ProposalQuerySaveUnsupported,
         };
         Parsimony = new ProposalParsimonyViewModel(context.Commands.ReadProposalParsimonyStatusAsync,
             parsimonyDelay, context.Commands.ReadParsimonyReportAsync, context.Commands.ReadParsimonyViewAsync);
