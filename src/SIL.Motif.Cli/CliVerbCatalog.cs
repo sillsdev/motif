@@ -580,12 +580,13 @@ public static class CliVerbCatalog
             "Trace", "forms", "forms explain",
             new[]
             {
-                "forms explain <root> --project <fwdata> [--with <morpheme> ...] [--at <baseline|proposal-id>] [--json|--md] OR " +
-                "motif forms explain --word <form> --project <fwdata> [--at <baseline|proposal-id>] [--json|--md]",
+                "forms explain <root> --project <fwdata> [--with <morpheme> ...] [--at <baseline|proposal-id>] [--timeout-ms <n>] [--max-work <n>] [--json|--md] OR " +
+                "motif forms explain --word <form> --project <fwdata> [--at <baseline|proposal-id>] [--timeout-ms <n>] [--max-work <n>] [--json|--md]",
                 "Every form PanGloss generates for a root, alone or with the listed morphemes: each surface, the allomorphs",
                 "chosen, and the rules that fired in order with the word before and after each. With --word, parses the word and",
                 "explains each analysis from its own morphemes. A root is an entry guid or Motif id, entry:msa, or a form in the",
-                "lexicon. Says when a cap stopped the generation, so a missing form is never read as an impossible one.",
+                "lexicon. Each request has a deadline of 30000 ms (--timeout-ms) and PanGloss's own work cap unless --max-work lowers it.",
+                "Says when a cap stopped the generation, so a missing form is never read as an impossible one.",
             }),
 
         new CliVerbDescriptor(

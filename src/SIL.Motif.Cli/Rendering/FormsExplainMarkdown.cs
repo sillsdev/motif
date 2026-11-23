@@ -21,8 +21,11 @@ internal static class FormsExplainMarkdown
         if (!response.Complete)
         {
             text.AppendLine();
-            text.AppendLine($"> **incomplete: {response.StopReason}.** PanGloss stopped before it finished, so the forms " +
-                "below are only those found first. A form missing here may still be generated; do not read it as impossible.");
+            text.AppendLine(response.StopReason == "context_rejected"
+                ? "> **incomplete: context_rejected.** PanGloss refused at least one context, listed under Not explained, so " +
+                  "its forms are missing below. Do not read a missing form as impossible."
+                : $"> **incomplete: {response.StopReason}.** PanGloss stopped before it finished, so the forms " +
+                  "below are only those found first. A form missing here may still be generated; do not read it as impossible.");
         }
         for (var index = 0; index < response.Contexts.Count; index++)
             Context(text, response.Contexts[index], index + 1, response.Contexts.Count);
@@ -115,7 +118,9 @@ internal static class FormsExplainMarkdown
         text.AppendLine("</details>");
     }
 
-    private static string Shape(FormsExplainAllomorph allomorph) => allomorph.Shape.Length == 0 ? "(empty)" : allomorph.Shape;
+    // An affix is a rule with no allomorph, so it reads by its rule name.
+    private static string Shape(FormsExplainAllomorph allomorph) =>
+        allomorph.Shape is null ? allomorph.RuleName ?? "(unnamed)" : allomorph.Shape.Length == 0 ? "(empty)" : allomorph.Shape;
 
     private static string RuleLabel(FormsExplainRule rule) => rule.Name ?? rule.Id ?? rule.Guid ?? rule.Kind;
 

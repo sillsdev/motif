@@ -44,7 +44,7 @@ internal static class FormsExplainProjection
                         : [];
                     surfaces.Add(new FormsExplainSurface(
                         Text(surface, "surface") ?? throw new FormatException("a surface has no text"), key, allomorphs,
-                        surface.TryGetProperty("derivations", out var count) && count.TryGetInt32(out var derivations) ? derivations : 1,
+                        surface.TryGetProperty("derivations", out var count) && count.ValueKind == JsonValueKind.Number && count.TryGetInt32(out var derivations) ? derivations : 1,
                         steps, unresolved, alternatives, truncated));
                 }
             }
@@ -64,9 +64,17 @@ internal static class FormsExplainProjection
         element.TryGetProperty(name, out var list) && list.ValueKind == JsonValueKind.Array
             ? list.EnumerateArray().Select(Step).ToArray() : [];
 
-    private static FormsExplainAllomorph Allomorph(JsonElement element) => new(
-        Text(element, "role"), Text(element, "shape") ?? throw new FormatException("an allomorph has no shape"),
-        element.TryGetProperty("allomorphId", out var id) && id.TryGetInt32(out var number) ? number : null,
+    private static FormsExplainAllomorph Allomorph(JsonElement element)
+    {
+        var shape = Text(element, "shape");
+        var ruleName = Text(element, "ruleName");
+        if (shape is null && ruleName is null) throw new FormatException("an allomorph has neither a shape nor a rule name");
+        return Build(element, shape, ruleName);
+    }
+
+    private static FormsExplainAllomorph Build(JsonElement element, string? shape, string? ruleName) => new(
+        Text(element, "role"), shape, ruleName,
+        element.TryGetProperty("allomorphId", out var id) && id.ValueKind == JsonValueKind.Number && id.TryGetInt32(out var number) ? number : null,
         Text(element, "entryGuid"), Text(element, "msaGuid"), Text(element, "formGuid"));
 
     private static FormsExplainStep Step(JsonElement element)
@@ -76,7 +84,7 @@ internal static class FormsExplainProjection
             Text(element, "stratum") ?? throw new FormatException("a step has no stratum"),
             new FormsExplainRule(Text(rule, "kind") ?? throw new FormatException("a rule has no kind"),
                 Text(rule, "name"), Text(rule, "id"), Text(rule, "guid")),
-            element.TryGetProperty("subrule", out var sub) && sub.TryGetInt32(out var subrule) ? subrule : null,
+            element.TryGetProperty("subrule", out var sub) && sub.ValueKind == JsonValueKind.Number && sub.TryGetInt32(out var subrule) ? subrule : null,
             Text(element, "input") ?? throw new FormatException("a step has no input"),
             Text(element, "output") ?? throw new FormatException("a step has no output"));
     }

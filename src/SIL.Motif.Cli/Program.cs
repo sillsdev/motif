@@ -3026,14 +3026,21 @@ try
         case "forms":
         {
             var wordFlag = flags.GetValueOrDefault("word");
-            var allowed = new[] { "project", "with", "word", "at", "json", "md" };
+            var allowed = new[] { "project", "with", "word", "at", "json", "md", "timeout-ms", "max-work" };
             if (!flags.TryGetValue("project", out var formsProject) || positionals.FirstOrDefault() != "explain" ||
                 flags.Keys.Any(flag => !allowed.Contains(flag)) || flags.ContainsKey("json") && flags.ContainsKey("md") ||
                 wordFlag == "true" || flags.GetValueOrDefault("with") == "true" ||
                 positionals.Count != (wordFlag is null ? 2 : 1))
                 return Usage("Usage: motif " + UsageLineFor("forms explain"), asJson);
+            var timeoutText = flags.GetValueOrDefault("timeout-ms");
+            var workText = flags.GetValueOrDefault("max-work");
+            if (timeoutText is not null && !int.TryParse(timeoutText, NumberStyles.None, CultureInfo.InvariantCulture, out _) ||
+                workText is not null && !long.TryParse(workText, NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                return Usage("Usage: motif " + UsageLineFor("forms explain"), asJson);
+            int? formsTimeout = timeoutText is null ? null : int.Parse(timeoutText, CultureInfo.InvariantCulture);
+            long? formsMaxWork = workText is null ? null : long.Parse(workText, CultureInfo.InvariantCulture);
             var formsRequest = new FormsExplainRequest(formsProject, wordFlag is null ? positionals[1] : null,
-                ReadRepeatedFlagValues(flags, "with"), wordFlag, flags.GetValueOrDefault("at"));
+                ReadRepeatedFlagValues(flags, "with"), wordFlag, flags.GetValueOrDefault("at"), formsTimeout, formsMaxWork);
             result = RunWithConsoleCancellation(token => RenderCommand(FormsExplainQuery.Explain(formsRequest, token)));
             break;
         }

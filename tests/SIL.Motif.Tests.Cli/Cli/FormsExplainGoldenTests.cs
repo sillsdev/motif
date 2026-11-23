@@ -2,50 +2,60 @@ using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// The JSON and Markdown of <c>forms explain</c> are pinned against a synthetic generate answer shaped like PanGloss's
-/// serve result (no grammar data), so a change to either prints a diff to review.
+/// The JSON and Markdown of <c>forms explain</c> are pinned against replies recorded from a real <c>pangloss serve</c>
+/// <c>generate</c> on a public conformance fixture, so a change to either prints a diff to review. Only the surface
+/// with several derivations is synthetic: the recorded fixture never reaches one.
 /// </summary>
 public sealed class FormsExplainGoldenTests
 {
-    private const string Root = "11111111-1111-1111-1111-111111111111";
-    private const string RootMsa = "22222222-2222-2222-2222-222222222222";
-    private const string Affix = "33333333-3333-3333-3333-333333333333";
-    private const string AffixMsa = "44444444-4444-4444-4444-444444444444";
+    private static readonly ResolvedMorpheme Root = new(RecordedGenerate.RootGuid, RecordedGenerate.RootMsa, "MoStemMsa", "ranna");
+    private static readonly ResolvedMorpheme Affix = new(RecordedGenerate.AffixGuid, RecordedGenerate.AffixMsa, "MoInflAffMsa", "-s");
 
-    private static string Answer(bool complete) => $$"""
-        {"id":"1","type":"result","op":"generate","complete":{{(complete ? "true" : "false")}},"stopReason":{{(complete ? "null" : "\"trace_limit\"")}},
-         "seeds":[
-          {"seedKey":"r2/p0","allomorphs":[{"allomorphId":2,"entryGuid":"{{Root}}","msaGuid":"{{RootMsa}}","role":"root","shape":"kaun"},
-                                          {"allomorphId":7,"entryGuid":"{{Affix}}","msaGuid":"{{AffixMsa}}","role":"suffix","shape":"an"}],
-           "surfaces":[{"surface":"kaonan","derivations":1,"steps":[
-              {"stratum":"phonology","rule":{"kind":"phonological","id":"R1","name":"Vowel lowering","guid":"55555555-5555-5555-5555-555555555555"},"subrule":1,"input":"kaun+an","output":"kaon+an"},
-              {"stratum":"phonology","rule":{"kind":"phonological","name":"Boundary | deletion"},"input":"kaon+an","output":"kaonan"}]},
-              {"surface":"kaonon","derivations":2,"steps":[],"stepsUnresolved":true,"alternatives":[]},
-              {"surface":"kaonun","derivations":2,"steps":[],"stepsUnresolved":false,"alternatives":[
-                [{"stratum":"phonology","rule":{"kind":"phonological","name":"Raising"},"input":"kaun+an","output":"kaonun"}],
-                [{"stratum":"phonology","rule":{"kind":"phonological","name":"Fusion"},"input":"kaun+an","output":"kaonun"}]]}],"traceTruncated":{{(complete ? "false" : "true")}}}]}
+    private const string Derivations = """
+        {"complete":true,"stopReason":null,"seeds":[{"seedKey":"r0/p0","allomorphs":[
+          {"allomorphId":1,"entryGuid":"00000000-0000-0000-0000-000000000040","formGuid":"00000000-0000-0000-0000-000000000041","msaGuid":"00000000-0000-0000-0000-000000000042","role":"root","ruleName":null,"shape":"ranna"},
+          {"allomorphId":null,"entryGuid":"00000000-0000-0000-0000-000000000050","formGuid":null,"msaGuid":"00000000-0000-0000-0000-000000000052","role":"rule","ruleName":"-s","shape":null}],
+         "surfaces":[
+          {"surface":"rannas","derivations":2,"steps":[],"stepsUnresolved":true,"alternatives":[]},
+          {"surface":"ranns","derivations":2,"steps":[],"stepsUnresolved":false,"alternatives":[
+            [{"stratum":"Phonology","rule":{"kind":"phonological","name":"Raising"},"input":"ranna+s","output":"ranns"}],
+            [{"stratum":"Phonology","rule":{"kind":"phonological","name":"Fusion"},"input":"ranna+s","output":"ranns"}]]}],
+         "traceTruncated":false}]}
         """;
 
-    private sealed class Fixed(string json) : IFormsGenerator
+    private sealed class Replies(Func<ServeGenerateRequest, WarmGenerateResult> answer) : IFormsGenerator
     {
         public string ParserVersion => "0.28.0";
 
         public Task<WarmGenerateResult> GenerateAsync(ServeGenerateRequest request, CancellationToken cancellationToken) =>
-            Task.FromResult<WarmGenerateResult>(new WarmGenerateResult.Completed(json));
+            Task.FromResult(answer(request));
     }
 
-    private static FormsExplainResponse Explain(bool complete)
+    private static WarmGenerateResult Completed(string json) => new WarmGenerateResult.Completed(json);
+
+    private static FormsExplainResponse Run(FormsExplainQuery.ResolvedPlan plan, Func<ServeGenerateRequest, WarmGenerateResult> answer) =>
+        Succeeded(FormsExplainQuery.Run(new Replies(answer), plan, "sha256:0123", "baseline", default));
+
+    private static FormsExplainResponse Succeeded(SIL.Motif.Contract.Commands.CommandOutcome<FormsExplainResponse> outcome)
     {
-        ResolvedMorpheme root = new(Root, RootMsa, "MoStemMsa", "kaon");
-        ResolvedMorpheme affix = new(Affix, AffixMsa, "MoInflAffMsa", "-an");
-        var plan = new FormsExplainQuery.ResolvedPlan("kaon", null, new ExplicitContextPlanner([affix]).Plan(root), []);
-        return FormsExplainQuery.Run(new Fixed(Answer(complete)), plan, "sha256:0123", "baseline", default).Value!;
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        return outcome.Value!;
     }
+
+    private static FormsExplainQuery.ResolvedPlan Explicit() =>
+        new("ranna", null, new ExplicitContextPlanner([Affix]).Plan(Root), []);
+
+    private static FormsExplainQuery.ResolvedPlan Word() =>
+        new(null, "rannas", [new FormsContextPlan([Root]), new FormsContextPlan([Root, Affix])], []);
+
+    private static FormsExplainResponse Recorded() =>
+        Run(Explicit(), _ => Completed(RecordedGenerate.RootAffix));
 
     private static void Matches(string golden, string actual)
     {
@@ -54,6 +64,9 @@ public sealed class FormsExplainGoldenTests
         if (Environment.GetEnvironmentVariable("MOTIF_UPDATE_GOLDEN") == "1") File.WriteAllText(path, actual);
         Assert.Equal(File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal), actual);
     }
+
+    private static string Markdown(FormsExplainResponse response) =>
+        FormsExplainMarkdown.Render(response).Replace("\r\n", "\n");
 
     // One "path = value" line per JSON leaf, so the guard reads the golden as text.
     private static void Flatten(System.Text.Json.JsonElement element, string path, List<string> lines)
@@ -75,28 +88,63 @@ public sealed class FormsExplainGoldenTests
     }
 
     [Fact]
-    public void TheCompleteJsonIsPinned()
+    public void TheRecordedRootAndAffixJsonIsPinned()
     {
         var lines = new List<string>();
-        using var document = System.Text.Json.JsonDocument.Parse(ProjectionJson.Serialize(Explain(true)));
+        using var document = System.Text.Json.JsonDocument.Parse(ProjectionJson.Serialize(Recorded()));
         Flatten(document.RootElement, "$", lines);
         Matches("forms-explain.json-leaves.txt", string.Join("\n", lines) + "\n");
     }
 
     [Fact]
-    public void TheCompleteMarkdownIsPinned() =>
-        Matches("forms-explain.md", FormsExplainMarkdown.Render(Explain(true)).Replace("\r\n", "\n"));
+    public void TheRecordedRootAndAffixMarkdownIsPinned() =>
+        Matches("forms-explain.md", Markdown(Recorded()));
 
     [Fact]
-    public void TheIncompleteMarkdownIsPinnedAndCarriesTheBanner()
-    {
-        var text = FormsExplainMarkdown.Render(Explain(false)).Replace("\r\n", "\n");
+    public void ARecordedWordExplainsEachAnalysisFromItsOwnMorphemes() =>
+        Matches("forms-explain.word.md", Markdown(Run(Word(), request =>
+            Completed(request.Morphemes.Count == 0 ? RecordedGenerate.RootAlone : RecordedGenerate.RootAffix))));
 
-        Assert.Contains("incomplete: trace_limit", text, StringComparison.Ordinal);
+    [Fact]
+    public void ARecordedDeadlineStopIsPinnedWithTheBanner()
+    {
+        var text = Markdown(Run(Explicit(), _ => Completed(RecordedGenerate.Deadline)));
+
+        Assert.Contains("incomplete: deadline", text, StringComparison.Ordinal);
         Matches("forms-explain.incomplete.md", text);
     }
 
     [Fact]
+    public void ARecordedWorkLimitStopIsPinnedWithTheBanner()
+    {
+        var text = Markdown(Run(Explicit(), _ => Completed(RecordedGenerate.WorkLimit)));
+
+        Assert.Contains("incomplete: work_limit", text, StringComparison.Ordinal);
+        Matches("forms-explain.work-limit.md", text);
+    }
+
+    [Fact]
+    public void ARejectedContextMakesTheWordIncompleteAndIsListed()
+    {
+        var text = Markdown(Run(Word(), request => request.Morphemes.Count == 0
+            ? new WarmGenerateResult.Rejected("unknown_msa", "msa not owned by entry")
+            : Completed(RecordedGenerate.RootAffix)));
+
+        Assert.Contains("incomplete: context_rejected", text, StringComparison.Ordinal);
+        Matches("forms-explain.rejected.md", text);
+    }
+
+    [Fact]
+    public void UnresolvedStepsAndAlternativeDerivationsAreShownNotGuessed()
+    {
+        var text = Markdown(Run(Explicit(), _ => Completed(Derivations)));
+
+        Assert.Contains("rule steps unresolved", text, StringComparison.Ordinal);
+        Assert.Contains("Derivation 2 of 2", text, StringComparison.Ordinal);
+        Matches("forms-explain.derivations.md", text);
+    }
+
+    [Fact]
     public void ACompleteMarkdownHasNoIncompleteBanner() =>
-        Assert.DoesNotContain("incomplete:", FormsExplainMarkdown.Render(Explain(true)), StringComparison.Ordinal);
+        Assert.DoesNotContain("incomplete:", Markdown(Recorded()), StringComparison.Ordinal);
 }

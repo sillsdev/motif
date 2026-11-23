@@ -580,7 +580,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         FakeParser.Behave(Path.GetDirectoryName(grammar)!, new Dictionary<string, object?>
         {
             ["ServeGenerateLog"] = log,
-            ["ServeGenerate"] = System.Text.Json.JsonDocument.Parse("{\"complete\":true,\"stopReason\":null,\"seeds\":[]}").RootElement,
+            ["ServeGenerate"] = System.Text.Json.JsonDocument.Parse(RecordedGenerate.RootAffix).RootElement,
         });
         using var pool = Pool(executable: copy);
 
@@ -589,6 +589,8 @@ public sealed class WarmPanGlossPoolTests : IDisposable
 
         Assert.Contains("\"op\":\"generate\"", answer.Json);
         Assert.Contains("\"complete\":true", answer.Json);
+        Assert.Contains("\"surface\":\"rannas\"", answer.Json);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(answer.Json, "\"op\":").Cast<System.Text.RegularExpressions.Match>());
         var sent = System.Text.Json.JsonDocument.Parse(Assert.Single(File.ReadAllLines(log))).RootElement;
         Assert.Equal("generate", sent.GetProperty("op").GetString());
         Assert.True(sent.GetProperty("trace").GetBoolean());

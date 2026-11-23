@@ -19,8 +19,11 @@ namespace SIL.Motif.Commands.Queries;
 /// <param name="With">Morphemes generated with the root, in request order, named like the root; empty for the root alone.</param>
 /// <param name="Word">A word to parse; each of its analyses is generated from its own morphemes. Null when <paramref name="Morpheme"/> is given.</param>
 /// <param name="At"><c>baseline</c> (the default) for the current published Baseline, or a Proposal id for its latest Trial copy.</param>
+/// <param name="TimeoutMs">The wall-clock deadline for each generate request, 1 through 240000; omitted is 30000. Past it PanGloss stops with <c>deadline</c> and returns what it found.</param>
+/// <param name="MaxWork">Lowers PanGloss's generation work cap for each request; omitted sends none, so PanGloss's own cap applies.</param>
 public sealed record FormsExplainRequest(
-    string ProjectPath, string? Morpheme, IReadOnlyList<string> With, string? Word = null, string? At = null);
+    string ProjectPath, string? Morpheme, IReadOnlyList<string> With, string? Word = null, string? At = null,
+    int? TimeoutMs = null, long? MaxWork = null);
 
 /// <summary>One set of morphemes to generate together.</summary>
 /// <param name="Morphemes">The root first, then the morphemes added to it, in request order.</param>
@@ -74,6 +77,14 @@ public static class FormsExplainQuery
 {
     private const int MaxWordScalars = 256;
 
+    /// <summary>The deadline sent with each generate request when the caller names none.</summary>
+    internal const int DefaultTimeoutMs = 30000;
+
+    private const int MaxTimeoutMs = 240000;
+
+    /// <summary>The stop reason of a result whose planned contexts were not all generated because PanGloss refused one.</summary>
+    internal const string ContextRejected = "context_rejected";
+
     /// <summary>Explains with the located parser.</summary>
     public static CommandOutcome<FormsExplainResponse> Explain(
         FormsExplainRequest request, CancellationToken cancellationToken = default) =>
@@ -125,7 +136,8 @@ public static class FormsExplainQuery
             using var pool = new WarmPanGlossPool(parserPath);
             var generator = new ResidentFormsGenerator(pool, grammarPath, grammarHash,
                 ParserExecutableIdentity.ReadVersion(parserPath));
-            return Run(generator, plan, grammarHash, resolved.Value.TracedAgainst, cancellationToken);
+            return Run(generator, plan, grammarHash, resolved.Value.TracedAgainst, cancellationToken,
+                request.TimeoutMs ?? DefaultTimeoutMs, request.MaxWork);
         });
     }
 
@@ -213,7 +225,8 @@ public static class FormsExplainQuery
 
     /// <summary>Generates every planned context and projects the answers; the seam the tests drive without a project.</summary>
     internal static CommandOutcome<FormsExplainResponse> Run(IFormsGenerator generator, ResolvedPlan plan,
-        string grammarHash, string tracedAgainst, CancellationToken cancellationToken)
+        string grammarHash, string tracedAgainst, CancellationToken cancellationToken,
+        int wordTimeoutMs = DefaultTimeoutMs, long? maxWork = null)
     {
         var contexts = new List<FormsExplainContext>();
         var skipped = new List<FormsExplainSkipped>(plan.Skipped);
@@ -221,7 +234,8 @@ public static class FormsExplainQuery
         foreach (var context in plan.Contexts)
         {
             var request = new ServeGenerateRequest(context.Morphemes[0].ToRequest(),
-                context.Morphemes.Skip(1).Select(morpheme => morpheme.ToRequest()).ToArray());
+                context.Morphemes.Skip(1).Select(morpheme => morpheme.ToRequest()).ToArray(),
+                MaxWork: maxWork, WordTimeoutMs: wordTimeoutMs);
             var answer = generator.GenerateAsync(request, cancellationToken).GetAwaiter().GetResult();
             switch (answer)
             {
@@ -271,10 +285,13 @@ public static class FormsExplainQuery
         }
         if (contexts.Count == 0 && firstRejection is not null)
             return CommandOutcome<FormsExplainResponse>.Refused(firstRejection);
-        var complete = contexts.All(context => context.Complete);
+        // A context PanGloss rejected has no forms in the result, so the result cannot claim to be everything.
+        var anyRejected = firstRejection is not null;
+        var complete = contexts.All(context => context.Complete) && !anyRejected;
         return CommandOutcome<FormsExplainResponse>.Success(new FormsExplainResponse(
             FormsExplainSchema.Id, plan.Morpheme, plan.Word, contexts, complete,
-            contexts.Select(context => context.StopReason).FirstOrDefault(reason => reason is not null),
+            anyRejected ? ContextRejected
+                : contexts.Select(context => context.StopReason).FirstOrDefault(reason => reason is not null),
             grammarHash, generator.ParserVersion, tracedAgainst, skipped.Count == 0 ? null : skipped));
     }
 
@@ -299,6 +316,10 @@ public static class FormsExplainQuery
             return Invalid($"Name at most {FormsMorphemeResolver.MaxMorphemes - 1} morphemes with --with.");
         if (request.With?.Any(string.IsNullOrWhiteSpace) == true)
             return Invalid("A --with morpheme is empty.");
+        if (request.TimeoutMs is { } timeout && timeout is < 1 or > MaxTimeoutMs)
+            return Invalid($"--timeout-ms is 1 through {MaxTimeoutMs} milliseconds.");
+        if (request.MaxWork is < 1)
+            return Invalid("--max-work must be at least 1.");
         if (ProposalOf(request.At) is { } proposal && !CanonicalId.TryParse(proposal, out _))
             return Invalid($"'{request.At}' is neither 'baseline' nor a Proposal id.");
         return null;

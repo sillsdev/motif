@@ -33,14 +33,15 @@ public sealed record FormsExplainRule(string Kind, string? Name, string? Id, str
 public sealed record FormsExplainStep(string Stratum, FormsExplainRule Rule, int? Subrule, string Input, string Output);
 
 /// <summary>One allomorph the generator chose for a morpheme.</summary>
-/// <param name="Role">The morpheme's role in the request, <c>root</c> or an affix kind.</param>
-/// <param name="Shape">The allomorph's written shape.</param>
-/// <param name="AllomorphId">PanGloss's id for the allomorph, or null.</param>
+/// <param name="Role">The morpheme's role in the request: <c>root</c>, <c>nonHead</c> or <c>rule</c> (an affix).</param>
+/// <param name="Shape">The chosen allomorph's written shape; null for an affix, which is a rule with no allomorph.</param>
+/// <param name="RuleName">The affix rule's name, such as <c>-s</c>; null for an entry with an allomorph.</param>
+/// <param name="AllomorphId">PanGloss's id for the allomorph, or null for an affix.</param>
 /// <param name="EntryGuid">The entry's GUID, or null.</param>
 /// <param name="MsaGuid">The analysis's GUID, or null.</param>
 /// <param name="FormGuid">The allomorph's FieldWorks GUID, or null.</param>
 public sealed record FormsExplainAllomorph(
-    string? Role, string Shape, int? AllomorphId, string? EntryGuid, string? MsaGuid, string? FormGuid);
+    string? Role, string? Shape, string? RuleName, int? AllomorphId, string? EntryGuid, string? MsaGuid, string? FormGuid);
 
 /// <summary>One surface form reached by one choice of allomorphs.</summary>
 /// <param name="Surface">The generated word.</param>

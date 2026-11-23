@@ -2,6 +2,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -13,25 +14,26 @@ namespace SIL.Motif.Tests.Commands;
 /// </summary>
 public sealed class FormsExplainQueryTests
 {
-    internal const string RootGuid = "11111111-1111-1111-1111-111111111111";
-    internal const string RootMsa = "22222222-2222-2222-2222-222222222222";
-    internal const string AffixGuid = "33333333-3333-3333-3333-333333333333";
-    internal const string AffixMsa = "44444444-4444-4444-4444-444444444444";
+    private const string RootGuid = RecordedGenerate.RootGuid;
+    private const string RootMsa = RecordedGenerate.RootMsa;
+    private const string AffixGuid = RecordedGenerate.AffixGuid;
+    private const string AffixMsa = RecordedGenerate.AffixMsa;
 
-    private static readonly ResolvedMorpheme Root = new(RootGuid, RootMsa, "MoStemMsa", "kaon");
-    private static readonly ResolvedMorpheme Affix = new(AffixGuid, AffixMsa, "MoInflAffMsa", "-an");
+    private static readonly ResolvedMorpheme Root = new(RootGuid, RootMsa, "MoStemMsa", "ranna");
+    private static readonly ResolvedMorpheme Affix = new(AffixGuid, AffixMsa, "MoInflAffMsa", "-s");
 
-    internal static string Answer(bool complete, string? stop = null) => $$"""
-        {"id":"1","type":"result","op":"generate","complete":{{(complete ? "true" : "false")}},"stopReason":{{(stop is null ? "null" : "\"" + stop + "\"")}},
+    // Two seeds out of visit order and a surface reached by both, with an affix in the real form: a rule, no shape.
+    private static string Answer(bool complete, string? stop = null) => $$"""
+        {"complete":{{(complete ? "true" : "false")}},"stopReason":{{(stop is null ? "null" : "\"" + stop + "\"")}},
          "seeds":[
-          {"seedKey":"r10/p0","allomorphs":[{"allomorphId":10,"entryGuid":"{{RootGuid}}","msaGuid":"{{RootMsa}}","role":"root","shape":"kaon"}],
-           "surfaces":[{"surface":"kaonan","derivations":1,"steps":[]}],"traceTruncated":false},
-          {"seedKey":"r2/p0","allomorphs":[{"allomorphId":2,"entryGuid":"{{RootGuid}}","msaGuid":"{{RootMsa}}","role":"root","shape":"kaun"},
-                                          {"allomorphId":7,"entryGuid":"{{AffixGuid}}","msaGuid":"{{AffixMsa}}","role":"suffix","shape":"an"}],
-           "surfaces":[{"surface":"kaonan","derivations":2,"steps":[
-              {"stratum":"phonology","rule":{"kind":"phonological","id":"R1","name":"Vowel lowering","guid":"55555555-5555-5555-5555-555555555555"},"subrule":1,"input":"kaun+an","output":"kaon+an"},
-              {"stratum":"phonology","rule":{"kind":"phonological","name":"Boundary deletion"},"input":"kaon+an","output":"kaonan"}]},
-              {"surface":"kaonon","derivations":1,"steps":[]}],"traceTruncated":false}]}
+          {"seedKey":"r10/p0","allomorphs":[{"allomorphId":10,"entryGuid":"{{RootGuid}}","msaGuid":"{{RootMsa}}","role":"root","ruleName":null,"shape":"ranna"}],
+           "surfaces":[{"surface":"rannas","derivations":1,"steps":[],"stepsUnresolved":false,"alternatives":[]}],"traceTruncated":false},
+          {"seedKey":"r2/p0","allomorphs":[{"allomorphId":2,"entryGuid":"{{RootGuid}}","msaGuid":"{{RootMsa}}","role":"root","ruleName":null,"shape":"rann"},
+                                          {"allomorphId":null,"entryGuid":"{{AffixGuid}}","msaGuid":"{{AffixMsa}}","formGuid":null,"role":"rule","ruleName":"-s","shape":null}],
+           "surfaces":[{"surface":"rannas","derivations":2,"stepsUnresolved":false,"alternatives":[],"steps":[
+              {"stratum":"phonology","rule":{"kind":"phonological","id":"R1","name":"Vowel lowering","guid":"55555555-5555-5555-5555-555555555555"},"subrule":1,"input":"rann+s","output":"ranns"},
+              {"stratum":"phonology","rule":{"kind":"phonological","name":"Boundary deletion"},"input":"ranns","output":"rannas"}]},
+              {"surface":"rannos","derivations":1,"steps":[],"stepsUnresolved":true,"alternatives":[]}],"traceTruncated":false}]}
         """;
 
     private sealed class Generator(Func<ServeGenerateRequest, WarmGenerateResult> answer, string version = "0.28.0") : IFormsGenerator
@@ -48,7 +50,7 @@ public sealed class FormsExplainQueryTests
     }
 
     private static FormsExplainQuery.ResolvedPlan Plan(params ResolvedMorpheme[] with) =>
-        new("kaon", null, new ExplicitContextPlanner(with).Plan(Root), []);
+        new("ranna", null, new ExplicitContextPlanner(with).Plan(Root), []);
 
     [Fact]
     public void SurfacesComeBackInTextThenNumericSeedOrderWithTheirStepsAndAllomorphs()
@@ -62,11 +64,13 @@ public sealed class FormsExplainQueryTests
         Assert.Null(response.StopReason);
         Assert.Equal("0.28.0", response.PanglossVersion);
         var surfaces = Assert.Single(response.Contexts).Surfaces;
-        Assert.Equal(["kaonan", "kaonan", "kaonon"], surfaces.Select(s => s.Surface));
+        Assert.Equal(["rannas", "rannas", "rannos"], surfaces.Select(s => s.Surface));
         Assert.Equal(["r2/p0", "r10/p0", "r2/p0"], surfaces.Select(s => s.Seed));
         Assert.Equal(["Vowel lowering", "Boundary deletion"], surfaces[0].Steps.Select(s => s.Rule.Name));
         Assert.Equal(1, surfaces[0].Steps[0].Subrule);
-        Assert.Equal(["kaun", "an"], surfaces[0].Allomorphs.Select(a => a.Shape));
+        Assert.Equal(["rann", null], surfaces[0].Allomorphs.Select(a => a.Shape));
+        Assert.Equal("-s", surfaces[0].Allomorphs[1].RuleName);
+        Assert.Equal("rule", surfaces[0].Allomorphs[1].Role);
     }
 
     [Fact]
@@ -176,12 +180,14 @@ public sealed class FormsExplainQueryTests
             ? new WarmGenerateResult.Completed(Answer(true))
             : new WarmGenerateResult.Rejected("unknown_msa", "gone"));
         var other = new ResolvedMorpheme("66666666-6666-6666-6666-666666666666", RootMsa, "MoStemMsa", "tama");
-        var plan = new FormsExplainQuery.ResolvedPlan(null, "kaonan",
+        var plan = new FormsExplainQuery.ResolvedPlan(null, "rannas",
             [new FormsContextPlan([Root]), new FormsContextPlan([other])], []);
 
         var response = FormsExplainQuery.Run(generator, plan, "g", "baseline", default).Value!;
 
         Assert.Single(response.Contexts);
+        Assert.False(response.Complete);
+        Assert.Equal("context_rejected", response.StopReason);
         Assert.Contains("unknown_msa", Assert.Single(response.Skipped!).Reason);
     }
 
@@ -217,5 +223,72 @@ public sealed class FormsExplainQueryTests
         var context = Assert.Single(new ExplicitContextPlanner([Affix]).Plan(Root));
 
         Assert.Equal([Root, Affix], context.Morphemes);
+    }
+
+    [Fact]
+    public void ARecordedAffixContextProjectsTheAffixByItsRuleName()
+    {
+        var generator = new Generator(_ => new WarmGenerateResult.Completed(RecordedGenerate.RootAffix));
+
+        var response = FormsExplainQuery.Run(generator, Plan(Affix), "g", "baseline", default).Value!;
+
+        var surface = Assert.Single(Assert.Single(response.Contexts).Surfaces);
+        Assert.Equal("rannas", surface.Surface);
+        Assert.Equal(("root", "ranna", null), (surface.Allomorphs[0].Role, surface.Allomorphs[0].Shape, surface.Allomorphs[0].RuleName));
+        Assert.Equal(("rule", null, "-s"), (surface.Allomorphs[1].Role, surface.Allomorphs[1].Shape, surface.Allomorphs[1].RuleName));
+        Assert.Null(surface.Allomorphs[1].AllomorphId);
+        Assert.Equal("-s", Assert.Single(surface.Steps).Rule.Name);
+        Assert.True(response.Complete);
+    }
+
+    [Fact]
+    public void ARecordedRootAloneIsCompleteWithNoSurface()
+    {
+        var generator = new Generator(_ => new WarmGenerateResult.Completed(RecordedGenerate.RootAlone));
+
+        var response = FormsExplainQuery.Run(generator, Plan(), "g", "baseline", default).Value!;
+
+        Assert.True(response.Complete);
+        Assert.Empty(Assert.Single(response.Contexts).Surfaces);
+    }
+
+    [Theory]
+    [InlineData("Deadline", "deadline")]
+    [InlineData("WorkLimit", "work_limit")]
+    public void ARecordedStopIsAnIncompleteResultNotARefusal(string recording, string stop)
+    {
+        var json = recording == "Deadline" ? RecordedGenerate.Deadline : RecordedGenerate.WorkLimit;
+        var generator = new Generator(_ => new WarmGenerateResult.Completed(json));
+
+        var outcome = FormsExplainQuery.Run(generator, Plan(Affix), "g", "baseline", default);
+
+        Assert.True(outcome.Succeeded);
+        Assert.False(outcome.Value!.Complete);
+        Assert.Equal(stop, outcome.Value.StopReason);
+    }
+
+    [Fact]
+    public void EveryRequestCarriesTheDeadlineAndOnlyTheWorkCapTheCallerGave()
+    {
+        var generator = new Generator(_ => new WarmGenerateResult.Completed(RecordedGenerate.RootAlone));
+
+        FormsExplainQuery.Run(generator, Plan(), "g", "baseline", default);
+        FormsExplainQuery.Run(generator, Plan(), "g", "baseline", default, 1500, 99);
+
+        Assert.Equal((30000L, (long?)null), (generator.Requests[0].WordTimeoutMs!.Value, generator.Requests[0].MaxWork));
+        Assert.Equal((1500L, (long?)99), (generator.Requests[1].WordTimeoutMs!.Value, generator.Requests[1].MaxWork));
+        Assert.Contains("\"wordTimeoutMs\":30000", generator.Requests[0].ToLine("1"));
+        Assert.DoesNotContain("maxWork", generator.Requests[0].ToLine("1"));
+    }
+
+    [Theory]
+    [InlineData(0, null)]
+    [InlineData(240001, null)]
+    [InlineData(null, 0L)]
+    public void ADeadlineOrWorkCapOutOfRangeIsARequestRefusal(int? timeout, long? work)
+    {
+        var refusal = FormsExplainQuery.Explain(new FormsExplainRequest("p", "ranna", [], null, null, timeout, work), "pangloss").Refusal!;
+
+        Assert.Equal(RefusalCodes.FormsExplainRequestInvalid, refusal.Code);
     }
 }

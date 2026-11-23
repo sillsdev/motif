@@ -678,7 +678,7 @@ internal static class Program
         var fields = new Dictionary<string, JsonElement>();
         foreach (var property in answer.EnumerateObject()) fields[property.Name] = property.Value;
         var text = new StringBuilder("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"op\":\"generate\"");
-        foreach (var (name, value) in fields) text.Append(',').Append(JsonSerializer.Serialize(name)).Append(':').Append(value.GetRawText());
+        foreach (var (name, value) in fields.Where(field => field.Key is not ("id" or "type" or "op"))) text.Append(',').Append(JsonSerializer.Serialize(name)).Append(':').Append(value.GetRawText());
         return text.Append('}').ToString();
     }
 
