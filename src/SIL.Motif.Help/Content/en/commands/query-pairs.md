@@ -1,6 +1,6 @@
 # Query pairs
 
-`motif query --corpus <words.tsv|folder> pairs --differ suffix|prefix` finds pairs of words of a plain word list that differ only by an affix: a base and base+X (suffix) or X+base (prefix). It needs no project, Trial or parse, and changes nothing.
+`motif query pairs --corpus <words.tsv|folder> --differ suffix|prefix` (or `motif query --corpus <words.tsv|folder> pairs --differ suffix|prefix`) finds pairs of words of a plain word list that differ only by an affix: a base and base+X (suffix) or X+base (prefix). It needs no project, Trial or parse, and changes nothing.
 
 ```powershell
 motif query --corpus words.tsv pairs --differ suffix

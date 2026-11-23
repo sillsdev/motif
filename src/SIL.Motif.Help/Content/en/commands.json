@@ -2747,7 +2747,7 @@
     "source": "Hand-written from the query contract."
   },
   "query pairs": {
-    "title": "Find affix pairs in a word list",
+    "title": "Find affix pairs in words",
     "description": "Reads a plain word list (a TSV of form and count, or a folder of text files) with no project and finds pairs of words that differ only by a suffix or prefix, with the bases, tokens and examples of each differing part and the parts each base takes. Optional regular expression on the differing part, bases having all of several parts, bounded and deterministic.",
     "source": "Hand-written from the corpus query contract."
   },

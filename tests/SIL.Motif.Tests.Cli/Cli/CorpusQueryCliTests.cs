@@ -79,7 +79,8 @@ public sealed class CorpusQueryCliTests : IDisposable
     public void ABadInvocationPrintsUsage_AnUnreadableCorpusAndABadPatternAreRefused()
     {
         Assert.Equal(1, Run("query", "--corpus", Words(), "pairs").Code);
-        Assert.Contains("query --corpus", Run("query", "--corpus", Words(), "pairs").Error);
+        Assert.Contains("query pairs --corpus", Run("query", "--corpus", Words(), "pairs").Error);
+        Assert.Equal(0, Run("query", "pairs", "--corpus", Words(), "--differ", "suffix").Code);
         Assert.Equal(1, Run("query", "--corpus", Words(), "forms", "--differ", "suffix").Code);
         var missing = Run("query", "--corpus", Path.Combine(_folder, "nope.tsv"), "pairs", "--differ", "suffix", "--json");
         Assert.Equal(1, missing.Code);
