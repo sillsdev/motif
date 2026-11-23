@@ -40,7 +40,7 @@ public sealed class ProposalAppliedRecordTests
             line => Assert.Equal("palit sense 2: Gloss (fr): (empty) → acheter", line));
         Assert.True(document.HasAppliedEvidence);
         Assert.Equal("CEB approved words · " + 1718.ToString("N0") + " words · " + 52000.ToString("N0") +
-            " places in the Text · 31 improved · 4 could be worse", Assert.Single(document.AppliedEvidence));
+            " places · 31 improved · 4 to check", Assert.Single(document.AppliedEvidence));
     }
 
     [Fact]
