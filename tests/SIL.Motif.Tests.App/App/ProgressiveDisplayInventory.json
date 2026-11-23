@@ -578,6 +578,20 @@
   },
   {
     "view": "Proposals/ProposalDocument",
+    "name": "ProposalAppliedEffects",
+    "source": "AppliedEffects",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalDocument",
+    "name": "ProposalAppliedEvidence",
+    "source": "AppliedEvidence",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalDocument",
     "name": "ProposalComments",
     "source": "Comments",
     "mode": "paged",

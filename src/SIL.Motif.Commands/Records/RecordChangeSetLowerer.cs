@@ -317,16 +317,33 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             if (list is not null && verb != RecordWriteVerb.AddReference && !list.Contains(member.Value))
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project no longer holds the member the file moves.");
             var placement = list is null ? null : Place(change, list, change.Anchor, verb == RecordWriteVerb.AddReference ? null : member);
+            var memberClass = change.Subtree?.Class ?? ChildOf(type, key) ?? ClassOf(member.Value);
+            var appended = verb == RecordWriteVerb.AddReference && AppendsToTheEnd(type, key, memberClass, placement);
+            if (appended)
+                placement = null;
             var effective = verb == RecordWriteVerb.AddReference && placement is not null ? RecordWriteVerb.InsertReference : verb;
-            var kind = KindFor(change, type, key, effective, child: change.Subtree?.Class ?? ChildOf(type, key) ?? ClassOf(member.Value), placement);
+            var kind = KindFor(change, type, key, effective, child: memberClass, placement);
             _pending.Add(Operation(Id(role + ":" + kind), kind, target,
                 Named(type, key, new { member = CanonicalId.FromGuid(member.Value).Value }), placement));
             if (list is not null)
             {
                 list.Remove(member.Value);
-                var at = placement?.After is { } after ? list.IndexOf(after.ToGuid()) + 1 : 0;
+                var at = appended ? list.Count : placement?.After is { } after ? list.IndexOf(after.ToGuid()) + 1 : 0;
                 list.Insert(Math.Max(0, at), member.Value);
             }
+        }
+
+        /// <summary>Appends after the last member (FieldWorks VectorReferenceLauncher.cs:287, ADR 0003).</summary>
+        private bool AppendsToTheEnd(string type, string key, string? member, Placement? placement)
+        {
+            if (placement is not { After: not null, Before: null } ||
+                catalog.Resolve(type, key, RecordWriteVerb.InsertReference, member, placement) is WritableFieldResolution.Covered ||
+                catalog.Resolve(type, key, RecordWriteVerb.AddReference, member) is not WritableFieldResolution.Covered covered ||
+                schema.FieldBinding(type, key) is not { } binding)
+                return false;
+            return OperationHandlerRegistry.FieldWrites(covered.Kind).Any(write => write.Verb == RecordWriteVerb.AddReference &&
+                write.DeclaringClass == binding.DeclaringClass && write.Field == binding.Field &&
+                write.Placement == FieldWritePlacement.Forbidden);
         }
 
         private void LowerCreate(int index, RecordChange change, string type, string key,
@@ -573,5 +590,34 @@ public static class RecordLoweringRules
         RecordWriteVerb.AddObject => write.CreatePayload != OwningCreatePayload.Unspecified,
         RecordWriteVerb.RemoveObject => write.Payload == FieldWritePayload.Composer,
         _ => false,
+    };
+
+    /// <summary>
+    /// The reasons a declaration is covered by a kind and still not offered, keyed by the code <see cref="NotLowered"/> returns.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> NotLoweredReasons { get; } = new Dictionary<string, string>
+    {
+        ["bespoke-payload"] = "the kind's payload carries more than the verb and field (digests, paragraph keys, a census), so only its own composer authors it",
+        ["create-composer"] = "the create kind takes its own payload (morph type, reference, forms), which only its composer authors",
+        ["delete-composer"] = "the delete takes a payload only its own kind builds (a child id or none, by kind), and only the sense delete is authored",
+    };
+
+    /// <summary>The <see cref="NotLoweredReasons"/> code for a declaration the lowerer does not author, or null when it does or no code explains it.</summary>
+    public static string? NotLowered(string kind, FieldWriteCapability write) => Lowers(kind, write) ? null : write.Verb switch
+    {
+        RecordWriteVerb.AddObject => "create-composer",
+        RecordWriteVerb.RemoveObject => "delete-composer",
+        _ when write.Payload == FieldWritePayload.Bespoke => "bespoke-payload",
+        _ => null,
+    };
+
+    /// <summary>
+    /// Why a reference-set field of Lexicon Edit has an uncovered row: an insert at a position, or a reorder, has no kind,
+    /// and a field whose add and remove have no kind is not built.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> ExclusionReasons { get; } = new Dictionary<string, string>
+    {
+        ["append-only-kind"] = "the add kind appends to the end of the sequence and takes no placement, so an insert elsewhere is refused",
+        ["no-kind-built"] = "no operation kind writes this edit of the field",
     };
 }

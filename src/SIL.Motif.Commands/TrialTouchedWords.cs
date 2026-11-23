@@ -66,6 +66,16 @@ public static class TrialTouchedWords
         "--touched reads the stored Baseline Assessment, and none matches the current Baseline. " +
         "Next: run `motif baseline` and `motif assess`, or leave --touched out."));
 
+    /// <summary>Reads the stored Proposal by id, finalized when it is a draft.</summary>
+    internal static Proposal LoadProposal(MotifDatabase database, string proposalId)
+    {
+        var repository = new ProposalRepository(database);
+        var id = CanonicalId.Parse(ProposalCommands.NormalizeId(proposalId));
+        var record = repository.Get(id);
+        if (record.DraftName is null) (record, _) = repository.GetFinalized(id);
+        return ProposalJsonParser.Parse(JobCommands.CanonicalProposalJson(record));
+    }
+
     /// <summary>Resolves the touched words of <paramref name="proposalId"/>.</summary>
     public static CommandOutcome<TouchedWords> Resolve(string projectPath, string productVersion, string proposalId) =>
         ProjectStoreCommand.Run(projectPath, productVersion, (database, project) =>
@@ -73,11 +83,7 @@ public static class TrialTouchedWords
             Proposal proposal;
             try
             {
-                var repository = new ProposalRepository(database);
-                var id = CanonicalId.Parse(ProposalCommands.NormalizeId(proposalId));
-                var record = repository.Get(id);
-                if (record.DraftName is null) (record, _) = repository.GetFinalized(id);
-                proposal = ProposalJsonParser.Parse(JobCommands.CanonicalProposalJson(record));
+                proposal = LoadProposal(database, proposalId);
             }
             catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
             {
@@ -132,20 +138,21 @@ public static class TrialTouchedWords
     /// The existing objects the operations name: each target, the owner a create adds to, and the neighbours an
     /// ordering is placed against. A newly proposed object is not in the Baseline, so it names nothing here.
     /// </summary>
-    internal static IReadOnlyList<Guid> TouchedIds(Proposal proposal)
+    internal static IReadOnlyList<Guid> TouchedIds(Proposal proposal) =>
+        [.. proposal.Operations.SelectMany(OperationIds).Distinct()];
+
+    /// <summary>The existing objects one operation names: its target, placement neighbours and the owner a create adds to.</summary>
+    internal static IReadOnlyList<Guid> OperationIds(OperationEnvelope operation)
     {
         var ids = new List<Guid>();
         void Add(CanonicalId? id) { if (id is { } value) ids.Add(value.ToGuid()); }
-        foreach (var operation in proposal.Operations)
-        {
-            Add(operation.Target);
-            Add(operation.Placement?.After);
-            Add(operation.Placement?.Before);
-            if (operation.After is { ValueKind: JsonValueKind.Object } after &&
-                after.TryGetProperty("owner", out var owner) && owner.ValueKind == JsonValueKind.String &&
-                CanonicalId.TryParse(owner.GetString()!, out var ownerId))
-                Add(ownerId);
-        }
+        Add(operation.Target);
+        Add(operation.Placement?.After);
+        Add(operation.Placement?.Before);
+        if (operation.After is { ValueKind: JsonValueKind.Object } after &&
+            after.TryGetProperty("owner", out var owner) && owner.ValueKind == JsonValueKind.String &&
+            CanonicalId.TryParse(owner.GetString()!, out var ownerId))
+            Add(ownerId);
         return ids.Distinct().ToArray();
     }
 

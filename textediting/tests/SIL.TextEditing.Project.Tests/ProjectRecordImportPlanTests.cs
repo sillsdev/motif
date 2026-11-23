@@ -814,6 +814,28 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void ADeleteOfAnObjectTheProjectDoesNotHoldIsRefusedAsAnUnknownTarget()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var export = exporter.Export(w.Entry.Guid);
+            var read = RecordFileReader.Read(export.Text!, exporter.Schema, exporter.CreateReadOptions());
+            Assert.False(read.HasErrors);
+            var ghost = new RecordObject { Class = "LexSense", Guid = Guid.NewGuid() }.Set("gloss", new RecordAlternatives().Add("en", new RecordScalar("ghost")));
+            ((RecordList)read.Document!.Data["senses"]!).Add(ghost);
+            string withGhost = RecordFileWriter.Write(read.Document!, exporter.Schema);
+            var importer = new ProjectRecordImporter(exporter)
+            {
+                ExportOverride = (k, g) => new ProjectRecordExport(export.Kind, export.Guid, export.Path, withGhost, read.Document!, export.Unexported),
+            };
+            var plan = importer.Plan(export.Text!);
+            var refusal = Single(plan, RecordRefusalKind.UnknownDeleteTarget);
+            Assert.Contains("not in the project", refusal.Reason);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
         public void AnExportThatCouldNotBeWrittenRefusesTheWholeFile()
         {
             using var fixture = new ProjectFixture();
