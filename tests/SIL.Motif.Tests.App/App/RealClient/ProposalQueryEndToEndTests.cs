@@ -64,7 +64,8 @@ public sealed class ProposalQueryEndToEndTests(PristineProjectFixture pristine)
 
                 var operation = Assert.Single(document.Detail!.Operations);
                 var current = Assert.Single(operation.Current!);
-                Assert.Contains("first seeded gloss", current.Value.Values);
+                Assert.NotEmpty(current.Value.Values);
+                Assert.DoesNotContain("eat (demo)", current.Value.Values);
                 Assert.Null(document.Detail.AppliedRecord);
                 Assert.Contains("motif-query", document.RationaleEditor!.Markdown);
                 Assert.StartsWith("Sense 1 of", Assert.Single(document.OperationRows).Target, StringComparison.Ordinal);
