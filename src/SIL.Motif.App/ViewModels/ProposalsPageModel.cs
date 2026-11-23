@@ -1168,7 +1168,8 @@ public sealed partial class ProposalsPageModel : PageModel
 
     private void ResumePausedFilter()
     {
-        if (_rereading || _pausedGroupFilter is not { } filter || _pausedEditors.Any(editor => editor.IsEditing)) return;
+        // A snapshot: the set can change while this runs, and enumerating it live then throws.
+        if (_rereading || _pausedGroupFilter is not { } filter || _pausedEditors.ToArray().Any(editor => editor.IsEditing)) return;
         var retained = _retainedRowId;
         _retainedRowId = null;
         _retainedClosedCard = false;
