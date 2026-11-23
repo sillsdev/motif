@@ -72,6 +72,10 @@ internal static class FormsQuerySides
             }
             return Evaluate(folded, both, sources, data, conditions, sort);
         }
+        catch (QueryRefusalException error)
+        {
+            return CommandOutcome<FormsQueryResponse>.Refused(error.Refusal);
+        }
         catch (QueryTooManyGroupsException error)
         {
             return Refuse(RefusalCodes.QueryTooManyGroups, FailureReason.InvalidArgument, error.Message);
@@ -92,6 +96,8 @@ internal static class FormsQuerySides
             return "--sides and --sort need --as-of baseline or --as-of <proposalId>.";
         if (query.Sides is not null && query.Sides != QuerySideNames.Both)
             return "--sides takes 'both'; name one side with --as-of.";
+        if (query.Filter is not null)
+            return "--as-of takes a conjunction of is, not, in, has, <, > and ~ selectors; or, not and the other v2 ops read the latest Trial.";
         if (query.From != QuerySources.Forms)
             return "--as-of reads the forms source; stems, uses and objects read the latest Trial's evidence.";
         if (query.Change is not null || query.Score is { Count: > 0 } || query.Evidence || query.Members is { Count: > 0 } ||

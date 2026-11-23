@@ -24,12 +24,16 @@ namespace SIL.Motif.Contract.Query;
 /// Proposal side by side, and <c>Sort</c> orders those rows by a named column, optionally prefixed <c>baseline.</c> or
 /// <c>proposal.</c> and suffixed <c>:desc</c>.
 /// </remarks>
+/// <remarks>
+/// <c>Filter</c> is a boolean expression (a <c>motif.query.v2</c> <c>where</c>) that rows must satisfy as well as every
+/// <c>Where</c> selector; <c>Limit</c> keeps at most that many rows, groups or ids in the answer.
+/// </remarks>
 public sealed record QueryRecord(string From, IReadOnlyList<QueryCondition> Where, IReadOnlyList<string> Group,
     int MinCount = 1, int Examples = 5, bool Ids = false, bool RawLetters = false, string? TrialId = null,
     string? Fold = null, string? Distinct = null, QueryHypothesis? Change = null, IReadOnlyList<string>? Score = null,
     IReadOnlyList<QueryCondition>? Exceptions = null, string? Unit = null, IReadOnlyList<string>? Members = null,
     IReadOnlyList<QueryCondition>? Context = null, bool Evidence = false, string? AsOf = null, string? Sides = null,
-    string? Sort = null);
+    string? Sort = null, [property: System.Text.Json.Serialization.JsonIgnore] QueryExpr? Filter = null, int? Limit = null);
 
 /// <summary>One selector; selectors in a query are combined with AND.</summary>
 public sealed record QueryCondition(string Col, string Op, string Value);

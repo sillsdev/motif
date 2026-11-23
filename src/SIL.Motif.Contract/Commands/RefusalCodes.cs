@@ -356,6 +356,12 @@ public static class RefusalCodes
     public const string QueryNotMeasured = "query.not-measured";
     /// <summary>A scorer was asked to count in a unit its hits or exceptions are not in.</summary>
     public const string QueryMixedUnits = "query.mixed-units";
+    /// <summary>A query's op does not fit the type of the column it names, such as a numeric comparison on text.</summary>
+    public const string QueryOpTypeMismatch = "query.op-type-mismatch";
+    /// <summary>A query uses a kind the schema reserves for a later release: morph, seq, phon, env or realizes.</summary>
+    public const string QueryNotYetAvailable = "query.not-yet-available";
+    /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>
+    public const string QueryDocumentInvalid = "query.document-invalid";
     public const string QueryNoTrialRows = "query.no-trial-rows";
     /// <summary>A Guide query's run line is not one well-formed <c>motif query</c> or <c>motif group</c> command.</summary>
     public const string GuideQueryRunInvalid = "guide-query.run-invalid";
