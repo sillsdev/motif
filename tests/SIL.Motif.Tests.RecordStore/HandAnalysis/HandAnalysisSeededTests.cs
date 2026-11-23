@@ -278,11 +278,11 @@ public sealed class HandAnalysisSeededTests : IDisposable
         Assert.Null(wrongProject.Value);
         Assert.Equal(RefusalCodes.HandAnalysisIndexUnavailable, wrongProject.Refusal?.Code);
         Assert.Equal(HandAnalysisRefusalFacts.Unavailable, wrongProject.Refusal!.Facts[HandAnalysisRefusalFacts.Cause]);
-        Assert.Equal(typed.Stamp, Assert.IsType<ProjectRead.Unavailable>(typed.Project).Stamp);
+        Assert.Equal(typed.Stamp, Assert.IsType<ProjectRead.Available>(typed.Project).Facts.Stamp);
         var unsupported = (await typed.FormsAsync(new("", "", [], FormMatch.Equal, FormOrder.Encounter), new(), default)).Value();
         Assert.Equal(typed.Stamp, unsupported.Stamp);
-        Assert.Null(unsupported.Total);
-        Assert.False(unsupported.Complete);
+        Assert.Equal(0, unsupported.Total);
+        Assert.True(unsupported.Complete);
     }
 
     [Fact]

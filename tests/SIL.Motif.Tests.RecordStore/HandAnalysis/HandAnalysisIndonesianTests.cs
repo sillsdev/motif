@@ -63,7 +63,7 @@ public sealed class HandAnalysisIndonesianTests(ImportedProject project) : IClas
                 foreach (var gloss in analysis.MeaningsOC)
                     Assert.Equal(Alternatives(cache, gloss.Form).OrderBy(p => p.Key),
                         reading.Glosses.Single(g => g.Id == gloss.Guid).Forms.OrderBy(p => p.Key));
-                Assert.Null(reading.OccurrenceUseCount);
+                Assert.NotNull(reading.OccurrenceUseCount);
                 Assert.Equal(analysis.EvaluationsRC.Select(e => (e.Guid, e.Approves, ((ICmAgent)e.Owner).Guid, (bool?)((ICmAgent)e.Owner).Human)).OrderBy(e => e.Item1),
                     reading.Evaluations.Select(e => (e.Id, e.Approves, e.AgentId!.Value, e.Human)).OrderBy(e => e.Id));
             }
@@ -139,13 +139,16 @@ public sealed class HandAnalysisIndonesianTests(ImportedProject project) : IClas
             Assert.All(readings, r => Assert.Equal(order.IndexOf(TestWord.AnalysisId(r)), long.Parse(r.EncounterKey.Split(':')[0])));
             Assert.Equal(readings.Length, page.Total);
             var ranked = await pin.Words(new WordQuery.Alternatives(key, WordOrder.DefaultRank), new PageRequest());
-            Assert.Equal("rank-unavailable", Assert.Single(ranked.Limitations).Code);
-            Assert.Null(ranked.Total);
-            Assert.False(ranked.Complete);
+            Assert.Equal("use-count-native-only", Assert.Single(ranked.Limitations).Code);
+            Assert.Equal(readings.Length, ranked.Total);
+            Assert.True(ranked.Complete);
+            var counts = ranked.Items.Cast<WordFact.Reading>().Select(r => r.OccurrenceUseCount!.Value).ToArray();
+            Assert.Equal(counts.OrderByDescending(c => c), counts);
             foreach (var reading in readings)
             foreach (var gloss in reading.Glosses)
                 Assert.Equal(reading with { SelectedGlossId = gloss.Id },
-                    Assert.Single((await pin.Words(new WordQuery.Reading(new ReadingKey.NativeGloss(gloss.Id)), new PageRequest())).Items));
+                    Assert.IsType<WordFact.Reading>(Assert.Single((await pin.Words(new WordQuery.Reading(new ReadingKey.NativeGloss(gloss.Id)), new PageRequest())).Items))
+                        with { OccurrenceUseCount = reading.OccurrenceUseCount });
             checkedWords++;
         }
         Assert.True(checkedWords > 0);

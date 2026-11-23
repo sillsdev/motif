@@ -104,6 +104,10 @@ namespace SIL.TextEditing.Project
             if (file == null || Schema.Kind(file.Kind) == null)
                 return Whole(file, ProjectRecordBaseVerdict.NotChecked, null, null, read, MapDiagnostics(read, RecordRefusalKind.UnreadableFile, "The text is not a record file of this project's schema."));
 
+            // A schema change (a custom field added after the export) also changes the base, so it is named first.
+            if (read.Diagnostics.Any(d => d.Severity == MarkdownSeverity.Error && d.Id == RecordDiagnosticIds.SchemaMismatch))
+                return Whole(file, ProjectRecordBaseVerdict.NotChecked, null, null, read, MapDiagnostics(read, RecordRefusalKind.UnreadableFile, "The file's schema is not this project's."));
+
             var kind = Schema.Kind(file.Kind)!;
             var record = Locate(kind, file, out string? problem);
             if (record == null)

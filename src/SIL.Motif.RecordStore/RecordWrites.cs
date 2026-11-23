@@ -90,7 +90,7 @@ public sealed partial class RecordStore
             await transaction.CommitAsync();
             var records = new Dictionary<Guid, GenericRecord>(verified.Records) { [target] = updated };
             point = new VerifiedPoint(published, records, verified.Index.WithEdge(revision, removed, added), snapshot, index)
-            { Replay = extended, Anchors = verified.Anchors, ProjectId = verified.ProjectId };
+            { Replay = extended, Anchors = verified.Anchors, WritingSystems = verified.WritingSystems, ProjectId = verified.ProjectId };
             return revision;
         }
         catch

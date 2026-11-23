@@ -34,6 +34,9 @@
         "page": {
           "type": "integer",
           "minimum": 1
+        },
+        "strict": {
+          "type": "boolean"
         }
       }
     },
@@ -54,6 +57,47 @@
           "minLength": 1
         },
         "target": {
+          "type": "string"
+        }
+      }
+    },
+    "Change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "field"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "class": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "object": {
+          "type": "string"
+        },
+        "writingSystem": {
+          "type": "string"
+        },
+        "old": {
+          "type": "string"
+        },
+        "new": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "staged",
+            "refused"
+          ]
+        },
+        "refusalCode": {
           "type": "string"
         }
       }
@@ -162,6 +206,13 @@
         },
         "proposalId": {
           "type": "string"
+        },
+        "changes": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/Change"
+          }
         }
       },
       "allOf": [
