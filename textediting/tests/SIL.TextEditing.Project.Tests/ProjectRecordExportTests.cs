@@ -621,7 +621,7 @@ namespace SIL.TextEditing.Project.Tests
             {
                 entry = fixture.Cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
                 var data = Data(fixture.Cache);
-                data.SetTime(entry.Hvo, stamp, 635000000000000000L);
+                data.SetTime(entry.Hvo, stamp, SIL.LCModel.Core.Cellar.SilTime.ConvertToSilTime(new DateTime(2025, 1, 2, 3, 4, 5, DateTimeKind.Utc)));
                 data.SetUnicode(entry.Hvo, owner, "kept", 4);
             });
             var (exporter, _) = Exporter(fixture, ProjectRecordSchema.LexiconEntryOverlay);
