@@ -8,19 +8,23 @@ using Xunit.Abstractions;
 
 namespace SIL.TextEditing.Project.Tests
 {
-    /// <summary>Opt-in: set TEXTEDITING_EXPORT_FWDATA to a .fwdata path and every lexicon entry, notebook record and list item of that project is exported and read back.
+    /// <summary>Opt-in (reported as skipped with a reason when unset): set TEXTEDITING_EXPORT_FWDATA to a .fwdata path and every lexicon entry, notebook record and list item of that project is exported and read back.
     /// The project is opened as a private temporary copy. Nothing from it is written anywhere but the temporary copy; only counts are printed.</summary>
     public class ProjectRecordExportRealDataTests
     {
         readonly ITestOutputHelper _output;
         public ProjectRecordExportRealDataTests(ITestOutputHelper output) { _output = output; }
 
-        [Fact]
+        [RealDataFact]
         public void EveryRecordOfARealProjectExportsAndReadsBackWithOnlyKnownLosses()
         {
-            string? path = Environment.GetEnvironmentVariable("TEXTEDITING_EXPORT_FWDATA");
-            if (string.IsNullOrEmpty(path)) { _output.WriteLine("not opted in: TEXTEDITING_EXPORT_FWDATA is not set"); return; }
-            using var fixture = new ProjectFixture(path!);
+            using var fixture = new ProjectFixture(Environment.GetEnvironmentVariable(RealDataFactAttribute.Variable)!);
+            RunExportAndReadBack(fixture, _output);
+        }
+
+        /// <summary>Exports every record of the project in <paramref name="fixture"/>, reads each back and checks it against the project; prints counts only.</summary>
+        internal static void RunExportAndReadBack(ProjectFixture fixture, ITestOutputHelper _output)
+        {
             var reasons = new Dictionary<string, int>(StringComparer.Ordinal);
             var failures = new List<string>();
             int total = 0;
