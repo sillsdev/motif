@@ -35,12 +35,17 @@ internal static class FormsExplainProjection
                 var truncated = seed.TryGetProperty("traceTruncated", out var cut) && cut.ValueKind == JsonValueKind.True;
                 foreach (var surface in Required(seed, "surfaces").EnumerateArray())
                 {
-                    var steps = surface.TryGetProperty("steps", out var list) && list.ValueKind == JsonValueKind.Array
-                        ? list.EnumerateArray().Select(Step).ToArray() : [];
+                    var steps = Steps(surface, "steps");
+                    var unresolved = surface.TryGetProperty("stepsUnresolved", out var flag) && flag.ValueKind == JsonValueKind.True;
+                    var alternatives = surface.TryGetProperty("alternatives", out var others) && others.ValueKind == JsonValueKind.Array
+                        ? others.EnumerateArray().Select(alternative => (IReadOnlyList<FormsExplainStep>)
+                            (alternative.ValueKind == JsonValueKind.Array ? alternative.EnumerateArray().Select(Step).ToArray()
+                                : throw new FormatException("an alternative is not a step list"))).ToArray()
+                        : [];
                     surfaces.Add(new FormsExplainSurface(
                         Text(surface, "surface") ?? throw new FormatException("a surface has no text"), key, allomorphs,
                         surface.TryGetProperty("derivations", out var count) && count.TryGetInt32(out var derivations) ? derivations : 1,
-                        steps, truncated));
+                        steps, unresolved, alternatives, truncated));
                 }
             }
             surfaces.Sort(Compare);
@@ -54,6 +59,10 @@ internal static class FormsExplainProjection
             return false;
         }
     }
+
+    private static FormsExplainStep[] Steps(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var list) && list.ValueKind == JsonValueKind.Array
+            ? list.EnumerateArray().Select(Step).ToArray() : [];
 
     private static FormsExplainAllomorph Allomorph(JsonElement element) => new(
         Text(element, "role"), Text(element, "shape") ?? throw new FormatException("an allomorph has no shape"),

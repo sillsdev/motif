@@ -24,7 +24,11 @@ public sealed class FormsExplainGoldenTests
                                           {"allomorphId":7,"entryGuid":"{{Affix}}","msaGuid":"{{AffixMsa}}","role":"suffix","shape":"an"}],
            "surfaces":[{"surface":"kaonan","derivations":1,"steps":[
               {"stratum":"phonology","rule":{"kind":"phonological","id":"R1","name":"Vowel lowering","guid":"55555555-5555-5555-5555-555555555555"},"subrule":1,"input":"kaun+an","output":"kaon+an"},
-              {"stratum":"phonology","rule":{"kind":"phonological","name":"Boundary | deletion"},"input":"kaon+an","output":"kaonan"}]}],"traceTruncated":{{(complete ? "false" : "true")}}}]}
+              {"stratum":"phonology","rule":{"kind":"phonological","name":"Boundary | deletion"},"input":"kaon+an","output":"kaonan"}]},
+              {"surface":"kaonon","derivations":2,"steps":[],"stepsUnresolved":true,"alternatives":[]},
+              {"surface":"kaonun","derivations":2,"steps":[],"stepsUnresolved":false,"alternatives":[
+                [{"stratum":"phonology","rule":{"kind":"phonological","name":"Raising"},"input":"kaun+an","output":"kaonun"}],
+                [{"stratum":"phonology","rule":{"kind":"phonological","name":"Fusion"},"input":"kaun+an","output":"kaonun"}]]}],"traceTruncated":{{(complete ? "false" : "true")}}}]}
         """;
 
     private sealed class Fixed(string json) : IFormsGenerator

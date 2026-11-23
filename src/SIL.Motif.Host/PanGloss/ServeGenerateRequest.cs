@@ -19,9 +19,9 @@ public sealed record GenerateMorpheme(string EntryGuid, string MsaGuid, string M
 /// <param name="MaxSeeds">Caps the allomorph choices tried, or null for the parser's default.</param>
 /// <param name="MaxTraceSteps">Caps the trace nodes kept across every seed, or null for the parser's default.</param>
 /// <param name="MaxWork">Lowers the parser's generation work cap for this request, or null.</param>
-/// <param name="TimeoutMs">A wall-clock deadline for this request, or null.</param>
+/// <param name="WordTimeoutMs">A wall-clock deadline for this request, or null.</param>
 public sealed record ServeGenerateRequest(GenerateMorpheme Root, IReadOnlyList<GenerateMorpheme> Morphemes,
-    bool Trace = true, int? MaxSeeds = null, int? MaxTraceSteps = null, long? MaxWork = null, long? TimeoutMs = null)
+    bool Trace = true, int? MaxSeeds = null, int? MaxTraceSteps = null, long? MaxWork = null, long? WordTimeoutMs = null)
 {
     /// <summary>The <c>generate --request</c> schema version Motif writes.</summary>
     public const int RequestSchemaVersion = 1;
@@ -47,7 +47,7 @@ public sealed record ServeGenerateRequest(GenerateMorpheme Root, IReadOnlyList<G
             if (MaxSeeds is { } seeds) writer.WriteNumber("maxSeeds", seeds);
             if (MaxTraceSteps is { } steps) writer.WriteNumber("maxTraceSteps", steps);
             if (MaxWork is { } work) writer.WriteNumber("maxWork", work);
-            if (TimeoutMs is { } timeout) writer.WriteNumber("timeoutMs", timeout);
+            if (WordTimeoutMs is { } timeout) writer.WriteNumber("wordTimeoutMs", timeout);
             writer.WriteEndObject();
         }
         return Encoding.UTF8.GetString(stream.ToArray());

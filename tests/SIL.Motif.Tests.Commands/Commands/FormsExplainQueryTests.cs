@@ -70,6 +70,35 @@ public sealed class FormsExplainQueryTests
     }
 
     [Fact]
+    public void UnresolvedStepsAndAlternativeDerivationsAreCarriedNotGuessed()
+    {
+        const string answer = """
+            {"complete":true,"stopReason":null,"seeds":[{"seedKey":"r0/p0","allomorphs":[],"surfaces":[
+              {"surface":"a","derivations":1,"steps":[],"stepsUnresolved":true,"alternatives":[]},
+              {"surface":"b","derivations":2,"steps":[],"stepsUnresolved":false,"alternatives":[
+                [{"stratum":"s","rule":{"kind":"k","name":"One"},"input":"x","output":"y"}],
+                [{"stratum":"s","rule":{"kind":"k","name":"Two"},"input":"x","output":"y"}]]}]}]}
+            """;
+        var generator = new Generator(_ => new WarmGenerateResult.Completed(answer));
+
+        var surfaces = FormsExplainQuery.Run(generator, Plan(), "g", "baseline", default).Value!.Contexts.Single().Surfaces;
+
+        Assert.True(surfaces[0].StepsUnresolved);
+        Assert.Empty(surfaces[0].Steps);
+        Assert.False(surfaces[1].StepsUnresolved);
+        Assert.Equal(["One", "Two"], surfaces[1].Alternatives.Select(steps => steps.Single().Rule.Name));
+    }
+
+    [Fact]
+    public void TheRequestLineNamesTheWordDeadlineWordTimeoutMs()
+    {
+        var line = new ServeGenerateRequest(new GenerateMorpheme(RootGuid, RootMsa, "MoStemMsa"), [], WordTimeoutMs: 500).ToLine("1");
+
+        Assert.Contains("\"wordTimeoutMs\":500", line);
+        Assert.DoesNotContain("\"timeoutMs\"", line);
+    }
+
+    [Fact]
     public void TheRootAndWithMorphemesAreSentInOrderAsOneRequest()
     {
         var generator = new Generator(_ => new WarmGenerateResult.Completed(Answer(true)));

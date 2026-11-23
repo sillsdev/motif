@@ -47,11 +47,15 @@ public sealed record FormsExplainAllomorph(
 /// <param name="Seed">PanGloss's key for the allomorph choice that reached it, such as <c>r0/p0</c>.</param>
 /// <param name="Allomorphs">The allomorph chosen for the root and then for each requested morpheme, in request order.</param>
 /// <param name="Derivations">How many derivations reached this surface under this choice.</param>
-/// <param name="Steps">The rules that fired, in application order; empty when PanGloss kept no trace for it.</param>
+/// <param name="Steps">The rules that fired, in application order. Empty when several derivations reached the surface
+/// (see <paramref name="Alternatives"/>), when PanGloss could not prove one (see <paramref name="StepsUnresolved"/>), or when it kept no trace.</param>
+/// <param name="StepsUnresolved">True when PanGloss could not prove which rules made this surface and so gave none; never a guess.</param>
+/// <param name="Alternatives">Each distinct derivation that reached the surface, as its own step list, when there was more than one.</param>
 /// <param name="TraceTruncated">Whether the trace cap cut this choice's steps short.</param>
 public sealed record FormsExplainSurface(
     string Surface, string Seed, IReadOnlyList<FormsExplainAllomorph> Allomorphs, int Derivations,
-    IReadOnlyList<FormsExplainStep> Steps, bool TraceTruncated);
+    IReadOnlyList<FormsExplainStep> Steps, bool StepsUnresolved, IReadOnlyList<IReadOnlyList<FormsExplainStep>> Alternatives,
+    bool TraceTruncated);
 
 /// <summary>One set of morphemes generated together and everything PanGloss produced for it.</summary>
 /// <param name="Morphemes">The root, then the morphemes added to it, in request order.</param>

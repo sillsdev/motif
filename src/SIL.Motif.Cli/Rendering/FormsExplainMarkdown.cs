@@ -60,8 +60,28 @@ internal static class FormsExplainMarkdown
         text.AppendLine("| --- | --- | --- |");
         foreach (var surface in context.Surfaces)
             text.AppendLine($"| {Cell(surface.Surface)} | {Cell(string.Join(", ", surface.Allomorphs.Select(Shape)))} | " +
-                $"{Cell(surface.Steps.Count == 0 ? "none recorded" : string.Join(", ", surface.Steps.Select(step => RuleLabel(step.Rule))))} |");
+                $"{Cell(RulesFired(surface))} |");
         foreach (var surface in context.Surfaces) Details(text, surface);
+    }
+
+    private static string RulesFired(FormsExplainSurface surface)
+    {
+        if (surface.Steps.Count > 0) return string.Join(", ", surface.Steps.Select(step => RuleLabel(step.Rule)));
+        if (surface.Alternatives.Count > 0)
+            return string.Join(" / ", surface.Alternatives.Select((steps, index) =>
+                $"derivation {(index + 1).ToString(CultureInfo.InvariantCulture)}: " + string.Join(", ", steps.Select(step => RuleLabel(step.Rule)))));
+        return surface.StepsUnresolved ? "rule steps unresolved" : "none recorded";
+    }
+
+    private static void Steps(StringBuilder text, IReadOnlyList<FormsExplainStep> steps)
+    {
+        for (var index = 0; index < steps.Count; index++)
+        {
+            var step = steps[index];
+            var subrule = step.Subrule is { } sub ? $", subrule {sub.ToString(CultureInfo.InvariantCulture)}" : string.Empty;
+            text.AppendLine($"{(index + 1).ToString(CultureInfo.InvariantCulture)}. **{Inline(RuleLabel(step.Rule))}** " +
+                $"({Inline(step.Rule.Kind)}, {Inline(step.Stratum)}{subrule}): {Code(step.Input)} -> {Code(step.Output)}");
+        }
     }
 
     private static void Details(StringBuilder text, FormsExplainSurface surface)
@@ -74,14 +94,18 @@ internal static class FormsExplainMarkdown
             $"{Inline(allomorph.Role ?? "morpheme")} {Code(Shape(allomorph))}")));
         if (surface.Derivations > 1) text.AppendLine($"Reached by {surface.Derivations.ToString(CultureInfo.InvariantCulture)} derivations.");
         text.AppendLine();
-        if (surface.Steps.Count == 0) text.AppendLine("No steps were recorded.");
-        for (var index = 0; index < surface.Steps.Count; index++)
-        {
-            var step = surface.Steps[index];
-            var subrule = step.Subrule is { } sub ? $", subrule {sub.ToString(CultureInfo.InvariantCulture)}" : string.Empty;
-            text.AppendLine($"{(index + 1).ToString(CultureInfo.InvariantCulture)}. **{Inline(RuleLabel(step.Rule))}** " +
-                $"({Inline(step.Rule.Kind)}, {Inline(step.Stratum)}{subrule}): {Code(step.Input)} -> {Code(step.Output)}");
-        }
+        if (surface.Steps.Count > 0) Steps(text, surface.Steps);
+        else if (surface.Alternatives.Count > 0)
+            for (var index = 0; index < surface.Alternatives.Count; index++)
+            {
+                text.AppendLine($"Derivation {(index + 1).ToString(CultureInfo.InvariantCulture)} of {surface.Alternatives.Count.ToString(CultureInfo.InvariantCulture)}:");
+                text.AppendLine();
+                Steps(text, surface.Alternatives[index]);
+                text.AppendLine();
+            }
+        else text.AppendLine(surface.StepsUnresolved
+            ? "**rule steps unresolved**: PanGloss could not prove which rules made this surface, so it gave none."
+            : "No steps were recorded.");
         if (surface.TraceTruncated)
         {
             text.AppendLine();
