@@ -94,6 +94,26 @@ public sealed class ProposalBringBackTests
         Assert.Equal("deferred", opened.Document.Detail!.Status);
     }
 
+    [Theory]
+    [InlineData(RefusalCodes.ProposalInvalidStatus)]
+    [InlineData(RefusalCodes.ProposalNotFound)]
+    public async Task ARefusalThatMeansTheStatusMovedReadsTheProposalAgainSoTheStaleButtonGoes(string code)
+    {
+        var fake = new FakeCommandClient { UndeferRefusal = new Refusal(code, FailureReason.Refused, "moved") };
+        await using var opened = await Open("deferred", fake);
+        var reloads = 0;
+        opened.Document.BroughtBackToWaiting += () => reloads++;
+        fake.ProposalDetail = Detail("applied");
+
+        await opened.Document.BringBackCommand.ExecuteAsync(null);
+
+        Assert.NotNull(opened.Document.BringBackRefusal);
+        Assert.Equal("applied", opened.Document.Detail!.Status);
+        Assert.False(opened.Document.IsDeferred);
+        Assert.False(opened.Document.ShowsBringBack);
+        Assert.Equal(1, reloads);
+    }
+
     [Fact]
     public async Task TheProposalsPageReloadsItsListWhenADocumentBringsItsProposalBack()
     {

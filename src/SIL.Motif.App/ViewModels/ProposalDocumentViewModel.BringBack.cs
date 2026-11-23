@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host;
 
 namespace SIL.Motif.App.ViewModels;
@@ -37,6 +38,14 @@ public sealed partial class ProposalDocumentViewModel
             if (!outcome.Succeeded)
             {
                 BringBackRefusal = WindowRefusal.From(outcome.Refusal!);
+                if (outcome.Refusal!.Code is RefusalCodes.ProposalInvalidStatus or RefusalCodes.ProposalNotFound)
+                {
+                    // The status changed under the reader, so the page and the list read it again.
+                    await RefreshAsync().ConfigureAwait(true);
+                    if (Detail is { } read && Card is { } held)
+                        Card = new ProposalCardViewModel(held.Card with { Status = read.Status });
+                    BroughtBackToWaiting?.Invoke();
+                }
                 return;
             }
             BringBackRefusal = null;
