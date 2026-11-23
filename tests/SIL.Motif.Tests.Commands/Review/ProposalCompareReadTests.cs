@@ -15,7 +15,7 @@ using static SIL.Motif.Tests.TestFixtures.ProposalCompareExports;
 
 namespace SIL.Motif.Tests.Commands.Review;
 
-public sealed class ProposalCompareReadTests
+public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     private static FormSpec F(string form, int[] before, int[] after, string? ws = "ws", bool dispatched = true,
         bool complete = true) => new(form, before, after, ws, dispatched, complete);
@@ -37,11 +37,11 @@ public sealed class ProposalCompareReadTests
 
     private static SIL.Motif.Contract.Commands.CommandOutcome<ProposalComparison> Compare(ProjectLocator project,
         string[] ids, string? at = null, int? page = null, string? snapshot = null,
-        ProposalCompareReads.ApprovedLoader? approved = null) =>
-        ProposalCompareReads.Read(new(project.FullFwDataPath, ids, at, page, snapshot), approved ?? Approvals([]));
+        ProposalCompareReads.ApprovedLoader? approved = null, string[]? jobs = null) =>
+        ProposalCompareReads.Read(new(project.FullFwDataPath, ids, at, page, snapshot, jobs), approved ?? Approvals([]));
 
     private static ProposalCompareReads.ApprovedLoader Approvals(ApprovedAnalysisFact[] facts, string stamp = "stamp-1",
-        int skipped = 0) => (_, _, _) => CommandOutcome<ProposalCompareReads.ApprovedBasis>.Success(new(stamp, facts, skipped));
+        int skipped = 0) => (_, _, _) => CommandOutcome<ProposalCompareReads.ApprovedBasis>.Success(new(stamp, ApprovedReadingSet.From(facts, skipped)));
 
     private static int fact;
 
@@ -456,6 +456,182 @@ public sealed class ProposalCompareReadTests
             Assert.Equal([0, 1], [summary.Columns[0].ApprovedKept, summary.Columns[0].ApprovedLost]);
             Assert.Equal([1, 0], [summary.Columns[1].ApprovedKept, summary.Columns[1].ApprovedLost]);
             Assert.Equal([1, 0], [summary.Columns[2].ApprovedKept, summary.Columns[2].ApprovedLost]);
+        });
+    }
+
+    private static string JobOf(MotifDatabase database, ProjectLocator project, string proposal, int index = 0) =>
+        SIL.Motif.Commands.Trials.NewestFirst(SIL.Motif.Commands.Trials.JobsFor(database, project, CanonicalId.Parse(proposal)))[index].JobId;
+
+    private static void InsertProposal(MotifDatabase database, string proposal, string digest, string? supersededBy = null)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "INSERT INTO Proposals (ProposalId,CurrentIntentDigest,Status,SupersededBy) VALUES ($id,$digest,$status,$by);";
+        command.Parameters.AddWithValue("$id", proposal);
+        command.Parameters.AddWithValue("$digest", digest);
+        command.Parameters.AddWithValue("$status", supersededBy is null ? "proposed" : "superseded");
+        command.Parameters.AddWithValue("$by", (object?)supersededBy ?? DBNull.Value);
+        command.ExecuteNonQuery();
+    }
+
+    private static string TrialDigest(MotifDatabase database, ProjectLocator project, string proposal) =>
+        SIL.Motif.Contract.Canonicalization.IntentDigest.Compute(SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(
+            SIL.Motif.Worker.Jobs.TrialJobInput.Parse(new SIL.Motif.Worker.Jobs.JobRepository(database).Get(JobOf(database, project, proposal))!.InputJson).ProposalJson));
+
+    [Fact]
+    public void ApprovalsWithNoSignatureOrOnUnmeasuredFormsAreUncountedAndMakeTheComparisonIncomplete()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], [1]), F("f2", [1], [1], dispatched: false)]);
+            var b = AddTrial(database, project, [F("f1", [1], [1]), F("f2", [1], [1], dispatched: false)]);
+            var unsigned = Approved(1, "f1") with { Signature = null, UnsignedCause = ApprovedUnsignedCause.NoMorphBundles };
+            var counted = Compare(project, [a, b], approved: Approvals([Approved(1, "f1")])).Value!;
+            Assert.Equal([1, 0], [counted.ApprovedTotal, counted.ApprovedUncounted]);
+            Assert.DoesNotContain(counted.Limitations, item => item.Code == "approved-uncounted");
+
+            var summary = Compare(project, [a, b],
+                approved: Approvals([Approved(1, "f1"), unsigned, Approved(1, "f2"), Approved(1, "elsewhere")])).Value!;
+
+            Assert.Equal(4, summary.ApprovedTotal);
+            Assert.Equal(3, summary.ApprovedUncounted);
+            Assert.Contains(summary.Limitations, item => item.Code == "approved-uncounted" && item.Count == 2);
+            Assert.False(summary.Complete);
+        });
+    }
+
+    [Fact]
+    public void ATrialOlderThanTheProposalsCurrentRevisionIsStaleAndAMatchingOneIsNot()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], [1, 2])]);
+            var b = AddTrial(database, project, [F("f1", [1], [1, 2])]);
+            Assert.DoesNotContain(Compare(project, [a, b]).Value!.Limitations, item => item.Code == "trial-stale");
+
+            InsertProposal(database, a, TrialDigest(database, project, a));
+            InsertProposal(database, b, "sha256:" + new string('9', 64));
+            var summary = Compare(project, [a, b]).Value!;
+
+            Assert.Equal(new CompareLimitation("trial-stale", 1), Assert.Single(summary.Limitations));
+            Assert.False(summary.Complete);
+        });
+    }
+
+    [Fact]
+    public void ANewerTrialAttemptOrASupersededProposalMakesTheTrialSuperseded()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], [1, 2])], minute: 1);
+            AddTrial(database, project, [F("f1", [1], [1, 2])], a, minute: 2, completed: false);
+            var b = AddTrial(database, project, [F("f1", [1], [1, 2])]);
+            var c = AddTrial(database, project, [F("f1", [1], [1, 2])]);
+            InsertProposal(database, c, TrialDigest(database, project, c), supersededBy: a);
+
+            var summary = Compare(project, [a, b]).Value!;
+            Assert.Equal(new CompareLimitation("trial-superseded", 1), Assert.Single(summary.Limitations));
+            Assert.Equal(new CompareLimitation("trial-superseded", 1), Assert.Single(Compare(project, [b, c]).Value!.Limitations));
+        });
+    }
+
+    [Fact]
+    public void EqualTimestampsChooseTheGreaterJobIdWhateverTheInsertionOrder()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], [1, 2])], jobId: "job/zzzz", minute: 3, second: 7);
+            AddTrial(database, project, [F("f1", [1], [])], a, jobId: "job/aaaa", minute: 3, second: 7);
+            var b = AddTrial(database, project, [F("f1", [1], [1])]);
+            var summary = Compare(project, [a, b]).Value!;
+
+            Assert.Equal(1, summary.Columns[0].Gained);
+            Assert.Equal(0, summary.Columns[0].Lost);
+            Assert.Equal("job/zzzz", JobOf(database, project, a));
+            Assert.DoesNotContain(summary.Limitations, item => item.Code == "trial-superseded");
+        });
+    }
+
+    [Fact]
+    public void AParserVersionThatDiffersWithinOrAcrossTrialsIsNamedInALimitation()
+    {
+        InStore((database, project) =>
+        {
+            var same = AddTrial(database, project, [F("f1", [1], [1])], parserBefore: "1.0", parserAfter: "1.0");
+            var alsoSame = AddTrial(database, project, [F("f1", [1], [1])], parserBefore: "1.0", parserAfter: "1.0");
+            var moved = AddTrial(database, project, [F("f1", [1], [1])], parserBefore: "1.0", parserAfter: "1.1");
+            var other = AddTrial(database, project, [F("f1", [1], [1])], parserBefore: "2.0", parserAfter: "2.0");
+
+            Assert.DoesNotContain(Compare(project, [same, alsoSame]).Value!.Limitations, item => item.Code == "parser-version-differs");
+            var within = Compare(project, [same, moved]).Value!;
+            var limitation = Assert.Single(within.Limitations);
+            Assert.Equal(new CompareLimitation("parser-version-differs", 1) { Detail = "1.0 | 1.1" }, limitation);
+            Assert.False(within.Complete);
+            Assert.Equal(new CompareLimitation("parser-version-differs", 2) { Detail = "1.0 | 2.0" },
+                Assert.Single(Compare(project, [same, other]).Value!.Limitations));
+        });
+    }
+
+    [Fact]
+    public void AJobPinSelectsThatTrialAndAnOlderOneIsSuperseded()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], [1, 2])], minute: 1);
+            AddTrial(database, project, [F("f1", [1], [])], a, minute: 2);
+            var b = AddTrial(database, project, [F("f1", [1], [1])]);
+            var older = JobOf(database, project, a, 1);
+
+            var pinned = Compare(project, [a, b], jobs: [older]).Value!;
+            Assert.Equal([1, 0], [pinned.Columns[0].Gained, pinned.Columns[0].Lost]);
+            Assert.Contains(pinned.Limitations, item => item.Code == "trial-superseded" && item.Count == 1);
+            var newest = Compare(project, [a, b], jobs: [JobOf(database, project, a)]).Value!;
+            Assert.Equal([0, 1], [newest.Columns[0].Gained, newest.Columns[0].Lost]);
+            Assert.NotEqual(pinned.Snapshot, newest.Snapshot);
+            Assert.Equal(newest.Snapshot, Compare(project, [a, b]).Value!.Snapshot);
+        });
+    }
+
+    [Fact]
+    public void ABadJobPinRefusesWithItsOwnCode()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], [1])], minute: 1);
+            AddTrial(database, project, [F("f1", [1], [1])], a, minute: 2);
+            var b = AddTrial(database, project, [F("f1", [1], [1])]);
+            var c = AddTrial(database, project, [F("f1", [1], [1])]);
+            var unfinished = AddTrial(database, project, [F("f1", [1], [1])], completed: false);
+            string Job(string proposal) => JobOf(database, project, proposal);
+
+            Assert.Equal("proposal.compare-trial-missing", Compare(project, [a, b], jobs: ["job/nonexistent"]).Refusal?.Code);
+            Assert.Equal("proposal.compare-trial-missing", Compare(project, [a, b], jobs: [Job(unfinished)]).Refusal?.Code);
+            Assert.Equal("proposal.compare-proposals-invalid", Compare(project, [a, b], jobs: [Job(c)]).Refusal?.Code);
+            Assert.Equal("proposal.compare-proposals-invalid",
+                Compare(project, [a, b], jobs: [Job(a), JobOf(database, project, a, 1)]).Refusal?.Code);
+        });
+    }
+
+    [Fact]
+    public void PagesOfOneSnapshotShareTheFormJoinAndTheBaselineLoadIsPerStore()
+    {
+        InStore((database, project) =>
+        {
+            var forms = Enumerable.Range(0, 450).Select(index => F($"w{index:000}", [1], [1, 2])).ToList();
+            var a = AddTrial(database, project, forms);
+            var b = AddTrial(database, project, forms.Select(form => form with { After = [1] }));
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            var first = Compare(project, [a, b]).Value!;
+            var coldMs = timer.ElapsedMilliseconds;
+            Assert.Equal(1, ProposalCompareReads.JoinsComputedFor(database.FullPath));
+
+            timer.Restart();
+            for (var page = 1; page <= first.Pages; page++)
+                Assert.True(Compare(project, [a, b], page: page, snapshot: first.Snapshot).Succeeded);
+            var pagesMs = timer.ElapsedMilliseconds;
+
+            Assert.Equal(1, ProposalCompareReads.JoinsComputedFor(database.FullPath));
+            output.WriteLine($"forms={forms.Count} columns=2 pages={first.Pages} coldSummaryMs={coldMs} warmPagesMs={pagesMs} joins=1");
         });
     }
 }

@@ -17,7 +17,14 @@ public static class ProposalCompareExports
 {
     /// <summary>One expanded form's observation: the reading numbers before and after, and whether each side finished.</summary>
     public sealed record FormSpec(string Form, int[] Before, int[] After, string? WritingSystemId = "ws",
-        bool Dispatched = true, bool Complete = true);
+        bool Dispatched = true, bool Complete = true)
+    {
+        /// <summary>Real Reading signatures for the before side, replacing the numbered ones when set.</summary>
+        public IReadOnlyList<ReadingSignature>? BeforeSignatures { get; init; }
+
+        /// <summary>Real Reading signatures for the after side, replacing the numbered ones when set.</summary>
+        public IReadOnlyList<ReadingSignature>? AfterSignatures { get; init; }
+    }
 
     public static string BaselineDigest(char fill) => "sha256:" + new string(fill, 64);
 
@@ -26,17 +33,18 @@ public static class ProposalCompareExports
     /// <summary>Publishes one completed Trial for a new Proposal and returns the Proposal ID.</summary>
     public static string AddTrial(MotifDatabase database, ProjectLocator project, IEnumerable<FormSpec> forms,
         string? proposalId = null, char baseline = 'a', int minute = 0, bool completed = true,
-        string? sample = null, string? wordListDigest = null)
+        string? sample = null, string? wordListDigest = null, int second = 0, string? jobId = null,
+        string? parserBefore = null, string? parserAfter = null)
     {
         proposalId ??= CanonicalId.Mint("proposal/").Value;
-        var jobId = "job/" + Guid.NewGuid().ToString("D");
+        jobId ??= "job/" + Guid.NewGuid().ToString("D");
         var key = ProjectWorkspaceKey.Compute(project);
         var proposalJson = JsonSerializer.Serialize(new
         {
             contractVersions = new Dictionary<string, string>(), proposalId, operations = Array.Empty<object>(),
         });
         var input = new TrialJobInput(proposalJson, null) { Sample = sample, WordListDigest = wordListDigest };
-        var created = new DateTimeOffset(2026, 1, 1, 0, minute, 0, TimeSpan.Zero).ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
+        var created = new DateTimeOffset(2026, 1, 1, 0, minute, second, TimeSpan.Zero).ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
         new JobRepository(database).RecordInterrupted(jobId, key, "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
             "{}", created, JobStatus.Failed);
         if (completed)
@@ -50,21 +58,21 @@ public static class ProposalCompareExports
         var list = forms.ToList();
         var words = list.Select((spec, index) => new TrialExportWord("case/" + index, spec.WritingSystemId, spec.Form, [],
             [new TrialExportForm(spec.Form, "key/" + spec.Form, "submitted", TrialExportStatus.Accepted, "ok", [],
-                Side(spec, spec.Before), Side(spec, spec.After), [])],
+                Side(spec, spec.Before, spec.BeforeSignatures), Side(spec, spec.After, spec.AfterSignatures), [])],
             TrialExportStatus.Accepted, "ok", [])).ToArray();
         var digest = BaselineDigest(baseline);
         var provenance = new TrialExportProvenance(null, proposalId, "revision-" + proposalId[^6..],
             new("motif-intent-v1", digest), new("project", digest, "test", "2026-01-01T00:00:00Z", digest),
-            null, null, new(null, null), new(null, null), null);
+            null, null, new(parserBefore, parserAfter), new(null, null), null);
         TrialExportArtifact.Publish(database, jobId, new TrialExportDenominators(words.Length, words.Length, words.Length,
             new(words.Length, words.Length), new(words.Length, words.Length)), provenance, [], words);
         return proposalId;
     }
 
-    private static TrialExportSide Side(FormSpec spec, int[] readings) => new("complete", spec.Dispatched, spec.Complete,
-        TrialExportStatus.Accepted, "ok", [],
-        readings.Select(number => new TrialExportReading(ReadingId(number), Signature(number),
-            ReadingAcceptance.LexiconBacked, [])).ToArray());
+    private static TrialExportSide Side(FormSpec spec, int[] readings, IReadOnlyList<ReadingSignature>? signatures) =>
+        new("complete", spec.Dispatched, spec.Complete, TrialExportStatus.Accepted, "ok", [],
+            (signatures ?? [.. readings.Select(Signature)]).Select(signature => new TrialExportReading(signature.Id, signature,
+                ReadingAcceptance.LexiconBacked, [])).ToArray());
 
     /// <summary>
     /// The Reading for a number. The entry is <c>number % 1000</c>; <c>number / 1000</c> picks the sense: 0 unresolved,

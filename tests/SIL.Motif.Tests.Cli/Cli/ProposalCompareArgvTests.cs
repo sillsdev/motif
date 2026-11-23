@@ -2,6 +2,7 @@ using System.Text.Json;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -45,6 +46,13 @@ public sealed class ProposalCompareArgvTests
         command.ExecuteNonQuery();
     }
 
+    private static string? CodeOf(CliProcessResult result)
+    {
+        Assert.NotEqual(0, result.ExitCode);
+        using var json = JsonDocument.Parse(string.IsNullOrWhiteSpace(result.Output) ? result.Error : result.Output);
+        return json.RootElement.TryGetProperty("code", out var code) ? code.GetString() : null;
+    }
+
     [Fact]
     public async Task CompareSummarisesPagesAndStatesItsBasisInJsonAndText()
     {
@@ -62,6 +70,11 @@ public sealed class ProposalCompareArgvTests
         Assert.Equal(2, json.RootElement.GetProperty("columns").GetArrayLength());
         Assert.False(json.RootElement.TryGetProperty("page", out _));
         Assert.Equal(0, json.RootElement.GetProperty("approvedSkippedOtherAgents").GetInt32());
+        Assert.Equal(2, json.RootElement.GetProperty("approvedTotal").GetInt32());
+        Assert.Equal(2, json.RootElement.GetProperty("approvedUncounted").GetInt32());
+        Assert.False(json.RootElement.GetProperty("complete").GetBoolean());
+        Assert.Contains(json.RootElement.GetProperty("limitations").EnumerateArray(),
+            item => item.GetProperty("code").GetString() == "approved-uncounted");
         Assert.Equal(0, json.RootElement.GetProperty("columns")[0].GetProperty("approvedKept").GetInt32());
         Assert.Equal(0, json.RootElement.GetProperty("columns")[0].GetProperty("approvedLost").GetInt32());
 
@@ -71,9 +84,16 @@ public sealed class ProposalCompareArgvTests
         Assert.Equal(2, page.RootElement.GetProperty("page").GetProperty("rows").GetArrayLength());
 
         var stale = await Run("--json", "--page", "1", "--snapshot", "000000000000");
-        Assert.NotEqual(0, stale.ExitCode);
+        Assert.Equal("proposal.compare-snapshot-changed", CodeOf(stale));
         var past = await Run("--json", "--page", "9");
-        Assert.NotEqual(0, past.ExitCode);
+        Assert.Equal("evidence.invalid-page", CodeOf(past));
+        var snapshotAlone = await Run("--json", "--snapshot", json.RootElement.GetProperty("snapshot").GetString()!);
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), snapshotAlone.ExitCode);
+        Assert.Contains("--snapshot", snapshotAlone.Error, StringComparison.Ordinal);
+        var badAt = await Run("--json", "--at", ProposalCompareExports.BaselineDigest('c'));
+        Assert.Equal("proposal.compare-at-mismatch", CodeOf(badAt));
+        var noPage = await Run("--json", "--page", "0");
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), noPage.ExitCode);
 
         var text = await Run();
         Assert.True(text.ExitCode == 0, text.Error);
@@ -88,9 +108,7 @@ public sealed class ProposalCompareArgvTests
         var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
         var result = await CliProcess.RunAsync(runnerRoot, null, false,
             "proposal", "compare", ids[0], ids[1], "--project", fixture.Project, "--json");
-        Assert.NotEqual(0, result.ExitCode);
-        using var json = JsonDocument.Parse(string.IsNullOrWhiteSpace(result.Output) ? result.Error : result.Output);
-        Assert.Equal("proposal.compare-baseline-mismatch", json.RootElement.GetProperty("code").GetString());
+        Assert.Equal("proposal.compare-baseline-mismatch", CodeOf(result));
     }
 
     [Fact]
@@ -100,6 +118,38 @@ public sealed class ProposalCompareArgvTests
         var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
         var result = await CliProcess.RunAsync(runnerRoot, null, false,
             "proposal", "compare", fixture.Proposal, "--project", fixture.Project, "--json");
-        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), result.ExitCode);
+        Assert.Contains("proposal compare", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ARepeatedJobPinSelectsThoseTrialsAndAnUnknownJobRefusesWithItsCode()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var ids = Publish(fixture);
+        string[] jobs = [];
+        ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            jobs = ids.Select(id => new SIL.Motif.Worker.Jobs.JobRepository(database)
+                .ListByProjectAndKind(SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(project), "trial")
+                .Single(job => job.InputJson.Contains(id, StringComparison.Ordinal)).JobId).ToArray();
+            return CommandOutcome<string>.Success("");
+        });
+        var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
+        var pinned = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "compare", ids[0], ids[1],
+            "--project", fixture.Project, "--job", jobs[0], "--job", jobs[1], "--json");
+        Assert.True(pinned.ExitCode == 0, pinned.Error);
+        var unpinned = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "compare", ids[0], ids[1],
+            "--project", fixture.Project, "--json");
+        using var pinnedJson = JsonDocument.Parse(pinned.Output);
+        using var unpinnedJson = JsonDocument.Parse(unpinned.Output);
+        Assert.Equal(unpinnedJson.RootElement.GetProperty("snapshot").GetString(), pinnedJson.RootElement.GetProperty("snapshot").GetString());
+
+        var unknown = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "compare", ids[0], ids[1],
+            "--project", fixture.Project, "--job", "job/nonexistent", "--json");
+        Assert.Equal("proposal.compare-trial-missing", CodeOf(unknown));
+        var swapped = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "compare", ids[0], ids[1],
+            "--project", fixture.Project, "--job", jobs[0], "--job", jobs[0], "--json");
+        Assert.Equal("proposal.compare-proposals-invalid", CodeOf(swapped));
     }
 }

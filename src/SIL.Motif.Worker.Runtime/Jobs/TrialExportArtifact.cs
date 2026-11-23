@@ -57,6 +57,30 @@ public static class TrialExportArtifact
     internal static string? ReadBaselineSemantic(MotifDatabase database, string jobId) =>
         string.IsNullOrWhiteSpace(jobId) ? null : LoadBinding(database, jobId)?.BaselineSemantic;
 
+    /// <summary>
+    /// The PanGloss versions the Trial recorded for its before and after sides, or null when the export is not retained.
+    /// Reads only the provenance header of the evidence file, never a word page.
+    /// </summary>
+    internal static (string? Before, string? After)? ReadParserVersions(MotifDatabase database, string jobId)
+    {
+        if (LoadBinding(database, jobId) is not { } binding) return null;
+        var path = database.FullPath + FileSuffix(JobKey(jobId), binding.Sha256);
+        if (!File.Exists(path)) return null;
+        RequireRegular(path);
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        var header = binding.PageOffsets.Length > 0 ? binding.PageOffsets[0] : stream.Length;
+        var bytes = new byte[header + (binding.PageOffsets.Length > 0 ? 2 : 0)];
+        stream.ReadExactly(bytes, 0, (int)header);
+        if (binding.PageOffsets.Length > 0) { bytes[header] = (byte)']'; bytes[header + 1] = (byte)'}'; }
+        using var document = JsonDocument.Parse(bytes);
+        if (!document.RootElement.TryGetProperty("provenance", out var provenance) ||
+            !provenance.TryGetProperty("panGlossVersion", out var version) || version.ValueKind != JsonValueKind.Object)
+            return (null, null);
+        string? Side(string name) => version.TryGetProperty(name, out var side) && side.ValueKind == JsonValueKind.String
+            ? side.GetString() : null;
+        return (Side("before"), Side("after"));
+    }
+
     private static ArtifactBinding? LoadBinding(MotifDatabase database, string jobId)
     {
         var record = new ReportRepository(database).Get(BindingId(JobKey(jobId)));

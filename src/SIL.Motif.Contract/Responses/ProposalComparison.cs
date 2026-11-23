@@ -10,7 +10,9 @@ namespace SIL.Motif.Contract.Responses;
 /// analyses with those same Trial readings. <c>Snapshot</c> is a digest of the exact Trial job IDs and the approved
 /// analyses' snapshot read, in column order; pass it back with a page.
 /// <c>ApprovedSkippedOtherAgents</c> counts analyses approved only by a human agent other than the default user agent;
-/// they are not counted as approved.
+/// they are not counted as approved. <c>ApprovedTotal</c> is every approved analysis of the Baseline
+/// (<c>IWfiWordform.HumanApprovedAnalyses</c>); <c>ApprovedUncounted</c> is those no column can count, because the analysis
+/// has no Reading identity or its word was measured by no Trial.
 /// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ProposalComparison(
@@ -24,7 +26,9 @@ public sealed record ProposalComparison(
     [property: JsonRequired] int Pages,
     [property: JsonRequired] bool Complete,
     [property: JsonRequired] IReadOnlyList<CompareLimitation> Limitations,
-    [property: JsonRequired] int ApprovedSkippedOtherAgents)
+    [property: JsonRequired] int ApprovedSkippedOtherAgents,
+    [property: JsonRequired] int ApprovedTotal,
+    [property: JsonRequired] int ApprovedUncounted)
 {
     /// <summary>The value of <see cref="Basis"/>: gains and losses come from each column's own Trial before and after.</summary>
     public const string TrialBeforeAfter = "trial-before-after";
@@ -106,6 +110,10 @@ public sealed record CompareColumn(
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CompareLimitation([property: JsonRequired] string Code, [property: JsonRequired] int Count)
 {
+    /// <summary>Names the versions or the revision behind the limitation, when the code needs more than a count.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Detail { get; init; }
+
     /// <summary>Some column did not measure some forms on both sides; they never read as unchanged.</summary>
     public const string NotMeasured = "not-measured";
 
@@ -114,6 +122,18 @@ public sealed record CompareLimitation([property: JsonRequired] string Code, [pr
 
     /// <summary>Some approved analyses were left out of the approved counts because only another human agent approved them.</summary>
     public const string ApprovedOtherAgents = "approved-other-agents";
+
+    /// <summary>Some approved analyses count in no column: they have no Reading identity, or no Trial measured their word.</summary>
+    public const string ApprovedUncounted = "approved-uncounted";
+
+    /// <summary>Some Trial measured a Proposal revision the Proposal no longer has.</summary>
+    public const string TrialStale = "trial-stale";
+
+    /// <summary>Some Proposal has a newer Trial attempt than the one compared, or has itself been superseded.</summary>
+    public const string TrialSuperseded = "trial-superseded";
+
+    /// <summary>The PanGloss version differs between a Trial's two sides or between Trials; <c>Detail</c> names the versions.</summary>
+    public const string ParserVersionDiffers = "parser-version-differs";
 }
 
 /// <summary>A page of form rows in the frozen order: diverging first, then writing system and form key.</summary>
