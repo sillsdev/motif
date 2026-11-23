@@ -7,19 +7,23 @@ using Xunit.Abstractions;
 
 namespace SIL.TextEditing.Project.Tests
 {
-    /// <summary>Opt-in: set TEXTEDITING_EXPORT_FWDATA to a .fwdata path. Every lexicon entry, notebook record and list item of that project is exported, planned unedited and counted:
+    /// <summary>Opt-in (reported as skipped with a reason when unset): set TEXTEDITING_EXPORT_FWDATA to a .fwdata path. Every lexicon entry, notebook record and list item of that project is exported, planned unedited and counted:
     /// a no-op file must plan no change and no refusal. The project is opened as a private temporary copy; only counts are printed, never project content.</summary>
     public class ProjectRecordImportRealDataTests
     {
         readonly ITestOutputHelper _output;
         public ProjectRecordImportRealDataTests(ITestOutputHelper output) { _output = output; }
 
-        [Fact]
+        [RealDataFact]
         public void ANoOpFileForEveryRecordOfARealProjectPlansNoChangeAndNoRefusal()
         {
-            string? path = Environment.GetEnvironmentVariable("TEXTEDITING_EXPORT_FWDATA");
-            if (string.IsNullOrEmpty(path)) { _output.WriteLine("not opted in: TEXTEDITING_EXPORT_FWDATA is not set"); return; }
-            using var fixture = new ProjectFixture(path!);
+            using var fixture = new ProjectFixture(Environment.GetEnvironmentVariable(RealDataFactAttribute.Variable)!);
+            RunNoOpPlan(fixture, _output);
+        }
+
+        /// <summary>Plans an unedited file for every record of the project in <paramref name="fixture"/> and asserts none plans a change or a refusal; prints counts only.</summary>
+        internal static void RunNoOpPlan(ProjectFixture fixture, ITestOutputHelper _output)
+        {
             var repository = fixture.Cache.ServiceLocator.ObjectRepository;
             Dictionary<Guid, DateTime> Snapshot() => repository.AllInstances().ToDictionary(o => o.Guid, o => (o as SIL.LCModel.ICmMajorObject)?.DateModified ?? default);
             var before = Snapshot();
@@ -49,7 +53,7 @@ namespace SIL.TextEditing.Project.Tests
             var after = Snapshot();
             _output.WriteLine("objects before " + before.Count + ", after " + after.Count + ", dates changed " + before.Count(p => !after.TryGetValue(p.Key, out var d) || d != p.Value));
             if (before.Count != after.Count || before.Any(p => !after.TryGetValue(p.Key, out var d) || d != p.Value)) failures.Add("the project changed while planning");
-            MeasureDeletes(fixture, failures);
+            MeasureDeletes(fixture, failures, _output);
             _output.WriteLine("records " + total + ", changes " + changes + ", refusals " + refusals + ", base not fresh " + stale);
             foreach (var pair in refusalKinds.OrderBy(p => p.Key)) _output.WriteLine("  refusal " + pair.Key + " x " + pair.Value);
             foreach (var f in failures.Take(20)) _output.WriteLine("  " + f);
@@ -57,7 +61,7 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         /// <summary>Plans one delete by omission per record kind (the last owned object of the first list the record has) and prints the cost of the rich-text link scan.</summary>
-        void MeasureDeletes(ProjectFixture fixture, List<string> failures)
+        static void MeasureDeletes(ProjectFixture fixture, List<string> failures, ITestOutputHelper _output)
         {
             foreach (var (kind, overlay) in new[] { ("lexicon/entry", ProjectRecordSchema.LexiconEntryOverlay), ("notebook/record", ProjectRecordSchema.NotebookRecordOverlay), ("lists/item", ProjectRecordSchema.ListItemOverlay) })
             {
