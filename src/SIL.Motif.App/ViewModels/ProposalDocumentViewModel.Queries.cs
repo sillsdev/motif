@@ -26,7 +26,7 @@ public sealed partial class ProposalDocumentViewModel
         var key = QueriesKey(detail, markdown);
         if (key == _queriesKey) return;
         _queriesKey = key;
-        Queries.Show(GuideQueryDocument.FromMarkdown(markdown));
+        Queries.Refresh(GuideQueryDocument.FromMarkdown(markdown));
     }
 
     // The Proposal side reads the latest Trial, so a Trial that finishes, or a newer one, is a new key.

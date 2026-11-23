@@ -97,6 +97,31 @@ public sealed class ProposalQueryTablesTests
     }
 
     [Fact]
+    public async Task ARerunKeepsTheEditedTextAndTheSortOfABlockWhoseDefinitionDidNotChange()
+    {
+        var fake = Fake(BothAnswer);
+        fake.Review = ReviewWith(null);
+        await using var opened = await ProposalEntryContextTests.Open(fake);
+        await opened.Document.Queries.Running;
+        var block = Assert.Single(opened.Document.Queries.Blocks);
+        var display = Assert.Single(block.Displays);
+        block.EditCommand.Execute(null);
+        block.DraftText += "\n";
+        display.SortCommand.Execute(GuideQueryColumn.ProposalWord);
+
+        fake.Review = ReviewWith(Trial("job/two", SIL.Motif.Contract.Jobs.JobStatus.Completed));
+        await opened.Document.RefreshAsync();
+        await opened.Document.Queries.Running;
+
+        Assert.Same(block, Assert.Single(opened.Document.Queries.Blocks));
+        Assert.True(block.IsEditing);
+        Assert.EndsWith("\n", block.DraftText);
+        Assert.Same(display, block.Displays[0]);
+        Assert.Equal(["baha", "kaonan", "zuri"], display.Rows.Select(row => row.Id));
+        Assert.Equal(2, fake.GuideQueryRequests.Count);
+    }
+
+    [Fact]
     public async Task AnInvalidFilterShowsTheSentenceAndWhatTheCommandSaidAboutIt()
     {
         var fake = Fake(BothAnswer);

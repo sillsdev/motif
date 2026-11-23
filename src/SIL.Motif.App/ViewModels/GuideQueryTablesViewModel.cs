@@ -19,6 +19,7 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
     private readonly Action<string>? _openWord;
     private CancellationTokenSource? _cancellation;
     private int _generation;
+    private string[] _signatures = [];
 
     public GuideQueryTablesViewModel(GuideQueryContext context, Func<string?> projectPath,
         Func<GuideQueryRunRequest, CancellationToken, Task<CommandOutcome<FormsQueryResponse>>> run, Action<string>? openWord)
@@ -62,6 +63,7 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
     {
         Clear();
         if (document is null || !document.HasBlocks) return;
+        _signatures = Signatures(document);
         var blocks = document.Blocks;
         foreach (var query in blocks.Queries)
             Blocks.Add(new GuideQueryBlockViewModel(query.Id, query.Title, document.BodyOf(query.Span),
@@ -74,6 +76,31 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
         Running = Task.WhenAll(Blocks.ToArray().Select(block => block.RunAsync(cancellation.Token)));
     }
 
+    /// <summary>
+    /// Shows <paramref name="document"/> like <see cref="Show"/>, except that when its blocks and directives are the ones
+    /// already shown, they run again where they are, so a person's unsaved edit, sort and filter stay.
+    /// </summary>
+    public void Refresh(GuideQueryDocument? document)
+    {
+        var signatures = Signatures(document);
+        if (document is null || !document.HasBlocks || Blocks.Count == 0 || !signatures.SequenceEqual(_signatures))
+        {
+            Show(document);
+            return;
+        }
+        _cancellation?.Cancel();
+        var cancellation = new CancellationTokenSource();
+        _cancellation = cancellation;
+        Running = Task.WhenAll(Blocks.ToArray().Select(block => block.RunAsync(cancellation.Token)));
+    }
+
+    private static string[] Signatures(GuideQueryDocument? document) => document is null ? [] :
+    [
+        .. document.Blocks.Queries.Select(query => string.Join("\u001f", query.Id, query.Title, document.BodyOf(query.Span),
+            string.Join("\u001e", document.Blocks.Shows.Where(show => show.Query == query.Id)
+                .Select(show => $"{show.Show}/{show.Limit}/{string.Join(",", show.Columns ?? [])}")))),
+    ];
+
     /// <summary>Drops the blocks and stops their runs.</summary>
     public void Clear()
     {
@@ -82,6 +109,7 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
         _cancellation = null;
         foreach (var block in Blocks) block.Stop();
         Blocks.Clear();
+        _signatures = [];
         ProblemsText = "";
         HasBlocks = false;
         Running = Task.CompletedTask;
