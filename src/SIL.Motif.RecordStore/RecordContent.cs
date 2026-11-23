@@ -11,6 +11,8 @@ internal sealed class ContentRow
 {
     public int Id { get; set; }
     public byte[] Data { get; set; } = [];
+    /// <summary>The value's identity while the row waits to be saved; not a column of the content table.</summary>
+    public ContentKey Key { get; set; }
 }
 
 /// <summary>The SHA-256 of an immutable value's canonical bytes; it is the value's identity.</summary>
@@ -22,6 +24,17 @@ internal readonly record struct ContentKey(ulong A, ulong B, ulong C, ulong D)
         SHA256.HashData(canonical, hash);
         return new(BinaryPrimitives.ReadUInt64LittleEndian(hash), BinaryPrimitives.ReadUInt64LittleEndian(hash[8..]),
             BinaryPrimitives.ReadUInt64LittleEndian(hash[16..]), BinaryPrimitives.ReadUInt64LittleEndian(hash[24..]));
+    }
+
+    /// <summary>The 32 hash bytes this key was read from; the stored form of the identity.</summary>
+    public byte[] ToBytes()
+    {
+        var bytes = new byte[32];
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes, A);
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes.AsSpan(8), B);
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes.AsSpan(16), C);
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes.AsSpan(24), D);
+        return bytes;
     }
 }
 
@@ -40,8 +53,46 @@ internal sealed partial class RecordContent
     private int decodedCount;
     /// <summary>Number of rows decoded from storage; proves that opening and hashing do not decode.</summary>
     internal int DecodedCount => Volatile.Read(ref decodedCount);
+    internal int IdentityBuilds { get; private set; }
     public IReadOnlyList<ContentRow> Pending => pending;
-    public void Saved() => pending.Clear();
+
+    /// <summary>
+    /// Set by a format 6 writer: every new row's identity is also written to <c>RecordContentIdentity</c>, and a store
+    /// that already has rows finds a value's identity there instead of hashing every row to build a dictionary.
+    /// </summary>
+    internal bool PersistIdentities { get; set; }
+
+    /// <summary>Looks an identity up in the store; null when the value is not stored. Set only with <see cref="PersistIdentities"/>.</summary>
+    internal Func<ContentKey, int?>? PersistedLookup { get; set; }
+
+    // Values added since the last save: not yet in the persisted identity table.
+    private readonly Dictionary<ContentKey, int> recent = new();
+
+    public void Saved()
+    {
+        pending.Clear();
+        recent.Clear();
+    }
+
+    /// <summary>Writes the identity of every pending row; the caller's transaction makes it atomic with the rows.</summary>
+    internal void WriteIdentities(Microsoft.Data.Sqlite.SqliteConnection connection, Microsoft.Data.Sqlite.SqliteTransaction? transaction)
+    {
+        if (pending.Count == 0) return;
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "INSERT INTO RecordContentIdentity (Identity, Id) VALUES ($identity, $id)";
+        var identity = command.Parameters.Add("$identity", Microsoft.Data.Sqlite.SqliteType.Blob);
+        var id = command.Parameters.Add("$id", Microsoft.Data.Sqlite.SqliteType.Integer);
+        foreach (var row in pending)
+        {
+            identity.Value = row.Key.ToBytes();
+            id.Value = row.Id;
+            command.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>Every stored value's identity, from the rows themselves; the one-time fill of the persisted table.</summary>
+    internal IEnumerable<KeyValuePair<ContentKey, int>> AllIdentities() => Identities();
 
     internal void Reload(IEnumerable<ContentRow> rows, string expectedDigest, CancellationToken ct)
     {
@@ -52,6 +103,7 @@ internal sealed partial class RecordContent
             throw new InvalidDataException("The published immutable content could not be verified.");
         ct.ThrowIfCancellationRequested();
         identities = null;
+        recent.Clear();
         encoded = replacement.encoded;
         values = replacement.values;
         hashes = replacement.hashes;
@@ -63,6 +115,8 @@ internal sealed partial class RecordContent
     {
         var loaded = rows as ContentRow[] ?? rows.ToArray();
         foreach (var row in loaded) if (row.Id <= 0) throw new InvalidDataException("Invalid immutable content identity.");
+        identities = null;
+        recent.Clear();
         var rowHashes = new byte[loaded.Length][];
         try
         {
@@ -127,22 +181,34 @@ internal sealed partial class RecordContent
     {
         var raw = scratch.Written;
         var key = ContentKey.Of(raw);
-        var known = Identities();
+        // A store with rows and an identity table asks the table; every other store uses the dictionary.
+        var lookup = identities is null && PersistedLookup is not null && encoded.Count > 0;
+        var known = lookup ? recent : Identities();
         if (known.TryGetValue(key, out var prior)) return prior;
+        if (lookup && PersistedLookup!(key) is int stored) return Verified(stored, key);
         var bytes = Encode(raw);
         var id = checked(++next);
         known.Add(key, id);
         encoded.Add(id, bytes);
         if (retained is { } value) values[id] = value.Clone();
         hashes.Add((id, SHA256.HashData(bytes)));
-        pending.Add(new ContentRow { Id = id, Data = bytes });
+        pending.Add(new ContentRow { Id = id, Data = bytes, Key = key });
         digest = null;
+        return id;
+    }
+
+    // A hit is checked against its one row, so a damaged identity table cannot hand back the wrong value.
+    private int Verified(int id, ContentKey key)
+    {
+        if (!encoded.TryGetValue(id, out var bytes) || ContentKey.Of(Raw(bytes)) != key)
+            throw new InvalidDataException("The immutable content identity index is corrupt.");
         return id;
     }
 
     private Dictionary<ContentKey, int> Identities()
     {
         if (identities is not null) return identities;
+        IdentityBuilds++;
         var built = new Dictionary<ContentKey, int>(encoded.Count);
         foreach (var (id, bytes) in encoded)
             if (!built.TryAdd(ContentKey.Of(Raw(bytes)), id))

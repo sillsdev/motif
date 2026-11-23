@@ -43,6 +43,21 @@ internal readonly record struct SetDigest(UInt128 Low, UInt128 High, long Count)
         return Convert.ToHexStringLower(SHA256.HashData([..System.Text.Encoding.UTF8.GetBytes(domain), 0, ..bytes]));
     }
 
+    /// <summary>The exact accumulator as text, so a stored digest can be extended later; <see cref="Final"/> is one way.</summary>
+    public string ToText() => $"{Low:x32}:{High:x32}:{Count}";
+
+    public static bool TryParse(string? text, out SetDigest digest)
+    {
+        digest = default;
+        var parts = text?.Split(':');
+        if (parts is not { Length: 3 } || parts[0].Length != 32 || parts[1].Length != 32) return false;
+        if (!UInt128.TryParse(parts[0], System.Globalization.NumberStyles.AllowHexSpecifier, null, out var low) ||
+            !UInt128.TryParse(parts[1], System.Globalization.NumberStyles.AllowHexSpecifier, null, out var high) ||
+            !long.TryParse(parts[2], System.Globalization.NumberStyles.None, null, out var count)) return false;
+        digest = new(low, high, count);
+        return true;
+    }
+
     private static (UInt128, UInt128) Hash(ReadOnlySpan<byte> item)
     {
         Span<byte> hash = stackalloc byte[32];
