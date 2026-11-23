@@ -190,10 +190,10 @@ internal static class QueryDocumentJson
         {
             if (changeNode is not JsonObject changeObject) throw QueryRefusalException.DocumentInvalid("change is an object.", "change");
             Known(changeObject, ChangeNames, "change");
-            change = new QueryChangeDocument(Text(changeObject, "dropped", "change") ?? throw Missing("change.dropped"),
+            change = new QueryChangeDocument(Text(changeObject, "dropped", "change") ?? throw Missing("change", "dropped"),
                 Text(changeObject, "gained", "change") ?? "", Text(changeObject, "at", "change") ?? "final",
-                Strings(changeObject, "affixes", "change") ?? throw Missing("change.affixes"),
-                Strings(changeObject, "wordSets", "change") ?? throw Missing("change.wordSets"),
+                Strings(changeObject, "affixes", "change") ?? throw Missing("change", "affixes"),
+                Strings(changeObject, "wordSets", "change") ?? throw Missing("change", "wordSets"),
                 Strings(changeObject, "discovery", "change"), Strings(changeObject, "heldOut", "change"),
                 Integer(changeObject, "controls", "change", 1, 9) ?? 5, Strings(changeObject, "controlLetters", "change"));
         }
@@ -234,7 +234,8 @@ internal static class QueryDocumentJson
         }
     }
 
-    private static QueryRefusalException Missing(string path) => QueryRefusalException.DocumentInvalid("This property is required.", path);
+    private static QueryRefusalException Missing(string parent, string name) =>
+        QueryRefusalException.DocumentInvalid("This property is required.", parent + "." + name);
 
     private static void Known(JsonObject node, string[] names, string path)
     {
