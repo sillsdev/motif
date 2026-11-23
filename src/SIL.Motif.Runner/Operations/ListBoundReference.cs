@@ -12,24 +12,33 @@ namespace SIL.Motif.Runner.Operations;
 /// <summary>The one membership check for a reference that must come from a possibility list.</summary>
 internal static class ListBoundReference
 {
+    /// <summary>Finds the object a reference names, refusing with a coded error when the project has none.</summary>
+    public static ICmObject Find(LcmCache cache, CanonicalId id, string kind, string field)
+    {
+        if (!cache.ServiceLocator.ObjectRepository.TryGetObject(id.ToGuid(), out var found))
+            throw new ReferenceFieldRefusal(RefusalCodes.ReferenceUnknown, kind, field,
+                $"Referenced object '{id.Value}' is not in this project.");
+        return found;
+    }
+
     /// <summary>Resolves a reference that must be a <typeparamref name="TRef"/> owned by the field's list.</summary>
     public static TRef Resolve<TRef>(LcmCache cache, CanonicalId id, string kind, string field, Guid list)
         where TRef : ICmPossibility
     {
-        var resolved = CanonicalIdResolver.Resolve(cache, id);
+        var resolved = Find(cache, id, kind, field);
         if (resolved is not TRef member)
             throw new ReferenceFieldRefusal(RefusalCodes.ReferenceWrongClass, kind, field,
                 $"Referenced object '{id.Value}' is a {resolved.ClassName}, not a {typeof(TRef).Name.TrimStart('I')}.");
-        RequireInList(member, list, RefusalCodes.ReferenceWrongList, kind, field);
+        RequireInList(member, id.Value, list, RefusalCodes.ReferenceWrongList, kind, field);
         return member;
     }
 
     /// <summary>Throws the refusal for a <paramref name="member"/> that <paramref name="list"/> does not own.</summary>
-    public static void RequireInList(ICmObject member, Guid list, string code, string kind, string field)
+    public static void RequireInList(ICmObject member, string objectId, Guid list, string code, string kind, string field)
     {
         if (list == Guid.Empty || (member as ICmPossibility)?.OwningList.Guid != list)
             throw new ReferenceFieldRefusal(code, kind, field,
-                $"Referenced object '{member.Guid:D}' is not in the list {field} takes.");
+                $"Referenced object '{objectId}' is not in the list {field} takes.");
     }
 }
 

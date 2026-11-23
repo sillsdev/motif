@@ -274,7 +274,7 @@ internal sealed class CustomFieldHandler(string kind, string[] allowed, CellarPr
     private static ICmObject Member(Write context, string property, bool checkedAgainstField)
     {
         var id = ClosedPayloadParsing.GetRequiredCanonicalId(context.After, property, context.Kind);
-        var member = CanonicalIdResolver.Resolve(context.Cache, id);
+        var member = ListBoundReference.Find(context.Cache, id, context.Kind, FieldName(context));
         if (!checkedAgainstField)
             return member;
         var metadata = (IFwMetaDataCacheManaged)context.Cache.MetaDataCacheAccessor;
@@ -284,7 +284,7 @@ internal sealed class CustomFieldHandler(string kind, string[] allowed, CellarPr
                 $"Referenced object '{id.Value}' is a {member.ClassName}, not a {metadata.GetClassName(destination)}.");
         var root = metadata.GetFieldListRoot(context.Flid);
         if (root != Guid.Empty)
-            ListBoundReference.RequireInList(member, root, RefusalCodes.CustomFieldWrongList, context.Kind, FieldName(context));
+            ListBoundReference.RequireInList(member, id.Value, root, RefusalCodes.CustomFieldWrongList, context.Kind, FieldName(context));
         return member;
     }
 }

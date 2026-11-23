@@ -45,7 +45,7 @@ internal static class ReferenceCollectionFieldLowering
     public static void ApplyRemoveRef<TRef>(LcmCache cache, ICollection<TRef> collection, CanonicalId memberId, string kind)
         where TRef : ICmObject
     {
-        if (CanonicalIdResolver.Resolve(cache, memberId) is TRef member)
+        if (ListBoundReference.Find(cache, memberId, kind, kind) is TRef member)
             collection.Remove(member);
     }
 }

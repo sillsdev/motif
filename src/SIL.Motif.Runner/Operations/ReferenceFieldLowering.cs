@@ -28,7 +28,7 @@ internal static class ReferenceFieldLowering
     public static TRef Resolve<TRef>(LcmCache cache, CanonicalId id, string kind)
         where TRef : ICmObject
     {
-        var resolved = CanonicalIdResolver.Resolve(cache, id);
+        var resolved = ListBoundReference.Find(cache, id, kind, kind);
         if (resolved is not TRef typed)
         {
             var expectedName = typeof(TRef).Name.StartsWith("I", StringComparison.Ordinal)

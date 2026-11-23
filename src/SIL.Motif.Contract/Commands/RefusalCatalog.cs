@@ -695,6 +695,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.OperationInvalidWritingSystem, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ReferenceWrongList, FailureReason.Refused),
         Spec(RefusalCodes.ReferenceWrongClass, FailureReason.Refused),
+        Spec(RefusalCodes.ReferenceUnknown, FailureReason.Refused),
         Spec(RefusalCodes.CustomFieldMissing, FailureReason.Refused),
         Spec(RefusalCodes.CustomFieldNotCustom, FailureReason.Refused),
         Spec(RefusalCodes.CustomFieldWrongType, FailureReason.Refused),

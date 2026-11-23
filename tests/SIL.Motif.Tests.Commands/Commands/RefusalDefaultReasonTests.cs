@@ -96,6 +96,7 @@ public sealed class RefusalDefaultReasonTests
         ["hand-analysis.outcome-unknown"] = "contract code for an annotation persistence outcome, outside identity resolution",
         ["hand-analysis.request-id-reused"] = "contract code for an annotation idempotency outcome, outside identity resolution",
         ["hand-analysis.store-unavailable"] = "contract code for an annotation Home availability outcome, outside identity resolution",
+        ["reference.unknown"] = "reason not determinable statically: ReferenceFieldRefusal carries Refused for each code",
         ["reference.wrong-class"] = "reason not determinable statically: ReferenceFieldRefusal carries Refused for each code",
         ["reference.wrong-list"] = "reason not determinable statically: ReferenceFieldRefusal carries Refused for each code",
         ["custom-field.missing"] = "reason not determinable statically: CustomFieldRefusal carries Refused for each code",
