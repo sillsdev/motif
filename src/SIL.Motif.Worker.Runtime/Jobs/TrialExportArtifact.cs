@@ -68,6 +68,7 @@ public static class TrialExportArtifact
         if (!File.Exists(path)) return null;
         RequireRegular(path);
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        // The first page offset is where the words array opens, so the prefix plus ]} is the document without words.
         var header = binding.PageOffsets.Length > 0 ? binding.PageOffsets[0] : stream.Length;
         var bytes = new byte[header + (binding.PageOffsets.Length > 0 ? 2 : 0)];
         stream.ReadExactly(bytes, 0, (int)header);

@@ -10,7 +10,7 @@ Approved analyses are the ones the project's default user agent approves, read f
 
 `approvedTotal` is every analysis the default user agent approves in the Baseline. `approvedUncounted` is how many of them no column counts: the analysis has no Reading identity (no morph bundles, or a bundle that does not verify), or no Trial measured its word on both sides. A non-zero `approvedUncounted` makes the comparison incomplete with the typed limitation `approved-uncounted`, so a missing approval never reads as kept or lost.
 
-A Trial that no longer matches its Proposal's current content carries `trial-stale`. A Proposal with a newer Trial attempt than the one compared (including a pinned older Trial), or one that has been superseded by another Proposal, carries `trial-superseded`. When the PanGloss version differs between a Trial's before and after sides, or between the Trials, the limitation `parser-version-differs` names the versions in `detail`. Each of these makes the comparison incomplete.
+A Trial that no longer matches its Proposal's current content, or whose Proposal is no longer stored, carries `trial-stale`. A Proposal with a newer Trial attempt than the one compared that did not fail or get cancelled (including a pinned older Trial), or one that has been superseded by another Proposal, carries `trial-superseded`. When the PanGloss version differs between a Trial's before and after sides, or between the Trials, the limitation `parser-version-differs` names the versions in `detail`. Each of these makes the comparison incomplete.
 
 `--snapshot` is checked against the Trials a page reads, so it needs `--page`. Page reads of one snapshot reuse the form join the first read built in the same process instead of rebuilding it.
 

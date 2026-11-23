@@ -221,9 +221,14 @@ public static class ProposalCompareReads
             try { current = Trials.ReadCurrentIntentDigest(record); }
             catch (Exception exception) when (exception is JsonException or InvalidDataException or ContractParseException)
             { current = null; }
-            var used = IntentDigest.Compute(ProposalJsonParser.Parse(TrialJobInput.Parse(column.Job.InputJson).ProposalJson));
-            if (current is not null && !string.Equals(current, used, StringComparison.Ordinal)) stale++;
-            var newerAttempt = column.All.TakeWhile(job => job.JobId != column.Job.JobId).Any();
+            string? used;
+            try { used = IntentDigest.Compute(ProposalJsonParser.Parse(TrialJobInput.Parse(column.Job.InputJson).ProposalJson)); }
+            catch (Exception exception) when (exception is JsonException or InvalidDataException or ContractParseException or InvalidOperationException)
+            { used = null; }
+            // A missing Proposal row or an unreadable Trial input cannot be matched to a revision, so it reads as stale.
+            if (record is null || used is null || (current is not null && !string.Equals(current, used, StringComparison.Ordinal))) stale++;
+            var newerAttempt = column.All.TakeWhile(job => job.JobId != column.Job.JobId)
+                .Any(job => job.Status is not (JobStatus.Failed or JobStatus.Cancelled or JobStatus.Interrupted));
             if (newerAttempt || record?.SupersededBy is not null) superseded++;
         }
         return (stale, superseded);

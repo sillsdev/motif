@@ -12,7 +12,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <c>ApprovedSkippedOtherAgents</c> counts analyses approved only by a human agent other than the default user agent;
 /// they are not counted as approved. <c>ApprovedTotal</c> is every approved analysis of the Baseline
 /// (<c>IWfiWordform.HumanApprovedAnalyses</c>); <c>ApprovedUncounted</c> is those no column can count, because the analysis
-/// has no Reading identity or its word was measured by no Trial.
+/// has no Reading identity or no Trial measured its word on both sides.
 /// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ProposalComparison(
@@ -107,12 +107,49 @@ public sealed record CompareColumn(
 }
 
 /// <summary>A typed reason the totals may not mean what they seem to. Count is the number of columns it touches.</summary>
-[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+[JsonConverter(typeof(CompareLimitation.CompactConverter))]
 public sealed record CompareLimitation([property: JsonRequired] string Code, [property: JsonRequired] int Count)
 {
     /// <summary>Names the versions or the revision behind the limitation, when the code needs more than a count.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Detail { get; init; }
+
+    /// <summary>Writes each limitation on one line so seven of them stay within the summary's byte limit.</summary>
+    internal sealed class CompactConverter : JsonConverter<CompareLimitation>
+    {
+        public override CompareLimitation Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            using var document = JsonDocument.ParseValue(ref reader);
+            var root = document.RootElement;
+            string? code = null, detail = null;
+            int? count = null;
+            if (root.ValueKind != JsonValueKind.Object) throw new JsonException("A limitation is an object.");
+            foreach (var member in root.EnumerateObject())
+                switch (member.Name)
+                {
+                    case "code" when member.Value.ValueKind == JsonValueKind.String: code = member.Value.GetString(); break;
+                    case "count" when member.Value.TryGetInt32(out var number): count = number; break;
+                    case "detail" when member.Value.ValueKind == JsonValueKind.String: detail = member.Value.GetString(); break;
+                    default: throw new JsonException($"The limitation member {member.Name} is not valid.");
+                }
+            return new(code ?? throw new JsonException("The limitation needs a code."),
+                count ?? throw new JsonException("The limitation needs a count.")) { Detail = detail };
+        }
+
+        public override void Write(Utf8JsonWriter writer, CompareLimitation value, JsonSerializerOptions options)
+        {
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var line = new Utf8JsonWriter(buffer))
+            {
+                line.WriteStartObject();
+                line.WriteString("code", value.Code);
+                line.WriteNumber("count", value.Count);
+                if (value.Detail is not null) line.WriteString("detail", value.Detail);
+                line.WriteEndObject();
+            }
+            writer.WriteRawValue(buffer.WrittenSpan, skipInputValidation: true);
+        }
+    }
 
     /// <summary>Some column did not measure some forms on both sides; they never read as unchanged.</summary>
     public const string NotMeasured = "not-measured";

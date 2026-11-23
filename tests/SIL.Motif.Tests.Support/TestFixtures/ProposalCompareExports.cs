@@ -55,6 +55,15 @@ public static class ProposalCompareExports
             command.Parameters.AddWithValue("$id", jobId);
             command.ExecuteNonQuery();
         }
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "INSERT OR IGNORE INTO Proposals (ProposalId,CurrentIntentDigest,Status) VALUES ($id,$digest,'proposed');";
+            command.Parameters.AddWithValue("$id", proposalId);
+            command.Parameters.AddWithValue("$digest", SIL.Motif.Contract.Canonicalization.IntentDigest.Compute(
+                SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(proposalJson)));
+            command.ExecuteNonQuery();
+        }
         var list = forms.ToList();
         var words = list.Select((spec, index) => new TrialExportWord("case/" + index, spec.WritingSystemId, spec.Form, [],
             [new TrialExportForm(spec.Form, "key/" + spec.Form, "submitted", TrialExportStatus.Accepted, "ok", [],

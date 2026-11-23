@@ -98,6 +98,8 @@ public sealed class ProposalCompareArgvTests
         var text = await Run();
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains("approved analyses each Proposal keeps and loses", text.Output, StringComparison.Ordinal);
+        Assert.Contains("Approved analyses: 2; 2 counted in no column.", text.Output, StringComparison.Ordinal);
+        Assert.Contains("approved-uncounted 2 (approved analyses with no Reading identity", text.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -148,8 +150,8 @@ public sealed class ProposalCompareArgvTests
         var unknown = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "compare", ids[0], ids[1],
             "--project", fixture.Project, "--job", "job/nonexistent", "--json");
         Assert.Equal("proposal.compare-trial-missing", CodeOf(unknown));
-        var swapped = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "compare", ids[0], ids[1],
+        var duplicatePin = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "compare", ids[0], ids[1],
             "--project", fixture.Project, "--job", jobs[0], "--job", jobs[0], "--json");
-        Assert.Equal("proposal.compare-proposals-invalid", CodeOf(swapped));
+        Assert.Equal("proposal.compare-proposals-invalid", CodeOf(duplicatePin));
     }
 }
