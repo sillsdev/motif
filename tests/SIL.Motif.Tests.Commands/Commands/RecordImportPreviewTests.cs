@@ -23,6 +23,7 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
     public void Dispose()
     {
         RecordImportCommand.BeforeStage = null;
+        ProjectReadCache.ScratchRoot = null;
         try { Directory.Delete(_folder, recursive: true); }
         catch (IOException) { }
     }
@@ -306,5 +307,40 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
 
         Assert.Equal(RefusalCodes.RecordImportStrictNeedsDraft, outcome.Refusal!.Code);
         Assert.Equal(FailureReason.InvalidArgument, outcome.Refusal.Reason);
+    }
+
+    [Fact]
+    public void NoScratchCopyIsLeftAfterADryRunAStageARefusedFileOrAFailedRead()
+    {
+        var (project, file, _) = Fixture(wrongList: true);
+        var root = Path.Combine(_folder, "scratch");
+        ProjectReadCache.ScratchRoot = root;
+        var located = ProjectStoreCommand.LocateProject(project).Value!;
+
+        Assert.True(RecordImportCommand.Run(new(project, file)).Succeeded);
+        Assert.True(RecordImportCommand.Run(new(project, file, "import-scratch")).Succeeded);
+        File.WriteAllText(Path.Combine(_folder, "unknown.md"), "");
+        Assert.False(RecordImportCommand.Run(new(project, Path.Combine(_folder, "unknown.md"))).Succeeded);
+        Assert.Throws<InvalidOperationException>(() =>
+            ProjectReadCache.ReadSaved<int>(located, (_, _) => throw new InvalidOperationException("forced")));
+
+        Assert.True(!Directory.Exists(root) || !Directory.EnumerateFileSystemEntries(root).Any());
+    }
+
+    [Fact]
+    public void ANewObjectWithADoomedFieldStagesOnlyWhatTheScratchCopyAcceptedAndTheStageAgrees()
+    {
+        var (project, file, _) = Fixture(wrongList: true);
+        var text = File.ReadAllText(file);
+        var dry = RecordImportCommand.Run(new(project, file)).Value!;
+
+        var staged = RecordImportCommand.Run(new(project, file, "import-dependents"));
+
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal(dry.OperationCount, staged.Value!.OperationCount);
+        Assert.Equal(dry.RefusalCount, staged.Value.RefusalCount);
+        Assert.Contains("status", text, StringComparison.Ordinal);
+        Assert.All(staged.Value.Changes!.Where(change => change.Status == "refused"),
+            change => Assert.NotNull(change.RefusalCode));
     }
 }
