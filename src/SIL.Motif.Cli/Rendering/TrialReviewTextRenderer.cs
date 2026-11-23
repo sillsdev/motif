@@ -142,7 +142,16 @@ public static class TrialReviewTextRenderer
             return $"{group.Cause}: {group.Total:N0}: {string.Join("; ", shown)}" +
                 (rest > 0 ? $"; and {rest:N0} more. Next: {group.NextStep}" : "");
         }).ToList();
-        if (parts.Count > 0) text.AppendLine("Regressed words, " + string.Join(" || ", parts));
+        if (parts.Count == 0) return;
+        var first = regressions.Groups.SelectMany(group => group.Words).FirstOrDefault();
+        var detail = first is null ? "" : $" || First word {first.Word}: " + (first.TouchedBy is null
+            ? "the overlap with the Proposal's operations was not computed (see Limitations)"
+            : first.TouchedBy.Count == 0
+            ? "no Proposal operation names an object its Baseline reading uses (this says nothing about cause)"
+            : "touched by " + string.Join("; ", first.TouchedBy.Select(touch =>
+                $"operation {touch.Position} ({touch.Kind}) sharing {string.Join(", ", touch.SharedIds)}")) +
+              " (an overlap of ids, not a cause)") + $"{(first.TraceBaseline is null ? "" : $". Trace: {first.TraceBaseline} | {first.TraceTrial}")}; --json has every word's ids, overlap and trace.";
+        text.AppendLine("Regressed words, " + string.Join(" || ", parts) + detail);
     }
 
     private static string Analyses(IReadOnlyList<string> analyses) =>

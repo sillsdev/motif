@@ -315,6 +315,9 @@ public sealed class TrialReviewCommandsTests : IDisposable
         Assert.True(selected.Links.Count > 0 || selected.Limitations.Count > 0);
     }
 
+    private static readonly Guid FormGuid = Guid.Parse("11111111-2222-3333-4444-555555555555");
+    private static readonly Guid MsaGuid = Guid.Parse("66666666-7777-8888-9999-000000000000");
+
     [Fact]
     public async Task ASummaryNamesRegressedWordsWithBeforeAndAfterAnalysesAndCountsTheRest()
     {
@@ -323,7 +326,7 @@ public sealed class TrialReviewCommandsTests : IDisposable
         var repository = new ReviewReportRepository(_database);
         var summary = repository.ReadManifest(original)!.Summary;
         ReadingRow Reading(Side side, params (string Form, string Gloss)[] morphs) => new(null, side, IdentityState.Unavailable,
-            morphs.Select(morph => new Morph(null, null, [], morph.Form, morph.Gloss)).ToArray(), true, [], []);
+            morphs.Select(morph => new Morph(FormGuid.ToString(), MsaGuid.ToString(), [], morph.Form, morph.Gloss)).ToArray(), true, [], []);
         var cases = Enumerable.Range(0, 12).Select(i => new ReviewCaseDelta("case-" + i, "key-" + i, "word-" + i, "ws",
             true, false, false, [], [ReviewFlagId.NewWordFailures], [], [])
         {
@@ -354,6 +357,15 @@ public sealed class TrialReviewCommandsTests : IDisposable
         var first = group.Words[0];
         Assert.Equal(["kwish (go) + isha (CAUS)"], first.Before);
         Assert.Empty(first.After);
+        var morph = first.BeforeReadings![0].Morphs[0];
+        Assert.Equal(CanonicalId.FromGuid(FormGuid).ToString(), morph.FormId);
+        Assert.Equal(CanonicalId.FromGuid(MsaGuid).ToString(), morph.MsaId);
+        Assert.Null(morph.EntryId);
+        Assert.Equal("motif parse 'word-0' --project <fwdata> --trace --at baseline [--json]", first.TraceBaseline);
+        Assert.Equal("motif parse 'word-0' --project <fwdata> --trace --at " + _proposal.Value + " [--json]", first.TraceTrial);
+        Assert.True(first.TouchedBy is null or { Count: 0 });
+        if (first.TouchedBy is null)
+            Assert.Contains(report.Limitations, limitation => limitation.Code == TrialRegressionReader.OverlapNotComputedCode);
         var failures = Assert.IsType<AvailableTrialResult>(commands.Read(new ReviewReadRequest("project", _proposal.Value,
             ReportId: id.Value, Detail: DetailLevel.Failures)).Value).Report;
         Assert.Null(failures.Regressions);
