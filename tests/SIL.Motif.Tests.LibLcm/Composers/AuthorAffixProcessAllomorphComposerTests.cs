@@ -1,3 +1,5 @@
+using SIL.Motif.Runner.Execution;
+using SIL.Motif.Contract.Commands;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -217,8 +219,9 @@ public sealed class AuthorAffixProcessAllomorphComposerTests : IDisposable
         var entry = ProcessEntry();
         Assert.Throws<InvalidOperationException>(() => AuthorAffixProcessAllomorphComposer.Build(_cache,
             Intent(entry) with { Output = [new(Copy: "c"), new(Copy: "rest")] }));
-        Assert.Throws<KeyNotFoundException>(() => AuthorAffixProcessAllomorphComposer.Build(_cache,
+        var unknown = Assert.ThrowsAny<ProposalRefusalException>(() => AuthorAffixProcessAllomorphComposer.Build(_cache,
             Intent(entry) with { Input = [new("c", Phoneme: CanonicalId.Mint()), new("rest", Remaining: true)] }));
+        Assert.Equal(RefusalCodes.ReferenceUnknown, unknown.Code);
         Assert.Throws<InvalidOperationException>(() => AuthorAffixProcessAllomorphComposer.Build(_cache,
             Intent(entry) with { Output = [new(Copy: "gone"), new(Copy: "rest")] }));
     }

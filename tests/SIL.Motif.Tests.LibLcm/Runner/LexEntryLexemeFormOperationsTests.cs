@@ -1,3 +1,5 @@
+using SIL.Motif.Runner.Execution;
+using SIL.Motif.Contract.Commands;
 using System.Text.Json;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
@@ -214,8 +216,9 @@ public sealed class LexEntryLexemeFormOperationsTests : IDisposable
         var proposal = BuildCreateProposal(
             CanonicalId.FromGuid(entryGuid), CanonicalId.Mint(), bogusMorphType, "en", "x");
 
-        var ex = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, proposal));
-        Assert.Contains(unresolvableGuid.ToString(), ex.Message);
+        var ex = Assert.ThrowsAny<ProposalRefusalException>(() => ScratchDryRun.Of(_cache, proposal));
+        Assert.Equal(RefusalCodes.ReferenceUnknown, ex.Code);
+        Assert.Contains(bogusMorphType.Value, ex.Message);
     }
 
     [Fact]
