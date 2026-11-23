@@ -357,12 +357,16 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
 
     private bool Current(int generation) => !_stopped && generation == _generation && _context.ProjectPath == ProjectPath;
 
+    // Each change's current saved value stands in for the recorded old value until a Trial gives one; a decided
+    // Proposal keeps the values it recorded.
+    private bool ReadsCurrentValues => Card?.Card is not { } card || card.Trial is null && !IsDecided(card.Status);
+
     private async Task ReadAsync(int generation, CancellationTokenSource cancellation)
     {
         try
         {
             var shown = await _context.Commands.ShowProposalAsync(new ShowProposalRequest(ProjectPath,
-                MotifProductVersion.CurrentText, ProposalId), cancellation.Token).ConfigureAwait(true);
+                MotifProductVersion.CurrentText, ProposalId, WithCurrent: ReadsCurrentValues), cancellation.Token).ConfigureAwait(true);
             if (!Current(generation) || cancellation.IsCancellationRequested) return;
             if (!shown.Succeeded)
             {

@@ -7465,6 +7465,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalChangeGloss" xml:space="preserve"><value>Gloss</value></data>
   <data name="MotifApp.ProposalChangeEmpty" xml:space="preserve"><value>(empty)</value></data>
   <data name="MotifApp.ProposalChangeTransition" xml:space="preserve"><value>{0}: {1} → {2}</value></data>
+  <data name="MotifApp.ProposalChangeNowProposed" xml:space="preserve"><value>{0}: now {1}; proposed {2}</value></data>
+  <data name="MotifApp.ProposalChangeNowOnly" xml:space="preserve"><value>{0}: now {1}</value></data>
   <data name="MotifApp.ProposalSharedEffect" xml:space="preserve"><value>Several changes contribute to the final result for {0}.</value></data>
   <data name="MotifApp.ProposalChangeFieldWithWritingSystem" xml:space="preserve"><value>{0} ({1})</value></data>
   <data name="MotifApp.ProposalChangeValue" xml:space="preserve"><value>Proposed value: {0}</value></data>

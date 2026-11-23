@@ -11,10 +11,15 @@ public sealed partial class FakeCommandClient
     public Func<ShowProposalRequest, CancellationToken, Task<CommandOutcome<ProposalDetailProjection>>>?
         ShowProposalHandler { get; set; }
 
+    public List<ShowProposalRequest> ShowProposalRequests { get; } = [];
+
     public Task<CommandOutcome<ProposalDetailProjection>> ShowProposalAsync(
-        ShowProposalRequest request, CancellationToken cancellationToken) =>
-        ShowProposalHandler?.Invoke(request, cancellationToken) ??
-        Completed(ProposalDetail ?? new ProposalDetailProjection(request.ProposalId, "proposed", null, null, null, []));
+        ShowProposalRequest request, CancellationToken cancellationToken)
+    {
+        ShowProposalRequests.Add(request);
+        return ShowProposalHandler?.Invoke(request, cancellationToken) ??
+            Completed(ProposalDetail ?? new ProposalDetailProjection(request.ProposalId, "proposed", null, null, null, []));
+    }
 
     public List<SetRationaleRequest> SetRationaleRequests { get; } = [];
 

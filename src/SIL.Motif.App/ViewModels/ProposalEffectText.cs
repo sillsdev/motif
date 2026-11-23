@@ -6,13 +6,17 @@ namespace SIL.Motif.App.ViewModels;
 
 internal static class ProposalEffectText
 {
-    public static string Transition(EffectView effect, EffectChange change)
-    {
-        var field = effect.Field == SnapshotFields.LexSenseGloss ? MotifAppStrings.ProposalChangeGloss : effect.Field;
-        var label = string.IsNullOrWhiteSpace(change.Ws) ? field : string.Format(CultureInfo.CurrentCulture,
-            MotifAppStrings.ProposalChangeFieldWithWritingSystem, field, change.Ws);
-        return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalChangeTransition, label,
+    public static string Transition(EffectView effect, EffectChange change) =>
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalChangeTransition,
+            FieldLabel(effect.Field, change.Ws),
             change.Before ?? MotifAppStrings.ProposalChangeEmpty, change.After ?? MotifAppStrings.ProposalChangeEmpty);
+
+    /// <summary>The field's name as the window says it, with its writing system when it has one.</summary>
+    public static string FieldLabel(string canonicalField, string? ws)
+    {
+        var field = canonicalField == SnapshotFields.LexSenseGloss ? MotifAppStrings.ProposalChangeGloss : canonicalField;
+        return string.IsNullOrWhiteSpace(ws) ? field : string.Format(CultureInfo.CurrentCulture,
+            MotifAppStrings.ProposalChangeFieldWithWritingSystem, field, ws);
     }
 
     /// <summary>What a Dry Run found, as one sentence: how many fields it will change and the first few changes.</summary>

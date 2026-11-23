@@ -4008,6 +4008,8 @@ public static class MotifAppStrings
     public static string ProposalChangeGloss => Text("MotifApp.ProposalChangeGloss");
     public static string ProposalChangeEmpty => Text("MotifApp.ProposalChangeEmpty");
     public static string ProposalChangeTransition => Text("MotifApp.ProposalChangeTransition");
+    public static string ProposalChangeNowProposed => Text("MotifApp.ProposalChangeNowProposed");
+    public static string ProposalChangeNowOnly => Text("MotifApp.ProposalChangeNowOnly");
     public static string ProposalSharedEffect => Text("MotifApp.ProposalSharedEffect");
     public static string ProposalChangeFieldWithWritingSystem => Text("MotifApp.ProposalChangeFieldWithWritingSystem");
     public static string ProposalChangeValue => Text("MotifApp.ProposalChangeValue");
