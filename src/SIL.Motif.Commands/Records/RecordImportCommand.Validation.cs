@@ -6,6 +6,7 @@ using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Projection;
 using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Operations;
