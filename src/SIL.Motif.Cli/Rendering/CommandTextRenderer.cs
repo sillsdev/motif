@@ -137,6 +137,7 @@ public static class CommandTextRenderer
             WarningsResponse r => RenderWarnings(r),
             ProposalDifferenceResponse r => RenderProposalDifference(r),
             TimingResponse r => TimingTextRenderer.RenderTiming(r),
+            SIL.Motif.Contract.Query.Corpus.PairsQueryResponse r => PairsText.Render(r),
             ActivitySummary r => RenderActivity(r),
             ObjectUsesResponse r => RenderUses(r),
             InspectResponse r => RenderInspect(r),

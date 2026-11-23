@@ -473,6 +473,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.GuideQueryRunInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GuideQueryRunNotReadOnly, FailureReason.Refused),
         Spec(RefusalCodes.QueryAsOfUnavailable, FailureReason.Refused),
+        Spec(RefusalCodes.QueryCorpusUnreadable, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.QueryCorpusInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProjectBackupUnreadable, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProjectBusy, FailureReason.Busy,
             NextStep.Repeat()),

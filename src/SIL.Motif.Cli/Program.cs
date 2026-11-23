@@ -2291,6 +2291,12 @@ try
 
         case "query":
         {
+            if (CorpusQueryCli.Handles(flags))
+            {
+                if (!CorpusQueryCli.TryBuildRequest(flags, positionals, out var corpusRequest)) return Usage(UsageLineFor("query pairs"), asJson);
+                result = RenderCommand(CorpusQueryCommand.Pairs(corpusRequest));
+                break;
+            }
             var queryUsage = UsageLineFor("query forms");
             if (flags.ContainsKey("schema"))
             {

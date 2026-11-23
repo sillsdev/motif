@@ -369,6 +369,10 @@ public static class RefusalCodes
     public const string GuideQueryRunNotReadOnly = "guide-query.run-not-read-only";
     /// <summary>The Baseline or Proposal Trial copy a query was asked to read as of is not available.</summary>
     public const string QueryAsOfUnavailable = "query.as-of-unavailable";
+    /// <summary>A corpus word list or segment file named by a corpus query cannot be read or is malformed.</summary>
+    public const string QueryCorpusUnreadable = "query.corpus-unreadable";
+    /// <summary>A corpus query option is out of range or its pattern is not a valid regular expression.</summary>
+    public const string QueryCorpusInvalid = "query.corpus-invalid";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
