@@ -2017,8 +2017,11 @@ try
             if (positionals is ["compare", ..])
             {
                 if (positionals.Count < 3 || !flags.TryGetValue("project", out var compareReadProject) ||
-                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "page" or "at" or "snapshot")))
+                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "page" or "at" or "snapshot" or "job")))
                     return Usage(UsageLineFor("proposal compare"), asJson);
+                if (flags.ContainsKey("snapshot") && !flags.ContainsKey("page"))
+                    return Usage("--snapshot checks the Trials a page was read from, so it needs --page. " +
+                        UsageLineFor("proposal compare"), asJson);
                 int? proposalComparePage = null;
                 if (flags.TryGetValue("page", out var proposalCompareText))
                 {
@@ -2028,7 +2031,7 @@ try
                 }
                 result = RenderCommand(ProposalCompareReads.Read(new CompareProposalsRequest(compareReadProject,
                     positionals.Skip(1).ToArray(), flags.GetValueOrDefault("at"), proposalComparePage,
-                    flags.GetValueOrDefault("snapshot"))));
+                    flags.GetValueOrDefault("snapshot"), ReadRepeatedFlagValues(flags, "job"))));
                 break;
             }
             if (positionals is ["trial", "export", ..])
@@ -4001,7 +4004,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
             else
             {
                 var value = tokens[++i];
-                flags[name] = name is "assessment" or "expect" && flags.TryGetValue(name, out var previous)
+                flags[name] = name is "assessment" or "expect" or "job" && flags.TryGetValue(name, out var previous)
                     ? previous + "\n" + value
                     : value;
             }

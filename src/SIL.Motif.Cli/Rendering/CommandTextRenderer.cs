@@ -745,12 +745,22 @@ public static class CommandTextRenderer
         }
         if (comparison.ApprovedSkippedOtherAgents > 0)
             text.Append($"{comparison.ApprovedSkippedOtherAgents:N0} analyses approved only by another human agent are not counted as approved.\n");
+        text.Append($"Approved analyses: {comparison.ApprovedTotal:N0}; {comparison.ApprovedUncounted:N0} counted in no column.\n");
         text.Append(comparison.Complete ? "Comparison complete" :
-            "Comparison incomplete: " + string.Join(", ", comparison.Limitations.Select(item => item.Code + " " + item.Count)));
+            "Comparison incomplete: " + string.Join(", ", comparison.Limitations.Select(RenderLimitation)));
         if (comparison.Page is { } page)
             foreach (var row in page.Rows) text.Append('\n').Append(ProjectionJson.Serialize(row));
         return text.ToString();
     }
+
+    private static string RenderLimitation(CompareLimitation item) => item.Code switch
+    {
+        CompareLimitation.ParserVersionDiffers => $"{item.Code} {item.Count} (PanGloss versions: {item.Detail ?? "unrecorded"})",
+        CompareLimitation.TrialStale => $"{item.Code} {item.Count} (the Proposal changed after its Trial)",
+        CompareLimitation.TrialSuperseded => $"{item.Code} {item.Count} (a newer Trial exists or the Proposal was superseded)",
+        CompareLimitation.ApprovedUncounted => $"{item.Code} {item.Count} (approved analyses with no Reading identity or on words no Trial measured)",
+        _ => item.Code + " " + item.Count,
+    };
 
     private static string RenderTrialExport(TrialExportReceipt receipt)
     {
