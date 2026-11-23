@@ -117,10 +117,7 @@ public static partial class RecordImportCommand
             created.Value!.DraftName, created.Value.ProposalId));
     }
 
-    /// <param name="Schema">The schema the file was planned with.</param>
-    /// <param name="Plan">The importer's plan.</param>
-    /// <param name="Lowering">What would be staged.</param>
-    /// <param name="Digest">Taken before any refusal, so a stage can tell the project changed.</param>
+    /// <summary>A planned file, what would be staged, and a digest taken before any refusal.</summary>
     private sealed record Planned(ProjectRecordSchemaResult Schema, ProjectRecordPlan Plan, RecordLowering Lowering, string Digest);
 
     private static Planned? Plan(LcmCache cache, string text, bool validate)
