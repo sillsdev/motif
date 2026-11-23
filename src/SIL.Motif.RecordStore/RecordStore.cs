@@ -18,10 +18,12 @@ public sealed record RecordCommit(Guid Id, DateTimeOffset UtcTime, long Counter,
 public sealed partial class RecordStore : IAsyncDisposable
 {
     public const int MaximumChangesPerCommit = 500;
-    private const int StoreFormat = 5;
+    // Format 6 adds the certificate and content identity tables; a format 5 store is upgraded by its first write.
+    private const int StoreFormat = 6;
+    private const int PackedStoreFormat = 5;
     private const int LegacyStoreFormat = 4;
     internal const int CompleteRecordModelVersion = 1;
-    private readonly int format;
+    private int format;
     private int ModelVersion => format == LegacyStoreFormat ? 0 : CompleteRecordModelVersion;
     private readonly ServiceProvider provider;
     private readonly AsyncServiceScope scope;
@@ -35,9 +37,13 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     public RecordStore(string path, TimeProvider? timeProvider = null) : this(ResolvePath(path), timeProvider, false) { }
 
+    /// <summary>Opens as a reader that predates a format would: anything newer than <paramref name="highestFormat"/> is refused.</summary>
+    internal static RecordStore OpenWithFormatCeiling(string path, int highestFormat) =>
+        new(ResolvePath(path), null, false, highestFormat);
+
     internal static RecordStore OpenPublishedReader(string resolvedPath) => new(resolvedPath, null, true);
 
-    private RecordStore(string path, TimeProvider? timeProvider, bool readOnly)
+    private RecordStore(string path, TimeProvider? timeProvider, bool readOnly, int highestFormat = StoreFormat)
     {
         this.readOnly = readOnly;
         writeLockPath = path + ".write.lock";
@@ -45,9 +51,10 @@ public sealed partial class RecordStore : IAsyncDisposable
         var services = new ServiceCollection();
         var connection = RecordSqlite.ConnectionString(path, readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate);
         var storedFormat = File.Exists(path) ? ReadFormat(connection) : 0;
-        if (storedFormat is not (0 or LegacyStoreFormat or StoreFormat))
+        if (storedFormat is not (0 or LegacyStoreFormat or PackedStoreFormat or StoreFormat) || storedFormat > highestFormat)
             throw new InvalidDataException("Unsupported record store format.");
-        format = storedFormat == LegacyStoreFormat ? LegacyStoreFormat : StoreFormat;
+        // A new file is created in the current format; an existing one keeps its own until its first write upgrades it.
+        format = storedFormat == 0 ? StoreFormat : storedFormat;
         services.AddSingleton<RecordContent>();
         // Converters close over this store's immutable content cache; their EF model must have the same lifetime.
         services.AddDbContext<RecordDatabase>(options => options.UseSqlite(connection).EnableServiceProviderCaching(false));
@@ -100,6 +107,7 @@ public sealed partial class RecordStore : IAsyncDisposable
             if (created)
             {
                 ReferencePersistence.Create(database);
+                database.Database.ExecuteSqlRaw(IdentityTable);
                 database.Add(new StoreState());
                 database.SaveChanges();
             }
@@ -107,6 +115,8 @@ public sealed partial class RecordStore : IAsyncDisposable
             if (readOnly && !state.Published) throw new InvalidDataException("The store import has not been published.");
             if (!readOnly && state.Published && state.ContentDigest != content.Digest())
                 throw new InvalidDataException("Corrupt immutable record content.");
+            UseIdentityTable();
+            Verification = OpenVerification(state);
             database.ChangeTracker.Clear();
             model = scope.ServiceProvider.GetRequiredService<DataModel>();
         }
@@ -162,7 +172,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         ImportAsync(records, clientId, nativeCoverage, packed: false);
 
     internal Task ImportNativeAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage coverage) =>
-        ImportAsync(records, clientId, coverage, packed: format == StoreFormat);
+        ImportAsync(records, clientId, coverage, packed: format >= PackedStoreFormat);
 
     private async Task ImportAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage? nativeCoverage, bool packed)
     {
@@ -189,6 +199,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         PublishedWork? work = null;
         try
         {
+            await UpgradeInTransactionAsync();
             if (baseline is not null)
             {
                 work = PublishedWork.Start(baseline);
@@ -202,12 +213,14 @@ public sealed partial class RecordStore : IAsyncDisposable
                     await model.AddChanges(clientId, batch);
                 database.ChangeTracker.Clear();
             }
-            await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync(), work);
+            await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync(), work, CertificateProvenance.FullImport);
             await transaction.CommitAsync();
+            CompleteUpgrade();
         }
         catch
         {
             requiresReopen = true;
+            AbandonUpgrade();
             // The overlapped work only reads the records; let it finish so nothing outlives a failed import.
             if (work is not null) await Task.WhenAll(work.Snapshot, work.Projection).ContinueWith(_ => { });
             throw;
@@ -333,12 +346,14 @@ public sealed partial class RecordStore : IAsyncDisposable
     }
 
     /// <summary>Reads and verifies the published point; a trusted result is retained for reuse.</summary>
-    private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default)
+    private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default, Action<string, string>? observe = null)
     {
         point = null;
         var decoded = await DecodeLatestAsync(digest: true, ct);
         var records = decoded.Records;
-        var snapshot = VerifySnapshots(state, decoded.Digest);
+        // A verification reports the digests it computed instead of refusing at the first mismatch.
+        observe?.Invoke("snapshot", decoded.Digest.Final("snapshot"));
+        var snapshot = observe is null ? VerifySnapshots(state, decoded.Digest) : decoded.Digest;
         var native = new Dictionary<Guid, GenericRecord>();
         var headers = new List<ReferenceRecord>();
         var anchors = new List<GenericRecord>();
@@ -358,6 +373,7 @@ public sealed partial class RecordStore : IAsyncDisposable
             state.IndexLimitations.Split('\n', StringSplitOptions.RemoveEmptyEntries));
         var limitations = projection.Limitations.ToList();
         var digest = projection.Accumulate(ct);
+        observe?.Invoke("index", digest.Final());
         var trusted = digest.Final() == state.IndexDigest;
         if (!trusted) limitations.Add("Incoming-reference index is corrupt; rebuild it before use.");
         var schema = NativeUsageSchema.Read(records, ct);
@@ -377,7 +393,12 @@ public sealed partial class RecordStore : IAsyncDisposable
         };
         ct.ThrowIfCancellationRequested();
         PointAcquisitions++;
-        if (trusted) point = verified;
+        if (observe is null)
+        {
+            // Another handle may have written since this one last looked; what it reads again is not what it verified.
+            Verification = OpenVerification(state);
+            if (trusted) point = verified;
+        }
         return verified;
     }
 
@@ -388,6 +409,9 @@ public sealed partial class RecordStore : IAsyncDisposable
     /// </summary>
     /// <summary>Number of full verified acquisitions this handle has performed.</summary>
     internal int PointAcquisitions { get; private set; }
+
+    /// <summary>Times the in-memory identity dictionary was built over every content row.</summary>
+    internal int ContentIdentityDictionaryBuilds => content.IdentityBuilds;
 
     /// <summary>The reference snapshot that planning and guarded writes currently reuse.</summary>
     internal async Task<ReferenceIndexSnapshot> PlanningIndexAsync() => (await PointAsync()).GetPlanningIndex();
@@ -414,23 +438,41 @@ public sealed partial class RecordStore : IAsyncDisposable
             new(Task.Run(() => SnapshotDigest(records)), Task.Run(() => ReferenceProjection.Build(records)));
     }
 
-    private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision, PublishedWork? work = null)
+    private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision, PublishedWork? work = null,
+        string provenance = CertificateProvenance.FullVerify)
     {
         point = null;
         var projection = work is null ? ReferenceProjection.Build(records) : await work.Projection;
         await using var transaction = database.Database.CurrentTransaction is null ? await database.Database.BeginTransactionAsync() : null;
+        try
+        {
+            await UpgradeInTransactionAsync();
             await ReferencePersistence.ReplaceAsync(database, projection.Edges);
-        var state = await database.Set<StoreState>().SingleAsync();
-        state.Revision = revision;
-        state.IndexDigest = projection.Digest();
-        state.IndexLimitations = string.Join("\n", projection.Limitations);
-        state.ReplayDigest = await ReplayIntegrity.DigestAsync(database, Workers);
-        state.SnapshotDigest = (work is null ? SnapshotDigest(records) : await work.Snapshot).Final("snapshot");
-        state.ContentDigest = content.Digest();
-        state.Published = true;
-        await database.SaveChangesAsync();
-        if (transaction is not null) await transaction.CommitAsync();
+            var state = await database.Set<StoreState>().SingleAsync();
+            state.Revision = revision;
+            state.IndexDigest = projection.Digest();
+            state.IndexLimitations = string.Join("\n", projection.Limitations);
+            HistoryScans++;
+            var replay = await ReplayIntegrity.ScanAsync(database, Workers);
+            state.ReplayDigest = replay.Final();
+            state.SnapshotDigest = (work is null ? SnapshotDigest(records) : await work.Snapshot).Final("snapshot");
+            state.ContentDigest = content.Digest();
+            state.Published = true;
+            await StageCertificateAsync(state, replay, provenance);
+            await database.SaveChangesAsync();
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync();
+                CompleteUpgrade();
+            }
+        }
+        catch
+        {
+            if (transaction is not null) AbandonUpgrade();
+            throw;
+        }
         database.ChangeTracker.Clear();
+        Verification = StoreVerification.Full;
     }
 
     private async Task<StoreState> PublishedStateAsync(CancellationToken ct = default)
@@ -445,9 +487,12 @@ public sealed partial class RecordStore : IAsyncDisposable
             var rows = await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct);
             content.Reload(rows, state.ContentDigest, ct);
         }
-        if (state.Revision != await CommitRevisionAsync(ct)) throw new InvalidOperationException("The store index revision is unavailable.");
+        if (state.Revision != await CommitRevisionAsync(ct)) throw new StoreRevisionUnavailableException();
         return state;
     }
+
+    /// <summary>The state row's revision is not the revision of the commits it was published for.</summary>
+    internal sealed class StoreRevisionUnavailableException() : InvalidOperationException("The store index revision is unavailable.");
 
     private async Task<string> CommitRevisionAsync(CancellationToken ct = default)
     {
@@ -530,6 +575,7 @@ public sealed partial class RecordStore : IAsyncDisposable
                     throw new InvalidDataException("Replay changed immutable content; the original store has been preserved.");
             }
             await CopyDatabaseAsync(stagedPath, originalPath);
+            RefreshFormat(originalPath);
             database.ChangeTracker.Clear();
         }
         finally { temporary.Delete(true); }

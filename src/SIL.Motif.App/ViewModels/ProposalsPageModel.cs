@@ -538,6 +538,7 @@ public sealed partial class ProposalsPageModel : PageModel
     private bool _retainedClosedCard;
     private string? _retainedRowId;
     private ProposalListFilter? _pausedGroupFilter;
+    // Read and changed on the UI thread only; a test that drives the page off one thread breaks that and must not.
     private readonly HashSet<RationaleEditorModel> _pausedEditors = [];
     private ProposalStandings _standings = new([], 0);
 
@@ -1168,8 +1169,7 @@ public sealed partial class ProposalsPageModel : PageModel
 
     private void ResumePausedFilter()
     {
-        // A snapshot: the set can change while this runs, and enumerating it live then throws.
-        if (_rereading || _pausedGroupFilter is not { } filter || _pausedEditors.ToArray().Any(editor => editor.IsEditing)) return;
+        if (_rereading || _pausedGroupFilter is not { } filter || _pausedEditors.Any(editor => editor.IsEditing)) return;
         var retained = _retainedRowId;
         _retainedRowId = null;
         _retainedClosedCard = false;

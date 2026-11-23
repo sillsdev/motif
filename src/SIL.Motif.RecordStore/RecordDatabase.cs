@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Options;
 using SIL.Harmony.Changes;
@@ -25,6 +26,9 @@ internal sealed class RecordDatabase(DbContextOptions<RecordDatabase> options, I
         builder.Entity<StoreState>().Property(x => x.Id).ValueGeneratedNever();
         builder.Entity<ContentRow>().ToTable("RecordContent").HasKey(x => x.Id);
         builder.Entity<ContentRow>().Property(x => x.Id).ValueGeneratedNever();
+        builder.Entity<ContentRow>().Ignore(x => x.Key);
+        builder.Entity<StoreCertificate>().ToTable("RecordStoreCertificate").HasKey(x => x.Id);
+        builder.Entity<StoreCertificate>().Property(x => x.Id).ValueGeneratedNever();
         builder.Entity<ObjectSnapshot>().Property(x => x.Entity).HasColumnType("blob")
             .HasConversion(x => codec.Snapshot(x), x => codec.Snapshot(x));
         builder.Entity<ChangeEntity<IChange>>().Property(x => x.Change).HasColumnType("blob")
@@ -41,10 +45,19 @@ internal sealed class RecordDatabase(DbContextOptions<RecordDatabase> options, I
             if (Entry(row).State == EntityState.Detached) Add(row);
     }
 
+    // Runs on the same connection and transaction as the rows it names.
+    private void SaveIdentities()
+    {
+        if (!content.PersistIdentities) return;
+        var connection = (Microsoft.Data.Sqlite.SqliteConnection)Database.GetDbConnection();
+        content.WriteIdentities(connection, Database.CurrentTransaction?.GetDbTransaction() as Microsoft.Data.Sqlite.SqliteTransaction);
+    }
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         PrepareContent();
         var count = base.SaveChanges(acceptAllChangesOnSuccess);
+        SaveIdentities();
         content.Saved();
         return count;
     }
@@ -53,6 +66,7 @@ internal sealed class RecordDatabase(DbContextOptions<RecordDatabase> options, I
     {
         PrepareContent();
         var count = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        SaveIdentities();
         content.Saved();
         return count;
     }
