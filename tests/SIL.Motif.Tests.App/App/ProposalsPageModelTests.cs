@@ -380,25 +380,21 @@ public sealed class ProposalsPageModelTests
     [UiThreadFact]
     public async Task ACardSaysTryingWhileTheWindowsTryAgainRunsAndOffersNoSecondTry()
     {
-        // The window sets Trying through the context it was made on, which a pool thread is not.
-        await SingleThreadPump.RunAsync(async () =>
-        {
-            var (fake, _, page) = await OpenAsync(Standings(Card("p/a", "A", ProposalGroup.NeedsAnotherTry,
-                standing: Stale)));
-            var waiting = new TaskCompletionSource<CommandOutcome<JobStatusResponse>>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-            fake.OnWaitForJob((_, _, _) => waiting.Task);
+        var (fake, _, page) = await OpenAsync(Standings(Card("p/a", "A", ProposalGroup.NeedsAnotherTry,
+            standing: Stale)));
+        var waiting = new TaskCompletionSource<CommandOutcome<JobStatusResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnWaitForJob((_, _, _) => waiting.Task);
 
-            var trying = page.TryAgainCommand.ExecuteAsync(page.Groups[0].Cards[0]);
-            var card = page.Groups[0].Cards[0];
+        var trying = page.TryAgainCommand.ExecuteAsync(page.Groups[0].Cards[0]);
+        var card = page.Groups[0].Cards[0];
 
-            Assert.Equal(TrialStanding.Trying, card.Standing);
-            Assert.Equal("Trying…", card.StatusText);
-            Assert.False(card.CanTry);
-            waiting.SetResult(CommandOutcome<JobStatusResponse>.Success(Status(JobStatus.Completed)));
-            await trying;
-            Assert.NotEqual(TrialStanding.Trying, page.Groups[0].Cards[0].Standing);
-        });
+        Assert.Equal(TrialStanding.Trying, card.Standing);
+        Assert.Equal("Trying…", card.StatusText);
+        Assert.False(card.CanTry);
+        waiting.SetResult(CommandOutcome<JobStatusResponse>.Success(Status(JobStatus.Completed)));
+        await trying;
+        Assert.NotEqual(TrialStanding.Trying, page.Groups[0].Cards[0].Standing);
     }
 
     [UiThreadFact]
