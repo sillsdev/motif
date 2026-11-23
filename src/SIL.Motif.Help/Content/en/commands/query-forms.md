@@ -9,7 +9,7 @@ motif query forms --project "project.fwdata" --where kind=alternate --where 'cha
 motif query forms --project "project.fwdata" --where kind=alternate --group letters.dropped --json
 ```
 
-A `--where` can also be a boolean expression: predicates `column op value` joined by `and`, `or` and `not`, with parentheses. `not` binds tighter than `and`, which binds tighter than `or`. The text ops are `is`, `not`, `in`, `not in`, `has`, `<`, `>`, `~` (unanchored regular expression), `matches` (a regular expression that must match the whole value), `exists` and `missing`. A value is a bare word or a double-quoted string, and `in`, `not in` and `has` take comma-separated values. A `--where` that starts with `(` or `not `, or that holds the words `and` or `or` and parses as an expression, is read as an expression; every other `--where` is read as a v1 selector first, so a v1 line keeps its meaning. Wrap a single predicate in parentheses to force the expression reading, for example `--where "(kind not in a,b)"`.
+A `--where` can also be a boolean expression: predicates `column op value` joined by `and`, `or` and `not`, with parentheses. `not` binds tighter than `and`, which binds tighter than `or`. The text ops are `is`, `not`, `in`, `not in`, `has`, `<`, `>`, `~` (unanchored regular expression), `matches` (a regular expression that must match the whole value), `exists` and `missing`. A value is a bare word or a double-quoted string, and `in`, `not in` and `has` take comma-separated values. A `--where` that starts with `(` or `not `, or that holds the words `and` or `or` and parses as an expression, is read as an expression; every other `--where` is read as a v1 selector first, so a v1 line keeps its meaning unless it uses an unquoted `and`, `or` or `not` as an operator; words inside double quotes never count. Wrap a single predicate in parentheses to force the expression reading, for example `--where "(kind not in a,b)"`.
 
 ```powershell
 motif query forms --project "project.fwdata" --where "kind is variant or (kind is alternate and tokens > 5)" --limit 20
@@ -19,7 +19,7 @@ motif query forms --project "project.fwdata" --where "kind is variant or (kind i
 
 ## The JSON form: `--query-json` and `--schema`
 
-`motif query --project "project.fwdata" --query-json <file|->` runs one `motif.query.v2` document, from a file or from standard input with `-`, and takes no other query flag. `motif query --schema` prints its JSON Schema, which is generated from the same records the engine reads; it lists every op, source and column with its type, and the reserved kinds. The MCP tool `motif_query` takes the same document as its `query` argument. Every response carries `schemaVersion`.
+`motif query --project "project.fwdata" --query-json <file|->` runs one `motif.query.v2` document, from a file or from standard input with `-`, and takes no other query flag. `motif query --schema` prints its JSON Schema, which is generated from the same records the engine reads; it lists every op, source and column with its type, and the reserved kinds. The MCP tool `motif_query` takes the same document as its `query` argument, and `motif_query_schema` returns the schema. Every response carries `schemaVersion`.
 
 ```json
 { "version": "motif.query.v2", "from": "forms",

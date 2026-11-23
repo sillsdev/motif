@@ -21,13 +21,13 @@ Each is "A or B, I am choosing A"; the owner may override any.
 | # | Decision | Choice |
 |---|---|---|
 | D1 | Canonical form | A **JSON AST**, versioned `motif.query.v2`, shaped like Mongo and Elasticsearch queries. The text form is a lossless rendering of it, so switching views never loses anything. |
-| D2 | Text syntax | **Extend the existing run-line.** Every v1 line stays valid; `or`, `not` and parentheses are added, and an expression has no implicit precedence beyond `not` over `and` over `or`. |
+| D2 | Text syntax | **Extend the existing run-line.** Every v1 line keeps its meaning except unquoted `and`, `or` and `not` used as operators, which now combine predicates; `or`, `not` and parentheses are added, and an expression has no implicit precedence beyond `not` over `and` over `or`. |
 | D3 | Regex anchoring | **Anchored by default**; the explicit `contains` op is the unanchored search. Both are NonBacktracking with the existing length cap. |
 | D4 | Phonological patterns | Run by **PanGloss** (a `serve` op `match`), never a second matcher in C#, so they behave exactly like HermitCrab. |
 | D5 | "Any rendering of a morpheme" | **Two tiers, always labelled:** `possible` (a sound superset from static rule analysis) and `generated` (forms actually generated, flagged `complete` or stopped at a cap). An exact reverse FST waits for the cascade-backend lane. |
 | D6 | Negation over an incomplete set | **Refuse.** `not realizes(X, generated)` is refused unless the set is `complete`. |
 | D7 | Variant entries | **Count as forms of a morpheme, labelled** allomorph, variant or rule; `include` narrows them. |
-| D8 | Schema and completion | **Generated from the C# records** into `query.schema.json`, served by `motif query --schema` and MCP; values come from the live grammar through `motif query --values`. One source, so it cannot drift. |
+| D8 | Schema and completion | **Generated from the C# records** into `query.schema.json`, served by `motif query --schema` and the MCP read tool `motif_query_schema`; values come from the live grammar through `motif query --values`. One source, so it cannot drift. |
 | D9 | Segments | **The grammar's segmentation** (PanGloss `segment`), words that will not segment reported as `unsegmentable`. The `aeiou` skeleton of `shape` stays as a fallback labelled `approximate`. |
 | D10 | Running without a project | **Yes.** `--corpus <wordlist|folder>` runs every surface-only predicate with no project or Trial; frequency, and parse state when known, are joined automatically. Without an orthography file segments are code points, labelled `approximate`. |
 | D11 | Occurrences | A **`tokens` source**, one row per occurrence, with `text`, `sentence.position`, `case`, `left.word` and `right.word`. |

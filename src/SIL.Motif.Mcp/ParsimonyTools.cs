@@ -27,7 +27,7 @@ internal static class ParsimonyTools
                     ["description"] = "A motif.query.v2 document: version \"motif.query.v2\", from, where (and/or/not over {field, op, value} " +
                         "predicates; ops eq ne in nin lt gt has regex contains exists; regex is anchored, contains is not), side, sides, " +
                         "sort, limit, group and the options below. Replaces every other query argument. The full JSON Schema is " +
-                        "printed by motif query --schema. morph, seq, phon, env and realizes are reserved and refused as not yet available.",
+                        "returned by motif_query_schema and printed by motif query --schema. morph, seq, phon, env and realizes are reserved and refused as not yet available.",
                 }, false),
                 ("saved", Schema.String("A measure id whose saved query replaces from, where and group.", SavedQueries.Ids.ToArray()), false),
                 ("from", Schema.String("Query source; required unless saved is given.", QuerySources.All.ToArray()), false),
@@ -118,6 +118,15 @@ internal static class ParsimonyTools
                     throw new ToolArgumentException("tool.invalid-argument", error.Message);
                 }
             }) { Requests = [typeof(FormsQueryRequest)], FieldNames = new Dictionary<string, string?> { ["Query"] = null } },
+        new("motif_query_schema",
+            "Returns the JSON Schema of a motif.query.v2 document: every op, source and column with its type, and the reserved kinds.",
+            AgentClass.Read,
+            Schema.Object(),
+            true,
+            true,
+            false,
+            false,
+            (c, a, ct) => Task.FromResult(ToolOutcome.Ok(JsonNode.Parse(QuerySchema.Generate())!))),
         new("motif_parsimony_measures",
             string.Empty,
             AgentClass.Read,

@@ -52,6 +52,16 @@ public sealed class QueryDocumentTests
         Assert.Equal(["c"], Ids(Field("form", "regex", "\"sa(ng|n)\"")));
     }
 
+    [Theory]
+    [InlineData("x)|(y")]
+    [InlineData("sar)|(a")]
+    public void AnUnbalancedRegexCannotEscapeTheAnchor(string pattern)
+    {
+        var document = Parse("{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":" +
+            Field("form", "regex", System.Text.Json.JsonSerializer.Serialize(pattern)) + "}");
+        Assert.ThrowsAny<ArgumentException>(() => FormQuery.Run(document.ToRecord(), Rows, []));
+    }
+
     [Fact]
     public void BooleanOperatorsCombine()
     {

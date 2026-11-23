@@ -28,7 +28,22 @@ public static class QueryExprText
         return Words(text).Any(word => word is "or" or "and");
     }
 
-    private static IEnumerable<string> Words(string text) => text.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+    private static IEnumerable<string> Words(string text)
+    {
+        var word = new System.Text.StringBuilder();
+        var quoted = false;
+        foreach (var c in text)
+        {
+            if (c == '"') quoted = !quoted;
+            if (!quoted && c is ' ' or '\t')
+            {
+                if (word.Length > 0) yield return word.ToString();
+                word.Clear();
+            }
+            else if (!quoted && c != '"') word.Append(c);
+        }
+        if (word.Length > 0) yield return word.ToString();
+    }
 
     /// <summary>Parses one expression; a malformed one is a <see cref="RefusalCodes.QueryDocumentInvalid"/> refusal that names the position.</summary>
     public static bool TryParse(string text, [NotNullWhen(true)] out QueryExpr? expr, [NotNullWhen(false)] out Refusal? refusal)

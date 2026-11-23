@@ -68,7 +68,12 @@ internal static class QueryExprCompiler
                 if (pattern.Length > FormQuery.MaximumRegexLength) throw new ArgumentException("Regular expression is too long.");
                 var source = field.Op == QueryOps.Regex ? @"\A(?:" + pattern + @")\z" : pattern;
                 Regex regex;
-                try { regex = new Regex(source, RegexOptions.NonBacktracking | RegexOptions.CultureInvariant); }
+                try
+                {
+                    // The pattern alone must be valid, so an unbalanced ")" cannot break out of the anchor.
+                    _ = new Regex(pattern, RegexOptions.NonBacktracking | RegexOptions.CultureInvariant);
+                    regex = new Regex(source, RegexOptions.NonBacktracking | RegexOptions.CultureInvariant);
+                }
                 catch (Exception e) when (e is ArgumentException or NotSupportedException)
                 { throw new ArgumentException("Invalid non-backtracking regular expression.", e); }
                 return row => row.Get(column).Any(regex.IsMatch);

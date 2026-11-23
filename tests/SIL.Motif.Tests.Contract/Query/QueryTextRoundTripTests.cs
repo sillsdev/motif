@@ -161,6 +161,43 @@ public sealed class QueryTextRoundTripTests
         Assert.Null(record.Filter);
     }
 
+    [Theory]
+    [InlineData("gloss ~ \"a or b\"")]
+    [InlineData("gloss is \"not x and y\"")]
+    [InlineData("form=\"(a or b)\"")]
+    public void AQuotedValueNeverTurnsASelectorIntoAnExpression(string selector)
+    {
+        Assert.False(QueryExprText.LooksBoolean(selector));
+        Assert.True(QueryRunLine.TryParse("motif query forms --where '" + selector + "'", out var record, out _));
+        Assert.Null(record.Filter);
+        Assert.Single(record.Where);
+        Assert.Contains("\"", record.Where[0].Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnUnquotedOrBetweenPredicatesIsAnOperator()
+    {
+        Assert.True(QueryRunLine.TryParse("motif query forms --where \"kind=a or kind=b\"", out var record, out _));
+        Assert.Empty(record.Where);
+        Assert.Equal("kind is a or kind is b", QueryExprText.Print(record.Filter!));
+        Assert.True(QueryRunLine.TryParse("motif query forms --where 'gloss ~ \"a or b\" or kind=x'", out var mixed, out _));
+        Assert.Equal("gloss ~ \"a or b\" or kind is x", QueryExprText.Print(mixed.Filter!));
+    }
+
+    [Fact]
+    public void ABareNotInReadsAsV1NotAndParenthesesOrNotFirstGiveNotIn()
+    {
+        Assert.True(QueryRunLine.TryParse("motif query forms --where \"kind not in a,b\"", out var bare, out _));
+        Assert.Equal([new QueryCondition("kind", "not", "in a,b")], bare.Where);
+        Assert.True(QueryRunLine.TryParse("motif query forms --where \"(kind not in a,b)\"", out var grouped, out _));
+        Assert.Equal("kind not in a,b", QueryExprText.Print(grouped.Filter!));
+        Assert.True(QueryExprText.TryParse("not kind in a,b", out var leading, out _));
+        Assert.Equal("not kind in a,b", QueryExprText.Print(leading));
+        Assert.True(QueryExprText.TryParse("not a is b", out var negated, out _));
+        Assert.True(QueryExprText.TryParse("not (a is b)", out var explicitNegation, out _));
+        Assert.Equal(QueryExprText.Print(explicitNegation), QueryExprText.Print(negated));
+    }
+
     [Fact]
     public void AnExpressionSelectorBecomesTheRecordsFilterAndAV1OneStaysASelector()
     {
