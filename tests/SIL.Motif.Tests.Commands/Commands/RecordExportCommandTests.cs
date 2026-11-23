@@ -24,11 +24,14 @@ public sealed class RecordExportCommandTests(PristineProjectFixture pristine) : 
         catch (IOException) { }
     }
 
+    private int _seeded;
+
     private (string Project, Guid Entry) Fixture(int entries = 1)
     {
         Directory.CreateDirectory(_folder);
         using var cache = pristine.NewScratch();
         Guid first = default;
+        _seeded = cache.ServiceLocator.GetInstance<ILexEntryRepository>().Count;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             var services = cache.ServiceLocator;
@@ -86,10 +89,10 @@ public sealed class RecordExportCommandTests(PristineProjectFixture pristine) : 
         var exported = RecordExportCommand.Run(new(project, folder, All: true));
 
         Assert.True(exported.Succeeded, exported.Refusal?.Message);
-        Assert.Equal(3, exported.Value!.RecordCount);
-        Assert.Equal(3, exported.Value.WrittenCount);
+        Assert.Equal(_seeded + 3, exported.Value!.RecordCount);
+        Assert.Equal(_seeded + 3, exported.Value.WrittenCount);
         var files = Directory.GetFiles(folder);
-        Assert.Equal(3, files.Length);
+        Assert.Equal(_seeded + 3, files.Length);
         Assert.All(files, file => Assert.Matches(@"^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}\.md$", Path.GetFileName(file)));
         foreach (var file in files)
         {
