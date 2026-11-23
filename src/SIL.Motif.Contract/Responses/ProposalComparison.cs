@@ -10,7 +10,9 @@ namespace SIL.Motif.Contract.Responses;
 /// analyses with those same Trial readings. <c>Snapshot</c> is a digest of the exact Trial job IDs and the approved
 /// analyses' snapshot read, in column order; pass it back with a page.
 /// <c>ApprovedSkippedOtherAgents</c> counts analyses approved only by a human agent other than the default user agent;
-/// they are not counted as approved.
+/// they are not counted as approved. <c>ApprovedTotal</c> is every approved analysis of the Baseline
+/// (<c>IWfiWordform.HumanApprovedAnalyses</c>); <c>ApprovedUncounted</c> is those no column can count, because the analysis
+/// has no Reading identity or no Trial measured its word on both sides.
 /// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ProposalComparison(
@@ -24,7 +26,9 @@ public sealed record ProposalComparison(
     [property: JsonRequired] int Pages,
     [property: JsonRequired] bool Complete,
     [property: JsonRequired] IReadOnlyList<CompareLimitation> Limitations,
-    [property: JsonRequired] int ApprovedSkippedOtherAgents)
+    [property: JsonRequired] int ApprovedSkippedOtherAgents,
+    [property: JsonRequired] int ApprovedTotal,
+    [property: JsonRequired] int ApprovedUncounted)
 {
     /// <summary>The value of <see cref="Basis"/>: gains and losses come from each column's own Trial before and after.</summary>
     public const string TrialBeforeAfter = "trial-before-after";
@@ -32,8 +36,8 @@ public sealed record ProposalComparison(
     /// <summary>The most Proposals one call may compare.</summary>
     public const int MaxProposals = 8;
 
-    /// <summary>The most bytes the serialized summary may take.</summary>
-    public const int SummaryByteLimit = 2000;
+    /// <summary>The most bytes the serialized summary may take. The budget began at 2000 for eight columns of counts and four limitations; the approved total, the uncounted figure and three more limitations measure 2111 bytes in the worst case, so 2200 keeps the summary small while leaving headroom.</summary>
+    public const int SummaryByteLimit = 2200;
 
     /// <summary>The requested form rows, present only when the caller selects a page.</summary>
     public CompareRowPage? Page { get; init; }
@@ -103,9 +107,59 @@ public sealed record CompareColumn(
 }
 
 /// <summary>A typed reason the totals may not mean what they seem to. Count is the number of columns it touches.</summary>
-[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+[JsonConverter(typeof(CompareLimitation.CompactConverter))]
 public sealed record CompareLimitation([property: JsonRequired] string Code, [property: JsonRequired] int Count)
 {
+    /// <summary>Names the versions or the revision behind the limitation, when the code needs more than a count.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Detail
+    {
+        get => _detail;
+        init => _detail = value is { Length: > MaxDetailLength } ? value[..(MaxDetailLength - 3)] + "..." : value;
+    }
+
+    private readonly string? _detail;
+
+    /// <summary>The most characters a limitation's detail keeps; longer text is cut with an ellipsis.</summary>
+    public const int MaxDetailLength = 40;
+
+    /// <summary>Writes each limitation on one line so seven of them stay within the summary's byte limit.</summary>
+    internal sealed class CompactConverter : JsonConverter<CompareLimitation>
+    {
+        public override CompareLimitation Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            using var document = JsonDocument.ParseValue(ref reader);
+            var root = document.RootElement;
+            string? code = null, detail = null;
+            int? count = null;
+            if (root.ValueKind != JsonValueKind.Object) throw new JsonException("A limitation is an object.");
+            foreach (var member in root.EnumerateObject())
+                switch (member.Name)
+                {
+                    case "code" when member.Value.ValueKind == JsonValueKind.String: code = member.Value.GetString(); break;
+                    case "count" when member.Value.TryGetInt32(out var number): count = number; break;
+                    case "detail" when member.Value.ValueKind == JsonValueKind.String: detail = member.Value.GetString(); break;
+                    default: throw new JsonException($"The limitation member {member.Name} is not valid.");
+                }
+            return new(code ?? throw new JsonException("The limitation needs a code."),
+                count ?? throw new JsonException("The limitation needs a count.")) { Detail = detail };
+        }
+
+        public override void Write(Utf8JsonWriter writer, CompareLimitation value, JsonSerializerOptions options)
+        {
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var line = new Utf8JsonWriter(buffer))
+            {
+                line.WriteStartObject();
+                line.WriteString("code", value.Code);
+                line.WriteNumber("count", value.Count);
+                if (value.Detail is not null) line.WriteString("detail", value.Detail);
+                line.WriteEndObject();
+            }
+            writer.WriteRawValue(buffer.WrittenSpan, skipInputValidation: true);
+        }
+    }
+
     /// <summary>Some column did not measure some forms on both sides; they never read as unchanged.</summary>
     public const string NotMeasured = "not-measured";
 
@@ -114,6 +168,18 @@ public sealed record CompareLimitation([property: JsonRequired] string Code, [pr
 
     /// <summary>Some approved analyses were left out of the approved counts because only another human agent approved them.</summary>
     public const string ApprovedOtherAgents = "approved-other-agents";
+
+    /// <summary>Some approved analyses count in no column: they have no Reading identity, or no Trial measured their word.</summary>
+    public const string ApprovedUncounted = "approved-uncounted";
+
+    /// <summary>Some Trial measured a Proposal revision the Proposal no longer has.</summary>
+    public const string TrialStale = "trial-stale";
+
+    /// <summary>Some Proposal has a newer Trial attempt than the one compared, or has itself been superseded.</summary>
+    public const string TrialSuperseded = "trial-superseded";
+
+    /// <summary>The PanGloss version differs between a Trial's two sides or between Trials; <c>Detail</c> names the versions.</summary>
+    public const string ParserVersionDiffers = "parser-version-differs";
 }
 
 /// <summary>A page of form rows in the frozen order: diverging first, then writing system and form key.</summary>

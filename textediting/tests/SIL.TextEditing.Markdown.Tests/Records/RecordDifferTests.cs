@@ -353,6 +353,18 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         }
 
         [Fact]
+        public void AnOwnedObjectOfAClassTheFieldDoesNotAllowIsRefusedAsUnknown()
+        {
+            var b = Entry().Set("etymology", new RecordObject { Guid = G(30), Class = "mystery" }.Set("source", S("a")));
+            var t = Entry().Set("etymology", new RecordObject { Guid = G(30), Class = "mystery" }.Set("source", S("b")));
+            var set = Diff(Doc(b), Doc(t));
+            Assert.Empty(set.Changes);
+            var r = Assert.Single(set.Refusals);
+            Assert.Equal(RecordRefusalKind.UnknownClass, r.Kind);
+            Assert.Contains("mystery", r.Reason);
+        }
+
+        [Fact]
         public void AChangedClassOfAnExistingObjectIsRefused()
         {
             var b = Entry().Set("etymology", new RecordObject { Guid = G(30), Class = "etym" }.Set("source", S("a")));

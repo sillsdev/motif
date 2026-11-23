@@ -2568,6 +2568,11 @@ public static class MotifAppStrings
     public static string RefusalProposalClosed => Text("MotifApp.RefusalProposalClosed");
 
     public static string RefusalProposalNotFound => Text("MotifApp.RefusalProposalNotFound");
+    public static string RefusalProposalInvalidStatus => Text("MotifApp.RefusalProposalInvalidStatus");
+    public static string RefusalProposalInvalidId => Text("MotifApp.RefusalProposalInvalidId");
+    public static string RefusalLexicalEntryInvalidId => Text("MotifApp.RefusalLexicalEntryInvalidId");
+    public static string RefusalLexicalEntryBaselineUnavailable => Text("MotifApp.RefusalLexicalEntryBaselineUnavailable");
+    public static string RefusalBaselineMissing => Text("MotifApp.RefusalBaselineMissing");
 
     public static string CommentPlainText => Text("MotifApp.CommentPlainText");
     public static string CommentDelete => Text("MotifApp.CommentDelete");
@@ -3995,6 +4000,7 @@ public static class MotifAppStrings
     public static string ProposalEvidenceCompleteCount => Text("MotifApp.ProposalEvidenceCompleteCount");
     public static string ProposalDraft => Text("MotifApp.ProposalDraft");
     public static string ProposalWaiting => Text("MotifApp.ProposalWaiting");
+    public static string ProposalBringBack => Text("MotifApp.ProposalBringBack");
     public static string ProposalDeferred => Text("MotifApp.ProposalDeferred");
     public static string ProposalDeclined => Text("MotifApp.ProposalDeclined");
     public static string ProposalSuperseded => Text("MotifApp.ProposalSuperseded");
@@ -4004,10 +4010,22 @@ public static class MotifAppStrings
     public static string ProposalChangeHeading => Text("MotifApp.ProposalChangeHeading");
     public static string ProposalChangeSense => Text("MotifApp.ProposalChangeSense");
     public static string ProposalChangeEntry => Text("MotifApp.ProposalChangeEntry");
+    public static string ProposalEntrySenseName => Text("MotifApp.ProposalEntrySenseName");
+    public static string ProposalEntryOfHeadword => Text("MotifApp.ProposalEntryOfHeadword");
+    public static string ProposalEntryHeadword => Text("MotifApp.ProposalEntryHeadword");
+    public static string ProposalCurrentUnavailable => Text("MotifApp.ProposalCurrentUnavailable");
+    public static string ProposalEntryNoHeadword => Text("MotifApp.ProposalEntryNoHeadword");
+    public static string ProposalEntrySensesLine => Text("MotifApp.ProposalEntrySensesLine");
+    public static string ProposalEntrySenseItem => Text("MotifApp.ProposalEntrySenseItem");
+    public static string ProposalEntrySenseChangedHere => Text("MotifApp.ProposalEntrySenseChangedHere");
+    public static string ProposalEntrySenseNoGloss => Text("MotifApp.ProposalEntrySenseNoGloss");
     public static string ProposalChangeTarget => Text("MotifApp.ProposalChangeTarget");
     public static string ProposalChangeGloss => Text("MotifApp.ProposalChangeGloss");
     public static string ProposalChangeEmpty => Text("MotifApp.ProposalChangeEmpty");
     public static string ProposalChangeTransition => Text("MotifApp.ProposalChangeTransition");
+    public static string ProposalChangeNowProposed => Text("MotifApp.ProposalChangeNowProposed");
+    public static string ProposalChangeNowOnly => Text("MotifApp.ProposalChangeNowOnly");
+    public static string ProposalEntryNamedTransition => Text("MotifApp.ProposalEntryNamedTransition");
     public static string ProposalSharedEffect => Text("MotifApp.ProposalSharedEffect");
     public static string ProposalChangeFieldWithWritingSystem => Text("MotifApp.ProposalChangeFieldWithWritingSystem");
     public static string ProposalChangeValue => Text("MotifApp.ProposalChangeValue");
@@ -4033,6 +4051,12 @@ public static class MotifAppStrings
     public static string ProposalSelectedNameFormat => Text("MotifApp.ProposalSelectedNameFormat");
     public static string ProposalReceiptFormat => Text("MotifApp.ProposalReceiptFormat");
     public static string ProposalReceiptByYouFormat => Text("MotifApp.ProposalReceiptByYouFormat");
+    public static string ProposalAppliedHeading => Text("MotifApp.ProposalAppliedHeading");
+    public static string ProposalAppliedByYou => Text("MotifApp.ProposalAppliedByYou");
+    public static string ProposalAppliedByOther => Text("MotifApp.ProposalAppliedByOther");
+    public static string ProposalAppliedEvidenceHeading => Text("MotifApp.ProposalAppliedEvidenceHeading");
+    public static string ProposalAppliedEvidenceFormat => Text("MotifApp.ProposalAppliedEvidenceFormat");
+    public static string ProposalAppliedNoEvidence => Text("MotifApp.ProposalAppliedNoEvidence");
     public static string ProposalReceiptFieldWorksNote => Text("MotifApp.ProposalReceiptFieldWorksNote");
     public static string ProposalReceiptCopy => Text("MotifApp.ProposalReceiptCopy");
     public static string ProposalReceiptCopied => Text("MotifApp.ProposalReceiptCopied");

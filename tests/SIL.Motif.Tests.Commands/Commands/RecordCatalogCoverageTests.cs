@@ -62,6 +62,13 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
         Assert.Empty(schemaFields.Except(goldenFields).Order());
         Assert.Empty(goldenFields.Except(schemaFields).Order());
         Assert.Equal(rows.Length, rows.Select(row => (row.Class, row.Field, row.Verb)).Distinct().Count());
+        Assert.All(rows.Where(row => row.Group == ReportGroup.CoveredNotLowered),
+            row => Assert.Contains(row.Reason, RecordLoweringRules.NotLoweredReasons.Keys));
+        Assert.All(rows.Where(row => row.Group == ReportGroup.LexiconEditReferenceSets),
+            row => Assert.Contains(row.Classification, RecordLoweringRules.ExclusionReasons.Keys));
+        Assert.DoesNotContain(rows, row => row.Group == ReportGroup.Covered && row.Verb == RecordWriteVerb.RemoveObject &&
+            !OperationHandlerRegistry.FieldWrites(row.Kind).Any(write => write.Verb == RecordWriteVerb.RemoveObject &&
+                write.Payload == FieldWritePayload.Composer));
         Assert.Equal(expected, actual);
     }
 
@@ -91,17 +98,34 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
             var group = Group(className, field, binding.IsCustom, classification,
                 lexiconEditFields.Contains((binding.DeclaringClass, binding.Field)), result);
             var modelField = binding.DeclaringClass + "." + binding.Field;
+            var notLowered = result is WritableFieldResolution.Covered undone && verb == RecordWriteVerb.RemoveObject
+                ? NotLowered(undone.Kind, binding, verb) : null;
             yield return result switch
             {
+                WritableFieldResolution.Covered covered when notLowered is not null =>
+                    new(ReportGroup.CoveredNotLowered, className, key, modelField, verb, covered.Kind, notLowered, "-"),
                 WritableFieldResolution.Covered covered => new(group, className, key, modelField, verb, covered.Kind, "-", "-"),
                 WritableFieldResolution.Uncovered { Reason: UncoveredFieldReason.NotUserEditable } refused =>
                     new(group, className, key, modelField, verb, "none", "not-user-editable", refused.ManifestClassification!),
+                WritableFieldResolution.Uncovered uncovered when group == ReportGroup.LexiconEditReferenceSets =>
+                    new(group, className, key, modelField, verb, "none", uncovered.Reason.ToString(), ExclusionReason(uncovered.Reason)),
                 WritableFieldResolution.Uncovered uncovered =>
                     new(group, className, key, modelField, verb, "none", uncovered.Reason.ToString(), "-"),
                 _ => throw new InvalidOperationException($"Unexpected result for {className}.{key}"),
             };
         }
     }
+
+    private static string? NotLowered(string kind, (string DeclaringClass, string Field, bool IsCustom) binding, RecordWriteVerb verb)
+    {
+        var writes = OperationHandlerRegistry.FieldWrites(kind).Where(write => write.Verb == verb &&
+            write.DeclaringClass == binding.DeclaringClass && write.Field == binding.Field).ToArray();
+        return writes.Length == 0 || writes.Any(write => RecordLoweringRules.Lowers(kind, write))
+            ? null : RecordLoweringRules.NotLowered(kind, writes[0]);
+    }
+
+    private static string ExclusionReason(UncoveredFieldReason reason) =>
+        reason == UncoveredFieldReason.UnsupportedPlacement ? "append-only-kind" : "no-kind-built";
 
     private static ReportGroup Group(string className, RecordField field, bool custom, string? classification,
         bool inLexiconEdit, WritableFieldResolution result)
@@ -146,8 +170,13 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
             "# Covered rows are subject to the placement, owner, child and shape in the Runner declarations.",
             "# Non-authorable fields cite their classification in manifest/liblcm-inventory.tsv.",
             "# LexiconEditReferenceSets require a Lexicon Edit detail slice in manifest/fieldworks-labels.tsv.",
-            "# Group\tClass\tField key\tLibLCM field\tVerb\tRunner kind\tUncovered reason\tManifest classification",
-        };
+            "# CoveredNotLowered rows have a Runner kind that record import does not author; the reason column says why:",
+        }.Concat(RecordLoweringRules.NotLoweredReasons.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => $"#   {pair.Key}: {pair.Value}"))
+            .Append("# LexiconEditReferenceSets rows are uncovered, and the last column says why:")
+            .Concat(RecordLoweringRules.ExclusionReasons.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => $"#   {pair.Key}: {pair.Value}"))
+            .Append("# Group\tClass\tField key\tLibLCM field\tVerb\tRunner kind\tUncovered reason\tManifest classification or exclusion reason");
         var body = rows.OrderBy(row => row.Group).ThenBy(row => row.Class, StringComparer.Ordinal)
             .ThenBy(row => row.Field, StringComparer.Ordinal).ThenBy(row => row.Verb)
             .Select(row => $"{row.Group}\t{row.Class}\t{row.Field}\t{row.ModelField}\t{row.Verb}\t{row.Kind}\t{row.Reason}\t{row.Classification}");
@@ -182,6 +211,7 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
     private enum ReportGroup
     {
         Covered,
+        CoveredNotLowered,
         CustomFields,
         LexSenseAndLexEntryScalars,
         LexiconEditReferenceSets,

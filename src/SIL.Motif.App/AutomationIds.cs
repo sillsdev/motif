@@ -323,6 +323,8 @@ public static class AutomationIds
     public const string ProposalComparePair = "motif-proposal-compare-pair";
     public const string ProposalPrepareApply = "motif-proposal-prepare-apply";
     public const string ProposalConfirmApply = "motif-proposal-confirm-apply";
+    public const string ProposalBringBack = "motif-proposal-bring-back";
+    public const string ProposalApplyBringBack = "motif-proposal-apply-bring-back";
     public const string ProposalReceipt = "motif-proposal-receipt";
     public const string ProposalReadAgain = "motif-proposal-read-again";
     public const string ProposalReceiptCopy = "motif-proposal-receipt-copy";

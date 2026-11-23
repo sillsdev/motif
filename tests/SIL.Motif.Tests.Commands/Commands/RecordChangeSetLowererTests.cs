@@ -119,22 +119,6 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         return ScratchDryRun.Of(_cache, Proposal(lowering.Operations));
     }
 
-    /// <summary>Why a covered pair is not offered: the Decision A families, each with its reason.</summary>
-    private static readonly Dictionary<string, string> DecisionA = new()
-    {
-        ["bespoke-payload"] = "the kind's payload carries more than the verb and field (digests, paragraph keys, a census), so only its own composer authors it",
-        ["create-composer"] = "the create kind takes its own payload (morph type, reference, forms), which only its composer authors",
-        ["delete-composer"] = "the delete is built from the project by its own composer, which the lowerer calls only for senses",
-    };
-
-    private static string? DecisionAFamily(RecordWriteVerb verb, FieldWriteCapability write) => verb switch
-    {
-        RecordWriteVerb.AddObject => "create-composer",
-        RecordWriteVerb.RemoveObject => "delete-composer",
-        _ when write.Payload == FieldWritePayload.Bespoke => "bespoke-payload",
-        _ => null,
-    };
-
     /// <summary>How the Runner declares the field: a custom one by its type.</summary>
     private (string Class, string Field) DeclaredAs((string DeclaringClass, string Field, bool IsCustom) binding) =>
         !binding.IsCustom ? (binding.DeclaringClass, binding.Field)
@@ -204,9 +188,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                     offeredWrite = true;
                 if (!lowerable)
                 {
-                    var family = declared.Select(d => DecisionAFamily(verb, d.Write)).FirstOrDefault(f => f is not null);
+                    var family = declared.Select(d => RecordLoweringRules.NotLowered(d.Kind, d.Write)).FirstOrDefault(f => f is not null);
                     if (family is null)
-                        failures.Add($"{subject}: not offered, and no Decision A family explains it.");
+                        failures.Add($"{subject}: not offered, and no not-lowered reason explains it.");
                     else
                         familiesSeen.Add(family);
                 }
@@ -228,7 +212,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                     failures.Add($"{type.Name}.{field.Name}: the adapter offers a write phase 3 does not cover and the lowerer does not lower.");
             }
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures.Distinct()));
-        Assert.All(familiesSeen, family => Assert.Contains(family, DecisionA.Keys));
+        Assert.All(familiesSeen, family => Assert.Contains(family, RecordLoweringRules.NotLoweredReasons.Keys));
         Assert.True(catalog.CanWrite("LexSense", "Gloss"));
         Assert.False(catalog.CanWrite("LexEntry", "HomographNumber"));
         Assert.True(catalog.CanCreate("LexEntry", "Senses", "LexSense"));
@@ -973,6 +957,76 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var lowering = new RecordChangeSetLowerer(_schema, new RecordWritableFields(_schema)).LowerChanges(_cache, "boolean", [change]);
         Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(lowering.Refusals).Code);
         Assert.Empty(lowering.Operations);
+    }
+
+    [Fact]
+    public void ADeleteOfANonSenseOwnedObjectIsRefusedWithATypedCodeAndNoOperation()
+    {
+        var change = NewChange(RecordChangeKind.RemoveObject, c =>
+        {
+            Put(c, "ObjectGuid", _entry.Guid);
+            Put(c, "ObjectType", "LexEntry");
+            Put(c, "Field", "allomorphs");
+            Put(c, "ItemGuid", Guid.NewGuid());
+        });
+        var lowering = new RecordChangeSetLowerer(_schema, new RecordWritableFields(_schema)).LowerChanges(_cache, "delete", [change]);
+        Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(lowering.Refusals).Code);
+        Assert.Empty(lowering.Operations);
+    }
+
+    [Fact]
+    public void AChangeToAGenDateCustomFieldIsRefusedNotDropped()
+    {
+        var change = NewChange(RecordChangeKind.Set, c =>
+        {
+            Put(c, "ObjectGuid", _entry.Guid);
+            Put(c, "ObjectType", "LexEntry");
+            Put(c, "Field", Custom("ZedDate"));
+            Put(c, "New", "AD 2000-1-1");
+        });
+        var lowering = new RecordChangeSetLowerer(_schema, new RecordWritableFields(_schema)).LowerChanges(_cache, "date", [change]);
+        Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(lowering.Refusals).Code);
+        Assert.Empty(lowering.Operations);
+    }
+
+    [Fact]
+    public void AnOwnedStTextCustomFieldIsRefusedWithItsOwnReasonAndAGenDateOneIsReportedOmitted()
+    {
+        var metadata = (IFwMetaDataCacheManaged)_cache.MetaDataCacheAccessor;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            metadata.AddCustomField("LexEntry", "ZedText", CellarPropertyType.OwningAtomic, metadata.GetClassId("StText")));
+        var schema = ProjectRecordSchema.Generate(_cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var fields = new RecordWritableFields(schema);
+        Assert.Equal(new WritableFieldResolution.Uncovered(UncoveredFieldReason.CustomStText),
+            fields.Resolve("LexEntry", Custom("ZedText"), RecordWriteVerb.SetRich));
+        Assert.Equal(new WritableFieldResolution.Uncovered(UncoveredFieldReason.CustomStText),
+            fields.Resolve("LexEntry", Custom("ZedText"), RecordWriteVerb.ClearRich));
+        Assert.False(new CatalogWritableFields(schema).CanWrite("LexEntry", "ZedText"));
+        var omitted = Assert.Single(schema.OmittedCustomFields, item => item.Field == "ZedDate");
+        Assert.Contains("GenDate", omitted.Reason);
+        Assert.Null(schema.FieldBinding("LexEntry", Custom("ZedDate")));
+    }
+
+    [Fact]
+    public void AddingASecondDialectLabelAfterTheHeldOneAppendsAndAnInsertBeforeItIsRefused()
+    {
+        var held = NewSetItem("dialect-labels");
+        var added = NewSetItem("dialect-labels");
+        AttachToSense("dialect-labels", held);
+
+        var appended = Lower(PlanEdit(d => SenseAt(d, 0).Set("dialect-labels",
+            new RecordList().Add(new RecordScalar(LinkTo(held))).Add(new RecordScalar(LinkTo(added))))));
+        Assert.Empty(appended.Refusals);
+        var operation = Assert.Single(appended.Operations);
+        Assert.Equal("lexical/lexSense/addRefDialectLabels", operation.Kind);
+        Assert.Null(operation.Placement);
+        var effect = Assert.Single(DryRun(appended).ExpectedEffects);
+        Assert.Contains(effect.After.Values, value => CanonicalId.Parse(value).ToGuid() == added.Guid);
+
+        var inserted = Lower(PlanEdit(d => SenseAt(d, 0).Set("dialect-labels",
+            new RecordList().Add(new RecordScalar(LinkTo(added))).Add(new RecordScalar(LinkTo(held))))));
+        Assert.Empty(inserted.Operations);
+        Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(inserted.Refusals).Code);
     }
 
     [Fact]

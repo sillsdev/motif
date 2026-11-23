@@ -37,6 +37,8 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.ReopenAsync)] = "reopen",
             [nameof(ICommandClient.DeclineProposalAsync)] = "reject --proposal",
             [nameof(ICommandClient.DeferProposalAsync)] = "defer",
+            [nameof(ICommandClient.UndeferProposalAsync)] = "undefer",
+            [nameof(ICommandClient.ReadLexicalEntriesAsync)] = "lexical-entry",
             [nameof(ICommandClient.ShowProposalAsync)] = "show",
             [nameof(ICommandClient.SetRationaleAsync)] = "proposal rationale",
             [nameof(ICommandClient.AddCommentAsync)] = "proposal comment add",
