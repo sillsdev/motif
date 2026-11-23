@@ -4865,7 +4865,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Sentence the window shows when the command refuses with code C.RejectionTraceCaptureLimit. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalWhyNotRequestInvalid" xml:space="preserve">
-    <value>That word or candidate cannot be explained. Check the word and the candidates asked about, then try again.</value>
+    <value>That word cannot be explained. Check the word and the readings asked about, then try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.WhyNotRequestInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalWhyNotParserUnsupported" xml:space="preserve">
