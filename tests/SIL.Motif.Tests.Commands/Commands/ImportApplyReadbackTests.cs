@@ -36,7 +36,7 @@ public sealed class ImportApplyReadbackTests(PristineProjectFixture pristine)
     private const string Version = "0.1.0";
     private const string DraftName = "readback";
 
-    /// <summary>Kinds whose case is known to fail, with the reason; the case then must fail, so a fix turns it red until the entry is removed.</summary>
+    /// <summary>Kinds with a known failure and its reason; the case must then fail.</summary>
     private static readonly Dictionary<string, string> KnownFailures = new(StringComparer.Ordinal);
 
     private sealed record Seeded(Guid Entry, Guid Control, Guid Sense, Guid Example, IReadOnlyDictionary<string, Guid> Items);
@@ -148,7 +148,6 @@ public sealed class ImportApplyReadbackTests(PristineProjectFixture pristine)
         return [.. cases];
     }
 
-    // ---------------------------------------------------------------- reading the project back the way FieldWorks would
 
     private static string G(Guid guid) => guid.ToString("D");
 
@@ -215,7 +214,6 @@ public sealed class ImportApplyReadbackTests(PristineProjectFixture pristine)
         }
     }
 
-    // ---------------------------------------------------------------- the seeded project
 
     private static readonly (string Name, CellarPropertyType Type)[] CustomFields =
     [
@@ -255,7 +253,7 @@ public sealed class ImportApplyReadbackTests(PristineProjectFixture pristine)
         return made;
     }
 
-    /// <summary>One edited entry with a sense and an example, a control entry the import never touches, the custom fields and one list item for every list a case writes.</summary>
+    /// <summary>An entry with a sense and example, a control entry, custom fields and list items.</summary>
     private static Seeded Seed(LcmCache cache)
     {
         Seeded? seeded = null;
@@ -310,9 +308,8 @@ public sealed class ImportApplyReadbackTests(PristineProjectFixture pristine)
     private static HashSet<(Guid, string)> Objects(LcmCache cache) => cache.ServiceLocator.GetInstance<ICmObjectRepository>()
         .AllInstances().Select(item => (item.Guid, item.ClassName)).ToHashSet();
 
-    // ---------------------------------------------------------------- the kinds the catalog offers
 
-    /// <summary>The kinds of the three families, from the Runner's registry: those the record lowerer authors for a custom field, a sense or an example sentence.</summary>
+    /// <summary>The lowerable kinds of the three families in the Runner registry.</summary>
     private static string[] CatalogKinds()
     {
         OperationRegistryBootstrap.Initialize();
@@ -340,7 +337,6 @@ public sealed class ImportApplyReadbackTests(PristineProjectFixture pristine)
         Assert.All(KnownFailures.Keys, kind => Assert.Contains(kind, kinds));
     }
 
-    // ---------------------------------------------------------------- stage, Apply as a person, reopen, read back
 
     private static string FinalizeAndApply(string path)
     {
@@ -422,7 +418,6 @@ public sealed class ImportApplyReadbackTests(PristineProjectFixture pristine)
         Assert.NotEqual(ProjectRecordBaseVerdict.Fresh, again.BaseVerdict);
     }
 
-    // ---------------------------------------------------------------- a failure leaves the project as it was
 
     private static BoundDryRunAnchor AnchorFor(LcmCache cache, Proposal proposal) => new(
         IntentDigest: IntentDigest.Compute(proposal),
