@@ -9,12 +9,13 @@ namespace SIL.Motif.Contract.Query.Corpus;
 /// <param name="Having">Literal Xs a base must all take.</param>
 /// <param name="SegmentsPath">An optional segment file of multi-character graphemes.</param>
 /// <param name="FoldCase">Lower-case every form before counting.</param>
+/// <param name="SplitHyphens">Split running text at hyphens between letters.</param>
 /// <param name="MaxXLength">The longest X in segments; default 4.</param>
 /// <param name="MaxResults">The most X rows and base rows; default 100.</param>
 /// <param name="Examples">The most example pairs per X; default 5.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record PairsQueryRequest(string CorpusPath, string Differ, string? X = null, IReadOnlyList<string>? Having = null,
-    string? SegmentsPath = null, bool FoldCase = false, int? MaxXLength = null, int? MaxResults = null, int? Examples = null);
+    string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? MaxXLength = null, int? MaxResults = null, int? Examples = null);
 
 /// <summary>The corpus a corpus query ran over.</summary>
 public sealed record CorpusSummary(string Source, int Types, long Tokens, string Segmentation, bool FoldCase);

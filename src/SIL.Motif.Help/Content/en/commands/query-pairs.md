@@ -9,7 +9,7 @@ motif query --corpus texts/ pairs --differ suffix --x 'an|in' --having an,in --j
 
 ## The corpus
 
-A TSV has one word per line, `form<TAB>count<TAB>parse state`. The header is optional; a first line starting `form` or `word` names the columns (`count`, `tokens` or `frequency`; `state` or `parse.state`). A missing count is 1. A folder is every `.txt` file in it, tokenised on Unicode letters and combining marks. Forms are NFC; `--fold-case` also lower-cases them. Segments are code points and the result says `approximate`. `--segments <file>` lists multi-character graphemes, such as `ng ny ch`, separated by spaces, tabs, commas or lines, with `#` comments; the longest match wins.
+A TSV has one word per line, `form<TAB>count<TAB>parse state`. The header is optional; a first line starting `form` or `word` names the columns (`count`, `tokens` or `frequency`; `state` or `parse.state`). A missing count is 1. A folder is every `.txt` file in it, tokenised on Unicode letters and combining marks; an apostrophe (U+0027, U+2019, U+02BC) or hyphen-minus between letters stays inside the word (`ng'ombe`), and `--split-hyphens` splits at hyphens. Forms are NFC; `--fold-case` also lower-cases them, and folds `--having` and matches `--x` ignoring case. Segments are code points and the result says `approximate`. `--segments <file>` lists multi-character graphemes, such as `ng ny ch`, separated by spaces, tabs, commas or lines, with `#` comments; the longest match wins.
 
 ## The result
 

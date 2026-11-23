@@ -9,7 +9,8 @@ public sealed record CorpusEntry(string Form, long Tokens, string? ParseState = 
 /// <summary>How a corpus is read.</summary>
 /// <param name="FoldCase">Lower-case every form (invariant culture) so spellings differing only in case are one type.</param>
 /// <param name="Segments">The orthography's multi-character graphemes, or <see cref="CorpusSegments.None"/>.</param>
-public sealed record CorpusOptions(bool FoldCase = false, CorpusSegments? Segments = null);
+/// <param name="SplitHyphens">Split running text at a hyphen-minus between letters; by default it stays inside the word.</param>
+public sealed record CorpusOptions(bool FoldCase = false, CorpusSegments? Segments = null, bool SplitHyphens = false);
 
 /// <summary>A corrupt corpus file: the message names the file and line.</summary>
 public sealed class CorpusFormatException(string message) : Exception(message);
@@ -138,18 +139,25 @@ public sealed class CorpusWordList
     {
         var counts = new Dictionary<string, long>(StringComparer.Ordinal);
         foreach (var file in Directory.EnumerateFiles(folder, "*.txt", SearchOption.AllDirectories).OrderBy(file => file, StringComparer.Ordinal))
-            foreach (var token in Tokenize(File.ReadAllText(file, Encoding.UTF8), options?.FoldCase ?? false))
+            foreach (var token in Tokenize(File.ReadAllText(file, Encoding.UTF8), options?.FoldCase ?? false, options?.SplitHyphens ?? false))
                 counts[token] = counts.GetValueOrDefault(token) + 1;
         return FromCounts(counts.Select(pair => new CorpusEntry(pair.Key, pair.Value)), options);
     }
 
-    /// <summary>Splits running text into words: maximal runs of Unicode letters and combining marks, NFC.</summary>
-    public static IEnumerable<string> Tokenize(string text, bool foldCase = false)
+    /// <summary>
+    /// Splits running text into words: maximal runs of Unicode letters and combining marks, NFC. An apostrophe (U+0027,
+    /// U+2019, U+02BC) or, unless <paramref name="splitHyphens"/>, a hyphen-minus with a letter on both sides stays inside the word.
+    /// </summary>
+    public static IEnumerable<string> Tokenize(string text, bool foldCase = false, bool splitHyphens = false)
     {
+        var runes = text.Normalize(NormalizationForm.FormC).EnumerateRunes().ToArray();
         var builder = new StringBuilder();
-        foreach (var rune in text.Normalize(NormalizationForm.FormC).EnumerateRunes())
+        for (var i = 0; i < runes.Length; i++)
         {
-            if (IsWordRune(rune)) { builder.Append(rune.ToString()); continue; }
+            var rune = runes[i];
+            var joiner = rune.Value is 0x27 or 0x2019 or 0x2BC || (rune.Value == '-' && !splitHyphens);
+            if (IsWordRune(rune) || (joiner && builder.Length > 0 && i + 1 < runes.Length && IsWordRune(runes[i + 1])))
+            { builder.Append(rune.ToString()); continue; }
             if (builder.Length > 0) { yield return Normalize(builder.ToString(), foldCase); builder.Clear(); }
         }
         if (builder.Length > 0) yield return Normalize(builder.ToString(), foldCase);

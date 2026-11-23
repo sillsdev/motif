@@ -50,7 +50,7 @@ public sealed class CorpusWordListTests
         var folder = Directory.CreateTempSubdirectory("corpus-test").FullName;
         try
         {
-            File.WriteAllText(Path.Combine(folder, "a.txt"), "Kaon, kaon! 12 kaonan-baha; káon\n");
+            File.WriteAllText(Path.Combine(folder, "a.txt"), "Kaon, kaon! 12 kaonan baha; káon\n");
             File.WriteAllText(Path.Combine(folder, "b.txt"), "baha 'baha'");
             File.WriteAllText(Path.Combine(folder, "skip.md"), "ignored");
             var corpus = CorpusWordList.Load(folder);
@@ -60,6 +60,14 @@ public sealed class CorpusWordListTests
             Assert.Equal(["kaon", "baha"], CorpusWordList.Tokenize("Kaon baha", foldCase: true).ToArray());
         }
         finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
+    public void ApostrophesAndHyphensBetweenLettersStayInTheWord_AndHyphensCanBeSplit()
+    {
+        const string text = "ng'ombe ng\u2019ombe ng\u02BCombe 'quoted' a-b -x y- well-known";
+        Assert.Equal(["ng'ombe", "ng\u2019ombe", "ng\u02BCombe", "quoted", "a-b", "x", "y", "well-known"], CorpusWordList.Tokenize(text).ToArray());
+        Assert.Equal(["a", "b", "well", "known"], CorpusWordList.Tokenize("a-b well-known", splitHyphens: true).ToArray());
     }
 
     [Fact]

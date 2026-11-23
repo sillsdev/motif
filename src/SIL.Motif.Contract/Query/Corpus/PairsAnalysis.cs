@@ -62,7 +62,8 @@ public static class PairsAnalysis
     /// <summary>Runs the analysis; throws <see cref="ArgumentException"/> for an option out of range or an unparsable pattern.</summary>
     public static PairsResult Run(CorpusWordList corpus, PairsOptions options)
     {
-        var having = (options.Having ?? []).Select(x => x.Normalize(System.Text.NormalizationForm.FormC)).Distinct(StringComparer.Ordinal)
+        var fold = corpus.Options.FoldCase;
+        var having = (options.Having ?? []).Select(x => x.Normalize(System.Text.NormalizationForm.FormC)).Select(x => fold ? x.ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormC) : x).Distinct(StringComparer.Ordinal)
             .OrderBy(x => x, StringComparer.Ordinal).ToArray();
         if (having.Any(x => x.Length == 0)) throw new ArgumentException("A having X may not be empty.");
         if (options.MaxXLength is < 1 or > PairsOptions.XLengthLimit)
@@ -74,7 +75,7 @@ public static class PairsAnalysis
         try
         {
             if (options.XPattern is { Length: > 0 } source)
-                pattern = new Regex("^(?:" + source + ")$", RegexOptions.NonBacktracking | RegexOptions.CultureInvariant);
+                pattern = new Regex("^(?:" + source + ")$", RegexOptions.NonBacktracking | RegexOptions.CultureInvariant | (fold ? RegexOptions.IgnoreCase : RegexOptions.None));
         }
         catch (ArgumentException exception) { throw new ArgumentException("The X pattern is not a valid regular expression: " + exception.Message); }
 

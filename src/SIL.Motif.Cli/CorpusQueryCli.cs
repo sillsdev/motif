@@ -9,7 +9,7 @@ namespace SIL.Motif.Cli;
 /// </summary>
 internal static class CorpusQueryCli
 {
-    private static readonly string[] Flags = ["corpus", "differ", "x", "having", "segments", "fold-case", "max-x", "limit", "examples", "json"];
+    private static readonly string[] Flags = ["corpus", "differ", "x", "having", "segments", "fold-case", "split-hyphens", "max-x", "limit", "examples", "json"];
 
     /// <summary>True for <c>query --corpus ...</c>, which never reads a project.</summary>
     public static bool Handles(IReadOnlyDictionary<string, string> flags) => flags.ContainsKey("corpus");
@@ -19,13 +19,13 @@ internal static class CorpusQueryCli
     {
         request = null!;
         if (positionals.Count != 1 || positionals[0] != "pairs" || flags.Keys.Any(key => !Flags.Contains(key)) ||
-            flags.Any(pair => pair.Value == "true" && pair.Key is not ("json" or "fold-case"))) return false;
+            flags.Any(pair => pair.Value == "true" && pair.Key is not ("json" or "fold-case" or "split-hyphens"))) return false;
         if (!flags.TryGetValue("corpus", out var corpus) || !flags.TryGetValue("differ", out var differ)) return false;
         if (!TryInt("max-x", out var maxX) || !TryInt("limit", out var limit) || !TryInt("examples", out var examples)) return false;
         var having = flags.TryGetValue("having", out var list)
             ? list.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) : null;
         request = new PairsQueryRequest(corpus, differ, flags.GetValueOrDefault("x"), having, flags.GetValueOrDefault("segments"),
-            flags.ContainsKey("fold-case"), maxX, limit, examples);
+            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), maxX, limit, examples);
         return true;
 
         bool TryInt(string name, out int? value)

@@ -52,6 +52,15 @@ public sealed class PairsAnalysisTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void FoldCaseFoldsHavingAndTheRegexToo()
+    {
+        var corpus = Corpus(Tsv(("Kaon", 1), ("KAONAN", 1), ("kaonin", 1)), new CorpusOptions(FoldCase: true));
+        var result = PairsAnalysis.Run(corpus, new PairsOptions(PairsDiffer.Suffix, XPattern: "AN|IN", Having: ["AN", "In"]));
+        Assert.Equal(["kaon"], result.Bases.Select(b => b.Base).ToArray());
+        Assert.Equal(["an", "in"], result.Having.ToArray());
+    }
+
+    [Fact]
     public void PrefixPairsLookForTheBaseAtTheEnd()
     {
         var result = PairsAnalysis.Run(Corpus(Tsv(("kaon", 1), ("makaon", 2), ("nakaon", 1), ("baha", 1), ("mabaha", 1), ("maha", 1))), new PairsOptions(PairsDiffer.Prefix));

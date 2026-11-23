@@ -17,7 +17,7 @@ public static class CorpusQueryCommand
         try
         {
             var segments = request.SegmentsPath is { Length: > 0 } path ? CorpusSegments.Load(path) : CorpusSegments.None;
-            corpus = CorpusWordList.Load(request.CorpusPath, new CorpusOptions(request.FoldCase, segments));
+            corpus = CorpusWordList.Load(request.CorpusPath, new CorpusOptions(request.FoldCase, segments, request.SplitHyphens));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or CorpusFormatException or ArgumentException)
         {

@@ -55,6 +55,16 @@ public sealed class CorpusQueryCliTests : IDisposable
     }
 
     [Fact]
+    public void FoldCaseAndSplitHyphensAreSwitchesAndFoldTheHavingValues()
+    {
+        var corpus = Write("fold.tsv", Tsv(("Kaon", 1), ("KAONAN", 2)));
+        var (code, output, _) = Run("query", "--corpus", corpus, "--fold-case", "--split-hyphens", "pairs", "--differ", "suffix", "--having", "AN", "--json");
+        Assert.Equal(0, code);
+        using var json = JsonDocument.Parse(output);
+        Assert.Equal(1, json.RootElement.GetProperty("pairCount").GetInt32());
+    }
+
+    [Fact]
     public void ATruncatedResultSaysSo()
     {
         var (_, output, _) = Run("query", "--corpus", Words(), "pairs", "--differ", "suffix", "--limit", "1");
