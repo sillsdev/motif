@@ -24,6 +24,8 @@ public static class ReferenceCollectionFieldEmitter
         return Template
             .Replace("__ADDREFLOWERINGBLOCK__", spec.PossibilityListExpression is not null
                 ? ListAddRefLoweringBlock.Replace("__LISTEXPR__", spec.PossibilityListExpression)
+                : spec.FeatureSystemExpression is not null
+                ? FeatureSystemAddRefLoweringBlock.Replace("__SYSTEMEXPR__", spec.FeatureSystemExpression)
                 : !spec.SupportsPlacement
                     ? LegacyAddRefLoweringBlock
                     : PlacementAddRefLoweringBlock)
@@ -91,6 +93,19 @@ public static class ReferenceCollectionFieldEmitter
                 ReferenceCollectionFieldLowering.ApplyAddRefInList<__REFIFACE__>(
                     cache, __VAR__.__ACCESSOR__, memberId, __PREFIX__OperationKinds.AddRef__FIELDNAME__,
                     "__DECLARINGCLASS__.__FIELDNAME__", __LISTEXPR__);
+        }
+        """;
+
+    private const string FeatureSystemAddRefLoweringBlock = """
+        /// <summary>Lowers <see cref="__PREFIX__OperationKinds.AddRef__FIELDNAME__"/>: resolves the
+        /// referenced __REFIFACE__, refuses one outside the feature system the field takes, and adds it to
+        /// <c>__VAR__.__ACCESSOR__</c> (a no-op if already present).</summary>
+        public static class __PREFIX__AddRefLowering
+        {
+            public static void Apply(LcmCache cache, __TARGETIFACE__ __VAR__, CanonicalId memberId) =>
+                ReferenceCollectionFieldLowering.ApplyAddRefInFeatureSystem<__REFIFACE__>(
+                    cache, __VAR__.__ACCESSOR__, memberId, __PREFIX__OperationKinds.AddRef__FIELDNAME__,
+                    "__DECLARINGCLASS__.__FIELDNAME__", __SYSTEMEXPR__);
         }
         """;
 

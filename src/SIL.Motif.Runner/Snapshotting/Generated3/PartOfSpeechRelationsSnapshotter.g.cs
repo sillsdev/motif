@@ -3,7 +3,7 @@
 //   Do NOT hand-edit. Rerun `dotnet run --project src/SIL.Motif.Generator -- emit` after a
 //   manifest or MasterLCModel.xml change, and check in the result.
 //
-//   Source rows (Scope=in, DeclaringClass=PartOfSpeech): PartOfSpeech.DefaultInflectionClass (MoInflClass, rel/atomic).
+//   Source rows (Scope=in, DeclaringClass=PartOfSpeech): PartOfSpeech.DefaultInflectionClass (MoInflClass, rel/atomic), PartOfSpeech.InflectableFeats (FsFeatDefn, rel/col).
 // </auto-generated>
 using System.Collections.Generic;
 using SIL.Motif.Contract.Ids;
@@ -26,6 +26,7 @@ public static class PartOfSpeechRelationsSnapshotter
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
         AddIfPopulated(fields, SnapshotFields.PartOfSpeechDefaultInflectionClass, ReferenceFieldSnapshotting.ReadAlternatives(partOfSpeech.DefaultInflectionClassRA));
+        AddIfPopulated(fields, SnapshotFields.PartOfSpeechInflectableFeats, ReferenceCollectionFieldSnapshotting.ReadAlternatives(partOfSpeech.InflectableFeatsRC));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

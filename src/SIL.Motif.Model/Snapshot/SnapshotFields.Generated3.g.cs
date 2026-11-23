@@ -214,6 +214,9 @@ public static partial class SnapshotFields
     /// <summary>A <c>PartOfSpeech</c>'s <c>DefaultInflectionClass</c> rel/atomic MoInflClass field.</summary>
     public const string PartOfSpeechDefaultInflectionClass = "grammar/partOfSpeech/defaultInflectionClass";
 
+    /// <summary>A <c>PartOfSpeech</c>'s <c>InflectableFeats</c> rel/col FsFeatDefn field.</summary>
+    public const string PartOfSpeechInflectableFeats = "grammar/partOfSpeech/inflectableFeats";
+
     /// <summary>A <c>PhCode</c>'s <c>Representation</c> basic MultiUnicode field.</summary>
     public const string PhCodeRepresentation = "grammar/phCode/representation";
 
