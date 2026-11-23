@@ -960,6 +960,36 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     }
 
     [Fact]
+    public void ADeleteOfANonSenseOwnedObjectIsRefusedWithATypedCodeAndNoOperation()
+    {
+        var change = NewChange(RecordChangeKind.RemoveObject, c =>
+        {
+            Put(c, "ObjectGuid", _entry.Guid);
+            Put(c, "ObjectType", "LexEntry");
+            Put(c, "Field", "allomorphs");
+            Put(c, "ItemGuid", Guid.NewGuid());
+        });
+        var lowering = new RecordChangeSetLowerer(_schema, new RecordWritableFields(_schema)).LowerChanges(_cache, "delete", [change]);
+        Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(lowering.Refusals).Code);
+        Assert.Empty(lowering.Operations);
+    }
+
+    [Fact]
+    public void AChangeToAGenDateCustomFieldIsRefusedNotDropped()
+    {
+        var change = NewChange(RecordChangeKind.Set, c =>
+        {
+            Put(c, "ObjectGuid", _entry.Guid);
+            Put(c, "ObjectType", "LexEntry");
+            Put(c, "Field", Custom("ZedDate"));
+            Put(c, "New", "AD 2000-1-1");
+        });
+        var lowering = new RecordChangeSetLowerer(_schema, new RecordWritableFields(_schema)).LowerChanges(_cache, "date", [change]);
+        Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(lowering.Refusals).Code);
+        Assert.Empty(lowering.Operations);
+    }
+
+    [Fact]
     public void AnOwnedStTextCustomFieldIsRefusedWithItsOwnReasonAndAGenDateOneIsReportedOmitted()
     {
         var metadata = (IFwMetaDataCacheManaged)_cache.MetaDataCacheAccessor;
