@@ -401,7 +401,8 @@ try
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var importProject) ||
                 !flags.TryGetValue("file", out var importFile) ||
                 flags.Keys.Any(key => key is not ("project" or "file" or "draft" or "page" or "strict" or "json")) ||
-                flags.TryGetValue("draft", out var importDraft) && importDraft == "true")
+                flags.TryGetValue("draft", out var importDraft) && importDraft == "true" ||
+                flags.ContainsKey("strict") && !flags.ContainsKey("draft"))
                 return Usage(UsageLineFor("import"), asJson);
             var importPage = 1;
             if (flags.TryGetValue("page", out var importPageText) &&

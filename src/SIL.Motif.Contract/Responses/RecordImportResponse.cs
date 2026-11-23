@@ -12,10 +12,12 @@ public sealed record RecordImportOperation(string OperationId, string Kind, stri
 /// <param name="Field">The field path of the change.</param>
 /// <param name="Object">The canonical id of the object the field belongs to, when known.</param>
 /// <param name="WritingSystem">The writing system of an alternative, when the change is to one.</param>
-/// <param name="Old">The value before, or null when there was none.</param>
-/// <param name="New">The value after, or null when it is cleared.</param>
+/// <param name="Old">The value before, as the file spells it, or null when there was none. It is project text.</param>
+/// <param name="New">The value after, as the file spells it, not the value of the operation; null when it is cleared.</param>
+/// <param name="Status"><c>staged</c> when the change has operations, or <c>refused</c> when it will not be made.</param>
+/// <param name="RefusalCode">The <c>record-import.*</c> code of a refused change; null for a staged one.</param>
 public sealed record RecordImportChange(string Kind, string? Class, string Field, string? Object, string? WritingSystem,
-    string? Old, string? New);
+    string? Old, string? New, string Status = "staged", string? RefusalCode = null);
 
 /// <summary>One change the import will not make, named by a registered refusal code.</summary>
 /// <param name="Code">A <c>record-import.*</c> refusal code.</param>

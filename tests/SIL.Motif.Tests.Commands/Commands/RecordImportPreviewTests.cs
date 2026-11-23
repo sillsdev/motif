@@ -267,4 +267,44 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
             Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(response)) <= RecordImportPaging.SummaryBytes, "page " + page);
         }
     }
+
+    [Fact]
+    public void ADoomedChangeIsMarkedRefusedWithItsCodeInTheChangesAndTheOthersAreStaged()
+    {
+        var (project, file, _) = Fixture(wrongList: true);
+
+        var response = RecordImportCommand.Run(new(project, file)).Value!;
+
+        Assert.Equal(2, response.Changes!.Count);
+        var doomed = Assert.Single(response.Changes, change => change.Field == "status");
+        Assert.Equal("refused", doomed.Status);
+        Assert.Equal(RefusalCodes.RecordImportChangeRefused, doomed.RefusalCode);
+        var fine = Assert.Single(response.Changes, change => change.Field == "gloss");
+        Assert.Equal("staged", fine.Status);
+        Assert.Null(fine.RefusalCode);
+    }
+
+    [Fact]
+    public void ADryRunLeavesTheProjectFolderByteForByteAsItWasEvenWhenAChangeIsRefused()
+    {
+        var (project, file, _) = Fixture(wrongList: true);
+        string Hashes() => string.Join("|", Directory.EnumerateFiles(Path.GetDirectoryName(project)!, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal).Select(item => item + ":" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(item)))));
+        var before = Hashes();
+
+        Assert.True(RecordImportCommand.Run(new(project, file)).Succeeded);
+
+        Assert.Equal(before, Hashes());
+    }
+
+    [Fact]
+    public void StrictWithoutADraftNameIsRefusedAsAnInvalidArgument()
+    {
+        var (project, file, _) = Fixture();
+
+        var outcome = RecordImportCommand.Run(new(project, file, Strict: true));
+
+        Assert.Equal(RefusalCodes.RecordImportStrictNeedsDraft, outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.InvalidArgument, outcome.Refusal.Reason);
+    }
 }

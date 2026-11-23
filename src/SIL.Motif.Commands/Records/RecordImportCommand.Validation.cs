@@ -6,6 +6,7 @@ using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Projection;
 using SIL.Motif.Runner.Execution;
@@ -21,8 +22,17 @@ internal sealed class RecordImportChangedException() : ProposalRefusalException(
     "The project changed after the import was previewed, so the Draft was not staged. Run the import again.",
     new Dictionary<string, string>());
 
+/// <summary>The scratch pass failed in a way no single change explains, so the import cannot be previewed.</summary>
+internal sealed class RecordImportScratchException(Exception inner)
+    : Exception("The operations could not be tried on a scratch copy: " + inner.GetType().Name + ".", inner);
+
 public static partial class RecordImportCommand
 {
+    // Failures a handler gives for a value it cannot take.
+    private static bool IsRefusalOfOneChange(Exception exception) =>
+        exception is InvalidOperationException or ArgumentException or KeyNotFoundException or FormatException
+            or InvalidCastException or OverflowException or System.Text.Json.JsonException or ContractParseException;
+
     /// <summary>Tests change the project between the preview and the stage by setting this.</summary>
     internal static Action? BeforeStage { get; set; }
 
@@ -57,7 +67,16 @@ public static partial class RecordImportCommand
         using var unit = new NonUndoableUnitOfWorkHelper(handler);
         unit.RollBack = false;
         using var writes = DeferredWrites.Begin(cache);
-        foreach (var ordered in OperationExecutionOrder.Sort(contained))
+        IReadOnlyList<OperationEnvelope> order;
+        try
+        {
+            order = OperationExecutionOrder.Sort(contained);
+        }
+        catch (Exception exception) when (IsRefusalOfOneChange(exception))
+        {
+            throw new RecordImportScratchException(exception);
+        }
+        foreach (var ordered in order)
         {
             var id = ordered.OperationId;
             var change = changeOf[id];
@@ -72,24 +91,30 @@ public static partial class RecordImportCommand
                 OperationHandlerRegistry.Resolve(byId[id].Kind, "Draft composer preparation")
                     .ApplyAndCaptureEffect(cache, byId[id], new List<CanonicalId>());
             }
-            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+            catch (Exception exception) when (IsRefusalOfOneChange(exception))
             {
                 failedOperations.Add(id);
                 failed[change] = exception is ProposalRefusalException refusal
                     ? refusal.Code + ": " + refusal.Message
                     : exception.Message;
             }
+            catch (Exception exception) when (exception is not (ProjectWritingSystemsUnavailableException or OutOfMemoryException))
+            {
+                throw new RecordImportScratchException(exception);
+            }
         }
         try
         {
             writes.Complete();
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception) when (IsRefusalOfOneChange(exception))
         {
             foreach (var change in changeOf.Values.Distinct().Where(change => !failed.ContainsKey(change)))
                 failed[change] = "The operations together could not be written: " + exception.Message;
         }
         if (failed.Count == 0) return full;
+        var refusedCodes = (full.RefusedChanges ?? new Dictionary<int, string>()).ToDictionary(pair => pair.Key, pair => pair.Value);
+        foreach (var index in failed.Keys) refusedCodes[index] = RefusalCodes.RecordImportChangeRefused;
         var kept = new List<OperationEnvelope>();
         var keptChanges = new List<int>();
         for (var index = 0; index < full.Operations.Count; index++)
@@ -105,6 +130,6 @@ public static partial class RecordImportCommand
             refusals.Add(new(RefusalCodes.RecordImportChangeRefused, change.ObjectType ?? "", change.Field,
                 change.ObjectGuid, reason));
         }
-        return new(kept, refusals, full.PlanRefusals, keptChanges);
+        return new(kept, refusals, full.PlanRefusals, keptChanges, refusedCodes);
     }
 }

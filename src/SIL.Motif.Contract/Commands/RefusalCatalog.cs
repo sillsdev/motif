@@ -767,6 +767,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.RecordImportNothingToStage, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportChangedSincePreview, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportStrictRefused, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportStrictNeedsDraft, FailureReason.InvalidArgument),
         Spec(RefusalCodes.RecordImportInvalidPage, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProposalNotFound, FailureReason.NotFound,
             Command("proposals", Caller("project"))),

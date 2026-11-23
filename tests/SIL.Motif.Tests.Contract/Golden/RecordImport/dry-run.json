@@ -32,7 +32,8 @@
       "object": "-CCCCCCCCCCCCCCCCCCCCCC",
       "writingSystem": "en",
       "old": "buy",
-      "new": "purchase"
+      "new": "purchase",
+      "status": "staged"
     }
   ]
 }

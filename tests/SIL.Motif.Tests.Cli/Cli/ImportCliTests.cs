@@ -223,4 +223,44 @@ public sealed class ImportCliTests : IDisposable
         Assert.True(staged.ExitCode == 0, staged.Error + staged.Output);
         Assert.Equal("draft", JsonNode.Parse(staged.Output)!["mode"]!.GetValue<string>());
     }
+
+    [Fact]
+    public void StrictWithARefusedChangeExitsNonZeroWithItsCodeAndMakesNoDraft()
+    {
+        var (project, file) = RecordImportDoomedFile.Create(_pristine, Path.Combine(_root, "doomed-strict"));
+
+        var result = Run("import", "--project", project, "--file", file, "--draft", "strict-doomed", "--strict", "--json");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Equal(RefusalCodes.RecordImportStrictRefused, ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!.Code);
+        var listed = Run("proposals", "--project", project, "--json");
+        Assert.Empty(JsonNode.Parse(listed.Output)!["proposals"]!.AsArray());
+    }
+
+    [Fact]
+    public void ASomeRefusedImportWithoutStrictExitsZeroAndSaysHowManyWereRefused()
+    {
+        var (project, file) = RecordImportDoomedFile.Create(_pristine, Path.Combine(_root, "doomed-partial"));
+
+        var json = Run("import", "--project", project, "--file", file, "--draft", "partial", "--json");
+        Assert.True(json.ExitCode == 0, json.Error + json.Output);
+        var node = JsonNode.Parse(json.Output)!;
+        Assert.Equal(1, node["refusalCount"]!.GetValue<int>());
+        Assert.Equal(1, node["operationCount"]!.GetValue<int>());
+        var dry = Run("import", "--project", project, "--file", file);
+        Assert.Contains("REFUSED record-import.change-refused", dry.Output, StringComparison.Ordinal);
+        var text = Run("import", "--project", project, "--file", file, "--draft", "partial-text");
+        Assert.Contains("1 change(s) refused and not staged", text.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ACleanStrictStageExitsZeroAndStrictWithoutADraftIsAUsageError()
+    {
+        var clean = Run("import", "--project", _project, "--file", _file, "--draft", "strict-ok", "--strict");
+        Assert.Equal(0, clean.ExitCode);
+
+        var usage = Run("import", "--project", _project, "--file", _file, "--strict");
+        Assert.Equal(1, usage.ExitCode);
+        Assert.Contains("import --project <fwdata> --file <path>", usage.Error + usage.Output, StringComparison.Ordinal);
+    }
 }

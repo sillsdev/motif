@@ -1623,7 +1623,7 @@ public static class CommandTextRenderer
             : $"Dry run of the {r.RecordKind} file: {r.ChangeCount:N0} change(s) lower to {r.OperationCount:N0} operation(s). Nothing was written.");
         text.AppendLine($"  record: {r.RecordId}; base: {r.BaseVerdict}; refused: {r.RefusalCount:N0}; page {r.Page} of {r.PageCount}");
         foreach (var change in r.Changes ?? [])
-            text.AppendLine($"  change {change.Kind}  {change.Class}.{change.Field}{(change.WritingSystem is null ? "" : "[" + change.WritingSystem + "]")}: " +
+            text.AppendLine($"  change {(change.Status == "refused" ? "REFUSED " + change.RefusalCode + " " : "")}{change.Kind}  {change.Class}.{change.Field}{(change.WritingSystem is null ? "" : "[" + change.WritingSystem + "]")}: " +
                 $"{change.Old ?? "(none)"} -> {change.New ?? "(cleared)"}");
         foreach (var operation in r.Operations)
             text.AppendLine($"  op {operation.OperationId}  {operation.Kind}  {operation.Target}");

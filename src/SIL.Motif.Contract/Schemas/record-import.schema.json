@@ -90,6 +90,15 @@
         },
         "new": {
           "type": "string"
+        },
+        "status": {
+          "enum": [
+            "staged",
+            "refused"
+          ]
+        },
+        "refusalCode": {
+          "type": "string"
         }
       }
     },

@@ -275,4 +275,32 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         Assert.False(called.IsError == true, called.StructuredContent?.ToString());
         Assert.Equal("draft", JsonNode.Parse(called.StructuredContent!.Value.GetRawText())!["result"]!["mode"]!.GetValue<string>());
     }
+
+    [Fact]
+    public async Task StrictWithARefusedChangeIsAnErrorAndAPartialStageSucceedsWithTheCount()
+    {
+        var (path, file) = RecordImportDoomedFile.Create(pristine, Path.Combine(_folder, "doomed"));
+        var inside = Path.Combine(Path.GetDirectoryName(path)!, "doomed.md");
+        File.Copy(file, inside, true);
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "import-doomed");
+        var profile = new ToolProfile("import-doomed", null, null, "concise", [], AllTools: true);
+        var tools = MotifMcpServer.Expose(profile);
+
+        var strict = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+            Args(("project", path), ("file", inside), ("draft", "mcp-strict"), ("strict", true)), CancellationToken.None);
+        Assert.True(strict.IsError == true);
+        Assert.Contains(RefusalCodes.RecordImportStrictRefused, strict.StructuredContent?.ToString(), StringComparison.Ordinal);
+        Assert.Empty(ProposalCommands.List(new(path, "0.1.0")).Value?.Proposals ?? []);
+
+        var partial = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+            Args(("project", path), ("file", inside), ("draft", "mcp-partial")), CancellationToken.None);
+        Assert.False(partial.IsError == true, partial.StructuredContent?.ToString());
+        Assert.Equal(1, JsonNode.Parse(partial.StructuredContent!.Value.GetRawText())!["result"]!["refusalCount"]!.GetValue<int>());
+
+        var noDraft = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+            Args(("project", path), ("file", inside), ("strict", true)), CancellationToken.None);
+        Assert.True(noDraft.IsError == true);
+        Assert.Contains(RefusalCodes.RecordImportStrictNeedsDraft, noDraft.StructuredContent?.ToString(), StringComparison.Ordinal);
+    }
 }

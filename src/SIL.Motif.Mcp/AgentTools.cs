@@ -272,7 +272,7 @@ internal static class AgentTools
             Schema.Object([("file", Schema.String("Path of the edited record file, exported from this project."), true),
                 ("draft", Schema.String("A new Draft name to stage the operations in. Leave it out for a dry run that writes nothing."), false),
                 ("page", Schema.Integer("Page of changes, operations and refusals to list. Default 1.", 1, 100000), false),
-                ("strict", Schema.Boolean("With a draft name: refuse to stage when any change is refused. Default false."), false)]),
+                ("strict", Schema.Boolean("Needs a draft name: refuse to stage when any change is refused. Default false."), false)]),
             false,
             false,
             false,

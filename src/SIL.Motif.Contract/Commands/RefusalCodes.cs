@@ -334,6 +334,9 @@ public static class RefusalCodes
     /// <summary>The project changed between the preview and the stage, so what would be staged is no longer what was previewed.</summary>
     public const string RecordImportChangedSincePreview = "record-import.changed-since-preview";
 
+    /// <summary>Strict was asked for without a Draft name, so there is no stage for it to govern.</summary>
+    public const string RecordImportStrictNeedsDraft = "record-import.strict-needs-draft";
+
     /// <summary>Strict mode refused to stage an import in which some change was refused.</summary>
     public const string RecordImportStrictRefused = "record-import.strict-refused";
 
