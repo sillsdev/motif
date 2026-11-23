@@ -2,7 +2,10 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.LCModel;
+using System.Text.RegularExpressions;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Records;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Mcp;
@@ -51,7 +54,7 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
 
         public string Hash() => Convert.ToHexString(SHA256.HashData(System.IO.File.ReadAllBytes(Project)));
 
-        public async Task<(bool Error, string Text, JsonNode? Result)> Tool(string? draft = null, int? page = null)
+        public async Task<(bool Error, string Text, JsonNode? Result)> Tool(string? draft = null, int? page = null, bool strict = false)
         {
             var arguments = new Dictionary<string, JsonElement>
             {
@@ -60,6 +63,7 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
             };
             if (draft is not null) arguments["draft"] = JsonSerializer.SerializeToElement(draft);
             if (page is not null) arguments["page"] = JsonSerializer.SerializeToElement(page.Value);
+            if (strict) arguments["strict"] = JsonSerializer.SerializeToElement(true);
             var context = new ServerContext(Project, "0.1.0",
                 new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
                 new ActivityLog(null), _profile, TextWriter.Null, advancedAiModeEnabled: true);
@@ -73,11 +77,12 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
         public CliProcessResult Cli(params string[] arguments) =>
             CliInProcess.Run(RunnerOptions.ResolveRoot(), FakeParser.ExecutablePath, true, [.. arguments]);
 
-        public CliProcessResult Import(string? draft = null, int? page = null)
+        public CliProcessResult Import(string? draft = null, int? page = null, bool strict = false)
         {
             var arguments = new List<string> { "import", "--project", Project, "--file", File, "--json" };
             if (draft is not null) arguments.AddRange(["--draft", draft]);
             if (page is not null) arguments.AddRange(["--page", page.Value.ToString()]);
+            if (strict) arguments.Add("--strict");
             return Cli([.. arguments]);
         }
     }
@@ -109,6 +114,7 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
         Assert.Equal(1, called.Result["operationCount"]!.GetValue<int>());
         Assert.Equal(0, called.Result["refusalCount"]!.GetValue<int>());
         Assert.Equal([kind], Kinds(called.Result));
+        Assert.Equal("staged", Assert.Single(called.Result["changes"]!.AsArray())!["status"]!.GetValue<string>());
         Assert.True(JsonNode.DeepEquals(cliNode, called.Result), cli.Output + "\n" + called.Text);
         Assert.Equal(before, scenario.Hash());
     }
@@ -197,6 +203,8 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
         var cli = scenario.Import();
         Assert.True(cli.ExitCode == 0, cli.Error + cli.Output);
         Assert.Equal(code, JsonNode.Parse(cli.Output)!["refusals"]![0]!["code"]!.GetValue<string>());
+        Assert.Equal("refused", dry.Result["changes"]![0]!["status"]!.GetValue<string>());
+        Assert.Equal(code, dry.Result["changes"]![0]!["refusalCode"]!.GetValue<string>());
 
         var staged = await scenario.Tool(draft: "refused");
         Assert.True(staged.Error, staged.Text);
@@ -207,5 +215,53 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
         var listed = ProposalCommands.List(new(scenario.Project, "0.1.0"));
         Assert.Empty(listed.Value!.Proposals);
         Assert.Equal(before, scenario.Hash());
+    }
+
+    [Fact]
+    public async Task StrictWithARefusedChangeIsTheCliRefusalAndStagesNothing()
+    {
+        using var scenario = new Scenario(pristine, null, (d, s) =>
+        {
+            EditWrongList(d, s);
+            Assert.Single(Additive, item => item.Kind == "customField/setInteger").Edit(d, s);
+        });
+        var before = scenario.Hash();
+
+        var called = await scenario.Tool(draft: "strict", strict: true);
+        var cli = scenario.Import(draft: "strict-cli", strict: true);
+
+        Assert.True(called.Error, called.Text);
+        Assert.Contains(RefusalCodes.RecordImportStrictRefused, called.Text, StringComparison.Ordinal);
+        Assert.NotEqual(0, cli.ExitCode);
+        Assert.Equal(RefusalCodes.RecordImportStrictRefused, ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!.Code);
+        Assert.Empty(ProposalCommands.List(new(scenario.Project, "0.1.0")).Value!.Proposals);
+        Assert.Equal(before, scenario.Hash());
+    }
+
+    [Fact]
+    public async Task StrictWithoutADraftIsTheCliUsageRefusal()
+    {
+        using var scenario = new Scenario(pristine, null, EditWrongList);
+
+        var called = await scenario.Tool(strict: true);
+        var cli = scenario.Import(strict: true);
+
+        Assert.True(called.Error, called.Text);
+        Assert.Contains(RefusalCodes.RecordImportStrictNeedsDraft, called.Text, StringComparison.Ordinal);
+        Assert.NotEqual(0, cli.ExitCode);
+    }
+
+    [Fact]
+    public void EveryCatalogKindOfTheFamiliesHasExactlyOneCase()
+    {
+        OperationRegistryBootstrap.Initialize();
+        var family = new Regex(@"^(customField/.+|lexical/(lexSense|lexExampleSentence)/(setStatus|clearStatus|setSenseType|clearSenseType|addRef\w+|removeRef\w+))$");
+        var kinds = OperationHandlerRegistry.RegisteredKinds
+            .Where(kind => SIL.Motif.Contract.Parsing.OperationKindRegistry.IsKnown(kind) && family.IsMatch(kind))
+            .Where(kind => OperationHandlerRegistry.FieldWrites(kind).Any(write => RecordLoweringRules.Lowers(kind, write)))
+            .Order(StringComparer.Ordinal).ToArray();
+
+        Assert.Empty(kinds.Except(Cases.Select(item => item.Kind)).Order());
+        Assert.Empty(Cases.Select(item => item.Kind).Except(kinds).Order());
     }
 }

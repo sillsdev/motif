@@ -79,6 +79,7 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
         Assert.Equal(0, node["refusalCount"]!.GetValue<int>());
         Assert.Equal(1, node["operationCount"]!.GetValue<int>());
         Assert.Equal(kind, Assert.Single(node["operations"]!.AsArray())!["kind"]!.GetValue<string>());
+        Assert.Equal("staged", Assert.Single(node["changes"]!.AsArray())!["status"]!.GetValue<string>());
 
         var text = Run("import", "--project", project, "--file", file);
         Assert.True(text.ExitCode == 0, text.Error + text.Output);
@@ -184,7 +185,11 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
         Assert.Equal(1, node["refusalCount"]!.GetValue<int>());
         Assert.Equal(RefusalCodes.ReferenceWrongList,
             Assert.Single(node["refusals"]!.AsArray())!["code"]!.GetValue<string>());
+        var change = Assert.Single(node["changes"]!.AsArray())!;
+        Assert.Equal("refused", change["status"]!.GetValue<string>());
+        Assert.Equal(RefusalCodes.ReferenceWrongList, change["refusalCode"]!.GetValue<string>());
         var text = Run("import", "--project", project, "--file", file);
+        Assert.Contains("REFUSED " + RefusalCodes.ReferenceWrongList, text.Output, StringComparison.Ordinal);
         Assert.Contains("refused " + RefusalCodes.ReferenceWrongList, text.Output, StringComparison.Ordinal);
 
         var staged = Run("import", "--project", project, "--file", file, "--draft", "refused", "--json");
@@ -211,5 +216,62 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
         Assert.Equal(1, node["operationCount"]!.GetValue<int>());
         Assert.Equal(1, node["refusalCount"]!.GetValue<int>());
         Assert.Equal(RefusalCodes.ReferenceWrongList, node["refusals"]![0]!["code"]!.GetValue<string>());
+        var text = Run("import", "--project", project, "--file", file, "--draft", "mixed-text");
+        Assert.True(text.ExitCode == 0, text.Error + text.Output);
+        Assert.Contains("1 change(s) refused and not staged", text.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StrictWithARefusedChangeExitsNonZeroAndStagesNothingWhetherAloneOrBesideAnAcceptedOne()
+    {
+        foreach (var edit in new Action<SIL.TextEditing.Markdown.Records.RecordDocument, Seeded>[]
+        {
+            EditWrongList,
+            (d, s) =>
+            {
+                EditWrongList(d, s);
+                Assert.Single(Additive, item => item.Kind == "customField/setInteger").Edit(d, s);
+            },
+        })
+        {
+            var (project, file) = Project(null, edit);
+            var before = Hash(project);
+
+            var json = Run("import", "--project", project, "--file", file, "--draft", "strict", "--strict", "--json");
+            Assert.NotEqual(0, json.ExitCode);
+            Assert.Equal(RefusalCodes.RecordImportStrictRefused, ProjectionJson.Deserialize<FailureEnvelope>(json.Error)!.Code);
+            Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), json.ExitCode);
+            var text = Run("import", "--project", project, "--file", file, "--draft", "strict", "--strict");
+            Assert.NotEqual(0, text.ExitCode);
+            Assert.Contains("Strict mode", text.Error + text.Output, StringComparison.Ordinal);
+
+            var listed = Run("proposals", "--project", project, "--json");
+            Assert.Empty(JsonNode.Parse(listed.Output)!["proposals"]!.AsArray());
+            Assert.Equal(before, Hash(project));
+        }
+    }
+
+    [Fact]
+    public void StrictWithNothingRefusedStagesTheDraft()
+    {
+        var (project, file) = Project(null, EditAllAdditive);
+
+        var staged = Run("import", "--project", project, "--file", file, "--draft", "strict-clean", "--strict", "--json");
+
+        Assert.True(staged.ExitCode == 0, staged.Error + staged.Output);
+        Assert.Equal(AdditiveCount, JsonNode.Parse(staged.Output)!["operationCount"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void StrictWithoutADraftIsAUsageError()
+    {
+        var (project, file) = Project(null, EditWrongList);
+        var before = Hash(project);
+
+        var result = Run("import", "--project", project, "--file", file, "--strict");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("import --project <fwdata> --file <path>", result.Error + result.Output, StringComparison.Ordinal);
+        Assert.Equal(before, Hash(project));
     }
 }
