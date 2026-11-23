@@ -250,17 +250,18 @@ internal sealed class CustomFieldHandler(string kind, string[] allowed, CellarPr
 
     internal static void WriteReference(Write context)
     {
-        var hvo = Clearing(context) ? 0 : Member(context, "ref").Hvo;
+        var hvo = Clearing(context) ? 0 : Member(context, "ref", checkedAgainstField: true).Hvo;
         context.Cache.DomainDataByFlid.SetObjProp(context.Target.Hvo, context.Flid, hvo);
     }
 
     internal static void WriteMember(Write context)
     {
-        var member = Member(context, "member");
+        var adding = context.Kind == CustomFieldOperationKinds.AddReference;
+        var member = Member(context, "member", checkedAgainstField: adding);
         var data = context.Cache.DomainDataByFlid;
         var size = data.get_VecSize(context.Target.Hvo, context.Flid);
         var at = Enumerable.Range(0, size).FirstOrDefault(index => data.get_VecItem(context.Target.Hvo, context.Flid, index) == member.Hvo, -1);
-        if (context.Kind == CustomFieldOperationKinds.AddReference)
+        if (adding)
         {
             if (at < 0)
                 data.Replace(context.Target.Hvo, context.Flid, size, size, [member.Hvo], 1);
@@ -269,20 +270,21 @@ internal sealed class CustomFieldHandler(string kind, string[] allowed, CellarPr
             data.Replace(context.Target.Hvo, context.Flid, at, at + 1, [], 0);
     }
 
-    /// <summary>Resolves the referenced object, checked against the field's class and list.</summary>
-    private static ICmObject Member(Write context, string property)
+    /// <summary>Resolves the referenced object; only a write checks it against the field.</summary>
+    private static ICmObject Member(Write context, string property, bool checkedAgainstField)
     {
         var id = ClosedPayloadParsing.GetRequiredCanonicalId(context.After, property, context.Kind);
         var member = CanonicalIdResolver.Resolve(context.Cache, id);
+        if (!checkedAgainstField)
+            return member;
         var metadata = (IFwMetaDataCacheManaged)context.Cache.MetaDataCacheAccessor;
         var destination = metadata.GetDstClsId(context.Flid);
         if (member.ClassID != destination && !metadata.GetAllSubclasses(destination).Contains(member.ClassID))
-            throw new CustomFieldRefusal(RefusalCodes.CustomFieldWrongClass, context.Kind, FieldName(context),
+            throw new ReferenceFieldRefusal(RefusalCodes.CustomFieldWrongClass, context.Kind, FieldName(context),
                 $"Referenced object '{id.Value}' is a {member.ClassName}, not a {metadata.GetClassName(destination)}.");
         var root = metadata.GetFieldListRoot(context.Flid);
-        if (root != Guid.Empty && (member as ICmPossibility)?.OwningList.Guid != root)
-            throw new CustomFieldRefusal(RefusalCodes.CustomFieldWrongList, context.Kind, FieldName(context),
-                $"Referenced object '{id.Value}' is not in the list this field was created over.");
+        if (root != Guid.Empty)
+            ListBoundReference.RequireInList(member, root, RefusalCodes.CustomFieldWrongList, context.Kind, FieldName(context));
         return member;
     }
 }

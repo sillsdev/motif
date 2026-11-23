@@ -1329,7 +1329,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             ("stock add, wrong class", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = notAPossibility }), "InvalidOperationException"),
             ("stock remove, in list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = inList }), "accepted"),
             ("stock remove, other list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = otherList }), "accepted"),
-            ("stock remove, wrong class", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = notAPossibility }), "InvalidOperationException"),
+            ("stock remove, wrong class", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = notAPossibility }), "accepted"),
             ("custom set, in list", Outcome("customField/setReference", new { field = "ZedReference", @ref = inList }), "accepted"),
             ("custom set, other list", Outcome("customField/setReference", new { field = "ZedReference", @ref = otherList }), "custom-field.wrong-list"),
             ("custom set, wrong class", Outcome("customField/setReference", new { field = "ZedReference", @ref = notAPossibility }), "custom-field.wrong-class"),
@@ -1337,8 +1337,8 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             ("custom add, other list", Outcome("customField/addReference", new { field = "ZedReferences", member = otherList }), "custom-field.wrong-list"),
             ("custom add, wrong class", Outcome("customField/addReference", new { field = "ZedReferences", member = notAPossibility }), "custom-field.wrong-class"),
             ("custom remove, in list", Outcome("customField/removeReference", new { field = "ZedReferences", member = inList }), "accepted"),
-            ("custom remove, other list", Outcome("customField/removeReference", new { field = "ZedReferences", member = otherList }), "custom-field.wrong-list"),
-            ("custom remove, wrong class", Outcome("customField/removeReference", new { field = "ZedReferences", member = notAPossibility }), "custom-field.wrong-class"),
+            ("custom remove, other list", Outcome("customField/removeReference", new { field = "ZedReferences", member = otherList }), "accepted"),
+            ("custom remove, wrong class", Outcome("customField/removeReference", new { field = "ZedReferences", member = notAPossibility }), "accepted"),
         };
         Assert.Equal(rows.Select(r => r.Row + " => " + r.Expected), rows.Select(r => r.Row + " => " + r.Actual));
     }
