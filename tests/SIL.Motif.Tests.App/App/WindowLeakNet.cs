@@ -62,7 +62,8 @@ public sealed class WindowLeakNetAttribute : BeforeAfterTestAttribute
     public override void Before(System.Reflection.MethodInfo methodUnderTest)
     {
         _before = null;
-        if (!AvaloniaHeadlessPlatform.IsCreated) return;
+        // Before any test body runs: a pool thread posting to the dispatcher while it is built throws.
+        AvaloniaHeadlessPlatform.Initialize();
         HashSet<Window>? open = null;
         AvaloniaHeadlessPlatform.Invoke(() => open = OpenWindows().ToHashSet());
         _before = open;
