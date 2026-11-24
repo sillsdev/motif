@@ -2,8 +2,9 @@ name: CI
 
 # Runs the same two scripts a developer runs, so CI cannot disagree with a local run about what passes.
 on:
+  # PR branches run under pull_request only; a push run beside it would double the jobs on every PR push.
   push:
-    branches: ['**', '!mac-debug/**', '!linux-debug/**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
     inputs:
