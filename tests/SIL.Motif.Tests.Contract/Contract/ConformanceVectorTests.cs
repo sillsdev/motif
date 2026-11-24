@@ -79,6 +79,8 @@ public class ConformanceVectorTests
             OperationKindRegistry.Register("lexical/lexSense/addRef" + field);
             OperationKindRegistry.Register("lexical/lexSense/removeRef" + field);
         }
+        OperationKindRegistry.Register("grammar/partOfSpeech/addRefInflectableFeats");
+        OperationKindRegistry.Register("grammar/partOfSpeech/removeRefInflectableFeats");
         foreach (var owner in new[] { "lexSense", "lexExampleSentence" })
         {
             OperationKindRegistry.Register($"lexical/{owner}/addRefDoNotPublishIn");

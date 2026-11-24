@@ -42,6 +42,22 @@ internal static class ReferenceCollectionFieldLowering
             collection.Add(member);
     }
 
+    /// <summary>Adds a feature definition of the one feature system FieldWorks offers for the field; one from another system is refused by name.</summary>
+    public static void ApplyAddRefInFeatureSystem<TRef>(LcmCache cache, ICollection<TRef> collection, CanonicalId memberId,
+        string kind, string field, Func<LcmCache, IFsFeatureSystem?> system)
+        where TRef : class, ICmObject
+    {
+        var found = ListBoundReference.Find(cache, memberId, kind, field);
+        if (found is not TRef member)
+            throw new ReferenceFieldRefusal(RefusalCodes.ReferenceWrongClass, kind, field,
+                $"Referenced object '{memberId.Value}' is a {found.ClassName}, not a {typeof(TRef).Name.TrimStart('I')}.");
+        if (member.Owner.Guid != (system(cache)?.Guid ?? Guid.Empty))
+            throw new ReferenceFieldRefusal(RefusalCodes.ReferenceWrongList, kind, field,
+                $"Referenced object '{memberId.Value}' is not in the feature system {field} takes.");
+        if (!collection.Contains(member))
+            collection.Add(member);
+    }
+
     public static void ApplyRemoveRef<TRef>(LcmCache cache, ICollection<TRef> collection, CanonicalId memberId, string kind)
         where TRef : ICmObject
     {

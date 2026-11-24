@@ -41,6 +41,13 @@ public static class RelationFieldSpecBuilder
         [new FieldKey("LexEntry", "DialectLabels")] = "c => c.LangProject.LexDbOA.DialectLabelsOA",
     };
 
+    /// <summary>The feature system FieldWorks's chooser offers a field's feature definitions from.</summary>
+    private static readonly Dictionary<FieldKey, string> FeatureSystems = new()
+    {
+        // FieldWorks MorphologyParts.xml:935 chooses Inflectable Features from the feature system.
+        [new FieldKey("PartOfSpeech", "InflectableFeats")] = "c => c.LangProject.MsFeatureSystemOA",
+    };
+
     public static ReferenceAtomicFieldSpec BuildAtomic(JoinedRow row)
     {
         var group = GroupDerivation.Derive(row.DeclaringClass);
@@ -96,7 +103,8 @@ public static class RelationFieldSpecBuilder
             SnapshotFieldConstant: row.DeclaringClass + row.FieldName,
             MoveKind: supportsPlacement ? KindNameDerivation.DeriveOne(group, construct, "move", row.FieldName) : null,
             SupportsPlacement: supportsPlacement,
-            PossibilityListExpression: PossibilityLists.GetValueOrDefault(row.Key));
+            PossibilityListExpression: PossibilityLists.GetValueOrDefault(row.Key),
+            FeatureSystemExpression: FeatureSystems.GetValueOrDefault(row.Key));
     }
 
     public static IReadOnlyList<ReferenceAtomicFieldSpec> BuildAllAtomic(IReadOnlyList<JoinedRow> rows) =>
