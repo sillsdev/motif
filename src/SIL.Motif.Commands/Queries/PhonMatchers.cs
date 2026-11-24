@@ -88,8 +88,9 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
                     }
                 string? Text(string name) => word.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
                 int? charIndex = word.TryGetProperty("at", out var at) && at.TryGetProperty("charIndex", out var index) ? index.GetInt32() : null;
-                words.Add(new PhonWordResult(word.GetProperty("word").GetString() ?? "", word.GetProperty("status").GetString() ?? "",
-                    spans, Text("reason") ?? Text("stop"), charIndex, Text("normalized")));
+                var status = word.GetProperty("status").GetString() ?? "";
+                words.Add(new PhonWordResult(word.GetProperty("word").GetString() ?? "", status,
+                    spans, status == "incomplete" ? Text("stop") : Text("reason"), charIndex, Text("normalized")));
             }
             return new PhonBatchResult(words, root.GetProperty("complete").GetBoolean(),
                 root.TryGetProperty("stopReason", out var stop) && stop.ValueKind == JsonValueKind.String ? stop.GetString() : null);

@@ -231,7 +231,7 @@ public sealed class PhonQueryTests : IDisposable
     [Fact]
     public void AWordStoppedAtTheMatchCapKeepsItsSpansFlaggedPartialAndIsCounted()
     {
-        const string reply = """{"complete":false,"id":"x","op":"match","stopReason":"match_cap","type":"result","words":[{"matches":[{"left":[0,0],"offsets":[0,1],"right":[1,2],"segments":[0,1]}],"status":"incomplete","reason":"match_cap","word":""},{"matches":[],"status":"ok","word":""}]}""";
+        const string reply = """{"complete":false,"id":"x","op":"match","stopReason":"match_cap","type":"result","words":[{"matches":[{"left":[0,0],"offsets":[0,1],"right":[1,2],"segments":[0,1]}],"status":"incomplete","stop":"match_cap","word":""},{"matches":[],"status":"ok","word":""}]}""";
         var corpus = Corpus("pata", "kaki");
         var positive = new PhonSession(new Replay(reply, "[V]", "pata", "kaki"));
         var rows = CorpusFormsQuery.Run(corpus, Where("phon(V)"), positive);
