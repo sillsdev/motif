@@ -142,8 +142,12 @@ public sealed partial class RecordChangeSetLowerer
                     replacedBy[oldInputs[gone]] = newInputs[created];
             }
 
+            var gaps = new HashSet<Guid>();
+            for (var n = 0; n < newInputs.Count; n++)
+                if (inputText is not null ? inputText.Nodes[n] is RuleGap : process.InputOS[n] is IPhVariable)
+                    gaps.Add(newInputs[n]);
             if (outChange is { } outputChange)
-                LowerOutput(process, processId, outputChange, outputText!, newInputs, classes);
+                LowerOutput(process, processId, outputChange, outputText!, newInputs, gaps, classes);
             else if (inChange is { } retargeting)
                 foreach (var output in process.OutputOS)
                 {
@@ -153,6 +157,8 @@ public sealed partial class RecordChangeSetLowerer
                     if (!replacedBy.TryGetValue(pointed.Guid, out var successor))
                         throw Refuse(RefusalCodes.RuleNotationDanglingIndex, retargeting.Change,
                             "An output element still points at an input column this change removes; change the output in the same file.");
+                    if (output is IMoModifyFromInput && gaps.Contains(successor))
+                        throw Refuse(RefusalCodes.RuleNotationContextNotAllowed, retargeting.Change, StemModifyReason);
                     Add(Operation(Id($"{retargeting.Index}:{retargeting.Change.Kind}:retarget:{output.Guid:N}"),
                         output is IMoCopyFromInput ? MoCopyFromInputContentOperationKinds.SetContent : MoModifyFromInputContentOperationKinds.SetContent,
                         CanonicalId.FromGuid(output.Guid), new { @ref = CanonicalId.FromGuid(successor).Value }), retargeting.Index);
@@ -275,8 +281,11 @@ public sealed partial class RecordChangeSetLowerer
             Add(Operation(Id(role + ":unit"), kind, context, new { @ref = CanonicalId.FromGuid(unit.Unit.Guid).Value }), item.Index);
         }
 
+        // Editor shape: AffixRuleFormulaControl.IsIndexCurrent.
+        private const string StemModifyReason = "A stem variable (*) can be copied but not modified; FieldWorks's affix editor does not offer it.";
+
         private void LowerOutput(IMoAffixProcess process, CanonicalId processId, (int Index, RecordChange Change) item, RuleText text,
-            List<Guid> inputs, ClassResolver classes)
+            List<Guid> inputs, HashSet<Guid> gaps, ClassResolver classes)
         {
             var role = $"{item.Index}:{item.Change.Kind}";
             var oldOutputs = process.OutputOS.ToList();
@@ -296,6 +305,8 @@ public sealed partial class RecordChangeSetLowerer
             for (var n = 0; n < newTexts.Count; n++)
             {
                 var node = text.Nodes[n];
+                if (node is RuleModify stemModify && gaps.Contains(inputs[stemModify.Index - 1]))
+                    throw Refuse(RefusalCodes.RuleNotationContextNotAllowed, item.Change, StemModifyReason);
                 CanonicalId entity;
                 if (matches.TryGetValue(n, out var kept))
                 {
@@ -356,10 +367,9 @@ public sealed partial class RecordChangeSetLowerer
             Add(Operation(Id(role), kind, output, new { @ref = CanonicalId.FromGuid(input).Value }), item.Index);
         }
 
-        /// <summary>Finds or creates the feature class a bracket names.</summary>
+        /// <summary>A named class, or a new private class per bracket (SetMappingFeatures).</summary>
         private sealed class ClassResolver(Run run, IMoAffixProcess process)
         {
-            private readonly Dictionary<string, CanonicalId> _created = [];
             private readonly List<Guid> _classes = run.Cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Select(item => item.Guid).ToList();
 
             internal CanonicalId Resolve((int Index, RecordChange Change) item, RuleClass bracket, string role)
@@ -369,19 +379,6 @@ public sealed partial class RecordChangeSetLowerer
                 if (bracket.Features.Count == 0)
                     throw Refuse(RuleNotation.Syntax, item.Change, "An empty class [] names no feature.");
                 var signature = string.Join(",", bracket.Features.OrderBy(s => s.Feature.Guid).Select(s => s.Feature.Guid.ToString("N") + "=" + s.Value.Guid.ToString("N")));
-                if (_created.TryGetValue(signature, out var again))
-                    return again;
-                var wanted = bracket.Features.ToDictionary(s => s.Feature.Guid, s => s.Value.Guid);
-                foreach (var existing in run.Cache.LangProject.PhonologicalDataOA.NaturalClassesOS.OfType<IPhNCFeatures>())
-                {
-                    if (existing.Abbreviation.StringCount > 0 && existing.Abbreviation.BestAnalysisAlternative.Text is { Length: > 0 })
-                        continue;
-                    var held = existing.FeaturesOA?.FeatureSpecsOC.OfType<IFsClosedValue>()
-                        .Where(spec => spec.FeatureRA is not null && spec.ValueRA is not null)
-                        .ToDictionary(spec => spec.FeatureRA.Guid, spec => spec.ValueRA.Guid);
-                    if (held is not null && held.Count == wanted.Count && wanted.All(pair => held.TryGetValue(pair.Key, out var value) && value == pair.Value))
-                        return _created[signature] = CanonicalId.FromGuid(existing.Guid);
-                }
                 var id = run.Id(role + ":featureclass:" + signature);
                 var data = CanonicalId.FromGuid(run.Cache.LangProject.PhonologicalDataOA.Guid);
                 var form = process.Form.BestVernacularAlternative?.Text ?? "";
@@ -403,7 +400,7 @@ public sealed partial class RecordChangeSetLowerer
                     run.Add(Operation(run.Id(role + ":featureclass-spec-value:" + signature + ":" + feature),
                         FsClosedValueValueOperationKinds.SetValue, spec, new { @ref = CanonicalId.FromGuid(selection.Value.Guid).Value }), item.Index);
                 }
-                return _created[signature] = id;
+                return id;
             }
 
             private static Stop Refuse(string code, RecordChange change, string reason) =>

@@ -61,7 +61,8 @@ public sealed class CatalogWritableFields : WritableFields
             .Where(slot => all.Any(write => write.Verb == RecordWriteVerb.AddObject && write.DeclaringClass == slot.DeclaringClass &&
                 write.Field == slot.Field));
         _writable = all.Where(write => WriteVerbs.Contains(write.Verb))
-            .Select(write => (write.DeclaringClass, write.Field)).Concat(customs).Concat(structures).Concat(formulas).ToFrozenSet();
+            .Select(write => (write.DeclaringClass, write.Field)).Concat(customs).Concat(structures).Concat(formulas)
+            .Where(slot => !RecordWritableFields.IsFormulaOwned(slot.DeclaringClass, slot.Field)).ToFrozenSet();
         _creates = all.Where(write => write.Verb == RecordWriteVerb.AddObject)
             .ToLookup(write => (write.DeclaringClass, write.Field));
         _deletes = all.Where(write => write.Verb == RecordWriteVerb.RemoveObject)

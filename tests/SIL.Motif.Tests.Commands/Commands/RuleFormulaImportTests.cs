@@ -262,27 +262,87 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
     [InlineData("$1~[Vd] a", "$1 a")]                // modify removed
     [InlineData("a $1 i", "i $1 a")]                 // output MoveObject
     public void OutputStepsAreEditedByTheirText(string first, string second) =>
-        Walk(("*", first), ("*", second));
+        Walk(("[C] *", first + " $2"), ("[C] *", second + " $2"));
 
     [Fact]
-    public void ACopyAndAModifyPointAtTheColumnTheTextNames() => Walk(("[C] *", "$1 $2 a"), ("[C] *", "$2 $1 a"), ("[C] [V] *", "$3~[voi:+] $1 $2"));
+    public void ACopyAndAModifyPointAtTheColumnTheTextNames() => Walk(("[C] *", "$1 $2 a"), ("[C] *", "$2 $1 a"), ("[C] [V] *", "$2~[voi:+] $1 $3"));
 
     [Fact]
     public void AnInputAndOutputEditedTogetherSetEveryContentAgainstTheNewInput() =>
         Walk(("[C] *", "$1 a $2"), ("[V] [C] *", "$2 a $3 $1"));
 
     [Fact]
-    public void ARepeatedAnonymousClassIsCreatedOnceAndNamedAsFieldWorksNamesIt()
+    public void EachModifyGetsItsOwnAnonymousClassAsFieldWorksCreatesIt()
     {
         var (path, _) = Start();
-        Import(path, "twice", "[C] *", "$1~[voi:+] $2~[voi:+]");
+        Import(path, "twice", "[C] [C] *", "$1~[voi:+] $2~[voi:+] $3");
         using var cache = new FwDataProjectLoader().LoadCache(path);
         var process = cache.LangProject.LexDbOA.Entries.Single(e => e.Guid == EntryId).AlternateFormsOS.OfType<IMoAffixProcess>().Single();
-        var classes = process.OutputOS.OfType<IMoModifyFromInput>().Select(modify => modify.ModificationRA).Distinct().ToList();
-        Assert.Single(classes);
-        Assert.StartsWith("Created automatically for rule", classes[0].Name.BestAnalysisAlternative.Text);
-        Assert.True(string.IsNullOrEmpty(classes[0].Abbreviation.BestAnalysisAlternative.Text) ||
-            classes[0].Abbreviation.BestAnalysisAlternative.Text.StartsWith("***", StringComparison.Ordinal));
+        var classes = process.OutputOS.OfType<IMoModifyFromInput>().Select(modify => modify.ModificationRA).ToList();
+        Assert.Equal(2, classes.Distinct().Count());
+        Assert.All(classes, created => Assert.StartsWith("Created automatically for rule", created.Name.BestAnalysisAlternative.Text));
+        Assert.All(classes, created => Assert.True(string.IsNullOrEmpty(created.Abbreviation.BestAnalysisAlternative.Text) ||
+            created.Abbreviation.BestAnalysisAlternative.Text.StartsWith("***", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void AnAnonymousClassAnotherRuleUsesIsNotSharedWithThisOne()
+    {
+        var (path, _) = Start();
+        Import(path, "first", "[C] *", "$1~[voi:+] $2");
+        Import(path, "clear", "[C] *", "$1 $2 a");
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var shared = cache.LangProject.PhonologicalDataOA.NaturalClassesOS.OfType<IPhNCFeatures>()
+                    .Single(c => c.Name.BestAnalysisAlternative.Text.StartsWith("Created automatically for rule", StringComparison.Ordinal));
+                var other = cache.ServiceLocator.GetInstance<IMoAffixProcessFactory>().Create();
+                cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create(Guid.NewGuid(), cache.LangProject.LexDbOA).AlternateFormsOS.Add(other);
+                var modify = cache.ServiceLocator.GetInstance<IMoModifyFromInputFactory>().Create();
+                other.OutputOS.Add(modify);
+                modify.ModificationRA = shared;
+            });
+            new FwDataProjectLoader().Save(cache);
+        }
+        // FieldWorks: AffixRuleFormulaControl.SetMappingFeatures makes a new class per modify.
+        using var probe = new FwDataProjectLoader().LoadCache(path);
+        var lowering = Lower(probe, null, "$1~[voi:+] $2");
+        Assert.Empty(lowering.Refusals);
+        Assert.Single(lowering.Operations, operation => operation.Kind == "grammar/phPhonData/createNaturalClasses");
+    }
+
+    [Theory]
+    [InlineData("[C] *", "$1 $2~[voi:+]")]
+    [InlineData("*", "$1~[voi:+]")]
+    public void AModifyOfAStemVariableIsRefusedAsFieldWorksRefusesIt(string input, string output)
+    {
+        using var cache = pristine.NewScratch();
+        Build(cache);
+        new FwDataProjectLoader().Save(cache);
+        Refused(cache, input, output, RefusalCodes.RuleNotationContextNotAllowed);
+    }
+
+    [Fact]
+    public void AnInputOnlyChangeThatRetargetsAModifyAtAStemVariableIsRefused()
+    {
+        var (path, _) = Start();
+        Import(path, "modify", "[C] [V] *", "$1~[voi:+] $2 $3");
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        Refused(cache, "* [V] *", null, RefusalCodes.RuleNotationContextNotAllowed);
+    }
+
+    [Fact]
+    public void AMemberFieldTheFormulaExpressesIsNotWritableThroughThePartsKey()
+    {
+        using var cache = pristine.NewScratch();
+        Build(cache);
+        var plan = PlanEdit(cache, process =>
+        {
+            process.Set("output", new RecordScalar("m $1"));
+            ((RecordObject)((RecordList)process["output-parts"]!).Items[0]).Fields.RemoveAll(field => field.Key == "content");
+        }, out _);
+        Assert.Contains(plan.ChangeSet.Refusals, refusal => refusal.Kind == RecordRefusalKind.FieldNotWritable);
     }
 
     [Fact]

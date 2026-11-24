@@ -330,16 +330,17 @@ is edited in FieldWorks by the inflection-feature chooser (`MsaInflectionFeature
 `notation="rule-formula"` (`text/x-fieldworks-rule-formula`) marks a field that holds a phonological formula: the Input and Output of an affix process, and the
 structural description, structural change, left context and right context of a phonological rule. `RuleNotation` renders and reads it in one place. An affix
 process shows its text under its field's one key, `input` and `output`, and an import of that text writes the objects FieldWorks's affix editor makes. The same
-objects also appear under `input-parts` and `output-parts`, which an import uses only to reach a member's own fields (a context's name and description, an alpha
-constraint on a class, a feature structure, a copy's or insertion's content); adding, removing or moving a member under those keys is not offered, because the
-text is the one key that does it. The fields of a phonological rule are shown and an import refuses a change to one with `rule-notation.read-only`.
+objects also appear under `input-parts` and `output-parts`, which an import uses only to reach what the text cannot say (a context's description, an alpha
+constraint on a class); a field the text already says (a copy's, modify's or insertion's content, a modification class, a context's phoneme, boundary or class,
+a group's members) is shown there and an import refuses a change to it. Adding, removing or moving a member under those keys is not offered, because the
+text is the one key that does it. Clearing `input` or `output` is not offered either: an affix process needs at least one column and one step. The fields of a phonological rule are shown and an import refuses a change to one with `rule-notation.read-only`.
 
 - **Writing an affix process.** An import reads the new text, checks it, and diffs it against the project by longest common subsequence of the canonical text of
   each element (Input columns, Output steps), leftmost on a tie. A kept element keeps its object; a changed or moved element is deleted and created, and a copy or
   modify has its content set explicitly from its `$n` against the Input as it will stand, so a change to Input and Output in one file is checked together. An
   Input-only change that would leave a kept Output step pointing at a column it removes is refused (`rule-notation.dangling-index`). A column that was a group
-  also drops the member contexts only it used, as FieldWorks's editor does. An anonymous class written in a bracket is found or created as a natural class named
-  `Created automatically for rule "..."`; a class a change stops using is never deleted, and a named class is only ever referenced. An edit that the text cannot say
+  also drops the member contexts only it used, as FieldWorks's editor does. An anonymous class written in a bracket is created as a new natural class named
+  `Created automatically for rule "..."` each time, as FieldWorks does, and is never shared with another rule; a class a change stops using is never deleted, and a named class is only ever referenced. A modify of a stem variable (`*`) is refused with `rule-notation.context-not-allowed`, as FieldWorks's editor does not offer it. An edit that the text cannot say
   is refused: `rule-notation.unsupported-class` for a group that names one unit twice, `rule-notation.limit-exceeded` past 16 columns or 256 steps. Each edit the
   former object-list keys allowed is a text edit: add, remove or move a column or step; set a context's phoneme, boundary or class; add, remove or move a group's
   members; set a copy's column; set a modification's class; set an insertion's class; add or remove an inserted unit. The name and description of a context, and an
