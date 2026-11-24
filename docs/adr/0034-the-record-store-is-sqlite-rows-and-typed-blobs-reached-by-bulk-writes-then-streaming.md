@@ -86,7 +86,7 @@ memory is the next bound on slices 5 and 8. The Cebuano import is a small fracti
 is not ten seconds. The streaming slices carry that target.
 
 Certification guarantee. Every read answered from a published generation checks the immutable chunk hashes and root
-bindings it consumes, and a stale or mismatched certificate refuses. Full verification stays available on import,
+bindings it consumes. A stale or mismatched certificate or binding is not served as certified: the handle takes the full path, and a keyed read of a mismatched point refuses. Full verification stays available on import,
 after a crash flag, or on explicit request. A constant-time certificate comparison does not prove the whole store:
 unread pages are verified only by the full pass. The roots are unkeyed, so they detect accidental corruption and
 divergence; they do not authenticate against hostile rewriting. The tamper tests state this rather than claim more. No
