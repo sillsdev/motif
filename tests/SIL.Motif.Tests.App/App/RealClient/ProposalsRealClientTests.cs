@@ -29,7 +29,7 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class ProposalsRealClientTests(PristineProjectFixture pristine)
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ReopeningADeclinedProposalPersistsAsADraftForANewClient()
     {
         using var project = new WalkthroughProject(pristine);
@@ -59,7 +59,7 @@ public sealed class ProposalsRealClientTests(PristineProjectFixture pristine)
         Assert.Equal("rejected", persisted.Card.Status);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DeletingAClosedProposalRemovesItAndItsTrialsFromTheStore()
     {
         using var project = new WalkthroughProject(pristine);
@@ -94,7 +94,7 @@ public sealed class ProposalsRealClientTests(PristineProjectFixture pristine)
             card => card.ProposalId == proposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnAppliedProposalOffersNoDeleteFromTheProposalsPage()
     {
         using var project = new WalkthroughProject(pristine);

@@ -84,7 +84,7 @@ public sealed class ProposalDifferenceRunTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATrialProgressReportOnAnotherProposalLeavesARunningDifferenceRunning()
     {
         var scene = new Running();
@@ -103,7 +103,7 @@ public sealed class ProposalDifferenceRunTests
         Assert.Equal(ProposalDifferenceState.Shown, scene.Page.Difference.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ABaselineCaptureOrAnEvidencePublishDuringARunLeavesItRunning()
     {
         var scene = new Running();
@@ -121,7 +121,7 @@ public sealed class ProposalDifferenceRunTests
         Assert.Equal(ProposalDifferenceState.Shown, scene.Page.Difference.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARunOnAProposalThatIsNotFirstSurvivesABaselineCaptureAndAnEvidencePublish()
     {
         var scene = new Running();
@@ -141,7 +141,7 @@ public sealed class ProposalDifferenceRunTests
         Assert.Equal("p/two", scene.Page.SelectedProposal!.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefreshThatRemovesTheProposalEndsTheDifferenceAndItsRun()
     {
         var scene = new Running();
@@ -158,7 +158,7 @@ public sealed class ProposalDifferenceRunTests
         Assert.NotEqual(ProposalDifferenceState.Shown, scene.Page.Difference.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAnotherDocumentKeepsTheOriginalRunAndNeverMixesItsResult()
     {
         var scene = new Running();
@@ -176,7 +176,7 @@ public sealed class ProposalDifferenceRunTests
         Assert.Null(scene.Page.Difference.Summary);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoppingTheProjectsWorkReturnsOnlyAfterARunningDifferenceHasEnded()
     {
         var scene = new Running();
@@ -228,7 +228,7 @@ public sealed class ProposalDifferenceRunTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalDecidedWhileShownLosesItsWordListAndFilterChipsOnTheNextRefresh()
     {
         var scene = new Shown();
@@ -250,7 +250,7 @@ public sealed class ProposalDifferenceRunTests
         Assert.False(difference.OffersMake);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADeferredCardShownWithOnlyItsSummaryOffersToMakeTheDifferenceAgain()
     {
         var scene = new Shown();
@@ -264,7 +264,7 @@ public sealed class ProposalDifferenceRunTests
         Assert.True(difference.ShowsRemakeHint);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADeferredProposalWithRemadeWordsLosesThemWhenItIsDeclinedWhileShown()
     {
         var scene = new Shown();
@@ -294,7 +294,7 @@ public sealed class ProposalDifferenceRunTests
         Unreadable = [new("proposal/9", "Stage sita", "The stored revision could not be read.")],
     };
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASourceValidatedProposalDecidedWhileShownKeepsItsNotesAndTheSavedUnreadableLine()
     {
         var scene = new Shown(SourceValidatedWithUnreadable());
@@ -313,7 +313,7 @@ public sealed class ProposalDifferenceRunTests
         Assert.Equal(MotifAppStrings.ProposalDifferenceEvidenceUnreadableSaved, difference.UnreadableEvidenceText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoppingTheWorkCancelsAMakeAgainAndTheShownSourceValidatedNotesStay()
     {
         var scene = new Shown(SourceValidatedWithUnreadable());
@@ -342,7 +342,7 @@ public sealed class ProposalDifferenceRunTests
         Assert.Contains("Stage sita", difference.UnreadableEvidenceText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalDecidedWhileADifferenceIsBeingMadeDoesNotReadAgainUnderTheRun()
     {
         var scene = new Running();
@@ -360,7 +360,7 @@ public sealed class ProposalDifferenceRunTests
         await scene.FinishAsync(run);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheTextListFollowsAReloadOfTheTextsThatKeepsTheirNumber()
     {
         var scene = new Shown();

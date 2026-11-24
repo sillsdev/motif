@@ -69,7 +69,7 @@ internal static class AvaloniaHeadlessPlatform
 
     public static void Initialize() => _ = Shared.Value;
 
-    /// <summary>True once a test has started the platform thread; the leak net never starts it.</summary>
+    /// <summary>True once the platform thread has started, which every test's leak net does before the test runs.</summary>
     public static bool IsCreated => Shared.IsValueCreated;
 
     public static bool IsCurrentThread => Shared.IsValueCreated && Shared.Value.IsCurrentThread;

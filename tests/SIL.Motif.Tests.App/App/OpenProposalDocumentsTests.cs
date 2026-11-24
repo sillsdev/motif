@@ -6,7 +6,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class OpenProposalDocumentsTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ASelectedDocumentStaysVisibleWhenItMovesIntoClosedHistory()
     {
         var fake = new FakeCommandClient();
@@ -34,7 +34,7 @@ public sealed class OpenProposalDocumentsTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ThreeDocumentsKeepTheirOwnEditorAndDifferenceWhenSelectionChanges()
     {
         var context = WorkspaceContextTests.NewContext(new FakeCommandClient());
@@ -55,7 +55,7 @@ public sealed class OpenProposalDocumentsTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ComparisonChecksAreIndependentAndAnUnnoticedThirdCannotReplaceThePair()
     {
         var context = WorkspaceContextTests.NewContext(new FakeCommandClient());
@@ -75,7 +75,7 @@ public sealed class OpenProposalDocumentsTests
         await documents.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnOpenProposalsTabReadsTheSameAsItsListCard()
     {
         var fake = new FakeCommandClient();
@@ -95,7 +95,7 @@ public sealed class OpenProposalDocumentsTests
         await documents.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task InvalidationRejectsALateReadWithoutBlockingAnotherDocument()
     {
         var fake = new FakeCommandClient();
@@ -124,7 +124,7 @@ public sealed class OpenProposalDocumentsTests
         await documents.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnApplyInvalidatesEveryOpenCandidatesEvidence()
     {
         var context = WorkspaceContextTests.NewContext(new FakeCommandClient());

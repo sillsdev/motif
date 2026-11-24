@@ -100,7 +100,7 @@ public sealed class ProposalReadStuckTests
         gate.TrySetCanceled();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASlowReadSaysItIsReadingFirstAndThenOffersReadAgain()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
@@ -117,7 +117,7 @@ public sealed class ProposalReadStuckTests
         finally { gate.TrySetCanceled(); await Settle(context, documents); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReadThatFinishesInTimeNeverOffersReadAgain()
     {
         var (_, context, documents, document) = await OpenAsync(TrialStanding.Current);
@@ -132,7 +132,7 @@ public sealed class ProposalReadStuckTests
         finally { await Settle(context, documents); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AfterTryItTheStuckReadOffersReadAgain()
     {
         var fake = new FakeCommandClient();
@@ -158,7 +158,7 @@ public sealed class ProposalReadStuckTests
         finally { gate.TrySetCanceled(); await page.StopWorkAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AfterDecideLaterTheStuckReadOffersReadAgain()
     {
         var fake = new FakeCommandClient();
@@ -184,7 +184,7 @@ public sealed class ProposalReadStuckTests
         finally { gate.TrySetCanceled(); await page.StopWorkAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AfterTheDryRunRecordAReadThatIgnoresItsTokenStillLetsReadAgainFinishTheRun()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
@@ -214,7 +214,7 @@ public sealed class ProposalReadStuckTests
         finally { gate.TrySetCanceled(); await Settle(context, documents); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReadAgainStaysPressableWhenTheNewReadHangsToo()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
@@ -239,7 +239,7 @@ public sealed class ProposalReadStuckTests
         finally { gate.TrySetCanceled(); await Settle(context, documents); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ClosingADocumentWhoseReadIgnoresItsTokenStillCloses()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
@@ -257,7 +257,7 @@ public sealed class ProposalReadStuckTests
         finally { gate.TrySetCanceled(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RepeatedReadAgainDoesNotGrowTheTrackedReads()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
@@ -272,7 +272,7 @@ public sealed class ProposalReadStuckTests
         finally { gate.TrySetCanceled(); await Settle(context, documents); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AfterApplyTheStuckReadOffersReadAgain()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
@@ -297,7 +297,7 @@ public sealed class ProposalReadStuckTests
         finally { gate.TrySetCanceled(); await Settle(context, documents); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task MakeDifferenceComesBackAfterReadAgainWhenTheReadHadStuck()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
@@ -320,7 +320,7 @@ public sealed class ProposalReadStuckTests
         finally { gate.TrySetCanceled(); await Settle(context, documents); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReopeningAStuckDocumentReadsAgainInsteadOfJoiningTheStuckRead()
     {
         var (fake, context, documents, document) = await OpenAsync(TrialStanding.Current);
