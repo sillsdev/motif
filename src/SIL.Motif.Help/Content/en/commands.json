@@ -1995,6 +1995,11 @@
     "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features, lexical entries or phonological rules from the current Baseline, or with --at <proposalId> from the grammar that Proposal's latest Trial ran against. Use an exact canonical id, an exact form or a name query, and page through larger lists. A bare exact form such as zi also matches the affix headword zi-, and the result says so; write the marker to match only the marked form.",
     "source": "Authored from the typed grammar read contract."
   },
+  "lexicon find": {
+    "title": "Find lexical entries",
+    "description": "Lists lexical entries from the current Baseline by form regular expression, form suffix, inflection class, category, morph type, gloss or text, with canonical or guid ids, paging past 100 and a batch mode that opens the Baseline once for many questions. It reads the saved copy and never opens or changes the live FieldWorks project.",
+    "source": "Authored from the lexicon find contract."
+  },
   "difference produce": {
     "title": "Compare a Trial with decisions",
     "description": "Compares a completed Trial's parses with the approved, disapproved and misspelled decisions FieldWorks records for one Text, and saves the result. It reads stored evidence, runs no parser and never blocks an Apply.",
