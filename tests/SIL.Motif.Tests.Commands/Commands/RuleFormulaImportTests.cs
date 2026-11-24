@@ -386,7 +386,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         var (path, _) = Start();
         Import(path, "one", "[C] [V] *", "$1 $2 $3 a");
         var before = Members(path);
-        Import(path, "two", "[C] p *", "$1 $2 $3 a");
+        Import(path, "two", "[C] [Vd] *", "$1 $2 $3 a");
         var after = Members(path);
         Assert.Equal(before.Inputs, after.Inputs);
         Assert.Equal(before.Outputs, after.Outputs);
@@ -397,9 +397,9 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
     public void AReorderKeepsGuidsByPositionWithChangedContents()
     {
         var (path, _) = Start();
-        Import(path, "one", "[C] [V] *", "$1 $2 $3");
+        Import(path, "one", "[C] [V] *", "$1 $2 $3 a");
         var before = Members(path);
-        Import(path, "two", "[V] [C] *", "$3 $1 $2");
+        Import(path, "two", "[V] [C] *", "$3 $1 $2 a");
         var after = Members(path);
         Assert.Equal(before.Inputs, after.Inputs);
         Assert.Equal(before.Outputs, after.Outputs);
@@ -412,14 +412,14 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
     public void AnInsertionAtTheEndKeepsTheEarlierGuids()
     {
         var (path, _) = Start();
-        Import(path, "one", "[C] *", "$1 $2");
+        Import(path, "one", "[C] *", "$1 $2 a");
         var before = Members(path);
-        Import(path, "two", "[C] * [V]", "$1 $2 $3");
+        Import(path, "two", "[C] * [V]", "$1 $2 a $3");
         var after = Members(path);
         Assert.Equal(before.Inputs, after.Inputs.Take(2));
-        Assert.Equal(before.Outputs, after.Outputs.Take(2));
+        Assert.Equal(before.Outputs, after.Outputs.Take(3));
         Assert.Equal(3, after.Inputs.Count);
-        Assert.Equal(3, after.Outputs.Count);
+        Assert.Equal(4, after.Outputs.Count);
     }
 
     [Fact]
@@ -458,7 +458,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
     public void ACopyFollowsTheKeptContextWhenOnlyTheInputChanges()
     {
         var (path, _) = Start();
-        Import(path, "one", "[C] [V] *", "$1 $2 $3");
+        Import(path, "one", "[C] [V] *", "$1 $2 $3 a");
         var before = Members(path);
         Import(path, "two", "[C] + *", null);
         var after = Members(path);
@@ -472,7 +472,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
     public void ASequenceKeepsItsGuidAndItsSameKindMembers()
     {
         var (path, _) = Start();
-        Import(path, "one", "<[C] [V] [C]> *", "$1 $2");
+        Import(path, "one", "<[C] [V] [C]> *", "$1 $2 a");
         var before = Members(path);
         List<Guid> Parts()
         {
@@ -480,7 +480,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
             return ((IPhSequenceContext)cache.ServiceLocator.GetObject(before.Inputs[0])).MembersRS.Select(member => member.Guid).ToList();
         }
         var members = Parts();
-        Import(path, "two", "<[V] a> *", "$1 $2");
+        Import(path, "two", "<[V] a> *", null);
         var after = Members(path);
         var changed = Parts();
         Assert.Equal(before.Inputs, after.Inputs);
