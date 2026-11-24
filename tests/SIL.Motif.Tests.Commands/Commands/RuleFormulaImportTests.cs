@@ -172,7 +172,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         DraftRationale.Author(path, draft, "Imported record", "The record file was edited and imported.");
         var finalized = ProposalCommands.Finalize(new(path, Version, draft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
-        var dryRun = DryRunJobRunner.Run(path, Version, finalized.Value!.ProposalId);
+        var dryRun = DryRunJobRunner.Run(path, Version, finalized.Value!.ProposalId, rebaseline: true);
         Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
         var applied = ProposalCommands.Apply(new(path, Version, finalized.Value.ProposalId, Force: true));
         Assert.True(applied.Succeeded, applied.Refusal?.Message);

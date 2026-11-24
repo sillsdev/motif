@@ -64,7 +64,7 @@ public sealed class AffixProcessContractTests
     }
 
     [Fact]
-    public void GeneratorEmitsOnlyFlatInputAndCopyInsertAndModifyFactories()
+    public void GeneratorEmitsOnlyTheEditorsInputAndOutputFactories()
     {
         var temporary = Path.Combine(Path.GetTempPath(), "motif-affix-emission-" + Guid.NewGuid().ToString("N"));
         try
@@ -76,7 +76,8 @@ public sealed class AffixProcessContractTests
             Assert.Contains("IPhVariableFactory", input);
             Assert.Contains("IPhSimpleContextSegFactory", input);
             Assert.Contains("IPhSimpleContextNCFactory", input);
-            Assert.DoesNotContain("IPhSequenceContextFactory", input);
+            Assert.Contains("IPhSimpleContextBdryFactory", input);
+            Assert.Contains("IPhSequenceContextFactory", input);
             Assert.DoesNotContain("IPhIterationContextFactory", input);
             Assert.DoesNotContain("Delete", input);
             Assert.DoesNotContain("Reparent", input);
