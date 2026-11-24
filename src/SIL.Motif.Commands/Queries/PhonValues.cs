@@ -77,11 +77,6 @@ public static class PhonValues
         if (!File.Exists(grammarPath))
             return CommandOutcome<PhonValuesResponse>.Refused(new Refusal(RefusalCodes.QueryCorpusUnreadable, FailureReason.InvalidArgument,
                 $"The grammar '{grammarPath}' is not a file."));
-        if (GrammarPhonologyReader.TryRead(grammarPath) is { } read)
-        {
-            Lap("read the classes and features from the project file");
-            return Success(source, read.Classes, read.Features);
-        }
         using var reader = BaselineReadCache.Open(grammarPath);
         Lap("copy the project and load LibLCM");
         var cache = reader.Cache;
