@@ -6,6 +6,21 @@ namespace SIL.Motif.Cli;
 /// <summary>Maps a verb with its flags and positionals to the catalog command name the surface gate checks.</summary>
 internal static class CliCommandNames
 {
+    /// <summary>
+    /// The words of <c>query corpus forms ...</c> and <c>query values ...</c>, the names the usage lines print, reduced to the
+    /// <c>query --corpus ... forms ...</c> and <c>query --values ...</c> the dispatch reads; every other invocation is returned as is.
+    /// </summary>
+    internal static List<string> NormalizeQueryWords(string verb, IReadOnlyDictionary<string, string> flags,
+        List<string> positionals)
+    {
+        if (verb != "query") return positionals;
+        var words = positionals.ToList();
+        if (words is ["corpus", "forms", ..] && flags.ContainsKey("corpus")) words.RemoveAt(0);
+        if (words is ["forms", "forms", ..]) words.RemoveAt(0);
+        if (words is ["values", ..] && flags.ContainsKey("values")) words.RemoveAt(0);
+        return words;
+    }
+
     internal static string Resolve(string verb, IReadOnlyDictionary<string, string> flags,
         IReadOnlyList<string> positionals)
     {

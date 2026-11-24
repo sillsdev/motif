@@ -15,22 +15,26 @@ internal static class PhonText
         if (phon.Unsegmentable > 0)
             text.AppendLine(string.Format(CultureInfo.InvariantCulture, "UNSEGMENTABLE: {0} words cannot be segmented by the grammar and match nothing, for example {1}",
                 phon.Unsegmentable, string.Join(", ", phon.UnsegmentableSample.Select(word => word.Word))));
+        else text.AppendLine("Unsegmentable: 0 words the grammar cannot segment");
         if (phon.Incomplete > 0)
             text.AppendLine(string.Format(CultureInfo.InvariantCulture, "INCOMPLETE: {0} words were not decided ({1}), for example {2}",
                 phon.Incomplete, phon.StopReason ?? "stopped", string.Join(", ", phon.IncompleteSample.Select(word => word.Word))));
+        else text.AppendLine("Incomplete: 0 words not decided");
     }
 
     /// <summary>Lists the class and feature names a pattern can use.</summary>
     public static string Values(SIL.Motif.Commands.Queries.PhonValuesResponse response)
     {
         var text = new StringBuilder();
-        string Name(SIL.Motif.Commands.Queries.PhonValue value) =>
-            value.Name + (value.Abbreviation is null || value.Abbreviation == value.Name ? "" : " (" + value.Abbreviation + ")") +
-            (value.Members is { } members ? $"  {members} phonemes" : "");
-        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}:");
-        foreach (var value in response.NaturalClasses) text.AppendLine("  " + Name(value));
+        string Feature(SIL.Motif.Commands.Queries.PhonValue value) =>
+            value.Name + (value.Abbreviation is null || value.Abbreviation == value.Name ? "" : " (" + value.Abbreviation + ")");
+        // The first column is what to type in a pattern; a name with spaces needs the brackets shown.
+        string Class(SIL.Motif.Commands.Queries.PhonValue value) =>
+            (value.Token ?? value.Abbreviation ?? value.Name) + "  " + value.Name + (value.Members is { } members ? $"  {members} phonemes" : "");
+        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}; the first column is what to type in a pattern, and a class is also named by its full name in brackets, as in [Name]:");
+        foreach (var value in response.NaturalClasses) text.AppendLine("  " + Class(value));
         text.AppendLine($"Phonological features ({response.Features.Count}):");
-        foreach (var value in response.Features) text.AppendLine("  " + Name(value));
+        foreach (var value in response.Features) text.AppendLine("  " + Feature(value));
         text.AppendLine(response.Note);
         return text.ToString();
     }
