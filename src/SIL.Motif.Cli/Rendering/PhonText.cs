@@ -24,13 +24,15 @@ internal static class PhonText
     public static string Values(SIL.Motif.Commands.Queries.PhonValuesResponse response)
     {
         var text = new StringBuilder();
-        string Name(SIL.Motif.Commands.Queries.PhonValue value) =>
-            value.Name + (value.Abbreviation is null || value.Abbreviation == value.Name ? "" : " (" + value.Abbreviation + ")") +
-            (value.Members is { } members ? $"  {members} phonemes" : "");
-        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}:");
-        foreach (var value in response.NaturalClasses) text.AppendLine("  " + Name(value));
+        string Feature(SIL.Motif.Commands.Queries.PhonValue value) =>
+            value.Name + (value.Abbreviation is null || value.Abbreviation == value.Name ? "" : " (" + value.Abbreviation + ")");
+        // The first column is what to type in a pattern; a name with spaces needs the brackets shown.
+        string Class(SIL.Motif.Commands.Queries.PhonValue value) =>
+            (value.Token ?? value.Abbreviation ?? value.Name) + "  " + value.Name + (value.Members is { } members ? $"  {members} phonemes" : "");
+        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}; the first column is what to type in a pattern, and a class is also named by its full name in brackets, as in [Name]:");
+        foreach (var value in response.NaturalClasses) text.AppendLine("  " + Class(value));
         text.AppendLine($"Phonological features ({response.Features.Count}):");
-        foreach (var value in response.Features) text.AppendLine("  " + Name(value));
+        foreach (var value in response.Features) text.AppendLine("  " + Feature(value));
         text.AppendLine(response.Note);
         return text.ToString();
     }

@@ -114,8 +114,8 @@ internal static class PhonMatchers
         if (baseline is null)
             return CommandOutcome<IPhonMatcher>.Refused(new Refusal(RefusalCodes.WordTraceNoBaseline, FailureReason.Refused,
                 "The project has no Baseline yet. Run 'motif baseline capture --project <fwdata>' before a phon or env query."));
-        return CommandOutcome<IPhonMatcher>.Success(new ResidentPhonMatcher(TryWordSessions.PoolFor(executable), projectKey,
-            TryWordSessions.TokenText(baseline.Token), baseline.FwDataPath, ParserExecutableIdentity.ReadVersion(executable)));
+        return CommandOutcome<IPhonMatcher>.Success(Resolving(new ResidentPhonMatcher(TryWordSessions.PoolFor(executable), projectKey,
+            TryWordSessions.TokenText(baseline.Token), baseline.FwDataPath, ParserExecutableIdentity.ReadVersion(executable)), baseline.FwDataPath));
     }
 
     /// <summary>A grammar file named on the command line, such as <c>--grammar</c>; the state token is the file's digest so an edit restarts the session.</summary>
@@ -127,9 +127,13 @@ internal static class PhonMatchers
             return CommandOutcome<IPhonMatcher>.Refused(new Refusal(RefusalCodes.QueryCorpusUnreadable, FailureReason.InvalidArgument,
                 $"The grammar '{grammarPath}' is not a file."));
         var full = Path.GetFullPath(grammarPath);
-        return CommandOutcome<IPhonMatcher>.Success(new ResidentPhonMatcher(TryWordSessions.PoolFor(executable), full,
-            BatchInvocationEvidence.DigestFile(full), full, ParserExecutableIdentity.ReadVersion(executable)));
+        return CommandOutcome<IPhonMatcher>.Success(Resolving(new ResidentPhonMatcher(TryWordSessions.PoolFor(executable), full,
+            BatchInvocationEvidence.DigestFile(full), full, ParserExecutableIdentity.ReadVersion(executable)), full));
     }
+
+    // Full class names resolve lazily, after PanGloss answers unknown_natural_class.
+    private static IPhonMatcher Resolving(IPhonMatcher matcher, string grammarPath) => new ClassNameResolver(matcher,
+        () => PhonValues.ForGrammar(grammarPath) is { Succeeded: true, Value: { } values } ? values.NaturalClasses : null);
 
     private static CommandOutcome<IPhonMatcher> Missing() => CommandOutcome<IPhonMatcher>.Refused(new Refusal(
         RefusalCodes.WordTraceParserUnavailable, FailureReason.Refused, PanGlossExecutable.NotFoundMessage,

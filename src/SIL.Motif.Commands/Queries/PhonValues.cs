@@ -14,7 +14,8 @@ namespace SIL.Motif.Commands.Queries;
 /// <param name="Name">The LibLCM name.</param>
 /// <param name="Abbreviation">The LibLCM abbreviation; PanGloss may know the class by either, so try both.</param>
 /// <param name="Members">For a segment class, how many phonemes it holds; null for a feature class and a feature.</param>
-public sealed record PhonValue(string Name, string? Abbreviation, int? Members = null);
+/// <param name="Token">For a natural class, exactly what to type in a pattern: the abbreviation (or the name when there is none), in brackets when it has spaces or pattern characters; null for a feature.</param>
+public sealed record PhonValue(string Name, string? Abbreviation, int? Members = null, string? Token = null);
 
 /// <summary>The names a pattern may use: <c>motif query --values classes</c> and the MCP <c>values</c> argument of <c>motif_query_schema</c>.</summary>
 /// <param name="Schema">The schema name.</param>
@@ -73,13 +74,30 @@ public static class PhonValues
         using var reader = BaselineReadCache.Open(grammarPath);
         var cache = reader.Cache;
         var classes = cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Select(natural =>
-            new PhonValue(Text(natural.Name), Text(natural.Abbreviation) is { Length: > 0 } abbreviation ? abbreviation : null,
-                natural is IPhNCSegments segments ? segments.SegmentsRC.Count : null)).OrderBy(value => value.Name, StringComparer.Ordinal).ToList();
+            ClassValue(Text(natural.Name), Text(natural.Abbreviation), natural is IPhNCSegments segments ? segments.SegmentsRC.Count : null)).OrderBy(value => value.Name, StringComparer.Ordinal).ToList();
         var features = cache.LangProject.PhFeatureSystemOA.FeaturesOC.Select(feature =>
             new PhonValue(Text(feature.Name), Text(feature.Abbreviation) is { Length: > 0 } abbreviation ? abbreviation : null))
             .OrderBy(value => value.Name, StringComparer.Ordinal).ToList();
-        return CommandOutcome<PhonValuesResponse>.Success(new PhonValuesResponse(PhonValuesResponse.SchemaName, source, classes, features, Explanation));
+        return Success(source, classes, features);
     }
+
+    private static CommandOutcome<PhonValuesResponse> Success(string source, List<PhonValue> classes, List<PhonValue> features) =>
+        CommandOutcome<PhonValuesResponse>.Success(new PhonValuesResponse(PhonValuesResponse.SchemaName, source,
+            [.. classes.OrderBy(value => value.Name, StringComparer.Ordinal)], [.. features.OrderBy(value => value.Name, StringComparer.Ordinal)], Explanation));
+
+    /// <summary>A natural class with the token a pattern takes for it: the abbreviation when there is one, else the name.</summary>
+    internal static PhonValue ClassValue(string name, string abbreviation, int? members)
+    {
+        var abbreviated = abbreviation.Length > 0 ? abbreviation : null;
+        return new PhonValue(name, abbreviated, members, PatternToken(abbreviated ?? name));
+    }
+
+    /// <summary>The text of a class in a pattern: bare when the pattern parser reads it as one word, else in brackets.</summary>
+    internal static string PatternToken(string text) =>
+        text.Length > 0 && !text.Any(c => char.IsWhiteSpace(c) || c is '(' or ')' or '[' or ']' or '#' or '+' or '/' or '*') &&
+        text != "_"
+            ? text
+            : "[" + text + "]";
 
     private static string Text(IMultiAccessorBase text) => text.BestAnalysisAlternative.Text ?? "";
 }
