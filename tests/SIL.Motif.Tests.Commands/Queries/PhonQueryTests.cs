@@ -156,11 +156,12 @@ public sealed class PhonQueryTests : IDisposable
     [Fact]
     public void TheMatchCapabilityComesFromTheDescriptionAndItsAbsenceNamesTheRelease()
     {
-        var without = PanGlossSurface.ReadDescription(SIL.Motif.Tests.PanGloss.WhyNotRecordedTests.Recorded("describe"), out _)!;
-        Assert.NotNull(without.ServeMatchRefusal());
         var node = JsonNode.Parse(SIL.Motif.Tests.PanGloss.WhyNotRecordedTests.Recorded("describe"))!;
         var interfaces = node["interfaces"] as JsonObject ?? (JsonObject)(node["interfaces"] = new JsonObject());
         var ops = interfaces["serveOps"] as JsonObject ?? (JsonObject)(interfaces["serveOps"] = new JsonObject());
+        ops.Remove("match");
+        var without = PanGlossSurface.ReadDescription(node.ToJsonString(), out _)!;
+        Assert.NotNull(without.ServeMatchRefusal());
         ops["match"] = JsonNode.Parse(RecordedMatch.Describe);
         var with = PanGlossSurface.ReadDescription(node.ToJsonString(), out _)!;
         Assert.Null(with.ServeMatchRefusal());
