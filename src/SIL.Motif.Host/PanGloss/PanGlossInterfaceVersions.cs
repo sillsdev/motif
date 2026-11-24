@@ -24,6 +24,9 @@ public static class PanGlossInterfaceVersions
     /// <summary>What a PanGloss must declare to generate forms with a rule trace, written for the refusal that names it.</summary>
     public const string ServeGenerateNeeded =
         "a PanGloss release after 0.27.0 whose --describe declares interfaces.serveOps.generate (sillsdev/PanGloss#434)";
+    /// <summary>What a PanGloss must declare to match phonological patterns over a word list, written for the refusal that names it.</summary>
+    public const string ServeMatchNeeded =
+        "a PanGloss release after 0.28.1 whose --describe declares interfaces.serveOps.match (sillsdev/PanGloss#436, release v0.29.0)";
     /// <summary>The capture modes the pinned release advertises for bounded rejection diagnostics.</summary>
     public static ImmutableArray<string> RejectionTraceModes { get; } = ["lineage"];
     /// <summary>The full SQLite cache version written by <c>batch --stats</c>, without compact storage.</summary>

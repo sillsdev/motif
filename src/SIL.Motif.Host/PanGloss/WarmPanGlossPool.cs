@@ -90,6 +90,30 @@ public abstract record WarmGenerateResult
     public sealed record Cancelled : WarmGenerateResult;
 }
 
+/// <summary>What asking a resident parser to match pattern text over a word list came to.</summary>
+public abstract record WarmMatchResult
+{
+    private WarmMatchResult() { }
+
+    /// <summary>The parser's whole <c>result</c> line, exactly as it wrote it, for the caller to read.</summary>
+    public sealed record Completed(string Json) : WarmMatchResult;
+
+    /// <summary>The installed parser's <c>--describe</c> does not declare a <c>match</c> op; nothing was sent.</summary>
+    public sealed record Unsupported(string Detail) : WarmMatchResult;
+
+    /// <summary>The parser refused the request with a typed error, such as <c>pattern_parse</c>; <paramref name="Json"/> is its whole <c>error</c> line.</summary>
+    public sealed record Rejected(string Code, string Message, string Json) : WarmMatchResult;
+
+    /// <summary>The session could not answer: it failed to load, died, timed out or sent a line Motif cannot read.</summary>
+    public sealed record Failed(string Code, string Message) : WarmMatchResult
+    {
+        internal PanGlossOutcome? ProbeFailure { get; init; }
+    }
+
+    /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
+    public sealed record Cancelled : WarmMatchResult;
+}
+
 /// <summary>Limits of the resident parsers, with the owner-decided defaults.</summary>
 public sealed record WarmPanGlossOptions
 {
@@ -231,6 +255,35 @@ public sealed class WarmPanGlossPool : IDisposable
         catch (OperationCanceledException)
         {
             return new WarmGenerateResult.Cancelled();
+        }
+        finally
+        {
+            session.ReleaseWord();
+        }
+    }
+
+    /// <summary>Matches pattern text over a word list on the project's resident parser.</summary>
+    public async Task<WarmMatchResult> TryMatchAsync(string projectKey, string stateToken, string grammarPath,
+        ServeMatchRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        ArgumentNullException.ThrowIfNull(request);
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit: null, retryFailed: false, reserveWord: true);
+        try
+        {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling)
+                return new WarmMatchResult.Failed(cooling.Code, cooling.Message) { ProbeFailure = cooling.ProbeFailure };
+            var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (state.Phase != WarmSessionPhase.Ready)
+                return new WarmMatchResult.Failed(state.FailureCode ?? "session-unavailable",
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (session.Capabilities?.ServeMatchRefusal() is { } incapable)
+                return new WarmMatchResult.Unsupported(incapable);
+            return await session.MatchAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return new WarmMatchResult.Cancelled();
         }
         finally
         {
@@ -606,6 +659,20 @@ public sealed class WarmPanGlossPool : IDisposable
             ExchangeAsync("warm-generate", request.ToLine, ReadGenerateReply,
                 (code, message) => new WarmGenerateResult.Failed(code, message),
                 () => new WarmGenerateResult.Cancelled(), cancellationToken);
+
+        public Task<WarmMatchResult> MatchAsync(ServeMatchRequest request, CancellationToken cancellationToken) =>
+            ExchangeAsync("warm-match", request.ToLine, ReadMatchReply,
+                (code, message) => new WarmMatchResult.Failed(code, message),
+                () => new WarmMatchResult.Cancelled(), cancellationToken);
+
+        private static WarmMatchResult ReadMatchReply(JsonElement root, TimeSpan elapsed)
+        {
+            var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+            if (type == "result") return new WarmMatchResult.Completed(root.GetRawText());
+            var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
+            var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+            return new WarmMatchResult.Rejected(code, message, root.GetRawText());
+        }
 
         private static WarmParseResult ReadParseReply(JsonElement root, TimeSpan elapsed)
         {
