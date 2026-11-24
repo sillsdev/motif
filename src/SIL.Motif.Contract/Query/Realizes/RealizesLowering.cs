@@ -19,7 +19,7 @@ public static class RealizesRefusals
     /// <summary>The attested tier found no word that carries the morpheme; <paramref name="finding"/> says what was searched.</summary>
     public static QueryRefusalException NoParses(string morpheme, string finding) => new(new Refusal(
         RefusalCodes.QueryRealizesNoParses, FailureReason.Refused,
-        $"realizes({morpheme}, attested) found no analysis that uses {morpheme}: {finding}. Parse more of the corpus (--sample), name a project with stored analyses (--project), or ask for tier possible or generated.",
+        $"realizes({morpheme}, attested) found no analysis that uses {morpheme}: {finding}. Name a project with stored analyses (--project), or ask for tier possible or generated.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["morpheme"] = morpheme, ["tier"] = RealizesTiers.Attested }));
 
     /// <summary>The parse index of the corpus could not be built; <paramref name="detail"/> carries the stderr tail or the line number.</summary>

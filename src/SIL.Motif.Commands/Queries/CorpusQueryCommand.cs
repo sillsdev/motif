@@ -47,11 +47,11 @@ public static class CorpusQueryCommand
     /// </summary>
     public static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath = null,
         CancellationToken cancellationToken = default, Action<string>? notice = null) =>
-        Forms(request, parserPath, cancellationToken, null, notice: notice);
+        Forms(request, parserPath, cancellationToken, indexBuilder: null, notice: notice);
 
     // A test passes the parser that replays recorded replies in place of the resident one.
     internal static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath,
-        CancellationToken cancellationToken, IRealizesParser? realizesParser,
+        CancellationToken cancellationToken,
         IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -61,7 +61,6 @@ public static class CorpusQueryCommand
         if ((request.Where is null) == (request.QueryJson is null))
             return Invalid("Give the query as --where <expression> or as --query-json, one of the two.");
         if (limit < 1) return Invalid("limit is a positive whole number.");
-        if (request.Sample is < 0) return Invalid("sample is zero for every word type, or a positive whole number.");
         try
         {
             if (request.QueryJson is { } json)
@@ -104,8 +103,7 @@ public static class CorpusQueryCommand
         if (RealizesLowering.Has(where))
         {
             var context = new RealizesContext(corpus, string.IsNullOrWhiteSpace(request.GrammarPath) ? null : request.GrammarPath,
-                string.IsNullOrWhiteSpace(request.ProjectPath) ? null : request.ProjectPath, request.FoldCase, request.Sample ?? RealizesSample.Default,
-                () => realizesParser ?? RealizesQuery.ResidentParser(request.GrammarPath!, parserPath),
+                string.IsNullOrWhiteSpace(request.ProjectPath) ? null : request.ProjectPath, request.FoldCase,
                 () => indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), cacheRoot ?? RealizesParseIndexCache.DefaultRoot,
                 notice ?? (_ => { }));
             try { realizes = RealizesQuery.Prepare(where!, context, cancellationToken); }

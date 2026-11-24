@@ -14,11 +14,10 @@ namespace SIL.Motif.Contract.Query.Corpus;
 /// <param name="Limit">The most rows returned; default 100.</param>
 /// <param name="SegmentTest"><c>engine</c> (the default) or <c>identity</c>, how <c>phon</c> and <c>env</c> test a segment; overrides the document's <c>segmentTest</c>.</param>
 /// <param name="ProjectPath">A FieldWorks project whose lexicon and stored analyses <c>realizes</c> reads; with <paramref name="GrammarPath"/> both sources are used.</param>
-/// <param name="Sample">How many matching word types <c>realizes</c> traces for the morpheme's surface piece, chosen by frequency; default 50, zero for every match.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null, string? QueryJson = null, string? GrammarPath = null,
     string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null, string? SegmentTest = null,
-    string? ProjectPath = null, int? Sample = null);
+    string? ProjectPath = null);
 
 /// <summary>One word of a corpus that satisfied the query.</summary>
 /// <param name="Form">The word.</param>

@@ -35,17 +35,15 @@ internal sealed class RealizesRun(QueryExpr? lowered, IReadOnlyList<RealizesResu
 }
 
 /// <summary>What a <c>realizes</c> query reads: the corpus it parses, the grammar to parse with, and the project holding stored analyses.</summary>
-/// <param name="Corpus">The corpus the search runs over, whose word types a parse samples.</param>
+/// <param name="Corpus">The corpus the search runs over, whose word types the batch parse indexes.</param>
 /// <param name="GrammarPath">The grammar PanGloss parses with; null to read stored analyses only.</param>
 /// <param name="ProjectPath">A FieldWorks project whose stored analyses and lexicon are read; null to use the corpus parse only.</param>
 /// <param name="FoldCase">Whether the corpus is case-folded, and so the forms searched for.</param>
-/// <param name="Sample">How many matching word types to trace for the morpheme's surface piece; zero for every match.</param>
-/// <param name="Parser">Makes the resident parser that traces a word; a test replays recordings here.</param>
 /// <param name="IndexBuilder">Makes the builder of the batch parse index; a test replays a recording here.</param>
 /// <param name="CacheRoot">The folder the parse index is kept in.</param>
 /// <param name="Notice">Hears that the one-off index build is starting; the command line writes it to standard error.</param>
-internal sealed record RealizesContext(CorpusWordList Corpus, string? GrammarPath, string? ProjectPath, bool FoldCase, int Sample,
-    Func<IRealizesParser> Parser, Func<IRealizesIndexBuilder> IndexBuilder, string CacheRoot, Action<string> Notice);
+internal sealed record RealizesContext(CorpusWordList Corpus, string? GrammarPath, string? ProjectPath, bool FoldCase,
+    Func<IRealizesIndexBuilder> IndexBuilder, string CacheRoot, Action<string> Notice);
 
 /// <summary>
 /// Resolves each <c>realizes</c> predicate of a query and compiles its variant set to a corpus search. The tier sources are the
@@ -56,20 +54,6 @@ internal static class RealizesQuery
 {
     /// <summary>The tiers that have a source today.</summary>
     internal static IReadOnlyCollection<string> Tiers { get; } = [RealizesTiers.Attested];
-
-    /// <summary>The parser the context uses for the grammar at <paramref name="grammarPath"/>, or a refusal when PanGloss is missing.</summary>
-    internal static IRealizesParser ResidentParser(string grammarPath, string? parserPath)
-    {
-        var executable = parserPath ?? PanGlossExecutable.TryLocate();
-        if (executable is null)
-            throw new QueryRefusalException(new Refusal(RefusalCodes.WordTraceParserUnavailable, FailureReason.Refused,
-                PanGlossExecutable.NotFoundMessage, ParserNotFoundFact.Mark(null, true)));
-        if (!File.Exists(grammarPath))
-            throw new QueryRefusalException(new Refusal(RefusalCodes.QueryCorpusUnreadable, FailureReason.InvalidArgument,
-                $"The grammar '{grammarPath}' is not a file."));
-        var full = Path.GetFullPath(grammarPath);
-        return new ResidentRealizesParser(TryWordSessions.PoolFor(executable), full, BatchInvocationEvidence.DigestFile(full), full);
-    }
 
     /// <summary>The builder of the batch parse index for the grammar, or a refusal when PanGloss is missing.</summary>
     internal static IRealizesIndexBuilder BatchBuilder(string? parserPath)
@@ -129,7 +113,7 @@ internal static class RealizesQuery
                     }
                     catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
                     var (variants, parse) = RealizesCorpusSource.Collect(index.Value.Index, (index.Value.Built, index.Value.Seconds),
-                        context.Parser, target, corpus, context.Sample, cancellationToken);
+                        target, corpus, cancellationToken);
                     parts.Add(variants);
                     report = parse;
                     finding.Add($"none of the {parse.Parsed} parsed word types has an analysis that contains it");
