@@ -36,6 +36,9 @@ public static class PanGlossInterfaceVersions
     /// <summary>What a PanGloss must declare to list a grammar's natural classes and features over <c>serve</c>, written for the refusal that names it.</summary>
     public const string ServeInventoryNeeded =
         "a PanGloss release whose --describe declares interfaces.serveOps.inventory (release v0.30.0)";
+    /// <summary>What a PanGloss must declare to say which phonological rules may change a morpheme over <c>serve</c>, written for the refusal that names it.</summary>
+    public const string ServeEffectsNeeded =
+        "a PanGloss release whose --describe declares interfaces.serveOps.effects (release v0.31.0)";
     /// <summary>The capture modes the pinned release advertises for bounded rejection diagnostics.</summary>
     public static ImmutableArray<string> RejectionTraceModes { get; } = ["lineage"];
     /// <summary>The full SQLite cache version written by <c>batch --stats</c>, without compact storage.</summary>

@@ -90,6 +90,30 @@ public abstract record WarmGenerateResult
     public sealed record Cancelled : WarmGenerateResult;
 }
 
+/// <summary>What asking a resident parser which phonological rules may change a morpheme came to.</summary>
+public abstract record WarmEffectsResult
+{
+    private WarmEffectsResult() { }
+
+    /// <summary>The parser's whole <c>result</c> line, exactly as it wrote it, for <see cref="EffectsResult.Read"/>.</summary>
+    public sealed record Completed(string Json) : WarmEffectsResult;
+
+    /// <summary>The installed parser's <c>--describe</c> does not declare an <c>effects</c> op; nothing was sent.</summary>
+    public sealed record Unsupported(string Detail) : WarmEffectsResult;
+
+    /// <summary>The parser refused the request with a typed error such as <c>unknown_morpheme</c> or <c>authored_identity_unavailable</c>; the session is still usable.</summary>
+    public sealed record Rejected(string Code, string Message, string Json) : WarmEffectsResult;
+
+    /// <summary>The session could not answer: it failed to load, died, timed out or sent a line Motif cannot read.</summary>
+    public sealed record Failed(string Code, string Message) : WarmEffectsResult
+    {
+        internal PanGlossOutcome? ProbeFailure { get; init; }
+    }
+
+    /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
+    public sealed record Cancelled : WarmEffectsResult;
+}
+
 /// <summary>What asking a resident parser to match pattern text over a word list, or to list its grammar's inventory, came to.</summary>
 public abstract record WarmMatchResult
 {
@@ -255,6 +279,35 @@ public sealed class WarmPanGlossPool : IDisposable
         catch (OperationCanceledException)
         {
             return new WarmGenerateResult.Cancelled();
+        }
+        finally
+        {
+            session.ReleaseWord();
+        }
+    }
+
+    /// <summary>Asks the project's resident parser which phonological rules may change a morpheme, once for all its allomorphs.</summary>
+    public async Task<WarmEffectsResult> TryEffectsAsync(string projectKey, string stateToken, string grammarPath,
+        ServeEffectsRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        ArgumentNullException.ThrowIfNull(request);
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit: null, retryFailed: false, reserveWord: true);
+        try
+        {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling)
+                return new WarmEffectsResult.Failed(cooling.Code, cooling.Message) { ProbeFailure = cooling.ProbeFailure };
+            var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (state.Phase != WarmSessionPhase.Ready)
+                return new WarmEffectsResult.Failed(state.FailureCode ?? "session-unavailable",
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (session.Capabilities?.ServeEffectsRefusal() is { } incapable)
+                return new WarmEffectsResult.Unsupported(incapable);
+            return await session.EffectsAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return new WarmEffectsResult.Cancelled();
         }
         finally
         {
@@ -692,6 +745,20 @@ public sealed class WarmPanGlossPool : IDisposable
             ExchangeAsync("warm-match", request.ToLine, ReadMatchReply,
                 (code, message) => new WarmMatchResult.Failed(code, message),
                 () => new WarmMatchResult.Cancelled(), cancellationToken, request.Timeout(pool._options.ParseTimeout));
+
+        public Task<WarmEffectsResult> EffectsAsync(ServeEffectsRequest request, CancellationToken cancellationToken) =>
+            ExchangeAsync("warm-effects", request.ToLine, ReadEffectsReply,
+                (code, message) => new WarmEffectsResult.Failed(code, message),
+                () => new WarmEffectsResult.Cancelled(), cancellationToken, request.Timeout(pool._options.ParseTimeout));
+
+        private static WarmEffectsResult ReadEffectsReply(JsonElement root, TimeSpan elapsed)
+        {
+            var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+            if (type == "result") return new WarmEffectsResult.Completed(root.GetRawText());
+            var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
+            var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+            return new WarmEffectsResult.Rejected(code, message, root.GetRawText());
+        }
 
         public Task<WarmMatchResult> InventoryAsync(CancellationToken cancellationToken) =>
             ExchangeAsync("warm-inventory", id => ServeInventoryRequest.ToLine(id), ReadMatchReply,
