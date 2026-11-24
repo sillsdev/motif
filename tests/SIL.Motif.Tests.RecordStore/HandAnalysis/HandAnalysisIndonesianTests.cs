@@ -185,7 +185,7 @@ public sealed class HandAnalysisIndonesianTests(ImportedProject project) : IClas
         await using var _ = host;
         var before = Pages.Json(await Pages.All(p => a.Inventory(p), 200));
         Assert.True(a.IsCurrent);
-        Assert.Equal(SnapshotVerification.Full, a.Stamp.Verification);
+        Assert.Equal(SnapshotVerification.Certified, a.Stamp.Verification);
         Assert.Equal("none", a.Stamp.ComparisonVersion);
         await using var writer = new Store(store);
         var entry = (await writer.ReadAsync()).First(r => r.Kind == "lcm" && r.ClassId == LexEntryTags.kClassId);

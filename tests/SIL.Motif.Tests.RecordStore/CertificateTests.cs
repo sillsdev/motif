@@ -523,6 +523,15 @@ public sealed partial class DeletionSafetyTests
                 Assert.Equal(scanned.CommitRows.ToText(), certificate.CommitRows);
                 Assert.Equal(scanned.ChangeRows.ToText(), certificate.ChangeRows);
                 Assert.False(certificate.WriteInProgress);
+                // Incremental digests must equal an independent handle's rescan at every step.
+                await using var rescan = Store.OpenPublishedReader(Database);
+                var fresh = await rescan.RescanDigestsAsync();
+                Assert.Equal(fresh.Snapshot, Scalar("SELECT SnapshotDigest FROM RecordStoreState"));
+                Assert.Equal(fresh.Index, Scalar("SELECT IndexDigest FROM RecordStoreState"));
+                Assert.Equal(fresh.Content, Scalar("SELECT ContentDigest FROM RecordStoreState"));
+                Assert.Equal(fresh.Snapshot, certificate.SnapshotDigest);
+                Assert.Equal(fresh.Index, certificate.IndexDigest);
+                Assert.Equal(fresh.Content, certificate.ContentDigest);
             }
             await store.VerifyAsync();
             // A list operation republishes everything; the store is then certified again and still equals a full rescan.
@@ -536,5 +545,54 @@ public sealed partial class DeletionSafetyTests
             await store.VerifyAsync();
         }
         finally { await store.DisposeAsync(); }
+    }
+
+    [Fact]
+    public async Task VerifyRefusesToRecertifyWhenAnotherHandleCommittedHistoryItNeverPublished()
+    {
+        var seed = await Import();
+        await using var verifier = new Store(Database);
+        verifier.AfterVerifyScan = async () =>
+        {
+            // Another process commits a list operation and dies before publishing.
+            await using var crashing = new Store(Database);
+            var swap = await SwapFirstList(crashing);
+            crashing.WriteStageReached = reached => { if (reached == WriteStage.HistoryWritten) throw new Crash(); };
+            await Assert.ThrowsAsync<Crash>(() => crashing.CommitListOperationsAsync([swap], Guid.NewGuid()));
+        };
+        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => verifier.VerifyAsync());
+        Assert.Contains("not published", failure.Message);
+        Assert.Equal(1L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
+        Assert.NotEqual(StoreVerification.Full, verifier.Verification);
+    }
+
+    [Theory]
+    [InlineData("no-op")]
+    [InlineData("stale revision")]
+    [InlineData("stale prior value")]
+    public async Task AColdHandleWhoseFirstWriteChangesNothingStillReportsCertified(string kind)
+    {
+        var seed = await Import();
+        string revision;
+        JsonElement old;
+        await using (var other = new Store(Database)) (revision, old) = await Current(other, seed.FirstEntryId);
+        await using var cold = new Store(Database);
+        Assert.Equal(StoreVerification.Certified, cold.Verification);
+        var number = old.GetInt32();
+        var attempt = kind switch
+        {
+            "no-op" => Bump(cold, seed.FirstEntryId, revision, old, number),
+            "stale revision" => Bump(cold, seed.FirstEntryId, "stale", old, number + 1),
+            _ => Bump(cold, seed.FirstEntryId, revision, JsonSerializer.SerializeToElement(number + 5), number + 1)
+        };
+        if (kind == "no-op") Assert.Equal(revision, await attempt);
+        else await Assert.ThrowsAnyAsync<InvalidOperationException>(() => attempt);
+        Assert.Equal(StoreVerification.Certified, cold.Verification);
+        Assert.Equal(0L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
+        // The next real write extends the certificate without a scan, as a certified handle would.
+        var moved = await Bump(cold, seed.FirstEntryId, revision, old, number + 1);
+        Assert.NotEqual(revision, moved);
+        Assert.Equal(0, cold.HistoryScans);
+        Assert.Equal(StoreVerification.Certified, cold.Verification);
     }
 }

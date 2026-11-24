@@ -198,7 +198,7 @@ public sealed partial class DeletionSafetyTests : IDisposable
             await Assert.ThrowsAsync<IOException>(() => store.SetFieldAsync(seed.FirstEntryId, LexEntryTags.kflidHomographNumber,
                 prior, JsonSerializer.SerializeToElement(prior.GetInt32() + 1), revision, Guid.NewGuid()));
             await Assert.ThrowsAsync<IOException>(store.RegenerateAsync);
-            await Assert.ThrowsAsync<IOException>(store.RebuildReferenceIndexAsync);
+            await Assert.ThrowsAsync<IOException>(() => store.RebuildReferenceIndexAsync());
             await Assert.ThrowsAsync<IOException>(() => store.ImportAsync([], Guid.NewGuid()));
         }
         Assert.Equal(revision, (await store.ReferencesAsync()).Revision);
