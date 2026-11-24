@@ -37,7 +37,7 @@ internal readonly record struct IndexedRun(int Start, string Text);
 /// One morph of an indexed analysis, named by its form and analysis (MSA) ids as <c>pangloss batch</c> reports them, and where it sits on the
 /// surface. <paramref name="Runs"/> is null when PanGloss could place no sound span, and <paramref name="Reason"/> then names why.
 /// </summary>
-internal sealed record IndexedMorph(string Form, string Msa, IReadOnlyList<IndexedRun>? Runs = null, string? Reason = null);
+internal sealed record IndexedMorph(string Form, string Msa, IReadOnlyList<IndexedRun>? Runs = null, string? Reason = null, string? InflType = null);
 
 /// <summary>
 /// One reading of a word. <paramref name="Surface"/> is the NFD lower-case surface its spans index; <paramref name="Problem"/> is null when
@@ -55,12 +55,19 @@ internal sealed record IndexedWord(IndexedStatus Status, IReadOnlyList<IndexedAn
 internal sealed class RealizesParseIndex
 {
     /// <summary>The format tag; a file with another header is not read, so an index of an older format is rebuilt, never misread.</summary>
-    internal const string Header = "motif-realizes-parse-index/v2";
+    internal const string Header = "motif-realizes-parse-index/v3";
 
     /// <summary>The cache file suffix for this format, so older formats are never opened under the same key.</summary>
-    internal const string FileTag = "v2";
+    internal const string FileTag = "v3";
 
     public RealizesParseIndex(IReadOnlyDictionary<string, IndexedWord> words) => Words = words;
+
+    /// <summary>
+    /// Every reading of a word, with its ordered morphs (form id, analysis id, inflection type and surface runs), and the parse state
+    /// (<see cref="IndexedWord.Status"/>: finished, capped, timed out, unsegmentable or no answer); null for a word the index was not built for.
+    /// The batch names no entry, so a morph's entry is not here. <c>realizes</c> is one consumer.
+    /// </summary>
+    public IndexedWord? Get(string word) => Words.GetValueOrDefault(word);
 
     /// <summary>The answer for each word type.</summary>
     public IReadOnlyDictionary<string, IndexedWord> Words { get; }
@@ -107,7 +114,7 @@ internal sealed class RealizesParseIndex
         if (!analysis.TryGetProperty("morphSpans", out var spans) || spans.ValueKind != JsonValueKind.Object)
         {
             var why = spans.ValueKind == JsonValueKind.Null ? SpansNull : SpansAbsent;
-            return new IndexedAnalysis([.. morphs.Select(morph => new IndexedMorph(Text(morph, "form"), Text(morph, "msa"), null, why))]);
+            return new IndexedAnalysis([.. morphs.Select(morph => new IndexedMorph(Text(morph, "form"), Text(morph, "msa"), null, why, Infl(morph)))]);
         }
         var surface = spans.GetProperty("surface").GetString() ?? "";
         var bytes = Encoding.UTF8.GetBytes(surface);
@@ -148,7 +155,7 @@ internal sealed class RealizesParseIndex
         return new IndexedAnalysis([.. morphs.Select((morph, at) =>
         {
             var (runs, reason) = runsOf.GetValueOrDefault(at, (null, "morph_not_in_spans"));
-            return new IndexedMorph(Text(morph, "form"), Text(morph, "msa"), runs, runs is null ? reason : null);
+            return new IndexedMorph(Text(morph, "form"), Text(morph, "msa"), runs, runs is null ? reason : null, Infl(morph));
         })], surface, problem);
     }
 
@@ -167,6 +174,9 @@ internal sealed class RealizesParseIndex
         }
         return at == bytes.Length && spelled.ToString() == surface;
     }
+
+    private static string? Infl(JsonElement morph) =>
+        morph.TryGetProperty("inflType", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
     private static bool Flag(JsonElement row, string name) => row.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;
 
@@ -199,6 +209,7 @@ internal sealed class RealizesParseIndex
                         json.WriteStartObject();
                         json.WriteString("f", morph.Form);
                         json.WriteString("i", morph.Msa);
+                        if (morph.InflType is not null) json.WriteString("t", morph.InflType);
                         if (morph.Runs is null) json.WriteString("x", morph.Reason ?? SpansNull);
                         else
                         {
@@ -247,7 +258,8 @@ internal sealed class RealizesParseIndex
                         if (morph.TryGetProperty("r", out var listed))
                             runs = [.. listed.EnumerateArray().Select(run => new IndexedRun(run[0].GetInt32(), run[1].GetString() ?? ""))];
                         morphs.Add(new IndexedMorph(morph.GetProperty("f").GetString() ?? "", morph.GetProperty("i").GetString() ?? "", runs,
-                            runs is null && morph.TryGetProperty("x", out var reason) ? reason.GetString() : null));
+                            runs is null && morph.TryGetProperty("x", out var reason) ? reason.GetString() : null,
+                            morph.TryGetProperty("t", out var infl) ? infl.GetString() : null));
                     }
                     analyses.Add(new IndexedAnalysis(morphs, analysis.GetProperty("u").GetString() ?? "",
                         analysis.TryGetProperty("p", out var problem) ? problem.GetString() : null));

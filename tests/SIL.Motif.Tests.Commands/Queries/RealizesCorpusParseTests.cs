@@ -342,7 +342,7 @@ public sealed class RealizesCorpusParseTests : IDisposable
                 using (var stream = File.Create(file))
                 using (var zip = new System.IO.Compression.GZipStream(stream, System.IO.Compression.CompressionLevel.Fastest))
                 using (var writer = new StreamWriter(zip))
-                    writer.Write("motif-realizes-parse-index/v2\n{not json\n");
+                    writer.Write("motif-realizes-parse-index/v3\n{not json\n");
                 break;
         }
         var outcome = Run(where, ["tikas", "itkas"], index, notices);
@@ -382,6 +382,8 @@ public sealed class RealizesCorpusParseTests : IDisposable
         Assert.Equal(index.Words.Keys.Order(), back.Words.Keys.Order());
         Assert.Equal(IndexedStatus.Unsegmentable, back.Words["zzz"].Status);
         Assert.Equal(IndexedStatus.Failed, back.Words["gone"].Status);
+        Assert.Same(back.Words["tikas"], back.Get("tikas"));
+        Assert.Null(back.Get("never-indexed"));
         var tikas = Assert.Single(back.Words["tikas"].Analyses);
         Assert.Equal("tikas", tikas.Surface);
         Assert.Null(tikas.Problem);
