@@ -489,6 +489,8 @@ public static class CliVerbCatalog
             new[] { "group <suffix|prefix> --project <fwdata> (--ending <text> | --start <text> | --pattern <regex>) [--parse-state parsed|unparsed|approved|all] [--limit <1-200>] [--page <N>] [--min-stem <N>] [--fold <set>] [--as-of baseline|<proposalId>] [--format table|json] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal compare", "proposal compare",
             new[] { "proposal compare <proposalId> <proposalId> [<proposalId>...] --project <fwdata> [--at <digest>] [--job <jobId>]... [--page <N> --snapshot <token>] [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal trial delta", "proposal trial delta",
+            new[] { "proposal trial delta --project <fwdata> (--job <jobId> | --proposal <id>) [--classes lost,gained,changed,doubled,rejected] [--write-manifests <dir>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial export", "proposal trial export",
             new[] { "proposal trial export <jobId> --project <fwdata> [--at <digest>] [--page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",

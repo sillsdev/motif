@@ -104,6 +104,7 @@ public static class CommandTextRenderer
             FindComposerResponse r => RenderFindComposer(r),
             GroupResponse r => RenderGroup(r),
             ProposalComparison r => RenderProposalComparison(r),
+            ReadingDelta r => ReadingDeltaText.Render(r),
             TrialExportReceipt r => RenderTrialExport(r),
             TrialRecord r => RenderTrial(r),
             TrialReviewResult r => TrialReviewTextRenderer.Render(r),

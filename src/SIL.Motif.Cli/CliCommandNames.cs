@@ -34,6 +34,7 @@ internal static class CliCommandNames
             return "record export";
         if (verb == "proposal" && positionals is ["compare", ..])
             return "proposal compare";
+        if (verb == "proposal" && positionals is ["trial", "delta", ..]) return "proposal trial delta";
         if (verb == "proposal" && positionals is ["trial", "export", ..])
             return "proposal trial export";
         if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note" or "why-lost")

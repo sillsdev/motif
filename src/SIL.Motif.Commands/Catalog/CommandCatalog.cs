@@ -300,6 +300,7 @@ public static class CommandCatalog
         new CommandDescriptor("group", typeof(GroupRequest), typeof(GroupResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("proposal compare", typeof(CompareProposalsRequest), typeof(ProposalComparison),
             CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("proposal trial delta", typeof(ReadTrialDeltaRequest), typeof(ReadingDelta), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("proposal trial export", typeof(ReadTrialExportRequest), typeof(TrialExportReceipt),
             CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("proposal trial", typeof(ReviewReadRequest), typeof(TrialReviewResult), CommandSurface.Released, AgentClass.Read),

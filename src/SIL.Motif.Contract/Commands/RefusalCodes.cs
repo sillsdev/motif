@@ -543,6 +543,12 @@ public static class RefusalCodes
     public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";
     /// <summary>The exact Trial has no readable retained evidence export.</summary>
     public const string TrialExportUnavailable = "trial.export-unavailable";
+    /// <summary>A Reading delta request names no Trial, two Trials, an unknown class or a bad page.</summary>
+    public const string TrialDeltaRequestInvalid = "trial.delta-request-invalid";
+    /// <summary>Some forms were not measured on both sides or have no complete Reading identity, so no manifest is exact.</summary>
+    public const string TrialDeltaIncomplete = "trial.delta-incomplete";
+    /// <summary>A manifest file could not be written to the requested directory.</summary>
+    public const string TrialDeltaManifestUnwritable = "trial.delta-manifest-unwritable";
     /// <summary>A comparison needs two to eight distinct Proposals.</summary>
     public const string ProposalCompareProposalsInvalid = "proposal.compare-proposals-invalid";
     /// <summary>A Proposal has no completed Trial with a retained evidence export to compare.</summary>

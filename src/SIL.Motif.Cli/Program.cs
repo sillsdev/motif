@@ -2089,6 +2089,14 @@ try
                     flags.GetValueOrDefault("snapshot"), ReadRepeatedFlagValues(flags, "job"))));
                 break;
             }
+            if (positionals is ["trial", "delta"])
+            {
+                var delta = TrialDeltaCli.Run(flags, asJson, out var deltaUsage);
+                if (delta is null) return Usage(UsageLineFor("proposal trial delta"), asJson);
+                result = delta;
+                alreadyRendered = true;
+                break;
+            }
             if (positionals is ["trial", "export", ..])
             {
                 if (positionals.Count != 3 || !flags.TryGetValue("project", out var exportProject) ||
