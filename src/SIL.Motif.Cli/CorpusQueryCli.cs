@@ -14,6 +14,42 @@ internal static class CorpusQueryCli
     /// <summary>True for <c>query --corpus ...</c>, which never reads a project.</summary>
     public static bool Handles(IReadOnlyDictionary<string, string> flags) => flags.ContainsKey("corpus");
 
+    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "json"];
+
+    /// <summary>True for <c>query --corpus &lt;words&gt; forms ...</c>.</summary>
+    public static bool IsForms(IReadOnlyList<string> positionals) => positionals.FirstOrDefault() == "forms";
+
+    /// <summary>
+    /// Builds a corpus forms request from <c>forms where &lt;expression&gt;</c> or <c>forms --where &lt;expression&gt;</c> or
+    /// <c>forms --query-json &lt;file|-&gt;</c>; <paramref name="queryJson"/> is read by the caller from the named source.
+    /// </summary>
+    public static bool TryBuildFormsRequest(IReadOnlyDictionary<string, string> flags, IReadOnlyList<string> positionals,
+        Func<string, string?> readJson, out CorpusFormsRequest request)
+    {
+        request = null!;
+        if (flags.Keys.Any(key => !FormsFlags.Contains(key)) ||
+            flags.Any(pair => pair.Value == "true" && pair.Key is not ("json" or "fold-case" or "split-hyphens"))) return false;
+        string? where = flags.GetValueOrDefault("where");
+        if (positionals is ["forms", "where", var text]) where = where is null ? text : null;
+        else if (positionals is not ["forms"]) return false;
+        string? document = null;
+        if (flags.TryGetValue("query-json", out var source))
+        {
+            document = readJson(source);
+            if (document is null) return false;
+        }
+        if (!flags.TryGetValue("corpus", out var corpus) || (where is null) == (document is null)) return false;
+        int? limit = null;
+        if (flags.TryGetValue("limit", out var raw))
+        {
+            if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)) return false;
+            limit = parsed;
+        }
+        request = new CorpusFormsRequest(corpus, where, document, flags.GetValueOrDefault("grammar"), flags.GetValueOrDefault("segments"),
+            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit);
+        return true;
+    }
+
     /// <summary>Builds the request from the parsed flags, or false when the invocation is not well formed.</summary>
     public static bool TryBuildRequest(IReadOnlyDictionary<string, string> flags, IReadOnlyList<string> positionals, out PairsQueryRequest request)
     {

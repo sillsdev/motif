@@ -6,7 +6,7 @@ namespace SIL.Motif.Host.PanGloss;
 public static class PanGlossInterfaceVersions
 {
     /// <summary>The PanGloss source tag that defines the formats Motif reads.</summary>
-    public const string SourceTag = "v0.29.0";
+    public const string SourceTag = "v0.32.0";
     /// <summary>The version of the object returned by <c>pangloss --describe</c>.</summary>
     public const int DescribeSchemaVersion = 1;
     /// <summary>The version of reports returned by <c>pangloss grammar-health</c>.</summary>
@@ -24,6 +24,15 @@ public static class PanGlossInterfaceVersions
     /// <summary>What a PanGloss must declare to generate forms with a rule trace, written for the refusal that names it.</summary>
     public const string ServeGenerateNeeded =
         "a PanGloss release after 0.27.0 whose --describe declares interfaces.serveOps.generate (sillsdev/PanGloss#434)";
+    /// <summary>What a PanGloss must declare to match phonological patterns over a word list, written for the refusal that names it.</summary>
+    public const string ServeMatchNeeded =
+        "a PanGloss release after 0.28.1 whose --describe declares interfaces.serveOps.match (sillsdev/PanGloss#436, release v0.29.0)";
+    /// <summary>What a PanGloss must declare to match environments, feature bundles and alpha variables, written for the refusal that names it.</summary>
+    public const string ServeMatchConstructsNeeded =
+        "a PanGloss release whose --describe lists environment, featureBundle and alphaVariable under interfaces.serveOps.match constructs.supported (release v0.30.0)";
+    /// <summary>What a PanGloss must declare to list a grammar's natural classes and features over <c>serve</c>, written for the refusal that names it.</summary>
+    public const string ServeInventoryNeeded =
+        "a PanGloss release whose --describe declares interfaces.serveOps.inventory (release v0.30.0)";
     /// <summary>The capture modes the pinned release advertises for bounded rejection diagnostics.</summary>
     public static ImmutableArray<string> RejectionTraceModes { get; } = ["lineage"];
     /// <summary>The full SQLite cache version written by <c>batch --stats</c>, without compact storage.</summary>

@@ -391,6 +391,21 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         Assert.Equal(2, lowering.RefusedChanges!.Count);
     }
 
+    [Theory]
+    [InlineData("input-formula", "* a")]
+    [InlineData("output-formula", "a $1")]
+    public void TheCatalogDoesNotOfferAFormulaWriteAndRefusesItWhenPlanned(string key, string text)
+    {
+        using var cache = pristine.NewScratch();
+        Build(cache);
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(cache, schema);
+        var read = RecordFileReader.Read(exporter.Export(EntryId).Text!, schema.Schema, exporter.CreateReadOptions());
+        Process(read.Document!).Set(key, new RecordScalar(text));
+        var plan = new ProjectRecordImporter(exporter).Plan(RecordFileWriter.Write(read.Document!, schema.Schema), new CatalogWritableFields(schema));
+        Assert.Equal(RecordRefusalKind.FieldNotWritable, Assert.Single(plan.ChangeSet.Refusals).Kind);
+    }
+
     private static void BuildUnrenderable(LcmCache cache)
     {
         Build(cache);

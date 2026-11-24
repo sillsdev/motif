@@ -14,8 +14,27 @@ internal sealed record PanGlossSurfaceCheck(
 internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
     bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null,
-    PanGlossWhyNotCapability? WhyNot = null, PanGlossServeGenerateCapability? ServeGenerate = null)
+    PanGlossWhyNotCapability? WhyNot = null, PanGlossServeGenerateCapability? ServeGenerate = null,
+    PanGlossServeMatchCapability? ServeMatch = null, PanGlossServeInventoryCapability? ServeInventory = null)
 {
+    /// <summary>
+    /// Why this parser cannot match pattern text over a word list on <c>serve</c>, or null when it can: the description must
+    /// declare <c>interfaces.serveOps.match</c>, and list every construct the pattern needs (<c>environment</c>,
+    /// <c>featureBundle</c>, <c>alphaVariable</c>) under its <c>constructs.supported</c>.
+    /// </summary>
+    internal string? ServeMatchRefusal(IReadOnlyCollection<string>? needs = null)
+    {
+        if (ServeMatch is null) return "its description declares no interfaces.serveOps.match";
+        foreach (var need in needs ?? [])
+            if (!ServeMatch.Supported.Contains(need))
+                return $"its interfaces.serveOps.match does not list {need} among its supported constructs";
+        return null;
+    }
+
+    /// <summary>Why this parser cannot list a grammar's natural classes and features on <c>serve</c>, or null when it can.</summary>
+    internal string? ServeInventoryRefusal() =>
+        ServeInventory is null ? "its description declares no interfaces.serveOps.inventory" : null;
+
     /// <summary>
     /// Why this parser cannot answer a traced <c>generate</c> over <c>serve</c>, or null when it can: the description must
     /// declare <c>interfaces.serveOps.generate</c> with <c>trace</c> true.
@@ -109,6 +128,19 @@ internal sealed record PanGlossCapabilities(
 /// <param name="Kinds">The failure kinds the parser answers; every other kind comes back unknown.</param>
 /// <param name="SuiteRows">Whether the parser also runs the shared suite's why-not rows.</param>
 internal sealed record PanGlossWhyNotCapability(string? Schema, string? Ids, ImmutableArray<string> Kinds, bool SuiteRows, bool ExpectGuidChoices = false);
+
+/// <summary>What <c>interfaces.serveOps.match</c> declares.</summary>
+/// <param name="Version">The op's own version, or null when the key is missing.</param>
+/// <param name="Supported">The constructs <c>constructs.supported</c> lists, such as <c>environment</c>, <c>featureBundle</c> and <c>alphaVariable</c>.</param>
+internal sealed record PanGlossServeMatchCapability(int? Version, ImmutableHashSet<string>? SupportedConstructs = null)
+{
+    /// <summary>The constructs the op declares supported; empty when the description lists none.</summary>
+    internal ImmutableHashSet<string> Supported => SupportedConstructs ?? [];
+}
+
+/// <summary>What <c>interfaces.serveOps.inventory</c> declares.</summary>
+/// <param name="Version">The op's own version, or null when the key is missing.</param>
+internal sealed record PanGlossServeInventoryCapability(int? Version);
 
 /// <summary>What <c>interfaces.serveOps.generate</c> declares.</summary>
 /// <param name="Version">The op's own version, or null when the key is missing.</param>
@@ -226,7 +258,32 @@ internal static class PanGlossSurface
             interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("batchTsv", out var batchElement) &&
             batchElement.ValueKind == JsonValueKind.Number && batchElement.TryGetInt32(out var batchVersion) ? batchVersion : null;
         return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv,
-            ReadWhyNot(root), ReadServeGenerate(root));
+            ReadWhyNot(root), ReadServeGenerate(root), ReadServeMatch(root), ReadServeInventory(root));
+    }
+
+    private static PanGlossServeMatchCapability? ReadServeMatch(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("serveOps", out var ops) || ops.ValueKind != JsonValueKind.Object ||
+            !ops.TryGetProperty("match", out var match) || match.ValueKind != JsonValueKind.Object)
+            return null;
+        var supported = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        if (match.TryGetProperty("constructs", out var constructs) && constructs.ValueKind == JsonValueKind.Object &&
+            constructs.TryGetProperty("supported", out var list) && list.ValueKind == JsonValueKind.Array)
+            foreach (var item in list.EnumerateArray())
+                if (item.ValueKind == JsonValueKind.String) supported.Add(item.GetString()!);
+        return new PanGlossServeMatchCapability(match.TryGetProperty("version", out var version) &&
+            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null, supported.ToImmutable());
+    }
+
+    private static PanGlossServeInventoryCapability? ReadServeInventory(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("serveOps", out var ops) || ops.ValueKind != JsonValueKind.Object ||
+            !ops.TryGetProperty("inventory", out var inventory) || inventory.ValueKind != JsonValueKind.Object)
+            return null;
+        return new PanGlossServeInventoryCapability(inventory.TryGetProperty("version", out var version) &&
+            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null);
     }
 
     private static PanGlossServeGenerateCapability? ReadServeGenerate(JsonElement root)

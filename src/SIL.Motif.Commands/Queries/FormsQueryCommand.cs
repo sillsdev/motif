@@ -4,6 +4,7 @@ using SIL.Motif.Contract.Review;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Contract.Query;
+using SIL.Motif.Contract.Query.Phon;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Host.Config;
@@ -98,7 +99,14 @@ public static class FormsQueryCommand
                             snapshot.Snapshot.Forms.All(form => form.Tokens is null))
                             return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryInvalid,
                                 FailureReason.InvalidArgument, "Token frequency is not available in this evidence."));
-                        result = FormQuery.Run(query, snapshot.Snapshot.Forms, snapshot.Snapshot.Graphemes);
+                        PhonSession? phon = null;
+                        if (QueryExprTools.HasPatterns(query.Filter))
+                        {
+                            var matcher = PhonMatchers.ForProject(database, project, request.FwDataPath, parserPath);
+                            if (!matcher.Succeeded) return CommandOutcome<FormsQueryResponse>.Refused(matcher.Refusal!);
+                            phon = new PhonSession(matcher.Value!);
+                        }
+                        result = FormQuery.Run(query, snapshot.Snapshot.Forms, snapshot.Snapshot.Graphemes, phon);
                     }
                     else if (query.Change is not null)
                     {

@@ -47,4 +47,16 @@ public sealed class QuerySchemaTests
 
     [Fact]
     public void TheSchemaIsDeterministic() => Assert.Equal(QuerySchema.Generate(), QuerySchema.Generate());
+
+    [Fact]
+    public void PhonAndEnvAreRealKindsWithTheirPatternSyntaxDocumented()
+    {
+        var schema = JsonNode.Parse(QuerySchema.Generate())!;
+        var kinds = schema["$defs"]!["expr"]!["oneOf"]!.AsArray().Select(node => node!["required"]?.AsArray().FirstOrDefault()?.GetValue<string>()).ToArray();
+        Assert.Contains("phon", kinds);
+        Assert.Contains("env", kinds);
+        Assert.DoesNotContain("phon", schema["x-reserved"]!.AsArray().Select(kind => kind!.GetValue<string>()));
+        var syntax = schema["$defs"]!["expr"]!["oneOf"]!.AsArray().First(node => node!["required"]?[0]?.GetValue<string>() == "phon")!["properties"]!["phon"]!["description"]!.GetValue<string>();
+        foreach (var part in new[] { "natural-class", "[+voice -nasal]", "[αvoice]", "/p/", "( )*", "#", "+" }) Assert.Contains(part, syntax);
+    }
 }

@@ -134,6 +134,7 @@ var usageArguments = args.Length > 0
     ? ParseArgs(args[1..])
     : (new Dictionary<string, string>(StringComparer.Ordinal), new List<string>(),
         (IReadOnlyList<string>)Array.Empty<string>());
+usageArguments.Item2 = CliCommandNames.NormalizeQueryWords(usageVerb, usageArguments.Item1, usageArguments.Item2);
 var resolvedUsageCommand = args.Length > 0
     ? CliCommandNames.Resolve(usageVerb, usageArguments.Item1, usageArguments.Item2)
     : usageVerb;
@@ -174,7 +175,8 @@ string? namedProject = null;
 
 try
 {
-    var (flags, positionals, forwardedArguments) = ParseArgs(rest);
+    var (flags, parsedPositionals, forwardedArguments) = ParseArgs(rest);
+    var positionals = CliCommandNames.NormalizeQueryWords(verb, flags, parsedPositionals);
     var waitForTerminal = flags.ContainsKey("wait-terminal");
     if (waitForTerminal && !(verb is "dry-run" or "trial" && flags.ContainsKey("wait")) &&
         !(verb == "jobs" && positionals.FirstOrDefault() == "wait"))
@@ -2291,6 +2293,28 @@ try
 
         case "query":
         {
+            if (flags.TryGetValue("values", out var valuesKind))
+            {
+                if (valuesKind != "classes" || positionals.Count != 0 || flags.Keys.Any(key => key is not ("values" or "project" or "grammar" or "json" or "verbose")))
+                    return Usage(UsageLineFor("query values"), asJson);
+                result = RenderCommand(PhonValues.Read(new QueryValuesRequest(flags.GetValueOrDefault("project"), flags.GetValueOrDefault("grammar")),
+                    flags.ContainsKey("verbose") ? error.WriteLine : null));
+                break;
+            }
+            if (CorpusQueryCli.Handles(flags) && CorpusQueryCli.IsForms(positionals))
+            {
+                if (!CorpusQueryCli.TryBuildFormsRequest(flags, positionals, source =>
+                    {
+                        try
+                        {
+                            return source == "-" ? new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false)).ReadToEnd() : File.ReadAllText(source);
+                        }
+                        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return null; }
+                    }, out var corpusFormsRequest))
+                    return Usage(UsageLineFor("query corpus forms"), asJson);
+                result = RenderCommand(CorpusQueryCommand.Forms(corpusFormsRequest, JobRunnerLaunchOptions.ResolveParserPath()));
+                break;
+            }
             if (CorpusQueryCli.Handles(flags))
             {
                 if (!CorpusQueryCli.TryBuildRequest(flags, positionals, out var corpusRequest)) return Usage(UsageLineFor("query pairs"), asJson);
@@ -2378,6 +2402,13 @@ try
                 var columns = QuerySources.StoredColumns(record.From == "forms" ? "stems" : record.From);
                 if (record.Change is not null) columns = [.. columns, "predicted", "evidence", "collides"];
                 string Item(QueryItem item) => item.Id + "\t" + string.Join("\t", columns.Select(c => string.Join(",", item.Values[c])));
+                if (response.Result.Phon is { } phonReport)
+                {
+                    var phonHeader = new StringBuilder();
+                    PhonText.Append(phonHeader, phonReport);
+                    var phonLines = phonHeader.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r'));
+                    foreach (var line in phonLines) (record.Ids ? (Action<string>)Console.Error.WriteLine : lines.Add)(line);
+                }
                 if (record.Evidence) { }
                 else if (record.Ids)
                     lines.AddRange(response.Result.Ids);
@@ -2386,7 +2417,8 @@ try
                 else if (groups.Count == 0)
                     lines.AddRange(response.Result.Rows.Select(row =>
                         $"{row.Form}\t{row.Base}\t{row.Kind}\t{row.Id}\t{row.Entry}\t{row.MorphType}\t" +
-                        $"{row.VariantType}\t{string.Join(",", row.Environments)}\t{string.Join(",", row.Category)}"));
+                        $"{row.VariantType}\t{string.Join(",", row.Environments)}\t{string.Join(",", row.Category)}" +
+                        (row.Matches is { Count: > 0 } ? "\t" + PhonText.Spans(row.Matches) : "")));
                 else
                     foreach (var group in response.Result.Groups)
                     {

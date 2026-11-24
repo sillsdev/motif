@@ -78,6 +78,7 @@ Harmony model version 1, and indexes rebuilt in the same transaction. Measured i
 - Slice 2: Cebuano 84.4 s to 57.8 s (re-measured baseline); Indonesian 13.0 s to 8.3 s.
 - Slice 3b adds format 6 (certificate row, crash flag, persisted content identity); the first write on a cold handle
   extends the stored replay digest instead of rescanning history. See [record-store.md](../record-store.md).
+- Slice 3c-B adds format 7: derived tables bound to the publication row (see the amendment below).
 - A separate measurement: the M1 slice 4c Cebuano wrapper store import took 90.9 s on a shared machine.
 
 Slice 1 cut Cebuano peak RSS from 17.0 to 7.6 GiB. Slice 2 left it at about 8.2 to 8.6 GB, a level set by export, so
@@ -90,6 +91,17 @@ after a crash flag, or on explicit request. A constant-time certificate comparis
 unread pages are verified only by the full pass. The roots are unkeyed, so they detect accidental corruption and
 divergence; they do not authenticate against hostile rewriting. The tamper tests state this rather than claim more. No
 pin holds a long SQLite transaction; pins reference immutable generations that are reclaimed safely.
+
+Derived tables bound to the publication row (amended with format 7). The headers and per-chunk digests (projection parts follow in a later slice)
+are derived data: rebuildable from the snapshots and history, never a replacement for them, and never consulted for
+history's own digests. Each is written in the same transaction as the state row and the certificate, and one binding row
+copies the state row's revision and digests. A table whose binding differs from the state row is stale, never trusted, and
+never answers a query as if it were current. The chunk digests sum exactly to the state row's snapshot digest when written, and `VerifyAsync` checks that sum. A keyed read
+checks only the chunk it consumes, against that chunk's row and header rows and the binding; it does not consult the
+certificate or re-check the sum, which the certified keyed path adds later. A format that adds such tables is a new
+format, not an additive change: an older writer would leave them silently stale on every write, which a refusal
+makes visible. Only a read-write operation upgrades an older store, inside its own transaction; a reader never does. A
+list operation commits its history and its publication in one transaction, so history is never ahead of its publication.
 
 Do not, to win a benchmark or for any other reason:
 

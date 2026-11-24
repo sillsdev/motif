@@ -174,7 +174,7 @@ internal static class WhyNotProjection
         return new WhyNotRejection(kind, Shorten(plain, cut), Int(failure, "position"), Text(failure, "provenance"),
             Morphs(failure, "morphs", cut, out var omitted), omitted, target, environment, Text(failure, "stem_name"),
             features, featuresOmitted, Int(failure, "alternatives"),
-            members, membersOmitted);
+            members, membersOmitted, Text(failure, "gate"));
     }
 
     private static IReadOnlyList<WhyNotMorph> Morphs(JsonElement parent, string name, Cuts cut, out int omitted)

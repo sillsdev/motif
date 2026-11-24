@@ -109,7 +109,7 @@ without a disk file are serialized from the supplied cache.
 
 ## Compact persistence and import provenance
 
-The SQLite development format is version 6. Version 5 added the complete-record create encoding
+The SQLite development format is version 7. Version 6 added the certificate, version 5 added the complete-record create encoding
 under Harmony model version 1. Version 4 stores open in place and keep model version 0
 for granular imports and edits. Readers refuse history authored under a newer model version.
 For earlier development formats, reimport the external project into a fresh store.
@@ -135,14 +135,42 @@ otherwise re-certifies. The first write on a format 5 store pays a one-time upgr
 checks pass: it indexes every content value (about 14 s on Cebuano under load) while it holds the write lock, tells
 `RecordStore.Progress` before it starts and sets `UpgradedFormat` when it commits. `VerifyAsync` scans without the writer
 lock and takes it only to re-certify, refusing if the store changed meanwhile or if commits exist that no state row
-publishes (a list operation that crashed after its history commit). List operations compare the old history
-with the stored replay digest before they republish, so they never absorb damage; they commit history and
-publication separately, and a crash between them sets the flag and leaves history ahead of the point. The store then
-refuses to open when the list operation added content; otherwise it opens but refuses every read and write with "The store
-index revision is unavailable". No store operation repairs this (`RegenerateAsync` starts from the same state read), so restore
-the file from a copy. `VerifyAsync` compares the whole content identity table with the
+publishes (history committed through another path and never published). List operations compare the old history and the
+old snapshots with the stored digests before they republish, so they never absorb damage. Since format 7 a list operation
+is one transaction: the upgrade, the history commits and the publication (state row, certificate, derived tables) commit
+together, so a crash or failure at any point before that commit leaves the store exactly as it was and there is no window
+with history ahead of its publication. (Before format 7 the history committed first and a crash left the store refusing every
+read and write; that store needed restoring from a copy.) `VerifyAsync` compares the whole content identity table with the
 stored values; `RebuildContentIdentitiesAsync` repairs it. A damaged certificate alone is repaired by the next write
 or `VerifyAsync`, which re-certify after a full scan.
+
+### Format 7: headers, chunk digests and the publication binding
+
+Format 7 adds three derived tables, all rebuildable from the snapshots and never a replacement for history:
+`RecordHeaders` (id, kind, class, owner, owning field, deleted; every record, tombstones included),
+`RecordChunks` (one accumulator per chunk, the 4,096 chunks named by the first 12 bits of the big-endian GUID; only
+non-empty chunks have rows) and `RecordPublicationBinding` (one row copying the state row's revision and four digests
+plus a digest over the headers). Every publication writes them in the state row's transaction. A guarded
+scalar write moves one chunk row by the record's old and new item and rebinds; it cannot change a header. The chunk digests
+sum exactly to the state row's snapshot digest, which is unchanged. A format 7 store is `Certified` only while its binding
+equals its state row.
+
+`ReadChunkAsync(chunk)` and `ReadRecordAsync(id)` read one chunk by a range scan on the snapshot entity index (the same
+latest-snapshot rule as the full read) and check what they consume before returning it: the chunk's items must sum to its
+stored digest and its header rows must equal the headers of the decoded snapshots, and the binding must equal the state row.
+A damaged chunk refuses with the table named while every other chunk stays readable. `ReadHeadersAsync` checks the header
+rows against the binding's headers digest. This is a check of the consumed chunk, not of the store: a keyed read is never
+described as verified, and unread chunks stay unchecked until `VerifyAsync`, which also checks that the chunks sum to the state digest and
+equal the decoded records, that the headers equal the decoded records, that the binding equals the state row and the whole
+identity table. A checked chunk is kept for the life of one published point, and a keyed read returns copies of its records. A keyed read does not consult the certificate and does not check that the chunk rows sum to the state digest; the certified keyed path compares them in a later slice.
+
+A format 6 store opens read-only without being changed; a keyed read on it throws `DerivedTablesUnavailableException`
+("tables: absent") and `HasDerivedTables` is false. A format 6 binary refuses format 7 with the usual refusal. Only a read-write
+operation upgrades (first guarded write, list operation, `VerifyAsync`, `RebuildReferenceIndexAsync`, import): the upgrade
+creates and fills the tables inside that operation's own transaction, so it is all or nothing, tells `Progress` before it
+starts, and is recorded in `LastUpgrade` (from, to, elapsed). The upgrade starts only after an operation's own refusals
+(stale revision, unknown record, corrupt history), so a refused operation never starts one. A format 5 store goes to 7 in
+one step. The read-only host never upgrades.
 
 The hand-analysis host (`HandAnalysisHost`) serves pins of a published store read-only and reports what each Stamp
 claims. A store whose certificate matches the state row serves `Certified`; otherwise the host rescans history against

@@ -71,6 +71,7 @@ public sealed partial class RecordStore
                 await AbandonWriteAsync(start);
                 return state.Revision;
             }
+            if (format >= DerivedFormat) await RequireBindingBeforeWriteAsync(state);
             // Only a non-owning single reference carries an index edge; other supported types have none.
             NativeReference? removed = type == 24 && prior.ValueKind != JsonValueKind.Null ? new(target, field, -1, prior.GetGuid(), false) : null;
             NativeReference? added = type == 24 && value.ValueKind != JsonValueKind.Null ? new(target, field, -1, value.GetGuid(), false) : null;
@@ -98,6 +99,16 @@ public sealed partial class RecordStore
             stored.ContentDigest = content.Digest();
             stored.Published = true;
             await StageCertificateAsync(stored, extended, scanned ? CertificateProvenance.FullVerify : CertificateProvenance.Incremental);
+            var chunk = ChunkOf(target);
+            if (backfillDerived)
+            {
+                // The upgrade writes every derived row from the decode this point came from, moved by this one edit.
+                var derived = verified.Derived ?? throw new InvalidOperationException("The retained point carries no derived tables to backfill.");
+                var chunks = (SetDigest[])derived.Chunks.Clone();
+                chunks[chunk] = chunks[chunk].Remove(SnapshotItem(record)).Add(expectedItem);
+                WriteDerived(stored, chunks, derived.Headers);
+            }
+            else if (format >= DerivedFormat) MoveChunk(stored, chunk, SnapshotItem(record), expectedItem);
             await database.SaveChangesAsync();
             WriteStageReached?.Invoke(WriteStage.StateWritten);
             var published = await database.Set<StoreState>().AsNoTracking().SingleAsync();

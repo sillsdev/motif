@@ -189,12 +189,14 @@ public static class QuerySchema
         };
         var expr = new JsonObject
         {
-            ["description"] = "One of: and, or, not, a field predicate, or a reserved kind (parsed, refused as not yet available).",
+            ["description"] = "One of: and, or, not, a field predicate, phon, env, or a reserved kind (parsed, refused as not yet available).",
             ["oneOf"] = new JsonArray(
                 Wrapper("and", new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = "#/$defs/expr" }, ["minItems"] = 1 }),
                 Wrapper("or", new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = "#/$defs/expr" }, ["minItems"] = 1 }),
                 Wrapper("not", new JsonObject { ["$ref"] = "#/$defs/expr" }),
                 new JsonObject { ["$ref"] = "#/$defs/field" },
+                Wrapper("phon", new JsonObject { ["type"] = "string", ["description"] = PatternSyntax }),
+                Wrapper("env", new JsonObject { ["type"] = "string", ["description"] = "target / left _ right: the target pattern must occur between the left and right patterns, either of which may be empty. Each part uses the phon pattern syntax. The match spans the target. " + PatternSyntax }),
                 new JsonObject
                 {
                     ["description"] = "Reserved: " + string.Join(", ", QueryOps.ReservedKinds) + ".",
@@ -207,11 +209,27 @@ public static class QuerySchema
         return new JsonObject { ["expr"] = expr, ["field"] = field };
     }
 
-    private static JsonObject Wrapper(string key, JsonObject inner) => new()
+    /// <summary>The pattern language of <c>phon</c> and <c>env</c>, as PanGloss's match op reads it.</summary>
+    public const string PatternSyntax =
+        "Pattern syntax, items separated by spaces: a natural-class token such as C or V (the first column of motif query --values classes); a name with spaces is written in brackets, [Nasal Stop]; " +
+        "a feature bundle [+voice -nasal]; an alpha variable [αvoice]; a literal segment /p/ (a bare letter is not a segment); " +
+        "( ) groups, ( )* repeats a group, # is a word edge, + is a morpheme boundary. " +
+        "The grammar's surface character table segments each word, so a pattern sees the word as the grammar does; a word it cannot segment is reported as unsegmentable and matches nothing, even under not. " +
+        "One alpha letter on two different features ([αvoice] _ [αson]) is refused as unsupported_construct (alphaAcrossFeatures). " +
+        "A literal or a segment-list class is tested by identity until PanGloss tests it as a rule does, so spans may under-report: the result says matchMode identity and mayUnderReport, and not over such a pattern warns that absence is not proven. " +
+        "+ needs words with marked boundaries, which Motif does not send yet, so it is refused on ordinary words as boundary_needs_marked_input.";
+
+    private static JsonObject Wrapper(string key, JsonObject inner, JsonObject? extra = null)
     {
-        ["type"] = "object",
-        ["additionalProperties"] = false,
-        ["required"] = new JsonArray(key),
-        ["properties"] = new JsonObject { [key] = inner },
-    };
+        var properties = new JsonObject { [key] = inner };
+        foreach (var (name, value) in extra ?? [])
+            properties[name] = value?.DeepClone();
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["required"] = new JsonArray(key),
+            ["properties"] = properties,
+        };
+    }
 }

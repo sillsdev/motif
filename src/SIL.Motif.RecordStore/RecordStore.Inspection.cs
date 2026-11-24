@@ -14,7 +14,7 @@ internal sealed record RescannedDigests(string Snapshot, string Index, string Co
 public sealed partial class RecordStore
 {
     /// <summary>Tables a later format adds; a status names them absent until they exist.</summary>
-    private static readonly string[] DerivedTables = ["RecordHeaders", "RecordChunks", "HandProjectionState", "HandFacts"];
+    private static readonly string[] DerivedTables = ["HandProjectionState", "HandFacts"];
 
     /// <summary>
     /// Names the state of every table through its own short read-only connection, so it is safe beside a live handle.
@@ -112,6 +112,21 @@ public sealed partial class RecordStore
         result.Add(existing.Contains("IncomingReferences")
             ? new("IncomingReferences", "present", Convert.ToInt64(Scalar("SELECT count(*) FROM IncomingReferences")) + " rows")
             : new("IncomingReferences", "absent"));
+        foreach (var table in new[] { "RecordHeaders", "RecordChunks" })
+            result.Add(existing.Contains(table)
+                ? new(table, "present", Convert.ToInt64(Scalar($"SELECT count(*) FROM {table}")) + " rows")
+                : new(table, "absent", "format 6 or earlier"));
+        if (!existing.Contains("RecordPublicationBinding")) result.Add(new("RecordPublicationBinding", "absent", "format 6 or earlier"));
+        else
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT Revision, SnapshotDigest, ReplayDigest, ContentDigest, IndexDigest FROM RecordPublicationBinding WHERE Id = 1";
+            using var reader = command.ExecuteReader();
+            result.Add(!reader.Read() ? new("RecordPublicationBinding", "absent", "no binding row")
+                : state is not null && reader.GetString(0) == state.Revision && reader.GetString(1) == state.SnapshotDigest &&
+                    reader.GetString(2) == state.ReplayDigest && reader.GetString(3) == state.ContentDigest && reader.GetString(4) == state.IndexDigest
+                    ? new("RecordPublicationBinding", "current") : new("RecordPublicationBinding", "mismatch", "it does not copy RecordStoreState"));
+        }
         foreach (var table in DerivedTables)
             result.Add(existing.Contains(table) ? new(table, "present") : new(table, "absent", "not built by this format"));
         return result;
