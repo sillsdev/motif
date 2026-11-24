@@ -52,8 +52,8 @@ public sealed class UiThreadTestCase : XunitTestCase
 
     public override Task<RunSummary> RunAsync(IMessageSink diagnosticMessageSink, IMessageBus messageBus,
         object[] constructorArguments, ExceptionAggregator aggregator, CancellationTokenSource cancellationTokenSource) =>
-        SingleThreadPump.RunAsync(() => base.RunAsync(diagnosticMessageSink, messageBus, constructorArguments, aggregator,
-            cancellationTokenSource));
+        UiThreadRun.RunAsync(this, DisplayName, messageBus, () => base.RunAsync(diagnosticMessageSink, messageBus,
+            constructorArguments, aggregator, cancellationTokenSource));
 }
 
 public sealed class UiThreadTheoryTestCase : XunitTheoryTestCase
@@ -67,6 +67,22 @@ public sealed class UiThreadTheoryTestCase : XunitTheoryTestCase
 
     public override Task<RunSummary> RunAsync(IMessageSink diagnosticMessageSink, IMessageBus messageBus,
         object[] constructorArguments, ExceptionAggregator aggregator, CancellationTokenSource cancellationTokenSource) =>
-        SingleThreadPump.RunAsync(() => base.RunAsync(diagnosticMessageSink, messageBus, constructorArguments, aggregator,
-            cancellationTokenSource));
+        UiThreadRun.RunAsync(this, DisplayName, messageBus, () => base.RunAsync(diagnosticMessageSink, messageBus,
+            constructorArguments, aggregator, cancellationTokenSource));
+}
+
+/// <summary>Runs a test case on the pump and turns a hang into one failed test that names it.</summary>
+internal static class UiThreadRun
+{
+    public static async Task<RunSummary> RunAsync(IXunitTestCase testCase, string displayName, IMessageBus messageBus,
+        Func<Task<RunSummary>> run)
+    {
+        try { return await SingleThreadPump.RunAsync(run, displayName); }
+        catch (TimeoutException timeout)
+        {
+            var test = new XunitTest(testCase, displayName);
+            messageBus.QueueMessage(new TestFailed(test, 0M, null, timeout));
+            return new RunSummary { Total = 1, Failed = 1 };
+        }
+    }
 }

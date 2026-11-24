@@ -18,21 +18,38 @@ internal static class SingleThreadPump
 {
     [ThreadStatic] private static bool _onPump;
 
+    /// <summary>How long one pumped test may run before it fails as hung instead of stalling its shard.</summary>
+    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(5);
+
     /// <summary>Runs <paramref name="work"/> on a pumping thread and completes with its outcome.</summary>
-    public static Task RunAsync(Func<Task> work) => RunAsync(async () =>
+    public static Task RunAsync(Func<Task> work, string? testName = null, TimeSpan? timeout = null) => RunAsync(async () =>
     {
         await work().ConfigureAwait(true);
         return true;
-    });
+    }, testName, timeout);
 
-    /// <summary>Runs <paramref name="work"/> on a pumping thread and returns or throws its result.</summary>
-    public static Task<T> RunAsync<T>(Func<Task<T>> work)
+    /// <summary>
+    /// Runs <paramref name="work"/> on a pumping thread and returns or throws its result; a body still running after
+    /// <paramref name="timeout"/> (default <see cref="DefaultTimeout"/>) fails with a <see cref="TimeoutException"/> naming
+    /// <paramref name="testName"/>, and its stuck thread is abandoned.
+    /// </summary>
+    public static Task<T> RunAsync<T>(Func<Task<T>> work, string? testName = null, TimeSpan? timeout = null)
     {
         ArgumentNullException.ThrowIfNull(work);
         if (_onPump || AvaloniaHeadlessPlatform.IsCurrentThread) return work();
+        var limit = timeout ?? DefaultTimeout;
         var outcome = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() => Pump(work, outcome)) { IsBackground = true, Name = "Single-thread pump" };
         thread.Start();
+        var timer = new Timer(static state =>
+        {
+            var (source, name, span) = ((TaskCompletionSource<T>, string?, TimeSpan))state!;
+            source.TrySetException(new TimeoutException(
+                $"{name ?? "A UI-thread test"} did not finish within {span.TotalSeconds:0.###} s on the single-thread pump; " +
+                "a continuation was lost or a call blocked the pump thread."));
+        }, (outcome, testName, limit), limit, Timeout.InfiniteTimeSpan);
+        outcome.Task.ContinueWith(static (_, state) => ((Timer)state!).Dispose(), timer,
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         return outcome.Task;
     }
 
