@@ -209,6 +209,25 @@ namespace SIL.TextEditing.Project
             return new RuleRenderer(cache).Render(owner, field);
         }
 
+        /// <summary>The canonical text of each element of an affix process's <see cref="RuleField.AffixInput"/> (one per context or variable) or
+        /// <see cref="RuleField.AffixOutput"/> (one per mapping), in order; the elements joined by one space are the text <see cref="Render(ICmObject, RuleField, LcmCache)"/> gives.</summary>
+        /// <exception cref="RuleNotationException">As <see cref="Render(ICmObject, RuleField, LcmCache)"/>.</exception>
+        public static IReadOnlyList<string> RenderElements(ICmObject owner, RuleField field, LcmCache cache)
+        {
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
+            if (cache == null) throw new ArgumentNullException(nameof(cache));
+            return new RuleRenderer(cache).Elements(owner, field);
+        }
+
+        /// <summary>The canonical text of each top-level item of a parsed text, in order, as <see cref="RenderElements(ICmObject, RuleField, LcmCache)"/> gives it for the same item stored.</summary>
+        /// <exception cref="RuleNotationException">As <see cref="Render(RuleText, LcmCache)"/>.</exception>
+        public static IReadOnlyList<string> RenderElements(RuleText text, LcmCache cache)
+        {
+            if (text == null) throw new ArgumentNullException(nameof(text));
+            if (cache == null) throw new ArgumentNullException(nameof(cache));
+            return new RuleRenderer(cache).Elements(text);
+        }
+
         /// <summary>The canonical text of a parsed text, with its alpha letters as written; reading then writing a canonical text gives it back.</summary>
         /// <exception cref="RuleNotationException">A phoneme or class of the text has no usable label (<see cref="Unrenderable"/>).</exception>
         public static string Render(RuleText text, LcmCache cache)

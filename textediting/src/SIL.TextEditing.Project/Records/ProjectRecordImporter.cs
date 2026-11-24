@@ -319,7 +319,7 @@ namespace SIL.TextEditing.Project
                 if (_documentGuids.Contains(obj.Guid))
                 {
                     int flid = FieldId(obj.ClassName, u.Field);
-                    string? key = u.Key ?? (flid == 0 ? null : KeyOf(obj.ClassName, flid));
+                    string? key = flid == 0 ? null : KeyOf(obj.ClassName, flid);
                     if (key != null) _locked.Add(LockKey(obj.Guid, key));
                     return;
                 }

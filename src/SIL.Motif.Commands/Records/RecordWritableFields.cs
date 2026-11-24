@@ -43,14 +43,14 @@ public sealed class RecordWritableFields : IWritableFields
                 var refusal = FieldRefusal(field, binding);
                 foreach (var verb in Verbs(field))
                 {
-                    var structure = IsFeatureStructure(field);
+                    var structure = IsFeatureStructure(field) || IsRuleFormula(field);
                     var handlerVerb = structure ? (verb == RecordWriteVerb.Set ? RecordWriteVerb.AddObject : RecordWriteVerb.RemoveObject)
                         : verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb;
                     var candidates = (binding.IsCustom
                         ? catalog[(CustomFieldOperationKinds.DeclaringClass, CustomFieldCatalog.TypeOf(field) ?? "", handlerVerb)]
                         : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)]).ToArray();
                     entries.Add((type.Name, field.Name, verb), new FieldEntry(type.Name, field, structure ? handlerVerb : verb, candidates, refusal,
-                        structure ? [FeatureStructureClass] : null));
+                        IsFeatureStructure(field) ? [FeatureStructureClass] : IsRuleFormula(field) ? RuleFormulaChildren(binding.Field) : null));
                 }
                 foreach (var child in (field.Item ?? field).ObjectTypes)
                     pending.Enqueue(child);
@@ -78,9 +78,13 @@ public sealed class RecordWritableFields : IWritableFields
     internal static bool IsFeatureStructure(RecordField field) =>
         field is { Kind: RecordFieldKind.Notation, Notation: SIL.TextEditing.Project.FeatureStructureNotation.Name };
 
-    /// <summary>Whether the field is rule-formula text, which the record layer shows and does not write.</summary>
+    /// <summary>Whether the field is rule-formula text; its set and clear are the creates and deletes of the owned objects it describes.</summary>
     internal static bool IsRuleFormula(RecordField field) =>
         field is { Kind: RecordFieldKind.Notation, Notation: SIL.TextEditing.Project.RuleNotation.Name };
+
+    private static string[] RuleFormulaChildren(string field) => field == "Input"
+        ? ["PhVariable", "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext"]
+        : ["MoCopyFromInput", "MoInsertPhones", "MoInsertNC", "MoModifyFromInput"];
 
     private static RecordWriteVerb[] Verbs(RecordField field) => (field.Kind, field.Item?.Kind) switch
     {

@@ -95,7 +95,36 @@ namespace SIL.TextEditing.Project
             }
         }
 
-        string AffixOutput(IMoAffixProcess process)
+        internal IReadOnlyList<string> Elements(ICmObject owner, RuleField field)
+        {
+            try
+            {
+                var process = Require<IMoAffixProcess>(owner, field);
+                switch (field)
+                {
+                    case RuleField.AffixInput: return process.InputOS.Select(Column).ToList();
+                    case RuleField.AffixOutput: return OutputSteps(process);
+                    default: throw new ArgumentOutOfRangeException(nameof(field), "Only the two affix fields are lists of elements.");
+                }
+            }
+            catch (FeatureStructureNotationException e)
+            {
+                throw new RuleNotationException(e.Code == FeatureStructureNotation.AmbiguousLabel ? RuleNotation.AmbiguousLabel : RuleNotation.Unrenderable, e.Message);
+            }
+        }
+
+        internal IReadOnlyList<string> Elements(RuleText text)
+        {
+            try { return text.Nodes.Select(Node).ToList(); }
+            catch (FeatureStructureNotationException e)
+            {
+                throw new RuleNotationException(e.Code == FeatureStructureNotation.AmbiguousLabel ? RuleNotation.AmbiguousLabel : RuleNotation.Unrenderable, e.Message);
+            }
+        }
+
+        string AffixOutput(IMoAffixProcess process) => string.Join(" ", OutputSteps(process));
+
+        List<string> OutputSteps(IMoAffixProcess process)
         {
             var input = process.InputOS.ToList();
             var steps = new List<string>();
@@ -122,7 +151,7 @@ namespace SIL.TextEditing.Project
                     default: throw Bad("An output holds a " + step.ClassName + ", which the text does not show.");
                 }
             }
-            return string.Join(" ", steps);
+            return steps;
         }
 
         static string Index(List<IPhContextOrVar> input, IPhContextOrVar? content)

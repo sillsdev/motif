@@ -99,9 +99,7 @@ namespace SIL.TextEditing.Project
                         int field = metadata.GetFieldId2(ancestor, fieldName, false);
                         if (field == 0 || metadata.GetOwnClsId(field) != ancestor) throw new ArgumentException("Unknown declared field " + className + "." + fieldName + ".");
                         if (managed.IsCustom(field) && entry.Name != "exclude") throw new ArgumentException("Custom fields may only be excluded: " + className + "." + fieldName + ".");
-                        bool alias = (string?)entry.Attribute("alias") == "true";
-                        if (alias ? !decisions.Contains(field) || entry.Name != "field" : !decisions.Add(field))
-                            throw new ArgumentException((alias ? "Alias without a field decision " : "Duplicate field decision ") + className + "." + fieldName + ".");
+                        if (!decisions.Add(field)) throw new ArgumentException("Duplicate field decision " + className + "." + fieldName + ".");
                         if (entry.Name == "field") Add(type, entry, field, metadata, managed, classes, keys);
                         else
                         {

@@ -43,6 +43,8 @@ public static class AffixProcessSnapshots
                     {
                         IPhSimpleContextSeg segment => PhSimpleContextSegRelationsSnapshotter.Snapshot(cache, segment),
                         IPhSimpleContextNC naturalClass => PhSimpleContextNCRelationsSnapshotter.Snapshot(cache, naturalClass),
+                        IPhSimpleContextBdry boundary => PhSimpleContextBdryRelationsSnapshotter.Snapshot(cache, boundary),
+                        IPhSequenceContext sequence => PhSequenceContextRelationsSnapshotter.Snapshot(cache, sequence),
                         _ => ObjectSnapshot.Empty(CanonicalId.FromGuid(input.Guid)),
                     });
                 foreach (var output in process.OutputOS)

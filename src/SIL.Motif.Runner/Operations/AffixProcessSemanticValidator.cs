@@ -112,18 +112,17 @@ internal static class AffixProcessSemanticValidator
             copies.Add(input.Guid, 0);
             switch (input)
             {
-                case IPhVariable when input.Guid == process.InputOS.Last().Guid:
+                case IPhVariable:
                     break;
-                case IPhSimpleContextSeg segment when segment.FeatureStructureRA is { } phone:
-                    RequirePhoneme(cache, CanonicalId.FromGuid(phone.Guid));
+                case IPhSequenceContext column when column.MembersRS.Count > 0:
+                    foreach (var member in column.MembersRS)
+                        RequireColumnMember(cache, member);
                     break;
-                case IPhSimpleContextNC context when context.FeatureStructureRA is { } naturalClass:
-                    if (context.PlusConstrRS.Count != 0 || context.MinusConstrRS.Count != 0)
-                        throw new InvalidOperationException("Affix input classes cannot carry alpha feature constraints.");
-                    RequireNaturalClass(cache, CanonicalId.FromGuid(naturalClass.Guid));
+                case IPhSimpleContext simple:
+                    RequireSimpleInput(cache, simple);
                     break;
                 default:
-                    throw new InvalidOperationException("Affix input must be a complete flat segment, class, or last remaining-stem variable.");
+                    throw new InvalidOperationException("Affix input must be a stem variable, a segment, boundary or class context, or a column of those.");
             }
         }
         var inserted = false;
@@ -147,16 +146,18 @@ internal static class AffixProcessSemanticValidator
                     part.Owner?.Guid == process.Guid:
                     copies[part.Guid]++;
                     break;
-                case IMoInsertPhones insert when insert.ContentRS.Count == 1 && insert.ContentRS[0] is IPhPhoneme phone:
-                    RequirePhoneme(cache, CanonicalId.FromGuid(phone.Guid));
+                case IMoInsertPhones insert when insert.ContentRS.Count >= 1:
+                    foreach (var unit in insert.ContentRS)
+                        RequireTerminalUnit(cache, unit);
                     inserted = true;
                     break;
                 default:
-                    throw new InvalidOperationException("Affix output must copy or modify a top-level input of the same process, insert one phoneme, or insert one natural class.");
+                    throw new InvalidOperationException("Affix output must copy or modify a top-level input of the same process, insert phonemes or boundary markers, or insert one natural class.");
             }
         }
-        if (process.InputOS.Last() is IPhVariable lastVariable && copies[lastVariable.Guid] == 0)
-            throw new InvalidOperationException("The remaining-stem input must survive at least once; omitting it deletes the stem.");
+        foreach (var variable in process.InputOS.OfType<IPhVariable>())
+            if (copies[variable.Guid] == 0)
+                throw new InvalidOperationException("A stem variable of the input must survive at least once; omitting it deletes the stem.");
         if (copies.Values.All(count => count == 0))
             throw new InvalidOperationException("An output that copies no input deletes the whole stem.");
         if (!inserted && copies.Values.All(count => count == 1))
@@ -192,6 +193,44 @@ internal static class AffixProcessSemanticValidator
         foreach (var sense in entry.SensesOS)
             if (sense.MorphoSyntaxAnalysisRA is not { } msa || !entry.MorphoSyntaxAnalysesOC.Contains(msa))
                 throw new InvalidOperationException("A process sense must reference grammatical info of its own entry.");
+    }
+
+    private static void RequireSimpleInput(LcmCache cache, IPhSimpleContext context)
+    {
+        switch (context)
+        {
+            case IPhSimpleContextSeg segment when segment.FeatureStructureRA is { } phone:
+                RequirePhoneme(cache, CanonicalId.FromGuid(phone.Guid));
+                break;
+            case IPhSimpleContextBdry boundary when boundary.FeatureStructureRA is { } marker:
+                RequireTerminalUnit(cache, marker);
+                break;
+            case IPhSimpleContextNC naturalClassContext when naturalClassContext.FeatureStructureRA is { } naturalClass:
+                if (naturalClassContext.PlusConstrRS.Count != 0 || naturalClassContext.MinusConstrRS.Count != 0)
+                    throw new InvalidOperationException("Affix input classes cannot carry alpha feature constraints.");
+                RequireNaturalClass(cache, CanonicalId.FromGuid(naturalClass.Guid));
+                break;
+            default:
+                throw new InvalidOperationException("Affix input contexts must name a phoneme, boundary marker or natural class.");
+        }
+    }
+
+    private static void RequireColumnMember(LcmCache cache, IPhPhonContext member)
+    {
+        if (member is not IPhSimpleContext simple || member.Owner is not IPhPhonData)
+            throw new InvalidOperationException("An input column holds simple contexts that the project's phonological data owns.");
+        RequireSimpleInput(cache, simple);
+    }
+
+    /// <summary>A phoneme or boundary marker of the first phoneme set; a phoneme also needs a usable first vernacular code.</summary>
+    internal static IPhTerminalUnit RequireTerminalUnit(LcmCache cache, IPhTerminalUnit unit)
+    {
+        if (unit is IPhPhoneme phone)
+            return RequirePhoneme(cache, CanonicalId.FromGuid(phone.Guid));
+        var firstSet = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.FirstOrDefault();
+        if (unit is not IPhBdryMarker marker || firstSet is null || marker.Owner?.Guid != firstSet.Guid)
+            throw new InvalidOperationException("An affix boundary marker must belong to the project's first phoneme set.");
+        return marker;
     }
 
     internal static IPhPhoneme RequirePhoneme(LcmCache cache, CanonicalId id)
