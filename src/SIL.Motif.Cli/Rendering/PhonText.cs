@@ -36,7 +36,7 @@ internal static class PhonText
         string Class(SIL.Motif.Commands.Queries.PhonValue value) =>
             (value.Token ?? "(none)") + "  " + value.Name + (value.Kind is { } kind ? "  " + kind : "") +
             (value.Token is null ? "  (no spelling reaches this class)" : "");
-        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}; the first column is what to type in a pattern, and a class is also named by its full name in brackets, as in [Name]:");
+        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}; the first column is what to type in a pattern, then PanGloss's label and the class kind:");
         foreach (var value in response.NaturalClasses) text.AppendLine("  " + Class(value));
         text.AppendLine($"Phonological features ({response.Features.Count}):");
         foreach (var value in response.Features) text.AppendLine("  " + Feature(value));
