@@ -10,8 +10,8 @@ public sealed record RealizesReason(string Code, string? Detail = null);
 /// <summary>One surface form of the morpheme and the evidence for it.</summary>
 /// <param name="Form">The surface string, NFC.</param>
 /// <param name="Tier">The weakest tier that supports the form: <c>attested</c> here.</param>
-/// <param name="Source"><c>lexeme-form</c> when the analysis used the entry's lexeme form, <c>alternate-form</c> for an allomorph of it.</param>
-/// <param name="Words">How many word types of the source have an analysis that cuts this form for the morpheme.</param>
+/// <param name="Source">Where the form came from, comma-joined when several agree: <c>lexeme-form</c> or <c>alternate-form</c> from stored analyses, <c>corpus-parse</c> from parsing the corpus, <c>corpus-parse-whole-word</c> when the parse gave no surface piece and the whole word stands in.</param>
+/// <param name="Words">How many word types, summed over the sources, have an analysis that cuts this form for the morpheme.</param>
 /// <param name="Examples">A few of those words, by spelling.</param>
 public sealed record RealizesForm(string Form, string Tier, string Source, int Words, IReadOnlyList<string> Examples);
 
@@ -22,6 +22,20 @@ public sealed record RealizesForm(string Form, string Tier, string Source, int W
 /// <param name="Segmentation"><c>approximate</c>: the expression reads characters, not the grammar's segments, so a form may also match across a digraph.</param>
 public sealed record RealizesPattern(string Kind, string Text, string Anchor, string Segmentation);
 
+/// <summary>What parsing the corpus's words to find a morpheme came to, so a reader sees how much of the corpus the set rests on.</summary>
+/// <param name="Types">Word types in the corpus.</param>
+/// <param name="Parsed">Word types sent to PanGloss.</param>
+/// <param name="WithMorpheme">Parsed words with an analysis that contains the morpheme.</param>
+/// <param name="NoAnalysis">Parsed words the grammar gave no analysis.</param>
+/// <param name="Unsegmentable">Words PanGloss could not segment with the grammar's characters.</param>
+/// <param name="Capped">Words whose parse stopped at the attempt or work limit.</param>
+/// <param name="TimedOut">Words whose parse stopped at the word timeout.</param>
+/// <param name="Failed">Words the resident parser did not answer.</param>
+/// <param name="Sample">The sample size asked for; null when every word type was parsed.</param>
+/// <param name="Seconds">Wall-clock seconds the parsing took.</param>
+public sealed record RealizesParseReport(int Types, int Parsed, int WithMorpheme, int NoAnalysis, int Unsegmentable, int Capped, int TimedOut,
+    int Failed, int? Sample, double Seconds);
+
 /// <summary>A morpheme's variant set at one tier, versioned <see cref="SchemaName"/>.</summary>
 /// <param name="Schema">The schema name.</param>
 /// <param name="Morpheme">The morpheme as resolved: its form and its entry:msa id.</param>
@@ -31,9 +45,11 @@ public sealed record RealizesPattern(string Kind, string Text, string Anchor, st
 /// <param name="StopReason">Why a tier that enumerates stopped early; null for <c>attested</c>.</param>
 /// <param name="Forms">The surface forms searched for.</param>
 /// <param name="Pattern">The compiled search.</param>
+/// <param name="Parse">The corpus parse the set rests on; null when only stored analyses were read.</param>
 public sealed record RealizesResult(string Schema, string Morpheme, string Tier, bool Complete, IReadOnlyList<RealizesReason> Reasons,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? StopReason,
-    IReadOnlyList<RealizesForm> Forms, RealizesPattern Pattern)
+    IReadOnlyList<RealizesForm> Forms, RealizesPattern Pattern,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RealizesParseReport? Parse = null)
 {
     /// <summary>The schema name of the JSON form.</summary>
     public const string SchemaName = "motif.realizes.v1";

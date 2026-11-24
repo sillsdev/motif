@@ -1,0 +1,24 @@
+namespace SIL.Motif.Tests.TestFixtures;
+
+/// <summary>
+/// Replies of <c>pangloss serve</c> v0.31.0 to <c>parse</c> with <c>traceDetails</c>, recorded from the metathesis fixture PanGloss ships
+/// (fw-metathesis, its entries tika, itka and the suffix s). Each is the real reply trimmed to what Motif reads: the trace tree,
+/// provenance and host capture are dropped, and each morph keeps only its <c>identity</c>. Capped came from <c>serve --work-cap 50</c>.
+/// </summary>
+public static class RecordedParse
+{
+    /// <summary>The reply for tikas.</summary>
+    public const string StemAndSuffix = @"{""exitCode"":0,""guessed"":false,""id"":""p0"",""result"":{""result"":{""analyses"":[{""analysisId"":""analysis-0"",""index"":0,""morphemes"":""+"",""morphs"":[{""identity"":{""entryId"":""59812fa2-7cb8-4481-baed-78212699c934"",""formId"":""573d0f58-2271-409c-ba66-dac1d356373a"",""inflTypeId"":null,""msaId"":""568c4482-a8ab-46c5-8434-beadf5fcd625"",""quality"":""authored""}},{""identity"":{""entryId"":""aefb1a12-318b-4a3d-9199-97bd2c6d0867"",""formId"":""99bbd021-3a3c-4a01-85ce-d419bd3fb849"",""inflTypeId"":null,""msaId"":""26438485-59b3-4166-9401-f767251e5508"",""quality"":""authored""}}],""projection"":{""error"":null,""profile"":""fieldworks-parse-analysis/v1"",""status"":""available""},""surface"":""tika+?s""}],""guessed"":false,""signature"":""+|tika+?s""},""schemaVersion"":""pangloss.trace-details.v5"",""search"":{""capped"":false,""completed"":true,""elapsedNs"":289661,""invalidShape"":false,""timedNs"":124518,""timedOut"":false,""timingOverrunNs"":0,""unattributedNs"":165143,""workSteps"":186},""word"":""tikas""},""status"":""ok"",""type"":""result"",""workSteps"":186}";
+
+    /// <summary>The reply for tika.</summary>
+    public const string StemOnly = @"{""exitCode"":0,""guessed"":false,""id"":""p1"",""result"":{""result"":{""analyses"":[{""analysisId"":""analysis-0"",""index"":0,""morphemes"":"""",""morphs"":[{""identity"":{""entryId"":""59812fa2-7cb8-4481-baed-78212699c934"",""formId"":""573d0f58-2271-409c-ba66-dac1d356373a"",""inflTypeId"":null,""msaId"":""568c4482-a8ab-46c5-8434-beadf5fcd625"",""quality"":""authored""}}],""projection"":{""error"":null,""profile"":""fieldworks-parse-analysis/v1"",""status"":""available""},""surface"":""tika""}],""guessed"":false,""signature"":""|tika""},""schemaVersion"":""pangloss.trace-details.v5"",""search"":{""capped"":false,""completed"":true,""elapsedNs"":127862,""invalidShape"":false,""timedNs"":39370,""timedOut"":false,""timingOverrunNs"":0,""unattributedNs"":88492,""workSteps"":95},""word"":""tika""},""status"":""ok"",""type"":""result"",""workSteps"":95}";
+
+    /// <summary>The reply for itkas.</summary>
+    public const string OtherStemAndSuffix = @"{""exitCode"":0,""guessed"":false,""id"":""p2"",""result"":{""result"":{""analyses"":[{""analysisId"":""analysis-0"",""index"":0,""morphemes"":""+"",""morphs"":[{""identity"":{""entryId"":""e0551c68-5f4c-4945-b91c-cc96c32dcf0d"",""formId"":""831cd6f4-35c5-4566-aad8-68b655cf4982"",""inflTypeId"":null,""msaId"":""d2dad7bf-da2f-48ad-ab9f-655099a763d1"",""quality"":""authored""}},{""identity"":{""entryId"":""aefb1a12-318b-4a3d-9199-97bd2c6d0867"",""formId"":""99bbd021-3a3c-4a01-85ce-d419bd3fb849"",""inflTypeId"":null,""msaId"":""26438485-59b3-4166-9401-f767251e5508"",""quality"":""authored""}}],""projection"":{""error"":null,""profile"":""fieldworks-parse-analysis/v1"",""status"":""available""},""surface"":""itka+?s""}],""guessed"":false,""signature"":""+|itka+?s""},""schemaVersion"":""pangloss.trace-details.v5"",""search"":{""capped"":false,""completed"":true,""elapsedNs"":200540,""invalidShape"":false,""timedNs"":96475,""timedOut"":false,""timingOverrunNs"":0,""unattributedNs"":104065,""workSteps"":186},""word"":""itkas""},""status"":""ok"",""type"":""result"",""workSteps"":186}";
+
+    /// <summary>The reply for zzz.</summary>
+    public const string Unsegmentable = @"{""exitCode"":0,""guessed"":false,""id"":""p3"",""result"":{""result"":{""analyses"":[],""guessed"":false,""signature"":""-""},""schemaVersion"":""pangloss.trace-details.v5"",""search"":{""capped"":false,""completed"":false,""elapsedNs"":8531,""invalidShape"":true,""timedNs"":0,""timedOut"":false,""timingOverrunNs"":0,""unattributedNs"":8531,""workSteps"":3},""word"":""zzz""},""status"":""SKIPPED"",""type"":""result"",""workSteps"":3}";
+
+    /// <summary>The reply for tikas.</summary>
+    public const string Capped = @"{""exitCode"":0,""guessed"":false,""id"":""p0"",""result"":{""result"":{""analyses"":[],""guessed"":false,""signature"":""-""},""schemaVersion"":""pangloss.trace-details.v5"",""search"":{""capped"":true,""completed"":false,""elapsedNs"":124669,""invalidShape"":false,""timedNs"":35750,""timedOut"":false,""timingOverrunNs"":0,""unattributedNs"":88919,""workSteps"":53},""word"":""tikas""},""status"":""CAP"",""type"":""result"",""workSteps"":53}";
+}

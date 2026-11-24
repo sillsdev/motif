@@ -46,7 +46,11 @@ public static class CorpusQueryCommand
     /// <see cref="CorpusFormsRequest.GrammarPath"/>: PanGloss, loading that grammar, segments the words and names the natural classes.
     /// </summary>
     public static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) => Forms(request, parserPath, cancellationToken, null);
+
+    // A test passes the parser that replays recorded replies in place of the resident one.
+    internal static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath,
+        CancellationToken cancellationToken, IRealizesParser? realizesParser)
     {
         ArgumentNullException.ThrowIfNull(request);
         QueryExpr? where;
@@ -55,6 +59,7 @@ public static class CorpusQueryCommand
         if ((request.Where is null) == (request.QueryJson is null))
             return Invalid("Give the query as --where <expression> or as --query-json, one of the two.");
         if (limit < 1) return Invalid("limit is a positive whole number.");
+        if (request.Sample is < 0) return Invalid("sample is zero for every word type, or a positive whole number.");
         try
         {
             if (request.QueryJson is { } json)
@@ -75,7 +80,7 @@ public static class CorpusQueryCommand
             }
             if (QueryExprTools.HasPatterns(where) && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(QueryRefusalException.PhonNeedsGrammar().Refusal);
-            if (RealizesLowering.Has(where) && string.IsNullOrWhiteSpace(request.GrammarPath))
+            if (RealizesLowering.Has(where) && string.IsNullOrWhiteSpace(request.GrammarPath) && string.IsNullOrWhiteSpace(request.ProjectPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(RealizesRefusals.NeedsProject().Refusal);
         }
         catch (QueryRefusalException refused)
@@ -96,7 +101,10 @@ public static class CorpusQueryCommand
         RealizesRun? realizes = null;
         if (RealizesLowering.Has(where))
         {
-            try { realizes = RealizesQuery.Prepare(where!, request.GrammarPath!, request.FoldCase); }
+            var context = new RealizesContext(corpus, string.IsNullOrWhiteSpace(request.GrammarPath) ? null : request.GrammarPath,
+                string.IsNullOrWhiteSpace(request.ProjectPath) ? null : request.ProjectPath, request.FoldCase, request.Sample ?? RealizesSample.Default,
+                () => realizesParser ?? RealizesQuery.ResidentParser(request.GrammarPath!, parserPath));
+            try { realizes = RealizesQuery.Prepare(where!, context, cancellationToken); }
             catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
         }
         PhonSession? phon = null;

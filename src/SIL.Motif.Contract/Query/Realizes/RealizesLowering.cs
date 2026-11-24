@@ -16,20 +16,24 @@ public static class RealizesRefusals
             ["morpheme"] = set.Morpheme, ["tier"] = set.Tier, ["reasons"] = string.Join(",", set.Reasons.Select(r => r.Code)),
         }));
 
-    /// <summary>The attested tier found no analysis to read the morpheme's forms from.</summary>
-    public static QueryRefusalException NoParses(string morpheme, bool projectHasAnalyses) => new(new Refusal(
+    /// <summary>The attested tier found no word that carries the morpheme; <paramref name="finding"/> says what was searched.</summary>
+    public static QueryRefusalException NoParses(string morpheme, string finding) => new(new Refusal(
         RefusalCodes.QueryRealizesNoParses, FailureReason.Refused,
-        projectHasAnalyses
-            ? $"realizes({morpheme}, attested) reads stored analyses, and none of them uses {morpheme}. Parse the texts, or ask for tier possible or generated."
-            : $"realizes({morpheme}, attested) reads stored analyses, and the project has none. Parse the texts, or ask for tier possible or generated.",
+        $"realizes({morpheme}, attested) found no analysis that uses {morpheme}: {finding}. Parse more of the corpus (--sample), name a project with stored analyses (--project), or ask for tier possible or generated.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["morpheme"] = morpheme, ["tier"] = RealizesTiers.Attested }));
 
-    /// <summary><c>realizes</c> needs the project whose lexicon names the morpheme; a corpus query names it with <c>--grammar</c>.</summary>
+    /// <summary><c>realizes</c> needs a grammar to parse the corpus with, a project to read stored analyses from, or both.</summary>
     public static QueryRefusalException NeedsProject() => new(new Refusal(
         RefusalCodes.QueryRealizesNeedsProject, FailureReason.InvalidArgument,
-        "realizes resolves a morpheme in a project's lexicon and reads its stored analyses, and this query has no project. " +
-        "Pass --grammar <path> (the FieldWorks project), or run the query against a project.",
+        "realizes finds a morpheme in a corpus by parsing it with a grammar or by reading a project's stored analyses, and this query names neither. " +
+        "Pass --grammar <path> to parse the corpus, --project <fwdata> to read stored analyses, or both.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["flag"] = "--grammar" }));
+
+    /// <summary>A morpheme named by its form can only be found in a project's lexicon.</summary>
+    public static QueryRefusalException NeedsLexicon(string morpheme) => new(new Refusal(
+        RefusalCodes.QueryRealizesNeedsProject, FailureReason.InvalidArgument,
+        $"'{morpheme}' names a morpheme by its form, and only a project's lexicon can say which entry that is. Pass --project <fwdata>, or name it as entry:msa.",
+        new Dictionary<string, string>(StringComparer.Ordinal) { ["flag"] = "--project", ["morpheme"] = morpheme }));
 
     /// <summary>The tier is named in the schema but its variant source is not built yet.</summary>
     public static QueryRefusalException TierNotYetAvailable(string tier) => QueryRefusalException.NotYetAvailable("realizes tier " + tier);
@@ -79,7 +83,7 @@ public static class RealizesLowering
         {
             case QueryRealizes realizes:
                 var (set, forms) = resolve(realizes);
-                if (forms.Count == 0) throw RealizesRefusals.NoParses(set.Morpheme, projectHasAnalyses: true);
+                if (forms.Count == 0) throw RealizesRefusals.NoParses(set.Morpheme, "no form was found");
                 if (negated && !set.Complete) throw RealizesRefusals.NegationIncomplete(set);
                 var fields = RealizesPatternCompiler.Chunks(forms, set.Pattern.Anchor, ChunkLimit)
                     .Select(chunk => (QueryExpr)new QueryField("form", QueryOps.Contains, chunk)).ToList();

@@ -26,7 +26,7 @@ public sealed class RealizesQueryTests(PristineProjectFixture pristine) : IDispo
     private static readonly string[] Corpus = ["kaonan", "kaonhan", "kaonon", "kaon", "anak", "lihan", "kaonxan", "hanan"];
 
     private CommandOutcome<CorpusFormsResponse> Run(string project, string where) =>
-        CorpusQueryCommand.Forms(new CorpusFormsRequest(Words(Corpus), Where: where, GrammarPath: project));
+        CorpusQueryCommand.Forms(new CorpusFormsRequest(Words(Corpus), Where: where, ProjectPath: project));
 
     [Fact]
     public void ASuffixCompilesToItsAttestedFormsAnchoredAtTheEndAndLabelsEachHit()
@@ -76,7 +76,7 @@ public sealed class RealizesQueryTests(PristineProjectFixture pristine) : IDispo
     {
         var outcome = Run(RealizesCorpusFixture.Create(pristine, withAnalyses: false), "realizes(sfx:-an, attested)");
         Assert.Equal(RefusalCodes.QueryRealizesNoParses, outcome.Refusal!.Code);
-        Assert.Contains("none", outcome.Refusal.Message);
+        Assert.Contains("no stored analyses", outcome.Refusal.Message);
     }
 
     [Fact]
