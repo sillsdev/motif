@@ -151,7 +151,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         Assert.NotEmpty(lowering.Refusals);
     }
 
-    /// <summary>Imports the texts into the project at <paramref name="path"/> through a real draft, finalize and apply.</summary>
+    /// <summary>Imports the texts through a real draft, finalize and apply.</summary>
     private static void Import(string path, string draft, string? input, string? output)
     {
         using (var cache = new FwDataProjectLoader().LoadCache(path))
@@ -186,7 +186,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         return (cache.ProjectId.Path, 0);
     }
 
-    /// <summary>Applies each (input, output) pair in turn and requires the project to export exactly that text after each.</summary>
+    /// <summary>Applies each pair in turn and requires the project to export exactly that text.</summary>
     private void Walk(params (string? Input, string? Output)[] steps)
     {
         var (path, _) = Start();

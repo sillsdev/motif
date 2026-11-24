@@ -83,7 +83,7 @@ public sealed class RecordWritableFields : IWritableFields
     internal static bool IsRuleFormula(RecordField field) =>
         field is { Kind: RecordFieldKind.Notation, Notation: SIL.TextEditing.Project.RuleNotation.Name };
 
-    // The formula is the one key that adds, removes and moves members; the parts key only reaches into the members' own fields.
+    // The parts key reaches only a member's own fields.
     internal static bool IsRuleParts(RecordObjectType type, RecordField field, ProjectRecordSchemaResult schema) =>
         field is { Kind: RecordFieldKind.Sequence } && type.Fields.Any(other => IsRuleFormula(other) &&
             schema.FieldBinding(type.Name, other.Name) == schema.FieldBinding(type.Name, field.Name));

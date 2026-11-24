@@ -202,7 +202,7 @@ public sealed partial class RecordChangeSetLowerer
             return pairs;
         }
 
-        /// <summary>Within each gap between matched elements, the removed old elements and the new ones taken in order: the i-th removed is replaced by the i-th new.</summary>
+        /// <summary>Within each gap, the i-th removed element is replaced by the i-th new one.</summary>
         private static IEnumerable<(int Old, int New)> Replacements(Dictionary<int, int> matches, int oldCount, int newCount)
         {
             var anchors = matches.OrderBy(pair => pair.Key).Select(pair => (New: pair.Key, Old: pair.Value))
@@ -219,7 +219,7 @@ public sealed partial class RecordChangeSetLowerer
             }
         }
 
-        /// <summary>The placement that puts a new member right after its predecessor in the list as it stands, which then gains the member.</summary>
+        /// <summary>The placement that puts a new member right after its predecessor.</summary>
         private static Placement? Placed(List<Guid> simulated, Guid? predecessor, Guid entity)
         {
             var at = predecessor is { } before ? simulated.IndexOf(before) + 1 : 0;
@@ -356,7 +356,7 @@ public sealed partial class RecordChangeSetLowerer
             Add(Operation(Id(role), kind, output, new { @ref = CanonicalId.FromGuid(input).Value }), item.Index);
         }
 
-        /// <summary>Finds or creates the feature class a bracket names; a created class is auto-named as FieldWorks names the class of a modification.</summary>
+        /// <summary>Finds or creates the feature class a bracket names.</summary>
         private sealed class ClassResolver(Run run, IMoAffixProcess process)
         {
             private readonly Dictionary<string, CanonicalId> _created = [];
