@@ -172,7 +172,14 @@ internal sealed partial class HandAnalysisHost : IHandAnalysisIndex, IAsyncDispo
         try
         {
             recorder.Begin(OpenPhase.State, ct);
-            var (point, verification) = await AcquirePointAsync(ct, () => recorder.Begin(OpenPhase.Load, ct));
+            var (point, verification) = await AcquirePointAsync(ct, () => recorder.Begin(OpenPhase.Load, ct), async (served, token) =>
+            {
+                // The projections read every record, and an overlapping publication must not split that read from the point.
+                await served.GetPlanningIndexAsync(token);
+                var version = collationFactory(HandAnalysisProjection.Systems(served)).Version;
+                if (!ring.Any(p => p.Proof.SamePoint(served.State) && p.Hand.ComparisonVersion == version))
+                    await served.Records.AllAsync(token);
+            });
             if (verification == StoreVerification.Certified && verifiedProof?.SamePoint(point.State) == true)
                 verification = StoreVerification.Full;
             recorder.Begin(OpenPhase.Project, ct);
@@ -194,13 +201,18 @@ internal sealed partial class HandAnalysisHost : IHandAnalysisIndex, IAsyncDispo
             }
             else
             {
-                var hand = ring.FirstOrDefault(p => p.Proof.SamePoint(point.State) && p.Hand.ComparisonVersion == collation.Version)?.Hand
-                    ?? HandAnalysisProjection.Build(point, collation, ct);
+                var hand = ring.FirstOrDefault(p => p.Proof.SamePoint(point.State) && p.Hand.ComparisonVersion == collation.Version)?.Hand;
+                if (hand is null)
+                {
+                    // The projections read every record; a certified point decodes and checks them all here.
+                    await point.Records.AllAsync(ct);
+                    hand = HandAnalysisProjection.Build(point, collation, ct);
+                }
                 recorder.Begin(OpenPhase.Pin, ct);
                 var stamp = new SnapshotStamp(id, project, home, external.SourceRevision, external.ParserRevision, external.SettingsRevision,
                     collation.Version, IndexSchemaVersion,
                     verification == StoreVerification.Full ? SnapshotVerification.Full : SnapshotVerification.Certified);
-                pinned = new PinnedPoint(stamp, point.State, hand, point.GetPlanningIndex(ct));
+                pinned = new PinnedPoint(stamp, point.State, hand, await point.GetPlanningIndexAsync(ct));
             }
             ct.ThrowIfCancellationRequested();
             SwapReached?.Invoke();
@@ -293,12 +305,13 @@ internal sealed partial class HandAnalysisHost : IHandAnalysisIndex, IAsyncDispo
         finally { gate.Release(); }
     }
 
-    private async Task<(VerifiedPoint Point, StoreVerification Verification)> AcquirePointAsync(CancellationToken ct, Action? stateRead = null)
+    private async Task<(VerifiedPoint Point, StoreVerification Verification)> AcquirePointAsync(CancellationToken ct, Action? stateRead = null,
+        Func<VerifiedPoint, CancellationToken, Task>? materialize = null)
     {
         (VerifiedPoint Point, StoreVerification Verification) served;
         try
         {
-            served = await reader.ServedPointAsync(ct, stateRead);
+            served = await reader.ServedPointAsync(ct, stateRead, materialize);
         }
         catch (Exception exception) when (exception is SqliteException or IOException or InvalidDataException or InvalidOperationException)
         {

@@ -48,9 +48,15 @@ public sealed class ReferenceResult
 public sealed partial class ReferenceIndexSnapshot
 {
     private const string AnchorCoverageUnavailable = "Anchor coverage is unavailable.";
-    private readonly ImmutableDictionary<Guid, ImmutableArray<NativeReference>> incoming;
-    private readonly ImmutableDictionary<Guid, ImmutableArray<Guid>> children;
-    private readonly ImmutableDictionary<Guid, ReferenceRecord> records;
+    // Grouped dictionaries are built on first use from flat arrays; Lazy gives concurrent users one result.
+    private readonly Lazy<ImmutableDictionary<Guid, ImmutableArray<NativeReference>>> incomingIndex;
+    private readonly Lazy<ImmutableDictionary<Guid, ImmutableArray<Guid>>> childrenIndex;
+    private readonly Lazy<ImmutableDictionary<Guid, ReferenceRecord>> recordIndex;
+    private ImmutableDictionary<Guid, ImmutableArray<NativeReference>> incoming => incomingIndex.Value;
+    private ImmutableDictionary<Guid, ImmutableArray<Guid>> children => childrenIndex.Value;
+    private ImmutableDictionary<Guid, ReferenceRecord> records => recordIndex.Value;
+    /// <summary>Whether the grouped dictionaries have been built; a certified point leaves them unbuilt until a query needs them.</summary>
+    internal bool IndexBuilt => incomingIndex.IsValueCreated || childrenIndex.IsValueCreated || recordIndex.IsValueCreated;
     private readonly ImmutableArray<string> limitations;
     private readonly ImmutableArray<ReferenceWitness> witnesses;
     private readonly bool nativeClosureComplete;
@@ -62,23 +68,13 @@ public sealed partial class ReferenceIndexSnapshot
     {
         Revision = revision;
         this.usageSchema = usageSchema;
-        var materialized = edges.ToArray();
-        incoming = materialized.GroupBy(e =>
-        {
-            ct.ThrowIfCancellationRequested();
-            return e.Target;
-        }).ToImmutableDictionary(g => g.Key, g => g.ToImmutableArray());
-        children = materialized.Where(e =>
-        {
-            ct.ThrowIfCancellationRequested();
-            return e.Owning;
-        }).GroupBy(e => e.Source)
-            .ToImmutableDictionary(g => g.Key, g => g.Select(e => e.Target).ToImmutableArray());
-        this.records = records.ToImmutableDictionary(r =>
-        {
-            ct.ThrowIfCancellationRequested();
-            return r.Id;
-        });
+        var materialized = edges as NativeReference[] ?? edges.ToArray();
+        var recordArray = records as ReferenceRecord[] ?? records.ToArray();
+        incomingIndex = new(() => materialized.GroupBy(e => e.Target)
+            .ToImmutableDictionary(g => g.Key, g => g.ToImmutableArray()), LazyThreadSafetyMode.ExecutionAndPublication);
+        childrenIndex = new(() => materialized.Where(e => e.Owning).GroupBy(e => e.Source)
+            .ToImmutableDictionary(g => g.Key, g => g.Select(e => e.Target).ToImmutableArray()), LazyThreadSafetyMode.ExecutionAndPublication);
+        recordIndex = new(() => recordArray.ToImmutableDictionary(r => r.Id), LazyThreadSafetyMode.ExecutionAndPublication);
         var nativeLimitations = limitations.ToImmutableArray();
         nativeClosureComplete = nativeLimitations.IsEmpty;
         this.limitations = [.. nativeLimitations, AnchorCoverageUnavailable,
@@ -118,7 +114,7 @@ public sealed partial class ReferenceIndexSnapshot
         var missing = limitations.ToList();
         if (coverage) missing.Remove(AnchorCoverageUnavailable);
         ValidateEvidence(new ReferenceEvidence(Revision, Revision, null, null, anchors), missing, storedAnchors: true, ct: ct);
-        return new(this, Revision, incoming, missing.Distinct(StringComparer.Ordinal).ToImmutableArray(), anchors);
+        return new(this, Revision, incomingIndex, missing.Distinct(StringComparer.Ordinal).ToImmutableArray(), anchors);
     }
 
     /// <summary>Adds caller observations without replacing the Home's verified witnesses or proving coverage.</summary>
@@ -142,14 +138,14 @@ public sealed partial class ReferenceIndexSnapshot
             }
             combined.Add(observation);
         }
-        return new(this, Revision, incoming, missing.Distinct(StringComparer.Ordinal).ToImmutableArray(), combined.ToImmutable());
+        return new(this, Revision, incomingIndex, missing.Distinct(StringComparer.Ordinal).ToImmutableArray(), combined.ToImmutable());
     }
 
     private ReferenceIndexSnapshot(ReferenceIndexSnapshot other, string revision,
-        ImmutableDictionary<Guid, ImmutableArray<NativeReference>> incoming,
+        Lazy<ImmutableDictionary<Guid, ImmutableArray<NativeReference>>> incoming,
         ImmutableArray<string> limitations, ImmutableArray<ReferenceWitness> witnesses)
     {
-        Revision = revision; this.incoming = incoming; children = other.children; records = other.records;
+        Revision = revision; incomingIndex = incoming; childrenIndex = other.childrenIndex; recordIndex = other.recordIndex;
         nativeClosureComplete = other.nativeClosureComplete; usageSchema = other.usageSchema;
         this.limitations = limitations; this.witnesses = witnesses;
     }
@@ -167,7 +163,7 @@ public sealed partial class ReferenceIndexSnapshot
         }
         if (added is not null)
             next = next.SetItem(added.Target, next.TryGetValue(added.Target, out var present) ? present.Add(added) : [added]);
-        return new ReferenceIndexSnapshot(this, revision, next, limitations, witnesses);
+        return new ReferenceIndexSnapshot(this, revision, new(next), limitations, witnesses);
     }
 
     public ReferenceRecord? Record(Guid id) => records.GetValueOrDefault(id);

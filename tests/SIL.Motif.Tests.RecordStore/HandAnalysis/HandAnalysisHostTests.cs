@@ -388,6 +388,21 @@ public sealed class HandAnalysisHostTests : IDisposable
     }
 
     [Fact]
+    public async Task AChunkRowThatDisagreesWithTheCertificateTakesTheFullPathAndTheStampSaysFull()
+    {
+        await Import();
+        await using (var host = await HandAnalysisHost.OpenAsync(Database))
+        {
+            await using var pin = await host.PinAsync(basis, null);
+            Assert.Equal(SnapshotVerification.Certified, pin.Stamp.Verification);
+        }
+        Run("UPDATE RecordChunks SET Digest = '00000000000000000000000000000000:00000000000000000000000000000000:' || Count WHERE ChunkId = (SELECT min(ChunkId) FROM RecordChunks)");
+        await using var damaged = await HandAnalysisHost.OpenAsync(Database);
+        await using var full = await damaged.PinAsync(basis, null);
+        Assert.Equal(SnapshotVerification.Full, full.Stamp.Verification);
+    }
+
+    [Fact]
     public async Task AWriteThatAddsNoContentRightAfterVerifyIsNeverLabelledFull()
     {
         var entry = await Import();

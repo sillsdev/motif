@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using SIL.Harmony;
 using SIL.Harmony.Core;
@@ -118,6 +119,7 @@ public sealed partial class RecordStore : IAsyncDisposable
             if (!readOnly && state.Published && state.ContentDigest != content.Digest())
                 throw new InvalidDataException("Corrupt immutable record content.");
             UseIdentityTable();
+            if (readOnly && format >= DerivedFormat) UseDemandedContent();
             Verification = OpenVerification(state);
             database.ChangeTracker.Clear();
             model = scope.ServiceProvider.GetRequiredService<DataModel>();
@@ -215,7 +217,8 @@ public sealed partial class RecordStore : IAsyncDisposable
                     await model.AddChanges(clientId, batch);
                 database.ChangeTracker.Clear();
             }
-            await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync(), work, CertificateProvenance.FullImport);
+            await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync(), work, CertificateProvenance.FullImport,
+                refuseUnprovenNative: true);
             await transaction.CommitAsync();
             CompleteUpgrade();
         }
@@ -369,7 +372,7 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     public async Task<ReferenceIndexSnapshot> ReferencesAsync(ReferenceEvidence? evidence = null)
     {
-        var index = (await PointAsync()).GetPlanningIndex();
+        var (_, index) = await PlanningPointAsync();
         return evidence is null ? index : index.WithObservations(evidence);
     }
 
@@ -377,6 +380,15 @@ public sealed partial class RecordStore : IAsyncDisposable
     private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default, Action<string, string>? observe = null)
     {
         point = null;
+        // A verification (observe) always decodes and digests everything; so does any point that cannot be certified.
+        var downgraded = false; // derived tables disagreed with a trusted certificate: vouch only after a history scan
+        if (observe is null && CertifiedAcquisitionAllowed && format >= DerivedFormat && OpenVerification(state) == StoreVerification.Certified &&
+            !state.IndexLimitations.Contains(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal))
+        {
+            if (await DerivedFindingAsync(state, ct) is null && await AcquireCertifiedAsync(state, ct) is { } certified) return certified;
+            downgraded = true;
+        }
+        await EnsureContentAsync(state, ct);
         var decoded = await DecodeLatestAsync(digest: true, ct, derived: observe is not null || !readOnly && format < DerivedFormat);
         var records = decoded.Records;
         // A verification reports the digests it computed instead of refusing at the first mismatch.
@@ -411,21 +423,22 @@ public sealed partial class RecordStore : IAsyncDisposable
             ct.ThrowIfCancellationRequested();
             return r.ClassId == projectClass;
         }).Take(2).ToArray() : [];
-        var verified = new VerifiedPoint(state, native,
+        var verified = new VerifiedPoint(state, RecordSource.Eager(native),
             new ReferenceIndexSnapshot(state.Revision, projection.Edges, projection.Records, limitations, schema, ct), snapshot, digest)
         {
             Anchors = anchors.ToArray(),
             WritingSystems = systems.ToArray(),
             ProjectId = projects.Length == 1 ? projects[0].Id : null,
             IndexTrusted = trusted,
-            Derived = decoded.Derived
+            Derived = decoded.Derived,
+            UnprovenNative = decoded.Derived is null ? null : NativeUsageSchema.ProvenanceFailure(records)
         };
         ct.ThrowIfCancellationRequested();
         PointAcquisitions++;
         if (observe is null)
         {
             // Another handle may have written since this one last looked; what it reads again is not what it verified.
-            Verification = OpenVerification(state);
+            Verification = downgraded ? StoreVerification.Uncertified : OpenVerification(state);
             if (trusted) point = verified;
         }
         return verified;
@@ -443,10 +456,18 @@ public sealed partial class RecordStore : IAsyncDisposable
     internal int ContentIdentityDictionaryBuilds => content.IdentityBuilds;
 
     /// <summary>The reference snapshot that planning and guarded writes currently reuse.</summary>
-    internal async Task<ReferenceIndexSnapshot> PlanningIndexAsync() => (await PointAsync()).GetPlanningIndex();
+    internal async Task<ReferenceIndexSnapshot> PlanningIndexAsync() => (await PlanningPointAsync()).Index;
+
+    // The point and its planning index come from one read transaction, so no publication can fall between them.
+    private Task<(VerifiedPoint Point, ReferenceIndexSnapshot Index)> PlanningPointAsync(CancellationToken ct = default) =>
+        ReadPublishedAsync(async state =>
+        {
+            var served = point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct);
+            return (served, await served.GetPlanningIndexAsync(ct));
+        }, ct, lazyContent: true);
 
     private Task<VerifiedPoint> PointAsync(CancellationToken ct = default) => ReadPublishedAsync(async state =>
-        point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct), ct);
+        point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct), ct, lazyContent: true);
 
     /// <summary>Cancelling before the single publishing transaction starts changes nothing; the transaction itself is not interrupted.</summary>
     public async Task RebuildReferenceIndexAsync(CancellationToken ct = default)
@@ -470,18 +491,28 @@ public sealed partial class RecordStore : IAsyncDisposable
     }
 
     private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision, PublishedWork? work = null,
-        string provenance = CertificateProvenance.FullVerify, IReadOnlyList<RecordHeader>? tombstones = null)
+        string provenance = CertificateProvenance.FullVerify, IReadOnlyList<RecordHeader>? tombstones = null,
+        bool refuseUnprovenNative = false)
     {
         point = null;
+        derivedChecked = null;
         var chunks = work is null ? ChunkDigests(records) : await work.Snapshot;
         var projection = work is null ? ReferenceProjection.Build(records) : await work.Projection;
+        if (LegacyProvenanceForTests)
+            projection = projection with { Limitations = projection.Limitations.Where(l => !l.StartsWith(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal)).ToArray() };
         await using var transaction = database.Database.CurrentTransaction is null ? await database.Database.BeginTransactionAsync() : null;
         try
         {
-            tombstones ??= await ReadTombstonesAsync();
-            await UpgradeInTransactionAsync();
-            await ReferencePersistence.ReplaceAsync(database, projection.Edges);
             var state = await database.Set<StoreState>().SingleAsync();
+            // New native records must pass the provenance proof; a store already failing it keeps the limitation.
+            if (refuseUnprovenNative && !LegacyProvenanceForTests && !state.IndexLimitations.Contains(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal) &&
+                projection.Limitations.FirstOrDefault(l => l.StartsWith(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal)) is { } unproven)
+                throw new InvalidDataException(unproven);
+            await UpgradeInTransactionAsync();
+            // Tombstone headers are read only when derived tables are written.
+            var writeDerived = format >= DerivedFormat || backfillDerived;
+            if (writeDerived) tombstones ??= await ReadTombstonesAsync();
+            await ReferencePersistence.ReplaceAsync(database, projection.Edges);
             state.Revision = revision;
             state.IndexDigest = projection.Digest();
             state.IndexLimitations = string.Join("\n", projection.Limitations);
@@ -493,8 +524,8 @@ public sealed partial class RecordStore : IAsyncDisposable
             state.Published = true;
             await StageCertificateAsync(state, replay, provenance);
             // Every full publication rewrites the derived tables; they are bound to this state row's digests.
-            if (format >= DerivedFormat || backfillDerived)
-                WriteDerived(state, chunks, records.Select(RecordHeader.From).Concat(tombstones).ToArray());
+            if (writeDerived)
+                WriteDerived(state, chunks, records.Select(RecordHeader.From).Concat(tombstones!).ToArray());
             await database.SaveChangesAsync();
             if (transaction is not null)
             {
@@ -511,7 +542,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         Verification = StoreVerification.Full;
     }
 
-    private async Task<StoreState> PublishedStateAsync(CancellationToken ct = default)
+    private async Task<StoreState> PublishedStateAsync(CancellationToken ct = default, bool lazyContent = false)
     {
         if (requiresReopen) throw new InvalidOperationException("A failed field write requires reopening this handle.");
         var state = await database.Set<StoreState>().AsNoTracking().SingleAsync(ct);
@@ -520,11 +551,43 @@ public sealed partial class RecordStore : IAsyncDisposable
         {
             if (!readOnly)
                 throw new InvalidOperationException("The store was published through another handle; reopen this handle before reading.");
-            var rows = await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct);
-            content.Reload(rows, state.ContentDigest, ct);
+            // A certified point reads the few rows it needs by id; every other reader loads and checks them all.
+            if (!lazyContent) await ReloadContentAsync(state, ct);
         }
         if (state.Revision != await CommitRevisionAsync(ct)) throw new StoreRevisionUnavailableException();
         return state;
+    }
+
+    private async Task ReloadContentAsync(StoreState state, CancellationToken ct)
+    {
+        var rows = await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct);
+        content.Reload(rows, state.ContentDigest, ct);
+    }
+
+    // A reader that served a certified point must hold every content row before a full verification.
+    private async Task EnsureContentAsync(StoreState state, CancellationToken ct)
+    {
+        if (readOnly && state.ContentDigest != content.Digest(ct)) await ReloadContentAsync(state, ct);
+    }
+
+    // A format 7 reader may fetch a content row by id, checked against the identity table.
+    private void UseDemandedContent()
+    {
+        content.PersistedLookup = LookupIdentity;
+        content.RowReader = id =>
+        {
+            var connection = (SqliteConnection)database.Database.GetDbConnection();
+            database.Database.OpenConnection();
+            try
+            {
+                using var command = connection.CreateCommand();
+                command.Transaction = database.Database.CurrentTransaction?.GetDbTransaction() as SqliteTransaction;
+                command.CommandText = "SELECT Data FROM RecordContent WHERE Id = $id";
+                command.Parameters.AddWithValue("$id", id);
+                return command.ExecuteScalar() as byte[];
+            }
+            finally { database.Database.CloseConnection(); }
+        };
     }
 
     /// <summary>The state row's revision is not the revision of the commits it was published for.</summary>

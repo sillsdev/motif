@@ -160,25 +160,39 @@ public sealed partial class RecordStore
     /// <summary>A chunk-moving write rebinds only a binding that matched the point it began from.</summary>
     private Task RequireBindingBeforeWriteAsync(StoreState before) => RequireBindingAsync(before, default);
 
+    /// <summary>Tombstone scans this handle ran; a publication that writes no derived tables runs none.</summary>
+    internal int TombstoneReads { get; private set; }
+
     /// <summary>The latest deleted snapshots as headers, for publications that decoded only live records.</summary>
     internal async Task<RecordHeader[]> ReadTombstonesAsync()
     {
+        TombstoneReads++;
         var blobs = new List<byte[]>();
         await database.Database.OpenConnectionAsync();
         try
         {
-            await using var command = DerivedCommand(TombstoneSql);
-            await using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync()) blobs.Add((byte[])reader.GetValue(0));
+            // The grouped scan reads ids and the deleted flag; only a deleted record's body is fetched.
+            var ids = new List<byte[]>();
+            await using (var command = DerivedCommand(TombstoneIdSql))
+            {
+                await using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync()) ids.Add((byte[])reader.GetValue(0));
+            }
+            foreach (var id in ids)
+            {
+                await using var command = DerivedCommand("SELECT Entity FROM Snapshots WHERE Id = $id");
+                command.Parameters.AddWithValue("$id", id);
+                if (await command.ExecuteScalarAsync() is byte[] blob) blobs.Add(blob);
+            }
         }
         finally { await database.Database.CloseConnectionAsync(); }
         return blobs.Select(blob => (GenericRecord)database.Codec.Snapshot(blob)).Where(r => r.DeletedAt is not null)
             .Select(RecordHeader.From).ToArray();
     }
 
-    private const string TombstoneSql = """
-        SELECT Entity FROM (
-            SELECT s.Entity AS Entity, s.EntityIsDeleted AS Deleted, max(c.DateTime || '!' || printf('%020d', c.Counter) || '!' || c.Id)
+    private const string TombstoneIdSql = """
+        SELECT SnapshotId FROM (
+            SELECT s.Id AS SnapshotId, s.EntityIsDeleted AS Deleted, max(c.DateTime || '!' || printf('%020d', c.Counter) || '!' || c.Id)
             FROM Snapshots AS s INNER JOIN Commits AS c ON s.CommitId = c.Id GROUP BY s.EntityId) WHERE Deleted = 1
         """;
 
@@ -327,7 +341,7 @@ public sealed partial class RecordStore
     /// <summary>The headers table, read in id order and checked against the binding's headers digest.</summary>
     public Task<IReadOnlyList<RecordHeader>> ReadHeadersAsync(CancellationToken ct = default) => ReadPublishedAsync<IReadOnlyList<RecordHeader>>(async state =>
     {
-        await RequireBindingAsync(state, ct);
+        await RequireDerivedTrustedAsync(state, ct);
         var rows = await ReadHeaderRowsAsync(null, null, ct);
         var binding = await ReadBindingAsync(ct);
         if (HeadersDigest(rows).ToText() != binding!.Value.Headers)
@@ -357,7 +371,7 @@ public sealed partial class RecordStore
     {
         ArgumentOutOfRangeException.ThrowIfNegative(chunk);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(chunk, ChunkCount);
-        await RequireBindingAsync(state, ct);
+        await RequireDerivedTrustedAsync(state, ct);
         lock (chunkCacheLock)
         {
             if (chunkCacheState is null || !chunkCacheState.SamePoint(state)) { chunkCache.Clear(); chunkCacheState = state; }
