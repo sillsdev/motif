@@ -209,7 +209,7 @@
   },
   "$defs": {
     "expr": {
-      "description": "One of: and, or, not, a field predicate, or a reserved kind (parsed, refused as not yet available).",
+      "description": "One of: and, or, not, a field predicate, phon, env, or a reserved kind (parsed, refused as not yet available).",
       "oneOf": [
         {
           "type": "object",
@@ -259,7 +259,43 @@
           "$ref": "#/$defs/field"
         },
         {
-          "description": "Reserved: morph, seq, phon, env, realizes.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "phon"
+          ],
+          "properties": {
+            "phon": {
+              "type": "string",
+              "description": "Pattern syntax, items separated by spaces: a natural-class name such as C or V (see motif query --values classes); a feature bundle [+voice -nasal]; an alpha variable [αvoice]; a literal segment /p/ (a bare letter is not a segment); ( ) groups, ( )* repeats a group, # is a word edge, + is a morpheme boundary. The grammar's surface character table segments each word, so a pattern sees the word as the grammar does; a word it cannot segment is reported as unsegmentable and matches nothing, even under not. Feature bundles, alpha variables and + need a PanGloss release that serves them; the refusal names what is missing."
+            },
+            "where": {
+              "enum": [
+                "word",
+                "stem",
+                "morph",
+                "edge"
+              ],
+              "default": "word",
+              "description": "What the pattern may match: word only for now; stem, morph and edge are not yet available."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "env"
+          ],
+          "properties": {
+            "env": {
+              "type": "string",
+              "description": "target / left _ right: the target pattern must occur between the left and right patterns, either of which may be empty. Each part uses the phon pattern syntax. The match spans the target. Pattern syntax, items separated by spaces: a natural-class name such as C or V (see motif query --values classes); a feature bundle [+voice -nasal]; an alpha variable [αvoice]; a literal segment /p/ (a bare letter is not a segment); ( ) groups, ( )* repeats a group, # is a word edge, + is a morpheme boundary. The grammar's surface character table segments each word, so a pattern sees the word as the grammar does; a word it cannot segment is reported as unsegmentable and matches nothing, even under not. Feature bundles, alpha variables and + need a PanGloss release that serves them; the refusal names what is missing."
+            }
+          }
+        },
+        {
+          "description": "Reserved: morph, seq, realizes.",
           "type": "object",
           "minProperties": 1,
           "maxProperties": 1,
@@ -267,8 +303,6 @@
             "enum": [
               "morph",
               "seq",
-              "phon",
-              "env",
               "realizes"
             ]
           }
@@ -747,8 +781,6 @@
   "x-reserved": [
     "morph",
     "seq",
-    "phon",
-    "env",
     "realizes"
   ]
 }

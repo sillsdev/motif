@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Query.Phon;
 
 namespace SIL.Motif.Contract.Query;
 
@@ -85,6 +86,10 @@ public static class QueryExprText
                 return PrintField(field);
             case QueryReserved reserved:
                 throw QueryRefusalException.NotYetAvailable(reserved.Kind);
+            case QueryPhon phon:
+                return "phon(" + (phon.Where == QueryOps.PhonWordScope ? "" : phon.Where + ": ") + phon.Pattern + ")";
+            case QueryEnv env:
+                return "env(" + env.Environment + ")";
             default:
                 throw new ArgumentException("Unknown query expression.");
         }
@@ -175,12 +180,37 @@ public static class QueryExprText
             var field = text[start.._at];
             if (field.Length == 0) throw Error("Expected a column name.");
             if (field is "and" or "or" or "not") throw Error($"'{field}' is a keyword, not a column name.");
+            if (_at < text.Length && text[_at] == '(' && field is "phon" or "env") return ParsePattern(field);
             if (_at < text.Length && text[_at] == '(' && QueryOps.Reserved.Contains(field))
                 throw QueryRefusalException.NotYetAvailable(field);
             SkipSpace();
             var op = ReadOp();
             if (op.Op == QueryOps.Exists) return new QueryField(field, QueryOps.Exists, op.Text != "missing");
             return new QueryField(field, op.Op, ReadValue(op.Op));
+        }
+
+        // phon(<pattern>) or phon(<scope>: <pattern>), and env(<target> / <left> _ <right>).
+        private QueryExpr ParsePattern(string kind)
+        {
+            var open = _at + 1;
+            var close = PhonPattern.FindClose(text, open);
+            if (close < 0) throw Error($"Expected ')' to close {kind}(...).");
+            var inner = text[open..close];
+            _at = close + 1;
+            if (kind == "env")
+            {
+                PhonPattern.CompileEnv(inner);
+                return new QueryEnv(inner.Trim());
+            }
+            var scope = QueryOps.PhonWordScope;
+            var colon = inner.IndexOf(':');
+            if (colon > 0 && QueryOps.PhonScopes.Contains(inner[..colon].Trim()))
+            {
+                scope = inner[..colon].Trim();
+                inner = inner[(colon + 1)..];
+            }
+            PhonPattern.CompilePhon(inner);
+            return new QueryPhon(inner.Trim(), scope);
         }
 
         private (string Text, string Op) ReadOp()

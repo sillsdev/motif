@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using SIL.Motif.Contract.Query.Phon;
 
 namespace SIL.Motif.Contract.Query;
 
@@ -21,8 +22,61 @@ internal static class QueryExprCompiler
                 return row => !inner(row);
             case QueryReserved reserved:
                 throw QueryRefusalException.NotYetAvailable(reserved.Kind);
+            case QueryPhon or QueryEnv:
+                throw QueryRefusalException.NotYetAvailable(expr is QueryPhon ? "phon" : "env");
             case QueryField field:
                 return CompileField(field, spec);
+            default:
+                throw new ArgumentException("Unknown query expression.");
+        }
+    }
+
+    /// <summary>
+    /// The three-valued form of <see cref="Compile"/>: a <c>phon</c> or <c>env</c> predicate answers through <paramref name="phon"/>,
+    /// which says unknown for a form PanGloss could not decide, and and, or and not follow Kleene's rules, so an undecided form
+    /// is never reported as a match or as the absence of one.
+    /// </summary>
+    internal static Func<IQueryRowView, Tri> CompileTri(QueryExpr expr, QuerySpec spec, Func<PhonLeaf, string, Tri> phon)
+    {
+        switch (expr)
+        {
+            case QueryAnd and:
+                var all = and.Items.Select(item => CompileTri(item, spec, phon)).ToArray();
+                return row =>
+                {
+                    var result = Tri.True;
+                    foreach (var test in all)
+                    {
+                        var value = test(row);
+                        if (value == Tri.False) return Tri.False;
+                        if (value == Tri.Unknown) result = Tri.Unknown;
+                    }
+                    return result;
+                };
+            case QueryOr or:
+                var any = or.Items.Select(item => CompileTri(item, spec, phon)).ToArray();
+                return row =>
+                {
+                    var result = Tri.False;
+                    foreach (var test in any)
+                    {
+                        var value = test(row);
+                        if (value == Tri.True) return Tri.True;
+                        if (value == Tri.Unknown) result = Tri.Unknown;
+                    }
+                    return result;
+                };
+            case QueryNot not:
+                var inner = CompileTri(not.Item, spec, phon);
+                return row => inner(row) switch { Tri.True => Tri.False, Tri.False => Tri.True, _ => Tri.Unknown };
+            case QueryPhon or QueryEnv:
+                var leaf = QueryExprTools.LeafOf(expr);
+                return row => row.Get("form") is { Count: > 0 } form ? phon(leaf, form[0]) : Tri.False;
+            case QueryReserved reserved:
+                throw QueryRefusalException.NotYetAvailable(reserved.Kind);
+            case QueryField field:
+                var test2 = CompileField(field, spec);
+                return row => test2(row) ? Tri.True : Tri.False;
             default:
                 throw new ArgumentException("Unknown query expression.");
         }

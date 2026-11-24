@@ -89,8 +89,6 @@ public sealed class QueryDocumentTests
     [Theory]
     [InlineData("morph", "{\"and\":[]}")]
     [InlineData("seq", "[]")]
-    [InlineData("phon", "\"C V C V\"")]
-    [InlineData("env", "\"[+voice] / # _ V\"")]
     [InlineData("realizes", "{\"morpheme\":\"root:kaon\"}")]
     public void ReservedKindsParseAndRefuseWhenRun(string kind, string body)
     {
@@ -101,6 +99,35 @@ public sealed class QueryDocumentTests
         var error = Assert.Throws<QueryRefusalException>(() => document.ToRecord());
         Assert.Equal(RefusalCodes.QueryNotYetAvailable, error.Refusal.Code);
         Assert.Equal(kind, error.Refusal.Facts["kind"]);
+    }
+
+    [Theory]
+    [InlineData("phon", "\"Stop V Stop V\"")]
+    [InlineData("phon", "\"/p/ ( V )* #\"")]
+    [InlineData("env", "\"[Voiced] / # _ V\"")]
+    [InlineData("env", "\"V / _\"")]
+    public void PhonAndEnvDocumentsRoundTripAndTextMatchesJson(string kind, string body)
+    {
+        var json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"and\":[" + Field("kind", "eq", "\"variant\"") +
+                   ",{\"" + kind + "\":" + body + "}]}}";
+        var document = Parse(json);
+        Assert.Equal(json, document.ToJson());
+        var text = QueryExprText.Print(document.Where!);
+        Assert.True(QueryExprText.TryParse(text, out var again, out _));
+        Assert.Equal(text, QueryExprText.Print(again!));
+    }
+
+    [Theory]
+    [InlineData("phon", "\"\"")]
+    [InlineData("phon", "\"( V\"")]
+    [InlineData("phon", "\"V )\"")]
+    [InlineData("env", "\"V\"")]
+    [InlineData("env", "\" / _ \"")]
+    public void MalformedPatternsAreRefusedWithAPosition(string kind, string body)
+    {
+        var json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"" + kind + "\":" + body + "}}";
+        Assert.False(QueryDocument.TryParse(json, out _, out var refusal));
+        Assert.Equal(RefusalCodes.QueryDocumentInvalid, refusal.Code);
     }
 
     [Theory]
