@@ -36,7 +36,7 @@ public sealed class UnreadableProposalRealClientTests(PristineProjectFixture pri
     private const string CouldNotRead =
         "Motif could not read these changes, so it did not use them. Nothing was changed or deleted.";
 
-    [UiThreadFact]
+    [Fact]
     public async Task OpeningAnUnreadableProposalShowsWhyAndLeavesTheWindowUsable()
     {
         using var project = new WalkthroughProject(pristine);
@@ -59,7 +59,7 @@ public sealed class UnreadableProposalRealClientTests(PristineProjectFixture pri
         Assert.Null(context.Lens?.ReadRefusal);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task TryingAProposalThatBecameUnreadableWhileOpenIsRefusedAndTheLensSaysWhy()
     {
         using var project = new WalkthroughProject(pristine);
@@ -77,7 +77,7 @@ public sealed class UnreadableProposalRealClientTests(PristineProjectFixture pri
         Assert.Equal(CouldNotRead, WindowRefusal.From(context.Lens!.ReadRefusal!).Sentence);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task QueueingAndComparingAnUnreadableProposalAreRefusedInTheWindowsWords()
     {
         using var project = new WalkthroughProject(pristine);
@@ -100,7 +100,7 @@ public sealed class UnreadableProposalRealClientTests(PristineProjectFixture pri
                 Path.GetFileNameWithoutExtension(project.FwDataPath))), TrialJobHandler.TrialKind));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ApplyingAnUnreadableProposalIsRefusedAndNothingIsApplied()
     {
         using var project = new WalkthroughProject(pristine);

@@ -29,7 +29,7 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
     private readonly string _managedRoot =
         Path.Combine(Path.GetTempPath(), "Motif.OverviewSpeed", Guid.NewGuid().ToString("N"));
 
-    [UiThreadFact]
+    [Fact]
     public async Task HealthDetailsUseTheStoredMedianParserWork()
     {
         Directory.CreateDirectory(_managedRoot);

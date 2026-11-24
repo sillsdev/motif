@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class PendingChangesCliAppTests(PristineProjectFixture pristine)
 {
-    [UiThreadFact]
+    [Fact]
     public async Task CliDraftAppearsInAppAfterOpeningAndAfterRestart()
     {
         string path;

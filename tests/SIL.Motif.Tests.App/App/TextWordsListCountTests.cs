@@ -40,7 +40,7 @@ public sealed class TextWordsListCountTests
         }
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AWordListSelectionShowsEachWordsCountMostOftenFirstAKnownZeroAsZeroAndNoCountAsBlank()
     {
         var rows = await RowsFor(["kaon", "baga", "zero", "plain"],
@@ -54,7 +54,7 @@ public sealed class TextWordsListCountTests
             rows.Select(row => row.Tip));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task APlainListShowsNoCountForAnyWordRatherThanZero()
     {
         var rows = await RowsFor(["kaon", "baga"], null);

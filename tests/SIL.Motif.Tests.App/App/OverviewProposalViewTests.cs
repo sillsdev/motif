@@ -14,7 +14,7 @@ public sealed class OverviewProposalViewTests
     internal static readonly BaselineToken Token = new(
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
-    [UiThreadTheory]
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task OpeningAProposalDoesNotMixItsEvidenceIntoProjectHealth(bool hasTrial)

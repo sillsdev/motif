@@ -17,7 +17,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
     private const string Guid = "11111111-2222-4333-8444-555555555555";
     private static readonly string Linked = $"Glosses **gloss-1** as [entry-1](/lexicon/entry-1){{guid={Guid}}} does.";
 
-    [UiThreadFact]
+    [Fact]
     public async Task TheRationaleIsShownRenderedWithItsLinkAndIsReadOnlyUntilEdit()
     {
         var (_, editor) = await OpenAsync(Linked);
@@ -32,7 +32,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal(Linked, editor.Text());
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ALinkOpensWhatItNames()
     {
         var launcher = new RecordingLauncher();
@@ -44,7 +44,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.False(await editor.OpenLinkAsync(null));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task SaveWritesTheFieldsTextAndLeavesEditing()
     {
         var (fake, editor) = await OpenAsync("Why it is right.");
@@ -60,7 +60,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Empty(editor.Findings);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task CancelDiscardsTheEdit()
     {
         var (fake, editor) = await OpenAsync("Why it is right.");
@@ -74,7 +74,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal("Why it is right.", editor.Text());
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ADraftsSaveWithFindingsShowsThemUnderTheField()
     {
         var (fake, editor) = await OpenAsync("Why.", draftName: "draft-1");
@@ -93,7 +93,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(editor.HasFindings);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ARefusedSaveOnAReadyProposalKeepsThePersonsTextWithTheFindings()
     {
         var (fake, editor) = await OpenAsync("Why it is right.");
@@ -113,7 +113,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.NotNull(editor.Refusal);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnEarlierVersionCanBeRestoredIntoTheFieldAndSaved()
     {
         var (fake, editor) = await OpenAsync("Newest.");
@@ -134,7 +134,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal("First try.", Assert.Single(fake.SetRationaleRequests).Text);
     }
 
-    [UiThreadTheory]
+    [Theory]
     [InlineData("applied")]
     [InlineData("rejected")]
     [InlineData("withdrawn")]
@@ -147,7 +147,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.False(editor.EditCommand.CanExecute(null));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ARationaleThatDoesNotReadIsShownAndEditedAsPlainText()
     {
         var (fake, editor) = await OpenAsync("Some <b>raw</b> HTML.\nSecond line.");
@@ -177,7 +177,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
-    [UiThreadTheory]
+    [Theory]
     [InlineData("Glosses **gloss-1** as the corpus does.")]
     [InlineData("Some *x* and **y** and [z](https://example.org).")]
     public async Task AnEditSavedWithNoChangeKeepsTheStoredTextAndWritesNothing(string markdown)
@@ -192,7 +192,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal(markdown, editor.Markdown);
     }
 
-    [UiThreadTheory]
+    [Theory]
     [InlineData("**Evidence:**\n- a\n- b")]
     [InlineData("1. x\n\ny\n\n2. z")]
     public async Task TextTheCheckerWouldReadDifferentlyIsEditedAsWrittenAndSavedByteForByte(string markdown)
@@ -207,7 +207,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal(markdown + " c", Assert.Single(fake.SetRationaleRequests).Text);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnExplicitWritingSystemIsKeptWhenTheRationaleIsSaved()
     {
         var (fake, editor) = await OpenAsync("[x]{ws=en} and y");
@@ -222,7 +222,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.EndsWith("and y more", saved, StringComparison.Ordinal);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task EditingOneParagraphKeepsEveryOtherParagraphExactlyAsWritten()
     {
         const string first = "The first paragraph wraps\nonto a second line with **bold** in it.";
@@ -243,7 +243,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal("Why it is right.", (await OpenAsync("Why it is right.")).Editor.Text());
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ASaveOfARationaleChangedElsewhereKeepsThePersonsTextAndCancelShowsTheCurrentOne()
     {
         var (fake, editor) = await OpenAsync("Why.");
@@ -268,7 +268,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal("Theirs.", editor.Text());
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AProposalWithNoRationaleGetsItsFirstOne()
     {
         var fake = new FakeCommandClient();
@@ -288,7 +288,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal("Why it is right.", fake.StoredRationale);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ASecondEditAfterASaveTheStoreTidiedStartsFromTheStoredText()
     {
         var (fake, editor) = await OpenAsync("Some <b>raw</b> HTML.");

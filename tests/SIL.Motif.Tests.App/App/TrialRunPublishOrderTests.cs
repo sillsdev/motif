@@ -20,7 +20,7 @@ public sealed class TrialRunPublishOrderTests
     private const string ProjectPath = @"C:\projects\one.fwdata";
     private const string ProposalId = "proposal/one";
 
-    [UiThreadFact]
+    [Fact]
     public async Task ATryAgainEndedOffTheWindowsContextStaysRunningUntilThatContextRuns()
     {
         var fake = new FakeCommandClient();
@@ -52,7 +52,7 @@ public sealed class TrialRunPublishOrderTests
         Assert.False(context.TrialRun.IsRunning(ProposalId));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ATryAgainEndedOnTheWindowsContextIsNotRunningWhenItsCallerResumes()
     {
         var fake = new FakeCommandClient();

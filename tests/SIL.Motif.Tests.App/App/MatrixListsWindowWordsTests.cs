@@ -166,7 +166,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         Assert.True(Compare(EveryKindOfWord).HasFixFirst);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task NoClassifierCommandChangesAnOpinion()
     {
         var (compare, client) = CompareWithClient(EveryKindOfWord);
@@ -198,7 +198,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             change.Kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate);
     }
 
-    [UiThreadTheory]
+    [Theory]
     [InlineData(ChangeKinds.Approve)]
     [InlineData(ChangeKinds.Reject)]
     [InlineData(ChangeKinds.Candidate)]

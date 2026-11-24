@@ -80,7 +80,7 @@ public sealed class EvidenceLensTests
         Assert.Equal("today-assessment", pair.Shown(MarkupView.Proposal));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task PairAsyncReadsTheSameNamedSetsInOrder()
     {
         var lens = new EvidenceLens(TodayEvidence(), TrialEvidenceOf("trial-assessment"),
@@ -98,7 +98,7 @@ public sealed class EvidenceLensTests
         Assert.True(pair.HasAfter);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task PairAsyncReturnsAnAfterRefusalAndShowsTodaysValue()
     {
         var lens = new EvidenceLens(TodayEvidence(), TrialEvidenceOf("trial-assessment"),
@@ -117,7 +117,7 @@ public sealed class EvidenceLensTests
         Assert.Equal("today-assessment", pair.Shown(MarkupView.Proposal)?.AssessmentId);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task PairAsyncTreatsASuccessfulNullAsAnUnavailableValue()
     {
         var lens = new EvidenceLens(TodayEvidence(), TrialEvidenceOf("trial-assessment"),

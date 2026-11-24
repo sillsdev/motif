@@ -36,7 +36,7 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class ParserOnlyKeepApplyRealClientTests(PristineProjectFixture pristine)
 {
-    [UiThreadFact]
+    [Fact]
     public async Task ApplyingAParserOnlyKeepCreatesExactlyThatAnalysisAndApprovesIt()
     {
         using var project = new WalkthroughProject(pristine);

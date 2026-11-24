@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class ProposalCommentsSaveTests(PristineProjectFixture pristine)
 {
-    [UiThreadTheory]
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ARefusedCommentSaveKeepsTypingAndARefreshFreezesTheClosedProposal(bool existing)

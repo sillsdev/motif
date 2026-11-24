@@ -71,7 +71,7 @@ public sealed class GuideQueryBlockTests
         Assert.NotEmpty(refusal!);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ABlockRunsOnShowAndFillsItsTable()
     {
         var harness = new Harness();
@@ -83,7 +83,7 @@ public sealed class GuideQueryBlockTests
         Assert.Equal("", block.Notice);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ARefusalShowsInTheBlockAndEmptiesTheTable()
     {
         var harness = new Harness { Answer = _ => CommandOutcome<FormsQueryResponse>.Refused(new Refusal("x.no", FailureReason.Refused, "nope")) };
@@ -93,7 +93,7 @@ public sealed class GuideQueryBlockTests
         Assert.Empty(block.Displays[0].Rows);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ANonReadOnlyRunLineIsRefusedInTheBlockWithoutRunning()
     {
         var harness = new Harness();
@@ -104,7 +104,7 @@ public sealed class GuideQueryBlockTests
         Assert.Empty(harness.Lines);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task SavingStagesOnlyTheQueryTextThenRerunsAndKeepsNoResults()
     {
         var harness = new Harness();
@@ -125,7 +125,7 @@ public sealed class GuideQueryBlockTests
         Assert.DoesNotContain("kaonan", saved.Body);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnInvalidDraftCannotBeSavedAndSaysWhy()
     {
         var harness = new Harness();
@@ -140,7 +140,7 @@ public sealed class GuideQueryBlockTests
         Assert.True(block.HasNotice);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AStagingRefusalKeepsTheDraftAndShowsTheReason()
     {
         var harness = new Harness { SaveRefusal = "section is stale" };
@@ -155,7 +155,7 @@ public sealed class GuideQueryBlockTests
         Assert.Contains("section is stale", block.Notice);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task CancelDropsTheDraft()
     {
         var block = await Shown(new Harness().Tables(GuideQueryContext.Baseline));
@@ -168,7 +168,7 @@ public sealed class GuideQueryBlockTests
         Assert.Equal(block.Body, block.DraftText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AProposalContextWithNoTrialShowsPendingOnItsSide()
     {
         var harness = new Harness { Answer = _ => GuideQueryTestSupport.Answer(PendingAnswer()) };
@@ -178,7 +178,7 @@ public sealed class GuideQueryBlockTests
         Assert.EndsWith("--as-of prop-1 --sides both", harness.Lines[0]);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task SavingARefusedLineWhileARunIsInFlightDoesNotLeaveTheBlockRunning()
     {
         var release = new TaskCompletionSource<CommandOutcome<FormsQueryResponse>>();
@@ -205,7 +205,7 @@ public sealed class GuideQueryBlockTests
         Assert.True(block.HasNotice, "notice");
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ARefusedRunShowsTheQueryTextReadOnlyNextToTheNotice()
     {
         var lines = SectionLines.Select(line => line.StartsWith("run:") ? "run: motif group forms" : line).ToArray();
@@ -218,7 +218,7 @@ public sealed class GuideQueryBlockTests
         Assert.False(block.ShowsQueryText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task SectionsWithoutBlocksShowNothing()
     {
         var tables = new Harness().Tables(GuideQueryContext.Baseline);

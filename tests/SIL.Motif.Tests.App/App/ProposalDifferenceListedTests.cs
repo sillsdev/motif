@@ -20,7 +20,7 @@ public sealed class ProposalDifferenceListedTests
     private static DifferenceChipViewModel Chip(IEnumerable<DifferenceChipViewModel> chips, string label) =>
         Assert.Single(chips, chip => chip.Label.StartsWith(label, StringComparison.Ordinal));
 
-    [UiThreadFact]
+    [Fact]
     public async Task ASummaryThatListsEveryWordShowsNoNoteAndPlainChips()
     {
         var fixture = new ProposalDifferenceFixture();
@@ -35,7 +35,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.DoesNotContain("counted but not listed", model.WordsStatusText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task TheListedNoteGroupsThousandsLikeTheCountsBesideIt()
     {
         var fixture = new ProposalDifferenceFixture { Cut = 40, Unchanged = 1700 };
@@ -50,7 +50,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.DoesNotContain($" of {total} words", model.ListedNoteText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task WordsThatAreOnlyCountedAreSaidSoInANoteAndOnTheChipsThatCutThem()
     {
         var fixture = new ProposalDifferenceFixture { Cut = 40, Unchanged = 100 };
@@ -70,7 +70,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.Equal(55, Chip(model.CheckChips, "Words to Check").Count);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AWordWithMorePlacesThanAreListedSaysHowManyAreOnlyCountedAndOffersNoMore()
     {
         var fixture = new ProposalDifferenceFixture { PlacesPerWord = 10, PlacesCounted = 400 };
@@ -87,7 +87,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.Contains("all of them are in the Text", model.PlacesStatusText);
     }
 
-    [UiThreadTheory]
+    [Theory]
     [InlineData(11, "1 more is counted but not listed")]
     [InlineData(12, "2 more are counted but not listed")]
     public async Task PlacesBeyondTheListAreCountedInTheSingularOrThePlural(int counted, string expected)
@@ -102,7 +102,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.Contains(expected, model.PlacesStatusText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnUnchangedCellIsCountedBeyondTheListAndItsChipDoesNotFilter()
     {
         var fixture = new ProposalDifferenceFixture { Unchanged = 100 };
@@ -118,7 +118,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.DoesNotContain("listed", unchanged.Label);
     }
 
-    [UiThreadTheory]
+    [Theory]
     [InlineData(DifferenceOffer.Available, true)]
     [InlineData(DifferenceOffer.Deferred, true)]
     [InlineData(DifferenceOffer.Decided, false)]
@@ -136,7 +136,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.Equal(says, model.SavedNoteText.Contains(MotifAppStrings.ProposalDifferenceSavedDamagedRemake));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ChoosingACutChipSaysHowManyMoreWordsAreOnlyCounted()
     {
         var fixture = new ProposalDifferenceFixture { Cut = 40 };
@@ -149,7 +149,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.Equal("Showing 10 of 10. 40 more words are counted but not listed.", model.WordsStatusText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ACountWithNoListedWordsSaysSoInsteadOfNoWordsMatch()
     {
         var fixture = new ProposalDifferenceFixture { Cut = 40 };
@@ -164,7 +164,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.Equal("50 words are counted but not listed.", model.NoMatchingText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnOldSummaryWithNoWordsListedFieldStillFiltersEveryChip()
     {
         var fixture = new ProposalDifferenceFixture();
@@ -180,7 +180,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.Equal(MotifAppStrings.ProposalDifferenceNoMatching, model.NoMatchingText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task DamagedWordRowsWithAReadableSummaryShowTheSummarySayTheWordsCannotBeReadAndOfferMakeDifference()
     {
         var fixture = new ProposalDifferenceFixture { WordRowsDamaged = true, TextId = GenesisId.ToString("D") };
@@ -199,7 +199,7 @@ public sealed class ProposalDifferenceListedTests
         Assert.Equal(MotifAppStrings.ProposalDifferenceMakeAgain, model.MakeLabel);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task WhenEverySavedDifferenceIsDamagedTheSectionNamesThemAndOffersMakeDifference()
     {
         var fixture = new ProposalDifferenceFixture

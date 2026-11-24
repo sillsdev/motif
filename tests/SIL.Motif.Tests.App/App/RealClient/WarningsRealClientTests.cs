@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class WarningsRealClientTests(PristineProjectFixture pristine)
 {
-    [UiThreadFact]
+    [Fact]
     public async Task CheckingTheGrammarStoresTheResultOverviewThenShows()
     {
         using var project = await GrammarClientProject.OpenAsync(pristine);
@@ -32,7 +32,7 @@ public sealed class WarningsRealClientTests(PristineProjectFixture pristine)
         Assert.Single(project.Invocations(), invocation => invocation == "grammar-health");
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task RowsUseTheGroupAndDescriptionPanGlossReports()
     {
         using var project = await GrammarClientProject.OpenAsync(pristine);

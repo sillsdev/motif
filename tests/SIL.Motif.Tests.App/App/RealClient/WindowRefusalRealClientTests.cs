@@ -18,7 +18,7 @@ public sealed partial class WindowRefusalRealClientTests(PristineProjectFixture 
     [GeneratedRegex(@"\bassess\w*", RegexOptions.IgnoreCase)]
     private static partial Regex CliWord();
 
-    [UiThreadFact]
+    [Fact]
     public async Task AMissingAssessmentRefusalKeepsItsIdButNotTheCommandsWords()
     {
         using var project = await GrammarClientProject.OpenAsync(pristine);

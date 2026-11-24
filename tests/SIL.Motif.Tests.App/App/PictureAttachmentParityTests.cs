@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class PictureAttachmentParityTests(PristineProjectFixture pristine)
 {
-    [UiThreadFact]
+    [Fact]
     public async Task WindowAndCliAttachTheSameJpegAsIdenticalPictures()
     {
         using var scratch = pristine.NewScratch();
@@ -62,7 +62,7 @@ public sealed class PictureAttachmentParityTests(PristineProjectFixture pristine
         Assert.Equal(windowBytes, Convert.FromBase64String(shown.Value!.DataBase64!));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task PickerRefusesADeclaredPictureOverThePixelLimitBeforeTheCommand()
     {
         byte[] source = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13,

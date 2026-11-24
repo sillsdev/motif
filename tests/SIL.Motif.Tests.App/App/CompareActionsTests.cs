@@ -73,7 +73,7 @@ public sealed class CompareActionsTests
         Assert.Empty(compare.RerunWords);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task RerunningHandsTheWordsAndTheLongerLimitToItsOwner()
     {
         var (_, compare) = Loaded();
@@ -125,7 +125,7 @@ public sealed class CompareActionsTests
         Assert.Equal(4, table.Rows.Count);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task SpellingAndCandidateUseDistinctSlotsForTheSameWord()
     {
         var (_, compare) = Loaded();
@@ -143,7 +143,7 @@ public sealed class CompareActionsTests
         Assert.All(compare.Changes.Items, item => Assert.True(item.Fit?.StillFits));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnAddedCandidateCanBeAppliedWithTheOtherAnalysisChanges()
     {
         var (_, compare) = Loaded();
@@ -185,7 +185,7 @@ public sealed class CompareActionsTests
         Assert.Equal(compare.CheckedWordText, compare.ProposeTip);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ProposeIsUnavailableForAWordTheProjectHasNoWordformFor()
     {
         var (compare, changed) = ProposeFixture();
@@ -216,7 +216,7 @@ public sealed class CompareActionsTests
         Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task MatrixAllowsOnlyBulkAddAndSpellingForCheckedWords()
     {
         var table = new AssessWordsViewModel();
@@ -249,7 +249,7 @@ public sealed class CompareActionsTests
         Assert.Equal(["alimpiga", "walipiga"], handed!.Order());
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AddingCheckedCandidatesRecordsOneActionForAllReadings()
     {
         var (_, compare) = Loaded(
@@ -265,7 +265,7 @@ public sealed class CompareActionsTests
         AssertMatrixUsageEntry(fake, 3);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task MarkingCheckedSpellingsRecordsOneActionForAllWords()
     {
         var (_, compare) = Loaded(out var fake);
@@ -280,7 +280,7 @@ public sealed class CompareActionsTests
         AssertMatrixUsageEntry(fake, 2);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task CandidateRefusalKeepsRetainedReadingsAndOneActionShapeWithoutValues()
     {
         const string projectPath = @"C:\private\private-path-canary.fwdata";
@@ -330,7 +330,7 @@ public sealed class CompareActionsTests
             Assert.DoesNotContain(canary, recorded);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task RefusingEveryCandidateStillRecordsOneAction()
     {
         var (_, compare) = Loaded(
@@ -349,7 +349,7 @@ public sealed class CompareActionsTests
         AssertMatrixUsageEntry(fake, 2);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task CancellingAHeldMatrixActionReleasesItsScopeForTheNextClick()
     {
         var (_, compare) = Loaded(
@@ -402,7 +402,7 @@ public sealed class CompareActionsTests
         Assert.Single(compare.Changes.Items);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task OpeningReloadingAndChangingCompareSelectionRecordNoUsage()
     {
         var (table, compare) = Loaded(out var fake);

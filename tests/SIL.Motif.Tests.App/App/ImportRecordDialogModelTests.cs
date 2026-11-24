@@ -59,7 +59,7 @@ public sealed class ImportRecordDialogModelTests
         return (model, client, files, opened);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task BrowseChoosesTheFileAndPreviewsItAtOnce()
     {
         var (model, client, files, _) = Make();
@@ -78,7 +78,7 @@ public sealed class ImportRecordDialogModelTests
         Assert.Contains("2 changes become 2 operations. 1 cannot be imported.", model.StatusText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task CancellingTheChooserChangesNothing()
     {
         var (model, client, files, _) = Make();
@@ -103,7 +103,7 @@ public sealed class ImportRecordDialogModelTests
         Assert.True(model.BrowseCommand.CanExecute(null));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AWholeFileRefusalIsShownInTheWindowsWords()
     {
         var (model, _, _, _) = Make((_, _) => Refused(RefusalCodes.RecordImportPlanRefused));
@@ -117,7 +117,7 @@ public sealed class ImportRecordDialogModelTests
         Assert.False(model.HasPreview);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task StagingOpensTheStagedDraftByItsProposalId()
     {
         var (model, _, _, opened) = Make();
@@ -137,7 +137,7 @@ public sealed class ImportRecordDialogModelTests
         Assert.Contains("From file", model.StatusText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ADraftThatCannotBeOpenedStaysOpenableByHand()
     {
         var attempts = 0;
@@ -160,7 +160,7 @@ public sealed class ImportRecordDialogModelTests
         Assert.NotEqual("nope", model.StatusText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnUnexpectedOpenFailureGetsTheGenericSentence()
     {
         var (model, _, _, _) = Make(open: (_, _) => Task.FromException(new IOException("disk")));
@@ -174,7 +174,7 @@ public sealed class ImportRecordDialogModelTests
         Assert.Equal(MotifAppStrings.ImportRecordOpenFailed, model.StatusText);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ClosingMidStageLetsTheStageFinishAndStillOpensItsDraft()
     {
         var gate = new TaskCompletionSource<CommandOutcome<RecordImportResponse>>();
@@ -201,7 +201,7 @@ public sealed class ImportRecordDialogModelTests
         Assert.Equal("proposal-7", Assert.Single(opened));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ClosingMidPreviewCancelsIt()
     {
         var previewToken = CancellationToken.None;
@@ -231,7 +231,7 @@ public sealed class ImportRecordDialogModelTests
         Assert.True(model.Import.PreviewCommand.CanExecute(null));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task BrowseIsOffWhileAPreviewRunsAndCancelStopsIt()
     {
         var gate = new TaskCompletionSource<CommandOutcome<RecordImportResponse>>();
@@ -256,7 +256,7 @@ public sealed class ImportRecordDialogModelTests
         Assert.True(model.BrowseCommand.CanExecute(null));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task PagingMovesThroughTheListsAndShowsThePage()
     {
         var (model, _, _, _) = Make((request, _) => Ok(Plan(operations: 5, page: request.Page, pageCount: 2)));

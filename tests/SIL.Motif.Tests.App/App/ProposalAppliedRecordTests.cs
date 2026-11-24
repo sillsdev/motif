@@ -23,7 +23,7 @@ public sealed class ProposalAppliedRecordTests
     private static ProposalDetailProjection Applied(AppliedRecordView? record, string status = "applied") =>
         ProposalEntryContextTests.GlossProposal(status) with { AppliedRecord = record };
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnAppliedProposalShowsWhenItWasAppliedWhatChangedAndWhatWasKnown()
     {
         var fake = new FakeCommandClient { ProposalDetail = Applied(Record()) };
@@ -43,7 +43,7 @@ public sealed class ProposalAppliedRecordTests
             " places · 31 improved · 4 to check", Assert.Single(document.AppliedEvidence));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnAutonomousApplyNamesWhoMadeItAndTheIdStaysWhenTheBaselineLacksTheSense()
     {
         var fake = new FakeCommandClient { ProposalDetail = Applied(Record("autonomous")) };
@@ -54,7 +54,7 @@ public sealed class ProposalAppliedRecordTests
         Assert.StartsWith(Sense + ": Gloss (en)", opened.Document.AppliedEffects[0]);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AnAppliedProposalWithNoSavedDifferenceSaysSo()
     {
         var record = Record() with { Evidence = [] };
@@ -67,7 +67,7 @@ public sealed class ProposalAppliedRecordTests
         Assert.Equal("No Difference was saved before it was applied.", MotifAppStrings.ProposalAppliedNoEvidence);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AWaitingProposalOrAnAppliedOneWithoutARecordShowsNoAppliedSection()
     {
         await using (var waiting = await ProposalEntryContextTests.Open(new FakeCommandClient

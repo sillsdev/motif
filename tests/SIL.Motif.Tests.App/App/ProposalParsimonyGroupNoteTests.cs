@@ -21,7 +21,7 @@ public sealed class ProposalParsimonyGroupNoteTests
         Assert.Equal("Findings", group.FindingsHeader);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AGroupWhoseMeasuresAllComputedSaysNoFindingsAreNewOrChanged()
     {
         var note = await NoteAsync(Group(ParsimonyMeasureStatus.Computed));
@@ -29,7 +29,7 @@ public sealed class ProposalParsimonyGroupNoteTests
         Assert.Equal("No new or changed Findings in this group.", note);
     }
 
-    [UiThreadTheory]
+    [Theory]
     [InlineData(ParsimonyMeasureStatus.NotAvailable)]
     [InlineData(ParsimonyMeasureStatus.Failed)]
     [InlineData(ParsimonyMeasureStatus.Inconclusive)]
@@ -43,7 +43,7 @@ public sealed class ProposalParsimonyGroupNoteTests
         Assert.DoesNotContain("No new or changed", note);
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task AMeasureThatDidNotComputeAndHasNoCountsStillLimitsTheAllClear()
     {
         var group = Group(ParsimonyMeasureStatus.Computed) with

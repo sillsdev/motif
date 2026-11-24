@@ -79,7 +79,7 @@ public sealed class DesktopServiceBoundaryTests
     public void TheFolderPickerNamesTheAiHandoff() =>
         Assert.Contains("AI Handoff", AvaloniaStoragePickers.FolderPickerTitle, StringComparison.Ordinal);
 
-    [UiThreadFact]
+    [Fact]
     public async Task UnconfiguredCommandThrowsRatherThanReturningANullBehavior()
     {
         var fake = new FakeCommandClient();

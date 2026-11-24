@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class CommandClientCancellationTests(PristineProjectFixture pristine)
 {
-    [UiThreadFact]
+    [Fact]
     public async Task ACancellationBeforeTheCommandStartsIsStillATypedRefusal()
     {
         using var project = new WalkthroughProject(pristine);
@@ -36,7 +36,7 @@ public sealed class CommandClientCancellationTests(PristineProjectFixture pristi
         Assert.Empty(WalkthroughStoreAssertions.ListInvocations(project.FwDataPath));
     }
 
-    [UiThreadFact]
+    [Fact]
     public async Task ACancellationBeforeReadStateStartsIsStillATypedRefusal()
     {
         using var project = new WalkthroughProject(pristine);
