@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
@@ -49,14 +48,24 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
     /// <summary>The grammar's classes and features, from the resident parser's <c>inventory</c> op; null when PanGloss cannot list them.</summary>
     public PhonInventory? Inventory(CancellationToken cancellationToken)
     {
-        if (_inventory is { } known) return known.Value;
+        if (_inventory is { } known) return known;
         var reply = pool.TryInventoryAsync(key, stateToken, grammarPath, cancellationToken).GetAwaiter().GetResult();
-        var read = reply is WarmMatchResult.Completed completed ? ReadInventory(completed.Json) : null;
-        _inventory = new StrongBox<PhonInventory?>(read);
-        return read;
+        switch (reply)
+        {
+            case WarmMatchResult.Completed completed:
+                return _inventory = ReadInventory(completed.Json);
+            case WarmMatchResult.Unsupported unsupported:
+                throw QueryRefusalException.PhonUnavailable(PanGlossInterfaceVersions.ServeInventoryNeeded, unsupported.Detail);
+            case WarmMatchResult.Rejected rejected:
+                throw QueryRefusalException.PhonFailed($"PanGloss refused to list the grammar's classes ({rejected.Code}): {rejected.Message}");
+            case WarmMatchResult.Failed failed:
+                throw QueryRefusalException.PhonFailed($"The resident PanGloss could not list the grammar's classes ({failed.Code}): {failed.Message}");
+            default:
+                throw new OperationCanceledException(cancellationToken);
+        }
     }
 
-    private StrongBox<PhonInventory?>? _inventory;
+    private PhonInventory? _inventory;
 
     internal static PhonInventory ReadInventory(string json)
     {
@@ -151,7 +160,7 @@ internal static class PhonMatchers
             return CommandOutcome<IPhonMatcher>.Refused(new Refusal(RefusalCodes.WordTraceNoBaseline, FailureReason.Refused,
                 "The project has no Baseline yet. Run 'motif baseline capture --project <fwdata>' before a phon or env query."));
         return CommandOutcome<IPhonMatcher>.Success(Resolving(new ResidentPhonMatcher(TryWordSessions.PoolFor(executable), projectKey,
-            TryWordSessions.TokenText(baseline.Token), baseline.FwDataPath, ParserExecutableIdentity.ReadVersion(executable)), baseline.FwDataPath));
+            TryWordSessions.TokenText(baseline.Token), baseline.FwDataPath, ParserExecutableIdentity.ReadVersion(executable))));
     }
 
     /// <summary>A grammar file named on the command line, such as <c>--grammar</c>; the state token is the file's digest so an edit restarts the session.</summary>
@@ -164,12 +173,11 @@ internal static class PhonMatchers
                 $"The grammar '{grammarPath}' is not a file."));
         var full = Path.GetFullPath(grammarPath);
         return CommandOutcome<IPhonMatcher>.Success(Resolving(new ResidentPhonMatcher(TryWordSessions.PoolFor(executable), full,
-            BatchInvocationEvidence.DigestFile(full), full, ParserExecutableIdentity.ReadVersion(executable)), full));
+            BatchInvocationEvidence.DigestFile(full), full, ParserExecutableIdentity.ReadVersion(executable))));
     }
 
-    // Full class names resolve lazily, after PanGloss answers unknown_natural_class.
-    private static IPhonMatcher Resolving(IPhonMatcher matcher, string grammarPath) => new ClassNameResolver(matcher,
-        () => PhonValues.ForGrammar(grammarPath) is { Succeeded: true, Value: { } values } ? values.NaturalClasses : null);
+    // Class names are checked lazily, after PanGloss answers unknown_natural_class.
+    private static IPhonMatcher Resolving(IPhonMatcher matcher) => new ClassNameResolver(matcher);
 
     private static CommandOutcome<IPhonMatcher> Missing() => CommandOutcome<IPhonMatcher>.Refused(new Refusal(
         RefusalCodes.WordTraceParserUnavailable, FailureReason.Refused, PanGlossExecutable.NotFoundMessage,

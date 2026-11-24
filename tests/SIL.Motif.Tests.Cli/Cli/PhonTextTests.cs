@@ -38,10 +38,12 @@ public sealed class PhonTextTests : IDisposable
     public void TheValuesListLeadsWithTheTokenToTypeAndBracketsANameWithSpaces()
     {
         var response = new PhonValuesResponse(PhonValuesResponse.SchemaName, "grammar",
-            [PhonValues.ClassValue("Vowels", "V", 3), PhonValues.ClassValue("Exact featured V", "", 2)], [new PhonValue("Voiced", "voice")], "note");
+            [new PhonValue("V", null, null, "V", "segment"), new PhonValue("Exact featured V", null, null, "[Exact featured V]", "feature"), new PhonValue("hidden", null, null, null, "segment")],
+            [new PhonValue("voice", null, Values: ["+", "-"])], "note");
         var text = PhonText.Values(response);
-        Assert.Contains("  V  Vowels  3 phonemes", text);
-        Assert.Contains("  [Exact featured V]  Exact featured V  2 phonemes", text);
-        Assert.Contains("  Voiced (voice)", text);
+        Assert.Contains("  V  V  segment", text);
+        Assert.Contains("  [Exact featured V]  Exact featured V  feature", text);
+        Assert.Contains("  (none)  hidden  segment  (no spelling reaches this class)", text);
+        Assert.Contains("  voice  + -", text);
     }
 }

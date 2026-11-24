@@ -71,7 +71,8 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
         Ran = true;
         if (!_inventoryRead && matcher.MatchesByIdentity && leaves.Any(leaf => leaf.Plan.ClassTokens.Count > 0))
         {
-            _inventory = matcher.Inventory(cancellationToken);
+            try { _inventory = matcher.Inventory(cancellationToken); }
+            catch (QueryRefusalException) { _inventory = null; }
             _inventoryRead = true;
         }
         var words = forms.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();

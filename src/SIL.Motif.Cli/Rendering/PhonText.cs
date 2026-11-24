@@ -31,10 +31,11 @@ internal static class PhonText
     {
         var text = new StringBuilder();
         string Feature(SIL.Motif.Commands.Queries.PhonValue value) =>
-            value.Name + (value.Abbreviation is null || value.Abbreviation == value.Name ? "" : " (" + value.Abbreviation + ")");
+            value.Name + (value.Values is { } values ? "  " + string.Join(" ", values) : "");
         // The first column is what to type in a pattern; a name with spaces needs the brackets shown.
         string Class(SIL.Motif.Commands.Queries.PhonValue value) =>
-            (value.Token ?? value.Abbreviation ?? value.Name) + "  " + value.Name + (value.Members is { } members ? $"  {members} phonemes" : "");
+            (value.Token ?? "(none)") + "  " + value.Name + (value.Kind is { } kind ? "  " + kind : "") +
+            (value.Token is null ? "  (no spelling reaches this class)" : "");
         text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}; the first column is what to type in a pattern, and a class is also named by its full name in brackets, as in [Name]:");
         foreach (var value in response.NaturalClasses) text.AppendLine("  " + Class(value));
         text.AppendLine($"Phonological features ({response.Features.Count}):");
