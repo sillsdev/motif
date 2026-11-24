@@ -22,9 +22,11 @@ internal sealed record PanGlossCapabilities(
     /// declare <c>interfaces.serveOps.match</c>, and list every construct the pattern needs (<c>environment</c>,
     /// <c>featureBundle</c>, <c>alphaVariable</c>) under its <c>constructs.supported</c>.
     /// </summary>
-    internal string? ServeMatchRefusal(IReadOnlyCollection<string>? needs = null)
+    internal string? ServeMatchRefusal(IReadOnlyCollection<string>? needs = null, string? segmentTest = null)
     {
         if (ServeMatch is null) return "its description declares no interfaces.serveOps.match";
+        if (segmentTest is not null && !ServeMatch.SegmentTests.Contains(segmentTest))
+            return $"its interfaces.serveOps.match does not list {segmentTest} under segmentTests";
         foreach (var need in needs ?? [])
             if (!ServeMatch.Supported.Contains(need))
                 return $"its interfaces.serveOps.match does not list {need} among its supported constructs";
@@ -132,8 +134,13 @@ internal sealed record PanGlossWhyNotCapability(string? Schema, string? Ids, Imm
 /// <summary>What <c>interfaces.serveOps.match</c> declares.</summary>
 /// <param name="Version">The op's own version, or null when the key is missing.</param>
 /// <param name="Supported">The constructs <c>constructs.supported</c> lists, such as <c>environment</c>, <c>featureBundle</c> and <c>alphaVariable</c>.</param>
-internal sealed record PanGlossServeMatchCapability(int? Version, ImmutableHashSet<string>? SupportedConstructs = null)
+/// <param name="SegmentTestsListed">The segment tests <c>segmentTests</c> lists (<c>engine</c>, <c>identity</c>); empty on a release before v0.31.0, which has none.</param>
+internal sealed record PanGlossServeMatchCapability(int? Version, ImmutableHashSet<string>? SupportedConstructs = null,
+    ImmutableHashSet<string>? SegmentTestsListed = null)
 {
+    /// <summary>The segment tests the op declares; empty when the description lists none.</summary>
+    internal ImmutableHashSet<string> SegmentTests => SegmentTestsListed ?? [];
+
     /// <summary>The constructs the op declares supported; empty when the description lists none.</summary>
     internal ImmutableHashSet<string> Supported => SupportedConstructs ?? [];
 }
@@ -272,8 +279,12 @@ internal static class PanGlossSurface
             constructs.TryGetProperty("supported", out var list) && list.ValueKind == JsonValueKind.Array)
             foreach (var item in list.EnumerateArray())
                 if (item.ValueKind == JsonValueKind.String) supported.Add(item.GetString()!);
+        var tests = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        if (match.TryGetProperty("segmentTests", out var testList) && testList.ValueKind == JsonValueKind.Array)
+            foreach (var item in testList.EnumerateArray())
+                if (item.ValueKind == JsonValueKind.String) tests.Add(item.GetString()!);
         return new PanGlossServeMatchCapability(match.TryGetProperty("version", out var version) &&
-            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null, supported.ToImmutable());
+            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null, supported.ToImmutable(), tests.ToImmutable());
     }
 
     private static PanGlossServeInventoryCapability? ReadServeInventory(JsonElement root)

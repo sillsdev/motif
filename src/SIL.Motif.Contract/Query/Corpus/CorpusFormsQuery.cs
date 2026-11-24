@@ -12,9 +12,10 @@ namespace SIL.Motif.Contract.Query.Corpus;
 /// <param name="FoldCase">Lower-case every form before counting.</param>
 /// <param name="SplitHyphens">Split running text at hyphens between letters.</param>
 /// <param name="Limit">The most rows returned; default 100.</param>
+/// <param name="SegmentTest"><c>engine</c> (the default) or <c>identity</c>, how <c>phon</c> and <c>env</c> test a segment; overrides the document's <c>segmentTest</c>.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null, string? QueryJson = null, string? GrammarPath = null,
-    string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null);
+    string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null, string? SegmentTest = null);
 
 /// <summary>One word of a corpus that satisfied the query.</summary>
 /// <param name="Form">The word.</param>

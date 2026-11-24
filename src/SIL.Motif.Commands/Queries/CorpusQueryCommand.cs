@@ -51,6 +51,7 @@ public static class CorpusQueryCommand
         ArgumentNullException.ThrowIfNull(request);
         QueryExpr? where;
         var limit = request.Limit ?? DefaultLimit;
+        string segmentTest;
         if ((request.Where is null) == (request.QueryJson is null))
             return Invalid("Give the query as --where <expression> or as --query-json, one of the two.");
         if (limit < 1) return Invalid("limit is a positive whole number.");
@@ -64,11 +65,13 @@ public static class CorpusQueryCommand
                     return Invalid("A corpus holds forms only; the document's from must be forms.");
                 where = document.Where;
                 limit = request.Limit ?? document.Limit ?? DefaultLimit;
+                segmentTest = PhonSegmentTest.Normalize(request.SegmentTest ?? document.SegmentTest, request.SegmentTest is null ? "segmentTest" : "segment-test");
             }
             else
             {
                 if (!QueryExprText.TryParse(request.Where!, out where, out var textRefusal))
                     return CommandOutcome<CorpusFormsResponse>.Refused(textRefusal);
+                segmentTest = PhonSegmentTest.Normalize(request.SegmentTest, "segment-test");
             }
             if (QueryExprTools.HasPatterns(where) && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(QueryRefusalException.PhonNeedsGrammar().Refusal);
@@ -93,7 +96,7 @@ public static class CorpusQueryCommand
         {
             var matcher = PhonMatchers.ForGrammar(request.GrammarPath!, parserPath);
             if (!matcher.Succeeded) return CommandOutcome<CorpusFormsResponse>.Refused(matcher.Refusal!);
-            phon = new PhonSession(matcher.Value!);
+            phon = new PhonSession(matcher.Value!, segmentTest: segmentTest);
         }
         try
         {

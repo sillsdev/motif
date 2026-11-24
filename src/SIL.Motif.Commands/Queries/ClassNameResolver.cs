@@ -5,12 +5,14 @@ using SIL.Motif.Contract.Query.Phon;
 namespace SIL.Motif.Commands.Queries;
 
 /// <summary>
-/// Lets a pattern name a natural class by a different case or by its id as well as by the label PanGloss knows. When PanGloss
-/// answers a pattern with <c>unknown_natural_class</c>, the grammar's classes are read once from its <c>inventory</c> op and each
-/// bracketed name that matches one class's label, token or id case-insensitively is replaced by that class's token and the pattern is
-/// sent again. A name two classes share ends the query with both listed; a name that matches nothing ends it with the closest labels.
-/// Text inside <c>/.../</c> literals is never touched. Reading the classes only after that answer keeps every pattern that already
-/// works free of the read, and when the read fails or lists nothing the refusal says so.
+/// Lets a pattern name a natural class by its full FieldWorks name (<c>[Vowels]</c> for the label <c>V</c>), by a different case, or by
+/// its id, as well as by the token PanGloss's <c>match</c> takes. Before a pattern with a bracketed name is sent, the grammar's classes are
+/// read once from the <c>inventory</c> op (which lists each class's <c>fullName</c>) and each bracketed name that is not already a class's
+/// token, label or id, but equals one class's full name, label, token or id ignoring case, is replaced by that class's token. A name may hold
+/// spaces. A name two classes share ends the query with both listed; a name that matches nothing is sent, and PanGloss's
+/// <c>unknown_natural_class</c> then ends it with the closest names, which consider the full names as well. Text inside <c>/.../</c> literals is never touched. A name that
+/// is exactly a token is that token, whatever another class's full name says, as in PanGloss. When the read fails or lists nothing the
+/// pattern is sent as written and the refusal, if one comes, says so.
 /// </summary>
 internal sealed partial class ClassNameResolver(IPhonMatcher inner) : IPhonMatcher
 {
@@ -23,16 +25,14 @@ internal sealed partial class ClassNameResolver(IPhonMatcher inner) : IPhonMatch
 
     public string? ParserVersion => inner.ParserVersion;
 
-    public bool MatchesByIdentity => inner.MatchesByIdentity;
-
     public PhonInventory? Inventory(CancellationToken cancellationToken) => inner.Inventory(cancellationToken);
 
-    public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken)
+    public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, string segmentTest, CancellationToken cancellationToken)
     {
-        var text = _resolved.GetValueOrDefault(patternText, patternText);
+        var text = Resolved(patternText, cancellationToken);
         try
         {
-            return inner.Match(text, words, cancellationToken);
+            return inner.Match(text, words, segmentTest, cancellationToken);
         }
         catch (QueryRefusalException refused) when (IsUnknownClass(refused))
         {
@@ -44,13 +44,25 @@ internal sealed partial class ClassNameResolver(IPhonMatcher inner) : IPhonMatch
             _resolved[patternText] = rewritten;
             try
             {
-                return inner.Match(rewritten, words, cancellationToken);
+                return inner.Match(rewritten, words, segmentTest, cancellationToken);
             }
             catch (QueryRefusalException again) when (IsUnknownClass(again))
             {
                 throw WithSuggestions(again, rewritten, classes);
             }
         }
+    }
+
+    // A pattern with no bracketed class name never reads the inventory.
+    private string Resolved(string patternText, CancellationToken cancellationToken)
+    {
+        if (_resolved.TryGetValue(patternText, out var known)) return known;
+        if (!Brackets().Matches(patternText).Any(match => !match.Groups["literal"].Success && !IsBundle(match.Groups["name"].Value)))
+            return patternText;
+        var classes = Classes(cancellationToken);
+        var text = classes is { Count: > 0 } ? Rewrite(patternText, classes) : patternText;
+        _resolved[patternText] = text;
+        return text;
     }
 
     private static bool IsUnknownClass(QueryRefusalException refused) =>
@@ -79,14 +91,14 @@ internal sealed partial class ClassNameResolver(IPhonMatcher inner) : IPhonMatch
     private static bool IsKnown(string name, IReadOnlyList<PhonInventoryClass> classes) =>
         classes.Any(value => value.Token == name || value.Name == name || value.Id == name);
 
-    /// <summary>The pattern with each bracketed name outside a literal that is no class's token, label or id but is one class's, ignoring case, replaced by that class's token.</summary>
+    /// <summary>The pattern with each bracketed name outside a literal that is no class's token, label or id but is one class's full name, label, token or id, ignoring case, replaced by that class's token.</summary>
     internal static string Rewrite(string pattern, IReadOnlyList<PhonInventoryClass> classes) =>
         Brackets().Replace(pattern, match =>
         {
             if (match.Groups["literal"].Success) return match.Value;
             var name = match.Groups["name"].Value;
             if (IsBundle(name) || IsKnown(name, classes)) return match.Value;
-            var named = classes.Where(value => new[] { value.Name, value.Token, value.Id }.Any(text => string.Equals(text, name, StringComparison.OrdinalIgnoreCase))).ToList();
+            var named = classes.Where(value => new[] { value.FullName, value.Name, value.Token, value.Id }.Any(text => string.Equals(text, name, StringComparison.OrdinalIgnoreCase))).ToList();
             if (named.Count > 1)
                 throw QueryRefusalException.PhonPatternRefused(
                     $"The class name \"{name}\" names {named.Count} classes: {string.Join(", ", named.Select(Describe))}. Write the token of the one you mean.",
@@ -114,7 +126,7 @@ internal sealed partial class ClassNameResolver(IPhonMatcher inner) : IPhonMatch
     }
 
     private static string Describe(PhonInventoryClass value) =>
-        value.Token is { Length: > 0 } token && value.Name is { Length: > 0 } name && token != name ? $"{token} ({name})" : value.Token ?? value.Name ?? value.Id;
+        value.Token is { Length: > 0 } token && (value.FullName ?? value.Name) is { Length: > 0 } name && token != name ? $"{token} ({name})" : value.Token ?? value.Name ?? value.Id;
 
     /// <summary>At most five classes whose label, token or id begins with, contains, or is a few edits from the name, best first.</summary>
     internal static IReadOnlyList<PhonInventoryClass> Closest(string name, IReadOnlyList<PhonInventoryClass> classes)
@@ -124,7 +136,7 @@ internal sealed partial class ClassNameResolver(IPhonMatcher inner) : IPhonMatch
         return classes.Select(value =>
             {
                 var best = int.MaxValue;
-                foreach (var candidate in new[] { value.Token, value.Name })
+                foreach (var candidate in new[] { value.Token, value.Name, value.FullName })
                 {
                     if (string.IsNullOrEmpty(candidate)) continue;
                     var other = candidate.ToLowerInvariant();

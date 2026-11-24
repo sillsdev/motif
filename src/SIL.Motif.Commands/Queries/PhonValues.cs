@@ -15,8 +15,9 @@ namespace SIL.Motif.Commands.Queries;
 /// <param name="Token">For a natural class, exactly what to type in a pattern, in brackets when it has spaces or pattern characters; null for a feature, and for a class no spelling reaches.</param>
 /// <param name="Kind">For a natural class, <c>segment</c> (an explicit segment list) or <c>feature</c> (a feature structure); null for a feature.</param>
 /// <param name="Values">For a feature, the names of its values in order; null for a class.</param>
+/// <param name="FullName">For a natural class, its Name in the analysis writing system as FieldWorks shows it (<c>Vowels</c> for the label <c>V</c>), which a pattern may write in brackets too; null when it has none or the grammar is HermitCrab XML.</param>
 public sealed record PhonValue(string Name, string? Abbreviation, int? Members = null, string? Token = null, string? Kind = null,
-    IReadOnlyList<string>? Values = null);
+    IReadOnlyList<string>? Values = null, string? FullName = null);
 
 /// <summary>The names a pattern may use: <c>motif query --values classes</c> and the MCP <c>values</c> argument of <c>motif_query_schema</c>.</summary>
 /// <param name="Schema">The schema name.</param>
@@ -40,8 +41,8 @@ public sealed record QueryValuesRequest(string? FwDataPath = null, string? Gramm
 public static class PhonValues
 {
     private const string Explanation =
-        "Read from PanGloss's inventory op for the grammar. PanGloss keeps one label per class, so a class is named by that label (a FieldWorks project's Abbreviation), " +
-        "or by its id when the label cannot be written in brackets; a name it does not know is refused as unknown_natural_class with the nearest names.";
+        "Read from PanGloss's inventory op for the grammar. A class is written by its token (the first column; a FieldWorks project's Abbreviation, or its id when the label cannot be written in brackets) " +
+        "or by its full name (the second column; case does not matter, and a name with spaces goes in brackets), which Motif resolves to the token before it sends the pattern; a name it does not know is refused as unknown_natural_class with the nearest names.";
 
     /// <summary>Reads the names the request asks for.</summary>
     public static CommandOutcome<PhonValuesResponse> Read(QueryValuesRequest request, Action<string>? timing = null)
@@ -88,7 +89,7 @@ public static class PhonValues
             return CommandOutcome<PhonValuesResponse>.Refused(new Refusal(RefusalCodes.QueryPhonUnavailable, FailureReason.Refused,
                 "The installed PanGloss could not list the grammar's natural classes."));
         var classes = inventory.Classes.Select(item => new PhonValue(item.Name ?? item.Id, null, null,
-            item.Token is { } token ? PatternToken(token) : null, item.Kind)).ToList();
+            item.Token is { } token ? PatternToken(token) : null, item.Kind, null, item.FullName)).ToList();
         var features = inventory.Features.Select(item => new PhonValue(item.Name, null, Values: item.Values)).ToList();
         var note = inventory.Complete ? Explanation : Explanation + $" PanGloss stopped at {inventory.StopReason}, so this list is partial.";
         return CommandOutcome<PhonValuesResponse>.Success(new PhonValuesResponse(PhonValuesResponse.SchemaName, source,

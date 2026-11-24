@@ -27,17 +27,18 @@ public sealed class PhonQueryTests : IDisposable
         private readonly PhonBatchResult _recorded = ResidentPhonMatcher.Read(RecordedMatch.Fill(recorded, sentWords));
         private Dictionary<string, PhonWordResult> _words => _recorded.Words.ToDictionary(word => word.Word);
 
-        public string? ParserVersion => "0.30.0";
+        public string? ParserVersion => "0.31.0";
 
-        public bool MatchesByIdentity { get; init; } = true;
+        public List<string> SegmentTests { get; } = [];
 
         public PhonInventory? Inventory(CancellationToken cancellationToken) => ResidentPhonMatcher.ReadInventory(RecordedMatch.Inventory);
 
         public List<IReadOnlyList<string>> Batches { get; } = [];
 
-        public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken)
+        public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, string segmentTest, CancellationToken cancellationToken)
         {
             Assert.Equal(expectedPattern, patternText);
+            SegmentTests.Add(segmentTest);
             Batches.Add(words);
             return new PhonBatchResult([.. words.Select(word => _words[word])], _recorded.Complete, _recorded.StopReason);
         }
@@ -125,35 +126,88 @@ public sealed class PhonQueryTests : IDisposable
         Assert.False(alpha.Report.MayUnderReport);
     }
 
+    private static PhonSession Identity(IPhonMatcher matcher) => new(matcher, segmentTest: PhonSegmentTest.Identity);
+
     [Fact]
-    public void AClassNotListedAsAFeatureClassOrALiteralMakesTheReportSayIdentity()
+    public void UnderIdentityAClassNotListedAsAFeatureClassOrALiteralMakesTheReportSayIdentity()
     {
-        var literal = new PhonSession(new Replay(RecordedMatch.Literals, "/pa/ ( [V])*", "paaa"));
+        var literal = Identity(new Replay(RecordedMatch.Literals, "/pa/ ( [V])*", "paaa"));
         CorpusFormsQuery.Run(Corpus("paaa"), Where("phon(/pa/ (V)*)"), literal);
-        Assert.Equal(("identity", true), (literal.Report.MatchMode, literal.Report.MayUnderReport));
+        Assert.Equal(("identity", true, "identity"), (literal.Report.MatchMode, literal.Report.MayUnderReport, literal.Report.SegmentTest));
         Assert.Null(literal.Report.Warnings);
-        var segmentClass = new PhonSession(new Replay(RecordedMatch.CvcvClasses, "[Stop] [V] [Stop] [V]", "pata", "kaki", "pat", "atan"));
+        var segmentClass = Identity(new Replay(RecordedMatch.CvcvClasses, "[Stop] [V] [Stop] [V]", "pata", "kaki", "pat", "atan"));
         CorpusFormsQuery.Run(Corpus("pata", "kaki", "pat", "atan"), Where("phon(Stop V Stop V)"), segmentClass);
         Assert.True(segmentClass.Report.MayUnderReport);
-        var featureClass = new PhonSession(new Replay(RecordedMatch.NaturalClass, "[Voiced] [V]", "ba", "pa"));
+        var featureClass = Identity(new Replay(RecordedMatch.NaturalClass, "[Voiced] [V]", "ba", "pa"));
         CorpusFormsQuery.Run(Corpus("ba", "pa"), Where("phon(Voiced V)"), featureClass);
         Assert.True(featureClass.Report.MayUnderReport, "V is a segment list, so the pattern is identity-tested");
-        var onlyFeature = new PhonSession(new Replay(RecordedMatch.FeatureBundle, "[+voice] [Voiced]", "ba", "pa", "aba"));
+        var onlyFeature = Identity(new Replay(RecordedMatch.FeatureBundle, "[+voice] [Voiced]", "ba", "pa", "aba"));
         CorpusFormsQuery.Run(Corpus("ba", "pa", "aba"), Where("phon([+voice] Voiced)"), onlyFeature);
         Assert.Null(onlyFeature.Report.MatchMode);
     }
 
     [Fact]
-    public void NotOverAnIdentityTestedPatternWarnsAbsenceIsNotProvenAndTheLabelGoesWhenThePanGlossTestsLikeARule()
+    public void UnderTheEngineTestNoPatternCarriesTheLabelAndTheReportNamesTheMode()
     {
-        var negated = new PhonSession(new Replay(RecordedMatch.VowelWithUnsegmentable, "[V]", "pata", "xyz"));
+        var replay = new Replay(RecordedMatch.Literals, "/pa/ ( [V])*", "paaa");
+        var literal = new PhonSession(replay);
+        CorpusFormsQuery.Run(Corpus("paaa"), Where("phon(/pa/ (V)*)"), literal);
+        Assert.Equal(("engine", null, false, null), (literal.Report.SegmentTest, literal.Report.MatchMode, literal.Report.MayUnderReport, literal.Report.Warnings));
+        Assert.Equal(["engine"], replay.SegmentTests);
+        var segmentClass = new PhonSession(new Replay(RecordedMatch.CvcvClasses, "[Stop] [V] [Stop] [V]", "pata", "kaki", "pat", "atan"));
+        CorpusFormsQuery.Run(Corpus("pata", "kaki", "pat", "atan"), Where("phon(Stop V Stop V)"), segmentClass);
+        Assert.False(segmentClass.Report.MayUnderReport);
+        var envWithLiteralSide = new PhonSession(new Replay(RecordedMatch.EnvSideLiteral, "[Stop] / /i/ _", "kiki", "kuŋ", "kaki"));
+        var rows = CorpusFormsQuery.Run(Corpus("kiki", "kuŋ", "kaki"), Where("env(Stop / /i/ _)"), envWithLiteralSide);
+        Assert.Equal(["kiki"], rows.Select(row => row.Form));
+        Assert.Equal(("engine", null), (envWithLiteralSide.Report.SegmentTest, envWithLiteralSide.Report.MatchMode));
+    }
+
+    [Fact]
+    public void NotOverAnIdentityTestedPatternWarnsAbsenceIsNotProvenAndUnderTheEngineTestItDoesNot()
+    {
+        var negated = Identity(new Replay(RecordedMatch.VowelWithUnsegmentable, "[V]", "pata", "xyz"));
         CorpusFormsQuery.Run(Corpus("pata", "xyz"), Where("not phon(V)"), negated);
         var warning = Assert.Single(negated.Report.Warnings!);
         Assert.Contains("absence is not proven", warning);
-        var fixedPanGloss = new PhonSession(new Replay(RecordedMatch.VowelWithUnsegmentable, "[V]", "pata", "xyz") { MatchesByIdentity = false });
-        CorpusFormsQuery.Run(Corpus("pata", "xyz"), Where("not phon(V)"), fixedPanGloss);
-        Assert.Null(fixedPanGloss.Report.Warnings);
-        Assert.Null(fixedPanGloss.Report.MatchMode);
+        var engine = new PhonSession(new Replay(RecordedMatch.VowelWithUnsegmentable, "[V]", "pata", "xyz"));
+        CorpusFormsQuery.Run(Corpus("pata", "xyz"), Where("not phon(V)"), engine);
+        Assert.Null(engine.Report.Warnings);
+        Assert.Null(engine.Report.MatchMode);
+    }
+
+    [Fact]
+    public void TheEngineAndIdentityRepliesDifferWhereTheRecordedPanGlossSaysTheyDo()
+    {
+        var engine = ResidentPhonMatcher.Read(RecordedMatch.Fill(RecordedMatch.ClassEngine, "kuŋ", "pata"));
+        var identity = ResidentPhonMatcher.Read(RecordedMatch.Fill(RecordedMatch.ClassIdentity, "kuŋ", "pata"));
+        Assert.Equal(2, engine.Words[0].Spans.Count);
+        Assert.Single(identity.Words[0].Spans);
+        Assert.Equal(engine.Words[1].Spans, identity.Words[1].Spans);
+        var literalEngine = ResidentPhonMatcher.Read(RecordedMatch.Fill(RecordedMatch.LiteralEngine, "kiki", "kuŋ", "kaki"));
+        var literalIdentity = ResidentPhonMatcher.Read(RecordedMatch.Fill(RecordedMatch.LiteralIdentity, "kiki", "kuŋ", "kaki"));
+        Assert.Equal([2, 2, 2], literalEngine.Words.Select(word => word.Spans.Count));
+        Assert.Equal([2, 0, 1], literalIdentity.Words.Select(word => word.Spans.Count));
+    }
+
+    [Fact]
+    public void TheRequestCarriesTheSegmentTestAndTheCapabilityMustListIt()
+    {
+        var line = new ServeMatchRequest("[V]", ["a"]) { SegmentTest = "identity" }.ToLine("1");
+        Assert.Contains("\"segmentTest\":\"identity\"", line);
+        Assert.DoesNotContain("segmentTest", new ServeMatchRequest("[V]", ["a"]).ToLine("1"));
+        var node = JsonNode.Parse(SIL.Motif.Tests.PanGloss.WhyNotRecordedTests.Recorded("describe"))!;
+        var interfaces = node["interfaces"] as JsonObject ?? (JsonObject)(node["interfaces"] = new JsonObject());
+        var ops = interfaces["serveOps"] as JsonObject ?? (JsonObject)(interfaces["serveOps"] = new JsonObject());
+        ops["match"] = JsonNode.Parse(RecordedMatch.DescribeBefore030);
+        var older = PanGlossSurface.ReadDescription(node.ToJsonString(), out _)!;
+        Assert.Contains("segmentTests", older.ServeMatchRefusal(null, "engine"));
+        ops["match"] = JsonNode.Parse(RecordedMatch.Describe);
+        var current = PanGlossSurface.ReadDescription(node.ToJsonString(), out _)!;
+        Assert.Null(current.ServeMatchRefusal(null, "engine"));
+        Assert.Null(current.ServeMatchRefusal(null, "identity"));
+        Assert.NotNull(current.ServeMatchRefusal(null, "bogus"));
+        Assert.Equal("bad_request", JsonNode.Parse(RecordedMatch.BadSegmentTest)!["code"]!.GetValue<string>());
     }
 
     [Fact]
@@ -164,6 +218,10 @@ public sealed class PhonQueryTests : IDisposable
         Assert.Equal("feature", inventory.Classes.Single(c => c.Token == "Voiced").Kind);
         Assert.Null(inventory.Classes.Single(c => c.Id == "no]way").Token);
         Assert.Equal(["+", "-"], inventory.Features.Single(f => f.Name == "voice").Values);
+        Assert.All(inventory.Classes, c => Assert.Null(c.FullName));
+        var fieldWorks = ResidentPhonMatcher.ReadInventory(RecordedMatch.InventoryWithFullName);
+        Assert.Equal("Vowels", fieldWorks.Classes.Single(c => c.Token == "V").FullName);
+        Assert.Null(fieldWorks.Classes.Single(c => c.Token == "Any").FullName);
     }
 
     [Theory]
@@ -282,7 +340,7 @@ public sealed class PhonQueryTests : IDisposable
 
         public List<IReadOnlyList<string>> Batches { get; } = [];
 
-        public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken)
+        public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, string segmentTest, CancellationToken cancellationToken)
         {
             Batches.Add(words);
             return new PhonBatchResult([.. words.Select(word => new PhonWordResult(word, "ok", [], null, null, null))], true, null);

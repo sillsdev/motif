@@ -37,7 +37,7 @@ public static class QueryRunLine
     [
         "project", "where", "group", "min-count", "examples", "ids", "raw-letters", "json", "trial", "fold", "distinct",
         "change", "at", "affixes", "wordset", "discovery", "heldout", "score", "exception", "unit", "controls",
-        "control-letters", "test-result", "members", "context", "sides", "sort", "limit",
+        "control-letters", "test-result", "members", "context", "sides", "sort", "limit", "segment-test",
     ];
 
     private static readonly string[] SavedFlags = ["project", "examples", "json", "trial"];
@@ -202,12 +202,22 @@ public static class QueryRunLine
                 refusal = Invalid("--at, --affixes, --wordset, --discovery, --heldout, --controls and --control-letters need --change.");
                 return false;
             }
+            string? segmentTest = null;
+            if (flags.TryGetValue("segment-test", out var segmentTestText))
+            {
+                if (!SIL.Motif.Contract.Query.Phon.PhonSegmentTest.All.Contains(segmentTestText))
+                {
+                    refusal = Invalid("--segment-test is engine or identity.", ("flag", "segment-test"), ("value", segmentTestText));
+                    return false;
+                }
+                segmentTest = segmentTestText;
+            }
             record = new QueryRecord(source!, selectors, List(flags, "group"), minCount, examples, flags.ContainsKey("ids"),
                 flags.ContainsKey("raw-letters"), flags.GetValueOrDefault("trial"), flags.GetValueOrDefault("fold"),
                 flags.GetValueOrDefault("distinct"), hypothesis, flags.ContainsKey("score") ? List(flags, "score") : null,
                 exceptionList.Count == 0 ? null : exceptionList, flags.GetValueOrDefault("unit"), null,
                 contextList.Count == 0 ? null : contextList, evidence, flags.GetValueOrDefault("as-of"),
-                flags.GetValueOrDefault("sides"), flags.GetValueOrDefault("sort"), filter, limit);
+                flags.GetValueOrDefault("sides"), flags.GetValueOrDefault("sort"), filter, limit, segmentTest);
         }
         parsed = new QueryArguments(record, flags.GetValueOrDefault("project"), flags.GetValueOrDefault("as-of"),
             flags.ContainsKey("json"), flags.ContainsKey("test-result"), flags.GetValueOrDefault("members"));

@@ -104,7 +104,7 @@ public static class FormsQueryCommand
                         {
                             var matcher = PhonMatchers.ForProject(database, project, request.FwDataPath, parserPath);
                             if (!matcher.Succeeded) return CommandOutcome<FormsQueryResponse>.Refused(matcher.Refusal!);
-                            phon = new PhonSession(matcher.Value!);
+                            phon = new PhonSession(matcher.Value!, segmentTest: PhonSegmentTest.Normalize(query.SegmentTest));
                         }
                         result = FormQuery.Run(query, snapshot.Snapshot.Forms, snapshot.Snapshot.Graphemes, phon);
                     }

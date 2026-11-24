@@ -42,6 +42,7 @@ internal static class ParsimonyTools
                 ("examples", Schema.Integer("Maximum examples per group.", 0, 1000), false),
                 ("ids", Schema.Boolean("Include canonical ids."), false),
                 ("rawLetters", Schema.Boolean("Use characters instead of graphemes."), false),
+                ("segmentTest", Schema.String("How phon and env test a segment: engine (the default) is rule application's test, a literal matches every segment with its feature bundle and a [class] the union of its members' features, and the spans are a superset of what a rule rewrites; identity is exact members only. Every phon and env result reports the mode it used.", "engine", "identity"), false),
                 ("trialId", Schema.String("Trial id; only the latest Trial has query rows."), false),
                 ("change", Schema.Object(
                     ("dropped", Schema.String("Letters the stem edge has today."), true),

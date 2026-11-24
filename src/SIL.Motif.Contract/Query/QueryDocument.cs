@@ -74,6 +74,8 @@ public sealed record QueryDocument
     public IReadOnlyList<QueryField>? Context { get; init; }
     /// <summary>A hypothesised change over the stems source.</summary>
     public QueryChangeDocument? Change { get; init; }
+    /// <summary>How <c>phon</c> and <c>env</c> test a segment: <c>engine</c> (the default) or <c>identity</c>; null is the default.</summary>
+    public string? SegmentTest { get; init; }
 
     /// <summary>Parses a document, refusing a malformed one with <see cref="RefusalCodes.QueryDocumentInvalid"/> and a reserved kind with <see cref="RefusalCodes.QueryNotYetAvailable"/>.</summary>
     public static bool TryParse(string json, [NotNullWhen(true)] out QueryDocument? document, [NotNullWhen(false)] out Refusal? refusal)
@@ -136,7 +138,7 @@ public sealed record QueryDocument
             Change.WordSets, Change.Discovery, Change.HeldOut, Change.Controls, Change.ControlLetters);
         return new QueryRecord(From, where, Group, MinCount ?? 1, Examples ?? 5, Ids, RawLetters, Trial, Fold, Distinct, hypothesis,
             Score, exceptions.Count == 0 ? null : exceptions, Unit, Members, context.Count == 0 ? null : context, Evidence, asOf,
-            Sides, sort, filter, Limit);
+            Sides, sort, filter, Limit, SegmentTest);
     }
 }
 
@@ -145,7 +147,7 @@ internal static class QueryDocumentJson
     private static readonly string[] Names =
     [
         "version", "from", "where", "side", "sides", "sort", "limit", "group", "minCount", "examples", "ids", "rawLetters", "trial",
-        "fold", "distinct", "score", "unit", "evidence", "members", "exceptions", "context", "change",
+        "fold", "distinct", "score", "unit", "evidence", "members", "exceptions", "context", "change", "segmentTest",
     ];
 
     private static readonly string[] ChangeNames =
@@ -221,7 +223,15 @@ internal static class QueryDocumentJson
             Exceptions = Fields(root, "exceptions"),
             Context = Fields(root, "context"),
             Change = change,
+            SegmentTest = SegmentTestOf(root),
         };
+    }
+
+    private static string? SegmentTestOf(JsonObject root)
+    {
+        var text = Text(root, "segmentTest");
+        if (text is not null) PhonSegmentTest.Normalize(text);
+        return text;
     }
 
     public static void RejectReserved(QueryExpr? expr)
@@ -410,6 +420,7 @@ internal static class QueryDocumentJson
         if (document.Members is not null) root["members"] = StringArray(document.Members);
         if (document.Exceptions is not null) root["exceptions"] = new JsonArray([.. document.Exceptions.Select(WriteExpr)]);
         if (document.Context is not null) root["context"] = new JsonArray([.. document.Context.Select(WriteExpr)]);
+        if (document.SegmentTest is not null) root["segmentTest"] = document.SegmentTest;
         if (document.Change is { } change)
         {
             var obj = new JsonObject { ["dropped"] = change.Dropped, ["gained"] = change.Gained, ["at"] = change.At,

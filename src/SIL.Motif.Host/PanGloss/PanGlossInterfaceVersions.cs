@@ -30,6 +30,9 @@ public static class PanGlossInterfaceVersions
     /// <summary>What a PanGloss must declare to match environments, feature bundles and alpha variables, written for the refusal that names it.</summary>
     public const string ServeMatchConstructsNeeded =
         "a PanGloss release whose --describe lists environment, featureBundle and alphaVariable under interfaces.serveOps.match constructs.supported (release v0.30.0)";
+    /// <summary>What a PanGloss must declare to match under a chosen segment test, written for the refusal that names it.</summary>
+    public const string ServeMatchSegmentTestNeeded =
+        "a PanGloss release whose --describe lists engine and identity under interfaces.serveOps.match segmentTests (release v0.31.0)";
     /// <summary>What a PanGloss must declare to list a grammar's natural classes and features over <c>serve</c>, written for the refusal that names it.</summary>
     public const string ServeInventoryNeeded =
         "a PanGloss release whose --describe declares interfaces.serveOps.inventory (release v0.30.0)";

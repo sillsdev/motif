@@ -42,6 +42,7 @@ public static class QueryDocumentText
         Flag("limit", document.Limit?.ToString(CultureInfo.InvariantCulture));
         if (document.Score is not null) Flag("score", string.Join(",", document.Score));
         Flag("unit", document.Unit);
+        Flag("segment-test", document.SegmentTest);
         foreach (var (name, fields) in new[] { ("exception", document.Exceptions), ("context", document.Context) })
             foreach (var field in fields ?? [])
             {
@@ -170,6 +171,7 @@ public static class QueryDocumentText
                 Distinct = flags.GetValueOrDefault("distinct"),
                 Score = flags.ContainsKey("score") ? QueryRunLine.List(flags, "score") : null,
                 Unit = flags.GetValueOrDefault("unit"),
+                SegmentTest = SegmentTestOf(flags),
                 Evidence = evidence,
                 Exceptions = exceptions.Count == 0 ? null : exceptions,
                 Context = context.Count == 0 ? null : context,
@@ -182,6 +184,13 @@ public static class QueryDocumentText
             refusal = error.Refusal;
             return false;
         }
+    }
+
+    private static string? SegmentTestOf(IReadOnlyDictionary<string, string> flags)
+    {
+        if (!flags.TryGetValue("segment-test", out var text)) return null;
+        SIL.Motif.Contract.Query.Phon.PhonSegmentTest.Normalize(text, "segment-test");
+        return text;
     }
 
     private static int? Count(IReadOnlyDictionary<string, string> flags, string name) => flags.TryGetValue(name, out var text)

@@ -8,7 +8,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>A class is checked against PanGloss's inventory after PanGloss answers unknown_natural_class: a different case or an id resolves, anything else is refused with the closest labels.</summary>
+/// <summary>A bracketed class name is checked against PanGloss's inventory before the pattern is sent: a full FieldWorks name, a different case or an id resolves to the token, anything else is sent and refused with the closest names.</summary>
 public sealed class ClassNameResolverTests
 {
     private static readonly PhonInventoryClass[] Classes =
@@ -37,7 +37,7 @@ public sealed class ClassNameResolverTests
             return classes is null ? null : new PhonInventory(classes, []);
         }
 
-        public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken)
+        public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, string segmentTest, CancellationToken cancellationToken)
         {
             Sent.Add(patternText);
             var known = (classes ?? Classes).SelectMany(c => new[] { c.Token, c.Name }).Concat(["V", "C"]).Where(t => t is not null).ToHashSet();
@@ -51,13 +51,13 @@ public sealed class ClassNameResolverTests
     }
 
     [Fact]
-    public void ADifferentCaseBecomesTheTokenAfterPanGlossRefusesItAndTheClassesAreReadOnce()
+    public void ADifferentCaseBecomesTheTokenBeforeTheSendAndTheClassesAreReadOnce()
     {
         var inner = new Knows(Classes);
         var resolver = new ClassNameResolver(inner);
-        resolver.Match("[c] [VOICED]", ["pata"], CancellationToken.None);
-        Assert.Equal(["[c] [VOICED]", "[C] [Voiced]"], inner.Sent);
-        resolver.Match("[c] [VOICED]", ["kaki"], CancellationToken.None);
+        resolver.Match("[c] [VOICED]", ["pata"], "engine", CancellationToken.None);
+        Assert.Equal(["[C] [Voiced]"], inner.Sent);
+        resolver.Match("[c] [VOICED]", ["kaki"], "engine", CancellationToken.None);
         Assert.Equal(1, inner.Reads);
         Assert.Equal("[C] [Voiced]", inner.Sent[^1]);
     }
@@ -66,23 +66,81 @@ public sealed class ClassNameResolverTests
     public void ATokenIsNeverReadAsAName()
     {
         var inner = new Knows(Classes);
-        new ClassNameResolver(inner).Match("[C] [V]", ["pata"], CancellationToken.None);
+        new ClassNameResolver(inner).Match("[C] [V]", ["pata"], "engine", CancellationToken.None);
         Assert.Equal(["[C] [V]"], inner.Sent);
-        Assert.Equal(0, inner.Reads);
+        Assert.Equal(1, inner.Reads);
+        new ClassNameResolver(inner).Match("/p/ #", ["pa"], "engine", CancellationToken.None);
+        Assert.Equal(1, inner.Reads);
+    }
+
+    private static readonly PhonInventoryClass[] Named =
+    [
+        new("V", "V", "ncV", "segment", "Vowels"),
+        new("C", "C", "ncC", "segment", "Consonants"),
+        new("ShV", "ShV", "ncShV", "segment", "Short Vowels"),
+        new("T", "T", "ncT", "segment", "Vowels Tones"),
+        new("Vowels", "Vowels", "ncVowels", "segment", "Syllable Nuclei"),
+    ];
+
+    [Fact]
+    public void AFullNameResolvesToTheTokenBeforeTheSendIgnoringCaseAndMayHoldSpaces()
+    {
+        var inner = new Knows(Named);
+        var resolver = new ClassNameResolver(inner);
+        resolver.Match("[Short Vowels] [consonants]", ["pata"], "engine", CancellationToken.None);
+        resolver.Match("[VOWELS TONES] / [Consonants] _", ["pata"], "engine", CancellationToken.None);
+        Assert.Equal(["[ShV] [C]", "[T] / [C] _"], inner.Sent);
+        Assert.Equal(1, inner.Reads);
+    }
+
+    [Fact]
+    public void ANameThatIsATokenIsThatTokenEvenWhenAnotherClassHasItAsItsFullName()
+    {
+        var inner = new Knows(Named);
+        new ClassNameResolver(inner).Match("[Vowels]", ["a"], "engine", CancellationToken.None);
+        Assert.Equal(["[Vowels]"], inner.Sent);
+    }
+
+    [Fact]
+    public void AFullNameTwoClassesShareIsRefusedBeforeAnythingIsSent()
+    {
+        var inner = new Knows([new("V", "V", "ncV", "segment", "Vowels"), new("W", "W", "ncW", "segment", "vowels")]);
+        var refused = Assert.Throws<QueryRefusalException>(() => new ClassNameResolver(inner).Match("[VOWELS]", ["a"], "engine", CancellationToken.None));
+        Assert.Equal(RefusalCodes.QueryPhonPatternRefused, refused.Refusal.Code);
+        Assert.Contains("V (Vowels)", refused.Refusal.Message);
+        Assert.Contains("W (vowels)", refused.Refusal.Message);
+        Assert.Empty(inner.Sent);
+    }
+
+    [Fact]
+    public void SuggestionsConsiderTheFullNamesToo()
+    {
+        var refused = Assert.Throws<QueryRefusalException>(() => new ClassNameResolver(new Knows(Named)).Match("[Consonant]", ["a"], "engine", CancellationToken.None));
+        Assert.Equal("unknown_natural_class", refused.Refusal.Facts["panglossCode"]);
+        Assert.Contains("C (Consonants)", refused.Refusal.Message);
+    }
+
+    [Fact]
+    public void TheRealFieldWorksFixtureResolvesItsFullNameToItsToken()
+    {
+        var inventory = ResidentPhonMatcher.ReadInventory(RecordedMatch.InventoryWithFullName);
+        var inner = new Knows(inventory.Classes);
+        new ClassNameResolver(inner).Match("[vowels] [Any]", ["a"], "engine", CancellationToken.None);
+        Assert.Equal(["[V] [Any]"], inner.Sent);
     }
 
     [Fact]
     public void ANameWithSpacesInBracketsResolvesByCase()
     {
         var inner = new Knows(Classes);
-        new ClassNameResolver(inner).Match("[nasal stop]", ["a"], CancellationToken.None);
+        new ClassNameResolver(inner).Match("[nasal stop]", ["a"], "engine", CancellationToken.None);
         Assert.Equal("[Nasal Stop]", inner.Sent[^1]);
     }
 
     [Fact]
     public void ANameTwoClassesShareIsRefusedWithBothListed()
     {
-        var refused = Assert.Throws<QueryRefusalException>(() => new ClassNameResolver(new Knows(Classes)).Match("[stop]", ["a"], CancellationToken.None));
+        var refused = Assert.Throws<QueryRefusalException>(() => new ClassNameResolver(new Knows(Classes)).Match("[stop]", ["a"], "engine", CancellationToken.None));
         Assert.Equal(RefusalCodes.QueryPhonPatternRefused, refused.Refusal.Code);
         Assert.Contains("STP (Stop)", refused.Refusal.Message);
         Assert.Contains("STP2 (Stop)", refused.Refusal.Message);
@@ -91,7 +149,7 @@ public sealed class ClassNameResolverTests
     [Fact]
     public void AnUnknownNameIsRefusedWithTheClosestLabels()
     {
-        var refused = Assert.Throws<QueryRefusalException>(() => new ClassNameResolver(new Knows(Classes)).Match("[Vowels]", ["a"], CancellationToken.None));
+        var refused = Assert.Throws<QueryRefusalException>(() => new ClassNameResolver(new Knows(Classes)).Match("[Vowels]", ["a"], "engine", CancellationToken.None));
         Assert.Equal("unknown_natural_class", refused.Refusal.Facts["panglossCode"]);
         Assert.Contains("closest: V", refused.Refusal.Message);
     }
@@ -109,7 +167,7 @@ public sealed class ClassNameResolverTests
     {
         var failure = QueryRefusalException.PhonFailed("inventory timed out");
         var refused = Assert.Throws<QueryRefusalException>(() =>
-            new ClassNameResolver(new Knows(readFails: failure)).Match("[Nope]", ["a"], CancellationToken.None));
+            new ClassNameResolver(new Knows(readFails: failure)).Match("[Nope]", ["a"], "engine", CancellationToken.None));
         Assert.Contains("could not read the grammar's natural classes", refused.Refusal.Message);
         Assert.Contains("inventory timed out", refused.Refusal.Message);
         Assert.Equal("unknown_natural_class", refused.Refusal.Facts["panglossCode"]);
@@ -119,7 +177,7 @@ public sealed class ClassNameResolverTests
     public void AnEmptyClassListIsSaidInTheRefusal()
     {
         var refused = Assert.Throws<QueryRefusalException>(() =>
-            new ClassNameResolver(new Knows([])).Match("[Nope]", ["a"], CancellationToken.None));
+            new ClassNameResolver(new Knows([])).Match("[Nope]", ["a"], "engine", CancellationToken.None));
         Assert.Contains("lists no natural classes", refused.Refusal.Message);
     }
 
@@ -159,7 +217,7 @@ public sealed class ClassNameResolverTests
         Assert.Equal(RefusalCodes.QueryPhonUnavailable, refusal.Refusal.Code);
         Assert.Contains("interfaces.serveOps.inventory", refusal.Refusal.Message);
         var resolved = Assert.Throws<QueryRefusalException>(() =>
-            new ClassNameResolver(new Knows(readFails: refusal)).Match("[Nope]", ["a"], CancellationToken.None));
+            new ClassNameResolver(new Knows(readFails: refusal)).Match("[Nope]", ["a"], "engine", CancellationToken.None));
         Assert.Contains("could not read the grammar's natural classes", resolved.Refusal.Message);
     }
 
@@ -171,7 +229,7 @@ public sealed class ClassNameResolverTests
         var empty = ResidentPhonMatcher.ReadInventory(node.ToJsonString());
         Assert.Empty(empty.Classes);
         var refused = Assert.Throws<QueryRefusalException>(() =>
-            new ClassNameResolver(new Knows(empty.Classes)).Match("[Nope]", ["a"], CancellationToken.None));
+            new ClassNameResolver(new Knows(empty.Classes)).Match("[Nope]", ["a"], "engine", CancellationToken.None));
         Assert.Contains("lists no natural classes", refused.Refusal.Message);
         node["complete"] = false;
         node["stopReason"] = "work_limit";

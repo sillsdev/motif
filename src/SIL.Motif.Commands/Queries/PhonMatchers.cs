@@ -25,17 +25,20 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
 
     public string? ParserVersion { get; } = parserVersion;
 
-    public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken)
+    public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, string segmentTest, CancellationToken cancellationToken)
     {
-        var reply = pool.TryMatchAsync(key, stateToken, grammarPath, new ServeMatchRequest(patternText, words, WordTimeoutMs: WordTimeoutMs) { Requires = PhonPattern.ConstructsOf(patternText) }, cancellationToken)
+        var reply = pool.TryMatchAsync(key, stateToken, grammarPath, new ServeMatchRequest(patternText, words, WordTimeoutMs: WordTimeoutMs)
+            { Requires = PhonPattern.ConstructsOf(patternText), SegmentTest = segmentTest }, cancellationToken)
             .GetAwaiter().GetResult();
         switch (reply)
         {
             case WarmMatchResult.Completed completed:
                 return Read(completed.Json);
             case WarmMatchResult.Unsupported unsupported:
-                throw QueryRefusalException.PhonUnavailable(unsupported.Detail.Contains("supported constructs", StringComparison.Ordinal)
-                    ? PanGlossInterfaceVersions.ServeMatchConstructsNeeded : PanGlossInterfaceVersions.ServeMatchNeeded, unsupported.Detail);
+                throw QueryRefusalException.PhonUnavailable(unsupported.Detail.Contains("segmentTests", StringComparison.Ordinal)
+                    ? PanGlossInterfaceVersions.ServeMatchSegmentTestNeeded
+                    : unsupported.Detail.Contains("supported constructs", StringComparison.Ordinal)
+                        ? PanGlossInterfaceVersions.ServeMatchConstructsNeeded : PanGlossInterfaceVersions.ServeMatchNeeded, unsupported.Detail);
             case WarmMatchResult.Rejected rejected:
                 throw Refused(rejected, patternText);
             case WarmMatchResult.Failed failed:
@@ -81,7 +84,7 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
             string? Text(JsonElement element, string name) =>
                 element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
             var classes = root.GetProperty("classes").EnumerateArray()
-                .Select(item => new PhonInventoryClass(Text(item, "token"), Text(item, "name"), Text(item, "id") ?? "", Text(item, "kind") ?? "")).ToArray();
+                .Select(item => new PhonInventoryClass(Text(item, "token"), Text(item, "name"), Text(item, "id") ?? "", Text(item, "kind") ?? "", Text(item, "fullName"))).ToArray();
             var features = root.GetProperty("features").EnumerateArray()
                 .Select(item => new PhonInventoryFeature(Text(item, "name") ?? "", Text(item, "id") ?? "",
                     [.. item.GetProperty("values").EnumerateArray().Select(value => value.GetString() ?? "")])).ToArray();
