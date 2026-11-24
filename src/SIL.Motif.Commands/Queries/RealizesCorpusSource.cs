@@ -5,7 +5,7 @@ using SIL.Motif.Contract.Query;
 namespace SIL.Motif.Commands.Queries;
 
 /// <summary>A morpheme as PanGloss names it in a parse: by entry and analysis, or by one id that is either.</summary>
-internal sealed record RealizesTarget(string? EntryId, string? MsaId, string? AnyId)
+internal sealed record RealizesTarget(string? EntryId, string? MsaId, string? AnyId, bool? IsRoot = null)
 {
     /// <summary>Whether a morph of a trace names the morpheme.</summary>
     public bool Matches(ParsedMorph morph) => AnyId is { } any
@@ -53,9 +53,11 @@ internal static class RealizesCorpusSource
         var traced = chosen.Select(word => word.Form).ToHashSet(StringComparer.Ordinal);
         var forms = new Dictionary<(string Form, string Source), SortedSet<string>>();
         int atStart = 0, atEnd = 0, inside = 0;
-        void Add(string form, string source, string word)
+        var terms = new HashSet<string>(StringComparer.Ordinal);
+        void Add(string form, string source, string word, int start = -1)
         {
             if (form.Length == 0) return;
+            terms.Add(Term(word, form, start, target));
             if (!forms.TryGetValue((form, source), out var words)) forms[(form, source)] = words = new SortedSet<string>(StringComparer.Ordinal);
             words.Add(word);
         }
@@ -77,7 +79,7 @@ internal static class RealizesCorpusSource
                     if (start == 0 && form.Length < word.Form.Length) atStart++;
                     else if (start + form.Length == word.Form.Length && start > 0) atEnd++;
                     else inside++;
-                    Add(form, ParseSource, word.Form);
+                    Add(form, ParseSource, word.Form, start);
                 }
             }
             if (found) continue;
@@ -101,7 +103,20 @@ internal static class RealizesCorpusSource
         var anchor = atStart > 0 && atEnd == 0 && inside == 0 ? "start" : atEnd > 0 && atStart == 0 && inside == 0 ? "end" : "none";
         var report = new RealizesParseReport(corpus.Count, corpus.Count - failed, matches.Count, noAnalysis, unsegmentable, capped, timedOut, failed,
             untraced > 0 ? sample : null, Math.Round(clock.Elapsed.TotalSeconds + built.Seconds, 1), chosen.Count, built.Built, built.Seconds);
-        return (new RealizesVariants(Merge(forms), anchor, reasons), report);
+        return (new RealizesVariants(Merge(forms), anchor, reasons, Terms: [.. terms.Order(StringComparer.Ordinal)]), report);
+    }
+
+    /// <summary>
+    /// The search term for one piece: the piece with the context its open side attested. A piece at the start of its word is a
+    /// prefix, searched as the word start through the piece; any later piece is searched with what follows it to the word end, so
+    /// <c>a</c> of tinu+a+ng is <c>ang$</c>. A whole word stands for itself exactly. A root of more than two characters is bare.
+    /// </summary>
+    internal static string Term(string word, string piece, int start, RealizesTarget target)
+    {
+        if (start < 0) return RealizesPatternCompiler.Mark(word, "start") + RealizesPatternCompiler.EndMarker;
+        if (target.IsRoot == true && piece.Length > 2) return piece;
+        return start == 0 ? RealizesPatternCompiler.Mark(word[..(start + piece.Length)], "start")
+            : RealizesPatternCompiler.Mark(word[start..], "end");
     }
 
     private static string Format(FormattableString text) => text.ToString(CultureInfo.InvariantCulture);

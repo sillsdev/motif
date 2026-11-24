@@ -28,7 +28,7 @@ internal sealed class RealizesRun(QueryExpr? lowered, IReadOnlyList<RealizesResu
         foreach (var (set, forms) in positive)
         {
             var carried = forms.Where(form => RealizesPatternCompiler.Carries(word, form, set.Pattern.Anchor)).ToList();
-            if (carried.Count > 0) hits.Add(new RealizesHit(set.Morpheme, set.Tier, carried));
+            if (carried.Count > 0) hits.Add(new RealizesHit(set.Morpheme, set.Tier, [.. carried.Select(RealizesPatternCompiler.Show)]));
         }
         return hits;
     }
@@ -109,6 +109,7 @@ internal static class RealizesQuery
                     target = new RealizesTarget(resolved.EntryGuid, resolved.MsaGuid, null);
                 }
                 if (resolved is null && read is not null && TryResolveIds(read.Cache, text, asRoot) is { } byId) resolved = byId;
+                if (resolved is not null) target = target with { IsRoot = resolved.MsaClass == ResolvedMorpheme.StemClass };
                 var parts = new List<RealizesVariants>();
                 var finding = new List<string>();
                 RealizesParseReport? report = null;
@@ -131,9 +132,11 @@ internal static class RealizesQuery
                 }
                 var merged = Merge(parts, resolved is not null);
                 if (merged.Forms.Count == 0) throw RealizesRefusals.NoParses(node.Morpheme, string.Join("; ", finding));
-                var forms = RealizesPatternCompiler.Normalize(merged.Forms.Select(form => form.Form), context.FoldCase);
+                var forms = RealizesPatternCompiler.Normalize(merged.Terms ?? merged.Forms.Select(form => form.Form), context.FoldCase);
+                var pattern = RealizesPatternCompiler.Pattern(forms, merged.Anchor);
+                if (merged.Terms is not null) pattern = Broadness(pattern, forms, merged.Anchor, context.Corpus);
                 var result = new RealizesResult(RealizesResult.SchemaName, Describe(resolved, target, text), node.Tier, merged.Complete,
-                    merged.Reasons, merged.StopReason, merged.Forms, RealizesPatternCompiler.Pattern(forms, merged.Anchor), report);
+                    merged.Reasons, merged.StopReason, merged.Forms, pattern, report);
                 sets.Add(result);
                 return seen[node] = (result, forms);
             });
@@ -156,6 +159,25 @@ internal static class RealizesQuery
         }
     }
 
+    /// <summary>The share of the corpus's word types one term may match before the search is flagged as over-broad.</summary>
+    internal const double OverBroadShare = 0.2;
+
+    // A term that names a whole word matches that word alone, so only the context terms can be broad.
+    private static RealizesPattern Broadness(RealizesPattern pattern, IReadOnlyList<string> terms, string anchor, CorpusWordList corpus)
+    {
+        var words = corpus.Words;
+        string? broadest = null;
+        var most = 0;
+        foreach (var term in terms.Where(term => !(term.StartsWith(RealizesPatternCompiler.StartMarker) && term.EndsWith(RealizesPatternCompiler.EndMarker))))
+        {
+            var count = words.Count(word => RealizesPatternCompiler.Carries(word.Form, term, anchor));
+            if (count > most) (most, broadest) = (count, term);
+        }
+        return words.Count > 0 && most > OverBroadShare * words.Count
+            ? pattern with { OverBroad = true, Broadest = RealizesPatternCompiler.Show(broadest!) + $" ({most} of {words.Count} word types)" }
+            : pattern;
+    }
+
     // Sources agree on a form by its text: the words add up, and a project gives the anchor from the morph type.
     private static RealizesVariants Merge(IReadOnlyList<RealizesVariants> parts, bool anchorFromProject)
     {
@@ -166,7 +188,13 @@ internal static class RealizesQuery
             .OrderByDescending(form => form.Words).ThenBy(form => form.Form, StringComparer.Ordinal).ToList();
         var reasons = parts.SelectMany(part => part.Reasons).GroupBy(reason => reason.Code).Select(group => group.First()).ToList();
         var anchor = anchorFromProject ? parts[0].Anchor : parts.Count > 0 ? parts[^1].Anchor : "none";
-        return new RealizesVariants(forms, anchor, reasons, parts.Select(part => part.StopReason).FirstOrDefault(reason => reason is not null));
+        IReadOnlyList<string>? terms = null;
+        if (parts.Any(part => part.Terms is not null))
+        {
+            terms = [.. parts.SelectMany(part => part.Terms ?? part.Forms.Select(form => RealizesPatternCompiler.Mark(form.Form, part.Anchor))).Distinct(StringComparer.Ordinal)];
+            anchor = "context";
+        }
+        return new RealizesVariants(forms, anchor, reasons, parts.Select(part => part.StopReason).FirstOrDefault(reason => reason is not null), Terms: terms);
     }
 
     private static string Describe(ResolvedMorpheme? resolved, RealizesTarget target, string text)

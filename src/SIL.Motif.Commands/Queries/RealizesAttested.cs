@@ -11,9 +11,10 @@ namespace SIL.Motif.Commands.Queries;
 /// <param name="Anchor">Where in a word the morpheme sits: <c>start</c>, <c>end</c> or <c>none</c>.</param>
 /// <param name="Reasons">Why the set is not exhaustive; empty when it is.</param>
 /// <param name="StopReason">Why an enumerating tier stopped early; null otherwise.</param>
+/// <param name="Terms">Search terms that each carry their own anchor and attested context, as <see cref="SIL.Motif.Contract.Query.RealizesPatternCompiler"/> marks them; null when the forms and one anchor say it all.</param>
 /// <param name="ProjectHasAnalyses">Whether the project holds any stored analysis, so a refusal can say which of the two is missing.</param>
 internal sealed record RealizesVariants(IReadOnlyList<RealizesForm> Forms, string Anchor, IReadOnlyList<RealizesReason> Reasons,
-    string? StopReason = null, bool ProjectHasAnalyses = true)
+    string? StopReason = null, bool ProjectHasAnalyses = true, IReadOnlyList<string>? Terms = null)
 {
     internal bool Complete => Reasons.Count == 0 && StopReason is null;
 }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Query.Corpus;
 using SIL.Motif.Tests.TestFixtures;
@@ -58,7 +59,7 @@ public sealed class RealizesCorpusParseTests : IDisposable
         RecordedIndex? index = null, List<string>? notices = null)
     {
         var path = Path.Combine(_folder, "words.tsv");
-        File.WriteAllText(path, string.Concat(words.Select((word, position) => word + "\t" + (10 - position) + "\n")));
+        File.WriteAllText(path, string.Concat(words.Select((word, position) => word + "\t" + Math.Max(1, 10 - position) + "\n")));
         if (!File.Exists(Grammar)) File.WriteAllText(Grammar, "grammar one");
         return CorpusQueryCommand.Forms(new CorpusFormsRequest(path, Where: where, GrammarPath: Grammar, Sample: sample), null, default, parser,
             index ?? new RecordedIndex(), Path.Combine(_folder, "cache"), (notices ?? []).Add);
@@ -73,8 +74,10 @@ public sealed class RealizesCorpusParseTests : IDisposable
         var set = Assert.Single(outcome.Value!.Realizes!);
         var form = Assert.Single(set.Forms);
         Assert.Equal(("s", "corpus-parse", 2), (form.Form, form.Source, form.Words));
-        Assert.Equal("(?:s)\\z", set.Pattern.Text);
-        Assert.Equal("end", set.Pattern.Anchor);
+        Assert.Equal("(?:s\\z)", set.Pattern.Text);
+        Assert.Equal("context", set.Pattern.Anchor);
+        Assert.True(set.Pattern.OverBroad);
+        Assert.StartsWith("s$", set.Pattern.Broadest);
         Assert.Equal(["tikas", "itkas"], outcome.Value.Rows.Select(row => row.Form));
         Assert.Equal(["itkas", "tikas"], parser.Asked.Order());
         var parse = set.Parse!;
@@ -82,6 +85,33 @@ public sealed class RealizesCorpusParseTests : IDisposable
         Assert.True(parse.IndexBuilt);
         Assert.Null(parse.Sample);
     }
+
+    [Fact]
+    public void ASearchTermIsNotFlaggedBroadWhenItMatchesFewTypes()
+    {
+        string[] words = ["tikas", "itkas", .. Enumerable.Range(0, 18).Select(i => "w" + i)];
+        var outcome = Run(Recorded(), $"realizes({Suffix}, attested)", words, sample: 0);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var set = outcome.Value!.Realizes!.Single();
+        Assert.False(set.Pattern.OverBroad);
+        Assert.Null(set.Pattern.Broadest);
+    }
+
+    [Fact]
+    public void EachPieceIsSearchedWithTheContextOfItsOpenSide()
+    {
+        var target = new RealizesTarget(null, "m", null);
+        var root = new RealizesTarget(null, "m", null, IsRoot: true);
+        Assert.Equal("ang$", RealizesPatternCompiler.Show(RealizesCorpusSource.Term("tinuang", "a", 4, target)));
+        Assert.Equal("an$", RealizesPatternCompiler.Show(RealizesCorpusSource.Term("kaonan", "an", 4, target)));
+        Assert.Equal("^gi", RealizesPatternCompiler.Show(RealizesCorpusSource.Term("gipangita", "gi", 0, target)));
+        Assert.Equal("^gi$", RealizesPatternCompiler.Show(RealizesCorpusSource.Term("gi", "gi", -1, target)));
+        Assert.Equal("kaon", RealizesPatternCompiler.Show(RealizesCorpusSource.Term("pagkaon", "kaon", 3, root)));
+        Assert.Equal("on$", RealizesPatternCompiler.Show(RealizesCorpusSource.Term("pagkaon", "on", 5, root)));
+    }
+
+    [Fact]
+    public void TheDefaultSampleIsFifty() => Assert.Equal(50, RealizesSample.Default);
 
     [Fact]
     public void AWordTheGrammarCannotSegmentMakesTheSetIncompleteAndNegationIsRefused()

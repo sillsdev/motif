@@ -17,11 +17,21 @@ internal static class CorpusFormsText
         if (response.Where is not null) text.AppendLine("Where " + response.Where);
         foreach (var set in response.Realizes ?? [])
         {
-            text.AppendLine(string.Format(CultureInfo.InvariantCulture,
+            if (set.Pattern.Anchor == "context")
+            {
+                var shown = set.Pattern.Text.Length > 160 ? set.Pattern.Text[..160] + "..." : set.Pattern.Text;
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "Realizes {0} ({1}, {2}): context-anchored search over {3} forms, each with its attested context and word edge: {4}; segmentation {5}; surface text only, so it can over-match.",
+                    set.Morpheme, set.Tier, set.Complete ? "complete" : "NOT complete", set.Forms.Count, shown, set.Pattern.Segmentation));
+            }
+            else
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 "Realizes {0} ({1}, {2}): searched for {3} forms {4} the {5} of a word, as {6}; {7}.",
                 set.Morpheme, set.Tier, set.Complete ? "complete" : "NOT complete", set.Forms.Count, set.Pattern.Anchor == "none" ? "anywhere in" : "at",
                 set.Pattern.Anchor switch { "start" => "start", "end" => "end", _ => "text" },
                 string.Join(" | ", set.Forms.Select(form => form.Form)), "segmentation " + set.Pattern.Segmentation + "; surface text only, so it can over-match"));
+            if (set.Pattern.OverBroad)
+                text.AppendLine("  overBroad: the broadest term is " + set.Pattern.Broadest + "; the search finds more than this morpheme.");
             if (set.Parse is { } parse)
                 text.AppendLine(string.Format(CultureInfo.InvariantCulture,
                     "  Parse index {8} in {9} s ({0} of {1} word types answered, {2} s in all): {3} carry the morpheme, {4} have no analysis, {5} could not be segmented, {6} stopped at a limit, {7} got no answer; {10} traced for the surface piece.",

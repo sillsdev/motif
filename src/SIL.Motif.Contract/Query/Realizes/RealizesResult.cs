@@ -18,9 +18,12 @@ public sealed record RealizesForm(string Form, string Tier, string Source, int W
 /// <summary>The search a variant set compiles to.</summary>
 /// <param name="Kind"><c>regex</c>: a .NET non-backtracking expression over the surface form.</param>
 /// <param name="Text">The expression, unanchored in the engine's sense; <paramref name="Anchor"/> is already written into it.</param>
-/// <param name="Anchor"><c>start</c> for a prefix, <c>end</c> for a suffix, <c>none</c> for a stem or an infix.</param>
+/// <param name="Anchor"><c>start</c> for a prefix, <c>end</c> for a suffix, <c>none</c> for a stem or an infix, <c>context</c> when each term carries its own anchor and attested context.</param>
 /// <param name="Segmentation"><c>approximate</c>: the expression reads characters, not the grammar's segments, so a form may also match across a digraph.</param>
-public sealed record RealizesPattern(string Kind, string Text, string Anchor, string Segmentation);
+/// <param name="OverBroad">Whether one term matches more than a fifth of the corpus's word types, so the search finds more than the morpheme.</param>
+/// <param name="Broadest">The broadest such term, shown with <c>^</c> for the word start and <c>$</c> for its end; null when none is over-broad.</param>
+public sealed record RealizesPattern(string Kind, string Text, string Anchor, string Segmentation, bool OverBroad = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Broadest = null);
 
 /// <summary>What parsing the corpus's words to find a morpheme came to, so a reader sees how much of the corpus the set rests on.</summary>
 /// <param name="Types">Word types in the corpus.</param>

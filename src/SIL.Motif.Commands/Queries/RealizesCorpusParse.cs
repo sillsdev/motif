@@ -169,7 +169,7 @@ internal static class SurfaceShape
 internal static class RealizesSample
 {
     /// <summary>The number of matching word types traced when no sample size is given.</summary>
-    public const int Default = 200;
+    public const int Default = 50;
 
     /// <summary>
     /// With <paramref name="size"/> at zero or at least the number of types, every type, most frequent first. Otherwise the
