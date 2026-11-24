@@ -1965,6 +1965,11 @@
     "description": "Compares two to eight Proposals side by side from each one's Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project's approved analyses and measures nothing.",
     "source": "Authored from the typed command contract."
   },
+  "proposal trial delta": {
+    "title": "Read a Trial's Reading changes",
+    "description": "Lists the words a Trial lost, gained, changed or doubled by Reading signature, from the evidence the Trial already retained, and writes the expected-retired and expected-added manifests. It measures nothing.",
+    "source": "Authored from the typed command contract."
+  },
   "proposal trial export": {
     "title": "Read a Trial export",
     "description": "Finds the retained evidence file for an exact Trial job. The file contains the observed forms and Readings on both sides, the completion counts and the provenance used to measure the Trial.",
