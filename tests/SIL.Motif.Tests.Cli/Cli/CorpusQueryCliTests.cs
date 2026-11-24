@@ -99,4 +99,22 @@ public sealed class CorpusQueryCliTests : IDisposable
         Assert.Contains("query.corpus-invalid", pattern.Error);
         Assert.Contains("query.corpus-invalid", Run("query", "--corpus", Words(), "pairs", "--differ", "infix", "--json").Error);
     }
+
+    [Fact]
+    public void ValuesTextAndJsonCarryTheTokenToType()
+    {
+        var grammar = Write("g.fwdata", """
+            <?xml version="1.0" encoding="utf-8"?>
+            <languageproject version="7000072">
+            <rt class="PhNCSegments" guid="a" ownerguid="p"><Abbreviation><AUni ws="en">V</AUni></Abbreviation><Name><AUni ws="en">Vowels</AUni></Name></rt>
+            <rt class="LangProject" guid="lp"><AnalysisWss><Uni>en</Uni></AnalysisWss></rt>
+            </languageproject>
+            """);
+        var (code, output, _) = Run("query", "--values", "classes", "--grammar", grammar);
+        Assert.Equal(0, code);
+        Assert.Contains("  V  Vowels", output);
+        var (_, json, _) = Run("query", "--values", "classes", "--grammar", grammar, "--json");
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal("V", document.RootElement.GetProperty("naturalClasses")[0].GetProperty("token").GetString());
+    }
 }

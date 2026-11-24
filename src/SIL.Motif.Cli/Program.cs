@@ -2295,9 +2295,10 @@ try
         {
             if (flags.TryGetValue("values", out var valuesKind))
             {
-                if (valuesKind != "classes" || positionals.Count != 0 || flags.Keys.Any(key => key is not ("values" or "project" or "grammar" or "json")))
+                if (valuesKind != "classes" || positionals.Count != 0 || flags.Keys.Any(key => key is not ("values" or "project" or "grammar" or "json" or "verbose")))
                     return Usage(UsageLineFor("query values"), asJson);
-                result = RenderCommand(PhonValues.Read(new QueryValuesRequest(flags.GetValueOrDefault("project"), flags.GetValueOrDefault("grammar"))));
+                result = RenderCommand(PhonValues.Read(new QueryValuesRequest(flags.GetValueOrDefault("project"), flags.GetValueOrDefault("grammar")),
+                    flags.ContainsKey("verbose") ? error.WriteLine : null));
                 break;
             }
             if (CorpusQueryCli.Handles(flags) && CorpusQueryCli.IsForms(positionals))
