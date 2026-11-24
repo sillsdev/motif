@@ -30,6 +30,23 @@ internal enum IndexedStatus
     Failed,
 }
 
+/// <summary>The typed reasons a morph has no piece, and the codes of the reasons a variant set is incomplete.</summary>
+internal static class RealizesReasons
+{
+    public const string SpansNull = "morph_spans_null";
+    public const string SpansAbsent = "morph_spans_absent";
+    public const string MorphNotInSpans = "morph_not_in_spans";
+    public const string SurfaceDiffers = "surface_differs_from_word";
+    public const string TilingBroken = "spans_do_not_tile_surface";
+    public const string NoSegmentLeft = "no_segment_left";
+    public const string Inconsistent = "inconsistent";
+    public const string ParseStopped = "parse_stopped";
+    public const string Unsegmentable = "unsegmentable";
+    public const string ParseFailed = "parse_failed";
+    public const string PieceUnplaced = "piece_unplaced";
+    public const string PieceInconsistent = "piece_inconsistent";
+}
+
 /// <summary>One run of surface text a morph occupies: where it starts in the analysis's surface (UTF-16 index) and its text, as PanGloss gives it.</summary>
 internal readonly record struct IndexedRun(int Start, string Text);
 
@@ -103,17 +120,13 @@ internal sealed class RealizesParseIndex
         return new RealizesParseIndex(all);
     }
 
-    private const string SpansNull = "morph_spans_null";
-    private const string SpansAbsent = "morph_spans_absent";
-    internal const string SurfaceDiffers = "surface_differs_from_word";
-    internal const string TilingBroken = "spans_do_not_tile_surface";
 
     private static IndexedAnalysis ReadAnalysis(string word, JsonElement analysis)
     {
         var morphs = analysis.GetProperty("morphs").EnumerateArray().ToList();
         if (!analysis.TryGetProperty("morphSpans", out var spans) || spans.ValueKind != JsonValueKind.Object)
         {
-            var why = spans.ValueKind == JsonValueKind.Null ? SpansNull : SpansAbsent;
+            var why = spans.ValueKind == JsonValueKind.Null ? RealizesReasons.SpansNull : RealizesReasons.SpansAbsent;
             return new IndexedAnalysis([.. morphs.Select(morph => new IndexedMorph(Text(morph, "form"), Text(morph, "msa"), null, why, Infl(morph)))]);
         }
         var surface = spans.GetProperty("surface").GetString() ?? "";
@@ -133,7 +146,7 @@ internal sealed class RealizesParseIndex
             var list = morpheme.GetProperty("spans");
             if (list.ValueKind != JsonValueKind.Array)
             {
-                var reason = morpheme.TryGetProperty("reason", out var named) && named.ValueKind == JsonValueKind.String ? named.GetString()! : SpansNull;
+                var reason = morpheme.TryGetProperty("reason", out var named) && named.ValueKind == JsonValueKind.String ? named.GetString()! : RealizesReasons.SpansNull;
                 runsOf[item] = (null, reason);
                 continue;
             }
@@ -149,12 +162,12 @@ internal sealed class RealizesParseIndex
         if (spans.TryGetProperty("unattributed", out var unattributed) && unattributed.ValueKind == JsonValueKind.Array)
             foreach (var run in unattributed.EnumerateArray())
                 if (run.GetProperty("offsets").ValueKind == JsonValueKind.Array) Cover(run); else unattributedNull = true;
-        var problem = Tiles(covered, bytes, surface, unattributedNull) ? null : TilingBroken;
+        var problem = Tiles(covered, bytes, surface, unattributedNull) ? null : RealizesReasons.TilingBroken;
         if (problem is null && !string.Equals(surface, word.Normalize(NormalizationForm.FormD).ToLowerInvariant(), StringComparison.Ordinal))
-            problem = SurfaceDiffers;
+            problem = RealizesReasons.SurfaceDiffers;
         return new IndexedAnalysis([.. morphs.Select((morph, at) =>
         {
-            var (runs, reason) = runsOf.GetValueOrDefault(at, (null, "morph_not_in_spans"));
+            var (runs, reason) = runsOf.GetValueOrDefault(at, (null, RealizesReasons.MorphNotInSpans));
             return new IndexedMorph(Text(morph, "form"), Text(morph, "msa"), runs, runs is null ? reason : null, Infl(morph));
         })], surface, problem);
     }
@@ -210,7 +223,7 @@ internal sealed class RealizesParseIndex
                         json.WriteString("f", morph.Form);
                         json.WriteString("i", morph.Msa);
                         if (morph.InflType is not null) json.WriteString("t", morph.InflType);
-                        if (morph.Runs is null) json.WriteString("x", morph.Reason ?? SpansNull);
+                        if (morph.Runs is null) json.WriteString("x", morph.Reason ?? RealizesReasons.SpansNull);
                         else
                         {
                             json.WriteStartArray("r");
@@ -417,17 +430,75 @@ internal static class RealizesParseIndexCache
     /// <summary>How many parse indexes stay under the cache folder; the newest by modified time.</summary>
     internal const int KeepIndexes = 8;
 
-    private static void Prune(string root, string written)
+    /// <summary>Deletes the oldest-used indexes past <see cref="KeepIndexes"/> and stale temporary and lock files; each delete is its own best effort.</summary>
+    internal static void Prune(string root, string written, Action<FileInfo>? delete = null)
     {
+        delete ??= file => file.Delete();
+        void Try(FileInfo file)
+        {
+            try { delete(file); } catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        }
         try
         {
-            foreach (var old in new DirectoryInfo(root).EnumerateFiles("*.gz").Where(file => file.FullName != written)
-                         .OrderByDescending(file => file.LastWriteTimeUtc).Skip(KeepIndexes - 1))
-                old.Delete();
-            foreach (var orphan in new DirectoryInfo(root).EnumerateFiles("*.tmp").Where(file => file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1)))
-                orphan.Delete();
+            var directory = new DirectoryInfo(root);
+            foreach (var old in directory.EnumerateFiles("*.gz").Where(file => file.FullName != written)
+                         .OrderByDescending(file => file.LastWriteTimeUtc).Skip(KeepIndexes - 1).ToList())
+                Try(old);
+            var stale = DateTime.UtcNow.AddDays(-1);
+            foreach (var orphan in directory.EnumerateFiles("*.tmp").Concat(directory.EnumerateFiles("*.lock")).Where(file => file.LastWriteTimeUtc < stale).ToList())
+                Try(orphan);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>
+    /// A word that timed out or got no answer depends on the machine's load, not on the grammar and corpus the key names, so an index
+    /// holding one is used for this query and not kept. A capped word is deterministic and is kept.
+    /// </summary>
+    internal static bool IsTransient(RealizesParseIndex index) =>
+        index.Words.Values.Any(word => word.Status is IndexedStatus.TimedOut or IndexedStatus.Failed);
+
+    private static RealizesParseIndex? TryRead(string path, Action<string> notice)
+    {
+        if (!File.Exists(path)) return null;
+        string? why = null;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            if (RealizesParseIndex.Read(stream) is { } cached)
+            {
+                // A hit counts as a use, so the files kept are the most recently used.
+                try { File.SetLastWriteTimeUtc(path, DateTime.UtcNow); } catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+                return cached;
+            }
+            why = "it is not a parse index";
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or ArgumentException or FormatException or UnauthorizedAccessException)
+        {
+            why = exception.Message;
+        }
+        notice($"discarding the cached parse index {Path.GetFileName(path)} ({why}); rebuilding it");
+        try { File.Delete(path); } catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        return null;
+    }
+
+    // An OS-held lock beside the index: a second process waits while the first builds, and a dead one frees it.
+    private static FileStream? AcquireLock(string lockPath, Action<string> notice, CancellationToken cancellationToken)
+    {
+        var told = false;
+        for (var waited = 0; waited < 20 * 60 * 2; waited++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try { return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
+            catch (IOException)
+            {
+                if (!told) notice("another query is building this parse index; waiting for it");
+                told = true;
+                Thread.Sleep(500);
+            }
+            catch (UnauthorizedAccessException) { return null; }
+        }
+        return null;
     }
 
     private static string Bare(string digest) => digest[(digest.IndexOf(':') + 1)..];
@@ -438,28 +509,21 @@ internal static class RealizesParseIndexCache
     {
         var clock = Stopwatch.StartNew();
         var path = Path.Combine(root, KeyFor(grammarPath, words, builder.Identity));
-        if (File.Exists(path))
-        {
-            string? why = null;
-            try
-            {
-                using var stream = File.OpenRead(path);
-                if (RealizesParseIndex.Read(stream) is { } cached) return (cached, false, Math.Round(clock.Elapsed.TotalSeconds, 1));
-                why = "it is not a parse index";
-            }
-            catch (Exception exception) when (exception is IOException or InvalidDataException or ArgumentException or FormatException)
-            {
-                why = exception.Message;
-            }
-            notice($"discarding the cached parse index {Path.GetFileName(path)} ({why}); rebuilding it");
-            try { File.Delete(path); } catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
-        }
+        if (TryRead(path, notice) is { } hit) return (hit, false, Math.Round(clock.Elapsed.TotalSeconds, 1));
+        Directory.CreateDirectory(root);
+        using var buildLock = AcquireLock(path + ".lock", notice, cancellationToken);
+        // The process that held the lock may have written the index while this one waited.
+        if (buildLock is not null && TryRead(path, notice) is { } built) return (built, false, Math.Round(clock.Elapsed.TotalSeconds, 1));
         notice($"building parse index for {words.Count} word types (one-off per grammar, corpus and PanGloss build; a large grammar takes about a minute and a half)");
         var analyses = builder.Build(grammarPath, words, cancellationToken);
         try
         {
             var index = RealizesParseIndex.FromBatch(analyses, words);
-            Directory.CreateDirectory(root);
+            if (IsTransient(index))
+            {
+                notice("not keeping this parse index: some words timed out or got no answer, which can pass on a quieter machine; the next query parses again");
+                return (index, true, Math.Round(clock.Elapsed.TotalSeconds, 1));
+            }
             var temporary = path + "." + Environment.ProcessId + ".tmp";
             using (var stream = File.Create(temporary)) index.Write(stream);
             File.Move(temporary, path, true);

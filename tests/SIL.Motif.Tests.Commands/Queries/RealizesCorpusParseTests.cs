@@ -283,12 +283,12 @@ public sealed class RealizesCorpusParseTests : IDisposable
         File.WriteAllText(Grammar, "grammar two");
         Run(where, words, index, notices);
         Assert.Equal(2, index.Builds);
-        Run(where, [.. words, "extra"], index, notices);
+        Run(where, [.. words, "zzz"], index, notices);
         Assert.Equal(3, index.Builds);
         var other = new RecordedIndex(identity: "another-build");
-        Run(where, [.. words, "extra"], other, notices);
+        Run(where, [.. words, "zzz"], other, notices);
         Assert.Equal(1, other.Builds);
-        Run(where, [.. words, "extra"], other, notices);
+        Run(where, [.. words, "zzz"], other, notices);
         Assert.Equal(1, other.Builds);
     }
 
@@ -318,7 +318,7 @@ public sealed class RealizesCorpusParseTests : IDisposable
         var outcome = Run($"realizes({Suffix}, attested)", ["tikas", "itkas"], index: broken);
         Assert.Equal(RefusalCodes.QueryRealizesIndexFailed, outcome.Refusal!.Code);
         Assert.Contains("line 2", outcome.Refusal.Message);
-        Assert.False(Directory.Exists(Path.Combine(_folder, "cache")));
+        Assert.Empty(Directory.EnumerateFiles(Path.Combine(_folder, "cache"), "*.gz"));
     }
 
     private string TheOnlyCacheFile() => Assert.Single(Directory.EnumerateFiles(Path.Combine(_folder, "cache"), "*.gz"));
@@ -368,6 +368,101 @@ public sealed class RealizesCorpusParseTests : IDisposable
         Assert.Equal(RealizesParseIndexCache.KeepIndexes, kept.Count);
         Assert.DoesNotContain("old-00.gz", kept);
         Assert.Contains("old-09.gz", kept);
+    }
+
+    [Fact]
+    public void AnIndexWithATimedOutWordIsUsedButNotKeptWhileACappedOneIsKept()
+    {
+        var where = $"realizes({Suffix}, attested)";
+        var timedOut = new RecordedIndex(RecordedParse.BatchAnalyses.Replace("\"timedOut\":false", "\"timedOut\":true"));
+        var notices = new List<string>();
+        var first = Run(where, ["tikas", "itkas"], timedOut, notices).Value!.Realizes!.Single();
+        Assert.Equal(2, first.Parse!.TimedOut);
+        Assert.Contains(first.Reasons, reason => reason.Code == RealizesReasons.ParseStopped);
+        Assert.Contains(notices, notice => notice.Contains("not keeping this parse index"));
+        Assert.Empty(Directory.EnumerateFiles(Path.Combine(_folder, "cache"), "*.gz"));
+        Run(where, ["tikas", "itkas"], timedOut, notices);
+        Assert.Equal(2, timedOut.Builds);
+
+        var capped = new RecordedIndex(RecordedParse.BatchAnalyses.Replace("\"capped\":false", "\"capped\":true"), "capped-build-0001");
+        Run(where, ["tikas", "itkas"], capped);
+        Run(where, ["tikas", "itkas"], capped);
+        Assert.Equal(1, capped.Builds);
+    }
+
+    [Fact]
+    public void ACacheHitCountsAsAUseSoThePruneKeepsTheMostRecentlyUsed()
+    {
+        var index = new RecordedIndex();
+        var where = $"realizes({Suffix}, attested)";
+        Run(where, ["tikas", "itkas"], index);
+        var file = Directory.EnumerateFiles(Path.Combine(_folder, "cache"), "*.gz").Single();
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddDays(-5));
+        Run(where, ["tikas", "itkas"], index);
+        Assert.Equal(1, index.Builds);
+        Assert.True(File.GetLastWriteTimeUtc(file) > DateTime.UtcNow.AddMinutes(-5));
+    }
+
+    [Fact]
+    public void AMorphWithSeveralRunsGivesEachRunItsOwnFormAndTerm()
+    {
+        // An infix or circumfix morph has several runs; the recording's root is split in two to stand for one.
+        var index = new RecordedIndex(Derived(0, row =>
+        {
+            var runs = Morpheme(row, 0)["spans"]!.AsArray();
+            runs.Clear();
+            runs.Add(new JsonObject { ["segments"] = new JsonArray(0, 2), ["offsets"] = new JsonArray(0, 2), ["text"] = "ti" });
+            runs.Add(new JsonObject { ["segments"] = new JsonArray(2, 4), ["offsets"] = new JsonArray(2, 4), ["text"] = "ka" });
+        }));
+        var set = Run($"realizes({RootMsa}, attested)", ["tikas", "tika"], index: index).Value!.Realizes!.Single();
+        Assert.Contains(set.Forms, form => form is { Form: "ti", Source: "corpus-parse" });
+        Assert.Contains(set.Forms, form => form is { Form: "ka", Source: "corpus-parse" });
+        Assert.Contains("kas\\z", set.Pattern.Text);
+        Assert.Contains("\\Ati", set.Pattern.Text);
+    }
+
+    [Fact]
+    public void APruneThatCannotDeleteOneFileStillRemovesTheRest()
+    {
+        var cache = Directory.CreateDirectory(Path.Combine(_folder, "prune")).FullName;
+        for (var i = 0; i < 12; i++)
+        {
+            var old = Path.Combine(cache, $"old-{i:D2}.gz");
+            File.WriteAllText(old, "x");
+            File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddHours(-20 + i));
+        }
+        var stale = Path.Combine(cache, "stale.tmp");
+        File.WriteAllText(stale, "x");
+        File.SetLastWriteTimeUtc(stale, DateTime.UtcNow.AddDays(-3));
+        var current = Path.Combine(cache, "current.gz");
+        File.WriteAllText(current, "x");
+        RealizesParseIndexCache.Prune(cache, current, file =>
+        {
+            if (file.Name == "old-00.gz") throw new IOException("in use by another process");
+            file.Delete();
+        });
+        var kept = Directory.EnumerateFiles(cache).Select(Path.GetFileName).Order().ToList();
+        Assert.Contains("old-00.gz", kept);
+        Assert.DoesNotContain("old-01.gz", kept);
+        Assert.DoesNotContain("stale.tmp", kept);
+        Assert.Contains("current.gz", kept);
+    }
+
+    [Fact]
+    public void AnotherProcessBuildingTheSameIndexMakesThisOneWaitNotBuild()
+    {
+        var cache = Directory.CreateDirectory(Path.Combine(_folder, "cache")).FullName;
+        if (!File.Exists(Grammar)) File.WriteAllText(Grammar, "grammar one");
+        var index = new RecordedIndex();
+        string[] words = ["tikas", "itkas"];
+        var path = Path.Combine(cache, RealizesParseIndexCache.KeyFor(Grammar, words, index.Identity));
+        using var held = new FileStream(path + ".lock", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        using var gave = new CancellationTokenSource(TimeSpan.FromMilliseconds(800));
+        var notices = new List<string>();
+        Assert.ThrowsAny<OperationCanceledException>(() =>
+            RealizesParseIndexCache.GetOrBuild(cache, Grammar, words, index, notices.Add, gave.Token));
+        Assert.Equal(0, index.Builds);
+        Assert.Contains(notices, notice => notice.Contains("another query is building"));
     }
 
     [Fact]

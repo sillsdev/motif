@@ -63,14 +63,14 @@ internal static class RealizesCorpusSource
             foreach (var analysis in carriers)
                 foreach (var morph in analysis.Morphs.Where(target.Matches))
                 {
-                    if (analysis.Problem is not null) { standIn = true; reasons.Add("inconsistent"); continue; }
-                    if (morph.Runs is null) { standIn = true; reasons.Add(morph.Reason ?? "morph_spans_null"); continue; }
-                    if (morph.Runs.Count == 0 || morph.Runs.All(run => run.Text.Length == 0)) { standIn = true; reasons.Add("no_segment_left"); continue; }
+                    if (analysis.Problem is not null) { standIn = true; reasons.Add(RealizesReasons.Inconsistent); continue; }
+                    if (morph.Runs is null) { standIn = true; reasons.Add(morph.Reason ?? RealizesReasons.SpansNull); continue; }
+                    if (morph.Runs.Count == 0 || morph.Runs.All(run => run.Text.Length == 0)) { standIn = true; reasons.Add(RealizesReasons.NoSegmentLeft); continue; }
                     // The word's own case is kept when its NFD spelling lines up with the surface.
                     var text = original.Length == analysis.Surface.Length ? original : analysis.Surface;
                     foreach (var run in morph.Runs)
                     {
-                        if (run.Text.Length == 0 || run.Start < 0 || run.Start + run.Text.Length > text.Length) { standIn = true; reasons.Add("inconsistent"); continue; }
+                        if (run.Text.Length == 0 || run.Start < 0 || run.Start + run.Text.Length > text.Length) { standIn = true; reasons.Add(RealizesReasons.Inconsistent); continue; }
                         var piece = text.Substring(run.Start, run.Text.Length).Normalize(NormalizationForm.FormC);
                         found = true;
                         if (run.Start == 0 && run.Text.Length < text.Length) atStart++;
@@ -83,22 +83,22 @@ internal static class RealizesCorpusSource
             if (standIn || !found)
             {
                 wholeWord++;
-                if (reasons.Contains("inconsistent") && reasons.Count == 1) inconsistent++;
-                else { unplacedWords++; foreach (var reason in reasons.Where(reason => reason != "inconsistent")) unplacedReasons[reason] = unplacedReasons.GetValueOrDefault(reason) + 1; }
+                if (reasons.Contains(RealizesReasons.Inconsistent) && reasons.Count == 1) inconsistent++;
+                else { unplacedWords++; foreach (var reason in reasons.Where(reason => reason != RealizesReasons.Inconsistent)) unplacedReasons[reason] = unplacedReasons.GetValueOrDefault(reason) + 1; }
                 Add(word.Form, WholeWordSource, word.Form, Term(word.Form, word.Form, -1, target));
             }
         }
         var list = new List<RealizesReason>();
         if (capped + timedOut > 0)
-            list.Add(new RealizesReason("parse_stopped", Format($"{capped} words stopped at the parser's work limit and {timedOut} at its word timeout, so analyses may be missing.")));
+            list.Add(new RealizesReason(RealizesReasons.ParseStopped, Format($"{capped} words stopped at the parser's work limit and {timedOut} at its word timeout, so analyses may be missing.")));
         if (unsegmentable > 0)
-            list.Add(new RealizesReason("unsegmentable", Format($"{unsegmentable} words could not be segmented with the grammar's characters, so they were not parsed.")));
+            list.Add(new RealizesReason(RealizesReasons.Unsegmentable, Format($"{unsegmentable} words could not be segmented with the grammar's characters, so they were not parsed.")));
         if (failed > 0)
-            list.Add(new RealizesReason("parse_failed", Format($"{failed} words got no answer from the batch parse.")));
+            list.Add(new RealizesReason(RealizesReasons.ParseFailed, Format($"{failed} words got no answer from the batch parse.")));
         if (unplacedWords > 0)
-            list.Add(new RealizesReason("piece_unplaced", Format($"{unplacedWords} matching words have a reading where PanGloss placed no surface span for the morpheme ({string.Join(", ", unplacedReasons.Select(pair => $"{pair.Key} {pair.Value}"))}), so the whole word stands in and the search finds only that word.")));
+            list.Add(new RealizesReason(RealizesReasons.PieceUnplaced, Format($"{unplacedWords} matching words have a reading where PanGloss placed no surface span for the morpheme ({string.Join(", ", unplacedReasons.Select(pair => $"{pair.Key} {pair.Value}"))}), so the whole word stands in and the search finds only that word.")));
         if (inconsistent > 0)
-            list.Add(new RealizesReason("piece_inconsistent", Format($"{inconsistent} matching words have spans that do not add up to the word's surface, so the morpheme's piece is not trusted and the whole word stands in.")));
+            list.Add(new RealizesReason(RealizesReasons.PieceInconsistent, Format($"{inconsistent} matching words have spans that do not add up to the word's surface, so the morpheme's piece is not trusted and the whole word stands in.")));
         var anchor = atStart > 0 && atEnd == 0 && inside == 0 ? "start" : atEnd > 0 && atStart == 0 && inside == 0 ? "end" : "none";
         var report = new RealizesParseReport(corpus.Count, corpus.Count - failed, matched, noAnalysis, unsegmentable, capped, timedOut, failed,
             Math.Round(clock.Elapsed.TotalSeconds + built.Seconds, 1), placed, wholeWord, built.Built, built.Seconds);
