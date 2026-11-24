@@ -52,6 +52,33 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
         Assert.Null(concise["senses"]![0]!["definition"]);
     }
 
+    [Fact]
+    public void AnAffixAnalysisShowsItsRepeatCountOnlyWhenTheProjectSetsOne()
+    {
+        Fill();
+        var services = _cache.ServiceLocator;
+        ILexEntry entry = null!;
+        IMoInflAffMsa msa = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            entry = services.GetInstance<ILexEntryFactory>().Create();
+            msa = services.GetInstance<IMoInflAffMsaFactory>().Create();
+            entry.MorphoSyntaxAnalysesOC.Add(msa);
+            var sense = services.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(sense);
+            sense.MorphoSyntaxAnalysisRA = msa;
+        });
+        JsonNode? Info() => LexiconReader.Read(_cache, new(), 100, 0, detailed: true)["entries"]!.AsArray()
+            .Single(item => item!["id"]!.GetValue<string>() == GrammarReader.Id(entry))!["senses"]![0]!["grammaticalInfo"];
+
+        Assert.Null(Info()!["maxApps"]);
+
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => _cache.LangProject.MorphologicalDataOA.ParserParameters =
+            SIL.Motif.Runner.Operations.AffixMaxAppsParserParameters.Write(null, msa.Guid, 2));
+        Assert.Equal(2, Info()!["maxApps"]!.GetValue<int>());
+        Assert.Equal(GrammarReader.Id(msa), Info()!["id"]!.GetValue<string>());
+    }
+
     private JsonObject Read(LexiconFilter filter, int limit = 25, int offset = 0, bool detailed = false)
     {
         Fill();

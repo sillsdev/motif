@@ -45,6 +45,7 @@ public sealed class InflectionClassEditorCliTests
     [Theory]
     [InlineData("compose-edit-compound-rule")]
     [InlineData("compose-set-no-default-compounding")]
+    [InlineData("compose-set-affix-max-apps")]
     [InlineData("compose-set-not-on-clitics")]
     [InlineData("compose-set-character-class")]
     [InlineData("compose-author-circumfix")]

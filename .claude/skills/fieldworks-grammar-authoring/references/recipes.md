@@ -107,6 +107,13 @@ When Motif gains an operation for a construct, that operation replaces its recip
 - **Reach:** yes; PanGloss supplies null affixes for required slots where needed.
 - **Traps:** a slot with no loadable affix disappears, and a template whose slots all disappear is
   dropped. How several templates on one POS interact is unverified.
+- **Repeated affixes:** use the per-affix repeat count, not a repeated slot. Each affix rule applies once per
+  word by default; `compose-set-affix-max-apps` sets `maxApps` (2 or 3) for one affix MSA, stored as
+  `HC/AffixRules/AffixRule[@guid][@maxApps]` in `ParserParameters`, and 1 removes it. A slot listed twice in a
+  template stays refused: the count is per rule, so a second occurrence of the slot could never apply. Swahili
+  verb extensions (a doubled causative) are derivational affixes and take the count, not a slot. PanGloss honours
+  the key after PanGloss#470; FLEx's own `HCLoader` does not read it until FieldWorks does, so FLEx still parses
+  the affix once and the two parsers will disagree on a repeated form.
 
 ## 10. Phonological rules
 

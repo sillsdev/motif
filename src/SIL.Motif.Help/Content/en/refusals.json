@@ -332,6 +332,18 @@
     "why": "The project has no morphology data to hold a compound rule. Open it once in FieldWorks, then compose again.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "affix-max-apps.invalid-count": {
+    "why": "An affix repeat count is a whole number from 1 to 3. 1 is the default and removes the setting; more than 1 lets the parser apply that affix more than once in a word, which multiplies its work, so keep it as low as the language needs.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "affix-max-apps.not-affix-msa": {
+    "why": "The repeat count belongs to an affix's morphosyntactic analysis (inflectional, derivational or unclassified affix), not to an entry, sense, allomorph or stem analysis. Read the entry to find its analysis id, then compose again.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "affix-max-apps.stale": {
+    "why": "The project's repeat count for this affix is no longer the one the intent expected. Read it again, then compose with the current value as expectedMaxApps.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
   "variant.stale-reference": {
     "why": "The variant reference changed. Compose the link again against the current project.",
     "source": "Hand-written from the Motif MCP refusal advice."

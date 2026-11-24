@@ -245,6 +245,7 @@ public sealed class HelpCatalogTests
                      "compose-edit-stem-inflection-class",
                      "compose-edit-compound-rule",
                      "compose-set-no-default-compounding",
+                     "compose-set-affix-max-apps",
                      "compose-set-not-on-clitics",
                      "compose-set-character-class",
                      "compose-rewrite-lexeme-form",

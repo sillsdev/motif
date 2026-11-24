@@ -87,6 +87,9 @@ public static partial class SnapshotFields
     /// <summary>Whether the parser's built-in default compounding is switched off in ParserParameters; never the rest of that XML.</summary>
     public const string MoMorphDataNoDefaultCompounding = "grammar/moMorphData/noDefaultCompounding";
 
+    /// <summary>How many times one affix rule may apply to a word, keyed by its affix MSA, as ParserParameters holds it under HC/AffixRules; never the rest of that XML.</summary>
+    public const string MoMorphDataAffixMaxApps = "grammar/moMorphData/affixMaxApps";
+
     /// <summary>Whether the parser's phonological rules stay off the clitic stratum, as ParserParameters holds it; never the rest of that XML.</summary>
     public const string MoMorphDataNotOnClitics = "grammar/moMorphData/notOnClitics";
 

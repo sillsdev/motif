@@ -59,6 +59,7 @@ internal static class ComposerDefinitions
         new EditStemAllomorphStemNameDefinition(),
         new EditStemInflectionClassDefinition(),
         new SetNoDefaultCompoundingDefinition(),
+        new SetAffixMaxAppsDefinition(),
         new SetNotOnCliticsDefinition(),
         new SetCharacterClassDefinition(),
         new AuthorCircumfixDefinition(),

@@ -1534,6 +1534,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/moMorphAdhocProhib/setFirstMorpheme	MoMorphAdhocProhib	FirstMorpheme	Set	Forbidden	-		Unspecified	False
 # Handler	grammar/moMorphData/createAdhocProhibition	(no direct field edit)
 # Handler	grammar/moMorphData/createCompoundRule	(no direct field edit)
+# Handler	grammar/moMorphData/setAffixMaxApps	MoMorphData	AffixMaxApps	Set	Forbidden	-		Unspecified	False
 # Handler	grammar/moMorphData/setNoDefaultCompounding	MoMorphData	NoDefaultCompounding	Set	Forbidden	-		Unspecified	False
 # Handler	grammar/moMorphData/setNotOnClitics	MoMorphData	NotOnClitics	Set	Forbidden	-		Unspecified	False
 # Handler	grammar/moStemAllomorph/addRefPhoneEnv	MoStemAllomorph	PhoneEnv	AddReference	Forbidden	-		Unspecified	False

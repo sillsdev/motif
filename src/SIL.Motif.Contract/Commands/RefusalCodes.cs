@@ -759,6 +759,13 @@ public static class RefusalCodes
     /// <summary>The project has no morphology data to own the compound rule.</summary>
     public const string CompoundRuleNoMorphologyData = "compound-rule.no-morphology-data";
 
+    /// <summary>An affix repeat count is not a whole number from 1 to the cap.</summary>
+    public const string AffixMaxAppsInvalidCount = "affix-max-apps.invalid-count";
+    /// <summary>The id given for an affix repeat count is not an affix's morphosyntactic analysis.</summary>
+    public const string AffixMaxAppsNotAffixMsa = "affix-max-apps.not-affix-msa";
+    /// <summary>The project's repeat count for the affix is not the one the intent expected.</summary>
+    public const string AffixMaxAppsStale = "affix-max-apps.stale";
+
     /// <summary>The variant reference changed after the link was composed.</summary>
     public const string VariantStaleReference = "variant.stale-reference";
 
