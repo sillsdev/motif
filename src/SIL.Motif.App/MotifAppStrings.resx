@@ -4910,7 +4910,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Sentence the window shows when the command refuses with code C.FormsExplainParserRefused. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalFormsExplainMalformed" xml:space="preserve">
-    <value>PanGloss wrote a generation answer Motif cannot read. Update Motif and PanGloss together, then try again.</value>
+    <value>PanGloss's generation reply has a part Motif cannot read. This is a PanGloss reply-shape problem; report it to PanGloss with the field name the message gives.</value>
     <comment>Sentence the window shows when the command refuses with code C.FormsExplainMalformed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalFormsExplainUnfinished" xml:space="preserve">

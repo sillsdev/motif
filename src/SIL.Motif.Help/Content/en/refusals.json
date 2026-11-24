@@ -77,7 +77,7 @@
     "source": "Hand-written from PanGloss's serve generate errors."
   },
   "forms-explain.malformed": {
-    "why": "PanGloss wrote a generate answer Motif cannot read. Update Motif and PanGloss together, then try again.",
+    "why": "PanGloss's generate reply has a part Motif cannot read; the message names the field. This is a PanGloss reply-shape problem: report it to PanGloss with that field name and the grammar hash. Retrying or updating will not change it.",
     "source": "Hand-written from the forms-explain reader."
   },
   "forms-explain.unfinished": {

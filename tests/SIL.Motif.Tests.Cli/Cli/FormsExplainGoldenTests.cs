@@ -147,4 +147,46 @@ public sealed class FormsExplainGoldenTests
     [Fact]
     public void ACompleteMarkdownHasNoIncompleteBanner() =>
         Assert.DoesNotContain("incomplete:", Markdown(Recorded()), StringComparison.Ordinal);
+
+    // PanGloss 0.29.0 on an unnamed template-slot affix: the allomorph and the morph step both carry a null name.
+    private static readonly string Unnamed = RecordedGenerate.RootAffix
+        .Replace("\"role\":\"rule\",\"ruleName\":\"-s\"", "\"role\":\"rule\",\"ruleName\":null", StringComparison.Ordinal)
+        .Replace("\"name\":\"-s\"", "\"name\":null", StringComparison.Ordinal);
+
+    [Fact]
+    public void AnUnnamedAffixIsLabelledByItsMorphemeAndNeverRefused()
+    {
+        var response = Run(Explicit(), _ => Completed(Unnamed));
+        var surface = response.Contexts[0].Surfaces[0];
+
+        Assert.Equal(("-s", "morpheme"), (surface.Allomorphs[1].Label, surface.Allomorphs[1].LabelSource));
+        Assert.Equal(("-s", "morpheme"), (surface.Steps[0].Rule.Label, surface.Steps[0].Rule.LabelSource));
+        Assert.Null(surface.Allomorphs[0].LabelSource);
+        var json = ProjectionJson.Serialize(response);
+        Assert.Contains("\"labelSource\": \"morpheme\"", json.Replace("\":\"", "\": \""), StringComparison.Ordinal);
+        Assert.Contains("| rannas | ranna, -s | -s |", Markdown(response), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnUnnamedAffixWithNoMorphemeFormFallsBackToAShortIdThenToUnnamed()
+    {
+        var formless = new ResolvedMorpheme(RecordedGenerate.AffixGuid, RecordedGenerate.AffixMsa, "MoInflAffMsa", null);
+        var plan = new FormsExplainQuery.ResolvedPlan("ranna", null, new ExplicitContextPlanner([formless]).Plan(Root), []);
+        var response = Run(plan, _ => Completed(Unnamed));
+        var surface = response.Contexts[0].Surfaces[0];
+
+        Assert.Equal(("00000000", "id"), (surface.Allomorphs[1].Label, surface.Allomorphs[1].LabelSource));
+        Assert.Contains("| rannas | ranna, 00000000 | 00000000 |", Markdown(response), StringComparison.Ordinal);
+
+        var bare = Unnamed.Replace("\"msaGuid\":\"00000000-0000-0000-0000-000000000052\",\"role\"", "\"role\"", StringComparison.Ordinal);
+        var none = Run(new("ranna", null, [new FormsContextPlan([Root])], []), _ => Completed(bare)).Contexts[0].Surfaces[0];
+        Assert.Equal(("unnamed affix", "none"), (none.Allomorphs[1].Label, none.Allomorphs[1].LabelSource));
+    }
+
+    [Fact]
+    public void ANamedAffixIsLabelledByItsRuleName()
+    {
+        var allomorph = Recorded().Contexts[0].Surfaces[0].Allomorphs[1];
+        Assert.Equal(("-s", "ruleName"), (allomorph.Label, allomorph.LabelSource));
+    }
 }

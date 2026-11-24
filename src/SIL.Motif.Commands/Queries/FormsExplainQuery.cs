@@ -242,7 +242,7 @@ public static class FormsExplainQuery
                 case WarmGenerateResult.Completed completed:
                     if (!FormsExplainProjection.TryProject(completed.Json, context.Morphemes, out var projected, out var error))
                         return Refuse(RefusalCodes.FormsExplainMalformed, FailureReason.Refused,
-                            "PanGloss's generate answer could not be read: " + error);
+                            "PanGloss's generate reply is malformed (" + error + "). This is a PanGloss reply-shape problem; report it to PanGloss with this field name.");
                     contexts.Add(projected!);
                     break;
                 case WarmGenerateResult.Rejected rejected:
