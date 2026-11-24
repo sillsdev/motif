@@ -76,7 +76,7 @@ internal static class LexiconFindCli
         return new CommandResult(0, text.ToString());
     }
 
-    // The request the flags name, a refusal saying why not, or neither when the words are not a lexicon find at all.
+    // The request the flags name, or a refusal saying why not; neither means these are not lexicon find words.
     private static (LexiconFindRequest? Request, Refusal? Refusal) Build(string project, IReadOnlyDictionary<string, string> flags)
     {
         if (flags.Keys.Any(name => name is not "project" and not "json" && !Names.Contains(name)) ||
