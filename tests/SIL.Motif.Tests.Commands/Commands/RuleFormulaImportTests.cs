@@ -346,6 +346,20 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void EveryMemberFieldCoveredAsWrittenByAFormulaKeyIsWrittenByAFormula()
+    {
+        using var cache = pristine.NewScratch();
+        Build(cache);
+        new FwDataProjectLoader().Save(cache);
+        var written = new[] { ("p + [C] <[C] [V]> *", "$1 $2 $3~[voi:+] $4 $5"), ("*", "m <a i> [V] $1") }
+            .SelectMany(pair => Lower(cache, pair.Item1, pair.Item2).Operations).Select(operation => operation.Kind).ToHashSet();
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var owned = new RecordWritableFields(schema).Entries.Where(entry => entry.Value is WritableFieldResolution.Covered { Owner: not null }).ToList();
+        Assert.NotEmpty(owned);
+        Assert.All(owned, entry => Assert.Contains(((WritableFieldResolution.Covered)entry.Value).Kind, written));
+    }
+
+    [Fact]
     public void AReplacedModificationClassIsNeverDeleted()
     {
         var (path, _) = Start();

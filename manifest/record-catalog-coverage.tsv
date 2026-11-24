@@ -3,6 +3,7 @@
 # The Example* fields are project-local custom fields: one of each type a kind writes, a Boolean no kind writes, and a date the schema omits.
 # One row per reachable concrete schema class, record field key and verb.
 # Covered rows are subject to the placement, owner, child and shape in the Runner declarations.
+# A Covered row marked written-by-input or written-by-output is written by that rule-formula key, not under its own key.
 # Non-authorable fields cite their classification in manifest/liblcm-inventory.tsv.
 # LexiconEditReferenceSets require a Lexicon Edit detail slice in manifest/fieldworks-labels.tsv.
 # CoveredNotLowered rows have a Runner kind that record import does not author; the reason column says why:
@@ -332,6 +333,7 @@ Covered	MoAffixProcess	is-abstract	MoForm.IsAbstract	Clear	grammar/moForm/clearI
 Covered	MoAffixProcess	morph-type	MoForm.MorphType	Set	grammar/moForm/setMorphType	-	-
 Covered	MoAffixProcess	morph-type	MoForm.MorphType	Clear	grammar/moForm/clearMorphType	-	-
 Covered	MoAffixProcess	output	MoAffixProcess.Output	Set	grammar/moAffixProcess/createOutput	-	-
+Covered	MoCopyFromInput	content	MoCopyFromInput.Content	Set	grammar/moCopyFromInput/setContent	written-by-output	-
 Covered	MoDerivAffMsa	from-inflection-class	MoDerivAffMsa.FromInflectionClass	Set	grammar/moDerivAffMsa/setFromInflectionClass	-	-
 Covered	MoDerivAffMsa	from-inflection-class	MoDerivAffMsa.FromInflectionClass	Clear	grammar/moDerivAffMsa/clearFromInflectionClass	-	-
 Covered	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	Set	grammar/moDerivAffMsa/createFromMsFeatures	-	-
@@ -387,6 +389,10 @@ Covered	MoInflClass	description	MoInflClass.Description	ClearRich	text/setRichSt
 Covered	MoInflClass	name	MoInflClass.Name	SetAlternative	grammar/moInflClass/setName	-	-
 Covered	MoInflClass	name	MoInflClass.Name	ClearAlternative	grammar/moInflClass/clearName	-	-
 Covered	MoInflClass	subclasses	MoInflClass.Subclasses	AddObject	grammar/moInflClass/createSubclasses	-	-
+Covered	MoInsertNC	content	MoInsertNC.Content	Set	grammar/moInsertNC/setContent	written-by-output	-
+Covered	MoInsertPhones	content	MoInsertPhones.Content	AddReference	grammar/moInsertPhones/addRefContent	written-by-output	-
+Covered	MoModifyFromInput	content	MoModifyFromInput.Content	Set	grammar/moModifyFromInput/setContent	written-by-output	-
+Covered	MoModifyFromInput	modification	MoModifyFromInput.Modification	Set	grammar/moModifyFromInput/setModification	written-by-output	-
 Covered	MoMorphType	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
 Covered	MoMorphType	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
 Covered	MoMorphType	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
@@ -465,16 +471,20 @@ Covered	PhPhonRuleFeat	name	CmPossibility.Name	SetAlternative	lists/cmPossibilit
 Covered	PhPhonRuleFeat	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
 Covered	PhSequenceContext	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSequenceContext	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
+Covered	PhSequenceContext	members	PhSequenceContext.Members	AddReference	grammar/phSequenceContext/addRefMembers	written-by-input	-
 Covered	PhSimpleContextBdry	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSimpleContextBdry	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
+Covered	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Set	grammar/phSimpleContextBdry/setFeatureStructure	written-by-input	-
 Covered	PhSimpleContextNC	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSimpleContextNC	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
+Covered	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Set	grammar/phSimpleContextNC/setFeatureStructure	written-by-input	-
 Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	AddReference	grammar/phSimpleContextNC/addRefMinusConstr	-	-
 Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefMinusConstr	-	-
 Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	AddReference	grammar/phSimpleContextNC/addRefPlusConstr	-	-
 Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefPlusConstr	-	-
 Covered	PhSimpleContextSeg	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSimpleContextSeg	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
+Covered	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Set	grammar/phSimpleContextSeg/setFeatureStructure	written-by-input	-
 Covered	RnGenericRec	conclusions	RnGenericRec.Conclusions	SetRich	text/setParagraphs	-	-
 Covered	RnGenericRec	conclusions	RnGenericRec.Conclusions	ClearRich	text/setParagraphs	-	-
 Covered	RnGenericRec	description	RnGenericRec.Description	SetRich	text/setParagraphs	-	-
@@ -1020,7 +1030,6 @@ OtherFields	MoAffixProcess	output	MoAffixProcess.Output	Clear	none	NoOperationKi
 OtherFields	MoAffixProcess	output-parts	MoAffixProcess.Output	AddObject	none	NoOperationKind	-
 OtherFields	MoAffixProcess	output-parts	MoAffixProcess.Output	RemoveObject	none	NoOperationKind	-
 OtherFields	MoAffixProcess	output-parts	MoAffixProcess.Output	MoveObject	none	NoOperationKind	-
-OtherFields	MoCopyFromInput	content	MoCopyFromInput.Content	Set	none	NoOperationKind	-
 OtherFields	MoCopyFromInput	content	MoCopyFromInput.Content	Clear	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	affix-category	MoDerivAffMsa.AffixCategory	Set	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	affix-category	MoDerivAffMsa.AffixCategory	Clear	none	NoOperationKind	-
@@ -1089,15 +1098,11 @@ OtherFields	MoInflClass	rules-of-referral	MoInflClass.RulesOfReferral	MoveObject
 OtherFields	MoInflClass	stem-names	MoInflClass.StemNames	AddObject	none	NoOperationKind	-
 OtherFields	MoInflClass	stem-names	MoInflClass.StemNames	RemoveObject	none	NoOperationKind	-
 OtherFields	MoInflClass	subclasses	MoInflClass.Subclasses	RemoveObject	none	NoOperationKind	-
-OtherFields	MoInsertNC	content	MoInsertNC.Content	Set	none	NoOperationKind	-
 OtherFields	MoInsertNC	content	MoInsertNC.Content	Clear	none	NoOperationKind	-
-OtherFields	MoInsertPhones	content	MoInsertPhones.Content	AddReference	none	NoOperationKind	-
 OtherFields	MoInsertPhones	content	MoInsertPhones.Content	InsertReference	none	NoOperationKind	-
 OtherFields	MoInsertPhones	content	MoInsertPhones.Content	RemoveReference	none	NoOperationKind	-
 OtherFields	MoInsertPhones	content	MoInsertPhones.Content	MoveReference	none	NoOperationKind	-
-OtherFields	MoModifyFromInput	content	MoModifyFromInput.Content	Set	none	NoOperationKind	-
 OtherFields	MoModifyFromInput	content	MoModifyFromInput.Content	Clear	none	NoOperationKind	-
-OtherFields	MoModifyFromInput	modification	MoModifyFromInput.Modification	Set	none	NoOperationKind	-
 OtherFields	MoModifyFromInput	modification	MoModifyFromInput.Modification	Clear	none	NoOperationKind	-
 OtherFields	MoMorphType	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
 OtherFields	MoMorphType	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
@@ -1240,17 +1245,14 @@ OtherFields	PhPhonRuleFeat	under-color	CmPossibility.UnderColor	Set	none	NoOpera
 OtherFields	PhPhonRuleFeat	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
-OtherFields	PhSequenceContext	members	PhSequenceContext.Members	AddReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	members	PhSequenceContext.Members	InsertReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	members	PhSequenceContext.Members	RemoveReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	members	PhSequenceContext.Members	MoveReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSequenceContext	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
-OtherFields	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Set	none	NoOperationKind	-
 OtherFields	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Clear	none	NoOperationKind	-
 OtherFields	PhSimpleContextBdry	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextBdry	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
-OtherFields	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Set	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Clear	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	InsertReference	none	UnsupportedPlacement	-
 OtherFields	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	MoveReference	none	NoOperationKind	-
@@ -1258,7 +1260,6 @@ OtherFields	PhSimpleContextNC	name	PhPhonContext.Name	SetAlternative	none	NoOper
 OtherFields	PhSimpleContextNC	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	InsertReference	none	UnsupportedPlacement	-
 OtherFields	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	MoveReference	none	NoOperationKind	-
-OtherFields	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Set	none	NoOperationKind	-
 OtherFields	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Clear	none	NoOperationKind	-
 OtherFields	PhSimpleContextSeg	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextSeg	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-

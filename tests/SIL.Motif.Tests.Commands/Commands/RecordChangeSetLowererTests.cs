@@ -156,7 +156,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         // Every (declaring class, field) phase 3 covers on some verb, gathered across the schema types that bind to it.
         bool Structure(string className, string field) => RecordWritableFields.IsFeatureStructure(_schema.Schema.ObjectType(className)!.Field(field)!) ||
             RecordWritableFields.IsRuleFormula(_schema.Schema.ObjectType(className)!.Field(field)!);
-        var covered = resolver.Entries.Where(entry => entry.Value is WritableFieldResolution.Covered && !Structure(entry.Key.Class, entry.Key.Field))
+        var covered = resolver.Entries.Where(entry => entry.Value is WritableFieldResolution.Covered { Owner: null } && !Structure(entry.Key.Class, entry.Key.Field))
             .Select(entry => (Entry: entry.Key, Binding: _schema.FieldBinding(entry.Key.Class, entry.Key.Field)!.Value))
             .GroupBy(item => (item.Binding.DeclaringClass, item.Binding.Field)).ToArray();
         foreach (var group in covered)
@@ -731,7 +731,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var unexercised = new List<string>();
         foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
         {
-            if (resolution is not WritableFieldResolution.Covered)
+            if (resolution is not WritableFieldResolution.Covered { Owner: null })
                 continue;
             var type = _schema.Schema.ObjectType(typeName)!;
             var field = type.Field(fieldName)!;
@@ -824,7 +824,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var allReasons = new List<string>();
         foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
         {
-            if (resolution is not WritableFieldResolution.Covered || _schema.Schema.ObjectType(typeName)?.Field(fieldName) is not { } field
+            if (resolution is not WritableFieldResolution.Covered { Owner: null } || _schema.Schema.ObjectType(typeName)?.Field(fieldName) is not { } field
                 || _schema.FieldBinding(typeName, fieldName) is not { } binding)
                 continue;
             var declared = Declarations(binding, verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb)

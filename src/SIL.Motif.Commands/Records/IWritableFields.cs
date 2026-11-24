@@ -41,6 +41,7 @@ public abstract record WritableFieldResolution
 {
     private WritableFieldResolution() { }
 
-    public sealed record Covered(string Kind) : WritableFieldResolution;
+    /// <summary>A write the executable catalog covers; <paramref name="Owner"/> is the key whose text writes it when the field is not written under its own key.</summary>
+    public sealed record Covered(string Kind, string? Owner = null) : WritableFieldResolution;
     public sealed record Uncovered(UncoveredFieldReason Reason, string? ManifestClassification = null) : WritableFieldResolution;
 }

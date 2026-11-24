@@ -104,7 +104,8 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
             {
                 WritableFieldResolution.Covered covered when notLowered is not null =>
                     new(ReportGroup.CoveredNotLowered, className, key, modelField, verb, covered.Kind, notLowered, "-"),
-                WritableFieldResolution.Covered covered => new(group, className, key, modelField, verb, covered.Kind, "-", "-"),
+                WritableFieldResolution.Covered covered => new(group, className, key, modelField, verb, covered.Kind,
+                    covered.Owner is { } owner ? "written-by-" + owner : "-", "-"),
                 WritableFieldResolution.Uncovered { Reason: UncoveredFieldReason.NotUserEditable } refused =>
                     new(group, className, key, modelField, verb, "none", "not-user-editable", refused.ManifestClassification!),
                 WritableFieldResolution.Uncovered uncovered when group == ReportGroup.LexiconEditReferenceSets =>
@@ -168,6 +169,7 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
             "# The Example* fields are project-local custom fields: one of each type a kind writes, a Boolean no kind writes, and a date the schema omits.",
             "# One row per reachable concrete schema class, record field key and verb.",
             "# Covered rows are subject to the placement, owner, child and shape in the Runner declarations.",
+            "# A Covered row marked written-by-input or written-by-output is written by that rule-formula key, not under its own key.",
             "# Non-authorable fields cite their classification in manifest/liblcm-inventory.tsv.",
             "# LexiconEditReferenceSets require a Lexicon Edit detail slice in manifest/fieldworks-labels.tsv.",
             "# CoveredNotLowered rows have a Runner kind that record import does not author; the reason column says why:",

@@ -41,7 +41,8 @@ public sealed class RecordWritableFields : IWritableFields
                     throw new InvalidOperationException($"No model binding for record field '{type.Name}.{field.Name}'.");
                 fields.Add((type.Name, field.Name));
                 var refusal = FieldRefusal(field, binding);
-                var parts = IsRuleParts(type, field, schema) || IsFormulaOwned(binding.DeclaringClass, binding.Field);
+                var owned = IsFormulaOwned(binding.DeclaringClass, binding.Field);
+                var parts = IsRuleParts(type, field, schema) || owned;
                 foreach (var verb in Verbs(field))
                 {
                     var structure = IsFeatureStructure(field) || IsRuleFormula(field);
@@ -50,8 +51,11 @@ public sealed class RecordWritableFields : IWritableFields
                     var candidates = (binding.IsCustom
                         ? catalog[(CustomFieldOperationKinds.DeclaringClass, CustomFieldCatalog.TypeOf(field) ?? "", handlerVerb)]
                         : parts || (IsRuleFormula(field) && verb == RecordWriteVerb.Clear) ? [] : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)]).ToArray();
+                    var formula = owned && verb is RecordWriteVerb.Set or RecordWriteVerb.AddReference
+                        ? catalog[(binding.DeclaringClass, binding.Field, handlerVerb)].ToArray() : [];
                     entries.Add((type.Name, field.Name, verb), new FieldEntry(type.Name, field, structure ? handlerVerb : verb, candidates, refusal,
-                        IsFeatureStructure(field) ? [FeatureStructureClass] : IsRuleFormula(field) ? RuleFormulaChildren(binding.Field) : null));
+                        IsFeatureStructure(field) ? [FeatureStructureClass] : IsRuleFormula(field) ? RuleFormulaChildren(binding.Field) : null,
+                        formula, binding.DeclaringClass.StartsWith("PhSimpleContext", StringComparison.Ordinal) || binding.DeclaringClass == "PhSequenceContext" ? "input" : "output"));
                 }
                 foreach (var child in (field.Item ?? field).ObjectTypes)
                     pending.Enqueue(child);
@@ -138,10 +142,14 @@ public sealed class RecordWritableFields : IWritableFields
         private readonly string[] _children;
         private readonly Candidate[] _candidates;
         private readonly WritableFieldResolution.Uncovered? _refusal;
+        private readonly Candidate[] _formulaCandidates;
+        private readonly string _formulaKey;
 
         internal FieldEntry(string owner, RecordField field, RecordWriteVerb verb, Candidate[] candidates,
-            WritableFieldResolution.Uncovered? refusal, string[]? children)
+            WritableFieldResolution.Uncovered? refusal, string[]? children, Candidate[] formulaCandidates, string formulaKey)
         {
+            _formulaCandidates = formulaCandidates;
+            _formulaKey = formulaKey;
             _owner = owner;
             _verb = verb;
             _children = children ?? (field.Item ?? field).ObjectTypes.Select(type => type.Name).ToArray();
@@ -154,8 +162,10 @@ public sealed class RecordWritableFields : IWritableFields
             if (_refusal is not null)
                 return _refusal;
 
-            return Select(null, _verb is RecordWriteVerb.MoveObject or RecordWriteVerb.MoveReference or
-                RecordWriteVerb.InsertReference, FieldWriteShape.Unspecified, inventory: true);
+            var placed = _verb is RecordWriteVerb.MoveObject or RecordWriteVerb.MoveReference or RecordWriteVerb.InsertReference;
+            if (_formulaCandidates.Length > 0 && Select(null, placed, FieldWriteShape.Unspecified, inventory: true, _formulaCandidates) is WritableFieldResolution.Covered formula)
+                return formula with { Owner = _formulaKey };
+            return Select(null, placed, FieldWriteShape.Unspecified, inventory: true, _candidates);
         }
 
         internal WritableFieldResolution Resolve(string? child, Placement? placement, FieldWriteShape shape)
@@ -163,16 +173,16 @@ public sealed class RecordWritableFields : IWritableFields
             if (_refusal is not null)
                 return _refusal;
 
-            return Select(child, placement is not null, shape, inventory: false);
+            return Select(child, placement is not null, shape, inventory: false, _candidates);
         }
 
-        private WritableFieldResolution Select(string? child, bool hasPlacement, FieldWriteShape shape, bool inventory)
+        private WritableFieldResolution Select(string? child, bool hasPlacement, FieldWriteShape shape, bool inventory, Candidate[] candidates)
         {
             var owned = _verb is RecordWriteVerb.AddObject or RecordWriteVerb.RemoveObject or RecordWriteVerb.MoveObject;
-            if (_candidates.Length == 0)
+            if (candidates.Length == 0)
                 return new WritableFieldResolution.Uncovered(UncoveredFieldReason.NoOperationKind);
 
-            var eligible = _candidates.Where(candidate => candidate.Write.OwnerClass is null ||
+            var eligible = candidates.Where(candidate => candidate.Write.OwnerClass is null ||
                 candidate.Write.OwnerClass == _owner).ToArray();
             if (eligible.Length == 0)
                 return new WritableFieldResolution.Uncovered(UncoveredFieldReason.UnsupportedOwnerClass);
