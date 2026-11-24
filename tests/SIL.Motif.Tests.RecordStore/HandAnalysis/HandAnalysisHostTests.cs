@@ -316,7 +316,10 @@ public sealed class HandAnalysisHostTests : IDisposable
         Assert.Equal("current", tables["RecordStoreCertificate"]);
         Assert.Equal("present", tables["RecordContentIdentity"]);
         Assert.Equal("trusted", tables["IncomingReferences"]);
-        foreach (var later in new[] { "RecordHeaders", "RecordChunks", "HandProjectionState", "HandFacts" })
+        Assert.Equal("present", tables["RecordHeaders"]);
+        Assert.Equal("present", tables["RecordChunks"]);
+        Assert.Equal("current", tables["RecordPublicationBinding"]);
+        foreach (var later in new[] { "HandProjectionState", "HandFacts" })
             Assert.Equal("absent", tables[later]);
         Assert.Equal(pin.Stamp, status.Current);
         Assert.Equal(HostReadiness.Ready, status.Readiness);
@@ -332,7 +335,9 @@ public sealed class HandAnalysisHostTests : IDisposable
             ("UPDATE RecordStoreState SET Revision = 'moved'", "Commits", "revision-mismatch"),
             ("UPDATE RecordStoreState SET Published = 0", "RecordStoreState", "unpublished"),
             ("DROP TABLE RecordStoreCertificate", "RecordStoreCertificate", "absent"),
-            ("DROP TABLE RecordContentIdentity", "RecordContentIdentity", "absent")
+            ("DROP TABLE RecordContentIdentity", "RecordContentIdentity", "absent"),
+            ("UPDATE RecordPublicationBinding SET Revision = 'moved'", "RecordPublicationBinding", "mismatch"),
+            ("DROP TABLE RecordHeaders", "RecordHeaders", "absent")
         })
         {
             var copy = Copy("damaged-" + Guid.NewGuid().ToString("N"));
