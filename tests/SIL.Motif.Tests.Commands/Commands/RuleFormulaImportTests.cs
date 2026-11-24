@@ -23,6 +23,8 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
             var entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create(EntryId, cache.LangProject.LexDbOA);
             var process = cache.ServiceLocator.GetInstance<IMoAffixProcessFactory>().Create();
             entry.AlternateFormsOS.Add(process);
+            process.InputOS.Clear();
+            process.OutputOS.Clear();
             var gap = cache.ServiceLocator.GetInstance<IPhVariableFactory>().Create();
             process.InputOS.Add(gap);
             var copy = cache.ServiceLocator.GetInstance<IMoCopyFromInputFactory>().Create();
