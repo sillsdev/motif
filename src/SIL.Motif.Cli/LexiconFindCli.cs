@@ -31,7 +31,9 @@ internal static class LexiconFindCli
         if (refusal is not null) return CommandTextRenderer.Render(CommandOutcome<JsonObject>.Refused(refusal), asJson);
         var outcome = LexiconFindCommand.Find(request!);
         if (asJson || !outcome.Succeeded) return CommandTextRenderer.Render(outcome, asJson);
-        return new CommandResult(0, Text(outcome.Value!, flags, positionals, request!.Limit));
+        var next = outcome.Value!["nextOffset"] is { } offset
+            ? "# Next: " + PagingFlags.NextCommand("lexicon", positionals, flags, offset.GetValue<int>(), request!.Limit) + "\n" : "";
+        return new CommandResult(0, RenderPage(outcome.Value!) + next);
     }
 
     // One JSON object per input line, one JSON line out, all answered from a single open of the Baseline.
@@ -114,8 +116,7 @@ internal static class LexiconFindCli
     }
 
     // One tab-separated line per entry: id, headword, morph type, forms, classes, categories, gloss.
-    private static string Text(JsonObject page, IReadOnlyDictionary<string, string> flags, IReadOnlyList<string> positionals,
-        int limit)
+    internal static string RenderPage(JsonObject page)
     {
         var text = new StringBuilder();
         foreach (var node in page["entries"]!.AsArray())
@@ -131,8 +132,6 @@ internal static class LexiconFindCli
                 string.Join('|', categories), gloss)).Append('\n');
         }
         text.Append(CultureInfo.InvariantCulture, $"# {page["showing"]!.GetValue<string>()}\n");
-        if (page["nextOffset"] is { } next)
-            text.Append("# Next: ").Append(PagingFlags.NextCommand("lexicon", positionals, flags, next.GetValue<int>(), limit)).Append('\n');
         return text.ToString();
     }
 }

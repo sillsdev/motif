@@ -198,6 +198,7 @@ public sealed class ToolSurfaceTests
             "hand-analysis check",
             "hypothesis neighbours",
             "hypothesis report",
+            "lexicon find",
             "list hypotheses",
             "project tag",
             "query corpus forms",
@@ -247,7 +248,7 @@ public sealed class ToolSurfaceTests
             command.Name != "project tag" && command.Name != "proposal trial" && command.Name != "generate" &&
             command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
             command.Name is not ("wordform dispose" or "wordform dispose --from-file" or "wordform undispose" or "worker stop") &&
-            command.Name is not ("hypothesis neighbours" or "hypothesis report" or "list hypotheses")), command =>
+            command.Name is not ("hypothesis neighbours" or "hypothesis report" or "lexicon find" or "list hypotheses")), command =>
             Assert.True(command.ExposeAsAgentTool));
         Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);
     }

@@ -58,18 +58,19 @@ public sealed class LexiconFindArgvTests(PristineProjectFixture pristine) : IDis
     [Fact]
     public void RefusesABadRegexAnOutOfRangePageAndAnUnknownIdFormat()
     {
-        var bad = CliInProcess.Run(_root, null, developerCommands: true,
-            "lexicon", "find", "--project", "nowhere.fwdata", "--form-regex", "(", "--json");
-        Assert.NotEqual(0, bad.ExitCode);
-        Assert.Contains("lexicon-find.invalid-request", bad.Output + bad.Error, StringComparison.Ordinal);
-
-        var paged = CliInProcess.Run(_root, null, developerCommands: true,
-            "lexicon", "find", "--project", "nowhere.fwdata", "--limit", "500", "--json");
-        Assert.NotEqual(0, paged.ExitCode);
-
-        var format = CliInProcess.Run(_root, null, developerCommands: true,
-            "lexicon", "find", "--project", "nowhere.fwdata", "--id-format", "hex", "--json");
-        Assert.Contains("lexicon-find.invalid-request", format.Output + format.Error, StringComparison.Ordinal);
+        using var project = new WalkthroughProject(pristine, _root);
+        foreach (var (extra, code) in new[]
+                 {
+                     (new[] { "--form-regex", "(" }, "lexicon-find.invalid-request"),
+                     (new[] { "--id-format", "hex" }, "lexicon-find.invalid-request"),
+                     (new[] { "--limit", "500" }, "paging.invalid"),
+                 })
+        {
+            var result = CliInProcess.Run(_root, null, developerCommands: true,
+                ["lexicon", "find", "--project", project.FwDataPath, .. extra, "--json"]);
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains(code, result.Output + result.Error, StringComparison.Ordinal);
+        }
     }
 
     private JsonDocument Find(WalkthroughProject project, params string[] extra)

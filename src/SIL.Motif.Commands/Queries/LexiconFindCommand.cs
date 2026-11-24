@@ -99,8 +99,8 @@ public static class LexiconFindCommand
                 return use(reader.Cache, page =>
                 {
                     page["at"] = "baseline";
-                    page["source"] = JsonNode.Parse(ProjectionJson.Serialize(new BaselineReadSource(
-                        baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc)));
+                    page["source"] = ProjectionJson.ToNode(new BaselineReadSource(
+                        baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc));
                 });
             });
     }

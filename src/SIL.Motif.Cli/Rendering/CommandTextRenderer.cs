@@ -198,6 +198,7 @@ public static class CommandTextRenderer
             ListDispositionsResponse r => DispositionRenderer.RenderListed(r),
             RequestCreatedResponse r => $"Request {r.Request.RequestId} is open: {r.Request.TargetLabel}.{Environment.NewLine}",
             RequestWithdrawnResponse r => $"Request {r.RequestId} withdrawn.{Environment.NewLine}",
+            System.Text.Json.Nodes.JsonObject page => LexiconFindCli.RenderPage(page),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
