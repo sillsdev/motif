@@ -123,7 +123,8 @@ public sealed class QueryDocumentTests
         const string json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"phon\":\"V\",\"where\":\"stem\"}}";
         Assert.False(QueryDocument.TryParse(json, out _, out var refusal));
         Assert.Equal(RefusalCodes.QueryDocumentInvalid, refusal.Code);
-        Assert.False(QueryExprText.TryParse("phon(stem: V)", out _, out _));
+        Assert.True(QueryExprText.TryParse("phon(stem: V)", out var expr, out _));
+        Assert.Equal("stem: V", Assert.IsType<QueryPhon>(expr).Pattern);
     }
 
     [Theory]
