@@ -90,7 +90,7 @@ public abstract record WarmGenerateResult
     public sealed record Cancelled : WarmGenerateResult;
 }
 
-/// <summary>What asking a resident parser to match pattern text over a word list came to.</summary>
+/// <summary>What asking a resident parser to match pattern text over a word list, or to list its grammar's inventory, came to.</summary>
 public abstract record WarmMatchResult
 {
     private WarmMatchResult() { }
@@ -277,9 +277,37 @@ public sealed class WarmPanGlossPool : IDisposable
             if (state.Phase != WarmSessionPhase.Ready)
                 return new WarmMatchResult.Failed(state.FailureCode ?? "session-unavailable",
                     state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
-            if (session.Capabilities?.ServeMatchRefusal() is { } incapable)
+            if (session.Capabilities?.ServeMatchRefusal(request.Requires) is { } incapable)
                 return new WarmMatchResult.Unsupported(incapable);
             return await session.MatchAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return new WarmMatchResult.Cancelled();
+        }
+        finally
+        {
+            session.ReleaseWord();
+        }
+    }
+
+    /// <summary>Lists the grammar's natural classes and features through the resident parser's <c>inventory</c> op.</summary>
+    public async Task<WarmMatchResult> TryInventoryAsync(string projectKey, string stateToken, string grammarPath,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit: null, retryFailed: false, reserveWord: true);
+        try
+        {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling)
+                return new WarmMatchResult.Failed(cooling.Code, cooling.Message) { ProbeFailure = cooling.ProbeFailure };
+            var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (state.Phase != WarmSessionPhase.Ready)
+                return new WarmMatchResult.Failed(state.FailureCode ?? "session-unavailable",
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (session.Capabilities?.ServeInventoryRefusal() is { } incapable)
+                return new WarmMatchResult.Unsupported(incapable);
+            return await session.InventoryAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -664,6 +692,11 @@ public sealed class WarmPanGlossPool : IDisposable
             ExchangeAsync("warm-match", request.ToLine, ReadMatchReply,
                 (code, message) => new WarmMatchResult.Failed(code, message),
                 () => new WarmMatchResult.Cancelled(), cancellationToken, request.Timeout(pool._options.ParseTimeout));
+
+        public Task<WarmMatchResult> InventoryAsync(CancellationToken cancellationToken) =>
+            ExchangeAsync("warm-inventory", id => ServeInventoryRequest.ToLine(id), ReadMatchReply,
+                (code, message) => new WarmMatchResult.Failed(code, message),
+                () => new WarmMatchResult.Cancelled(), cancellationToken);
 
         private static WarmMatchResult ReadMatchReply(JsonElement root, TimeSpan elapsed)
         {

@@ -2,12 +2,16 @@ using System.Text;
 
 namespace SIL.Motif.Contract.Query.Phon;
 
-/// <summary>A pattern ready to send to PanGloss: its text and, for an <c>env</c>, where the target sits in the span it matches.</summary>
+/// <summary>A pattern ready to send to PanGloss: its text, which is <c>target / left _ right</c> for an <c>env</c>, whose match spans are the target.</summary>
 /// <param name="Text">The pattern text PanGloss's <c>match</c> op reads, with natural classes in brackets.</param>
-/// <param name="TargetOffset">For an <c>env</c>, the segments before the target in a match; null for <c>phon</c>, or when the left context has no fixed width.</param>
-/// <param name="TargetWidth">For an <c>env</c>, the segments of the target; null for <c>phon</c>, or when the target has no fixed width.</param>
-public sealed record PhonPlan(string Text, int? TargetOffset = null, int? TargetWidth = null)
+/// <param name="IsEnv">Whether the text is an environment, so each span is the target's.</param>
+/// <param name="Classes">The natural-class tokens the pattern names, as written between brackets.</param>
+/// <param name="HasLiteral">Whether the pattern holds a literal segment <c>/p/</c>.</param>
+public sealed record PhonPlan(string Text, bool IsEnv = false, IReadOnlyList<string>? Classes = null, bool HasLiteral = false)
 {
+    /// <summary>The natural-class tokens the pattern names; empty when it names none.</summary>
+    public IReadOnlyList<string> ClassTokens => Classes ?? [];
+
     /// <summary>The key two predicates share when PanGloss would answer them identically.</summary>
     public string Key => Text;
 }
@@ -33,10 +37,10 @@ public static class PhonPattern
                 throw Error("phon", pattern, token.At, "the / and _ of an environment belong to env, not phon.");
         CheckShape("phon", pattern, tokens);
         if (tokens.Count == 0) throw Error("phon", pattern, 0, "a pattern needs at least one item.");
-        return new PhonPlan(Render(tokens));
+        return Plan(tokens, Render(tokens), false);
     }
 
-    /// <summary>Compiles an <c>env</c> of the form <c>target / left _ right</c> to the pattern <c>left target right</c>.</summary>
+    /// <summary>Compiles an <c>env</c> of the form <c>target / left _ right</c>, which PanGloss's <c>match</c> reads as it is written.</summary>
     public static PhonPlan CompileEnv(string env)
     {
         var tokens = Tokenize(env, "env");
@@ -54,12 +58,35 @@ public static class PhonPattern
         CheckShape("env", env, target);
         CheckShape("env", env, left);
         CheckShape("env", env, right);
-        var all = new List<Token>(left.Count + target.Count + right.Count);
-        all.AddRange(left);
-        all.AddRange(target);
-        all.AddRange(right);
-        return new PhonPlan(Render(all), Width(left), Width(target));
+        var text = new StringBuilder(Render(target)).Append(" /");
+        if (left.Count > 0) text.Append(' ').Append(Render(left));
+        text.Append(" _");
+        if (right.Count > 0) text.Append(' ').Append(Render(right));
+        return Plan([.. target, .. left, .. right], text.ToString(), true);
     }
+
+    /// <summary>The constructs of PanGloss's <c>match</c> pattern text that a binary must declare supported: <c>environment</c>, <c>featureBundle</c>, <c>alphaVariable</c>.</summary>
+    public static IReadOnlyList<string> ConstructsOf(string text)
+    {
+        var found = new List<string>();
+        foreach (var token in Tokenize(text, "phon"))
+        {
+            if (token.Kind == Kind.Slash && !found.Contains("environment")) found.Add("environment");
+            if (token.Kind != Kind.Bundle) continue;
+            var text2 = token.Text;
+            var alpha = text2.Any(IsGreek);
+            var signed = text2.Where((c, i) => c is '+' or '-' && i + 1 < text2.Length && !IsGreek(text2[i + 1]) && !char.IsWhiteSpace(text2[i + 1])).Any();
+            if (signed && !found.Contains("featureBundle")) found.Add("featureBundle");
+            if (alpha && !found.Contains("alphaVariable")) found.Add("alphaVariable");
+        }
+        return found;
+    }
+
+    private static bool IsGreek(char c) => c >= 'α' && c <= 'ω';
+
+    private static PhonPlan Plan(List<Token> tokens, string text, bool isEnv) =>
+        new(text, isEnv, [.. tokens.Where(token => token.Kind == Kind.Class).Select(token => token.Text).Distinct(StringComparer.Ordinal)],
+            tokens.Any(token => token.Kind == Kind.Literal));
 
     /// <summary>The index just past the balanced <c>)</c> that closes a pattern whose text starts at <paramref name="start"/> (after the opening parenthesis), or -1.</summary>
     internal static int FindClose(string text, int start)
@@ -88,19 +115,6 @@ public static class PhonPattern
             }
         }
         return -1;
-    }
-
-    private static int? Width(List<Token> tokens)
-    {
-        var width = 0;
-        foreach (var token in tokens)
-            switch (token.Kind)
-            {
-                case Kind.Class or Kind.Bundle: width++; break;
-                case Kind.Edge or Kind.Plus: break;
-                default: return null;
-            }
-        return width;
     }
 
     private static string Render(List<Token> tokens)
@@ -200,7 +214,7 @@ public static class PhonPattern
     }
 
     // A bundle is signed features or alpha variables; any other bracketed text names a natural class.
-    private static bool IsBundle(string inner) => inner[0] is '+' or '-' || (inner[0] >= 'α' && inner[0] <= 'ω');
+    private static bool IsBundle(string inner) => inner[0] is '+' or '-' || IsGreek(inner[0]);
 
     private static QueryRefusalException Error(string kind, string source, int at, string message) =>
         QueryRefusalException.DocumentInvalid($"The {kind} pattern '{source}' is malformed at character {at + 1}: {message}", "where");

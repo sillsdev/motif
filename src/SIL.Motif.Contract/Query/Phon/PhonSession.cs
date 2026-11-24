@@ -25,13 +25,42 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
     private readonly Dictionary<string, QuerySkippedWord> _unsegmentable = new(StringComparer.Ordinal);
     private readonly Dictionary<string, QuerySkippedWord> _incomplete = new(StringComparer.Ordinal);
     private readonly HashSet<string> _candidates = new(StringComparer.Ordinal);
+    private readonly List<PhonLeaf> _negated = [];
+    private PhonInventory? _inventory;
+    private bool _inventoryRead;
     private bool _complete = true;
     private string? _stopReason;
     private int _requests;
 
     /// <summary>What this run could not decide.</summary>
-    public PhonReport Report => new(_candidates.Count, _unsegmentable.Count, [.. _unsegmentable.Values.Take(SampleSize)],
-        _incomplete.Count, [.. _incomplete.Values.Take(SampleSize)], _complete, _stopReason, matcher.ParserVersion, _requests);
+    public PhonReport Report
+    {
+        get
+        {
+            var identity = _leaves.Values.Any(IsIdentityTested);
+            var warnings = _negated.Where(IsIdentityTested).Select(leaf => leaf.Source).Distinct(StringComparer.Ordinal)
+                .Select(source => $"not over {source}: absence is not proven, because PanGloss tests its literals and segment-list classes by identity and a form that has no span may still hold a segment a rule treats as the same.").ToArray();
+            return new PhonReport(_candidates.Count, _unsegmentable.Count, [.. _unsegmentable.Values.Take(SampleSize)],
+                _incomplete.Count, [.. _incomplete.Values.Take(SampleSize)], _complete, _stopReason, matcher.ParserVersion, _requests,
+                identity ? PhonIdentityLabel.Identity : null, identity, warnings.Length == 0 ? null : warnings);
+        }
+    }
+
+    // Identity-tested: a literal, or a class that is a segment list or that the inventory cannot place.
+    private bool IsIdentityTested(PhonLeaf leaf)
+    {
+        if (!matcher.MatchesByIdentity) return false;
+        if (leaf.Plan.HasLiteral) return true;
+        if (leaf.Plan.ClassTokens.Count == 0) return false;
+        foreach (var token in leaf.Plan.ClassTokens)
+        {
+            var kind = _inventory?.Classes.FirstOrDefault(c => c.Token == token)?.Kind
+                ?? _inventory?.Classes.FirstOrDefault(c => c.Name == token)?.Kind
+                ?? _inventory?.Classes.FirstOrDefault(c => c.Id == token)?.Kind;
+            if (kind != "feature") return true;
+        }
+        return false;
+    }
 
     /// <summary>Whether the query reached the pattern predicates, so a <see cref="Report"/> says something even when no form needed PanGloss.</summary>
     public bool Ran { get; private set; }
@@ -40,6 +69,11 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
     internal void Resolve(IReadOnlyList<PhonLeaf> leaves, IEnumerable<string> forms, CancellationToken cancellationToken = default)
     {
         Ran = true;
+        if (!_inventoryRead && matcher.MatchesByIdentity && leaves.Any(leaf => leaf.Plan.ClassTokens.Count > 0))
+        {
+            _inventory = matcher.Inventory(cancellationToken);
+            _inventoryRead = true;
+        }
         var words = forms.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         foreach (var form in words) _candidates.Add(form);
         foreach (var leaf in leaves)
@@ -79,6 +113,13 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
             if (_reported.All(known => known.Key != leaf.Key)) _reported.Add(leaf);
     }
 
+    /// <summary>The leaves under <c>not</c>, whose absence of a match is what the query reports.</summary>
+    internal void Negated(IEnumerable<PhonLeaf> negated)
+    {
+        foreach (var leaf in negated)
+            if (_negated.All(known => known.Key != leaf.Key)) _negated.Add(leaf);
+    }
+
     /// <summary>Whether the form matches the leaf: true, false, or unknown when PanGloss could not decide the form.</summary>
     internal Tri Lookup(PhonLeaf leaf, string form)
     {
@@ -102,8 +143,7 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
             var bytes = Encoding.UTF8.GetBytes(nfd);
             var spans = word.Spans.Select(span => new QueryMatchSpan(span.Start, span.End, span.ByteStart, span.ByteEnd,
                 Slice(bytes, span.ByteStart, span.ByteEnd),
-                leaf.Plan.TargetOffset is { } offset && leaf.Plan.TargetWidth is { } width ? span.Start + offset : null,
-                leaf.Plan.TargetOffset is { } offset2 && leaf.Plan.TargetWidth is { } width2 ? span.Start + offset2 + width2 : null)).ToArray();
+                leaf.Plan.IsEnv ? span.Start : null, leaf.Plan.IsEnv ? span.End : null)).ToArray();
             matches.Add(new QueryMatch(leaf.Kind, leaf.Source, spans, word.Status == "incomplete"));
         }
         return matches;
@@ -119,8 +159,8 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
 /// <param name="Plan">The pattern text to send.</param>
 internal sealed record PhonLeaf(string Kind, string Source, PhonPlan Plan)
 {
-    /// <summary>Two leaves with the same key are answered by one request; an <c>env</c> and a <c>phon</c> differ in where their target sits.</summary>
-    public string Key => Kind + "\0" + Plan.Text + "\0" + Plan.TargetOffset + "\0" + Plan.TargetWidth;
+    /// <summary>Two leaves with the same key are answered by one request.</summary>
+    public string Key => Kind + "\0" + Plan.Text;
 }
 
 /// <summary>True, false, or not decided because PanGloss could not segment the form or stopped on it.</summary>

@@ -15,6 +15,9 @@ namespace SIL.Motif.Host.PanGloss;
 public sealed record ServeMatchRequest(string Pattern, IReadOnlyList<string> Words, int? MaxMatchesPerWord = null,
     long? MaxWork = null, long? WordTimeoutMs = null)
 {
+    /// <summary>The pattern constructs the parser's description must list as supported (<c>environment</c>, <c>featureBundle</c>, <c>alphaVariable</c>); not sent.</summary>
+    public IReadOnlyCollection<string>? Requires { get; init; }
+
     /// <summary>The longest line <c>pangloss serve</c> accepts, 1 MiB; a batch stays well below it.</summary>
     public const int MaxLineBytes = 1 << 20;
 

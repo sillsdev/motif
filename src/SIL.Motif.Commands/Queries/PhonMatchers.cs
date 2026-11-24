@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
@@ -27,20 +28,55 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
 
     public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken)
     {
-        var reply = pool.TryMatchAsync(key, stateToken, grammarPath, new ServeMatchRequest(patternText, words, WordTimeoutMs: WordTimeoutMs), cancellationToken)
+        var reply = pool.TryMatchAsync(key, stateToken, grammarPath, new ServeMatchRequest(patternText, words, WordTimeoutMs: WordTimeoutMs) { Requires = PhonPattern.ConstructsOf(patternText) }, cancellationToken)
             .GetAwaiter().GetResult();
         switch (reply)
         {
             case WarmMatchResult.Completed completed:
                 return Read(completed.Json);
             case WarmMatchResult.Unsupported unsupported:
-                throw QueryRefusalException.PhonUnavailable(PanGlossInterfaceVersions.ServeMatchNeeded, unsupported.Detail);
+                throw QueryRefusalException.PhonUnavailable(unsupported.Detail.Contains("supported constructs", StringComparison.Ordinal)
+                    ? PanGlossInterfaceVersions.ServeMatchConstructsNeeded : PanGlossInterfaceVersions.ServeMatchNeeded, unsupported.Detail);
             case WarmMatchResult.Rejected rejected:
                 throw Refused(rejected, patternText);
             case WarmMatchResult.Failed failed:
                 throw QueryRefusalException.PhonFailed($"The resident PanGloss could not match the pattern ({failed.Code}): {failed.Message}");
             default:
                 throw new OperationCanceledException(cancellationToken);
+        }
+    }
+
+    /// <summary>The grammar's classes and features, from the resident parser's <c>inventory</c> op; null when PanGloss cannot list them.</summary>
+    public PhonInventory? Inventory(CancellationToken cancellationToken)
+    {
+        if (_inventory is { } known) return known.Value;
+        var reply = pool.TryInventoryAsync(key, stateToken, grammarPath, cancellationToken).GetAwaiter().GetResult();
+        var read = reply is WarmMatchResult.Completed completed ? ReadInventory(completed.Json) : null;
+        _inventory = new StrongBox<PhonInventory?>(read);
+        return read;
+    }
+
+    private StrongBox<PhonInventory?>? _inventory;
+
+    internal static PhonInventory ReadInventory(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            string? Text(JsonElement element, string name) =>
+                element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+            var classes = root.GetProperty("classes").EnumerateArray()
+                .Select(item => new PhonInventoryClass(Text(item, "token"), Text(item, "name"), Text(item, "id") ?? "", Text(item, "kind") ?? "")).ToArray();
+            var features = root.GetProperty("features").EnumerateArray()
+                .Select(item => new PhonInventoryFeature(Text(item, "name") ?? "", Text(item, "id") ?? "",
+                    [.. item.GetProperty("values").EnumerateArray().Select(value => value.GetString() ?? "")])).ToArray();
+            return new PhonInventory(classes, features, root.GetProperty("complete").GetBoolean(),
+                root.TryGetProperty("stopReason", out var stop) && stop.ValueKind == JsonValueKind.String ? stop.GetString() : null);
+        }
+        catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            throw QueryRefusalException.PhonFailed("PanGloss wrote an inventory answer Motif cannot read: " + exception.Message);
         }
     }
 
@@ -64,7 +100,7 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
         }
         catch (JsonException) { }
         var detail = facts.TryGetValue("construct", out var construct)
-            ? $"PanGloss does not support {construct} patterns yet ({rejected.Code}): {rejected.Message}"
+            ? $"PanGloss does not support {construct} patterns ({rejected.Code}): {rejected.Message}"
             : $"PanGloss refused the pattern ({rejected.Code}): {rejected.Message}";
         return QueryRefusalException.PhonPatternRefused(detail + $" The pattern sent was: {patternText}", facts);
     }

@@ -12,6 +12,10 @@ internal static class PhonText
     {
         text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Patterns: {0} candidate words in {1} PanGloss request(s){2}",
             phon.Candidates, phon.Requests, phon.ParserVersion is null ? "" : ", PanGloss " + phon.ParserVersion));
+        if (phon.MayUnderReport)
+            text.AppendLine("MATCH MODE: identity. A literal or a segment-list class matches only that segment, so spans may under-report segments the grammar's rules treat as the same.");
+        foreach (var warning in phon.Warnings ?? [])
+            text.AppendLine("WARNING: " + warning);
         if (phon.Unsegmentable > 0)
             text.AppendLine(string.Format(CultureInfo.InvariantCulture, "UNSEGMENTABLE: {0} words cannot be segmented by the grammar and match nothing, for example {1}",
                 phon.Unsegmentable, string.Join(", ", phon.UnsegmentableSample.Select(word => word.Word))));
