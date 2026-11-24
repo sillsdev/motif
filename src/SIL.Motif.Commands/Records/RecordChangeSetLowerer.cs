@@ -250,7 +250,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 }
             }
             return Refuse(RefusalCodes.RuleNotationReadOnly, change,
-                "This field is shown as rule-formula text, which an import does not write yet; edit it in the project.");
+                "This field is shown as rule-formula text, which an import does not write; edit it in the project.");
         }
 
         private void LowerFeatureStructure(RecordChange change, string type, string key, CanonicalId target, string role)

@@ -56,13 +56,13 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
         var exporter = new ProjectRecordExporter(cache, schema);
         var process = Process(exporter.Export(EntryId).Document);
-        Assert.Equal("*", ((RecordScalar)process["input"]!).Text);
-        Assert.Equal("$1", ((RecordScalar)process["output"]!).Text);
+        Assert.Equal("*", ((RecordScalar)process["input-formula"]!).Text);
+        Assert.Equal("$1", ((RecordScalar)process["output-formula"]!).Text);
     }
 
     [Theory]
-    [InlineData("input", "* a")]
-    [InlineData("output", "a $1")]
+    [InlineData("input-formula", "* a")]
+    [InlineData("output-formula", "a $1")]
     public void AnEditedFormulaIsRefusedAsReadOnlyAndStagesNothing(string key, string text)
     {
         using var cache = pristine.NewScratch();

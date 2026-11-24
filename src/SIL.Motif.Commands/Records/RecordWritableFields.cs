@@ -78,7 +78,7 @@ public sealed class RecordWritableFields : IWritableFields
     internal static bool IsFeatureStructure(RecordField field) =>
         field is { Kind: RecordFieldKind.Notation, Notation: SIL.TextEditing.Project.FeatureStructureNotation.Name };
 
-    /// <summary>Whether the field is rule-formula text, which the record layer shows and does not yet write.</summary>
+    /// <summary>Whether the field is rule-formula text, which the record layer shows and does not write.</summary>
     internal static bool IsRuleFormula(RecordField field) =>
         field is { Kind: RecordFieldKind.Notation, Notation: SIL.TextEditing.Project.RuleNotation.Name };
 

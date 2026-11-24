@@ -180,7 +180,7 @@ namespace SIL.TextEditing.Project
         public const string ContextNotAllowed = "rule-notation.context-not-allowed";
         /// <summary>The project's value holds something the text cannot show.</summary>
         public const string Unrenderable = "rule-notation.unrenderable";
-        /// <summary>The field is shown as text but an import does not write it yet.</summary>
+        /// <summary>The field is shown as text and an import does not write it.</summary>
         public const string ReadOnly = "rule-notation.read-only";
 
         /// <summary>The notation field a metadata class and field name stand for, or false.</summary>

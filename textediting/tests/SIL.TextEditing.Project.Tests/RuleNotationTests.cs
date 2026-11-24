@@ -311,7 +311,7 @@ namespace SIL.TextEditing.Project.Tests
         [InlineData(RuleField.AffixOutput, "\\m \\a", "m a")]
         [InlineData(RuleField.LeftContext, "[C] {1 , 3}", "[C]{1,3}")]
         [InlineData(RuleField.LeftContext, "( a )", "(a)")]
-        [InlineData(RuleField.LeftContext, "[ C ]{0,1}", "[C]{0,1}")]
+        [InlineData(RuleField.LeftContext, "[ C ]{0,1}", "([C])")]
         [InlineData(RuleField.RightContext, "[cons:+ son:-]", "[cons:+ son:-]")]
         [InlineData(RuleField.RightContext, "[son:- cons:+]", "[cons:+ son:-]")]
         [InlineData(RuleField.RightContext, "[Obs  voi:\\+]", null)]
@@ -361,6 +361,14 @@ namespace SIL.TextEditing.Project.Tests
         [InlineData("[C]{2,0}")]
         [InlineData("[C]{99999999999,∞}")]
         public void ARepeatNeedsAMaximumOfOneAndAtLeastItsMinimum(string text) => Refuses(RuleNotation.BadRepeat, text, RuleField.RightContext);
+
+        [Fact]
+        public void AStarAfterAnItemIsAGapColumnInAnAffixInputAndRefusedInAContext()
+        {
+            Refuses(RuleNotation.ContextNotAllowed, "[C]*", RuleField.LeftContext);
+            Refuses(RuleNotation.ContextNotAllowed, "[C]*", RuleField.StrucDesc);
+            Assert.Equal("[C] *", RuleNotation.Render(RuleNotation.Parse("[C]*", RuleField.AffixInput, Cache), Cache));
+        }
 
         [Fact]
         public void AnUnknownCodeOrClassIsRefused()
@@ -649,8 +657,8 @@ namespace SIL.TextEditing.Project.Tests
             var export = exporter.Export(entry.Guid);
             Assert.DoesNotContain(export.Unexported, u => u.Field == "Input" || u.Field == "Output");
             var process2 = Process(export);
-            Assert.Equal("[C] *", Scalar(process2, "input"));
-            Assert.Equal("$1~[voi:+] <a +> $2", Scalar(process2, "output"));
+            Assert.Equal("[C] *", Scalar(process2, "input-formula"));
+            Assert.Equal("$1~[voi:+] <a +> $2", Scalar(process2, "output-formula"));
             var read = RecordFileReader.Read(export.Text!, exporter.Schema, exporter.CreateReadOptions());
             Assert.DoesNotContain(read.Diagnostics, d => d.Severity == SIL.TextEditing.Markdown.MarkdownSeverity.Error);
             Assert.True(RecordDocument.AreEquivalent(export.Document, read.Document!, exporter.Schema));
@@ -670,8 +678,8 @@ namespace SIL.TextEditing.Project.Tests
             var unexported = Assert.Single(export.Unexported, u => u.Field == "Output");
             Assert.Contains(RuleNotation.Unrenderable, unexported.Reason);
             var process2 = Process(export);
-            Assert.Equal("*", Scalar(process2, "input"));
-            Assert.Null(process2["output"]);
+            Assert.Equal("*", Scalar(process2, "input-formula"));
+            Assert.Null(process2["output-formula"]);
         }
 
         [Fact]
@@ -680,8 +688,8 @@ namespace SIL.TextEditing.Project.Tests
             ILexEntry entry = null!;
             _g.Fixture.Change(() => entry = _g.Entry(out _));
             var process = Process(Exporter().Export(entry.Guid));
-            Assert.Null(process["input"]);
-            Assert.Null(process["output"]);
+            Assert.Null(process["input-formula"]);
+            Assert.Null(process["output-formula"]);
         }
     }
 }

@@ -356,7 +356,7 @@ public static class RefusalCodes
     public const string FsNotationUnsupportedFeature = "fs-notation.unsupported-feature";
     /// <summary>The project's feature structure holds something the text cannot show, so a change to it cannot be checked.</summary>
     public const string FsNotationUnrenderable = "fs-notation.unrenderable";
-    /// <summary>The rule-formula text of an affix process or phonological rule field is shown but an import does not write it yet.</summary>
+    /// <summary>The rule-formula text of an affix process or phonological rule field is shown and an import does not write it.</summary>
     public const string RuleNotationReadOnly = "rule-notation.read-only";
     /// <summary>The project's rule-formula field holds something the text cannot show, so a change to it cannot be checked.</summary>
     public const string RuleNotationUnrenderable = "rule-notation.unrenderable";

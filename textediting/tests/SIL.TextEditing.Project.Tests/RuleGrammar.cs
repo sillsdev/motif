@@ -128,6 +128,7 @@ namespace SIL.TextEditing.Project.Tests
         internal IPhSimpleContextSeg Seg(string code)
         {
             var context = Cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create();
+            Data.ContextsOS.Add(context);
             context.FeatureStructureRA = _phonemes[code];
             return context;
         }
@@ -135,6 +136,7 @@ namespace SIL.TextEditing.Project.Tests
         internal IPhSimpleContextBdry Bdry(IPhBdryMarker marker)
         {
             var context = Cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create();
+            Data.ContextsOS.Add(context);
             context.FeatureStructureRA = marker;
             return context;
         }
@@ -142,6 +144,7 @@ namespace SIL.TextEditing.Project.Tests
         internal IPhSimpleContextNC Nc(IPhNaturalClass? naturalClass, IPhFeatureConstraint[]? plus = null, IPhFeatureConstraint[]? minus = null)
         {
             var context = Cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create();
+            Data.ContextsOS.Add(context);
             context.FeatureStructureRA = naturalClass;
             foreach (var constraint in plus ?? Array.Empty<IPhFeatureConstraint>()) context.PlusConstrRS.Add(constraint);
             foreach (var constraint in minus ?? Array.Empty<IPhFeatureConstraint>()) context.MinusConstrRS.Add(constraint);
@@ -151,6 +154,7 @@ namespace SIL.TextEditing.Project.Tests
         internal IPhIterationContext Iteration(IPhPhonContext member, int minimum, int maximum)
         {
             var iteration = Cache.ServiceLocator.GetInstance<IPhIterationContextFactory>().Create();
+            Data.ContextsOS.Add(iteration);
             iteration.MemberRA = member;
             iteration.Minimum = minimum;
             iteration.Maximum = maximum;
@@ -160,6 +164,7 @@ namespace SIL.TextEditing.Project.Tests
         internal IPhSequenceContext Sequence(params IPhPhonContext[] members)
         {
             var sequence = Cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create();
+            Data.ContextsOS.Add(sequence);
             foreach (var member in members) sequence.MembersRS.Add(member);
             return sequence;
         }
@@ -171,6 +176,8 @@ namespace SIL.TextEditing.Project.Tests
             var entry = Cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
             process = Cache.ServiceLocator.GetInstance<IMoAffixProcessFactory>().Create();
             entry.AlternateFormsOS.Add(process);
+            process.InputOS.Clear();
+            process.OutputOS.Clear();
             return entry;
         }
 

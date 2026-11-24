@@ -328,31 +328,33 @@ is edited in FieldWorks by the inflection-feature chooser (`MsaInflectionFeature
 ## Rule-formula notation
 
 `notation="rule-formula"` (`text/x-fieldworks-rule-formula`) marks a field that holds a phonological formula: the Input and Output of an affix process, and the
-structural description, structural change, left context and right context of a phonological rule. `RuleNotation` renders and reads it in one place. Slice A
-writes it out only: an import that changes one of these fields is refused with `rule-notation.read-only`.
+structural description, structural change, left context and right context of a phonological rule. `RuleNotation` renders and reads it in one place. An import
+does not write these fields: a change to one is refused with `rule-notation.read-only`. An affix process shows its text under `input-formula` and
+`output-formula`, beside the `input` and `output` object lists, which stay writable.
 
 - **Tokens.** A field is a list of tokens separated by white space; no meaning depends on how much white space there is, or whether there is any between a
   bracket and its neighbours. Two lexical modes: outside brackets, a literal (a phoneme code) must escape backslash, `[` `]` `(` `)` `{` `}` `<` `>` `$` `~` `*` `#`
-  `+` `:` and white space with a backslash (`\+` is the phoneme coded `+`, `+` is the morpheme boundary); inside brackets, labels use exactly the escape set of
+  `+` `_` `/` `|` and white space with a backslash (`\+` is the phoneme coded `+`, `+` is the morpheme boundary; a bare `_`, `/` or `|` is refused; `:` needs no escape); inside brackets, labels use exactly the escape set of
   [feature-structure notation](#feature-structure-notation), plus the escaping of a value label that is a lone Greek letter or `-` followed by one (`\α`). A
   reader accepts any redundant escape; a render writes none. As in feature structures, the notation sits inside the file's double-quoted string.
 - **Grammar.**
 
   ```
-  affix-input   = { column }                column = context | "<" context { context } ">" | "*"
+  affix-input   = { column }                column = simple | "<" simple { simple } ">" | "*"
   affix-output  = { step }                  step = "$" n [ "~" class ] | literal | "<" literal { literal } ">" | class
-  context-text  = { item }                  item = element [ repeat ]
-  element       = literal | "#" | "+" | class | "(" element ")"
+  simple        = literal | "#" | "+" | class
+  rule-items    = { simple }              (* structural description, structural change: no repeat, group or gap *)
+  rule-context  = { item }                item = simple [ repeat ] | "(" simple ")"      (* left and right context *)
   repeat        = "{" min "," ( max | "∞" | "*" ) "}"
   class         = "[" ( abbreviation { alpha } | pair { pair } ) "]"      pair = feature ":" ( value | alpha | "-" alpha )
   ```
 
-  `*` is only the gap (a variable), in any column of an affix input. `(x)` is `x{0,1}`, and `x{m,n}` has `m` at least 0, `n` at least 1 and at least `m`;
+  `*` is only the gap (a variable), in any column of an affix input; `[C]*` reads as two items, which a context refuses (`rule-notation.context-not-allowed`) and an affix input takes as two columns. `(x)` is `x{0,1}`, and `x{m,n}` has `m` at least 0, `n` at least 1 and at least `m`;
   `∞` is the canonical unbounded maximum and `*` is accepted there on read only. `$n` copies input column `n` (counting from 1); `$n~[voi:+]` modifies it by a
   feature class. `<a b>` is one insert of several units. A structural description and structural change are plain contexts (no repeat, group or gap), and the
   word boundary `#` may be only the first (left context) or last (right context) element.
 - **Labels.** A phoneme is written by its first code in the first phoneme set; the default vernacular writing system's code comes first, then the project's other
-  current vernacular writing systems. Every code of every phoneme and marker must be unique, or the label is `rule-notation.ambiguous-label`. Boundaries are the
+  current vernacular writing systems. A code that two phonemes or markers share is `rule-notation.ambiguous-label` when that code is the one being written or read; the other codes are unaffected. A phoneme coded `+` or `#` is written `\+` or `\#`. Boundaries are the
   standard word and morpheme boundary markers, found by identity, written `#` and `+`. A natural class is written `[abbreviation]` when it has an abbreviation and
   otherwise as its features, `[cons:+ son:-]`, in the order of [feature-structure notation](#feature-structure-notation).
 - **Alpha variables.** `voi:α` means the feature agrees across the rule, `voi:-α` that it disagrees. The letter is the position of the feature's constraint in the
