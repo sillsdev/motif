@@ -174,7 +174,7 @@ public sealed class PhonQueryTests : IDisposable
     [Fact]
     public void AnIncompleteReplyIsCountedNotDropped()
     {
-        const string reply = """{"complete":false,"id":"x","op":"match","stopReason":"work_limit","type":"result","words":[{"matches":[],"status":"incomplete","reason":"work_limit","word":""},{"matches":[],"status":"ok","word":""}]}""";
+        const string reply = """{"complete":false,"id":"x","op":"match","stopReason":"work_limit","type":"result","words":[{"matches":[],"status":"incomplete","stop":"work_limit","word":""},{"matches":[],"status":"ok","word":""}]}""";
         var session = new PhonSession(new Replay(reply, "[V]", "pata", "kaki"));
         CorpusFormsQuery.Run(Corpus("pata", "kaki"), Where("phon(V)"), session);
         Assert.False(session.Report.Complete);
