@@ -2940,6 +2940,13 @@ try
             }
             return Usage(UsageLineFor("difference"), asJson);
 
+        case "lexicon":
+            var lexiconFound = LexiconFindCli.Run(positionals, flags, asJson);
+            if (lexiconFound is null) return Usage(UsageLineFor("lexicon find"), asJson);
+            result = lexiconFound;
+            alreadyRendered = true;
+            break;
+
         case "grammar":
             if (positionals.Count == 1 && positionals[0] == "read")
             {

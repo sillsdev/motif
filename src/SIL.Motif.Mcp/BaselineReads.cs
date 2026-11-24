@@ -43,12 +43,9 @@ internal static class BaselineReads
         int limit, int offset, bool detailed, string? at = null) =>
         ReadAtOutcome(projectPath, at, (cache, baseline) =>
         {
-            if (filter.MorphTypesOrNull is { Count: > 0 } types &&
-                GrammarReadProjectionBuilder.UnknownMorphTypes(cache, string.Join(",", types)) is { Count: > 0 } unknown)
-                return Refused("grammar-read.invalid-request", FailureReason.InvalidArgument,
-                    $"Unknown morph type {string.Join(", ", unknown.Select(name => $"'{name}'"))}. " +
-                    $"Morph types are: {string.Join(", ", GrammarReadProjectionBuilder.MorphTypeNames(cache))}.");
-            var result = LexiconReader.Read(cache, filter, limit, offset, detailed);
+            var page = LexiconFindCommand.ReadPage(cache, filter, limit, offset, detailed);
+            if (!page.Succeeded) return page;
+            var result = page.Value!;
             if (baseline is not null)
                 result["source"] = JsonNode.Parse(ProjectionJson.Serialize(new BaselineReadSource(
                     baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc)));

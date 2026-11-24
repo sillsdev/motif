@@ -1,19 +1,21 @@
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Projection;
 using SIL.Motif.Projection.Grammar;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Runner.Retirement;
 
-namespace SIL.Motif.Mcp;
+namespace SIL.Motif.Commands.Queries;
 
 /// <summary>
 /// Reads lexical entries from an already-open Baseline copy: headword, morph type, senses with their
 /// grammatical category, and (in detail) every allomorph with its environments. The ids it returns are the
 /// ones a composer's intent names.
 /// </summary>
-internal static class LexiconReader
+public static class LexiconReader
 {
     /// <summary>
     /// A page of the entries matching <paramref name="filter"/>, ordered by headword, with counts for the whole
@@ -24,27 +26,28 @@ internal static class LexiconReader
     /// <param name="limit">The most entries one page returns.</param>
     /// <param name="offset">How many matching entries to skip.</param>
     /// <param name="detailed">Whether entries carry every sense, allomorph, environment and grammatical-info record.</param>
-    public static JsonObject Read(LcmCache cache, LexiconFilter filter, int limit, int offset, bool detailed)
+    /// <param name="withForms">Whether concise entries also carry the lexeme form, alternate forms and inflection classes.</param>
+    public static JsonObject Read(LcmCache cache, LexiconFilter filter, int limit, int offset, bool detailed, bool withForms = false)
     {
         offset = Math.Max(0, offset);
         var all = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances().ToList();
         var names = new Dictionary<Guid, string?>();
         string? CategoryName(IPartOfSpeech pos)
         {
-            if (!names.TryGetValue(pos.Guid, out var name)) names[pos.Guid] = name = GrammarReader.Text(cache, pos.Name);
+            if (!names.TryGetValue(pos.Guid, out var name)) names[pos.Guid] = name = Text(cache, pos.Name);
             return name;
         }
         var typeNames = new Dictionary<Guid, string?>();
         string? MorphName(IMoForm? form)
         {
             if (form?.MorphTypeRA is not { } type) return null;
-            if (!typeNames.TryGetValue(type.Guid, out var name)) typeNames[type.Guid] = name = GrammarReader.Text(cache, type.Name);
+            if (!typeNames.TryGetValue(type.Guid, out var name)) typeNames[type.Guid] = name = Text(cache, type.Name);
             return name;
         }
         var headwords = all.ToDictionary(entry => entry, entry => entry.HeadWord?.Text);
         var matches = all.Where(entry => filter.Matches(cache, entry, headwords[entry], CategoryName))
             .OrderBy(entry => headwords[entry], StringComparer.Ordinal).ToList();
-        var page = matches.Skip(offset).Take(limit).Select(entry => detailed ? Entry(cache, entry, true) : Line(cache, entry, CategoryName, MorphName)).ToArray();
+        var page = matches.Skip(offset).Take(limit).Select(entry => detailed ? Entry(cache, entry, true) : Line(cache, entry, CategoryName, MorphName, withForms)).ToArray();
         var result = new JsonObject
         {
             ["matched"] = matches.Count,
@@ -58,7 +61,7 @@ internal static class LexiconReader
             ["showing"] = $"Showing {page.Length} of {matches.Count} entries from offset {offset}.",
         };
         if (filter.MorphTypesOrNull is not { Count: > 0 } &&
-            GrammarReadProjectionBuilder.ExactNote(filter.Exact, matches.Select(entry => (headwords[entry], GrammarReader.Id(entry)))) is { } note)
+            GrammarReadProjectionBuilder.ExactNote(filter.Exact, matches.Select(entry => (headwords[entry], Id(entry)))) is { } note)
             result["exactNote"] = note;
         if (!detailed) HoistSharedGlossWs(page, result);
         result["offset"] = offset;
@@ -89,12 +92,12 @@ internal static class LexiconReader
 
     private const int LineSenseCap = 5;
 
-    private static JsonObject Line(LcmCache cache, ILexEntry entry, Func<IPartOfSpeech, string?> categoryName, Func<IMoForm?, string?> morphName)
+    private static JsonObject Line(LcmCache cache, ILexEntry entry, Func<IPartOfSpeech, string?> categoryName, Func<IMoForm?, string?> morphName, bool withForms)
     {
         var senses = entry.AllSenses.ToList();
         var line = new JsonObject
         {
-            ["id"] = GrammarReader.Id(entry),
+            ["id"] = Id(entry),
             ["headword"] = entry.HeadWord?.Text,
             ["morphType"] = morphName(entry.LexemeFormOA),
             ["categories"] = new JsonArray(LexiconFilter.MsaCategories(entry).DistinctBy(category => category.Guid)
@@ -102,10 +105,17 @@ internal static class LexiconReader
             ["senses"] = new JsonArray(senses.Take(LineSenseCap).Select(sense =>
             {
                 var gloss = WritingSystemTextReader.BestAnalysis(cache, sense.Gloss);
-                return (JsonNode)new JsonObject { ["id"] = GrammarReader.Id(sense), ["gloss"] = gloss.Text, ["glossWs"] = gloss.WritingSystem };
+                return (JsonNode)new JsonObject { ["id"] = Id(sense), ["gloss"] = gloss.Text, ["glossWs"] = gloss.WritingSystem };
             }).ToArray()),
         };
         if (senses.Count > LineSenseCap) line["moreSenses"] = senses.Count - LineSenseCap;
+        if (withForms)
+        {
+            line["lexemeForm"] = entry.LexemeFormOA is { } lexeme ? FormText(cache, lexeme) : null;
+            line["alternateForms"] = new JsonArray(entry.AlternateFormsOS.Select(form => (JsonNode?)FormText(cache, form)).ToArray());
+            line["inflectionClasses"] = new JsonArray(LexiconFilter.InflectionClasses(entry).Distinct()
+                .Select(inflectionClass => (JsonNode?)new JsonObject { ["id"] = Id(inflectionClass), ["name"] = Text(cache, inflectionClass.Name) }).ToArray());
+        }
         return line;
     }
 
@@ -113,11 +123,11 @@ internal static class LexiconReader
     {
         var result = new JsonObject
         {
-            ["id"] = GrammarReader.Id(entry),
+            ["id"] = Id(entry),
             ["headword"] = entry.HeadWord?.Text,
             ["note"] = Alternatives(cache, entry.Comment),
             ["morphType"] = MorphTypeName(cache, entry.LexemeFormOA),
-            ["morphTypeId"] = entry.LexemeFormOA?.MorphTypeRA is { } morphType ? GrammarReader.Id(morphType) : null,
+            ["morphTypeId"] = entry.LexemeFormOA?.MorphTypeRA is { } morphType ? Id(morphType) : null,
             ["lexemeForm"] = entry.LexemeFormOA is null ? null : FormObject(cache, entry.LexemeFormOA, detailed),
             ["senses"] = new JsonArray(entry.AllSenses.Select(sense => (JsonNode)Sense(cache, sense)).ToArray()),
         };
@@ -129,7 +139,7 @@ internal static class LexiconReader
 
     private static JsonObject Sense(LcmCache cache, ILexSense sense) => new()
     {
-        ["id"] = GrammarReader.Id(sense),
+        ["id"] = Id(sense),
         ["gloss"] = WritingSystemTextReader.BestAnalysis(cache, sense.Gloss).Text,
         ["glossWs"] = WritingSystemTextReader.BestAnalysis(cache, sense.Gloss).WritingSystem,
         ["glossAlternatives"] = Alternatives(cache, sense.Gloss),
@@ -150,7 +160,7 @@ internal static class LexiconReader
     /// <summary>An analysis's id and kind, plus <c>maxApps</c> when set.</summary>
     private static JsonObject GrammaticalInfo(IMoMorphSynAnalysis msa)
     {
-        var info = new JsonObject { ["id"] = GrammarReader.Id(msa), ["kind"] = msa.ClassName };
+        var info = new JsonObject { ["id"] = Id(msa), ["kind"] = msa.ClassName };
         if (AffixMaxApps.ReadFor(msa) is var maxApps && maxApps > AffixMaxApps.Default) info["maxApps"] = maxApps;
         return info;
     }
@@ -169,7 +179,7 @@ internal static class LexiconReader
         var text = WritingSystemTextReader.First(cache, form.Form);
         var result = new JsonObject
         {
-            ["id"] = GrammarReader.Id(form),
+            ["id"] = Id(form),
             ["form"] = text.Text,
             ["ws"] = text.WritingSystem,
         };
@@ -190,10 +200,16 @@ internal static class LexiconReader
         return result;
     }
 
-    private static string? FormText(LcmCache cache, IMoForm form) => WritingSystemTextReader.First(cache, form.Form).Text;
+    internal static string Id(ICmObject target) => CanonicalId.FromGuid(target.Guid).Value;
+
+    internal static string? Text(LcmCache cache, IMultiAccessorBase? accessor) =>
+        accessor is null ? null : WritingSystemTextReader.BestAnalysis(cache, accessor).Text is { Length: > 0 } text
+            ? text : WritingSystemTextReader.First(cache, accessor).Text;
+
+    internal static string? FormText(LcmCache cache, IMoForm form) => WritingSystemTextReader.First(cache, form.Form).Text;
 
     private static string? MorphTypeName(LcmCache cache, IMoForm? form) =>
-        form?.MorphTypeRA is { } type ? GrammarReader.Text(cache, type.Name) : null;
+        form?.MorphTypeRA is { } type ? Text(cache, type.Name) : null;
 }
 
 /// <summary>
@@ -208,41 +224,93 @@ internal static class LexiconReader
 /// <param name="HeadwordContains">Text the headword contains.</param>
 /// <param name="HasGloss">True keeps entries with a gloss, false keeps those without one.</param>
 /// <param name="Exact">Text the headword or a form equals; a bare form also equals its marked affix headword.</param>
-internal sealed record LexiconFilter(string? Query = null, IReadOnlyList<string>? MorphTypesOrNull = null, bool? Affix = null,
+/// <param name="FormRegex">A regular expression some form (headword, lexeme form or alternate form) matches, searched in NFC text.</param>
+/// <param name="Suffix">Text some form or the headword ends with, ignoring case and Unicode normalization form.</param>
+/// <param name="InflectionClass">Name, abbreviation, canonical id or guid of an inflection class an analysis of the entry (or an ancestor class) names.</param>
+public sealed record LexiconFilter(string? Query = null, IReadOnlyList<string>? MorphTypesOrNull = null, bool? Affix = null,
     string? Category = null, string? Headword = null, string? HeadwordContains = null, bool? HasGloss = null,
-    string? Exact = null)
+    string? Exact = null, string? FormRegex = null, string? Suffix = null, string? InflectionClass = null)
 {
+    /// <summary>The longest one regular-expression match may take, so a pathological pattern is refused rather than hanging a lane.</summary>
+    public static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(2);
+
+    private readonly Regex? _formRegex = FormRegex is null ? null : new Regex(FormRegex, RegexOptions.CultureInvariant, RegexTimeout);
+
+    /// <summary>The reason <paramref name="pattern"/> is not a usable regular expression, or null when it is.</summary>
+    public static string? RegexProblem(string pattern)
+    {
+        try { _ = new Regex(pattern, RegexOptions.CultureInvariant, RegexTimeout); return null; }
+        catch (ArgumentException exception) { return exception.Message; }
+    }
+
     public bool Matches(LcmCache cache, ILexEntry entry, string? entryHeadword, Func<IPartOfSpeech, string?> categoryName)
     {
         if (MorphTypesOrNull is { Count: > 0 } types)
         {
-            var morphType = entry.LexemeFormOA?.MorphTypeRA is { } type ? GrammarReader.Text(cache, type.Name) : null;
+            var morphType = entry.LexemeFormOA?.MorphTypeRA is { } type ? LexiconReader.Text(cache, type.Name) : null;
             if (!types.Any(name => Same(name, morphType))) return false;
         }
         if (Affix is { } wantAffix && (entry.LexemeFormOA is IMoAffixForm) != wantAffix) return false;
         if (Category is { } category && !MsaCategories(entry).Any(pos =>
-                Same(category, categoryName(pos)) || string.Equals(category, GrammarReader.Id(pos), StringComparison.Ordinal)))
+                Same(category, categoryName(pos)) || string.Equals(category, LexiconReader.Id(pos), StringComparison.Ordinal)))
             return false;
         var headword = Fold(entryHeadword);
         if (Headword is { } start && !headword.StartsWith(Fold(start), StringComparison.Ordinal)) return false;
         if (HeadwordContains is { } part && !headword.Contains(Fold(part), StringComparison.Ordinal)) return false;
         if (HasGloss is { } wantGloss &&
-            entry.AllSenses.Any(sense => !string.IsNullOrEmpty(GrammarReader.Text(cache, sense.Gloss))) != wantGloss)
+            entry.AllSenses.Any(sense => !string.IsNullOrEmpty(LexiconReader.Text(cache, sense.Gloss))) != wantGloss)
             return false;
         if (Exact is { } exact && !FormMatch.Same(exact, entryHeadword) &&
             !FormMatch.Any(exact, entry.LexemeFormOA is { } lexeme
                 ? entry.AlternateFormsOS.Prepend(lexeme).Select(form => WritingSystemTextReader.First(cache, form.Form).Text)
                 : entry.AlternateFormsOS.Select(form => WritingSystemTextReader.First(cache, form.Form).Text)))
             return false;
+        if (_formRegex is not null || Suffix is not null)
+        {
+            var forms = AllForms(cache, entry, entryHeadword).ToList();
+            if (_formRegex is not null && !forms.Any(form => _formRegex.IsMatch(form.Normalize(System.Text.NormalizationForm.FormC)))) return false;
+            if (Suffix is { } suffix && !forms.Any(form => Fold(form).EndsWith(Fold(suffix), StringComparison.Ordinal))) return false;
+        }
+        if (InflectionClass is { } wanted && !InflectionClasses(entry).Any(inflectionClass => ClassMatches(cache, wanted, inflectionClass)))
+            return false;
         if (Query is { } text) return Folded(text, headword, cache, entry);
         return true;
+    }
+
+    private static IEnumerable<string> AllForms(LcmCache cache, ILexEntry entry, string? headword)
+    {
+        if (!string.IsNullOrEmpty(headword)) yield return headword;
+        if (entry.LexemeFormOA is { } lexeme && LexiconReader.FormText(cache, lexeme) is { Length: > 0 } lexemeText) yield return lexemeText;
+        foreach (var form in entry.AlternateFormsOS)
+            if (LexiconReader.FormText(cache, form) is { Length: > 0 } text) yield return text;
+    }
+
+    /// <summary>Every inflection class an analysis of <paramref name="entry"/> names.</summary>
+    public static IEnumerable<IMoInflClass> InflectionClasses(ILexEntry entry) => entry.MorphoSyntaxAnalysesOC.SelectMany(msa => msa switch
+    {
+        IMoStemMsa stem => new[] { stem.InflectionClassRA },
+        IMoDerivAffMsa deriv => new[] { deriv.FromInflectionClassRA, deriv.ToInflectionClassRA },
+        _ => [],
+    }).OfType<IMoInflClass>();
+
+    // A class matches by its own name, abbreviation or id, or an ancestor's, so a parent finds its subclasses.
+    private static bool ClassMatches(LcmCache cache, string wanted, IMoInflClass inflectionClass)
+    {
+        for (ICmObject? current = inflectionClass; current is IMoInflClass candidate; current = candidate.Owner)
+        {
+            if (Same(wanted, LexiconReader.Text(cache, candidate.Name)) || Same(wanted, LexiconReader.Text(cache, candidate.Abbreviation)) ||
+                string.Equals(wanted, LexiconReader.Id(candidate), StringComparison.Ordinal) ||
+                Guid.TryParse(wanted, out var guid) && guid == candidate.Guid)
+                return true;
+        }
+        return false;
     }
 
     private static bool Folded(string query, string headword, LcmCache cache, ILexEntry entry)
     {
         var needle = Fold(query);
         return headword.Contains(needle, StringComparison.Ordinal)
-            || entry.AllSenses.Any(sense => Fold(GrammarReader.Text(cache, sense.Gloss)).Contains(needle, StringComparison.Ordinal))
+            || entry.AllSenses.Any(sense => Fold(LexiconReader.Text(cache, sense.Gloss)).Contains(needle, StringComparison.Ordinal))
             || entry.AlternateFormsOS.Any(form => Fold(WritingSystemTextReader.First(cache, form.Form).Text)
                 .Contains(needle, StringComparison.Ordinal));
     }

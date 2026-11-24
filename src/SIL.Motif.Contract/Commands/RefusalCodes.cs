@@ -834,6 +834,13 @@ public static class RefusalCodes
     /// <summary>A grammar read request is not valid.</summary>
     public const string GrammarReadInvalidRequest = "grammar-read.invalid-request";
 
+    /// <summary>Reading the lexicon needs a Baseline and the project has none.</summary>
+    public const string LexiconFindBaselineMissing = "lexicon-find.baseline-missing";
+    /// <summary>The current Baseline file is missing, so the lexicon cannot be read.</summary>
+    public const string LexiconFindBaselineUnavailable = "lexicon-find.baseline-unavailable";
+    /// <summary>A lexicon find request is not valid: a bad page, regular expression or filter.</summary>
+    public const string LexiconFindInvalidRequest = "lexicon-find.invalid-request";
+
     /// <summary>No grammar check could run, so there are no findings to report.</summary>
     public const string GrammarCheckNotRun = "grammarcheck.not-run";
 

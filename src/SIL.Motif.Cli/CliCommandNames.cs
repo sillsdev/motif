@@ -41,6 +41,7 @@ internal static class CliCommandNames
             return "proposal " + positionals[0];
         if (verb == "query" && flags.ContainsKey("values")) return "query values";
         if (verb == "query" && flags.ContainsKey("corpus")) return positionals.FirstOrDefault() == "forms" ? "query corpus forms" : "query pairs";
+        if (verb == "lexicon" && positionals.FirstOrDefault() == "find") return "lexicon find";
         if (verb == "forms" && positionals.FirstOrDefault() == "explain") return "forms explain";
         if (verb == "query" && (positionals.FirstOrDefault() is "forms" or "stems" or "uses" or "objects" or "saved" or "evidence" ||
                                 flags.ContainsKey("schema") || flags.ContainsKey("query-json"))) return "query forms";

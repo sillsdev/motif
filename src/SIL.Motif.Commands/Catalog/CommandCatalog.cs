@@ -307,6 +307,8 @@ public static class CommandCatalog
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("grammar check", typeof(GrammarCheckRequest), typeof(GrammarCheckResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("grammar read", typeof(GrammarReadRequest), typeof(GrammarReadResponse), CommandSurface.AdvancedAi, AgentClass.Read),
+        new CommandDescriptor("lexicon find", typeof(LexiconFindRequest), typeof(System.Text.Json.Nodes.JsonObject), CommandSurface.AdvancedAi, AgentClass.Read)
+            { ExposeAsAgentTool = false },
         new CommandDescriptor("timing", typeof(TimingRequest), typeof(TimingResponse), CommandSurface.Released, AgentClass.Read),
         // motif_activity is the MCP rendering of this summary, with Proposals and jobs the file cannot hold.
         new CommandDescriptor("activity", typeof(ActivityRequest), typeof(ActivitySummary), CommandSurface.Released, AgentClass.Read)

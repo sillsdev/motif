@@ -522,6 +522,17 @@ public static class CliVerbCatalog
                 "[--id <canonicalId> | --query <text> | --exact <form>] [--morph-type <name>[,<name>]] [--at baseline|<proposalId>] [--limit <1-100>] [--offset <n> | --page <N>] [--json]",
             }),
         new CliVerbDescriptor(
+            "Project", "lexicon", "lexicon find",
+            new[]
+            {
+                "lexicon find --project <fwdata> [--query <text> | --exact <form>] [--form-regex <regex>] [--suffix <text>] [--class <name|id>] " +
+                "[--morph-type <name>[,<name>]] [--affix [true|false]] [--category <name|id>] [--headword <prefix>] [--headword-contains <text>] " +
+                "[--has-gloss [true|false]] [--id-format canonical|guid] [--at baseline|<proposalId>] [--limit <1-200>] " +
+                "[--offset <n> | --page <N> | --all] [--json]",
+                "lexicon find --project <fwdata> --batch <file|-> [--at baseline|<proposalId>]",
+                "A batch file holds one JSON object per line, keyed by the flag names above (\"form-regex\", \"suffix\", \"class\", \"limit\"...); the Baseline is opened once and each line answers as one JSON line.",
+            }),
+        new CliVerbDescriptor(
             "Project", "timing", "timing",
             new[]
             {
