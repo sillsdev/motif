@@ -1009,7 +1009,7 @@ internal static class AgentTools
                     a.Optional("word"), a.Optional("at"), a.OptionalInt("timeoutMs"), a.OptionalInt("maxWork")), c.ParserPath, ct),
                 _ => "complete:false means PanGloss stopped at stopReason, so a missing form is not an impossible one; " +
                     "do not claim a form cannot occur from an incomplete result.")))
-            { Requests = [typeof(FormsExplainRequest)], FieldNames = new Dictionary<string, string?> { ["Morpheme"] = "morpheme", ["With"] = "with", ["Word"] = "word", ["At"] = "at", ["ProjectPath"] = null } },
+            { Requests = [typeof(FormsExplainRequest)], FieldNames = new Dictionary<string, string?> { ["Morpheme"] = "morpheme", ["With"] = "with", ["Word"] = "word", ["At"] = "at", ["TimeoutMs"] = "timeoutMs", ["MaxWork"] = "maxWork", ["ProjectPath"] = null } },
 
         new("motif_job",
             string.Empty,
