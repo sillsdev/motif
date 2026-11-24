@@ -1555,6 +1555,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/moStratum/setAbbreviation	MoStratum	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
 # Handler	grammar/moUnclassifiedAffixMsa/clearPartOfSpeech	MoUnclassifiedAffixMsa	PartOfSpeech	Clear	Forbidden	-		Unspecified	False
 # Handler	grammar/moUnclassifiedAffixMsa/setPartOfSpeech	MoUnclassifiedAffixMsa	PartOfSpeech	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/partOfSpeech/addRefInflectableFeats	(no direct field edit)
 # Handler	grammar/partOfSpeech/clearDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Clear	Forbidden	-		Unspecified	False
 # Handler	grammar/partOfSpeech/createAffixSlots	PartOfSpeech	AffixSlots	AddObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
 # Handler	grammar/partOfSpeech/createAffixTemplates	PartOfSpeech	AffixTemplates	AddObject	RequiredWhenNonempty	-	MoInflAffixTemplate	Unspecified	False
@@ -1562,6 +1563,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/partOfSpeech/createStemNames	PartOfSpeech	StemNames	AddObject	Forbidden	-	MoStemName	Unspecified	False
 # Handler	grammar/partOfSpeech/deleteAffixSlots	PartOfSpeech	AffixSlots	RemoveObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
 # Handler	grammar/partOfSpeech/moveAffixTemplates	PartOfSpeech	AffixTemplates	MoveObject	Required	-		Unspecified	False
+# Handler	grammar/partOfSpeech/removeRefInflectableFeats	(no direct field edit)
 # Handler	grammar/partOfSpeech/setDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Set	Forbidden	-		Unspecified	False
 # Handler	grammar/phCode/clearRepresentation	PhCode	Representation	ClearAlternative	Forbidden	-		Unspecified	False
 # Handler	grammar/phCode/setRepresentation	PhCode	Representation	SetAlternative	Forbidden	-		Unspecified	False
