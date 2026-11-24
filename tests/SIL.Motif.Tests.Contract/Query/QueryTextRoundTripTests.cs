@@ -95,12 +95,24 @@ public sealed class QueryTextRoundTripTests
 
     [Theory]
     [InlineData("morph(sfx:-an)")]
-    [InlineData("kind is a and phon(C V C V)")]
     [InlineData("realizes(root:kaon, generated)")]
     public void ReservedKindsInTextAreRefusedAsNotYetAvailable(string text)
     {
         Assert.False(QueryExprText.TryParse(text, out _, out var refusal));
         Assert.Equal(RefusalCodes.QueryNotYetAvailable, refusal.Code);
+    }
+
+    [Theory]
+    [InlineData("phon(C V C V)")]
+    [InlineData("env([+voice] / # _ V)")]
+    [InlineData("kind is a and not phon(Stop ( V )* #)")]
+    [InlineData("env(/p/ / V _ +)")]
+    public void PatternsRoundTripThroughText(string text)
+    {
+        Assert.True(QueryExprText.TryParse(text, out var expression, out var refusal), refusal?.Message);
+        var printed = QueryExprText.Print(expression!);
+        Assert.True(QueryExprText.TryParse(printed, out var again, out _));
+        Assert.Equal(printed, QueryExprText.Print(again!));
     }
 
     public static TheoryData<string> V1Lines() =>
@@ -221,7 +233,7 @@ public sealed class QueryTextRoundTripTests
     [Fact]
     public void AReservedKindInASelectorIsRefusedAsNotYetAvailable()
     {
-        Assert.False(QueryRunLine.TryParse("motif query forms --where \"phon(C V)\"", out _, out var refusal));
+        Assert.False(QueryRunLine.TryParse("motif query forms --where \"morph(sfx:-an)\"", out _, out var refusal));
         Assert.Equal(RefusalCodes.QueryNotYetAvailable, refusal.Code);
     }
 }

@@ -120,9 +120,9 @@ internal static class FormsExplainMarkdown
 
     // An affix is a rule with no allomorph, so it reads by its rule name.
     private static string Shape(FormsExplainAllomorph allomorph) =>
-        allomorph.Shape is null ? allomorph.RuleName ?? "(unnamed)" : allomorph.Shape.Length == 0 ? "(empty)" : allomorph.Shape;
+        allomorph.Shape is null ? allomorph.Label ?? allomorph.RuleName ?? "unnamed affix" : allomorph.Shape.Length == 0 ? "(empty)" : allomorph.Shape;
 
-    private static string RuleLabel(FormsExplainRule rule) => rule.Name ?? rule.Id ?? rule.Guid ?? rule.Kind;
+    private static string RuleLabel(FormsExplainRule rule) => rule.Name ?? rule.Label ?? rule.Id ?? rule.Guid ?? rule.Kind;
 
     private static string Cell(string value) => Inline(value).Replace("|", "\\|", StringComparison.Ordinal);
 

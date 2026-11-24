@@ -391,6 +391,14 @@ public static class RefusalCodes
     public const string QueryCorpusUnreadable = "query.corpus-unreadable";
     /// <summary>A corpus query option is out of range or its pattern is not a valid regular expression.</summary>
     public const string QueryCorpusInvalid = "query.corpus-invalid";
+    /// <summary>A <c>phon</c> or <c>env</c> predicate ran with no grammar to segment words and name natural classes; corpus mode needs <c>--grammar</c>.</summary>
+    public const string QueryPhonNeedsGrammar = "query.phon-needs-grammar";
+    /// <summary>The installed PanGloss does not declare the <c>match</c> serve op, so <c>phon</c> and <c>env</c> cannot run.</summary>
+    public const string QueryPhonUnavailable = "query.phon-unavailable";
+    /// <summary>PanGloss refused a <c>phon</c> or <c>env</c> pattern with a typed reason: a parse error, an unknown class or feature, or a construct it does not yet support.</summary>
+    public const string QueryPhonPatternRefused = "query.phon-pattern-refused";
+    /// <summary>The resident PanGloss failed, timed out or sent a reply Motif cannot read while matching a <c>phon</c> or <c>env</c> pattern.</summary>
+    public const string QueryPhonFailed = "query.phon-failed";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";

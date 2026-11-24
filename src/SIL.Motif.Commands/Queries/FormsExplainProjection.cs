@@ -31,15 +31,15 @@ internal static class FormsExplainProjection
             foreach (var seed in Required(root, "seeds").EnumerateArray())
             {
                 var key = Text(seed, "seedKey") ?? throw new FormatException("a seed has no seedKey");
-                var allomorphs = Required(seed, "allomorphs").EnumerateArray().Select(Allomorph).ToArray();
+                var allomorphs = Required(seed, "allomorphs").EnumerateArray().Select(allomorph => Allomorph(allomorph, morphemes)).ToArray();
                 var truncated = seed.TryGetProperty("traceTruncated", out var cut) && cut.ValueKind == JsonValueKind.True;
                 foreach (var surface in Required(seed, "surfaces").EnumerateArray())
                 {
-                    var steps = Steps(surface, "steps");
+                    var steps = Steps(surface, "steps", morphemes);
                     var unresolved = surface.TryGetProperty("stepsUnresolved", out var flag) && flag.ValueKind == JsonValueKind.True;
                     var alternatives = surface.TryGetProperty("alternatives", out var others) && others.ValueKind == JsonValueKind.Array
                         ? others.EnumerateArray().Select(alternative => (IReadOnlyList<FormsExplainStep>)
-                            (alternative.ValueKind == JsonValueKind.Array ? alternative.EnumerateArray().Select(Step).ToArray()
+                            (alternative.ValueKind == JsonValueKind.Array ? alternative.EnumerateArray().Select(step => Step(step, morphemes)).ToArray()
                                 : throw new FormatException("an alternative is not a step list"))).ToArray()
                         : [];
                     surfaces.Add(new FormsExplainSurface(
@@ -60,30 +60,54 @@ internal static class FormsExplainProjection
         }
     }
 
-    private static FormsExplainStep[] Steps(JsonElement element, string name) =>
+    private static FormsExplainStep[] Steps(JsonElement element, string name, IReadOnlyList<ResolvedMorpheme> morphemes) =>
         element.TryGetProperty(name, out var list) && list.ValueKind == JsonValueKind.Array
-            ? list.EnumerateArray().Select(Step).ToArray() : [];
+            ? list.EnumerateArray().Select(step => Step(step, morphemes)).ToArray() : [];
 
-    private static FormsExplainAllomorph Allomorph(JsonElement element)
+    // An unnamed affix process rule is valid FieldWorks data, so a missing name is labelled, never refused.
+    private static FormsExplainAllomorph Allomorph(JsonElement element, IReadOnlyList<ResolvedMorpheme> morphemes)
     {
         var shape = Text(element, "shape");
         var ruleName = Text(element, "ruleName");
-        if (shape is null && ruleName is null) throw new FormatException("an allomorph has neither a shape nor a rule name");
-        return Build(element, shape, ruleName);
+        var id = element.TryGetProperty("allomorphId", out var number) && number.ValueKind == JsonValueKind.Number && number.TryGetInt32(out var parsed) ? parsed : (int?)null;
+        var msa = Text(element, "msaGuid");
+        string? label = null, source = null;
+        if (shape is null)
+        {
+            if (ruleName is not null) (label, source) = (ruleName, "ruleName");
+            else
+            {
+                // A morpheme names the affix only when an MSA or entry guid ties them; position alone never does.
+                var entry = Text(element, "entryGuid");
+                var morpheme = morphemes.FirstOrDefault(m =>
+                    (msa is not null && string.Equals(m.MsaGuid, msa, StringComparison.OrdinalIgnoreCase)) ||
+                    (msa is null && entry is not null && string.Equals(m.EntryGuid, entry, StringComparison.OrdinalIgnoreCase)));
+                (label, source) = Synthesised(morpheme?.Form, msa ?? morpheme?.MsaGuid ?? entry);
+            }
+        }
+        return new(Text(element, "role"), shape, ruleName, id, Text(element, "entryGuid"), msa, Text(element, "formGuid"), label, source);
     }
 
-    private static FormsExplainAllomorph Build(JsonElement element, string? shape, string? ruleName) => new(
-        Text(element, "role"), shape, ruleName,
-        element.TryGetProperty("allomorphId", out var id) && id.ValueKind == JsonValueKind.Number && id.TryGetInt32(out var number) ? number : null,
-        Text(element, "entryGuid"), Text(element, "msaGuid"), Text(element, "formGuid"));
+    private static (string Label, string Source) Synthesised(string? form, string? guid) =>
+        !string.IsNullOrWhiteSpace(form) ? (form, "morpheme")
+        : !string.IsNullOrWhiteSpace(guid) ? (guid.Length > 8 ? guid[..8] : guid, "id")
+        : ("unnamed affix", "none");
 
-    private static FormsExplainStep Step(JsonElement element)
+    private static FormsExplainStep Step(JsonElement element, IReadOnlyList<ResolvedMorpheme> morphemes)
     {
         var rule = Required(element, "rule");
+        var name = Text(rule, "name");
+        var guid = Text(rule, "guid");
+        string? label = null, source = null;
+        if (name is null)
+        {
+            var morpheme = morphemes.FirstOrDefault(m => guid is not null && string.Equals(m.MsaGuid, guid, StringComparison.OrdinalIgnoreCase));
+            (label, source) = Synthesised(morpheme?.Form, guid ?? Text(rule, "id"));
+        }
         return new FormsExplainStep(
             Text(element, "stratum") ?? throw new FormatException("a step has no stratum"),
             new FormsExplainRule(Text(rule, "kind") ?? throw new FormatException("a rule has no kind"),
-                Text(rule, "name"), Text(rule, "id"), Text(rule, "guid")),
+                name, Text(rule, "id"), guid, label, source),
             element.TryGetProperty("subrule", out var sub) && sub.ValueKind == JsonValueKind.Number && sub.TryGetInt32(out var subrule) ? subrule : null,
             Text(element, "input") ?? throw new FormatException("a step has no input"),
             Text(element, "output") ?? throw new FormatException("a step has no output"));

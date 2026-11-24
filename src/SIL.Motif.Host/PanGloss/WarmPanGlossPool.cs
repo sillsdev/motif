@@ -90,6 +90,30 @@ public abstract record WarmGenerateResult
     public sealed record Cancelled : WarmGenerateResult;
 }
 
+/// <summary>What asking a resident parser to match pattern text over a word list came to.</summary>
+public abstract record WarmMatchResult
+{
+    private WarmMatchResult() { }
+
+    /// <summary>The parser's whole <c>result</c> line, exactly as it wrote it, for the caller to read.</summary>
+    public sealed record Completed(string Json) : WarmMatchResult;
+
+    /// <summary>The installed parser's <c>--describe</c> does not declare a <c>match</c> op; nothing was sent.</summary>
+    public sealed record Unsupported(string Detail) : WarmMatchResult;
+
+    /// <summary>The parser refused the request with a typed error, such as <c>pattern_parse</c>; <paramref name="Json"/> is its whole <c>error</c> line.</summary>
+    public sealed record Rejected(string Code, string Message, string Json) : WarmMatchResult;
+
+    /// <summary>The session could not answer: it failed to load, died, timed out or sent a line Motif cannot read.</summary>
+    public sealed record Failed(string Code, string Message) : WarmMatchResult
+    {
+        internal PanGlossOutcome? ProbeFailure { get; init; }
+    }
+
+    /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
+    public sealed record Cancelled : WarmMatchResult;
+}
+
 /// <summary>Limits of the resident parsers, with the owner-decided defaults.</summary>
 public sealed record WarmPanGlossOptions
 {
@@ -231,6 +255,35 @@ public sealed class WarmPanGlossPool : IDisposable
         catch (OperationCanceledException)
         {
             return new WarmGenerateResult.Cancelled();
+        }
+        finally
+        {
+            session.ReleaseWord();
+        }
+    }
+
+    /// <summary>Matches pattern text over a word list on the project's resident parser.</summary>
+    public async Task<WarmMatchResult> TryMatchAsync(string projectKey, string stateToken, string grammarPath,
+        ServeMatchRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        ArgumentNullException.ThrowIfNull(request);
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit: null, retryFailed: false, reserveWord: true);
+        try
+        {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling)
+                return new WarmMatchResult.Failed(cooling.Code, cooling.Message) { ProbeFailure = cooling.ProbeFailure };
+            var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (state.Phase != WarmSessionPhase.Ready)
+                return new WarmMatchResult.Failed(state.FailureCode ?? "session-unavailable",
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (session.Capabilities?.ServeMatchRefusal() is { } incapable)
+                return new WarmMatchResult.Unsupported(incapable);
+            return await session.MatchAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return new WarmMatchResult.Cancelled();
         }
         finally
         {
@@ -607,6 +660,20 @@ public sealed class WarmPanGlossPool : IDisposable
                 (code, message) => new WarmGenerateResult.Failed(code, message),
                 () => new WarmGenerateResult.Cancelled(), cancellationToken);
 
+        public Task<WarmMatchResult> MatchAsync(ServeMatchRequest request, CancellationToken cancellationToken) =>
+            ExchangeAsync("warm-match", request.ToLine, ReadMatchReply,
+                (code, message) => new WarmMatchResult.Failed(code, message),
+                () => new WarmMatchResult.Cancelled(), cancellationToken, request.Timeout(pool._options.ParseTimeout));
+
+        private static WarmMatchResult ReadMatchReply(JsonElement root, TimeSpan elapsed)
+        {
+            var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+            if (type == "result") return new WarmMatchResult.Completed(root.GetRawText());
+            var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
+            var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+            return new WarmMatchResult.Rejected(code, message, root.GetRawText());
+        }
+
         private static WarmParseResult ReadParseReply(JsonElement root, TimeSpan elapsed)
         {
             var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
@@ -638,13 +705,13 @@ public sealed class WarmPanGlossPool : IDisposable
         // One request and its reply on the resident process, after queue admission and in order with the others.
         private async Task<T> ExchangeAsync<T>(string label, Func<string, string> requestLine,
             Func<JsonElement, TimeSpan, T> read, Func<string, string, T> failed, Func<T> cancelled,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, TimeSpan? timeout = null)
         {
             await _requests.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 return await pool._queue.RunAsync(label,
-                    (_, token) => RequestAsync(requestLine, read, failed, cancelled, token), cancellationToken)
+                    (_, token) => RequestAsync(requestLine, read, failed, cancelled, token, timeout ?? pool._options.ParseTimeout), cancellationToken)
                     .ConfigureAwait(false);
             }
             finally
@@ -654,7 +721,7 @@ public sealed class WarmPanGlossPool : IDisposable
         }
 
         private async Task<T> RequestAsync<T>(Func<string, string> requestLine, Func<JsonElement, TimeSpan, T> read,
-            Func<string, string, T> failed, Func<T> cancelled, CancellationToken token)
+            Func<string, string, T> failed, Func<T> cancelled, CancellationToken token, TimeSpan limit)
         {
             PanGlossChildProcess? process;
             TerminatedLineReader? reader;
@@ -665,11 +732,11 @@ public sealed class WarmPanGlossPool : IDisposable
             var clock = Stopwatch.StartNew();
             using var registration = token.Register(() => Kill(WarmSessionState.Idle, raise: true));
             var timedOut = false;
-            using var deadline = new CancellationTokenSource(pool._options.ParseTimeout);
+            using var deadline = new CancellationTokenSource(limit);
             using var deadlineRegistration = deadline.Token.Register(() =>
             {
                 timedOut = true;
-                Fail(ParseTimedOut.Code, ParseTimedOut.Message(pool._options.ParseTimeout));
+                Fail(ParseTimedOut.Code, ParseTimedOut.Message(limit));
             });
             try
             {
@@ -681,7 +748,7 @@ public sealed class WarmPanGlossPool : IDisposable
                     var line = await reader.ReadLineAsync().ConfigureAwait(false);
                     if (token.IsCancellationRequested) return cancelled();
                     if (Volatile.Read(ref timedOut))
-                        return failed(ParseTimedOut.Code, ParseTimedOut.Message(pool._options.ParseTimeout));
+                        return failed(ParseTimedOut.Code, ParseTimedOut.Message(limit));
                     if (line is null)
                     {
                         var died = Died();
@@ -698,7 +765,7 @@ public sealed class WarmPanGlossPool : IDisposable
             {
                 if (token.IsCancellationRequested) return cancelled();
                 if (Volatile.Read(ref timedOut))
-                    return failed(ParseTimedOut.Code, ParseTimedOut.Message(pool._options.ParseTimeout));
+                    return failed(ParseTimedOut.Code, ParseTimedOut.Message(limit));
                 var died = Died();
                 Fail(died.Code, died.Message);
                 return failed(died.Code, died.Message);

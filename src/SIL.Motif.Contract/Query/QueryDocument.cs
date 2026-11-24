@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Query.Phon;
 
 namespace SIL.Motif.Contract.Query;
 
@@ -302,8 +303,15 @@ internal static class QueryDocumentJson
             obj.TryGetPropertyValue("value", out var valueNode);
             return new QueryField(field, op, ReadValue(op, valueNode, path + ".value"));
         }
+        if (keys.Contains("phon"))
+        {
+            Known(obj, ["phon"], path);
+            var pattern = Text(obj, "phon", path) ?? throw QueryRefusalException.DocumentInvalid("phon is a pattern string.", path + ".phon");
+            PhonPattern.CompilePhon(pattern);
+            return new QueryPhon(pattern.Trim());
+        }
         if (keys.Length != 1)
-            throw QueryRefusalException.DocumentInvalid("An expression has exactly one of and, or, not, a field predicate or a reserved kind.", path);
+            throw QueryRefusalException.DocumentInvalid("An expression has exactly one of and, or, not, a field predicate, phon, env or a reserved kind.", path);
         var key = keys[0];
         var inner = obj[key];
         switch (key)
@@ -316,6 +324,12 @@ internal static class QueryDocumentJson
                 return key == "and" ? new QueryAnd(children) : new QueryOr(children);
             case "not":
                 return new QueryNot(ReadExpr(inner, path + ".not"));
+            case "env":
+                if (inner is not JsonValue || inner.GetValueKind() != JsonValueKind.String)
+                    throw QueryRefusalException.DocumentInvalid("env is an environment string, <target> / <left> _ <right>.", path + ".env");
+                var environment = inner.GetValue<string>();
+                PhonPattern.CompileEnv(environment);
+                return new QueryEnv(environment.Trim());
             default:
                 if (QueryOps.Reserved.Contains(key)) return new QueryReserved(key, inner?.ToJsonString() ?? "null");
                 throw QueryRefusalException.DocumentInvalid($"'{key}' is not an expression kind.", path);
@@ -352,6 +366,8 @@ internal static class QueryDocumentJson
         QueryOr or => new JsonObject { ["or"] = new JsonArray([.. or.Items.Select(WriteExpr)]) },
         QueryNot not => new JsonObject { ["not"] = WriteExpr(not.Item) },
         QueryReserved reserved => new JsonObject { [reserved.Kind] = JsonNode.Parse(reserved.Body) },
+        QueryPhon phon => new JsonObject { ["phon"] = phon.Pattern },
+        QueryEnv env => new JsonObject { ["env"] = env.Environment },
         QueryField field => WriteField(field),
         _ => throw new ArgumentException("Unknown query expression."),
     };

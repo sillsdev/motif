@@ -22,7 +22,9 @@ public sealed record FormsExplainMorpheme(string EntryGuid, string MsaGuid, stri
 /// <param name="Name">The rule's name, or null.</param>
 /// <param name="Id">The <c>grammar.xml</c> id, or null.</param>
 /// <param name="Guid">The FieldWorks guid, or null.</param>
-public sealed record FormsExplainRule(string Kind, string? Name, string? Id, string? Guid);
+/// <param name="Label">Set only when <paramref name="Name"/> is null: a label Motif synthesised so the rule can be read.</param>
+/// <param name="LabelSource">How <paramref name="Label"/> was made: <c>morpheme</c>, <c>id</c> or <c>none</c>; null when the rule has a name.</param>
+public sealed record FormsExplainRule(string Kind, string? Name, string? Id, string? Guid, string? Label = null, string? LabelSource = null);
 
 /// <summary>One step of a derivation: the stratum, the rule, and the word before and after it.</summary>
 /// <param name="Stratum">The stratum the rule ran in.</param>
@@ -40,8 +42,11 @@ public sealed record FormsExplainStep(string Stratum, FormsExplainRule Rule, int
 /// <param name="EntryGuid">The entry's GUID, or null.</param>
 /// <param name="MsaGuid">The analysis's GUID, or null.</param>
 /// <param name="FormGuid">The allomorph's FieldWorks GUID, or null.</param>
+/// <param name="Label">For an affix (no shape), how to read it: the rule name, else the morpheme's form, else a short id, else <c>unnamed affix</c>.</param>
+/// <param name="LabelSource">Where <paramref name="Label"/> came from: <c>ruleName</c>, <c>morpheme</c>, <c>id</c> or <c>none</c>; anything but <c>ruleName</c> is synthesised.</param>
 public sealed record FormsExplainAllomorph(
-    string? Role, string? Shape, string? RuleName, int? AllomorphId, string? EntryGuid, string? MsaGuid, string? FormGuid);
+    string? Role, string? Shape, string? RuleName, int? AllomorphId, string? EntryGuid, string? MsaGuid, string? FormGuid,
+    string? Label = null, string? LabelSource = null);
 
 /// <summary>One surface form reached by one choice of allomorphs.</summary>
 /// <param name="Surface">The generated word.</param>

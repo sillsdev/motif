@@ -1,3 +1,5 @@
+using SIL.Motif.Contract.Query.Phon;
+
 namespace SIL.Motif.Contract.Query;
 
 /// <summary>Reads a <see cref="QueryExpr"/> without evaluating it.</summary>
@@ -11,6 +13,42 @@ public static class QueryExprTools
         QueryOr or => or.Items.SelectMany(Leaves),
         QueryNot not => Leaves(not.Item),
         _ => [],
+    };
+
+    /// <summary>Every <c>phon</c> and <c>env</c> predicate in the expression, with whether it counts toward a row's reported matches (not under a <c>not</c>).</summary>
+    internal static List<(PhonLeaf Leaf, bool Positive)> Patterns(QueryExpr? expr)
+    {
+        var found = new List<(PhonLeaf, bool)>();
+        Walk(expr, true);
+        return found;
+
+        void Walk(QueryExpr? node, bool positive)
+        {
+            switch (node)
+            {
+                case QueryPhon or QueryEnv: found.Add((LeafOf(node), positive)); break;
+                case QueryAnd and: foreach (var item in and.Items) Walk(item, positive); break;
+                case QueryOr or: foreach (var item in or.Items) Walk(item, positive); break;
+                case QueryNot not: Walk(not.Item, !positive); break;
+            }
+        }
+    }
+
+    /// <summary>Whether the expression holds a <c>phon</c> or <c>env</c> predicate.</summary>
+    public static bool HasPatterns(QueryExpr? expr) => expr switch
+    {
+        QueryPhon or QueryEnv => true,
+        QueryAnd and => and.Items.Any(HasPatterns),
+        QueryOr or => or.Items.Any(HasPatterns),
+        QueryNot not => HasPatterns(not.Item),
+        _ => false,
+    };
+
+    internal static PhonLeaf LeafOf(QueryExpr node) => node switch
+    {
+        QueryPhon phon => new PhonLeaf("phon", phon.Pattern, PhonPattern.CompilePhon(phon.Pattern)),
+        QueryEnv env => new PhonLeaf("env", env.Environment, PhonPattern.CompileEnv(env.Environment)),
+        _ => throw new ArgumentException("Not a pattern predicate."),
     };
 
     /// <summary>The field predicates every row must satisfy: the expression itself when it is one, or the children of a top-level and.</summary>

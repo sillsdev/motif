@@ -1523,7 +1523,7 @@
       "properties": {
         "query": {
           "type": "object",
-          "description": "A motif.query.v2 document: version \u0022motif.query.v2\u0022, from, where (and/or/not over {field, op, value} predicates; ops eq ne in nin lt gt has regex contains exists; regex is anchored, contains is not), side, sides, sort, limit, group and the options below. Replaces every other query argument. The full JSON Schema is returned by motif_query_schema and printed by motif query --schema. morph, seq, phon, env and realizes are reserved and refused as not yet available."
+          "description": "A motif.query.v2 document: version \u0022motif.query.v2\u0022, from, where (and/or/not over {field, op, value} predicates; ops eq ne in nin lt gt has regex contains exists; regex is anchored, contains is not), side, sides, sort, limit, group and the options below. Replaces every other query argument. The full JSON Schema is returned by motif_query_schema and printed by motif query --schema. phon {\u0022phon\u0022:\u0022Stop V Stop V\u0022} and env {\u0022env\u0022:\u0022[Stop] / # _ V\u0022} match phonological patterns through PanGloss (syntax in motif_query_schema; class names from motif_query_schema values=classes); morph, seq and realizes are reserved and refused as not yet available."
         },
         "saved": {
           "type": "string",
@@ -1820,10 +1820,17 @@
   },
   {
     "name": "motif_query_schema",
-    "description": "Returns the JSON Schema of a motif.query.v2 document: every op, source and column with its type, and the reserved kinds.",
+    "description": "Returns the JSON Schema of a motif.query.v2 document: every op, source and column with its type, the phon and env pattern syntax, and the reserved kinds. With values=classes it instead lists the natural-class and feature names of the project\u0027s Baseline, for writing phon and env patterns.",
     "inputSchema": {
       "type": "object",
       "properties": {
+        "values": {
+          "type": "string",
+          "description": "Set to classes to list the project\u0027s natural-class and feature names instead of the schema.",
+          "enum": [
+            "classes"
+          ]
+        },
         "project": {
           "type": "string",
           "description": "Known project name or recorded .fwdata path."

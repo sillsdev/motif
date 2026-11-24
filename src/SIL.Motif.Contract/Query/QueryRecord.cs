@@ -49,6 +49,9 @@ public sealed record QueryForm(string Id, string Form, string Base, string Kind,
     public IReadOnlyList<string>? LettersDropped { get; init; }
     /// <summary>Segments added to the base, including repetitions.</summary>
     public IReadOnlyList<string>? LettersGained { get; init; }
+    /// <summary>Where each <c>phon</c> or <c>env</c> predicate of the query matched this form; null when the query has none.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<SIL.Motif.Contract.Query.Phon.QueryMatch>? Matches { get; init; }
 }
 
 /// <summary>The contiguous change between a base and its form.</summary>
@@ -74,6 +77,9 @@ public sealed record QueryResult(IReadOnlyList<QueryForm> Rows, IReadOnlyList<Qu
     /// <summary>The one-screen composite of an evidence query; null for any other query.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public QueryEvidence? Evidence { get; init; }
+    /// <summary>What the <c>phon</c> and <c>env</c> predicates could not decide: unsegmentable and stopped words, counted and sampled; null when the query has none.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public SIL.Motif.Contract.Query.Phon.PhonReport? Phon { get; init; }
     /// <summary>Matching rows of the stems, uses and objects sources; null for the forms source.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<QueryItem>? Items { get; init; }

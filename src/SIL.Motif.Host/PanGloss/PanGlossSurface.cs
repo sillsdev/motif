@@ -14,8 +14,16 @@ internal sealed record PanGlossSurfaceCheck(
 internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
     bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null,
-    PanGlossWhyNotCapability? WhyNot = null, PanGlossServeGenerateCapability? ServeGenerate = null)
+    PanGlossWhyNotCapability? WhyNot = null, PanGlossServeGenerateCapability? ServeGenerate = null,
+    PanGlossServeMatchCapability? ServeMatch = null)
 {
+    /// <summary>
+    /// Why this parser cannot match pattern text over a word list on <c>serve</c>, or null when it can: the description must
+    /// declare <c>interfaces.serveOps.match</c>.
+    /// </summary>
+    internal string? ServeMatchRefusal() =>
+        ServeMatch is null ? "its description declares no interfaces.serveOps.match" : null;
+
     /// <summary>
     /// Why this parser cannot answer a traced <c>generate</c> over <c>serve</c>, or null when it can: the description must
     /// declare <c>interfaces.serveOps.generate</c> with <c>trace</c> true.
@@ -109,6 +117,10 @@ internal sealed record PanGlossCapabilities(
 /// <param name="Kinds">The failure kinds the parser answers; every other kind comes back unknown.</param>
 /// <param name="SuiteRows">Whether the parser also runs the shared suite's why-not rows.</param>
 internal sealed record PanGlossWhyNotCapability(string? Schema, string? Ids, ImmutableArray<string> Kinds, bool SuiteRows, bool ExpectGuidChoices = false);
+
+/// <summary>What <c>interfaces.serveOps.match</c> declares.</summary>
+/// <param name="Version">The op's own version, or null when the key is missing.</param>
+internal sealed record PanGlossServeMatchCapability(int? Version);
 
 /// <summary>What <c>interfaces.serveOps.generate</c> declares.</summary>
 /// <param name="Version">The op's own version, or null when the key is missing.</param>
@@ -226,7 +238,17 @@ internal static class PanGlossSurface
             interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("batchTsv", out var batchElement) &&
             batchElement.ValueKind == JsonValueKind.Number && batchElement.TryGetInt32(out var batchVersion) ? batchVersion : null;
         return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv,
-            ReadWhyNot(root), ReadServeGenerate(root));
+            ReadWhyNot(root), ReadServeGenerate(root), ReadServeMatch(root));
+    }
+
+    private static PanGlossServeMatchCapability? ReadServeMatch(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("serveOps", out var ops) || ops.ValueKind != JsonValueKind.Object ||
+            !ops.TryGetProperty("match", out var match) || match.ValueKind != JsonValueKind.Object)
+            return null;
+        return new PanGlossServeMatchCapability(match.TryGetProperty("version", out var version) &&
+            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null);
     }
 
     private static PanGlossServeGenerateCapability? ReadServeGenerate(JsonElement root)
