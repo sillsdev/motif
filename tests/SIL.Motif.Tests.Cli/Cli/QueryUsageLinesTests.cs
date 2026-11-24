@@ -101,7 +101,7 @@ public sealed class QueryUsageLinesTests : IDisposable
         var ran = 0;
         foreach (var words in Expand(line, withOptional))
         {
-            if (words.Contains("--project")) continue;
+            if (words.Contains("--project") && !line.StartsWith("query corpus forms", StringComparison.Ordinal)) continue;
             var output = new StringWriter();
             var error = new StringWriter();
             var args = Fill(words);
