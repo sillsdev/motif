@@ -176,6 +176,8 @@ string? namedProject = null;
 try
 {
     var (flags, parsedPositionals, forwardedArguments) = ParseArgs(rest);
+    // Pinned by `ASuccessfulJsonVerbPrintsExactlyOneDocumentAndPickKeepsTheNamedFields`.
+    var pickSpec = flags.Remove("pick", out var pickValue) ? pickValue : null;
     var positionals = CliCommandNames.NormalizeQueryWords(verb, flags, parsedPositionals);
     var waitForTerminal = flags.ContainsKey("wait-terminal");
     if (waitForTerminal && !(verb is "dry-run" or "trial" && flags.ContainsKey("wait")) &&
@@ -236,6 +238,21 @@ try
     {
         alreadyRendered = true;
         return CommandTextRenderer.Render(outcome, asJson, successAsJson, includeEffects);
+    }
+
+    // Pinned by `ASuccessfulJsonVerbPrintsExactlyOneDocumentAndPickKeepsTheNamedFields`.
+    CommandResult Picked(CommandResult printed)
+    {
+        if (pickSpec is null || !asJson) return printed;
+        var picked = PickProjection.Apply(printed, pickSpec);
+        if (picked.ExitCode == 0) return printed.ExitCode == 0 ? picked : picked with { ExitCode = printed.ExitCode };
+        error.Write(picked.Output);
+        return picked with { Output = "" };
+    }
+    if (pickSpec is not null && !asJson)
+    {
+        error.Write(PickProjection.NeedsJson().Output);
+        return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
     }
 
     CommandOutcome<ApplyPendingResult> WriteApplyEffectsArtifact(
@@ -1239,8 +1256,9 @@ try
             });
             if (trialResultExit != 0)
             {
-                output.Write(result.Output);
-                return trialResultExit;
+                var pickedTrial = Picked(result);
+                output.Write(pickedTrial.Output);
+                return pickedTrial.Reason is not null ? pickedTrial.ExitCode : trialResultExit;
             }
             break;
 
@@ -3568,11 +3586,13 @@ try
             return Usage($"Unknown command '{verb}'.", asJson, withUsageBanner: true);
     }
 
+    result = Picked(result);
     if (result.ExitCode == 0)
     {
         output.Write(result.Output);
         return result.ExitCode;
     }
+    if (pickSpec is not null && asJson && result.Output.Length == 0) return result.ExitCode;
     // A caller that asked for JSON gets JSON when it goes wrong too; a Proposal verb already did this itself.
     error.Write(!alreadyRendered && asJson && result.Reason is { } reason
         ? ProjectionJson.Serialize(new FailureEnvelope(reason, result.Output.Trim())) + Environment.NewLine

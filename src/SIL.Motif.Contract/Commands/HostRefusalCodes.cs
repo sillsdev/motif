@@ -21,6 +21,8 @@ public static class HostRefusalCodes
     public const string CliStoreBusy = "cli.store-busy";
     /// <summary>The CLI hit an error no command anticipated.</summary>
     public const string CliUnexpected = "cli.unexpected";
+    /// <summary>A <c>--pick</c> path names a field the command's JSON does not have, or <c>--pick</c> was given without <c>--json</c>.</summary>
+    public const string CliPickPath = "cli.pick-path";
 
     /// <summary>An MCP tool was asked for a grammar kind that does not exist.</summary>
     public const string GrammarUnknownKind = "grammar.unknown-kind";

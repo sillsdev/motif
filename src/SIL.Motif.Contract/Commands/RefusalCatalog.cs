@@ -915,6 +915,7 @@ public static class RefusalCatalog
         Spec(HostRefusalCodes.CliStoreBusy, FailureReason.Busy,
             NextStep.Repeat()),
         Spec(HostRefusalCodes.CliUnexpected, FailureReason.StoreInconsistent),
+        Spec(HostRefusalCodes.CliPickPath, FailureReason.InvalidArgument),
         Spec(HostRefusalCodes.GrammarUnknownKind, FailureReason.InvalidArgument),
         Spec(HostRefusalCodes.GuideUnknownTopic, FailureReason.InvalidArgument),
         Spec(HostRefusalCodes.ProjectRegistrationFailed, FailureReason.Refused,
