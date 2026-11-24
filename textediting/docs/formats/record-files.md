@@ -297,6 +297,22 @@ to pay money for [something]{.v}
   is the host's `INotationChecker` for notation fields.
 - Not checked yet: whether a reference resolves, its target's class, collection order, deletes and moves. They are planned.
 
+## Feature-structure notation
+
+A project record schema marks an owned feature structure (`FsFeatStruc`) with `notation="feature-structure"` and the field is then one double-quoted
+notation value, `text/x-fieldworks-feature-structure`. `FeatureStructureNotation` renders and reads it in one place.
+
+- **Syntax.** Square brackets around zero or more `feature:value` pairs separated by white space: `[cas:nominative num:plural]`. `[]` is a structure that exists
+  and holds no feature; a structure that does not exist has no key in the file. Reading ignores white space around brackets and pairs and accepts any pair order.
+- **Names.** The way FieldWorks shows a structure: a feature by its abbreviation and a value by its name, both in the project's default analysis writing system.
+  An empty abbreviation (or name) falls back to the name (or abbreviation). In a label, backslash, `[`, `]`, `:` and each white-space character follow a backslash.
+- **Order.** Pairs are in ordinal order of the feature label, so a render is canonical and a diff shows only the pairs that differ.
+- **Nesting.** Only closed values are written. A structure that holds a complex, negated, shared, disjunctive or open value, a feature twice, a closed value with
+  no feature or no choice, or a label that is empty, has a control character or is not unique (two features, or two values of one feature) is listed as an unexported
+  value and its field is locked: the file never shows a guess. A structure's declared type is not in the text and an edit leaves it as it is.
+- **Refusals.** A reader of the text, given the feature system, refuses with a code and never guesses: `fs-notation.syntax`, `fs-notation.unknown-feature`,
+  `fs-notation.unknown-value`, `fs-notation.ambiguous-label`, `fs-notation.repeated-feature` and `fs-notation.unsupported-feature` (a complex feature).
+
 ## Block features
 
 A rich field of paragraphs says which of tables, lists and headings it allows (ADR 0033). The default is all three. A field of one

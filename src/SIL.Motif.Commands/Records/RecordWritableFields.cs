@@ -43,11 +43,14 @@ public sealed class RecordWritableFields : IWritableFields
                 var refusal = FieldRefusal(field, binding);
                 foreach (var verb in Verbs(field))
                 {
-                    var handlerVerb = verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb;
+                    var structure = IsFeatureStructure(field);
+                    var handlerVerb = structure ? (verb == RecordWriteVerb.Set ? RecordWriteVerb.AddObject : RecordWriteVerb.RemoveObject)
+                        : verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb;
                     var candidates = (binding.IsCustom
                         ? catalog[(CustomFieldOperationKinds.DeclaringClass, CustomFieldCatalog.TypeOf(field) ?? "", handlerVerb)]
                         : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)]).ToArray();
-                    entries.Add((type.Name, field.Name, verb), new FieldEntry(type.Name, field, verb, candidates, refusal));
+                    entries.Add((type.Name, field.Name, verb), new FieldEntry(type.Name, field, structure ? handlerVerb : verb, candidates, refusal,
+                        structure ? [FeatureStructureClass] : null));
                 }
                 foreach (var child in (field.Item ?? field).ObjectTypes)
                     pending.Enqueue(child);
@@ -67,6 +70,13 @@ public sealed class RecordWritableFields : IWritableFields
         return new WritableFieldResolution.Uncovered(_fields.Contains((className, field))
             ? UncoveredFieldReason.VerbNotExpressible : UncoveredFieldReason.UnknownField);
     }
+
+    /// <summary>The class of the owned structure a feature-structure notation field writes.</summary>
+    internal const string FeatureStructureClass = "FsFeatStruc";
+
+    /// <summary>Whether the field is a feature structure written as text; its set and clear are the create and delete of the owned structure.</summary>
+    internal static bool IsFeatureStructure(RecordField field) =>
+        field is { Kind: RecordFieldKind.Notation, Notation: SIL.TextEditing.Project.FeatureStructureNotation.Name };
 
     private static RecordWriteVerb[] Verbs(RecordField field) => (field.Kind, field.Item?.Kind) switch
     {
@@ -110,11 +120,11 @@ public sealed class RecordWritableFields : IWritableFields
         private readonly WritableFieldResolution.Uncovered? _refusal;
 
         internal FieldEntry(string owner, RecordField field, RecordWriteVerb verb, Candidate[] candidates,
-            WritableFieldResolution.Uncovered? refusal)
+            WritableFieldResolution.Uncovered? refusal, string[]? children)
         {
             _owner = owner;
             _verb = verb;
-            _children = (field.Item ?? field).ObjectTypes.Select(type => type.Name).ToArray();
+            _children = children ?? (field.Item ?? field).ObjectTypes.Select(type => type.Name).ToArray();
             _candidates = candidates;
             _refusal = refusal;
         }

@@ -295,6 +295,11 @@ namespace SIL.TextEditing.Project
             {
                 case RecordFieldKind.Text:
                 case RecordFieldKind.Notation:
+                    if (type == CellarPropertyType.OwningAtomic)
+                    {
+                        int held = _data.get_ObjectProp(hvo, flid);
+                        return held == 0 ? null : new RecordScalar(FeatureStructureNotation.Render((IFsFeatStruc)Hvo(held), _cache));
+                    }
                     if (type == CellarPropertyType.String)
                     {
                         var s = _data.get_StringProp(hvo, flid);

@@ -315,7 +315,7 @@ Covered	MoAffixAllomorph	is-abstract	MoForm.IsAbstract	Set	grammar/moForm/setIsA
 Covered	MoAffixAllomorph	is-abstract	MoForm.IsAbstract	Clear	grammar/moForm/clearIsAbstract	-	-
 Covered	MoAffixAllomorph	morph-type	MoForm.MorphType	Set	grammar/moForm/setMorphType	-	-
 Covered	MoAffixAllomorph	morph-type	MoForm.MorphType	Clear	grammar/moForm/clearMorphType	-	-
-Covered	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	AddObject	grammar/moAffixAllomorph/createMsEnvFeatures	-	-
+Covered	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	Set	grammar/moAffixAllomorph/createMsEnvFeatures	-	-
 Covered	MoAffixAllomorph	phone-env	MoAffixAllomorph.PhoneEnv	AddReference	grammar/moAffixAllomorph/addRefPhoneEnv	-	-
 Covered	MoAffixAllomorph	phone-env	MoAffixAllomorph.PhoneEnv	RemoveReference	grammar/moAffixAllomorph/removeRefPhoneEnv	-	-
 Covered	MoAffixAllomorph	position	MoAffixAllomorph.Position	AddReference	grammar/moAffixAllomorph/addRefPosition	-	-
@@ -336,7 +336,7 @@ Covered	MoCopyFromInput	content	MoCopyFromInput.Content	Set	grammar/moCopyFromIn
 Covered	MoCopyFromInput	content	MoCopyFromInput.Content	Clear	grammar/moCopyFromInput/clearContent	-	-
 Covered	MoDerivAffMsa	from-inflection-class	MoDerivAffMsa.FromInflectionClass	Set	grammar/moDerivAffMsa/setFromInflectionClass	-	-
 Covered	MoDerivAffMsa	from-inflection-class	MoDerivAffMsa.FromInflectionClass	Clear	grammar/moDerivAffMsa/clearFromInflectionClass	-	-
-Covered	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	AddObject	grammar/moDerivAffMsa/createFromMsFeatures	-	-
+Covered	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	Set	grammar/moDerivAffMsa/createFromMsFeatures	-	-
 Covered	MoDerivAffMsa	from-part-of-speech	MoDerivAffMsa.FromPartOfSpeech	Set	grammar/moDerivAffMsa/setFromPartOfSpeech	-	-
 Covered	MoDerivAffMsa	from-part-of-speech	MoDerivAffMsa.FromPartOfSpeech	Clear	grammar/moDerivAffMsa/clearFromPartOfSpeech	-	-
 Covered	MoDerivAffMsa	from-prod-restrict	MoDerivAffMsa.FromProdRestrict	AddReference	grammar/moDerivAffMsa/addRefFromProdRestrict	-	-
@@ -345,14 +345,14 @@ Covered	MoDerivAffMsa	from-stem-name	MoDerivAffMsa.FromStemName	Set	grammar/moDe
 Covered	MoDerivAffMsa	from-stem-name	MoDerivAffMsa.FromStemName	Clear	grammar/moDerivAffMsa/clearFromStemName	-	-
 Covered	MoDerivAffMsa	to-inflection-class	MoDerivAffMsa.ToInflectionClass	Set	grammar/moDerivAffMsa/setToInflectionClass	-	-
 Covered	MoDerivAffMsa	to-inflection-class	MoDerivAffMsa.ToInflectionClass	Clear	grammar/moDerivAffMsa/clearToInflectionClass	-	-
-Covered	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	AddObject	grammar/moDerivAffMsa/createToMsFeatures	-	-
+Covered	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	Set	grammar/moDerivAffMsa/createToMsFeatures	-	-
 Covered	MoDerivAffMsa	to-part-of-speech	MoDerivAffMsa.ToPartOfSpeech	Set	grammar/moDerivAffMsa/setToPartOfSpeech	-	-
 Covered	MoDerivAffMsa	to-part-of-speech	MoDerivAffMsa.ToPartOfSpeech	Clear	grammar/moDerivAffMsa/clearToPartOfSpeech	-	-
 Covered	MoDerivAffMsa	to-prod-restrict	MoDerivAffMsa.ToProdRestrict	AddReference	grammar/moDerivAffMsa/addRefToProdRestrict	-	-
 Covered	MoDerivAffMsa	to-prod-restrict	MoDerivAffMsa.ToProdRestrict	RemoveReference	grammar/moDerivAffMsa/removeRefToProdRestrict	-	-
 Covered	MoInflAffMsa	from-prod-restrict	MoInflAffMsa.FromProdRestrict	AddReference	grammar/moInflAffMsa/addRefFromProdRestrict	-	-
 Covered	MoInflAffMsa	from-prod-restrict	MoInflAffMsa.FromProdRestrict	RemoveReference	grammar/moInflAffMsa/removeRefFromProdRestrict	-	-
-Covered	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	AddObject	grammar/moInflAffMsa/createInflFeats	-	-
+Covered	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	Set	grammar/moInflAffMsa/createInflFeats	-	-
 Covered	MoInflAffMsa	part-of-speech	MoInflAffMsa.PartOfSpeech	Set	grammar/moInflAffMsa/setPartOfSpeech	-	-
 Covered	MoInflAffMsa	part-of-speech	MoInflAffMsa.PartOfSpeech	Clear	grammar/moInflAffMsa/clearPartOfSpeech	-	-
 Covered	MoInflAffMsa	slots	MoInflAffMsa.Slots	AddReference	grammar/moInflAffMsa/addRefSlots	-	-
@@ -423,7 +423,8 @@ Covered	MoStemMsa	from-parts-of-speech	MoStemMsa.FromPartsOfSpeech	AddReference	
 Covered	MoStemMsa	from-parts-of-speech	MoStemMsa.FromPartsOfSpeech	RemoveReference	grammar/moStemMsa/removeRefFromPartsOfSpeech	-	-
 Covered	MoStemMsa	inflection-class	MoStemMsa.InflectionClass	Set	grammar/moStemMsa/setInflectionClass	-	-
 Covered	MoStemMsa	inflection-class	MoStemMsa.InflectionClass	Clear	grammar/moStemMsa/clearInflectionClass	-	-
-Covered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	AddObject	grammar/moStemMsa/createMsFeatures	-	-
+Covered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	Set	grammar/moStemMsa/createMsFeatures	-	-
+Covered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	Clear	grammar/moStemMsa/deleteMsFeatures	-	-
 Covered	MoStemMsa	part-of-speech	MoStemMsa.PartOfSpeech	Set	grammar/moStemMsa/setPartOfSpeech	-	-
 Covered	MoStemMsa	part-of-speech	MoStemMsa.PartOfSpeech	Clear	grammar/moStemMsa/clearPartOfSpeech	-	-
 Covered	MoStemMsa	prod-restrict	MoStemMsa.ProdRestrict	AddReference	grammar/moStemMsa/addRefProdRestrict	-	-
@@ -518,7 +519,6 @@ CoveredNotLowered	FsFeatStruc	feature-specs	FsFeatStruc.FeatureSpecs	RemoveObjec
 CoveredNotLowered	LexEntry	allomorphs	LexEntry.AlternateForms	RemoveObject	lexical/lexEntry/removeAlternateForm	delete-composer	-
 CoveredNotLowered	LexEntry	lexeme-form	LexEntry.LexemeForm	RemoveObject	lexical/lexEntry/deleteLexemeForm	delete-composer	-
 CoveredNotLowered	LexEntry	morpho-syntax-analyses	LexEntry.MorphoSyntaxAnalyses	RemoveObject	lexical/lexEntry/deleteMorphoSyntaxAnalyses	delete-composer	-
-CoveredNotLowered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	RemoveObject	grammar/moStemMsa/deleteMsFeatures	delete-composer	-
 CoveredNotLowered	PartOfSpeech	affix-slots	PartOfSpeech.AffixSlots	RemoveObject	grammar/partOfSpeech/deleteAffixSlots	delete-composer	-
 CustomFields	LexEntry	custom-LexEntry-ExampleFlag	LexEntry.ExampleFlag	Set	none	CustomField	-
 CustomFields	LexEntry	custom-LexEntry-ExampleFlag	LexEntry.ExampleFlag	Clear	none	CustomField	-
@@ -1029,7 +1029,7 @@ OtherFields	LexSense	senses	LexSense.Senses	AddObject	none	NoOperationKind	-
 OtherFields	LexSense	senses	LexSense.Senses	MoveObject	none	NoOperationKind	-
 OtherFields	LexSense	thesaurus-items	LexSense.ThesaurusItems	AddReference	none	NoOperationKind	-
 OtherFields	LexSense	thesaurus-items	LexSense.ThesaurusItems	RemoveReference	none	NoOperationKind	-
-OtherFields	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	Clear	none	NoOperationKind	-
 OtherFields	MoAffixAllomorph	ms-env-part-of-speech	MoAffixAllomorph.MsEnvPartOfSpeech	Set	none	NoOperationKind	-
 OtherFields	MoAffixAllomorph	ms-env-part-of-speech	MoAffixAllomorph.MsEnvPartOfSpeech	Clear	none	NoOperationKind	-
 OtherFields	MoAffixProcess	input	MoAffixProcess.Input	RemoveObject	none	NoOperationKind	-
@@ -1042,14 +1042,14 @@ OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	AddReference	
 OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	InsertReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	RemoveReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	MoveReference	none	NoOperationKind	-
-OtherFields	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	Clear	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	AddReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	InsertReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	RemoveReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	MoveReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	stratum	MoDerivAffMsa.Stratum	Set	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	stratum	MoDerivAffMsa.Stratum	Clear	none	NoOperationKind	-
-OtherFields	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	Clear	none	NoOperationKind	-
 OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	AddReference	none	NoOperationKind	-
 OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	InsertReference	none	NoOperationKind	-
 OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	RemoveReference	none	NoOperationKind	-
@@ -1078,7 +1078,7 @@ OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	AddReferenc
 OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	InsertReference	none	NoOperationKind	-
 OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	RemoveReference	none	NoOperationKind	-
 OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	MoveReference	none	NoOperationKind	-
-OtherFields	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	RemoveObject	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	Clear	none	NoOperationKind	-
 OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	AddReference	none	NoOperationKind	-
 OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	InsertReference	none	NoOperationKind	-
 OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	RemoveReference	none	NoOperationKind	-
