@@ -72,4 +72,42 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         Assert.Empty(lowering.Operations);
         Assert.Equal(RefusalCodes.RuleNotationReadOnly, Assert.Single(lowering.Refusals).Code);
     }
+
+    private static void BuildUnrenderable(LcmCache cache)
+    {
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create(EntryId, cache.LangProject.LexDbOA);
+            var process = cache.ServiceLocator.GetInstance<IMoAffixProcessFactory>().Create();
+            entry.AlternateFormsOS.Add(process);
+            process.InputOS.Clear();
+            process.OutputOS.Clear();
+            process.InputOS.Add(cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create());
+            process.OutputOS.Add(cache.ServiceLocator.GetInstance<IMoCopyFromInputFactory>().Create());
+        });
+    }
+
+    private static ProjectRecordPlan PlanEdit(LcmCache cache, Action<RecordObject> edit)
+    {
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(cache, schema);
+        var read = RecordFileReader.Read(exporter.Export(EntryId).Text!, schema.Schema, exporter.CreateReadOptions());
+        Assert.False(read.HasErrors);
+        edit(Process(read.Document!));
+        return new ProjectRecordImporter(exporter).Plan(RecordFileWriter.Write(read.Document!, schema.Schema), new CatalogWritableFields(schema));
+    }
+
+    [Theory]
+    [InlineData("input", "input-formula", "PhVariable")]
+    [InlineData("output", "output-formula", "MoCopyFromInput")]
+    public void AnUnrenderableFormulaLocksItsFormulaKeyAndLeavesTheObjectListEditable(string list, string formula, string created)
+    {
+        using var cache = pristine.NewScratch();
+        BuildUnrenderable(cache);
+        new FwDataProjectLoader().Save(cache);
+        var listEdit = PlanEdit(cache, p => ((RecordList)p[list]!).Add(new RecordObject { Class = created }));
+        Assert.Empty(listEdit.ChangeSet.Refusals);
+        var formulaEdit = PlanEdit(cache, p => p.Set(formula, new RecordScalar("x")));
+        Assert.NotEmpty(formulaEdit.ChangeSet.Refusals);
+    }
 }
