@@ -15,9 +15,11 @@ internal static class PhonText
         if (phon.Unsegmentable > 0)
             text.AppendLine(string.Format(CultureInfo.InvariantCulture, "UNSEGMENTABLE: {0} words cannot be segmented by the grammar and match nothing, for example {1}",
                 phon.Unsegmentable, string.Join(", ", phon.UnsegmentableSample.Select(word => word.Word))));
+        else text.AppendLine("Unsegmentable: 0 words the grammar cannot segment");
         if (phon.Incomplete > 0)
             text.AppendLine(string.Format(CultureInfo.InvariantCulture, "INCOMPLETE: {0} words were not decided ({1}), for example {2}",
                 phon.Incomplete, phon.StopReason ?? "stopped", string.Join(", ", phon.IncompleteSample.Select(word => word.Word))));
+        else text.AppendLine("Incomplete: 0 words not decided");
     }
 
     /// <summary>Lists the class and feature names a pattern can use.</summary>
