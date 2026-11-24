@@ -124,7 +124,9 @@
             "fs-notation.ambiguous-label",
             "fs-notation.repeated-feature",
             "fs-notation.unsupported-feature",
-            "fs-notation.unrenderable"
+            "fs-notation.unrenderable",
+            "rule-notation.read-only",
+            "rule-notation.unrenderable"
           ]
         },
         "class": {

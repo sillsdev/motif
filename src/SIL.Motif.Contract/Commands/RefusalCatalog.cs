@@ -813,6 +813,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.FsNotationRepeatedFeature, FailureReason.Refused),
         Spec(RefusalCodes.FsNotationUnsupportedFeature, FailureReason.Refused),
         Spec(RefusalCodes.FsNotationUnrenderable, FailureReason.Refused),
+        Spec(RefusalCodes.RuleNotationReadOnly, FailureReason.Refused),
+        Spec(RefusalCodes.RuleNotationUnrenderable, FailureReason.Refused),
         Spec(RefusalCodes.ProposalNotFound, FailureReason.NotFound,
             Command("proposals", Caller("project"))),
         Spec(RefusalCodes.ProposalPendingChanges, FailureReason.Refused),
