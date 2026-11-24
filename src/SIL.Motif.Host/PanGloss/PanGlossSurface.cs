@@ -15,7 +15,8 @@ internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
     bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null,
     PanGlossWhyNotCapability? WhyNot = null, PanGlossServeGenerateCapability? ServeGenerate = null,
-    PanGlossServeMatchCapability? ServeMatch = null, PanGlossServeInventoryCapability? ServeInventory = null)
+    PanGlossServeMatchCapability? ServeMatch = null, PanGlossServeInventoryCapability? ServeInventory = null,
+    ImmutableArray<string>? DiagnosticRejectReasons = null)
 {
     /// <summary>
     /// Why this parser cannot match pattern text over a word list on <c>serve</c>, or null when it can: the description must
@@ -265,7 +266,27 @@ internal static class PanGlossSurface
             interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("batchTsv", out var batchElement) &&
             batchElement.ValueKind == JsonValueKind.Number && batchElement.TryGetInt32(out var batchVersion) ? batchVersion : null;
         return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv,
-            ReadWhyNot(root), ReadServeGenerate(root), ReadServeMatch(root), ReadServeInventory(root));
+            ReadWhyNot(root), ReadServeGenerate(root), ReadServeMatch(root), ReadServeInventory(root),
+            ReadDiagnosticRejectReasons(root));
+    }
+
+    /// <summary>The rejection reasons <c>interfaces.diagnostic.eventTuples</c> lists; null when none.</summary>
+    private static ImmutableArray<string>? ReadDiagnosticRejectReasons(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("diagnostic", out var diagnostic) || diagnostic.ValueKind != JsonValueKind.Object ||
+            !diagnostic.TryGetProperty("eventTuples", out var tuples) || tuples.ValueKind != JsonValueKind.Array)
+            return null;
+        var reasons = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        foreach (var tuple in tuples.EnumerateArray())
+        {
+            if (tuple.ValueKind != JsonValueKind.Array || tuple.GetArrayLength() < 4) continue;
+            var items = tuple.EnumerateArray().ToArray();
+            if (items[1].ValueKind == JsonValueKind.String && items[1].GetString() == "reject" &&
+                items[3].ValueKind == JsonValueKind.String)
+                reasons.Add(items[3].GetString()!);
+        }
+        return reasons.OrderBy(reason => reason, StringComparer.Ordinal).ToImmutableArray();
     }
 
     private static PanGlossServeMatchCapability? ReadServeMatch(JsonElement root)

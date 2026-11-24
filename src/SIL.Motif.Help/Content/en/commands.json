@@ -2104,6 +2104,11 @@
     "description": "Deletes a declined, superseded or withdrawn Proposal that never applied, with its Trials. An applied Proposal is never deleted.",
     "source": "Hand-written from command behavior."
   },
+  "proposal why-lost": {
+    "title": "Why a word lost a Reading",
+    "description": "Compares a word's parse at the Baseline with its parse on a Proposal's Trial copy and, for each lost Reading, reports the stop PanGloss recorded and the Proposal operation that names the blocking form. Use it to find which edit lost a Reading.",
+    "source": "Hand-written from command behavior."
+  },
   "proposal review": {
     "title": "Review a Proposal's changes",
     "description": "Lists every change in one Proposal in the order to read them: grammar changes first, then word changes. Each entry says whether it has been looked at, and the list carries the Proposal's latest Trial.",

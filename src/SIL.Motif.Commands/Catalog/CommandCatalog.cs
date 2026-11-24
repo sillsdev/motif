@@ -326,6 +326,7 @@ public static class CommandCatalog
         new CommandDescriptor("generate", typeof(GenerateTraceRequest), typeof(FormsExplainResponse), CommandSurface.Released, AgentClass.Evaluate) { ExposeAsAgentTool = false },
         new CommandDescriptor("forms explain", typeof(FormsExplainRequest), typeof(FormsExplainResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("why-not", typeof(WhyNotRequest), typeof(WhyNotResponse), CommandSurface.Released, AgentClass.Evaluate),
+        new CommandDescriptor("proposal why-lost", typeof(WhyLostRequest), typeof(WhyLostResponse), CommandSurface.Released, AgentClass.Evaluate),
 
         // HandoffCommand
         new CommandDescriptor("handoff", typeof(HandoffRequest), typeof(HandoffCommandResponse), CommandSurface.Released, AgentClass.HumanOnly),

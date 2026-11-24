@@ -572,6 +572,14 @@ public static class CliVerbCatalog
                 "constraint with the morphs and grammar object it is about. Write a candidate as kib,ak|ik,ek.",
             }),
         new CliVerbDescriptor(
+            "Trace", "proposal why-lost", "proposal why-lost",
+            new[]
+            {
+                "proposal why-lost <word> --project <fwdata> --proposal <id> [--max-paths <1-64>] [--json]",
+                "Which Readings of the word the Proposal's latest Trial copy lost against the Baseline, and for each the stop",
+                "PanGloss recorded and the Proposal operation that names the blocking form, or that nothing was recorded.",
+            }),
+        new CliVerbDescriptor(
             "Trace", "generate", "generate",
             new[]
             {

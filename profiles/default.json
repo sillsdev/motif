@@ -36,6 +36,7 @@
     { "tool": "motif_trial" },
     { "tool": "motif_try_word" },
     { "tool": "motif_why_not" },
+    { "tool": "motif_why_lost" },
     { "tool": "motif_finalize_proposal" },
     { "tool": "motif_withdraw_proposal" },
     { "tool": "motif_set_rationale" },

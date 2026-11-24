@@ -1876,6 +1876,26 @@ try
         }
 
         case "proposal":
+            if (positionals.Count >= 1 && positionals[0] == "why-lost")
+            {
+                if (!flags.TryGetValue("project", out var whyLostProject) || positionals.Count != 2 ||
+                    !flags.TryGetValue("proposal", out var whyLostProposal) || whyLostProposal == "true" ||
+                    flags.Keys.Any(flag => flag is not ("project" or "proposal" or "max-paths" or "json" or "autonomous")))
+                    return Usage("Usage: motif " + UsageLineFor("proposal why-lost"), asJson);
+                int? whyLostMax = null;
+                if (flags.TryGetValue("max-paths", out var whyLostMaxText))
+                {
+                    if (!int.TryParse(whyLostMaxText, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var parsedWhyLostMax))
+                    {
+                        result = RenderCommand(RejectionTraceQuery.InvalidCap(whyLostMaxText));
+                        break;
+                    }
+                    whyLostMax = parsedWhyLostMax;
+                }
+                result = RunWithConsoleCancellation(token => RenderCommand(WhyLostQuery.Compare(
+                    new WhyLostRequest(whyLostProject, positionals[1], whyLostProposal, whyLostMax), token)));
+                break;
+            }
             if (positionals.Count == 1 && positionals[0] == "review" &&
                 flags.TryGetValue("project", out var proposalReviewProject))
             {

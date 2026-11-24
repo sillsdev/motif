@@ -34,7 +34,7 @@ internal static class CliCommandNames
             return "proposal compare";
         if (verb == "proposal" && positionals is ["trial", "export", ..])
             return "proposal trial export";
-        if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note")
+        if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note" or "why-lost")
             return "proposal " + positionals[0];
         if (verb == "query" && flags.ContainsKey("values")) return "query values";
         if (verb == "query" && flags.ContainsKey("corpus")) return positionals.FirstOrDefault() == "forms" ? "query corpus forms" : "query pairs";

@@ -147,6 +147,7 @@ public static class CommandTextRenderer
             WordTraceResponse r => RenderTrace(r),
             RejectionTraceResponse r => RenderRejectionTrace(r),
             WhyNotResponse r => WhyNotRenderer.Render(r),
+            WhyLostResponse r => WhyLostRenderer.Render(r),
             FormsExplainResponse r => FormsExplainMarkdown.Render(r),
             FormsQueryResponse r => RenderFormsQuery(r),
             GrammarReadResponse r => GrammarReadTextRenderer.Render(r),
