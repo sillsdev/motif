@@ -59,14 +59,16 @@ public static class TextRichStringOperationKinds
 /// <summary>
 /// The String and MultiString fields a person may edit as rich text: the inventory's in-scope settable ones that the
 /// parser neither references nor reaches (an unconfirmed reach is not enough), less the fields other kinds own (a
-/// paragraph's contents, a morph bundle's form and a judgment record's title). Each is read and written through the
-/// project's metadata, so subclasses share a field.
+/// paragraph's contents, a morph bundle's form and a judgment record's title), plus a semantic-domain question's
+/// example sentences, which FieldWorks's list editor shows though the parser never reads the list. Each is read and
+/// written through the project's metadata, so subclasses share a field.
 /// </summary>
 public static class TextRichStringFields
 {
     // Whether each field is a MultiString (one alternative per writing system) rather than one String.
     private static readonly IReadOnlyDictionary<string, bool> Multi = new Dictionary<string, bool>(StringComparer.Ordinal)
     {
+        ["CmDomainQ.ExampleSentences"] = true,
         ["CmMedia.Label"] = true,
         ["CmPicture.Caption"] = true,
         ["CmPicture.Description"] = true,
