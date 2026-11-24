@@ -18,8 +18,6 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pristine)
 {
     private const string Version = "0.1.0";
-    private static readonly Guid RuleId = Guid.Parse("00000000-0000-4000-8000-0000000000a1");
-    private static readonly Guid SwapId = Guid.Parse("00000000-0000-4000-8000-0000000000a2");
     private const string Kind = "grammar/phonological-rule";
 
     private static void Build(LcmCache cache)
@@ -83,10 +81,11 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
             spec.FeatureRA = features["voi"];
             spec.ValueRA = features["voi"].ValuesOC.Single(value => value.Abbreviation.get_String(cache.DefaultAnalWs).Text == "+");
 
-            var rule = cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create(RuleId, data);
+            var rule = cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create();
+            data.PhonRulesOS.Add(rule);
             rule.Name.set_String(cache.DefaultAnalWs, TsStringUtils.MakeString("Voicing", cache.DefaultAnalWs));
-            var rhs = cache.ServiceLocator.GetInstance<IPhSegRuleRHSFactory>().Create();
-            rule.RightHandSidesOS.Add(rhs);
+            var rhs = rule.RightHandSidesOS.FirstOrDefault() ?? cache.ServiceLocator.GetInstance<IPhSegRuleRHSFactory>().Create();
+            if (!rule.RightHandSidesOS.Contains(rhs)) rule.RightHandSidesOS.Add(rhs);
             var seg = cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create();
             data.ContextsOS.Add(seg);
             seg.FeatureStructureRA = phonemes["p"];
@@ -99,7 +98,8 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
             data.ContextsOS.Add(left);
             left.FeatureStructureRA = data.NaturalClassesOS.OfType<IPhNCSegments>().Single(c => c.Abbreviation.get_String(cache.DefaultAnalWs).Text == "V");
             rhs.LeftContextOA = left;
-            var swap = cache.ServiceLocator.GetInstance<IPhMetathesisRuleFactory>().Create(SwapId, data);
+            var swap = cache.ServiceLocator.GetInstance<IPhMetathesisRuleFactory>().Create();
+            data.PhonRulesOS.Add(swap);
             swap.Name.set_String(cache.DefaultAnalWs, TsStringUtils.MakeString("Swap", cache.DefaultAnalWs));
             var category = cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create();
             cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(category);
@@ -153,42 +153,44 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
     }
 
-    private string Start()
+    private string Start(out Guid ruleId, out Guid swapId)
     {
         using var cache = pristine.NewScratch();
         Build(cache);
         new FwDataProjectLoader().Save(cache);
+        ruleId = cache.LangProject.PhonologicalDataOA.PhonRulesOS.OfType<IPhRegularRule>().Single().Guid;
+        swapId = cache.LangProject.PhonologicalDataOA.PhonRulesOS.OfType<IPhMetathesisRule>().Single().Guid;
         return cache.ProjectId.Path;
     }
 
     [Fact]
     public void NameAndDescriptionImportAndReadBackOnARegularRuleAndAMetathesisRule()
     {
-        var path = Start();
-        Import(path, "names", RuleId, document =>
+        var path = Start(out var ruleId, out var swapId);
+        Import(path, "names", ruleId, document =>
         {
             ((RecordAlternatives)document.Data["name"]!).Add("en", new RecordScalar("Intervocalic voicing"));
             document.Data.Set("description", new RecordAlternatives().Add("en", new RecordScalar("Stops voice between vowels.")));
         });
-        Import(path, "swap", SwapId, document =>
+        Import(path, "swap", swapId, document =>
             document.Data.Set("description", new RecordAlternatives().Add("en", new RecordScalar("Swaps two segments."))));
         using var cache = new FwDataProjectLoader().LoadCache(path);
-        var rule = (IPhRegularRule)cache.ServiceLocator.GetObject(RuleId);
+        var rule = (IPhRegularRule)cache.ServiceLocator.GetObject(ruleId);
         Assert.Equal("Intervocalic voicing", rule.Name.get_String(cache.DefaultAnalWs).Text);
         Assert.Equal("Stops voice between vowels.", rule.Description.get_String(cache.DefaultAnalWs).Text);
-        var swap = (IPhMetathesisRule)cache.ServiceLocator.GetObject(SwapId);
+        var swap = (IPhMetathesisRule)cache.ServiceLocator.GetObject(swapId);
         Assert.Equal("Swaps two segments.", swap.Description.get_String(cache.DefaultAnalWs).Text);
-        Assert.Empty(PlanEdit(cache, RuleId, _ => { }, out _).ChangeSet.Changes);
-        Assert.Empty(PlanEdit(cache, SwapId, _ => { }, out _).ChangeSet.Changes);
+        Assert.Empty(PlanEdit(cache, ruleId, _ => { }, out _).ChangeSet.Changes);
+        Assert.Empty(PlanEdit(cache, swapId, _ => { }, out _).ChangeSet.Changes);
     }
 
     [Fact]
     public void DirectionActiveCategoriesAndPropertiesImportThroughTypedOperations()
     {
-        var path = Start();
+        var path = Start(out var ruleId, out _);
         using (var cache = new FwDataProjectLoader().LoadCache(path))
         {
-            var lowering = Lower(cache, RuleId, document =>
+            var lowering = Lower(cache, ruleId, document =>
             {
                 document.Data.Set("direction", RecordScalar.Of(1));
                 document.Data.Set("disabled", RecordScalar.Of(true));
@@ -204,7 +206,7 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
             feat = cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS.Single().Guid;
         }
         static string Link(Guid target) => "[x](/objects/" + target.ToString("D") + "){.name guid=" + target.ToString("D") + "}";
-        Import(path, "scalars", RuleId, document =>
+        Import(path, "scalars", ruleId, document =>
         {
             document.Data.Set("direction", RecordScalar.Of(1));
             document.Data.Set("disabled", RecordScalar.Of(true));
@@ -213,27 +215,27 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
         });
         using (var cache = new FwDataProjectLoader().LoadCache(path))
         {
-            var held = ((IPhRegularRule)cache.ServiceLocator.GetObject(RuleId)).RightHandSidesOS.Single();
+            var held = ((IPhRegularRule)cache.ServiceLocator.GetObject(ruleId)).RightHandSidesOS.Single();
             Assert.Equal(category, held.InputPOSesRC.Single().Guid);
             Assert.Equal(feat, held.ReqRuleFeatsRC.Single().Guid);
-            var rule = (IPhRegularRule)cache.ServiceLocator.GetObject(RuleId);
+            var rule = (IPhRegularRule)cache.ServiceLocator.GetObject(ruleId);
             Assert.Equal(1, rule.Direction);
             Assert.True(rule.Disabled);
-            Assert.Empty(PlanEdit(cache, RuleId, _ => { }, out _).ChangeSet.Changes);
+            Assert.Empty(PlanEdit(cache, ruleId, _ => { }, out _).ChangeSet.Changes);
         }
     }
 
     [Fact]
     public void TheFormulaFieldsAreShownAndRefusedAsReadOnlyOnImport()
     {
-        var path = Start();
+        var path = Start(out var ruleId, out _);
         using var cache = new FwDataProjectLoader().LoadCache(path);
         var shown = SchemaOf(cache);
-        var export = new ProjectRecordExporter(cache, shown).Export(Kind, RuleId);
+        var export = new ProjectRecordExporter(cache, shown).Export(Kind, ruleId);
         Assert.Equal("p", ((RecordScalar)export.Document.Data["struc-desc"]!).Text);
         Assert.Equal("b", ((RecordScalar)Rhs(export.Document)["struc-change"]!).Text);
         Assert.Equal("[V]", ((RecordScalar)Rhs(export.Document)["left-context"]!).Text);
-        var lowering = Lower(cache, RuleId, document =>
+        var lowering = Lower(cache, ruleId, document =>
         {
             document.Data.Set("struc-desc", new RecordScalar("t"));
             Rhs(document).Set("struc-change", new RecordScalar("d"));
@@ -248,13 +250,13 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
     [Fact]
     public void AddingOrRemovingARightHandSideInTheFileIsRefused()
     {
-        var path = Start();
+        var path = Start(out var ruleId, out _);
         using var cache = new FwDataProjectLoader().LoadCache(path);
-        var added = PlanEdit(cache, RuleId, document =>
+        var added = PlanEdit(cache, ruleId, document =>
             ((RecordList)document.Data["right-hand-sides"]!).Add(new RecordObject { Guid = Guid.NewGuid() }), out _);
         Assert.Empty(added.ChangeSet.Changes);
         Assert.Contains(added.ChangeSet.Refusals, refusal => refusal.Kind == RecordRefusalKind.CreateNotWritable);
-        var removed = PlanEdit(cache, RuleId, document => document.Data["right-hand-sides"] = null, out _);
+        var removed = PlanEdit(cache, ruleId, document => document.Data["right-hand-sides"] = null, out _);
         Assert.Empty(removed.ChangeSet.Changes);
         Assert.Contains(removed.ChangeSet.Refusals, refusal => refusal.Kind == RecordRefusalKind.DeleteNotWritable);
     }
