@@ -33,8 +33,9 @@ namespace SIL.TextEditing.Project.Tests
             Assert.Equal(RecordFieldKind.Collection, entry.Field("do-not-publish-in")!.Kind);
             Assert.Equal(new[] { "MoAffixAllomorph", "MoAffixProcess", "MoStemAllomorph" },
                 entry.Field("lexeme-form")!.ObjectTypeNames);
-            Assert.Equal(RecordFieldKind.Rich, schema.ObjectType("PhPhonContext")!.Field("description")!.Kind);
-            Assert.True(schema.ObjectType("PhPhonContext")!.Field("description")!.Paragraphs);
+            var notebook = ProjectRecordSchema.Generate(fixture.Cache, ProjectRecordSchema.NotebookRecordOverlay).Schema;
+            Assert.Equal(RecordFieldKind.Rich, notebook.ObjectType("RnGenericRec")!.Field("description")!.Kind);
+            Assert.True(notebook.ObjectType("RnGenericRec")!.Field("description")!.Paragraphs);
         }
 
         [Fact]
@@ -259,7 +260,10 @@ namespace SIL.TextEditing.Project.Tests
         public void UnknownBlockKindIsRejected()
         {
             using var fixture = new ProjectFixture();
-            string overlay = ChangeOverlay(root => Field(root, "PhPhonContext", "Description").SetAttributeValue("blocks", "tables,unknown"));
+            var document = XDocument.Parse(ProjectRecordSchema.NotebookRecordOverlay);
+            document.Root!.Elements("class").Single(e => (string?)e.Attribute("name") == "RnGenericRec").Elements("field")
+                .Single(e => (string?)e.Attribute("name") == "Description").SetAttributeValue("blocks", "tables,unknown");
+            string overlay = document.ToString();
             var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
             Assert.Contains("Unknown block kind unknown", error.Message);
         }
@@ -415,16 +419,14 @@ namespace SIL.TextEditing.Project.Tests
         public void OverlayCanNameNotationAndLimitBlocks()
         {
             using var fixture = new ProjectFixture();
-            var context = "<class name=\"PhPhonContext\">";
-            var original = ProjectRecordSchema.LexiconEntryOverlay;
-            int start = original.IndexOf(context, StringComparison.Ordinal);
-            int end = original.IndexOf("</class>", start, StringComparison.Ordinal);
-            string section = original.Substring(start, end - start).Replace("key=\"description\" />", "key=\"description\" blocks=\"lists\" />");
-            string overlay = original.Substring(0, start) + section + original.Substring(end);
-            overlay = overlay.Replace("<field name=\"LiftResidue\" key=\"lift-residue\" />", "<field name=\"LiftResidue\" key=\"lift-residue\" notation=\"environment\" />");
+            var notebookOverlay = ProjectRecordSchema.NotebookRecordOverlay;
+            var text = "<field name=\"Description\" key=\"description\" />";
+            Assert.Contains(text, notebookOverlay);
+            var notebook = ProjectRecordSchema.Generate(fixture.Cache, notebookOverlay.Replace(text, "<field name=\"Description\" key=\"description\" blocks=\"lists\" />")).Schema;
+            Assert.Equal(BlockFeatures.Lists, notebook.ObjectType("RnGenericRec")!.Field("description")!.BlockFeatures);
+            var overlay = ProjectRecordSchema.LexiconEntryOverlay.Replace("<field name=\"LiftResidue\" key=\"lift-residue\" />", "<field name=\"LiftResidue\" key=\"lift-residue\" notation=\"environment\" />");
             var schema = ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema;
             Assert.Equal("environment", schema.Kind("lexicon/entry")!.Root.Field("lift-residue")!.Notation);
-            Assert.Equal(BlockFeatures.Lists, schema.ObjectType("PhPhonContext")!.Field("description")!.BlockFeatures);
         }
         static string ChangeOverlay(Action<XElement> change)
         {

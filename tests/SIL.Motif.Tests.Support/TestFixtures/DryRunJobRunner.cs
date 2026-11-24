@@ -27,8 +27,11 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// </summary>
 internal static class DryRunJobRunner
 {
-    public static CommandOutcome<DryRunProjection> Run(string fwDataPath, string productVersion, string proposalId)
+    /// <summary>With <paramref name="rebaseline"/>, a Baseline older than the project file is replaced by one that matches it, for a test that edits and applies repeatedly.</summary>
+    public static CommandOutcome<DryRunProjection> Run(string fwDataPath, string productVersion, string proposalId, bool rebaseline = false)
     {
+        if (rebaseline)
+            Rebaseline(fwDataPath);
         var enqueued = JobCommands.EnqueueDryRun(
             new EnqueueDryRunRequest(fwDataPath, productVersion, proposalId));
         if (!enqueued.Succeeded)
@@ -74,5 +77,21 @@ internal static class DryRunJobRunner
 
         return JobCommands.WaitForDryRun(new WaitForDryRunRequest(
             fwDataPath, productVersion, proposalId, jobId, TimeSpan.FromSeconds(5)));
+    }
+
+    private static void Rebaseline(string fwDataPath)
+    {
+        var full = Path.GetFullPath(fwDataPath);
+        var project = new ProjectLocator(full, Path.GetFileNameWithoutExtension(full));
+        var workspaceKey = ProjectWorkspaceKey.Compute(project);
+        using var database = ProjectMotifDatabase.Open(fwDataPath);
+        var baselines = new BaselineRepository(database);
+        if (baselines.GetCurrent(workspaceKey) is { } current && File.GetLastWriteTimeUtc(full).Ticks <= current.SourceLastWriteUtc.UtcDateTime.Ticks)
+            return;
+        var token = new BaselineToken(project.FieldWorksProjectIdentity, "sha256:" + new string('a', 64),
+            "1", DateTimeOffset.UtcNow.AddDays(1).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            "sha256:" + new string('b', 64));
+        baselines.Record(workspaceKey, new BaselinePublication(Path.GetDirectoryName(full)!, full, token),
+            DateTimeOffset.UtcNow.AddDays(1), new DateTimeOffset(File.GetLastWriteTimeUtc(full), TimeSpan.Zero), TestTextWords.Empty);
     }
 }

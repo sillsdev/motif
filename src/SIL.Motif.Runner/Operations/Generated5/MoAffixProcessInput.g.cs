@@ -31,10 +31,12 @@ public static class MoAffixProcessInputOperationKinds
                             "PhVariable" => cache.ServiceLocator.GetInstance<IPhVariableFactory>().Create(guid),
                             "PhSimpleContextSeg" => cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create(guid),
                             "PhSimpleContextNC" => cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create(guid),
+                            "PhSimpleContextBdry" => cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create(guid),
+                            "PhSequenceContext" => cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create(guid),
                             _ => throw new InvalidOperationException("Unsupported affix input class."),
                         };
                         owner.InputOS.Insert(index, child);
-            }, true, false, new[] { "PhVariable", "PhSimpleContextSeg", "PhSimpleContextNC" }, "PhContextOrVar", true);
+            }, true, false, new[] { "PhVariable", "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext" }, "PhContextOrVar", true);
         OperationHandlerRegistry.Register(Create, handler, handler.FieldWrite("MoAffixProcess", "Input"));
     }
 }

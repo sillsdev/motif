@@ -249,10 +249,10 @@
   </class>
   <class name="MoAffixProcess">
     <exclude name="FeatureConstraints" />
-    <field name="Input" key="input" />
-    <field name="Output" key="output" />
-    <field name="Input" key="input-formula" notation="rule-formula" alias="true" />
-    <field name="Output" key="output-formula" notation="rule-formula" alias="true" />
+    <field name="Input" key="input" notation="rule-formula" />
+    <field name="Output" key="output" notation="rule-formula" />
+    <field name="Input" key="input-parts" alias="true" />
+    <field name="Output" key="output-parts" alias="true" />
   </class>
   <class name="MoCopyFromInput">
     <field name="Content" key="content" />

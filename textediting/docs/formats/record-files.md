@@ -328,9 +328,23 @@ is edited in FieldWorks by the inflection-feature chooser (`MsaInflectionFeature
 ## Rule-formula notation
 
 `notation="rule-formula"` (`text/x-fieldworks-rule-formula`) marks a field that holds a phonological formula: the Input and Output of an affix process, and the
-structural description, structural change, left context and right context of a phonological rule. `RuleNotation` renders and reads it in one place. An import
-does not write these fields: a change to one is refused with `rule-notation.read-only`. An affix process shows its text under `input-formula` and
-`output-formula`, beside the `input` and `output` object lists, which stay writable.
+structural description, structural change, left context and right context of a phonological rule. `RuleNotation` renders and reads it in one place. An affix
+process shows its text under its field's one key, `input` and `output`, and an import of that text writes the objects FieldWorks's affix editor makes. The same
+objects also appear under `input-parts` and `output-parts`, which an import uses only to reach what the text cannot say (a context's description, an alpha
+constraint on a class); a field the text already says (a copy's, modify's or insertion's content, a modification class, a context's phoneme, boundary or class,
+a group's members) is shown there and an import refuses a change to it. Adding, removing or moving a member under those keys is not offered, because the
+text is the one key that does it. Clearing `input` or `output` is not offered either: an affix process needs at least one column and one step. The fields of a phonological rule are shown and an import refuses a change to one with `rule-notation.read-only`.
+
+- **Writing an affix process.** An import reads the new text, checks it, and diffs it against the project by longest common subsequence of the canonical text of
+  each element (Input columns, Output steps), leftmost on a tie. A kept element keeps its object; a changed or moved element is deleted and created, and a copy or
+  modify has its content set explicitly from its `$n` against the Input as it will stand, so a change to Input and Output in one file is checked together. An
+  Input-only change that would leave a kept Output step pointing at a column it removes is refused (`rule-notation.dangling-index`). A column that was a group
+  also drops the member contexts only it used, as FieldWorks's editor does. An anonymous class written in a bracket is created as a new natural class named
+  `Created automatically for rule "..."` each time, as FieldWorks does, and is never shared with another rule; a class a change stops using is never deleted, and a named class is only ever referenced. A modify of a stem variable (`*`) is refused with `rule-notation.context-not-allowed`, as FieldWorks's editor does not offer it. An edit that the text cannot say
+  is refused: `rule-notation.unsupported-class` for a group that names one unit twice, `rule-notation.limit-exceeded` past 16 columns or 256 steps. Each edit the
+  former object-list keys allowed is a text edit: add, remove or move a column or step; set a context's phoneme, boundary or class; add, remove or move a group's
+  members; set a copy's column; set a modification's class; set an insertion's class; add or remove an inserted unit. The name and description of a context, and an
+  alpha constraint on an affix class, are not part of the text; they stay writable under `input-parts` and `output-parts`.
 
 - **Tokens.** A field is a list of tokens separated by white space; no meaning depends on how much white space there is, or whether there is any between a
   bracket and its neighbours. Two lexical modes: outside brackets, a literal (a phoneme code) must escape backslash, `[` `]` `(` `)` `{` `}` `<` `>` `$` `~` `*` `#`
@@ -368,8 +382,8 @@ does not write these fields: a change to one is refused with `rule-notation.read
   context that is not in the project's context list in a form the notation has, a sequence with no member, two constraints on one feature, more than 24 letters, a
   copy whose content is not in the process's input, a class with a constraint in an affix field.
 - **Codes.** `rule-notation.syntax`, `rule-notation.bad-repeat`, `rule-notation.unknown-phoneme`, `rule-notation.unknown-natural-class`,
-  `rule-notation.ambiguous-label`, `rule-notation.alpha-mismatch`, `rule-notation.index-out-of-range`, `rule-notation.context-not-allowed`,
-  `rule-notation.unrenderable` and, for an import, `rule-notation.read-only`; a feature label that does not resolve reports its `fs-notation.*` code.
+  `rule-notation.ambiguous-label`, `rule-notation.alpha-mismatch`, `rule-notation.index-out-of-range`, `rule-notation.dangling-index`, `rule-notation.context-not-allowed`,
+  `rule-notation.limit-exceeded`, `rule-notation.unsupported-class`, `rule-notation.unrenderable` and, for an import of a rule field, `rule-notation.read-only`; a feature label that does not resolve reports its `fs-notation.*` code.
 - **Examples.** An affix process `m a $1` (prefix `ma-`), input `[C] *` with output `$1 u m $2` (infix), input `<[C] [V]> *` with output `$1 $1 $2`
   (reduplication), output `$1~[voi:+] $2` (voice the first consonant); a rule context `# [C]{1,3} (a) [V]`, a change `[voi:α]` with a right context
   `[cons:+ voi:α]` (assimilation), and `[cons:+ voi:-α]` (dissimilation).

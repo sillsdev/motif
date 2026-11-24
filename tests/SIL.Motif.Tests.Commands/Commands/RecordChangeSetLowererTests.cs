@@ -154,8 +154,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var failures = new List<string>();
         var familiesSeen = new HashSet<string>();
         // Every (declaring class, field) phase 3 covers on some verb, gathered across the schema types that bind to it.
-        bool Structure(string className, string field) => RecordWritableFields.IsFeatureStructure(_schema.Schema.ObjectType(className)!.Field(field)!);
-        var covered = resolver.Entries.Where(entry => entry.Value is WritableFieldResolution.Covered && !Structure(entry.Key.Class, entry.Key.Field))
+        bool Structure(string className, string field) => RecordWritableFields.IsFeatureStructure(_schema.Schema.ObjectType(className)!.Field(field)!) ||
+            RecordWritableFields.IsRuleFormula(_schema.Schema.ObjectType(className)!.Field(field)!);
+        var covered = resolver.Entries.Where(entry => entry.Value is WritableFieldResolution.Covered { Owner: null } && !Structure(entry.Key.Class, entry.Key.Field))
             .Select(entry => (Entry: entry.Key, Binding: _schema.FieldBinding(entry.Key.Class, entry.Key.Field)!.Value))
             .GroupBy(item => (item.Binding.DeclaringClass, item.Binding.Field)).ToArray();
         foreach (var group in covered)
@@ -204,7 +205,8 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         foreach (var type in _schema.Schema.ObjectTypes)
             foreach (var field in type.Fields)
             {
-                if (RecordWritableFields.IsFeatureStructure(field) ||
+                if (RecordWritableFields.IsFeatureStructure(field) || RecordWritableFields.IsRuleFormula(field) ||
+                    RecordWritableFields.IsRuleParts(type, field, _schema) ||
                     _schema.FieldBinding(type.Name, field.Name) is not { } binding ||
                     !resolver.Entries.Any(e => e.Key.Class == type.Name && e.Key.Field == field.Name))
                     continue;
@@ -507,7 +509,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
     // Why liblcm cannot make an owned class generically: rules about classes, not pairs.
     /// <summary>Remove and Move on references whose target class is abstract with no standalone subclass.</summary>
-    private const int UnexercisedAbstractReferencePairs = 29;
+    private const int UnexercisedAbstractReferencePairs = 26;
     private const string AbstractClass = "the class is abstract and no concrete subclass stands alone in the fixture";
     private const string NoOwnerChain = "no owning field leads from an object the project holds to the class";
     private const string CreationRefused = "only the class's own composer creates it, or no create kind does, so the fixture holds none";
@@ -729,7 +731,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var unexercised = new List<string>();
         foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
         {
-            if (resolution is not WritableFieldResolution.Covered)
+            if (resolution is not WritableFieldResolution.Covered { Owner: null })
                 continue;
             var type = _schema.Schema.ObjectType(typeName)!;
             var field = type.Field(fieldName)!;
@@ -822,7 +824,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var allReasons = new List<string>();
         foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
         {
-            if (resolution is not WritableFieldResolution.Covered || _schema.Schema.ObjectType(typeName)?.Field(fieldName) is not { } field
+            if (resolution is not WritableFieldResolution.Covered { Owner: null } || _schema.Schema.ObjectType(typeName)?.Field(fieldName) is not { } field
                 || _schema.FieldBinding(typeName, fieldName) is not { } binding)
                 continue;
             var declared = Declarations(binding, verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb)

@@ -18,9 +18,8 @@ namespace SIL.TextEditing.Project
     /// its place and reason, and with its value where <see cref="Value"/> keeps it. A null or described <see cref="Value"/> means the report alone does not hold the data.</summary>
     public sealed class UnexportedValue
     {
-        internal UnexportedValue(Guid owner, string className, string field, string reason, string? value, string? key = null)
+        internal UnexportedValue(Guid owner, string className, string field, string reason, string? value)
         {
-            Key = key;
             Object = owner;
             Class = className;
             Field = field;
@@ -36,9 +35,6 @@ namespace SIL.TextEditing.Project
 
         /// <summary>The metadata field name, or <c>(record)</c> when the whole record could not be written.</summary>
         public string Field { get; }
-
-        /// <summary>The schema key whose conversion failed, when that is known; a field bound to several keys is locked by this one alone.</summary>
-        internal string? Key { get; }
 
         /// <summary>Why the file does not hold it.</summary>
         public string Reason { get; }
@@ -281,7 +277,7 @@ namespace SIL.TextEditing.Project
                 {
                     string? kept = null;
                     try { Describe(obj.Hvo, flid, out kept); } catch (Exception) { kept = null; }
-                    run.Unexported.Add(new UnexportedValue(obj.Guid, obj.ClassName, _metadata.GetFieldName(flid), "The value could not be converted: " + (e is RuleNotationException rule ? rule.Code + ": " : "") + e.Message, kept, field.Name));
+                    run.Unexported.Add(new UnexportedValue(obj.Guid, obj.ClassName, _metadata.GetFieldName(flid), "The value could not be converted: " + (e is RuleNotationException rule ? rule.Code + ": " : "") + e.Message, kept));
                     continue;
                 }
                 if (value != null && !value.IsEmpty) result[field.Name] = value;

@@ -43,6 +43,8 @@ A phoneme's representations must be unique after NFD normalization, with no whit
 
 The existing `AuthorLexemeForm` additionally accepts `environments: ["<id>"]`; it links those environments to the new stem/affix form with `addRefPhoneEnv`, declaring a dependency on the form create. Its catalog command and `AuthorFeatureStructure` now also compose against the prepared Draft copy, and return created ids.
 
+A record-file import also writes an affix process's Input and Output as rule-formula text (`textediting/docs/formats/record-files.md`, "Rule-formula notation"). It builds the same objects FieldWorks's affix editor makes, and its checks allow a stem variable in any input column, boundary and column inputs, and an insertion of several phonemes or boundary markers, which the typed `AuthorAffixProcess` intent does not build.
+
 `grammar/phEnvironment/setStringRepresentation` carries `{ws,text,left,right}`. The typed references are retained in the lowered operation, and lowering re-resolves them and requires the authored string to match. A missing/renamed class or changed phoneme code refuses rather than silently changing the condition. Natural-class feature/member changes that retain the same abbreviation still require broader relationship-footprint handling; they are an explicit remaining conflict/rebase limitation.
 
 Sequence create effects and Apply anchors conservatively include the entire owning sequence. An unrelated sequence insertion may therefore require a new Dry Run. The anchor captures the complete starting footprint before any operation executes, keeping several creates into the same existing owner consistent between Dry Run and Apply. Placement remains identity-relative and never turns into an array index in canonical intent.

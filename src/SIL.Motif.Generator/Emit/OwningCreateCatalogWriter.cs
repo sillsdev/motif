@@ -23,6 +23,8 @@ public static class OwningCreateCatalogWriter
             "    \"PhVariable\" => cache.ServiceLocator.GetInstance<IPhVariableFactory>().Create(guid),\n" +
             "    \"PhSimpleContextSeg\" => cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create(guid),\n" +
             "    \"PhSimpleContextNC\" => cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create(guid),\n" +
+            "    \"PhSimpleContextBdry\" => cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create(guid),\n" +
+            "    \"PhSequenceContext\" => cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create(guid),\n" +
             "    _ => throw new InvalidOperationException(\"Unsupported affix input class.\"),\n" +
             "};\nowner.InputOS.Insert(index, child);"),
         new("MoAffixProcess", "Output", "MoRuleMapping", FieldCard.Seq,
@@ -259,7 +261,7 @@ public static class OwningCreateCatalogWriter
                 .Replace("__POSITION_MATTERS__", creation.PositionMatters ? "true" : "false")
                 .Replace("__CLASSES__", creation.Owner == "MoAffixProcess"
                     ? creation.Field == "Input"
-                        ? "new[] { \"PhVariable\", \"PhSimpleContextSeg\", \"PhSimpleContextNC\" }"
+                        ? "new[] { \"PhVariable\", \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\" }"
                         : "new[] { \"MoCopyFromInput\", \"MoInsertPhones\", \"MoInsertNC\", \"MoModifyFromInput\" }"
                     : creation.Sig switch
                 {

@@ -38,6 +38,7 @@ internal static class AffixProcessPrerequisiteFootprint
         var minted = FootprintPlan.TargetsMintedWithinProposal(proposal);
         var objects = new Dictionary<CanonicalId, ObjectSnapshot>(CanonicalId.ByGuid);
         var usesPhonemes = false;
+        var contexts = new HashSet<CanonicalId>(CanonicalId.ByGuid);
         var sound = SoundSystemSnapshots.Read(cache);
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
         foreach (var process in existing)
@@ -47,27 +48,38 @@ internal static class AffixProcessPrerequisiteFootprint
             foreach (var input in process.InputOS)
             {
                 Add(input);
-                if (input is IPhSimpleContextSeg { FeatureStructureRA: { } phone }) Phone(CanonicalId.FromGuid(phone.Guid));
-                if (input is IPhSimpleContextNC { FeatureStructureRA: { } naturalClass }) NaturalClass(CanonicalId.FromGuid(naturalClass.Guid));
+                Context(input);
+                if (input is IPhSequenceContext sequence)
+                    foreach (var member in sequence.MembersRS)
+                    {
+                        Add(member);
+                        contexts.Add(CanonicalId.FromGuid(member.Guid));
+                        Context(member);
+                    }
             }
             foreach (var output in process.OutputOS)
             {
                 Add(output);
                 if (output is IMoInsertPhones insert)
-                    foreach (var phone in insert.ContentRS.OfType<IPhPhoneme>()) Phone(CanonicalId.FromGuid(phone.Guid));
+                    foreach (var unit in insert.ContentRS) Unit(CanonicalId.FromGuid(unit.Guid));
                 if (output is IMoInsertNC { ContentRA: { } insertClass }) NaturalClass(CanonicalId.FromGuid(insertClass.Guid));
                 if (output is IMoModifyFromInput { ModificationRA: { } features }) NaturalClass(CanonicalId.FromGuid(features.Guid));
             }
         }
+        var data = new HashSet<CanonicalId>(CanonicalId.ByGuid) { CanonicalId.FromGuid(cache.LangProject.PhonologicalDataOA.Guid) };
+        contexts.UnionWith(Created(PhPhonDataContextsOperationKinds.Create, data));
         foreach (var operation in proposal.Operations)
         {
             if (operation.Target is not { } target || operation.After is not { } after) continue;
-            if (inputs.Contains(target) && operation.Kind == PhSimpleContextSegFeatureStructureOperationKinds.SetFeatureStructure)
+            var context = inputs.Contains(target) || contexts.Contains(target);
+            if (context && operation.Kind == PhSimpleContextSegFeatureStructureOperationKinds.SetFeatureStructure)
                 Phone(PhSimpleContextSegFeatureStructureSetPayload.Parse(after));
-            if (inputs.Contains(target) && operation.Kind == PhSimpleContextNCFeatureStructureOperationKinds.SetFeatureStructure)
+            if (context && operation.Kind == PhSimpleContextBdryFeatureStructureOperationKinds.SetFeatureStructure)
+                Unit(PhSimpleContextBdryFeatureStructureSetPayload.Parse(after));
+            if (context && operation.Kind == PhSimpleContextNCFeatureStructureOperationKinds.SetFeatureStructure)
                 NaturalClass(PhSimpleContextNCFeatureStructureSetPayload.Parse(after));
             if (outputs.Contains(target) && operation.Kind == MoInsertPhonesContentOperationKinds.AddRefContent)
-                Phone(MoInsertPhonesContentMemberPayload.Parse(after, operation.Kind));
+                Unit(MoInsertPhonesContentMemberPayload.Parse(after, operation.Kind));
             if (outputs.Contains(target) && operation.Kind == MoInsertNCContentOperationKinds.SetContent)
                 NaturalClass(MoInsertNCContentSetPayload.Parse(after));
             if (outputs.Contains(target) && operation.Kind == MoModifyFromInputModificationOperationKinds.SetModification)
@@ -150,6 +162,26 @@ internal static class AffixProcessPrerequisiteFootprint
                 if (spec.FeatureRA is { } feature) Ownership(CanonicalId.FromGuid(feature.Guid));
                 if (spec is IFsClosedValue closed && closed.ValueRA is { } value) Ownership(CanonicalId.FromGuid(value.Guid));
             }
+        }
+        void Context(IPhContextOrVar input)
+        {
+            if (input is IPhSimpleContextSeg { FeatureStructureRA: { } phone }) Phone(CanonicalId.FromGuid(phone.Guid));
+            if (input is IPhSimpleContextBdry { FeatureStructureRA: { } marker }) Unit(CanonicalId.FromGuid(marker.Guid));
+            if (input is IPhSimpleContextNC { FeatureStructureRA: { } naturalClass }) NaturalClass(CanonicalId.FromGuid(naturalClass.Guid));
+        }
+        void Unit(CanonicalId id)
+        {
+            usesPhonemes = true;
+            if (minted.Contains(id)) return;
+            RequireExisting(id, "affix prerequisite unit");
+            if (ReferenceFieldLowering.Resolve<IPhTerminalUnit>(cache, id, "affix prerequisite") is IPhPhoneme)
+            {
+                Phone(id);
+                return;
+            }
+            var marker = ReferenceFieldLowering.Resolve<IPhBdryMarker>(cache, id, "affix prerequisite");
+            Add(marker);
+            foreach (var code in marker.CodesOS) Add(code);
         }
         void Phone(CanonicalId id)
         {

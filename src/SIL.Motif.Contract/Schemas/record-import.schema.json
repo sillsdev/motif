@@ -126,6 +126,17 @@
             "fs-notation.unsupported-feature",
             "fs-notation.unrenderable",
             "rule-notation.read-only",
+            "rule-notation.syntax",
+            "rule-notation.bad-repeat",
+            "rule-notation.unknown-phoneme",
+            "rule-notation.unknown-natural-class",
+            "rule-notation.ambiguous-label",
+            "rule-notation.alpha-mismatch",
+            "rule-notation.index-out-of-range",
+            "rule-notation.dangling-index",
+            "rule-notation.context-not-allowed",
+            "rule-notation.limit-exceeded",
+            "rule-notation.unsupported-class",
             "rule-notation.unrenderable"
           ]
         },
