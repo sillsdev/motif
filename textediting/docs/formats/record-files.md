@@ -297,6 +297,34 @@ to pay money for [something]{.v}
   is the host's `INotationChecker` for notation fields.
 - Not checked yet: whether a reference resolves, its target's class, collection order, deletes and moves. They are planned.
 
+## Feature-structure notation
+
+A project record schema marks an owned feature structure (`FsFeatStruc`) with `notation="feature-structure"` and the field is then one double-quoted
+notation value, `text/x-fieldworks-feature-structure`. `FeatureStructureNotation` renders and reads it in one place. The five fields that carry it are
+`MoStemMsa.MsFeatures`, `MoInflAffMsa.InflFeats`, `MoDerivAffMsa.FromMsFeatures`, `MoDerivAffMsa.ToMsFeatures` and `MoAffixAllomorph.MsEnvFeatures`; each
+is edited in FieldWorks by the inflection-feature chooser (`MsaInflectionFeatureListDlgLauncherSlice` in `MorphologyParts.xml`).
+
+- **Grammar.** `structure = ws "[" { ws pair } ws "]" ws`, `pair = label ":" label`, `label = { char | backslash any }` with at least one character. `ws` is
+  zero or more white-space characters, meaning the Unicode White_Space set (.NET `char.IsWhiteSpace`). Inside a label a backslash, `[`, `]`, `:` and every
+  white-space character must follow a backslash; a backslash before any character gives that character, so a reader accepts a redundant escape and a render never
+  writes one. `[]` is a structure that exists and holds no feature; a structure that does not exist has no key in the file.
+- **Two escape layers.** The notation sits inside the record file's double-quoted string, so each notation backslash is written twice there: the label `a b` as a
+  feature appears in a file as `"[a\\ b:c]"`. The string layer is read first, the notation layer second.
+- **Labels.** A feature and a value are each written by their abbreviation, or by their name when there is no abbreviation; this is the decision, and the
+  show-in-gloss flag is not consulted, so the text does not change meaning when someone toggles it. FieldWorks shows a value by its abbreviation when its show-in-gloss flag is set (as it is for values FieldWorks creates, so a typical project shows `[cas:nom num:pl]`) and by its name otherwise. The text is the first non-empty
+  alternative among the default analysis writing system and then the project's other current analysis writing systems in their order (vernacular writing systems
+  are never read), so a change of default analysis writing system or a rename in the project can change a render; a file whose old value no longer matches is
+  stale and refused. Labels are normalized to NFC and compared case-sensitively.
+- **Order.** Pairs are in ordinal order (`string.CompareOrdinal`) of the feature label, so a render is canonical and a diff shows only the pairs that differ.
+  FieldWorks orders by the structure's type and then by feature name; this notation does not. Reading accepts any order.
+- **Not written.** Only closed values of features in the project's morphosyntactic feature system are written. A structure that holds a complex, negated, shared,
+  disjunctive or open value, a feature twice, a closed value with no feature or no choice, a feature outside that system, a value that is not one of its feature's
+  values, or a label that is empty, has a control character or is not unique (two features, or two values of one feature) is listed as an unexported value and its
+  field is locked: the file never shows a guess. A structure's declared type is not in the text and an edit leaves it as it is.
+- **Codes.** Reading and writing refuse with a code and never guess: `fs-notation.syntax` (not well formed), `fs-notation.unknown-feature`,
+  `fs-notation.unknown-value`, `fs-notation.ambiguous-label`, `fs-notation.repeated-feature`, `fs-notation.unsupported-feature` (a complex feature) and
+  `fs-notation.unrenderable` (the project's structure cannot be shown, so an edit cannot be checked). An import reports them as the code of the refused change.
+
 ## Block features
 
 A rich field of paragraphs says which of tables, lists and headings it allows (ADR 0033). The default is all three. A field of one

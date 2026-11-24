@@ -210,6 +210,11 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         private void LowerScalar(RecordChange change, string type, string key, CanonicalId target, string role)
         {
             var field = schema.Schema.ObjectType(type)?.Field(key);
+            if (field is not null && RecordWritableFields.IsFeatureStructure(field))
+            {
+                LowerFeatureStructure(change, type, key, target, role);
+                return;
+            }
             var set = change.Kind == RecordChangeKind.Set;
             var kind = KindFor(change, type, key, set ? RecordWriteVerb.Set : RecordWriteVerb.Clear);
             object? after = new { };
@@ -227,6 +232,82 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
                     $"A {field?.Kind.ToString() ?? "missing"} value has no payload shape for {kind}.");
             _pending.Add(Operation(Id(role + ":" + kind), kind, target, Named(type, key, after)));
+        }
+
+        private void LowerFeatureStructure(RecordChange change, string type, string key, CanonicalId target, string role)
+        {
+            var binding = schema.FieldBinding(type, key)!.Value;
+            var set = change.Kind == RecordChangeKind.Set;
+            var kind = KindFor(change, type, key, set ? RecordWriteVerb.Set : RecordWriteVerb.Clear,
+                RecordWritableFields.FeatureStructureClass);
+            var owner = cache.ServiceLocator.GetObject(change.ObjectGuid!.Value);
+            var flid = cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true);
+            var heldHvo = cache.DomainDataByFlid.get_ObjectProp(owner.Hvo, flid);
+            var held = heldHvo == 0 ? null : (IFsFeatStruc)cache.ServiceLocator.GetObject(heldHvo);
+            string? current;
+            try
+            {
+                current = held is null ? null : FeatureStructureNotation.Render(held, cache);
+            }
+            catch (FeatureStructureNotationException exception)
+            {
+                throw Refuse(exception.Code, change, exception.Message);
+            }
+            if (!string.Equals(current, change.Old, StringComparison.Ordinal))
+                throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
+            if (!set)
+            {
+                if (held is null)
+                    throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project holds no feature structure to clear.");
+                if (kind != MoStemMsaMsFeaturesOperationKinds.DeleteMsFeatures)
+                    throw Refuse(RefusalCodes.RecordImportFieldUncovered, change,
+                        "No operation deletes this feature structure; write [] to leave it with no features.");
+                _pending.Add(Operation(Id(role + ":" + kind), kind, target, new { }));
+                return;
+            }
+            IReadOnlyList<FeatureStructureSelection> wanted;
+            try
+            {
+                var system = cache.LangProject.MsFeatureSystemOA ?? throw Refuse(RefusalCodes.RecordImportNotExecutable, change,
+                    "The project has no morphosyntactic feature system.");
+                wanted = FeatureStructureNotation.Parse(change.New ?? "", system, cache);
+            }
+            catch (FeatureStructureNotationException exception)
+            {
+                throw Refuse(exception.Code, change, exception.Message);
+            }
+            CanonicalId structure;
+            if (held is null)
+            {
+                structure = Id(role + ":structure");
+                _pending.Add(Operation(Id(role + ":" + kind), kind, target, new { }, entity: structure));
+            }
+            else
+                structure = CanonicalId.FromGuid(held.Guid);
+            var existing = held?.FeatureSpecsOC.OfType<IFsClosedValue>().Where(spec => spec.FeatureRA is not null)
+                .ToDictionary(spec => spec.FeatureRA.Guid) ?? [];
+            var keep = wanted.Select(selection => selection.Feature.Guid).ToHashSet();
+            foreach (var spec in existing.Values.Where(spec => !keep.Contains(spec.FeatureRA.Guid)).OrderBy(spec => spec.Guid))
+                _pending.Add(Operation(Id(role + ":delete:" + spec.Guid.ToString("N")), FsFeatStrucFeatureSpecsOperationKinds.DeleteFeatureSpecs,
+                    CanonicalId.FromGuid(spec.Guid), new { }));
+            foreach (var selection in wanted)
+            {
+                var feature = selection.Feature.Guid.ToString("N");
+                if (existing.TryGetValue(selection.Feature.Guid, out var spec))
+                {
+                    if (spec.ValueRA?.Guid != selection.Value.Guid)
+                        _pending.Add(Operation(Id(role + ":value:" + feature), FsClosedValueValueOperationKinds.SetValue,
+                            CanonicalId.FromGuid(spec.Guid), new { @ref = CanonicalId.FromGuid(selection.Value.Guid).Value }));
+                    continue;
+                }
+                var created = Id(role + ":spec:" + feature);
+                _pending.Add(Operation(Id(role + ":create:" + feature), FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs,
+                    structure, new { }, entity: created));
+                _pending.Add(Operation(Id(role + ":feature:" + feature), FsFeatureSpecificationFeatureOperationKinds.SetFeature,
+                    created, new { @ref = CanonicalId.FromGuid(selection.Feature.Guid).Value }));
+                _pending.Add(Operation(Id(role + ":value:" + feature), FsClosedValueValueOperationKinds.SetValue,
+                    created, new { @ref = CanonicalId.FromGuid(selection.Value.Guid).Value }));
+            }
         }
 
         private void LowerAlternative(RecordChange change, string type, string key, CanonicalId target, string role, bool set)

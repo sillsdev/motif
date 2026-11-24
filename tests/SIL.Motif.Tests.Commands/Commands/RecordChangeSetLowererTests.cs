@@ -154,7 +154,8 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var failures = new List<string>();
         var familiesSeen = new HashSet<string>();
         // Every (declaring class, field) phase 3 covers on some verb, gathered across the schema types that bind to it.
-        var covered = resolver.Entries.Where(entry => entry.Value is WritableFieldResolution.Covered)
+        bool Structure(string className, string field) => RecordWritableFields.IsFeatureStructure(_schema.Schema.ObjectType(className)!.Field(field)!);
+        var covered = resolver.Entries.Where(entry => entry.Value is WritableFieldResolution.Covered && !Structure(entry.Key.Class, entry.Key.Field))
             .Select(entry => (Entry: entry.Key, Binding: _schema.FieldBinding(entry.Key.Class, entry.Key.Field)!.Value))
             .GroupBy(item => (item.Binding.DeclaringClass, item.Binding.Field)).ToArray();
         foreach (var group in covered)
@@ -203,7 +204,8 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         foreach (var type in _schema.Schema.ObjectTypes)
             foreach (var field in type.Fields)
             {
-                if (_schema.FieldBinding(type.Name, field.Name) is not { } binding ||
+                if (RecordWritableFields.IsFeatureStructure(field) ||
+                    _schema.FieldBinding(type.Name, field.Name) is not { } binding ||
                     !resolver.Entries.Any(e => e.Key.Class == type.Name && e.Key.Field == field.Name))
                     continue;
                 if (catalog.CanWrite(binding.DeclaringClass, binding.Field) &&
@@ -214,6 +216,8 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             }
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures.Distinct()));
         Assert.All(familiesSeen, family => Assert.Contains(family, RecordLoweringRules.NotLoweredReasons.Keys));
+        Assert.True(catalog.CanWrite("MoStemMsa", "MsFeatures"));
+        Assert.True(catalog.CanWrite("MoInflAffMsa", "InflFeats"));
         Assert.True(catalog.CanWrite("LexSense", "Gloss"));
         Assert.False(catalog.CanWrite("LexEntry", "HomographNumber"));
         Assert.True(catalog.CanCreate("LexEntry", "Senses", "LexSense"));

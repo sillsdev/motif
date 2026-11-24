@@ -6,7 +6,7 @@ Without `--draft` it is a dry run: it prints the changes (field, old value, new 
 
 A file made from another schema (for example, a custom field was added after the export) is refused whole as `record-import.plan-refused` with the finding `fwmd.record.schema-mismatch`. A file made from an older state of the record is refused whole: `record-import.plan-refused`, with the base verdict (`stale` or `missing`) in its facts. Export the record again and redo the edits; there is no merge. A file that cannot be read is `record-import.file-unreadable`.
 
-Each change that has no operation is listed with its code: `record-import.change-refused` (the importer declines it), `record-import.field-uncovered` (no operation kind writes this field), `record-import.shape-unsupported`, `record-import.value-stale` (the project's value is no longer the one the file started from) or `record-import.not-executable`.
+Each change that has no operation is listed with its code: `record-import.change-refused` (the importer declines it), `record-import.field-uncovered` (no operation kind writes this field), `record-import.shape-unsupported`, `record-import.value-stale` (the project's value is no longer the one the file started from), `record-import.not-executable`, or one of `fs-notation.syntax`, `fs-notation.unknown-feature`, `fs-notation.unknown-value`, `fs-notation.ambiguous-label`, `fs-notation.repeated-feature`, `fs-notation.unsupported-feature` and `fs-notation.unrenderable` (a feature-structure text that cannot be read or written).
 
 The summary stays within 2 KB. Changes, operations and refusals are listed three to a page; `--page <n>` reads the next page. `--json` and the MCP tool `motif_import_record` return the same `RecordImportResponse`.
 

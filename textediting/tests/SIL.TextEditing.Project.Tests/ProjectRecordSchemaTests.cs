@@ -270,7 +270,7 @@ namespace SIL.TextEditing.Project.Tests
             using var fixture = new ProjectFixture();
             string overlay = ChangeOverlay(root => Field(root, "LexEntry", "HomographNumber").SetAttributeValue("notation", "environment"));
             var error = Assert.Throws<ArgumentException>(() => ProjectRecordSchema.Generate(fixture.Cache, overlay).Schema);
-            Assert.Contains("Notation requires a string field: homograph-number", error.Message);
+            Assert.Contains("Notation requires a string field or an owned feature structure: homograph-number", error.Message);
         }
 
         [Fact]

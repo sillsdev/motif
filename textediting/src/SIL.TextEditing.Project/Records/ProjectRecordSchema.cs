@@ -244,7 +244,8 @@ namespace SIL.TextEditing.Project
             bool isText = t == CellarPropertyType.Unicode || t == CellarPropertyType.MultiUnicode;
             bool isRich = t == CellarPropertyType.String || t == CellarPropertyType.MultiString;
             bool paragraph = t == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "StText";
-            if (notation != null && !isText && !isRich) throw new ArgumentException("Notation requires a string field: " + key);
+            bool featureStructure = t == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "FsFeatStruc" && notation == FeatureStructureNotation.Name;
+            if (notation != null && !isText && !isRich && !featureStructure) throw new ArgumentException("Notation requires a string field or an owned feature structure: " + key);
             if (blockText != null && !paragraph) throw new ArgumentException("Blocks require a paragraph field: " + key);
             string? wsText = (string?)entry.Attribute("ws");
             if (wsText != null && (!(isText || isRich || paragraph) || multi))

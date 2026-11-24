@@ -117,7 +117,14 @@
             "record-import.field-uncovered",
             "record-import.shape-unsupported",
             "record-import.value-stale",
-            "record-import.not-executable"
+            "record-import.not-executable",
+            "fs-notation.syntax",
+            "fs-notation.unknown-feature",
+            "fs-notation.unknown-value",
+            "fs-notation.ambiguous-label",
+            "fs-notation.repeated-feature",
+            "fs-notation.unsupported-feature",
+            "fs-notation.unrenderable"
           ]
         },
         "class": {
