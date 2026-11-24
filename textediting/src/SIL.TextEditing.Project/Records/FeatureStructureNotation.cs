@@ -80,7 +80,35 @@ namespace SIL.TextEditing.Project
         {
             if (structure == null) throw new ArgumentNullException(nameof(structure));
             if (cache == null) throw new ArgumentNullException(nameof(cache));
-            var system = cache.LangProject.MsFeatureSystemOA;
+            return Render(structure, cache, cache.LangProject.MsFeatureSystemOA, "morphosyntactic");
+        }
+
+        /// <summary>The canonical text of the structure against <paramref name="system"/>, which names the features it may use; the text is the same form
+        /// <see cref="Render(IFsFeatStruc, LcmCache)"/> writes for the morphosyntactic system.</summary>
+        /// <exception cref="FeatureStructureNotationException">As <see cref="Render(IFsFeatStruc, LcmCache)"/>.</exception>
+        public static string Render(IFsFeatStruc structure, LcmCache cache, IFsFeatureSystem? system)
+        {
+            if (structure == null) throw new ArgumentNullException(nameof(structure));
+            if (cache == null) throw new ArgumentNullException(nameof(cache));
+            return Render(structure, cache, system, "feature");
+        }
+
+        static string Render(IFsFeatStruc structure, LcmCache cache, IFsFeatureSystem? system, string systemName)
+        {
+            var pairs = Collect(structure, cache, system, systemName);
+            pairs.Sort((a, b) => string.CompareOrdinal(a.Feature, b.Feature));
+            var text = new StringBuilder("[");
+            for (int i = 0; i < pairs.Count; i++)
+            {
+                if (i > 0) text.Append(' ');
+                text.Append(Escape(pairs[i].Feature)).Append(':').Append(Escape(pairs[i].Value));
+            }
+            return text.Append(']').ToString();
+        }
+
+        /// <summary>The checked, unsorted (feature label, value label) pairs of a structure; refuses what the text cannot show.</summary>
+        internal static List<(string Feature, string Value)> Collect(IFsFeatStruc structure, LcmCache cache, IFsFeatureSystem? system, string systemName)
+        {
             var pairs = new List<(string Feature, string Value)>();
             var seen = new HashSet<Guid>();
             foreach (var spec in structure.FeatureSpecsOC)
@@ -90,7 +118,7 @@ namespace SIL.TextEditing.Project
                 if (!(closed.FeatureRA is IFsClosedFeature feature) || closed.ValueRA == null)
                     throw new FeatureStructureNotationException(Unrenderable, "The structure holds a value with no feature or no choice.");
                 if (system == null || feature.Owner == null || feature.Owner.Guid != system.Guid)
-                    throw new FeatureStructureNotationException(Unrenderable, "Feature " + feature.Guid.ToString("D") + " is not in the morphosyntactic feature system.");
+                    throw new FeatureStructureNotationException(Unrenderable, "Feature " + feature.Guid.ToString("D") + " is not in the " + systemName + " feature system.");
                 if (!feature.ValuesOC.Contains(closed.ValueRA))
                     throw new FeatureStructureNotationException(Unrenderable, "Value " + closed.ValueRA.Guid.ToString("D") + " is not a value of feature " + feature.Guid.ToString("D") + ".");
                 if (!seen.Add(feature.Guid))
@@ -107,14 +135,22 @@ namespace SIL.TextEditing.Project
                     throw new FeatureStructureNotationException(AmbiguousLabel, sameValue.ToString(CultureInfo.InvariantCulture) + " values of feature " + feature.Guid.ToString("D") + " share the label of value " + closed.ValueRA.Guid.ToString("D") + ".");
                 pairs.Add((featureLabel, valueLabel));
             }
-            pairs.Sort((a, b) => string.CompareOrdinal(a.Feature, b.Feature));
-            var text = new StringBuilder("[");
-            for (int i = 0; i < pairs.Count; i++)
-            {
-                if (i > 0) text.Append(' ');
-                text.Append(Escape(pairs[i].Feature)).Append(':').Append(Escape(pairs[i].Value));
-            }
-            return text.Append(']').ToString();
+            return pairs;
+        }
+
+        /// <summary>The label of a closed feature of <paramref name="system"/>, refused when it has none or another feature shares it.</summary>
+        internal static string FeatureLabel(IFsFeatDefn definition, LcmCache cache, IFsFeatureSystem? system, string systemName)
+        {
+            if (!(definition is IFsClosedFeature feature))
+                throw new FeatureStructureNotationException(Unrenderable, "Feature " + definition.Guid.ToString("D") + " is not a closed feature.");
+            if (system == null || feature.Owner == null || feature.Owner.Guid != system.Guid)
+                throw new FeatureStructureNotationException(Unrenderable, "Feature " + feature.Guid.ToString("D") + " is not in the " + systemName + " feature system.");
+            string label = Label(feature.Abbreviation, feature.Name, cache)
+                ?? throw new FeatureStructureNotationException(Unrenderable, "Feature " + feature.Guid.ToString("D") + " has no usable label.");
+            int same = FeaturesLabelled(system, label, cache).Count;
+            if (same > 1)
+                throw new FeatureStructureNotationException(AmbiguousLabel, same.ToString(CultureInfo.InvariantCulture) + " features share the label of feature " + feature.Guid.ToString("D") + ".");
+            return label;
         }
 
         /// <summary>Reads the text against the closed features of <paramref name="system"/>.</summary>
@@ -128,33 +164,43 @@ namespace SIL.TextEditing.Project
             var seen = new HashSet<Guid>();
             foreach (var (featureLabel, valueLabel) in Pairs(text))
             {
-                var matches = FeaturesLabelled(system, featureLabel, cache);
-                if (matches.Count == 0)
-                {
-                    bool complex = system.FeaturesOC.Any(f => !(f is IFsClosedFeature) && Label(f.Abbreviation, f.Name, cache) == featureLabel);
-                    throw new FeatureStructureNotationException(complex ? UnsupportedFeature : UnknownFeature,
-                        complex ? "Feature " + featureLabel + " is complex, which the text form does not write."
-                            : "The feature system has no closed feature labelled " + featureLabel + ".");
-                }
-                if (matches.Count > 1)
-                    throw new FeatureStructureNotationException(AmbiguousLabel, "More than one feature is labelled " + featureLabel + ".");
-                var feature = matches[0];
+                var feature = ResolveFeature(system, featureLabel, cache);
                 if (!seen.Add(feature.Guid))
                     throw new FeatureStructureNotationException(RepeatedFeature, "Feature " + featureLabel + " is named more than once.");
-                var values = feature.ValuesOC.Where(v => Label(v.Abbreviation, v.Name, cache) == valueLabel).ToList();
-                if (values.Count == 0)
-                    throw new FeatureStructureNotationException(UnknownValue, "Feature " + featureLabel + " has no value labelled " + valueLabel + ".");
-                if (values.Count > 1)
-                    throw new FeatureStructureNotationException(AmbiguousLabel, "More than one value of " + featureLabel + " is labelled " + valueLabel + ".");
-                result.Add(new FeatureStructureSelection(feature, values[0]));
+                result.Add(new FeatureStructureSelection(feature, ResolveValue(feature, featureLabel, valueLabel, cache)));
             }
             return result;
+        }
+
+        internal static IFsClosedFeature ResolveFeature(IFsFeatureSystem system, string featureLabel, LcmCache cache)
+        {
+            var matches = FeaturesLabelled(system, featureLabel, cache);
+            if (matches.Count == 0)
+            {
+                bool complex = system.FeaturesOC.Any(f => !(f is IFsClosedFeature) && Label(f.Abbreviation, f.Name, cache) == featureLabel);
+                throw new FeatureStructureNotationException(complex ? UnsupportedFeature : UnknownFeature,
+                    complex ? "Feature " + featureLabel + " is complex, which the text form does not write."
+                        : "The feature system has no closed feature labelled " + featureLabel + ".");
+            }
+            if (matches.Count > 1)
+                throw new FeatureStructureNotationException(AmbiguousLabel, "More than one feature is labelled " + featureLabel + ".");
+            return matches[0];
+        }
+
+        internal static IFsSymFeatVal ResolveValue(IFsClosedFeature feature, string featureLabel, string valueLabel, LcmCache cache)
+        {
+            var values = feature.ValuesOC.Where(v => Label(v.Abbreviation, v.Name, cache) == valueLabel).ToList();
+            if (values.Count == 0)
+                throw new FeatureStructureNotationException(UnknownValue, "Feature " + featureLabel + " has no value labelled " + valueLabel + ".");
+            if (values.Count > 1)
+                throw new FeatureStructureNotationException(AmbiguousLabel, "More than one value of " + featureLabel + " is labelled " + valueLabel + ".");
+            return values[0];
         }
 
         static List<IFsClosedFeature> FeaturesLabelled(IFsFeatureSystem system, string label, LcmCache cache)
             => system.FeaturesOC.OfType<IFsClosedFeature>().Where(f => Label(f.Abbreviation, f.Name, cache) == label).ToList();
 
-        static string? Label(IMultiUnicode abbreviation, IMultiUnicode name, LcmCache cache)
+        internal static string? Label(IMultiUnicode abbreviation, IMultiUnicode name, LcmCache cache)
         {
             string text = Best(abbreviation, cache);
             if (text.Length == 0) text = Best(name, cache);
@@ -162,7 +208,7 @@ namespace SIL.TextEditing.Project
             return text.Length == 0 || text.Any(char.IsControl) ? null : text;
         }
 
-        static string Best(IMultiUnicode alternatives, LcmCache cache)
+        internal static string Best(IMultiUnicode alternatives, LcmCache cache)
         {
             var handles = new List<int> { cache.DefaultAnalWs };
             handles.AddRange(cache.ServiceLocator.WritingSystems.CurrentAnalysisWritingSystems.Select(w => w.Handle));
@@ -174,7 +220,7 @@ namespace SIL.TextEditing.Project
             return string.Empty;
         }
 
-        static string Escape(string label)
+        internal static string Escape(string label)
         {
             var text = new StringBuilder();
             foreach (char c in label)
@@ -187,27 +233,63 @@ namespace SIL.TextEditing.Project
 
         static IEnumerable<(string Feature, string Value)> Pairs(string text)
         {
-            int at = 0;
+            var bracket = ReadBracket(text, 0, false);
+            int at = bracket.End;
+            while (at < text.Length && char.IsWhiteSpace(text[at])) at++;
+            if (at < text.Length)
+                throw new FeatureStructureNotationException(Syntax,
+                    "The feature structure is not written as [feature:value feature:value]: text follows ] (at " + at.ToString(CultureInfo.InvariantCulture) + ").");
+            return bracket.Pairs.Select(pair => (pair.Feature, pair.Value)).ToList();
+        }
+
+        /// <summary>One <c>feature:value</c> pair as written; <see cref="ValueEscaped"/> tells a rule reader that the value had an escape, so a Greek letter in it is a label.</summary>
+        internal readonly struct BracketPair
+        {
+            internal BracketPair(string feature, string value, bool valueEscaped) { Feature = feature; Value = value; ValueEscaped = valueEscaped; }
+            internal string Feature { get; }
+            internal string Value { get; }
+            internal bool ValueEscaped { get; }
+        }
+
+        /// <summary>A bracket read from text: the optional leading class name (rule mode only), its pairs and the index after the closing bracket.</summary>
+        internal sealed class Bracket
+        {
+            internal string? Name { get; set; }
+            internal List<BracketPair> Pairs { get; } = new List<BracketPair>();
+            internal int End { get; set; }
+        }
+
+        /// <summary>Reads one bracket starting at <paramref name="start"/> (leading white space allowed). In <paramref name="rule"/> mode a first label with
+        /// no colon is a class name; otherwise the grammar and its escapes are exactly the feature-structure text's.</summary>
+        internal static Bracket ReadBracket(string text, int start, bool rule)
+        {
+            int at = start;
             void Skip() { while (at < text.Length && char.IsWhiteSpace(text[at])) at++; }
             FeatureStructureNotationException Bad(string why) => new FeatureStructureNotationException(Syntax,
                 "The feature structure is not written as [feature:value feature:value]: " + why + " (at " + at.ToString(CultureInfo.InvariantCulture) + ").");
-            string Label(bool feature)
+            bool anyEscaped = false;
+            bool endedByNameBreak = false;
+            string Label(bool feature, bool mayBeName)
             {
                 var label = new StringBuilder();
+                anyEscaped = false;
+                endedByNameBreak = false;
                 while (at < text.Length)
                 {
                     char c = text[at];
                     if (c == '\\')
                     {
                         if (at + 1 >= text.Length) throw Bad("a backslash ends the text");
+                        anyEscaped = true;
                         label.Append(text[at + 1]);
                         at += 2;
                     }
                     else if (c == ':' && feature) break;
-                    else if (c == '[' || c == ']' && feature || c == ':')
+                    else if (c == '[' || c == ']' && feature && !mayBeName || c == ':')
                         throw Bad("the character " + c + " needs a backslash in front of it inside a label");
                     else if (c == ']' || char.IsWhiteSpace(c))
                     {
+                        if (feature && mayBeName) { endedByNameBreak = true; break; }
                         if (feature) throw Bad("a feature must be followed by a colon");
                         break;
                     }
@@ -217,24 +299,32 @@ namespace SIL.TextEditing.Project
                 if (result.Length == 0) throw Bad(feature ? "a feature has no label" : "a value has no label");
                 return result;
             }
-            var pairs = new List<(string, string)>();
+            var bracket = new Bracket();
             Skip();
             if (at >= text.Length || text[at] != '[') throw Bad("it does not start with [");
             at++;
+            bool first = true;
             while (true)
             {
                 Skip();
                 if (at >= text.Length) throw Bad("it does not end with ]");
                 if (text[at] == ']') { at++; break; }
-                string feature = Label(true);
+                string feature = Label(true, rule && first);
+                if (endedByNameBreak)
+                {
+                    bracket.Name = feature;
+                    first = false;
+                    continue;
+                }
+                first = false;
                 if (at >= text.Length || text[at] != ':') throw Bad("a feature has no colon");
                 at++;
                 if (at >= text.Length || text[at] == ']' || char.IsWhiteSpace(text[at])) throw Bad("a feature has no value");
-                pairs.Add((feature, Label(false)));
+                string value = Label(false, false);
+                bracket.Pairs.Add(new BracketPair(feature, value, anyEscaped));
             }
-            Skip();
-            if (at < text.Length) throw Bad("text follows ]");
-            return pairs;
+            bracket.End = at;
+            return bracket;
         }
     }
 }
