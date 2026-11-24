@@ -657,11 +657,33 @@ namespace SIL.TextEditing.Project.Tests
             var export = exporter.Export(entry.Guid);
             Assert.DoesNotContain(export.Unexported, u => u.Field == "Input" || u.Field == "Output");
             var process2 = Process(export);
-            Assert.Equal("[C] *", Scalar(process2, "input-formula"));
-            Assert.Equal("$1~[voi:+] <a +> $2", Scalar(process2, "output-formula"));
+            Assert.Equal("[C] *", Scalar(process2, "input"));
+            Assert.Equal("$1~[voi:+] <a +> $2", Scalar(process2, "output"));
             var read = RecordFileReader.Read(export.Text!, exporter.Schema, exporter.CreateReadOptions());
             Assert.DoesNotContain(read.Diagnostics, d => d.Severity == SIL.TextEditing.Markdown.MarkdownSeverity.Error);
             Assert.True(RecordDocument.AreEquivalent(export.Document, read.Document!, exporter.Schema));
+        }
+
+        [Fact]
+        public void ElementsAreTheCanonicalTextOfEachColumnAndStepAndJoinToTheWholeText()
+        {
+            IMoAffixProcess process = null!;
+            _g.Fixture.Change(() =>
+            {
+                _g.Entry(out process);
+                var c = _g.Nc(_g.Class("C"));
+                process.InputOS.Add(_g.Sequence(c, _g.Nc(_g.Class("V"))));
+                var gap = _g.Gap(process);
+                _g.Modify(process, process.InputOS[0], _g.FeatureClass(null, ("voi", "+")));
+                _g.Insert(process, _g.P("a"), _g.MorphemeBoundary);
+                _g.Copy(process, gap);
+            });
+            Assert.Equal(new[] { "<[C] [V]>", "*" }, RuleNotation.RenderElements(process, RuleField.AffixInput, Cache));
+            var steps = RuleNotation.RenderElements(process, RuleField.AffixOutput, Cache);
+            Assert.Equal(new[] { "$1~[voi:+]", "<a +>", "$2" }, steps);
+            Assert.Equal(RuleNotation.Render(process, RuleField.AffixOutput, Cache), string.Join(" ", steps));
+            var parsed = RuleNotation.Parse("[C] <a +> $1~[voi:+] $2", RuleField.AffixOutput, Cache, 2);
+            Assert.Equal(new[] { "[C]", "<a +>", "$1~[voi:+]", "$2" }, RuleNotation.RenderElements(parsed, Cache));
         }
 
         [Fact]
@@ -678,8 +700,8 @@ namespace SIL.TextEditing.Project.Tests
             var unexported = Assert.Single(export.Unexported, u => u.Field == "Output");
             Assert.Contains(RuleNotation.Unrenderable, unexported.Reason);
             var process2 = Process(export);
-            Assert.Equal("*", Scalar(process2, "input-formula"));
-            Assert.Null(process2["output-formula"]);
+            Assert.Equal("*", Scalar(process2, "input"));
+            Assert.Null(process2["output"]);
         }
 
         [Fact]
@@ -688,8 +710,8 @@ namespace SIL.TextEditing.Project.Tests
             ILexEntry entry = null!;
             _g.Fixture.Change(() => entry = _g.Entry(out _));
             var process = Process(Exporter().Export(entry.Guid));
-            Assert.Null(process["input-formula"]);
-            Assert.Null(process["output-formula"]);
+            Assert.Null(process["input"]);
+            Assert.Null(process["output"]);
         }
     }
 }

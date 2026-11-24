@@ -51,7 +51,7 @@ public sealed record RecordLowering(IReadOnlyList<OperationEnvelope> Operations,
 /// project value is no longer the one the file started from, is refused by code, never dropped and never approximated.
 /// A whole-file refusal in the plan lowers nothing.
 /// </summary>
-public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, RecordWritableFields catalog)
+public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, RecordWritableFields catalog)
 {
     private const string RichKind = TextRichStringOperationKinds.Set;
 
@@ -77,7 +77,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(changes);
-        var run = new Run(schema, catalog, cache, seed, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown);
+        var run = new Run(schema, catalog, cache, seed, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown) { Changes = changes };
         for (var index = 0; index < changes.Count; index++)
             run.Lower(index, changes[index]);
         return new(run.Operations, run.Refusals, [], run.OperationChanges, run.RefusedCodes);
@@ -88,7 +88,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         internal RecordLoweringRefusal Refusal { get; } = refusal;
     }
 
-    private sealed class Run(ProjectRecordSchemaResult schema, RecordWritableFields catalog, LcmCache cache,
+    private sealed partial class Run(ProjectRecordSchemaResult schema, RecordWritableFields catalog, LcmCache cache,
         string seed, MarkdownOptions markdown)
     {
         private readonly string _seed = seed;
@@ -105,6 +105,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         internal void Lower(int index, RecordChange change)
         {
             _pending = [];
+            _siblingRefusals.Clear();
             // A declined change leaves no trace in the caches, so nothing anchors on an object that never existed.
             var added = new Dictionary<int, CanonicalId>(_added);
             var lists = _lists.ToDictionary(pair => pair.Key, pair => pair.Value.ToList());
@@ -112,7 +113,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             {
                 LowerChange(index, change);
                 Operations.AddRange(_pending);
-                OperationChanges.AddRange(_pending.Select(_ => index));
+                OperationChanges.AddRange(_pending.Select(operation => _attributed.TryGetValue(operation.OperationId, out var owner) ? owner : index));
             }
             catch (Stop stop)
             {
@@ -125,6 +126,12 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 _refused.Add(index);
                 RefusedCodes[index] = stop.Refusal.Code;
                 Refusals.Add(stop.Refusal);
+                foreach (var (sibling, refusal) in _siblingRefusals)
+                {
+                    _refused.Add(sibling);
+                    RefusedCodes[sibling] = refusal.Code;
+                    Refusals.Add(refusal);
+                }
             }
         }
 
@@ -216,7 +223,10 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 return;
             }
             if (field is not null && RecordWritableFields.IsRuleFormula(field))
-                throw RefuseRuleFormula(change, binding: schema.FieldBinding(type, key)!.Value);
+            {
+                LowerAffixFormula(change, type, key);
+                return;
+            }
             var set = change.Kind == RecordChangeKind.Set;
             var kind = KindFor(change, type, key, set ? RecordWriteVerb.Set : RecordWriteVerb.Clear);
             object? after = new { };
@@ -234,23 +244,6 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
                     $"A {field?.Kind.ToString() ?? "missing"} value has no payload shape for {kind}.");
             _pending.Add(Operation(Id(role + ":" + kind), kind, target, Named(type, key, after)));
-        }
-
-        private Stop RefuseRuleFormula(RecordChange change, (string DeclaringClass, string Field, bool IsCustom) binding)
-        {
-            if (RuleNotation.TryFieldOf(binding.DeclaringClass, binding.Field, out var ruleField) && change.ObjectGuid is { } guid)
-            {
-                try
-                {
-                    RuleNotation.Render(cache.ServiceLocator.GetObject(guid), ruleField, cache);
-                }
-                catch (RuleNotationException exception)
-                {
-                    return Refuse(exception.Code, change, exception.Message);
-                }
-            }
-            return Refuse(RefusalCodes.RuleNotationReadOnly, change,
-                "This field is shown as rule-formula text, which an import does not write; edit it in the project.");
         }
 
         private void LowerFeatureStructure(RecordChange change, string type, string key, CanonicalId target, string role)

@@ -29,27 +29,28 @@ internal static class DryRunJobRunner
 {
     public static CommandOutcome<DryRunProjection> Run(string fwDataPath, string productVersion, string proposalId)
     {
-        var enqueued = JobCommands.EnqueueDryRun(
-            new EnqueueDryRunRequest(fwDataPath, productVersion, proposalId));
-        if (!enqueued.Succeeded)
-            return CommandOutcome<DryRunProjection>.Refused(enqueued.Refusal!);
-        var jobId = enqueued.Value!.JobId;
-
         var full = Path.GetFullPath(fwDataPath);
         var project = new ProjectLocator(full, Path.GetFileNameWithoutExtension(full));
         var workspaceKey = ProjectWorkspaceKey.Compute(project);
 
+        string jobId;
         using (var database = ProjectMotifDatabase.Open(fwDataPath))
         {
             var baselines = new BaselineRepository(database);
-            if (baselines.GetCurrent(workspaceKey) is null)
+            if (baselines.GetCurrent(workspaceKey) is not { } current || File.GetLastWriteTimeUtc(full).Ticks > current.SourceLastWriteUtc.UtcDateTime.Ticks)
             {
                 var token = new BaselineToken(project.FieldWorksProjectIdentity, "sha256:" + new string('a', 64),
-                    "1", DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    "1", DateTimeOffset.UtcNow.AddDays(1).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     "sha256:" + new string('b', 64));
                 baselines.Record(workspaceKey, new BaselinePublication(Path.GetDirectoryName(full)!, full, token),
-                    DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, TestTextWords.Empty);
+                    DateTimeOffset.UtcNow.AddDays(1), new DateTimeOffset(File.GetLastWriteTimeUtc(full), TimeSpan.Zero), TestTextWords.Empty);
             }
+
+            var enqueued = JobCommands.EnqueueDryRun(
+                new EnqueueDryRunRequest(fwDataPath, productVersion, proposalId));
+            if (!enqueued.Succeeded)
+                return CommandOutcome<DryRunProjection>.Refused(enqueued.Refusal!);
+            jobId = enqueued.Value!.JobId;
 
             using var lanes = new ProjectLaneRegistry(_ => baselines.GetCurrent(workspaceKey)!.Token);
             var proposals = new ProposalRepository(database);
