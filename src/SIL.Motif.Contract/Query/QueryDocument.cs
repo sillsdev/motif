@@ -305,13 +305,10 @@ internal static class QueryDocumentJson
         }
         if (keys.Contains("phon"))
         {
-            Known(obj, ["phon", "where"], path);
+            Known(obj, ["phon"], path);
             var pattern = Text(obj, "phon", path) ?? throw QueryRefusalException.DocumentInvalid("phon is a pattern string.", path + ".phon");
-            var scope = Text(obj, "where", path) ?? QueryOps.PhonWordScope;
-            if (!QueryOps.PhonScopes.Contains(scope))
-                throw QueryRefusalException.DocumentInvalid($"where is one of {string.Join(", ", QueryOps.PhonScopes)}.", path + ".where");
             PhonPattern.CompilePhon(pattern);
-            return new QueryPhon(pattern.Trim(), scope);
+            return new QueryPhon(pattern.Trim());
         }
         if (keys.Length != 1)
             throw QueryRefusalException.DocumentInvalid("An expression has exactly one of and, or, not, a field predicate, phon, env or a reserved kind.", path);
@@ -369,9 +366,7 @@ internal static class QueryDocumentJson
         QueryOr or => new JsonObject { ["or"] = new JsonArray([.. or.Items.Select(WriteExpr)]) },
         QueryNot not => new JsonObject { ["not"] = WriteExpr(not.Item) },
         QueryReserved reserved => new JsonObject { [reserved.Kind] = JsonNode.Parse(reserved.Body) },
-        QueryPhon phon => phon.Where == QueryOps.PhonWordScope
-            ? new JsonObject { ["phon"] = phon.Pattern }
-            : new JsonObject { ["phon"] = phon.Pattern, ["where"] = phon.Where },
+        QueryPhon phon => new JsonObject { ["phon"] = phon.Pattern },
         QueryEnv env => new JsonObject { ["env"] = env.Environment },
         QueryField field => WriteField(field),
         _ => throw new ArgumentException("Unknown query expression."),

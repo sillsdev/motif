@@ -5,10 +5,16 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.Contract.Query.Phon;
 
 /// <summary>The pattern predicates of one query run, resolved over the candidate forms through one <see cref="IPhonMatcher"/>.</summary>
-public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSession.DefaultBatchSize)
+public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSession.DefaultBatchSize, int maxBatchBytes = PhonSession.DefaultBatchBytes)
 {
     /// <summary>The most words in one <c>match</c> request.</summary>
     public const int DefaultBatchSize = 20000;
+
+    /// <summary>The most encoded bytes of words in one request, well under the 1 MiB line limit of <c>pangloss serve</c>.</summary>
+    public const int DefaultBatchBytes = 512 * 1024;
+
+    // A word costs its UTF-8 bytes plus quotes, a comma and a little escaping.
+    private const int WordOverhead = 8;
 
     private const int SampleSize = 10;
 
@@ -40,9 +46,15 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
         {
             if (!_leaves.TryAdd(leaf.Plan.Text, leaf)) continue;
             var table = _results[leaf.Plan.Text] = new Dictionary<string, PhonWordResult>(StringComparer.Ordinal);
-            for (var offset = 0; offset < words.Length; offset += batchSize)
+            for (var offset = 0; offset < words.Length;)
             {
-                var batch = words.AsMemory(offset, Math.Min(batchSize, words.Length - offset)).ToArray();
+                var count = 0;
+                var bytes = Encoding.UTF8.GetByteCount(leaf.Plan.Text);
+                while (offset + count < words.Length && count < batchSize &&
+                    (count == 0 || bytes + Encoding.UTF8.GetByteCount(words[offset + count]) + WordOverhead <= maxBatchBytes))
+                    bytes += Encoding.UTF8.GetByteCount(words[offset + count++]) + WordOverhead;
+                var batch = words.AsMemory(offset, count).ToArray();
+                offset += count;
                 var result = matcher.Match(leaf.Plan.Text, batch, cancellationToken);
                 _requests++;
                 if (result.Words.Count != batch.Length)
@@ -53,7 +65,7 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
                     table[word.Word] = word;
                     if (word.Status == "unsegmentable")
                         _unsegmentable.TryAdd(word.Word, new QuerySkippedWord(word.Word, word.Reason ?? "unsegmentable", word.CharIndex));
-                    else if (word.Status == "incomplete" && word.Spans.Count == 0)
+                    else if (word.Status == "incomplete")
                         _incomplete.TryAdd(word.Word, new QuerySkippedWord(word.Word, word.Reason ?? "incomplete"));
                 }
             }
@@ -74,6 +86,7 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
         return word.Status switch
         {
             "ok" => word.Spans.Count > 0 ? Tri.True : Tri.False,
+            "incomplete" when word.Spans.Count > 0 => Tri.True,
             _ => Tri.Unknown,
         };
     }
@@ -91,7 +104,7 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
                 Slice(bytes, span.ByteStart, span.ByteEnd),
                 leaf.Plan.TargetOffset is { } offset && leaf.Plan.TargetWidth is { } width ? span.Start + offset : null,
                 leaf.Plan.TargetOffset is { } offset2 && leaf.Plan.TargetWidth is { } width2 ? span.Start + offset2 + width2 : null)).ToArray();
-            matches.Add(new QueryMatch(leaf.Kind, leaf.Source, spans));
+            matches.Add(new QueryMatch(leaf.Kind, leaf.Source, spans, word.Status == "incomplete"));
         }
         return matches;
     }

@@ -20,11 +20,14 @@ namespace SIL.Motif.Commands.Queries;
 internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, string stateToken, string grammarPath,
     string? parserVersion) : IPhonMatcher
 {
+    /// <summary>The deadline each word gets in PanGloss, so a slow pattern is reported as incomplete before the session's own limit.</summary>
+    internal const long WordTimeoutMs = 5000;
+
     public string? ParserVersion { get; } = parserVersion;
 
     public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken)
     {
-        var reply = pool.TryMatchAsync(key, stateToken, grammarPath, new ServeMatchRequest(patternText, words), cancellationToken)
+        var reply = pool.TryMatchAsync(key, stateToken, grammarPath, new ServeMatchRequest(patternText, words, WordTimeoutMs: WordTimeoutMs), cancellationToken)
             .GetAwaiter().GetResult();
         switch (reply)
         {

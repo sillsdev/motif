@@ -180,4 +180,67 @@ public sealed class PhonQueryTests : IDisposable
         Assert.Equal("work_limit", session.Report.StopReason);
         Assert.Equal("pata", Assert.Single(session.Report.IncompleteSample).Word);
     }
+
+    private sealed class Counting : IPhonMatcher
+    {
+        public string? ParserVersion => null;
+
+        public List<IReadOnlyList<string>> Batches { get; } = [];
+
+        public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken)
+        {
+            Batches.Add(words);
+            return new PhonBatchResult([.. words.Select(word => new PhonWordResult(word, "ok", [], null, null, null))], true, null);
+        }
+    }
+
+    [Fact]
+    public void AnOversizedBatchIsSplitByEncodedSizeSoEveryRequestLineStaysUnderHalfAMebibyte()
+    {
+        var words = Enumerable.Range(0, 40000).Select(index => "kaonanaban" + index.ToString("D6") + "\u014b\u0301\u014b").ToArray();
+        var path = Path.Combine(_folder, "big.tsv");
+        File.WriteAllLines(path, words.Select(word => word + "\t1"));
+        var matcher = new Counting();
+        var session = new PhonSession(matcher);
+        CorpusFormsQuery.Run(CorpusWordList.Load(path), Where("phon(V)"), session);
+        Assert.True(matcher.Batches.Count > 1);
+        Assert.Equal(words.Length, matcher.Batches.Sum(batch => batch.Count));
+        foreach (var batch in matcher.Batches)
+        {
+            var line = new ServeMatchRequest("[V]", batch, WordTimeoutMs: ResidentPhonMatcher.WordTimeoutMs).ToLine("1");
+            Assert.True(System.Text.Encoding.UTF8.GetByteCount(line) <= 512 * 1024, "a request line is over 512 KiB");
+        }
+        Assert.Equal(matcher.Batches.Count, session.Report.Requests);
+    }
+
+    [Fact]
+    public void TheRequestAlwaysCarriesAWordDeadlineAndTheSessionLimitScalesWithTheBatch()
+    {
+        var line = new ServeMatchRequest("[V]", ["a"], WordTimeoutMs: ResidentPhonMatcher.WordTimeoutMs).ToLine("1");
+        Assert.Contains("\"wordTimeoutMs\":" + ResidentPhonMatcher.WordTimeoutMs, line);
+        var floor = TimeSpan.FromMinutes(5);
+        var small = new ServeMatchRequest("[V]", ["a"], WordTimeoutMs: 5000).Timeout(floor);
+        var large = new ServeMatchRequest("[V]", [.. Enumerable.Repeat("a", 500)], WordTimeoutMs: 5000).Timeout(floor);
+        var huge = new ServeMatchRequest("[V]", [.. Enumerable.Repeat("a", 50000)], WordTimeoutMs: 5000).Timeout(floor);
+        Assert.Equal(floor, small);
+        Assert.True(large > TimeSpan.FromSeconds(500 * 5), "the limit must outlast every word using its deadline");
+        Assert.Equal(TimeSpan.FromHours(1), huge);
+    }
+
+    [Fact]
+    public void AWordStoppedAtTheMatchCapKeepsItsSpansFlaggedPartialAndIsCounted()
+    {
+        const string reply = """{"complete":false,"id":"x","op":"match","stopReason":"match_cap","type":"result","words":[{"matches":[{"left":[0,0],"offsets":[0,1],"right":[1,2],"segments":[0,1]}],"status":"incomplete","reason":"match_cap","word":""},{"matches":[],"status":"ok","word":""}]}""";
+        var corpus = Corpus("pata", "kaki");
+        var positive = new PhonSession(new Replay(reply, "[V]", "pata", "kaki"));
+        var rows = CorpusFormsQuery.Run(corpus, Where("phon(V)"), positive);
+        var row = Assert.Single(rows);
+        Assert.Equal("pata", row.Form);
+        Assert.True(Assert.Single(row.Matches!).Partial);
+        Assert.Equal(1, positive.Report.Incomplete);
+        Assert.Equal("pata", Assert.Single(positive.Report.IncompleteSample).Word);
+        var negated = new PhonSession(new Replay(reply, "[V]", "pata", "kaki"));
+        Assert.Equal(["kaki"], CorpusFormsQuery.Run(corpus, Where("not phon(V)"), negated).Select(r => r.Form));
+        Assert.Equal(1, negated.Report.Incomplete);
+    }
 }

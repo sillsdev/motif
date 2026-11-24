@@ -16,7 +16,9 @@ public sealed record QueryMatchSpan(int Start, int End, int ByteStart, int ByteE
 /// <param name="Kind"><c>phon</c> or <c>env</c>.</param>
 /// <param name="Pattern">The predicate's pattern or environment text.</param>
 /// <param name="Spans">Every match, in order.</param>
-public sealed record QueryMatch(string Kind, string Pattern, IReadOnlyList<QueryMatchSpan> Spans);
+/// <param name="Partial">PanGloss stopped on this word, so these are only the matches it kept before the stop.</param>
+public sealed record QueryMatch(string Kind, string Pattern, IReadOnlyList<QueryMatchSpan> Spans,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool Partial = false);
 
 /// <summary>A word PanGloss did not match, and why.</summary>
 /// <param name="Word">The word.</param>
@@ -28,7 +30,7 @@ public sealed record QuerySkippedWord(string Word, string Reason, int? CharIndex
 /// <param name="Candidates">The distinct forms sent to PanGloss after the cheaper predicates had filtered the rows.</param>
 /// <param name="Unsegmentable">Candidates the grammar's surface table cannot segment; they match no pattern and no negation of one.</param>
 /// <param name="UnsegmentableSample">The first few of them.</param>
-/// <param name="Incomplete">Candidates PanGloss stopped on (a work, deadline or match cap) and returned no decision for.</param>
+/// <param name="Incomplete">Candidates PanGloss stopped on (a work, deadline or match cap); one that kept matches still shows them, flagged partial, and the rest decide nothing.</param>
 /// <param name="IncompleteSample">The first few of them.</param>
 /// <param name="Complete">Whether every request ran to its end; false when PanGloss stopped one at a cap.</param>
 /// <param name="StopReason">PanGloss's first stop reason when <paramref name="Complete"/> is false.</param>

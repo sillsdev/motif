@@ -87,7 +87,7 @@ public static class QueryExprText
             case QueryReserved reserved:
                 throw QueryRefusalException.NotYetAvailable(reserved.Kind);
             case QueryPhon phon:
-                return "phon(" + (phon.Where == QueryOps.PhonWordScope ? "" : phon.Where + ": ") + phon.Pattern + ")";
+                return "phon(" + phon.Pattern + ")";
             case QueryEnv env:
                 return "env(" + env.Environment + ")";
             default:
@@ -189,7 +189,7 @@ public static class QueryExprText
             return new QueryField(field, op.Op, ReadValue(op.Op));
         }
 
-        // phon(<pattern>) or phon(<scope>: <pattern>), and env(<target> / <left> _ <right>).
+        // phon(<pattern>) and env(<target> / <left> _ <right>).
         private QueryExpr ParsePattern(string kind)
         {
             var open = _at + 1;
@@ -202,15 +202,8 @@ public static class QueryExprText
                 PhonPattern.CompileEnv(inner);
                 return new QueryEnv(inner.Trim());
             }
-            var scope = QueryOps.PhonWordScope;
-            var colon = inner.IndexOf(':');
-            if (colon > 0 && QueryOps.PhonScopes.Contains(inner[..colon].Trim()))
-            {
-                scope = inner[..colon].Trim();
-                inner = inner[(colon + 1)..];
-            }
             PhonPattern.CompilePhon(inner);
-            return new QueryPhon(inner.Trim(), scope);
+            return new QueryPhon(inner.Trim());
         }
 
         private (string Text, string Op) ReadOp()

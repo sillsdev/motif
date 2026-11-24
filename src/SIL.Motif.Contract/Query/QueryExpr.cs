@@ -38,12 +38,6 @@ public static class QueryOps
     /// <summary>The pattern kinds, which PanGloss's <c>match</c> op runs over surface forms.</summary>
     public static IReadOnlyList<string> PatternKinds { get; } = ["phon", "env"];
 
-    /// <summary>The scopes a <c>phon</c> predicate may name; only <see cref="PhonWordScope"/> runs until morph boundaries are measured.</summary>
-    public static IReadOnlyList<string> PhonScopes { get; } = ["word", "stem", "morph", "edge"];
-
-    /// <summary>The scope that matches the whole surface form.</summary>
-    public const string PhonWordScope = "word";
-
     internal static readonly FrozenSet<string> Reserved = ReservedKinds.ToFrozenSet(StringComparer.Ordinal);
 }
 
@@ -72,8 +66,7 @@ public sealed record QueryReserved(string Kind, string Body) : QueryExpr;
 
 /// <summary>A phonological pattern over the surface form: <c>{phon: "C V C V"}</c>, run by PanGloss's <c>match</c> op.</summary>
 /// <param name="Pattern">The pattern text, as the person or agent wrote it.</param>
-/// <param name="Where">The part of the word it applies to, one of <see cref="QueryOps.PhonScopes"/>; only <c>word</c> runs today.</param>
-public sealed record QueryPhon(string Pattern, string Where = QueryOps.PhonWordScope) : QueryExpr;
+public sealed record QueryPhon(string Pattern) : QueryExpr;
 
 /// <summary>An environment <c>target / left _ right</c> over the surface form: <c>{env: "[+voice] / # _ V"}</c>, run by PanGloss's <c>match</c> op.</summary>
 /// <param name="Environment">The environment text, as the person or agent wrote it.</param>

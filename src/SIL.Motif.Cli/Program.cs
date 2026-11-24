@@ -2399,11 +2399,12 @@ try
                 var columns = QuerySources.StoredColumns(record.From == "forms" ? "stems" : record.From);
                 if (record.Change is not null) columns = [.. columns, "predicted", "evidence", "collides"];
                 string Item(QueryItem item) => item.Id + "\t" + string.Join("\t", columns.Select(c => string.Join(",", item.Values[c])));
-                if (response.Result.Phon is { } phonReport && !record.Ids)
+                if (response.Result.Phon is { } phonReport)
                 {
                     var phonHeader = new StringBuilder();
                     PhonText.Append(phonHeader, phonReport);
-                    lines.AddRange(phonHeader.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r')));
+                    var phonLines = phonHeader.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r'));
+                    foreach (var line in phonLines) (record.Ids ? (Action<string>)Console.Error.WriteLine : lines.Add)(line);
                 }
                 if (record.Evidence) { }
                 else if (record.Ids)

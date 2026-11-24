@@ -39,5 +39,6 @@ internal static class PhonText
     public static string Spans(IReadOnlyList<QueryMatch> matches) =>
         string.Join("; ", matches.Where(match => match.Spans.Count > 0).Select(match =>
             $"{match.Kind}({match.Pattern})=" + string.Join(",", match.Spans.Select(span =>
-                $"{(span.TargetStart is not null ? "[" + span.Text + "]" : span.Text)}@{span.Start}-{span.End}"))));
+                $"{(span.TargetStart is not null ? "[" + span.Text + "]" : span.Text)}@{span.Start}-{span.End}")) +
+                (match.Partial ? " (partial)" : "")));
 }

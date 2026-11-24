@@ -15,6 +15,20 @@ namespace SIL.Motif.Host.PanGloss;
 public sealed record ServeMatchRequest(string Pattern, IReadOnlyList<string> Words, int? MaxMatchesPerWord = null,
     long? MaxWork = null, long? WordTimeoutMs = null)
 {
+    /// <summary>The longest line <c>pangloss serve</c> accepts, 1 MiB; a batch stays well below it.</summary>
+    public const int MaxLineBytes = 1 << 20;
+
+    /// <summary>
+    /// How long the whole request may take: the longer of <paramref name="floor"/> and every word using its own deadline, plus
+    /// slack, so PanGloss reports a slow word as stopped before the session is killed. Never more than an hour.
+    /// </summary>
+    public TimeSpan Timeout(TimeSpan floor)
+    {
+        var perWord = TimeSpan.FromMilliseconds(WordTimeoutMs ?? 10_000);
+        var total = perWord * Words.Count + TimeSpan.FromSeconds(30);
+        return TimeSpan.FromTicks(Math.Min(Math.Max(floor.Ticks, total.Ticks), TimeSpan.FromHours(1).Ticks));
+    }
+
     /// <summary>The protocol line for the request with the given id, without its newline.</summary>
     public string ToLine(string id)
     {

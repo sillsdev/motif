@@ -117,6 +117,15 @@ public sealed class QueryDocumentTests
         Assert.Equal(text, QueryExprText.Print(again!));
     }
 
+    [Fact]
+    public void PhonTakesNoScopeFieldAndNoScopePrefix()
+    {
+        const string json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"phon\":\"V\",\"where\":\"stem\"}}";
+        Assert.False(QueryDocument.TryParse(json, out _, out var refusal));
+        Assert.Equal(RefusalCodes.QueryDocumentInvalid, refusal.Code);
+        Assert.False(QueryExprText.TryParse("phon(stem: V)", out _, out _));
+    }
+
     [Theory]
     [InlineData("phon", "\"\"")]
     [InlineData("phon", "\"( V\"")]

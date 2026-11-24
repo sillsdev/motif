@@ -663,7 +663,7 @@ public sealed class WarmPanGlossPool : IDisposable
         public Task<WarmMatchResult> MatchAsync(ServeMatchRequest request, CancellationToken cancellationToken) =>
             ExchangeAsync("warm-match", request.ToLine, ReadMatchReply,
                 (code, message) => new WarmMatchResult.Failed(code, message),
-                () => new WarmMatchResult.Cancelled(), cancellationToken);
+                () => new WarmMatchResult.Cancelled(), cancellationToken, request.Timeout(pool._options.ParseTimeout));
 
         private static WarmMatchResult ReadMatchReply(JsonElement root, TimeSpan elapsed)
         {
@@ -705,13 +705,13 @@ public sealed class WarmPanGlossPool : IDisposable
         // One request and its reply on the resident process, after queue admission and in order with the others.
         private async Task<T> ExchangeAsync<T>(string label, Func<string, string> requestLine,
             Func<JsonElement, TimeSpan, T> read, Func<string, string, T> failed, Func<T> cancelled,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, TimeSpan? timeout = null)
         {
             await _requests.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 return await pool._queue.RunAsync(label,
-                    (_, token) => RequestAsync(requestLine, read, failed, cancelled, token), cancellationToken)
+                    (_, token) => RequestAsync(requestLine, read, failed, cancelled, token, timeout ?? pool._options.ParseTimeout), cancellationToken)
                     .ConfigureAwait(false);
             }
             finally
@@ -721,7 +721,7 @@ public sealed class WarmPanGlossPool : IDisposable
         }
 
         private async Task<T> RequestAsync<T>(Func<string, string> requestLine, Func<JsonElement, TimeSpan, T> read,
-            Func<string, string, T> failed, Func<T> cancelled, CancellationToken token)
+            Func<string, string, T> failed, Func<T> cancelled, CancellationToken token, TimeSpan limit)
         {
             PanGlossChildProcess? process;
             TerminatedLineReader? reader;
@@ -732,11 +732,11 @@ public sealed class WarmPanGlossPool : IDisposable
             var clock = Stopwatch.StartNew();
             using var registration = token.Register(() => Kill(WarmSessionState.Idle, raise: true));
             var timedOut = false;
-            using var deadline = new CancellationTokenSource(pool._options.ParseTimeout);
+            using var deadline = new CancellationTokenSource(limit);
             using var deadlineRegistration = deadline.Token.Register(() =>
             {
                 timedOut = true;
-                Fail(ParseTimedOut.Code, ParseTimedOut.Message(pool._options.ParseTimeout));
+                Fail(ParseTimedOut.Code, ParseTimedOut.Message(limit));
             });
             try
             {
@@ -748,7 +748,7 @@ public sealed class WarmPanGlossPool : IDisposable
                     var line = await reader.ReadLineAsync().ConfigureAwait(false);
                     if (token.IsCancellationRequested) return cancelled();
                     if (Volatile.Read(ref timedOut))
-                        return failed(ParseTimedOut.Code, ParseTimedOut.Message(pool._options.ParseTimeout));
+                        return failed(ParseTimedOut.Code, ParseTimedOut.Message(limit));
                     if (line is null)
                     {
                         var died = Died();
@@ -765,7 +765,7 @@ public sealed class WarmPanGlossPool : IDisposable
             {
                 if (token.IsCancellationRequested) return cancelled();
                 if (Volatile.Read(ref timedOut))
-                    return failed(ParseTimedOut.Code, ParseTimedOut.Message(pool._options.ParseTimeout));
+                    return failed(ParseTimedOut.Code, ParseTimedOut.Message(limit));
                 var died = Died();
                 Fail(died.Code, died.Message);
                 return failed(died.Code, died.Message);

@@ -195,11 +195,7 @@ public static class QuerySchema
                 Wrapper("or", new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = "#/$defs/expr" }, ["minItems"] = 1 }),
                 Wrapper("not", new JsonObject { ["$ref"] = "#/$defs/expr" }),
                 new JsonObject { ["$ref"] = "#/$defs/field" },
-                Wrapper("phon", new JsonObject { ["type"] = "string", ["description"] = PatternSyntax }, new JsonObject
-                {
-                    ["where"] = new JsonObject { ["enum"] = new JsonArray([.. QueryOps.PhonScopes.Select(scope => (JsonNode?)scope)]), ["default"] = QueryOps.PhonWordScope,
-                        ["description"] = "What the pattern may match: word only for now; stem, morph and edge are not yet available." },
-                }),
+                Wrapper("phon", new JsonObject { ["type"] = "string", ["description"] = PatternSyntax }),
                 Wrapper("env", new JsonObject { ["type"] = "string", ["description"] = "target / left _ right: the target pattern must occur between the left and right patterns, either of which may be empty. Each part uses the phon pattern syntax. The match spans the target. " + PatternSyntax }),
                 new JsonObject
                 {
@@ -219,7 +215,8 @@ public static class QuerySchema
         "a feature bundle [+voice -nasal]; an alpha variable [αvoice]; a literal segment /p/ (a bare letter is not a segment); " +
         "( ) groups, ( )* repeats a group, # is a word edge, + is a morpheme boundary. " +
         "The grammar's surface character table segments each word, so a pattern sees the word as the grammar does; a word it cannot segment is reported as unsegmentable and matches nothing, even under not. " +
-        "Feature bundles, alpha variables and + need a PanGloss release that serves them; the refusal names what is missing.";
+        "Feature bundles and alpha variables are gated in PanGloss 0.29.0 and refused as unsupported_construct. " +
+        "+ needs words with marked boundaries, which Motif does not send yet, so it is refused on ordinary words as boundary_needs_marked_input.";
 
     private static JsonObject Wrapper(string key, JsonObject inner, JsonObject? extra = null)
     {

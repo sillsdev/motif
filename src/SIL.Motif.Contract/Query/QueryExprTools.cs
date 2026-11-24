@@ -46,8 +46,7 @@ public static class QueryExprTools
 
     internal static PhonLeaf LeafOf(QueryExpr node) => node switch
     {
-        QueryPhon phon when phon.Where == QueryOps.PhonWordScope => new PhonLeaf("phon", phon.Pattern, PhonPattern.CompilePhon(phon.Pattern)),
-        QueryPhon phon => throw QueryRefusalException.NotYetAvailable($"phon (where: {phon.Where})"),
+        QueryPhon phon => new PhonLeaf("phon", phon.Pattern, PhonPattern.CompilePhon(phon.Pattern)),
         QueryEnv env => new PhonLeaf("env", env.Environment, PhonPattern.CompileEnv(env.Environment)),
         _ => throw new ArgumentException("Not a pattern predicate."),
     };
