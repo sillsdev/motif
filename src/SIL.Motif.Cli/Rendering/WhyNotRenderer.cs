@@ -41,6 +41,7 @@ internal static class WhyNotRenderer
         var place = rejection.Position is { } position ? $" at position {position.ToString(CultureInfo.InvariantCulture)}" : " about the whole word";
         text.AppendLine($"   {rejection.Kind}{place}" + (rejection.Provenance is { } provenance ? $" ({provenance})." : "."));
         text.AppendLine("   " + rejection.Plain);
+        if (rejection.Gate is { } gate) text.AppendLine("   Gate: " + gate + ".");
         if (rejection.Morphs.Count > 0) text.AppendLine("   Morphs: " + Morphs(rejection.Morphs, rejection.MorphsOmitted));
         foreach (var morph in rejection.Morphs.Where(m => m.EntryGuid is not null || m.MsaGuid is not null || m.FormGuid is not null))
             text.AppendLine($"   FieldWorks {morph.Morpheme}: {Guids(morph)}.");

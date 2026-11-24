@@ -81,6 +81,7 @@ public sealed record WhyNotFeature(string Path, string Required, string Actual);
 /// <param name="Alternatives">How many other derivations of the same morph sequence also fail, or null when none.</param>
 /// <param name="Members">Every morph a co-occurrence prohibition names, primary first, at most <see cref="WhyNotLimits.MaxMorphs"/>; empty otherwise.</param>
 /// <param name="MembersOmitted">How many prohibition members the cap left out.</param>
+/// <param name="Gate">The named gate, for <c>other_gate</c> only, such as <c>disjunctive_allomorph</c>; null otherwise.</param>
 public sealed record WhyNotRejection(
     string Kind,
     string Plain,
@@ -95,7 +96,8 @@ public sealed record WhyNotRejection(
     int FeaturesOmitted,
     int? Alternatives,
     IReadOnlyList<WhyNotMorph>? Members = null,
-    int MembersOmitted = 0);
+    int MembersOmitted = 0,
+    string? Gate = null);
 
 /// <summary>The derivation that parsed an accepted candidate.</summary>
 /// <param name="Morphs">The word's morphs in surface order, at most <see cref="WhyNotLimits.MaxMorphs"/>.</param>

@@ -42,4 +42,12 @@ public sealed class WhyNotRecordedRenderTests
 
         Assert.Contains("Parses as ", Render("accepted"), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ARealOtherGateRendersItsKindAndGate()
+    {
+        var text = Render("disjunctive-gate");
+        Assert.Contains("other_gate at position 1 (derived).", text, StringComparison.Ordinal);
+        Assert.Contains("Gate: disjunctive_allomorph.", text, StringComparison.Ordinal);
+    }
 }

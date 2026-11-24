@@ -116,4 +116,22 @@ public sealed class WhyNotRecordedTests
         Assert.Equal(P + "0000000009a1", rejection.Target!.FieldWorksGuid);
         Assert.Equal([P + "000000000201", P + "000000000101"], rejection.Members!.Select(m => m.FormGuid));
     }
+
+    /// <summary>Real <c>pangloss 0.32.0 why-not eBan,mrDat --json</c> on conformance edge-cases/disjunctive-folded-env-blocks, word banku.</summary>
+    [Fact]
+    public void ARealOtherGateKeepsItsKindGateAndBothAllomorphsAndIsNotDropped()
+    {
+        Assert.True(WhyNotProjection.TryProject(Recorded("disjunctive-gate"), "banku", "baseline", [Cand("a,b")],
+            ["no_morph_match", "environment_unmet", "adhoc_prohibition", "other_gate"], out var response, out var error), error);
+        var candidate = response!.Candidates.Single();
+        Assert.Equal("rejected", candidate.Result);
+        var rejection = candidate.Rejection!;
+        Assert.Equal("other_gate", rejection.Kind);
+        Assert.Equal("disjunctive_allomorph", rejection.Gate);
+        Assert.Equal("derived", rejection.Provenance);
+        Assert.Equal(1, rejection.Position);
+        Assert.Equal("subKu", rejection.Target!.Id);
+        Assert.Equal(["subKu", "subKa"], rejection.Morphs.Select(m => m.Allomorph));
+        Assert.Null(Rejection("nomorph").Gate);
+    }
 }
