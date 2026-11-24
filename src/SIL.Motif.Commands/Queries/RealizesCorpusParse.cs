@@ -119,7 +119,8 @@ internal static class SurfaceShape
             }
             pieces.Add((word[start..at], start));
         }
-        return at == word.Length ? pieces : null;
+        // A piece is M's only when every morph's piece, joined in order, is the word itself.
+        return at == word.Length && string.Concat(pieces.Select(piece => piece.Item1)).Equals(word, StringComparison.OrdinalIgnoreCase) ? pieces : null;
     }
 
     // A unit lists the spellings it stands for, longest first; a plain character stands for itself.
@@ -164,11 +165,11 @@ internal static class SurfaceShape
     }
 }
 
-/// <summary>Chooses which word types to parse: all of them, or a deterministic sample weighted by how often each occurs.</summary>
+/// <summary>Chooses which word types to trace: all of them, or a deterministic sample weighted by how often each occurs.</summary>
 internal static class RealizesSample
 {
-    /// <summary>The number of word types parsed when no sample size is given.</summary>
-    public const int Default = 300;
+    /// <summary>The number of matching word types traced when no sample size is given.</summary>
+    public const int Default = 200;
 
     /// <summary>
     /// With <paramref name="size"/> at zero or at least the number of types, every type, most frequent first. Otherwise the

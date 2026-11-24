@@ -39,10 +39,13 @@ internal sealed class RealizesRun(QueryExpr? lowered, IReadOnlyList<RealizesResu
 /// <param name="GrammarPath">The grammar PanGloss parses with; null to read stored analyses only.</param>
 /// <param name="ProjectPath">A FieldWorks project whose stored analyses and lexicon are read; null to use the corpus parse only.</param>
 /// <param name="FoldCase">Whether the corpus is case-folded, and so the forms searched for.</param>
-/// <param name="Sample">How many word types to parse; zero for every type.</param>
-/// <param name="Parser">Makes the parser for the grammar; a test replays recordings here.</param>
+/// <param name="Sample">How many matching word types to trace for the morpheme's surface piece; zero for every match.</param>
+/// <param name="Parser">Makes the resident parser that traces a word; a test replays recordings here.</param>
+/// <param name="IndexBuilder">Makes the builder of the batch parse index; a test replays a recording here.</param>
+/// <param name="CacheRoot">The folder the parse index is kept in.</param>
+/// <param name="Notice">Hears that the one-off index build is starting; the command line writes it to standard error.</param>
 internal sealed record RealizesContext(CorpusWordList Corpus, string? GrammarPath, string? ProjectPath, bool FoldCase, int Sample,
-    Func<IRealizesParser> Parser);
+    Func<IRealizesParser> Parser, Func<IRealizesIndexBuilder> IndexBuilder, string CacheRoot, Action<string> Notice);
 
 /// <summary>
 /// Resolves each <c>realizes</c> predicate of a query and compiles its variant set to a corpus search. The tier sources are the
@@ -68,6 +71,16 @@ internal static class RealizesQuery
         return new ResidentRealizesParser(TryWordSessions.PoolFor(executable), full, BatchInvocationEvidence.DigestFile(full), full);
     }
 
+    /// <summary>The builder of the batch parse index for the grammar, or a refusal when PanGloss is missing.</summary>
+    internal static IRealizesIndexBuilder BatchBuilder(string? parserPath)
+    {
+        var executable = parserPath ?? PanGlossExecutable.TryLocate();
+        if (executable is null)
+            throw new QueryRefusalException(new Refusal(RefusalCodes.WordTraceParserUnavailable, FailureReason.Refused,
+                PanGlossExecutable.NotFoundMessage, ParserNotFoundFact.Mark(null, true)));
+        return new PanGlossIndexBuilder(executable);
+    }
+
     /// <summary>Lowers the expression; a refusal comes back as a <see cref="QueryRefusalException"/>.</summary>
     public static RealizesRun Prepare(QueryExpr where, RealizesContext context, CancellationToken cancellationToken)
     {
@@ -78,7 +91,7 @@ internal static class RealizesQuery
         try
         {
             if (context.ProjectPath is { } project) read = OpenProject(project);
-            IRealizesParser? parser = null;
+            (RealizesParseIndex Index, bool Built, double Seconds)? index = null;
             var sets = new List<RealizesResult>();
             var seen = new Dictionary<QueryRealizes, (RealizesResult, IReadOnlyList<string>)>();
             var lowered = RealizesLowering.Lower(where, node =>
@@ -107,12 +120,14 @@ internal static class RealizesQuery
                 }
                 if (context.GrammarPath is not null)
                 {
-                    parser ??= context.Parser();
-                    var (variants, parse) = RealizesCorpusSource.Collect(parser, target,
-                        [.. context.Corpus.Words.Select(word => (word.Form, word.Tokens))], context.Sample, cancellationToken);
+                    var corpus = context.Corpus.Words.Select(word => (word.Form, word.Tokens)).ToList();
+                    index ??= RealizesParseIndexCache.GetOrBuild(context.CacheRoot, context.GrammarPath, [.. corpus.Select(word => word.Form)],
+                        context.IndexBuilder(), context.Notice, cancellationToken);
+                    var (variants, parse) = RealizesCorpusSource.Collect(index.Value.Index, (index.Value.Built, index.Value.Seconds),
+                        context.Parser, target, corpus, context.Sample, cancellationToken);
                     parts.Add(variants);
                     report = parse;
-                    finding.Add($"none of the {parse.Parsed} parsed words has an analysis that contains it");
+                    finding.Add($"none of the {parse.Parsed} parsed word types has an analysis that contains it");
                 }
                 var merged = Merge(parts, resolved is not null);
                 if (merged.Forms.Count == 0) throw RealizesRefusals.NoParses(node.Morpheme, string.Join("; ", finding));

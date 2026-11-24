@@ -46,11 +46,13 @@ public static class CorpusQueryCommand
     /// <see cref="CorpusFormsRequest.GrammarPath"/>: PanGloss, loading that grammar, segments the words and names the natural classes.
     /// </summary>
     public static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath = null,
-        CancellationToken cancellationToken = default) => Forms(request, parserPath, cancellationToken, null);
+        CancellationToken cancellationToken = default, Action<string>? notice = null) =>
+        Forms(request, parserPath, cancellationToken, null, notice: notice);
 
     // A test passes the parser that replays recorded replies in place of the resident one.
     internal static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath,
-        CancellationToken cancellationToken, IRealizesParser? realizesParser)
+        CancellationToken cancellationToken, IRealizesParser? realizesParser,
+        IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         QueryExpr? where;
@@ -103,7 +105,9 @@ public static class CorpusQueryCommand
         {
             var context = new RealizesContext(corpus, string.IsNullOrWhiteSpace(request.GrammarPath) ? null : request.GrammarPath,
                 string.IsNullOrWhiteSpace(request.ProjectPath) ? null : request.ProjectPath, request.FoldCase, request.Sample ?? RealizesSample.Default,
-                () => realizesParser ?? RealizesQuery.ResidentParser(request.GrammarPath!, parserPath));
+                () => realizesParser ?? RealizesQuery.ResidentParser(request.GrammarPath!, parserPath),
+                () => indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), cacheRoot ?? RealizesParseIndexCache.DefaultRoot,
+                notice ?? (_ => { }));
             try { realizes = RealizesQuery.Prepare(where!, context, cancellationToken); }
             catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
         }

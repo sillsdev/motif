@@ -21,4 +21,13 @@ public static class RecordedParse
 
     /// <summary>The reply for tikas.</summary>
     public const string Capped = @"{""exitCode"":0,""guessed"":false,""id"":""p0"",""result"":{""result"":{""analyses"":[],""guessed"":false,""signature"":""-""},""schemaVersion"":""pangloss.trace-details.v5"",""search"":{""capped"":true,""completed"":false,""elapsedNs"":124669,""invalidShape"":false,""timedNs"":35750,""timedOut"":false,""timingOverrunNs"":0,""unattributedNs"":88919,""workSteps"":53},""word"":""tikas""},""status"":""CAP"",""type"":""result"",""workSteps"":53}";
+
+    /// <summary>
+    /// What <c>pangloss batch --analyses</c> v0.32.0 wrote for tikas, tika, itkas and zzz on the same fixture, one
+    /// <c>fieldworks-parse-analysis/v1</c> line per word; the batch names each morph by form and analysis id, with no surface text.
+    /// </summary>
+    public const string BatchAnalyses = @"{""schema"":""fieldworks-parse-analysis/v1"",""index"":0,""word"":""tikas"",""elapsedMs"":0,""capped"":false,""timedOut"":false,""invalidShape"":false,""analyses"":[{""morphs"":[{""form"":""573d0f58-2271-409c-ba66-dac1d356373a"",""msa"":""568c4482-a8ab-46c5-8434-beadf5fcd625"",""inflType"":null,""guessedString"":null},{""form"":""99bbd021-3a3c-4a01-85ce-d419bd3fb849"",""msa"":""26438485-59b3-4166-9401-f767251e5508"",""inflType"":null,""guessedString"":null}]}],""unavailable"":[]}
+{""schema"":""fieldworks-parse-analysis/v1"",""index"":1,""word"":""tika"",""elapsedMs"":0,""capped"":false,""timedOut"":false,""invalidShape"":false,""analyses"":[{""morphs"":[{""form"":""573d0f58-2271-409c-ba66-dac1d356373a"",""msa"":""568c4482-a8ab-46c5-8434-beadf5fcd625"",""inflType"":null,""guessedString"":null}]}],""unavailable"":[]}
+{""schema"":""fieldworks-parse-analysis/v1"",""index"":2,""word"":""itkas"",""elapsedMs"":0,""capped"":false,""timedOut"":false,""invalidShape"":false,""analyses"":[{""morphs"":[{""form"":""831cd6f4-35c5-4566-aad8-68b655cf4982"",""msa"":""d2dad7bf-da2f-48ad-ab9f-655099a763d1"",""inflType"":null,""guessedString"":null},{""form"":""99bbd021-3a3c-4a01-85ce-d419bd3fb849"",""msa"":""26438485-59b3-4166-9401-f767251e5508"",""inflType"":null,""guessedString"":null}]}],""unavailable"":[]}
+{""schema"":""fieldworks-parse-analysis/v1"",""index"":3,""word"":""zzz"",""elapsedMs"":0,""capped"":false,""timedOut"":false,""invalidShape"":true,""analyses"":[],""unavailable"":[]}";
 }

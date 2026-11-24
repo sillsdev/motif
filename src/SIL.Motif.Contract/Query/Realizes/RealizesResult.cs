@@ -24,17 +24,20 @@ public sealed record RealizesPattern(string Kind, string Text, string Anchor, st
 
 /// <summary>What parsing the corpus's words to find a morpheme came to, so a reader sees how much of the corpus the set rests on.</summary>
 /// <param name="Types">Word types in the corpus.</param>
-/// <param name="Parsed">Word types sent to PanGloss.</param>
+/// <param name="Parsed">Word types the batch parse answered for.</param>
 /// <param name="WithMorpheme">Parsed words with an analysis that contains the morpheme.</param>
 /// <param name="NoAnalysis">Parsed words the grammar gave no analysis.</param>
 /// <param name="Unsegmentable">Words PanGloss could not segment with the grammar's characters.</param>
 /// <param name="Capped">Words whose parse stopped at the attempt or work limit.</param>
 /// <param name="TimedOut">Words whose parse stopped at the word timeout.</param>
 /// <param name="Failed">Words the resident parser did not answer.</param>
-/// <param name="Sample">The sample size asked for; null when every word type was parsed.</param>
-/// <param name="Seconds">Wall-clock seconds the parsing took.</param>
+/// <param name="Sample">The cap on traced matches asked for; null when every match was traced.</param>
+/// <param name="Seconds">Wall-clock seconds the index and the traces took.</param>
+/// <param name="Traced">Matching words traced for the morpheme's surface piece.</param>
+/// <param name="IndexBuilt">Whether this query built the parse index; false when a cached one was reused.</param>
+/// <param name="IndexSeconds">Seconds to build or load the parse index.</param>
 public sealed record RealizesParseReport(int Types, int Parsed, int WithMorpheme, int NoAnalysis, int Unsegmentable, int Capped, int TimedOut,
-    int Failed, int? Sample, double Seconds);
+    int Failed, int? Sample, double Seconds, int Traced = 0, bool IndexBuilt = false, double IndexSeconds = 0);
 
 /// <summary>A morpheme's variant set at one tier, versioned <see cref="SchemaName"/>.</summary>
 /// <param name="Schema">The schema name.</param>

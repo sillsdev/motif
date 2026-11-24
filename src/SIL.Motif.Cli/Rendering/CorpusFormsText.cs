@@ -24,8 +24,9 @@ internal static class CorpusFormsText
                 string.Join(" | ", set.Forms.Select(form => form.Form)), "segmentation " + set.Pattern.Segmentation + "; surface text only, so it can over-match"));
             if (set.Parse is { } parse)
                 text.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                    "  Parsed {0} of {1} word types in {2} s: {3} carry the morpheme, {4} have no analysis, {5} could not be segmented, {6} stopped at a limit, {7} got no answer.",
-                    parse.Parsed, parse.Types, parse.Seconds, parse.WithMorpheme, parse.NoAnalysis, parse.Unsegmentable, parse.Capped + parse.TimedOut, parse.Failed));
+                    "  Parse index {8} in {9} s ({0} of {1} word types answered, {2} s in all): {3} carry the morpheme, {4} have no analysis, {5} could not be segmented, {6} stopped at a limit, {7} got no answer; {10} traced for the surface piece.",
+                    parse.Parsed, parse.Types, parse.Seconds, parse.WithMorpheme, parse.NoAnalysis, parse.Unsegmentable, parse.Capped + parse.TimedOut, parse.Failed,
+                    parse.IndexBuilt ? "built" : "cached", parse.IndexSeconds, parse.Traced));
             foreach (var reason in set.Reasons) text.AppendLine("  " + reason.Code + (reason.Detail is null ? "" : ": " + reason.Detail));
         }
         if (response.Phon is { } phon) PhonText.Append(text, phon);
