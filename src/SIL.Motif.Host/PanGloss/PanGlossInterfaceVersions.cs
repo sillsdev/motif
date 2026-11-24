@@ -27,6 +27,12 @@ public static class PanGlossInterfaceVersions
     /// <summary>What a PanGloss must declare to match phonological patterns over a word list, written for the refusal that names it.</summary>
     public const string ServeMatchNeeded =
         "a PanGloss release after 0.28.1 whose --describe declares interfaces.serveOps.match (sillsdev/PanGloss#436, release v0.29.0)";
+    /// <summary>What a PanGloss must declare to match environments, feature bundles and alpha variables, written for the refusal that names it.</summary>
+    public const string ServeMatchConstructsNeeded =
+        "a PanGloss release whose --describe lists environment, featureBundle and alphaVariable under interfaces.serveOps.match constructs.supported (release v0.30.0)";
+    /// <summary>What a PanGloss must declare to list a grammar's natural classes and features over <c>serve</c>, written for the refusal that names it.</summary>
+    public const string ServeInventoryNeeded =
+        "a PanGloss release whose --describe declares interfaces.serveOps.inventory (release v0.30.0)";
     /// <summary>The capture modes the pinned release advertises for bounded rejection diagnostics.</summary>
     public static ImmutableArray<string> RejectionTraceModes { get; } = ["lineage"];
     /// <summary>The full SQLite cache version written by <c>batch --stats</c>, without compact storage.</summary>
