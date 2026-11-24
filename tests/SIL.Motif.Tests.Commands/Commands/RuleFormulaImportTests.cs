@@ -43,7 +43,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         var read = RecordFileReader.Read(exporter.Export(EntryId).Text!, schema.Schema, exporter.CreateReadOptions());
         Assert.False(read.HasErrors);
         Process(read.Document!).Set(key, new RecordScalar(text));
-        var plan = new ProjectRecordImporter(exporter).Plan(RecordFileWriter.Write(read.Document!, schema.Schema), new CatalogWritableFields(schema));
+        var plan = new ProjectRecordImporter(exporter).Plan(RecordFileWriter.Write(read.Document!, schema.Schema));
         Assert.Empty(plan.ChangeSet.Refusals);
         return new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
     }
@@ -71,6 +71,21 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         var lowering = Lower(cache, key, text);
         Assert.Empty(lowering.Operations);
         Assert.Equal(RefusalCodes.RuleNotationReadOnly, Assert.Single(lowering.Refusals).Code);
+    }
+
+    [Theory]
+    [InlineData("input-formula", "* a")]
+    [InlineData("output-formula", "a $1")]
+    public void TheCatalogDoesNotOfferAFormulaWriteAndRefusesItWhenPlanned(string key, string text)
+    {
+        using var cache = pristine.NewScratch();
+        Build(cache);
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(cache, schema);
+        var read = RecordFileReader.Read(exporter.Export(EntryId).Text!, schema.Schema, exporter.CreateReadOptions());
+        Process(read.Document!).Set(key, new RecordScalar(text));
+        var plan = new ProjectRecordImporter(exporter).Plan(RecordFileWriter.Write(read.Document!, schema.Schema), new CatalogWritableFields(schema));
+        Assert.Equal(RecordRefusalKind.FieldNotWritable, Assert.Single(plan.ChangeSet.Refusals).Kind);
     }
 
     private static void BuildUnrenderable(LcmCache cache)
