@@ -142,4 +142,39 @@ public sealed class ClassNameResolverTests
     {
         Assert.Equal("[+voice -son] [V]", ClassNameResolver.Rewrite("[+voice -son] [V]", Classes));
     }
+
+    // Recorded v0.30.0 replies, edited only by removing the op or the rows.
+    [Fact]
+    public void ADescribeWithoutTheInventoryOpRefusesTheClassListAndNameResolutionSaysSo()
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(SIL.Motif.Tests.PanGloss.WhyNotRecordedTests.Recorded("describe"))!;
+        var interfaces = node["interfaces"] as System.Text.Json.Nodes.JsonObject ?? (System.Text.Json.Nodes.JsonObject)(node["interfaces"] = new System.Text.Json.Nodes.JsonObject());
+        var ops = interfaces["serveOps"] as System.Text.Json.Nodes.JsonObject ?? (System.Text.Json.Nodes.JsonObject)(interfaces["serveOps"] = new System.Text.Json.Nodes.JsonObject());
+        ops["match"] = System.Text.Json.Nodes.JsonNode.Parse(RecordedMatch.Describe);
+        ops.Remove("inventory");
+        var capabilities = PanGlossSurface.ReadDescription(node.ToJsonString(), out _)!;
+        var detail = Assert.IsType<string>(capabilities.ServeInventoryRefusal());
+        var refusal = Assert.Throws<QueryRefusalException>(() =>
+            ResidentPhonMatcher.InventoryFrom(new WarmMatchResult.Unsupported(detail), CancellationToken.None));
+        Assert.Equal(RefusalCodes.QueryPhonUnavailable, refusal.Refusal.Code);
+        Assert.Contains("interfaces.serveOps.inventory", refusal.Refusal.Message);
+        var resolved = Assert.Throws<QueryRefusalException>(() =>
+            new ClassNameResolver(new Knows(readFails: refusal)).Match("[Nope]", ["a"], CancellationToken.None));
+        Assert.Contains("could not read the grammar's natural classes", resolved.Refusal.Message);
+    }
+
+    [Fact]
+    public void ARecordedInventoryWithNoClassRowsGivesTheNoClassListMessage()
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(RecordedMatch.Inventory)!;
+        node["classes"] = new System.Text.Json.Nodes.JsonArray();
+        var empty = ResidentPhonMatcher.ReadInventory(node.ToJsonString());
+        Assert.Empty(empty.Classes);
+        var refused = Assert.Throws<QueryRefusalException>(() =>
+            new ClassNameResolver(new Knows(empty.Classes)).Match("[Nope]", ["a"], CancellationToken.None));
+        Assert.Contains("lists no natural classes", refused.Refusal.Message);
+        node["complete"] = false;
+        node["stopReason"] = "work_limit";
+        Assert.False(ResidentPhonMatcher.ReadInventory(node.ToJsonString()).Complete);
+    }
 }

@@ -50,10 +50,15 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
     {
         if (_inventory is { } known) return known;
         var reply = pool.TryInventoryAsync(key, stateToken, grammarPath, cancellationToken).GetAwaiter().GetResult();
+        return _inventory = InventoryFrom(reply, cancellationToken);
+    }
+
+    internal static PhonInventory InventoryFrom(WarmMatchResult reply, CancellationToken cancellationToken)
+    {
         switch (reply)
         {
             case WarmMatchResult.Completed completed:
-                return _inventory = ReadInventory(completed.Json);
+                return ReadInventory(completed.Json);
             case WarmMatchResult.Unsupported unsupported:
                 throw QueryRefusalException.PhonUnavailable(PanGlossInterfaceVersions.ServeInventoryNeeded, unsupported.Detail);
             case WarmMatchResult.Rejected rejected:
