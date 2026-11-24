@@ -35,6 +35,7 @@ public static class RejectionTraceSentences
         ["allomorph_cooccurrence"] = "An allomorph co-occurrence restriction excluded this candidate.",
         ["allomorph_not_applicable"] = "The allomorph did not apply to this candidate.",
         ["morpheme_cooccurrence"] = "A morpheme co-occurrence restriction excluded this candidate.",
+        ["allomorph_blocked"] = "An earlier allomorph of the same morpheme was eligible and blocked this one.",
         ["disjunctive_allomorph"] = "A disjunctive allomorph was already chosen.",
         ["head_pattern"] = "The compound head's pattern did not match.",
         ["nonhead_pattern"] = "The compound nonhead's pattern did not match.",

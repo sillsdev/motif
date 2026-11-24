@@ -33,3 +33,4 @@ motif trace --load "C:\Temp\mirusi.trace.json"
 - [Load a saved trace](cmd:trace%20--load) reads a diagnostic without a parser.
 - [Prepare an AI Handoff](cmd:handoff) writes project context and retained parse evidence.
 - [Measure a Selection](cmd:assess) records parse results for chosen words.
+- [Why a word lost a Reading](cmd:proposal%20why-lost) compares one word's trace at the Baseline and on a Proposal's Trial copy.

@@ -12,6 +12,9 @@ internal static class PhonText
     {
         text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Patterns: {0} candidate words in {1} PanGloss request(s){2}",
             phon.Candidates, phon.Requests, phon.ParserVersion is null ? "" : ", PanGloss " + phon.ParserVersion));
+        text.AppendLine(phon.SegmentTest == PhonSegmentTest.Identity
+            ? "SEGMENT TEST: identity. A literal names one segment and a [class] its members only; the spans are exact members."
+            : "SEGMENT TEST: engine. A literal matches every segment with its feature bundle and a [class] the union of its members' features, as a rule does; the spans are a superset of what a rule rewrites (positions it leaves unchanged and overlapping spans included).");
         if (phon.MayUnderReport)
             text.AppendLine("MATCH MODE: identity. A literal or a segment-list class matches only that segment, so spans may under-report segments the grammar's rules treat as the same.");
         foreach (var warning in phon.Warnings ?? [])
@@ -34,9 +37,9 @@ internal static class PhonText
             value.Name + (value.Values is { } values ? "  " + string.Join(" ", values) : "");
         // The first column is what to type in a pattern; a name with spaces needs the brackets shown.
         string Class(SIL.Motif.Commands.Queries.PhonValue value) =>
-            (value.Token ?? "(none)") + "  " + value.Name + (value.Kind is { } kind ? "  " + kind : "") +
+            (value.Token ?? "(none)") + "  " + (value.FullName ?? value.Name) + (value.Kind is { } kind ? "  " + kind : "") +
             (value.Token is null ? "  (no spelling reaches this class)" : "");
-        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}; the first column is what to type in a pattern, then PanGloss's label and the class kind:");
+        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}; the first column is what to type in a pattern, then the full name (the label when the class has none) and the class kind:");
         foreach (var value in response.NaturalClasses) text.AppendLine("  " + Class(value));
         text.AppendLine($"Phonological features ({response.Features.Count}):");
         foreach (var value in response.Features) text.AppendLine("  " + Feature(value));

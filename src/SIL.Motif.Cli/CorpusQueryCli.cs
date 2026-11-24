@@ -14,7 +14,7 @@ internal static class CorpusQueryCli
     /// <summary>True for <c>query --corpus ...</c>, which never reads a project.</summary>
     public static bool Handles(IReadOnlyDictionary<string, string> flags) => flags.ContainsKey("corpus");
 
-    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "json"];
+    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "segment-test", "json"];
 
     /// <summary>True for <c>query --corpus &lt;words&gt; forms ...</c>.</summary>
     public static bool IsForms(IReadOnlyList<string> positionals) => positionals.FirstOrDefault() == "forms";
@@ -46,7 +46,7 @@ internal static class CorpusQueryCli
             limit = parsed;
         }
         request = new CorpusFormsRequest(corpus, where, document, flags.GetValueOrDefault("grammar"), flags.GetValueOrDefault("segments"),
-            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit);
+            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"));
         return true;
     }
 

@@ -1,0 +1,1582 @@
+{
+  "schema_version": 1,
+  "binary": "pangloss",
+  "facts": {
+    "format": "pangloss-grammar-facts",
+    "schemaVersion": 9,
+    "applicationId": 1346848321,
+    "contextFormat": "pangloss-facts-context",
+    "contextVersion": 1,
+    "statsManifestVersion": 2
+  },
+  "interfaces": {
+    "serveProtocol": 2,
+    "batchTsv": 5,
+    "diagnostic": {
+      "batchCostColumn": "unavailable_when_tracing",
+      "engine": "hc",
+      "eventTuples": [
+        [
+          "none",
+          "reject",
+          "input",
+          "invalid_shape",
+          "shape"
+        ],
+        [
+          "analysis",
+          "observe",
+          "lookup",
+          "lookup_completed",
+          "lookup"
+        ],
+        [
+          "analysis",
+          "reject",
+          "lookup",
+          "lookup_no_seed",
+          "lookup"
+        ],
+        [
+          "analysis",
+          "reject",
+          "lookup",
+          "lookup_features",
+          "features"
+        ],
+        [
+          "analysis",
+          "observe",
+          "lookup",
+          "required_mpr_features",
+          "features"
+        ],
+        [
+          "analysis",
+          "observe",
+          "lookup",
+          "excluded_mpr_features",
+          "features"
+        ],
+        [
+          "analysis",
+          "observe",
+          "lookup",
+          "required_stem_name",
+          "stem_name"
+        ],
+        [
+          "analysis",
+          "reject",
+          "lookup",
+          "root_not_viable",
+          "lookup"
+        ],
+        [
+          "analysis",
+          "reject",
+          "template",
+          "required_slot_unfilled",
+          "template_slot"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "template",
+          "required_slot_unfilled",
+          "template_slot"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "completion",
+          "applicable_templates_not_applied",
+          "template_slot"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "completion",
+          "nonfinal_template_last",
+          "template_slot"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "completion",
+          "remaining_rules_in_stratum",
+          "count"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "completion",
+          "remaining_analyzed_rules",
+          "count"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "validity",
+          "bound_root",
+          "none"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "validity",
+          "allomorph_blocked",
+          "none"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "morphology",
+          "allomorph_blocked",
+          "none"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "surface",
+          "surface_mismatch",
+          "shape"
+        ],
+        [
+          "synthesis",
+          "observe",
+          "template",
+          "template_ineligible",
+          "template_slot"
+        ],
+        [
+          "analysis",
+          "observe",
+          "template",
+          "optional_slot_skipped",
+          "template_slot"
+        ],
+        [
+          "synthesis",
+          "observe",
+          "template",
+          "optional_slot_skipped",
+          "template_slot"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "morphology",
+          "nonpartial_rule_prohibited_after_final_template",
+          "template_slot"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "morphology",
+          "nonpartial_rule_required_after_nonfinal_template",
+          "template_slot"
+        ],
+        [
+          "synthesis",
+          "reject",
+          "validity",
+          "environment",
+          "environment"
+        ],
+        [
+          "analysis",
+          "observe",
+          "phonology",
+          "pattern_no_output",
+          "shape"
+        ],
+        [
+          "synthesis",
+          "observe",
+          "phonology",
+          "pattern_no_output",
+          "shape"
+        ],
+        [
+          "analysis",
+          "observe",
+          "morphology",
+          "pattern_no_match",
+          "shape"
+        ],
+        [
+          "synthesis",
+          "observe",
+          "morphology",
+          "pattern_no_match",
+          "shape"
+        ],
+        [
+          "synthesis",
+          "observe",
+          "morphology",
+          "required_mpr_features",
+          "features"
+        ],
+        [
+          "synthesis",
+          "observe",
+          "morphology",
+          "excluded_mpr_features",
+          "features"
+        ],
+        [
+          "synthesis",
+          "observe",
+          "phonology",
+          "required_mpr_features",
+          "features"
+        ],
+        [
+          "synthesis",
+          "observe",
+          "phonology",
+          "excluded_mpr_features",
+          "features"
+        ],
+        [
+          "analysis",
+          "observe",
+          "merge",
+          "equivalent_history",
+          "merge"
+        ],
+        [
+          "synthesis",
+          "observe",
+          "merge",
+          "equivalent_history",
+          "merge"
+        ]
+      ],
+      "limits": {
+        "evidenceAllocation": "equal_rows_first_remainder",
+        "maxBytes": {
+          "default": 16777216,
+          "max": 67108864,
+          "min": 1024
+        },
+        "maxDepth": {
+          "default": 32,
+          "max": 256,
+          "min": 1,
+          "supported": true
+        },
+        "maxEvents": {
+          "default": 128,
+          "max": 4096,
+          "min": 1
+        },
+        "maxPaths": {
+          "default": 16,
+          "max": 64,
+          "min": 1
+        },
+        "rowControlBytes": 3072,
+        "runControlBytes": 4096,
+        "summaryBytes": 2048
+      },
+      "maxFeaturePathDepth": 8,
+      "modes": [
+        "lineage"
+      ],
+      "operations": [
+        "parse",
+        "batch"
+      ],
+      "options": [
+        "--trace-rejections",
+        "--trace-options",
+        "--trace-max-paths",
+        "--trace-max-depth",
+        "--trace-max-events",
+        "--trace-max-bytes"
+      ],
+      "prefilter": [
+        "off"
+      ],
+      "projections": [
+        "parse_outputs",
+        "authored_morphs",
+        "syntactic_features"
+      ],
+      "schemaVersion": "pangloss.diagnostic.v1",
+      "selectors": [
+        "authored_morphs",
+        "structural_zero",
+        "syntactic_features"
+      ],
+      "unsupportedCombinations": [
+        "legacy_trace",
+        "fst",
+        "prefilter",
+        "stats",
+        "cache",
+        "stats_manifest"
+      ]
+    },
+    "whyNot": {
+      "schema": "pangloss.whynot.v1",
+      "ids": "grammar-xml",
+      "suiteRows": true,
+      "expectGuidChoices": true,
+      "kinds": [
+        "no_morph_match",
+        "environment_unmet",
+        "adhoc_prohibition",
+        "other_gate"
+      ]
+    },
+    "serveOps": {
+      "effects": {
+        "allomorphFields": [
+          "allomorphId",
+          "form",
+          "segments",
+          "formPartial"
+        ],
+        "contract": "conservative: a rule is never claimed unable to change a form without proof; unproven is unknown with a reason. notOnForm (reason no_lhs_match) means the rule's target has no match on the allomorph's own form, including across its morpheme edges, and nothing earlier can change the form: no earlier rule in application order is anything but notOnForm on it (else may_be_fed), and no affix modifies stem material. It is not 'cannot change': bleeding is not considered",
+        "edges": [
+          "left",
+          "right"
+        ],
+        "effectFields": [
+          "rule",
+          "subrule",
+          "allomorphId",
+          "edge",
+          "mayApply",
+          "reason",
+          "lhsSpans"
+        ],
+        "errors": [
+          "bad_request",
+          "form_not_segmentable",
+          "unknown_morpheme",
+          "ambiguous_identity",
+          "authored_identity_unavailable",
+          "internal"
+        ],
+        "limits": {
+          "defaultMaxWork": 50000000,
+          "defaultRootsPerEnvironment": 3,
+          "defaultWordTimeoutMs": 10000,
+          "maxWordTimeoutMs": 600000,
+          "rootsPerEnvironmentMax": 50
+        },
+        "listedRuleReasons": "the loader's own text for a rule that is not compiled or disabled",
+        "mayApply": [
+          "unknown",
+          "notOnForm"
+        ],
+        "nonLocalCriteria": [
+          "unboundedQuantifier",
+          "alphaAgreement",
+          "iterativeSpreading"
+        ],
+        "reasons": [
+          "environment_unchecked",
+          "lhs_may_straddle_edge",
+          "empty_lhs_epenthesis",
+          "lhs_not_modelable",
+          "lhs_boundary",
+          "underspecified_segments",
+          "stratum_precedes_morpheme",
+          "lhs_match_budget",
+          "form_not_segmentable_in_stratum",
+          "form_partly_unmodelled",
+          "may_be_fed",
+          "no_lhs_match"
+        ],
+        "request": [
+          "morpheme",
+          "edges",
+          "rootsPerEnvironment",
+          "maxWork",
+          "wordTimeoutMs"
+        ],
+        "resultFields": [
+          "complete",
+          "stopReason",
+          "partial",
+          "morpheme",
+          "allomorphs",
+          "effects",
+          "limits"
+        ],
+        "stopReasons": [
+          "work_limit",
+          "deadline"
+        ],
+        "version": 1
+      },
+      "generate": {
+        "allomorphFields": [
+          "role",
+          "entryGuid",
+          "msaGuid",
+          "allomorphId",
+          "formGuid",
+          "shape",
+          "ruleName"
+        ],
+        "errorCodes": [
+          "bad_request",
+          "request_too_large",
+          "authored_identity_unavailable",
+          "unknown_entry",
+          "unknown_msa",
+          "msa_not_owned_by_entry",
+          "ambiguous_identity",
+          "unsupported_msa_class",
+          "unsupported_form_selection",
+          "unsupported_schema_version",
+          "internal"
+        ],
+        "limits": {
+          "generationCap": 50000000,
+          "maxSeeds": {
+            "default": 10000,
+            "max": 1000000
+          },
+          "maxTraceSteps": {
+            "default": 50000,
+            "max": 5000000
+          }
+        },
+        "requestFields": {
+          "maxSeeds": "integer >= 1",
+          "maxTraceSteps": "integer >= 1; counts retained trace nodes across every seed",
+          "maxWork": "integer >= 1; lowers the generation cap for this request",
+          "request": "the generate --request v1 object",
+          "trace": "boolean, default false; true records each surface's rule steps",
+          "wordTimeoutMs": "integer >= 0; wall-clock deadline for this request"
+        },
+        "requestSchema": 1,
+        "resultFields": [
+          "complete",
+          "stopReason",
+          "workUnits",
+          "seedChoices",
+          "traceSteps",
+          "limits",
+          "seeds"
+        ],
+        "ruleFields": [
+          "kind",
+          "id",
+          "name",
+          "guid"
+        ],
+        "seedFields": [
+          "seedKey",
+          "allomorphs",
+          "surfaces",
+          "traceTruncated"
+        ],
+        "stepFields": [
+          "stratum",
+          "rule",
+          "input",
+          "output",
+          "subrule"
+        ],
+        "stopReasons": [
+          "seed_product_exceeds_budget",
+          "work_limit",
+          "deadline",
+          "trace_limit",
+          "seed_limit"
+        ],
+        "surfaceFields": [
+          "surface",
+          "derivations",
+          "steps",
+          "stepsUnresolved",
+          "alternatives"
+        ],
+        "trace": true,
+        "version": 1
+      },
+      "inventory": {
+        "classFields": [
+          "token",
+          "name",
+          "fullName",
+          "id",
+          "kind"
+        ],
+        "classKinds": [
+          "segment",
+          "feature"
+        ],
+        "classToken": "the text between the brackets of [token] in a match pattern: the class name, else its XML id when the name is empty, repeated by an earlier class, or not writable in brackets; null when neither spelling reaches the class",
+        "errors": [
+          "bad_request",
+          "internal"
+        ],
+        "featureFields": [
+          "name",
+          "id",
+          "values"
+        ],
+        "readOnly": true,
+        "request": [
+          "maxWork",
+          "wordTimeoutMs"
+        ],
+        "stopReasons": [
+          "work_limit",
+          "deadline"
+        ],
+        "version": 1,
+        "work": "one unit per class and per feature value listed"
+      },
+      "match": {
+        "constructs": {
+          "gated": [
+            "featureValue",
+            "alphaAcrossFeatures"
+          ],
+          "supported": [
+            "naturalClass",
+            "literal",
+            "optional",
+            "repeat",
+            "wordEdge",
+            "morphemeBoundary",
+            "environment",
+            "featureBundle",
+            "alphaVariable"
+          ]
+        },
+        "defaultSegmentTest": "engine",
+        "errors": [
+          "bad_request",
+          "pattern_parse",
+          "unknown_natural_class",
+          "unknown_feature",
+          "unsupported_construct",
+          "boundary_needs_marked_input",
+          "unknown_boundary_marker",
+          "too_many_words",
+          "words_file_unreadable",
+          "pattern_compile_failed",
+          "internal"
+        ],
+        "limits": {
+          "defaultMaxMatchesPerWord": 1000,
+          "defaultMaxWords": 100000,
+          "defaultMaxWork": 50000000,
+          "defaultWordTimeoutMs": 10000,
+          "maxMatchesPerWord": 100000,
+          "maxMatchesTotal": 1000000,
+          "maxPatternBytes": 4096,
+          "maxWordTimeoutMs": 600000,
+          "maxWords": 1000000
+        },
+        "offsets": "utf8ByteOffsetsInNfdText",
+        "request": [
+          "pattern",
+          "words",
+          "wordsFile",
+          "boundaryMarker",
+          "maxWords",
+          "maxMatchesPerWord",
+          "maxWork",
+          "wordTimeoutMs",
+          "segmentTest"
+        ],
+        "segmentTests": [
+          "engine",
+          "identity"
+        ],
+        "statuses": [
+          "ok",
+          "unsegmentable",
+          "incomplete"
+        ],
+        "stopReasons": [
+          "match_cap",
+          "total_match_cap",
+          "work_limit",
+          "deadline"
+        ],
+        "version": 1,
+        "wordReasons": [
+          "no_character_definition",
+          "boundary_in_unmarked_word",
+          "unexpected_boundary"
+        ],
+        "zeroWidth": "reported: a pattern that can match the empty string reports an empty match at every position its anchors allow"
+      }
+    }
+  },
+  "commands": [
+    {
+      "name": "analyze-text",
+      "summary": "Segment text files and report per-Occurrence Language Pack evidence and per-text and corpus counts as JSON (docs/text-analysis-format.md).",
+      "hidden": false,
+      "positionals": [
+        "text-file..."
+      ],
+      "flags": [
+        {
+          "name": "--word-mem-cap-mib",
+          "takes_value": true,
+          "summary": "counted MiB of retained per-word parser state (default 100; 0 unbounded)"
+        },
+        {
+          "name": "--profile",
+          "takes_value": true,
+          "summary": "the Segmentation profile: a writing-system .ldml or a JSON profile (required)"
+        },
+        {
+          "name": "--pack",
+          "takes_value": true,
+          "summary": "<language>=<grammar>: a Language Pack to check every Occurrence against; repeatable, one per language"
+        },
+        {
+          "name": "--work-cap",
+          "takes_value": true,
+          "summary": "N or \"unbounded\"; the work steps one word may spend in each pack (default: 5000000000)"
+        },
+        {
+          "name": "--word-timeout-ms",
+          "takes_value": true,
+          "summary": "wall-clock deadline per word and pack; a search it stops is reported incomplete"
+        },
+        {
+          "name": "--max-checked-occurrences",
+          "takes_value": true,
+          "summary": "check at most N Occurrences over all texts; the rest are reported unattempted"
+        },
+        {
+          "name": "--max-alternatives",
+          "takes_value": true,
+          "summary": "Segmentation alternatives kept per Occurrence (default: 16); more is reported incomplete"
+        },
+        {
+          "name": "--all-readings",
+          "takes_value": false,
+          "summary": "also enumerate alternatives for an Occurrence whose primary split is already analysed"
+        }
+      ]
+    },
+    {
+      "name": "batch",
+      "summary": "Parse every word in a word list against a grammar and write a batch TSV.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "words.txt",
+        "out.tsv"
+      ],
+      "flags": [
+        {
+          "name": "--trace-rejections",
+          "takes_value": true,
+          "summary": "write a bounded rejection diagnostic JSONL artifact"
+        },
+        {
+          "name": "--trace-options",
+          "takes_value": true,
+          "summary": "versioned rejection trace request metadata"
+        },
+        {
+          "name": "--trace-max-paths",
+          "takes_value": true,
+          "summary": "maximum retained witnesses per row (default 16)"
+        },
+        {
+          "name": "--trace-max-depth",
+          "takes_value": true,
+          "summary": "maximum retained lineage edges per witness (default 32)"
+        },
+        {
+          "name": "--trace-max-events",
+          "takes_value": true,
+          "summary": "maximum retained events per row (default 128)"
+        },
+        {
+          "name": "--engine",
+          "takes_value": true,
+          "summary": "hc|fst (default hc); adds JSON completion metadata; fst needs foma-tools, --threads 1, --work-cap unbounded, --word-mem-cap-mib 0 and --capture-cap-mib unbounded; no fallback; FST has no per-word deadline or process RSS bound: use an external watchdog with a deadline and memory ceiling"
+        },
+        {
+          "name": "--word-mem-cap-mib",
+          "takes_value": true,
+          "summary": "counted MiB of retained per-word parser state (default 100; 0 unbounded); writes MEMCAP when reached"
+        },
+        {
+          "name": "--work-cap",
+          "takes_value": true,
+          "summary": "N or \"unbounded\"; the work steps one word may spend in analysis (default: 5000000000); confirmation may spend one sixteenth more"
+        },
+        {
+          "name": "--capture-cap-mib",
+          "takes_value": true,
+          "summary": "N or \"unbounded\"; MiB of affix-matching capture state one word may hold at once (default: 256); a word that reaches it writes a MEMCAP row"
+        },
+        {
+          "name": "--word-timeout-ms",
+          "takes_value": true,
+          "summary": "wall-clock deadline per word, independent of --work-cap"
+        },
+        {
+          "name": "--threads",
+          "takes_value": true,
+          "summary": "thread count; 1 keeps the crash-resumable sequential writer"
+        },
+        {
+          "name": "--start",
+          "takes_value": true,
+          "summary": "0-based resume index; skips already-completed words and appends to <out.tsv>"
+        },
+        {
+          "name": "--analyses",
+          "takes_value": true,
+          "summary": "write FieldWorks ParseAnalysis JSONL rows to this sidecar path"
+        },
+        {
+          "name": "--guess",
+          "takes_value": false,
+          "summary": "retry an out-of-lexicon empty analysis via the lexical-pattern guesser; =false turns it off; overrides the project's <HC><GuessRoots> (default true), which applies when the flag is absent"
+        },
+        {
+          "name": "--partials",
+          "takes_value": true,
+          "summary": "append up to K same-pass rejection summaries as JSON (K=1..3); requires --prefilter off"
+        },
+        {
+          "name": "--work-columns",
+          "takes_value": false,
+          "summary": "append each word's work_steps (its deterministic work) to its TSV row"
+        },
+        {
+          "name": "--cost-column",
+          "takes_value": false,
+          "summary": "append each word's work_steps and then its fixed-weight parse cost, the last field; compare two runs with cost-compare"
+        },
+        {
+          "name": "--no-flush",
+          "takes_value": false,
+          "summary": "with --threads 1, keep rows buffered instead of flushing after each word; same file at exit, no crash-resume; for instruction counting"
+        },
+        {
+          "name": "--phase-marks",
+          "takes_value": false,
+          "summary": "with --threads 1, start and join a spinning thread before the first word and after the last, so a PMC trace can count the parse apart from the grammar load; for instruction-compare"
+        },
+        {
+          "name": "--stats",
+          "takes_value": false,
+          "summary": "record batch statistics in the stats cache (full profile by default)"
+        },
+        {
+          "name": "--stats-profile",
+          "takes_value": true,
+          "summary": "full|word-only (requires --stats); word-only records per-word timing, work and outcomes, omitting object, gate and prune counters"
+        },
+        {
+          "name": "--cache-pack",
+          "takes_value": false,
+          "summary": "compress facts at rest, leaving word rows directly readable (requires full stats)"
+        },
+        {
+          "name": "--stats-compact",
+          "takes_value": false,
+          "summary": "retain object totals without allomorph/stratum dimensions (requires full stats)"
+        },
+        {
+          "name": "--cache",
+          "takes_value": true,
+          "summary": "stats cache path override (with --stats)"
+        },
+        {
+          "name": "--stats-manifest",
+          "takes_value": true,
+          "summary": "publish a frozen stats-run manifest after the stats cache commits"
+        },
+        {
+          "name": "--always-enforce-final-templates",
+          "takes_value": false,
+          "summary": "enforce template order even where partial-rule rescue would allow interleaving; =false turns it off; overrides the project's <HC><MakePartialsFinal>, which applies when the flag is absent"
+        },
+        {
+          "name": "--prefilter",
+          "takes_value": true,
+          "summary": "auto|on|off (default off); on is a verification and measurement mode: no warm-up, calibration, budget or minimum batch length, every stage that is valid for the grammar runs on every word (a stage that is not valid is off with its reason) and the whole construction is paid whatever the batch length; auto lets a load-time calibration decide whether a rule-admission filter and a tiled whole-word test, built from the grammar, narrow each word's parse; needs the foma-tools build feature (auto and on); refused with --stats and --word-timeout-ms; --work-columns and --cost-column give the work the selected pipeline spent; prints PREFILTER and PREFILTER-TOTAL lines on stderr; the gate prices parses in full parser work (auto and on turn the cost meter on, with or without --cost-column, so the decision line is the same either way; auto turns it off again after the calibration unless --cost-column is given); analyses equal off on every word whose parse completes in both modes, and a word that is incomplete in either mode (work cap, capture cap) can have a different partial list; batches under 512 words stay plain"
+        }
+      ]
+    },
+    {
+      "name": "cost-compare",
+      "summary": "Compare two `batch --cost-column` runs of one word list: better, worse or no clear change, independent of machine load.",
+      "hidden": false,
+      "positionals": [
+        "before.tsv",
+        "after.tsv"
+      ],
+      "flags": [
+        {
+          "name": "--json",
+          "takes_value": false,
+          "summary": "print the comparison as one JSON object"
+        }
+      ]
+    },
+    {
+      "name": "generate",
+      "summary": "Generate from HC XML MorphemeId selectors or an exact FieldWorks entry/MSA request; a request lists morphemes in generation order, not surface order.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "root-morpheme-id",
+        "other-morpheme-id..."
+      ],
+      "flags": [
+        {
+          "name": "--request",
+          "takes_value": true,
+          "summary": "versioned exact FieldWorks entry/MSA JSON request; v1 refuses formGuid selection"
+        }
+      ]
+    },
+    {
+      "name": "parse",
+      "summary": "Parse, and optionally trace/gloss/realize, a single word against a grammar.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "word"
+      ],
+      "flags": [
+        {
+          "name": "--trace-rejections",
+          "takes_value": true,
+          "summary": "write a bounded rejection diagnostic JSONL artifact"
+        },
+        {
+          "name": "--trace-options",
+          "takes_value": true,
+          "summary": "versioned rejection trace request metadata"
+        },
+        {
+          "name": "--trace-max-paths",
+          "takes_value": true,
+          "summary": "maximum retained witnesses per row (default 16)"
+        },
+        {
+          "name": "--trace-max-depth",
+          "takes_value": true,
+          "summary": "maximum retained lineage edges per witness (default 32)"
+        },
+        {
+          "name": "--trace-max-events",
+          "takes_value": true,
+          "summary": "maximum retained events per row (default 128)"
+        },
+        {
+          "name": "--word-mem-cap-mib",
+          "takes_value": true,
+          "summary": "counted MiB of retained per-word parser state (default 100; 0 unbounded)"
+        },
+        {
+          "name": "--work-cap",
+          "takes_value": true,
+          "summary": "N|unbounded; the work steps one word may spend in analysis (default 5000000000); confirmation may spend one sixteenth more"
+        },
+        {
+          "name": "--word-timeout-ms",
+          "takes_value": true,
+          "summary": "bound HC word search wall-clock time"
+        },
+        {
+          "name": "--trace",
+          "takes_value": true,
+          "summary": "trace to stdout, or to a file with --trace=<file>"
+        },
+        {
+          "name": "--trace-format",
+          "takes_value": true,
+          "summary": "text|json (default text)"
+        },
+        {
+          "name": "--trace-details",
+          "takes_value": false,
+          "summary": "emit the opt-in Try-a-Word-style JSON envelope (requires JSON tracing)"
+        },
+        {
+          "name": "--gloss",
+          "takes_value": false,
+          "summary": "print a Leipzig gloss line per analysis"
+        },
+        {
+          "name": "--natural-gloss",
+          "takes_value": true,
+          "summary": "eng; print a natural-language realization line per analysis"
+        },
+        {
+          "name": "--realize-map",
+          "takes_value": true,
+          "summary": "explicit --natural-gloss sidecar map path override"
+        },
+        {
+          "name": "--guess",
+          "takes_value": false,
+          "summary": "retry an out-of-lexicon empty analysis via the lexical-pattern guesser; =false turns it off; overrides the project's <HC><GuessRoots> (default true), which applies when the flag is absent"
+        }
+      ]
+    },
+    {
+      "name": "why-not",
+      "summary": "Explain why a word is not parsed along given morph candidates: the first failing constraint, typed; or run a JSONL suite of such queries (`why-not <grammar> <queries.jsonl> <output.jsonl>`).",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "word|queries.jsonl",
+        "output.jsonl?"
+      ],
+      "flags": [
+        {
+          "name": "--expect",
+          "takes_value": true,
+          "summary": "one candidate, repeatable: grammar.xml morpheme ids (NCNames, so no `,`, `|` or `@`) in surface order, `,` between positions, `|` between choices at a position; an id several morphemes share is refused, use --expect-guid"
+        },
+        {
+          "name": "--allomorphs",
+          "takes_value": true,
+          "summary": "pin allomorphs by grammar.xml allomorph id: `a1,,a3|a4` gives one id per choice of the preceding --expect, an empty token leaving that choice unpinned"
+        },
+        {
+          "name": "--expect-guid",
+          "takes_value": true,
+          "summary": "one candidate by FieldWorks identity, repeatable: entryGuid:msaGuid per choice, same `,` and `|` shape"
+        },
+        {
+          "name": "--expect-json",
+          "takes_value": true,
+          "summary": "file or - : a JSON array of candidates, each an array of positions, each an array of {morpheme, guid?} choices"
+        },
+        {
+          "name": "--json",
+          "takes_value": false,
+          "summary": "write the pangloss.whynot.v1 report (docs/formats/why-not.md)"
+        },
+        {
+          "name": "--work-cap",
+          "takes_value": true,
+          "summary": "N|unbounded: bound the parser work spent on each concrete morph sequence; a hit answers unknown with stop work_cap"
+        },
+        {
+          "name": "--word-timeout-ms",
+          "takes_value": true,
+          "summary": "bound the time spent on each concrete morph sequence; a hit answers unknown with stop deadline"
+        }
+      ]
+    },
+    {
+      "name": "serve",
+      "summary": "Long-lived parser: load a project once, then answer line-delimited JSON parse requests on stdin (protocol in docs/formats/serve-protocol.md).",
+      "hidden": false,
+      "positionals": [],
+      "flags": [
+        {
+          "name": "--word-mem-cap-mib",
+          "takes_value": true,
+          "summary": "counted MiB of retained per-word parser state (default 100; 0 unbounded)"
+        },
+        {
+          "name": "--project",
+          "takes_value": true,
+          "summary": "the .fwdata project or pg-snapshot .json to load and compile once (required)"
+        },
+        {
+          "name": "--work-cap",
+          "takes_value": true,
+          "summary": "N|unbounded; the work steps one word may spend in analysis (default 5000000000); confirmation may spend one sixteenth more"
+        },
+        {
+          "name": "--word-timeout-ms",
+          "takes_value": true,
+          "summary": "bound HC word search wall-clock time per word"
+        },
+        {
+          "name": "--guess",
+          "takes_value": false,
+          "summary": "force the root guesser on, or off with =false, as `parse --guess`"
+        },
+        {
+          "name": "--timing",
+          "takes_value": false,
+          "summary": "add phase timings (import, compile on the ready line; parse, render on each result)"
+        }
+      ]
+    },
+    {
+      "name": "import",
+      "summary": "Import a FieldWorks .fwdata project into a pg-snapshot JSON file.",
+      "hidden": false,
+      "positionals": [
+        "project.fwdata",
+        "out.json"
+      ],
+      "flags": []
+    },
+    {
+      "name": "facts",
+      "summary": "Build an immutable SQLite facts artifact from a pg-snapshot JSON file.",
+      "hidden": false,
+      "positionals": [
+        "snapshot.json"
+      ],
+      "flags": [
+        {
+          "name": "--out",
+          "takes_value": true,
+          "summary": "new SQLite facts artifact path; existing files are never replaced"
+        },
+        {
+          "name": "--context",
+          "takes_value": true,
+          "summary": "versioned facts identity context JSON"
+        },
+        {
+          "name": "--stats",
+          "takes_value": true,
+          "summary": "frozen statistics cache path (requires --stats-manifest)"
+        },
+        {
+          "name": "--stats-manifest",
+          "takes_value": true,
+          "summary": "manifest for the exact frozen batch stats run (requires --stats)"
+        },
+        {
+          "name": "--light",
+          "takes_value": false,
+          "summary": "omit the tables and rows Motif does not read, and declare each omission in the file"
+        },
+        {
+          "name": "--json",
+          "takes_value": false,
+          "summary": "write one machine-readable result object to stdout"
+        }
+      ]
+    },
+    {
+      "name": "fst-health",
+      "summary": "Run grammar-only FST characterization and write a HealthReport.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "out.json?"
+      ],
+      "flags": []
+    },
+    {
+      "name": "fst-verify",
+      "summary": "Compare each word's complete FST and plain HC-Rust analysis sets.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "words"
+      ],
+      "flags": [
+        {
+          "name": "--out",
+          "takes_value": true,
+          "summary": "per-word TSV output (default stdout)"
+        },
+        {
+          "name": "--json",
+          "takes_value": true,
+          "summary": "JSON totals, identities and per-word verdicts"
+        },
+        {
+          "name": "--work-cap",
+          "takes_value": true,
+          "summary": "same per-word parser work allowance as batch"
+        },
+        {
+          "name": "--word-timeout-ms",
+          "takes_value": true,
+          "summary": "per-word deadline; stopped words are incomparable"
+        },
+        {
+          "name": "--word-mem-cap-mib",
+          "takes_value": true,
+          "summary": "parser retained-state allowance, 0 disables"
+        },
+        {
+          "name": "--capture-cap-mib",
+          "takes_value": true,
+          "summary": "matcher capture allowance, or unbounded"
+        },
+        {
+          "name": "--apply-path-cap",
+          "takes_value": true,
+          "summary": "FST proposal path allowance (default 1000000)"
+        },
+        {
+          "name": "--apply-candidate-cap",
+          "takes_value": true,
+          "summary": "FST candidate allowance (default 1000000)"
+        },
+        {
+          "name": "--always-enforce-final-templates",
+          "takes_value": false,
+          "summary": "enforce final templates on both parsers; optional =true|false"
+        },
+        {
+          "name": "--fst-strategy",
+          "takes_value": true,
+          "summary": "surface-enum, factored or auto"
+        },
+        {
+          "name": "--fst-auto-order",
+          "takes_value": true,
+          "summary": "ordered comma-separated construction strategies"
+        },
+        {
+          "name": "--fst-closure-work",
+          "takes_value": true,
+          "summary": "construction closure work allowance"
+        },
+        {
+          "name": "--fst-structural-work",
+          "takes_value": true,
+          "summary": "structural closure work allowance"
+        },
+        {
+          "name": "--fst-structural-bytes",
+          "takes_value": true,
+          "summary": "structural closure retained-byte allowance"
+        },
+        {
+          "name": "--fst-closure-depth",
+          "takes_value": true,
+          "summary": "construction closure depth allowance"
+        },
+        {
+          "name": "--fst-derivation-depth",
+          "takes_value": true,
+          "summary": "construction derivation depth allowance"
+        },
+        {
+          "name": "--fst-compound-depth",
+          "takes_value": true,
+          "summary": "construction compound depth allowance"
+        }
+      ]
+    },
+    {
+      "name": "grammar-health",
+      "summary": "Run the ported hc-* HermitCrab grammar-authoring checks and print the findings.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "out.json?"
+      ],
+      "flags": [
+        {
+          "name": "--fst",
+          "takes_value": false,
+          "summary": "include FST-blocking grammar findings (requires foma-tools); finite inspection reports incomplete checks explicitly."
+        },
+        {
+          "name": "--fw-project",
+          "takes_value": true,
+          "summary": "FieldWorks project/database name used for deep links."
+        },
+        {
+          "name": "--log-guids",
+          "takes_value": false,
+          "summary": "append each item's FieldWorks GUID to its human-readable log title."
+        },
+        {
+          "name": "--stored-analyses",
+          "takes_value": true,
+          "summary": "bounded (default): compare FieldWorks stored analyses until a fixed work budget is spent; all: compare every wordform; off: skip the comparison."
+        },
+        {
+          "name": "--snapshot-out",
+          "takes_value": true,
+          "summary": "also write the grammar snapshot `import` would write (byte-identical) from the same import; .fwdata/.fwbackup input only."
+        },
+        {
+          "name": "--facts-out",
+          "takes_value": true,
+          "summary": "also write the facts database `facts <that snapshot> --out --context` would write; needs --facts-context."
+        },
+        {
+          "name": "--facts-context",
+          "takes_value": true,
+          "summary": "the facts context JSON, as `facts --context`; needs --facts-out."
+        },
+        {
+          "name": "--facts-light",
+          "takes_value": false,
+          "summary": "write a light facts database, as `facts --light`; needs --facts-out."
+        }
+      ]
+    },
+    {
+      "name": "coverage",
+      "summary": "Report capability/conformance coverage over the registered characteristic ledger.",
+      "hidden": false,
+      "positionals": [
+        "out.json?"
+      ],
+      "flags": [
+        {
+          "name": "--json",
+          "takes_value": false,
+          "summary": "print canonical JSON to stdout instead of the human-readable summary"
+        },
+        {
+          "name": "--grammar",
+          "takes_value": true,
+          "summary": "also compute plan-node interaction coverage for this grammar"
+        }
+      ]
+    },
+    {
+      "name": "plan-diagram",
+      "summary": "Render a grammar's compiled Plan as JSON or a mermaid diagram.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "out?"
+      ],
+      "flags": [
+        {
+          "name": "--json",
+          "takes_value": false,
+          "summary": "print the plan document JSON instead of a mermaid diagram"
+        },
+        {
+          "name": "--full",
+          "takes_value": false,
+          "summary": "render every node, no sibling-leaf collapsing (mutually exclusive with --threshold)"
+        },
+        {
+          "name": "--threshold",
+          "takes_value": true,
+          "summary": "sibling-leaf collapse threshold (mutually exclusive with --full)"
+        }
+      ]
+    },
+    {
+      "name": "make-report",
+      "summary": "Compose a markdown readiness report from an already-built artifact.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "out.md"
+      ],
+      "flags": [
+        {
+          "name": "--pack",
+          "takes_value": true,
+          "summary": "the built .pgpack artifact to report on"
+        },
+        {
+          "name": "--policy",
+          "takes_value": true,
+          "summary": "readiness threshold policy JSON override (default: policy_v1)"
+        }
+      ]
+    },
+    {
+      "name": "stats-cache",
+      "summary": "Pack statistics at rest or unpack for direct fact queries.",
+      "hidden": false,
+      "positionals": [
+        "pack|unpack"
+      ],
+      "flags": [
+        {
+          "name": "--cache",
+          "takes_value": true,
+          "summary": "statistics cache path"
+        },
+        {
+          "name": "--out",
+          "takes_value": true,
+          "summary": "write an unpacked copy, leaving the source unchanged"
+        }
+      ]
+    },
+    {
+      "name": "stats",
+      "summary": "Report per-project HC/Foma engine statistics from the stats cache.",
+      "hidden": false,
+      "positionals": [
+        "project-or-grammar"
+      ],
+      "flags": [
+        {
+          "name": "--stats-profile",
+          "takes_value": true,
+          "summary": "full|word-only, selects the default cache file when --cache is omitted"
+        },
+        {
+          "name": "--group",
+          "takes_value": true,
+          "summary": "word|object|allomorph|morpheme|group|never-fires|gate (default: object)"
+        },
+        {
+          "name": "--kind",
+          "takes_value": true,
+          "summary": "restrict to one ObjectKind"
+        },
+        {
+          "name": "--object",
+          "takes_value": true,
+          "summary": "restrict to one object's structural key"
+        },
+        {
+          "name": "--stratum",
+          "takes_value": true,
+          "summary": "restrict to one stratum's structural key"
+        },
+        {
+          "name": "--direction",
+          "takes_value": true,
+          "summary": "analysis|synthesis"
+        },
+        {
+          "name": "--word",
+          "takes_value": true,
+          "summary": "narrow to one word's own fact rows"
+        },
+        {
+          "name": "--top",
+          "takes_value": true,
+          "summary": "top N rows per kind after totals are computed"
+        },
+        {
+          "name": "--sort",
+          "takes_value": true,
+          "summary": "time|no-root|amp|uses|attempts (only for --group object)"
+        },
+        {
+          "name": "--exclude-censored",
+          "takes_value": false,
+          "summary": "exclude words whose run was capped/timed out/invalid-shape"
+        },
+        {
+          "name": "--wide",
+          "takes_value": false,
+          "summary": "append work (and, with --group object, work_steps)/not_applied/no_root/surface_mismatch/identity_quality columns"
+        },
+        {
+          "name": "--by-kind",
+          "takes_value": false,
+          "summary": "one section per kind, each with its share of the run's total time"
+        },
+        {
+          "name": "--format",
+          "takes_value": true,
+          "summary": "text|jsonl (default text)"
+        },
+        {
+          "name": "--cache",
+          "takes_value": true,
+          "summary": "stats cache path override"
+        },
+        {
+          "name": "--out",
+          "takes_value": true,
+          "summary": "write the report here instead of stdout"
+        }
+      ]
+    },
+    {
+      "name": "phonology-examples",
+      "summary": "Measure ordered phonology with a bounded, versioned JSON request under exact lexical context.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "request.json",
+        "out.json?"
+      ],
+      "flags": []
+    },
+    {
+      "name": "recipe-optimize",
+      "summary": "Search backend recipe candidates for a grammar under a fixed evidence budget.",
+      "hidden": false,
+      "positionals": [
+        "grammar",
+        "words.txt",
+        "out-dir"
+      ],
+      "flags": [
+        {
+          "name": "--seed",
+          "takes_value": true,
+          "summary": "deterministic search seed"
+        },
+        {
+          "name": "--candidates",
+          "takes_value": true,
+          "summary": "Budget::candidates"
+        },
+        {
+          "name": "--evaluations",
+          "takes_value": true,
+          "summary": "Budget::evaluations"
+        },
+        {
+          "name": "--elapsed-ns",
+          "takes_value": true,
+          "summary": "Budget::elapsed"
+        },
+        {
+          "name": "--build-ns",
+          "takes_value": true,
+          "summary": "Budget::build"
+        },
+        {
+          "name": "--memory-bytes",
+          "takes_value": true,
+          "summary": "Budget::memory; also the supervisor's kill threshold"
+        },
+        {
+          "name": "--confirmation-work",
+          "takes_value": true,
+          "summary": "Budget::confirmation; a call count, not nanoseconds"
+        },
+        {
+          "name": "--reserve-ns",
+          "takes_value": true,
+          "summary": "Budget::reserve; must not exceed --elapsed-ns"
+        },
+        {
+          "name": "--oracle-work-cap",
+          "takes_value": true,
+          "summary": "RuntimeBudget::oracle_work_cap override (default: RuntimeBudget's own default)"
+        },
+        {
+          "name": "--oracle-liveness-net-ms",
+          "takes_value": true,
+          "summary": "aborts the run (never excludes a word) if a word runs past this deadline"
+        },
+        {
+          "name": "--oracle-word-timeout-ms",
+          "takes_value": true,
+          "summary": "legacy alias for --oracle-liveness-net-ms"
+        },
+        {
+          "name": "--oracle-memory-ceiling-bytes",
+          "takes_value": true,
+          "summary": "aborts the run if exceeded; never classifies a word"
+        },
+        {
+          "name": "--search-all-families",
+          "takes_value": false,
+          "summary": "search every backend family regardless of the compositional-topology heuristic"
+        }
+      ]
+    },
+    {
+      "name": "describe",
+      "summary": "Print this CLI's subcommand/flag surface as machine-readable JSON.",
+      "hidden": false,
+      "positionals": [],
+      "flags": []
+    },
+    {
+      "name": "__recipe-optimize-child",
+      "summary": "Internal recipe-optimize worker process; not for direct use.",
+      "hidden": true,
+      "positionals": [
+        "grammar",
+        "words.txt",
+        "out-dir"
+      ],
+      "flags": [
+        {
+          "name": "--seed",
+          "takes_value": true,
+          "summary": "deterministic search seed"
+        },
+        {
+          "name": "--candidates",
+          "takes_value": true,
+          "summary": "Budget::candidates"
+        },
+        {
+          "name": "--evaluations",
+          "takes_value": true,
+          "summary": "Budget::evaluations"
+        },
+        {
+          "name": "--elapsed-ns",
+          "takes_value": true,
+          "summary": "Budget::elapsed"
+        },
+        {
+          "name": "--build-ns",
+          "takes_value": true,
+          "summary": "Budget::build"
+        },
+        {
+          "name": "--memory-bytes",
+          "takes_value": true,
+          "summary": "Budget::memory; also the supervisor's kill threshold"
+        },
+        {
+          "name": "--confirmation-work",
+          "takes_value": true,
+          "summary": "Budget::confirmation; a call count, not nanoseconds"
+        },
+        {
+          "name": "--reserve-ns",
+          "takes_value": true,
+          "summary": "Budget::reserve; must not exceed --elapsed-ns"
+        },
+        {
+          "name": "--oracle-work-cap",
+          "takes_value": true,
+          "summary": "RuntimeBudget::oracle_work_cap override (default: RuntimeBudget's own default)"
+        },
+        {
+          "name": "--oracle-liveness-net-ms",
+          "takes_value": true,
+          "summary": "aborts the run (never excludes a word) if a word runs past this deadline"
+        },
+        {
+          "name": "--oracle-word-timeout-ms",
+          "takes_value": true,
+          "summary": "legacy alias for --oracle-liveness-net-ms"
+        },
+        {
+          "name": "--oracle-memory-ceiling-bytes",
+          "takes_value": true,
+          "summary": "aborts the run if exceeded; never classifies a word"
+        },
+        {
+          "name": "--search-all-families",
+          "takes_value": false,
+          "summary": "search every backend family regardless of the compositional-topology heuristic"
+        }
+      ]
+    },
+    {
+      "name": "__compile-worker-child",
+      "summary": "Internal out-of-process foma compile worker; not for direct use.",
+      "hidden": true,
+      "positionals": [],
+      "flags": []
+    }
+  ]
+}

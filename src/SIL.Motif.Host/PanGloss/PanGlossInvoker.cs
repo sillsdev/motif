@@ -94,6 +94,9 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                                     { Containment = containment.Report, MissingCapability = "why-not-guid-choices" };
                             effectiveRequest = whyNot with { AnswerableKinds = described.WhyNot!.Kinds };
                         }
+                        if (request is PanGlossRequest.RejectionTrace describedTrace && surface.IsValid &&
+                            surface.Capabilities is { DiagnosticRejectReasons: { } reasons })
+                            effectiveRequest = describedTrace with { DescribedRejectReasons = reasons };
                         var admission = PanGlossSurface.CheckRequest(_executable, effectiveRequest, surface);
                         if (admission.Failure is { } probeFailure)
                             return probeFailure with { Containment = containment.Report };

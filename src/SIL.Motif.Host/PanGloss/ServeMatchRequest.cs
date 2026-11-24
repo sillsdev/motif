@@ -15,6 +15,9 @@ namespace SIL.Motif.Host.PanGloss;
 public sealed record ServeMatchRequest(string Pattern, IReadOnlyList<string> Words, int? MaxMatchesPerWord = null,
     long? MaxWork = null, long? WordTimeoutMs = null)
 {
+    /// <summary>How a segment is tested, <c>engine</c> or <c>identity</c>; sent when set, and the parser's description must list it under <c>segmentTests</c>.</summary>
+    public string? SegmentTest { get; init; }
+
     /// <summary>The pattern constructs the parser's description must list as supported (<c>environment</c>, <c>featureBundle</c>, <c>alphaVariable</c>); not sent.</summary>
     public IReadOnlyCollection<string>? Requires { get; init; }
 
@@ -48,6 +51,7 @@ public sealed record ServeMatchRequest(string Pattern, IReadOnlyList<string> Wor
             if (MaxMatchesPerWord is { } cap) writer.WriteNumber("maxMatchesPerWord", cap);
             if (MaxWork is { } work) writer.WriteNumber("maxWork", work);
             if (WordTimeoutMs is { } timeout) writer.WriteNumber("wordTimeoutMs", timeout);
+            if (SegmentTest is { } segmentTest) writer.WriteString("segmentTest", segmentTest);
             writer.WriteEndObject();
         }
         return Encoding.UTF8.GetString(stream.ToArray());

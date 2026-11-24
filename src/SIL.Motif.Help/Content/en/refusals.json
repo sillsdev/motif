@@ -32,6 +32,14 @@
     "why": "PanGloss wrote a trace Motif cannot read. Update Motif and PanGloss together, then try again.",
     "source": "Hand-written from the rejection-trace reader."
   },
+  "why-lost.request-invalid": {
+    "why": "The request is not one Motif can compare. Give one word, --project and --proposal with a Proposal id, and a cap on paths of 1 to 64.",
+    "source": "Hand-written from the why-lost request check."
+  },
+  "why-lost.incomparable": {
+    "why": "The Baseline and the Trial copy were traced with grammar hashes that do not compare, so Motif will not diff them. Update Motif and PanGloss together, then try again.",
+    "source": "Hand-written from the why-lost comparison check."
+  },
   "rejection-trace.capture-limit": {
     "why": "The trace did not finish or was larger than Motif keeps. Lower the cap on paths and try again.",
     "source": "Hand-written from the rejection-trace capture limit."

@@ -4889,6 +4889,14 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>The explanation did not finish in time. Try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.WhyNotUnfinished. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalWhyLostRequestInvalid" xml:space="preserve">
+    <value>That word or Proposal cannot be compared. Check the word and the Proposal, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.WhyLostRequestInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalWhyLostIncomparable" xml:space="preserve">
+    <value>The Baseline and the Trial copy cannot be compared. Update Motif and PanGloss together, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.WhyLostIncomparable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalFormsExplainRequestInvalid" xml:space="preserve">
     <value>That root or word cannot be explained. Check what you named, then try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.FormsExplainRequestInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

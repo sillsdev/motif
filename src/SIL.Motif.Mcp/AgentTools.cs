@@ -1011,6 +1011,23 @@ internal static class AgentTools
                     "do not claim a form cannot occur from an incomplete result.")))
             { Requests = [typeof(FormsExplainRequest)], FieldNames = new Dictionary<string, string?> { ["Morpheme"] = "morpheme", ["With"] = "with", ["Word"] = "word", ["At"] = "at", ["TimeoutMs"] = "timeoutMs", ["MaxWork"] = "maxWork", ["ProjectPath"] = null } },
 
+        new("motif_why_lost",
+            string.Empty,
+            AgentClass.Evaluate,
+            Schema.Object([("word", Schema.String("The word that lost a Reading in the Trial."), true),
+                ("proposal", Schema.String("The proposal id whose latest Trial copy to compare with the Baseline."), true),
+                ("max_paths", Schema.Integer("Most terminal paths to read per side; default 64.", 1, 64), false)]),
+            false,
+            true,
+            true,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(
+                WhyLostQuery.Compare(new WhyLostRequest(c.ProjectPath, a.Required("word"), a.Required("proposal"),
+                    a.OptionalInt("max_paths")), c.ParserPath, ct),
+                _ => "A cause marked 'not-recorded' means PanGloss recorded no stop for that Reading; do not guess one. " +
+                    "A recorded cause names the form that was blocked, the form that blocked it and the Proposal operations that overlap it, which is not a cause.")))
+            { Requests = [typeof(WhyLostRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["ProposalId"] = "proposal", ["MaxPaths"] = "max_paths", ["ProjectPath"] = null } },
+
         new("motif_job",
             string.Empty,
             AgentClass.Read,

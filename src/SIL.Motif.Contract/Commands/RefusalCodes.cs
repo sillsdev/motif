@@ -589,6 +589,10 @@ public static class RefusalCodes
     public const string FormsExplainUnfinished = "forms-explain.unfinished";
     /// <summary>No analysis of the word could be explained: it has none, or every one has a morph the lexicon cannot name.</summary>
     public const string FormsExplainNoReading = "forms-explain.no-reading";
+    /// <summary>A why-lost request names no word or no Proposal id, or a word or cap Motif cannot trace.</summary>
+    public const string WhyLostRequestInvalid = "why-lost.request-invalid";
+    /// <summary>The Baseline and Trial captures were made with grammar hashes that do not compare, so no diff is read.</summary>
+    public const string WhyLostIncomparable = "why-lost.incomparable";
     public const string WordTraceCancelled = "wordtrace.cancelled";
     public const string WordTraceMalformedDiagnostic = "wordtrace.malformed-diagnostic";
     public const string WordTraceMalformedOutput = "wordtrace.malformed-output";

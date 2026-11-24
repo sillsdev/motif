@@ -15,16 +15,19 @@ internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
     bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null,
     PanGlossWhyNotCapability? WhyNot = null, PanGlossServeGenerateCapability? ServeGenerate = null,
-    PanGlossServeMatchCapability? ServeMatch = null, PanGlossServeInventoryCapability? ServeInventory = null)
+    PanGlossServeMatchCapability? ServeMatch = null, PanGlossServeInventoryCapability? ServeInventory = null,
+    ImmutableArray<string>? DiagnosticRejectReasons = null)
 {
     /// <summary>
     /// Why this parser cannot match pattern text over a word list on <c>serve</c>, or null when it can: the description must
     /// declare <c>interfaces.serveOps.match</c>, and list every construct the pattern needs (<c>environment</c>,
     /// <c>featureBundle</c>, <c>alphaVariable</c>) under its <c>constructs.supported</c>.
     /// </summary>
-    internal string? ServeMatchRefusal(IReadOnlyCollection<string>? needs = null)
+    internal string? ServeMatchRefusal(IReadOnlyCollection<string>? needs = null, string? segmentTest = null)
     {
         if (ServeMatch is null) return "its description declares no interfaces.serveOps.match";
+        if (segmentTest is not null && !ServeMatch.SegmentTests.Contains(segmentTest))
+            return $"its interfaces.serveOps.match does not list {segmentTest} under segmentTests";
         foreach (var need in needs ?? [])
             if (!ServeMatch.Supported.Contains(need))
                 return $"its interfaces.serveOps.match does not list {need} among its supported constructs";
@@ -132,8 +135,13 @@ internal sealed record PanGlossWhyNotCapability(string? Schema, string? Ids, Imm
 /// <summary>What <c>interfaces.serveOps.match</c> declares.</summary>
 /// <param name="Version">The op's own version, or null when the key is missing.</param>
 /// <param name="Supported">The constructs <c>constructs.supported</c> lists, such as <c>environment</c>, <c>featureBundle</c> and <c>alphaVariable</c>.</param>
-internal sealed record PanGlossServeMatchCapability(int? Version, ImmutableHashSet<string>? SupportedConstructs = null)
+/// <param name="SegmentTestsListed">The segment tests <c>segmentTests</c> lists (<c>engine</c>, <c>identity</c>); empty on a release before v0.31.0, which has none.</param>
+internal sealed record PanGlossServeMatchCapability(int? Version, ImmutableHashSet<string>? SupportedConstructs = null,
+    ImmutableHashSet<string>? SegmentTestsListed = null)
 {
+    /// <summary>The segment tests the op declares; empty when the description lists none.</summary>
+    internal ImmutableHashSet<string> SegmentTests => SegmentTestsListed ?? [];
+
     /// <summary>The constructs the op declares supported; empty when the description lists none.</summary>
     internal ImmutableHashSet<string> Supported => SupportedConstructs ?? [];
 }
@@ -258,7 +266,27 @@ internal static class PanGlossSurface
             interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("batchTsv", out var batchElement) &&
             batchElement.ValueKind == JsonValueKind.Number && batchElement.TryGetInt32(out var batchVersion) ? batchVersion : null;
         return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv,
-            ReadWhyNot(root), ReadServeGenerate(root), ReadServeMatch(root), ReadServeInventory(root));
+            ReadWhyNot(root), ReadServeGenerate(root), ReadServeMatch(root), ReadServeInventory(root),
+            ReadDiagnosticRejectReasons(root));
+    }
+
+    /// <summary>The rejection reasons <c>interfaces.diagnostic.eventTuples</c> lists; null when none.</summary>
+    private static ImmutableArray<string>? ReadDiagnosticRejectReasons(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("diagnostic", out var diagnostic) || diagnostic.ValueKind != JsonValueKind.Object ||
+            !diagnostic.TryGetProperty("eventTuples", out var tuples) || tuples.ValueKind != JsonValueKind.Array)
+            return null;
+        var reasons = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        foreach (var tuple in tuples.EnumerateArray())
+        {
+            if (tuple.ValueKind != JsonValueKind.Array || tuple.GetArrayLength() < 4) continue;
+            var items = tuple.EnumerateArray().ToArray();
+            if (items[1].ValueKind == JsonValueKind.String && items[1].GetString() == "reject" &&
+                items[3].ValueKind == JsonValueKind.String)
+                reasons.Add(items[3].GetString()!);
+        }
+        return reasons.OrderBy(reason => reason, StringComparer.Ordinal).ToImmutableArray();
     }
 
     private static PanGlossServeMatchCapability? ReadServeMatch(JsonElement root)
@@ -272,8 +300,12 @@ internal static class PanGlossSurface
             constructs.TryGetProperty("supported", out var list) && list.ValueKind == JsonValueKind.Array)
             foreach (var item in list.EnumerateArray())
                 if (item.ValueKind == JsonValueKind.String) supported.Add(item.GetString()!);
+        var tests = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        if (match.TryGetProperty("segmentTests", out var testList) && testList.ValueKind == JsonValueKind.Array)
+            foreach (var item in testList.EnumerateArray())
+                if (item.ValueKind == JsonValueKind.String) tests.Add(item.GetString()!);
         return new PanGlossServeMatchCapability(match.TryGetProperty("version", out var version) &&
-            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null, supported.ToImmutable());
+            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null, supported.ToImmutable(), tests.ToImmutable());
     }
 
     private static PanGlossServeInventoryCapability? ReadServeInventory(JsonElement root)

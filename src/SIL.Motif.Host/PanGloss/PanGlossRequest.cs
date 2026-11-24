@@ -317,6 +317,9 @@ public abstract record PanGlossRequest
         /// <summary>The scratch file name PanGloss writes the JSON lines to.</summary>
         public const string ArtifactName = "rejections.jsonl";
 
+        /// <summary>The rejection reasons the parser's description lists; set by the invoker, never by a caller.</summary>
+        internal IReadOnlyList<string>? DescribedRejectReasons { get; init; }
+
         public override string Subcommand => "parse";
 
         internal override void Validate()
@@ -353,7 +356,8 @@ public abstract record PanGlossRequest
                     return new PanGlossOutcome.Incomplete(
                         $"The rejection trace is {info.Length} bytes, over Motif's {MaxCaptureBytes}-byte capture limit.",
                         standardError);
-                return new PanGlossOutcome.Completed(File.ReadAllText(path), standardError, elapsed);
+                return new PanGlossOutcome.Completed(File.ReadAllText(path), standardError, elapsed)
+                    { DescribedRejectReasons = DescribedRejectReasons };
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {

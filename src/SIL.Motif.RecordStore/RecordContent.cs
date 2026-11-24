@@ -104,6 +104,7 @@ internal sealed partial class RecordContent
         ct.ThrowIfCancellationRequested();
         identities = null;
         recent.Clear();
+        demanded.Clear();
         encoded = replacement.encoded;
         values = replacement.values;
         hashes = replacement.hashes;
@@ -241,11 +242,34 @@ internal sealed partial class RecordContent
     public JsonElement Get(int id)
     {
         if (values.TryGetValue(id, out var value)) return value;
-        if (!encoded.TryGetValue(id, out var bytes)) throw new InvalidDataException("Missing immutable record content.");
+        if (!encoded.TryGetValue(id, out var bytes)) bytes = Demanded(id);
         var decoded = Decode(bytes);
         if (!values.TryAdd(id, decoded)) return values[id];
         Interlocked.Increment(ref decodedCount);
         return decoded;
+    }
+
+    /// <summary>
+    /// Reads one stored row by id; set on a reader that serves a certified point without loading every row. The row's bytes
+    /// are hashed and the hash must be the identity the store's identity table holds for that id.
+    /// </summary>
+    internal Func<int, byte[]?>? RowReader { get; set; }
+
+    private readonly ConcurrentDictionary<int, byte[]> demanded = new();
+
+    /// <summary>Rows fetched by id instead of loaded; each was checked against <c>RecordContentIdentity</c> when it was fetched.</summary>
+    internal int DemandedCount => demanded.Count;
+
+    private byte[] Demanded(int id)
+    {
+        if (demanded.TryGetValue(id, out var cached)) return cached;
+        var read = RowReader ?? throw new InvalidDataException("Missing immutable record content.");
+        var bytes = read(id) ?? throw new InvalidDataException("Missing immutable record content.");
+        Check(bytes);
+        var lookup = PersistedLookup ?? throw new InvalidDataException("The immutable content identity index is unavailable.");
+        if (lookup(ContentKey.Of(Raw(bytes))) != id)
+            throw new InvalidDataException($"RecordContent: row {id} does not match its stored identity (RecordContent or RecordContentIdentity is damaged).");
+        return demanded.GetOrAdd(id, bytes);
     }
 
     internal static byte[] Canonical(JsonElement value)

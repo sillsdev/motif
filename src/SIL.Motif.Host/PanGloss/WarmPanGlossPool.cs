@@ -277,7 +277,7 @@ public sealed class WarmPanGlossPool : IDisposable
             if (state.Phase != WarmSessionPhase.Ready)
                 return new WarmMatchResult.Failed(state.FailureCode ?? "session-unavailable",
                     state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
-            if (session.Capabilities?.ServeMatchRefusal(request.Requires) is { } incapable)
+            if (session.Capabilities?.ServeMatchRefusal(request.Requires, request.SegmentTest) is { } incapable)
                 return new WarmMatchResult.Unsupported(incapable);
             return await session.MatchAsync(request, cancellationToken).ConfigureAwait(false);
         }

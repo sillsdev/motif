@@ -6,7 +6,7 @@ namespace SIL.Motif.Host.PanGloss;
 public static class PanGlossInterfaceVersions
 {
     /// <summary>The PanGloss source tag that defines the formats Motif reads.</summary>
-    public const string SourceTag = "v0.32.0";
+    public const string SourceTag = "v0.33.0";
     /// <summary>The version of the object returned by <c>pangloss --describe</c>.</summary>
     public const int DescribeSchemaVersion = 1;
     /// <summary>The version of reports returned by <c>pangloss grammar-health</c>.</summary>
@@ -30,6 +30,9 @@ public static class PanGlossInterfaceVersions
     /// <summary>What a PanGloss must declare to match environments, feature bundles and alpha variables, written for the refusal that names it.</summary>
     public const string ServeMatchConstructsNeeded =
         "a PanGloss release whose --describe lists environment, featureBundle and alphaVariable under interfaces.serveOps.match constructs.supported (release v0.30.0)";
+    /// <summary>What a PanGloss must declare to match under a chosen segment test, written for the refusal that names it.</summary>
+    public const string ServeMatchSegmentTestNeeded =
+        "a PanGloss release whose --describe lists engine and identity under interfaces.serveOps.match segmentTests (release v0.31.0)";
     /// <summary>What a PanGloss must declare to list a grammar's natural classes and features over <c>serve</c>, written for the refusal that names it.</summary>
     public const string ServeInventoryNeeded =
         "a PanGloss release whose --describe declares interfaces.serveOps.inventory (release v0.30.0)";

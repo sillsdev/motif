@@ -25,6 +25,9 @@ namespace SIL.Motif.Contract.Query;
 /// <c>proposal.</c> and suffixed <c>:desc</c>.
 /// </remarks>
 /// <remarks>
+/// <c>SegmentTest</c> (<c>engine</c>, the default, or <c>identity</c>) is how <c>phon</c> and <c>env</c> predicates test a segment; see <see cref="Phon.PhonSegmentTest"/>.
+/// </remarks>
+/// <remarks>
 /// <c>Filter</c> is a boolean expression (a <c>motif.query.v2</c> <c>where</c>) that rows must satisfy as well as every
 /// <c>Where</c> selector; <c>Limit</c> keeps at most that many rows, groups or ids in the answer.
 /// </remarks>
@@ -33,7 +36,8 @@ public sealed record QueryRecord(string From, IReadOnlyList<QueryCondition> Wher
     string? Fold = null, string? Distinct = null, QueryHypothesis? Change = null, IReadOnlyList<string>? Score = null,
     IReadOnlyList<QueryCondition>? Exceptions = null, string? Unit = null, IReadOnlyList<string>? Members = null,
     IReadOnlyList<QueryCondition>? Context = null, bool Evidence = false, string? AsOf = null, string? Sides = null,
-    string? Sort = null, [property: System.Text.Json.Serialization.JsonIgnore] QueryExpr? Filter = null, int? Limit = null);
+    string? Sort = null, [property: System.Text.Json.Serialization.JsonIgnore] QueryExpr? Filter = null, int? Limit = null,
+    string? SegmentTest = null);
 
 /// <summary>One selector; selectors in a query are combined with AND.</summary>
 public sealed record QueryCondition(string Col, string Op, string Value);

@@ -54,7 +54,7 @@ public sealed class ParallelReadTests : IDisposable
         var path = await Build("equal");
         await using var sequential = new Store(path) { Workers = 1, DecodeChunkSize = 1_000_000 };
         var expected = await sequential.ReadAsync();
-        await using var store = new Store(path) { Workers = workers, DecodeChunkSize = 7 };
+        await using var store = new Store(path) { Workers = workers, DecodeChunkSize = 7, CertifiedAcquisitionAllowed = false };
         // ReadAsync verifies the state row's digest, written by the sequential import path, against the fused one.
         var actual = await store.ReadAsync();
         Assert.Equal(expected.Select(r => r.Id), actual.Select(r => r.Id));
@@ -205,7 +205,7 @@ public sealed class ParallelReadTests : IDisposable
     public async Task CancellingMidDecodeThrowsAndLeavesTheHandleReusable()
     {
         var path = await Build("cancel-decode", 400);
-        await using var store = new Store(path) { Workers = 4, DecodeChunkSize = 5 };
+        await using var store = new Store(path) { Workers = 4, DecodeChunkSize = 5, CertifiedAcquisitionAllowed = false };
         using var cancel = new CancellationTokenSource();
         store.DecodeChunkStarted = chunk => { if (chunk == 6) cancel.Cancel(); };
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => store.VerifiedPointAsync(cancel.Token));
@@ -234,7 +234,7 @@ public sealed class ParallelReadTests : IDisposable
     public async Task ASecondReferencesCallOnTheSameHandleDoesNotDecodeAgainButAnotherHandlesWriteDoes()
     {
         var path = await Build("reuse", 200);
-        await using var store = new Store(path);
+        await using var store = new Store(path) { CertifiedAcquisitionAllowed = false };
         var first = await store.ReferencesAsync();
         var decoded = store.SnapshotsDecoded;
         Assert.True(decoded > 0);
@@ -321,7 +321,7 @@ public sealed class ParallelReadTests : IDisposable
         });
         for (var attempt = 0; attempt < 5; attempt++)
         {
-            await using var store = new Store(path) { Workers = 4, DecodeChunkSize = 2 };
+            await using var store = new Store(path) { Workers = 4, DecodeChunkSize = 2, CertifiedAcquisitionAllowed = false };
             using var cancel = new CancellationTokenSource();
             var failed = new ManualResetEventSlim();
             store.DecodeChunkStarted = chunk =>

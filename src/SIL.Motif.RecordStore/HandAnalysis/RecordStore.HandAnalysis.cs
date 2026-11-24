@@ -12,7 +12,7 @@ public sealed partial class RecordStore
     /// <paramref name="stateRead"/> is called once the state row has been read and before the point is loaded.
     /// </summary>
     internal async Task<(VerifiedPoint Point, StoreVerification Verification)> ServedPointAsync(CancellationToken ct,
-        Action? stateRead = null)
+        Action? stateRead = null, Func<VerifiedPoint, CancellationToken, Task>? materialize = null)
     {
         for (var attempt = 0; ; attempt++)
         {
@@ -21,8 +21,10 @@ public sealed partial class RecordStore
             var served = await ReadPublishedAsync(async state =>
             {
                 onState?.Invoke();
-                return point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct);
-            }, ct);
+                var acquired = point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct);
+                if (materialize is not null) await materialize(acquired, ct);
+                return acquired;
+            }, ct, lazyContent: true);
             if (Verification != StoreVerification.Uncertified) return (served, Verification);
             var replay = await ReadPublishedAsync(async state =>
                 state.SamePoint(served.State) ? await ReplayIntegrity.ScanAsync(database, Workers, ct: ct) : null, ct);

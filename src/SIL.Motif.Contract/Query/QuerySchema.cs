@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using SIL.Motif.Contract.Query.Phon;
 
 namespace SIL.Motif.Contract.Query;
 
@@ -35,6 +36,7 @@ public static class QuerySchema
         ["exceptions"] = "Predicates that mark a universe row an exception for tolerance; all must hold.",
         ["context"] = "Predicates naming the context size weighs; all must hold.",
         ["change"] = "A hypothesised boundary change over the stems source.",
+        ["segmentTest"] = "How phon and env test a segment: engine (the default) is rule application's own test, so a literal matches every segment with its feature bundle and a [class] matches the union of its members' features, and the spans are a superset of what a rule rewrites (positions it leaves unchanged and overlapping spans included); identity is exact, a literal naming one segment and a [class] its members. Environment sides are exact under both. Every phon and env result reports the mode it used.",
     };
 
     private static readonly Dictionary<string, (int Min, int Max)> Ranges = new(StringComparer.Ordinal)
@@ -45,7 +47,7 @@ public static class QuerySchema
     private static readonly Dictionary<string, string[]> Enums = new(StringComparer.Ordinal)
     {
         ["from"] = [.. QuerySources.All], ["sides"] = ["both"], ["unit"] = ["msa", "stem"], ["at"] = ["final", "initial"],
-        ["dir"] = ["asc", "desc"],
+        ["dir"] = ["asc", "desc"], ["segmentTest"] = [.. PhonSegmentTest.All],
     };
 
     /// <summary>The schema as indented JSON; stable across runs.</summary>
@@ -216,7 +218,7 @@ public static class QuerySchema
         "( ) groups, ( )* repeats a group, # is a word edge, + is a morpheme boundary. " +
         "The grammar's surface character table segments each word, so a pattern sees the word as the grammar does; a word it cannot segment is reported as unsegmentable and matches nothing, even under not. " +
         "One alpha letter on two different features ([αvoice] _ [αson]) is refused as unsupported_construct (alphaAcrossFeatures). " +
-        "A literal or a segment-list class is tested by identity until PanGloss tests it as a rule does, so spans may under-report: the result says matchMode identity and mayUnderReport, and not over such a pattern warns that absence is not proven. " +
+        "Segments are tested as rule application tests them (segmentTest engine, the default): a literal matches every segment with its feature bundle, a [class] the union of its members' features, so the spans are a superset of what a rule rewrites, positions it leaves unchanged and overlapping spans included. segmentTest identity is exact (a literal names one segment, a [class] its members), and then the result says matchMode identity and mayUnderReport, and not over such a pattern warns that absence is not proven. Environment sides are exact under both, as in a rule. Every result reports its segmentTest. " +
         "+ needs words with marked boundaries, which Motif does not send yet, so it is refused on ordinary words as boundary_needs_marked_input.";
 
     private static JsonObject Wrapper(string key, JsonObject inner, JsonObject? extra = null)

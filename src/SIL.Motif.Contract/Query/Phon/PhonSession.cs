@@ -5,7 +5,8 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.Contract.Query.Phon;
 
 /// <summary>The pattern predicates of one query run, resolved over the candidate forms through one <see cref="IPhonMatcher"/>.</summary>
-public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSession.DefaultBatchSize, int maxBatchBytes = PhonSession.DefaultBatchBytes)
+public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSession.DefaultBatchSize, int maxBatchBytes = PhonSession.DefaultBatchBytes,
+    string segmentTest = PhonSegmentTest.Default)
 {
     /// <summary>The most words in one <c>match</c> request.</summary>
     public const int DefaultBatchSize = 20000;
@@ -39,17 +40,20 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
         {
             var identity = _leaves.Values.Any(IsIdentityTested);
             var warnings = _negated.Where(IsIdentityTested).Select(leaf => leaf.Source).Distinct(StringComparer.Ordinal)
-                .Select(source => $"not over {source}: absence is not proven, because PanGloss tests its literals and segment-list classes by identity and a form that has no span may still hold a segment a rule treats as the same.").ToArray();
+                .Select(source => $"not over {source}: absence is not proven, because --segment-test identity tests its literals and segment-list classes by exact members and a form that has no span may still hold a segment a rule treats as the same.").ToArray();
             return new PhonReport(_candidates.Count, _unsegmentable.Count, [.. _unsegmentable.Values.Take(SampleSize)],
                 _incomplete.Count, [.. _incomplete.Values.Take(SampleSize)], _complete, _stopReason, matcher.ParserVersion, _requests,
-                identity ? PhonIdentityLabel.Identity : null, identity, warnings.Length == 0 ? null : warnings);
+                segmentTest, identity ? PhonSegmentTest.IdentityLabel : null, identity, warnings.Length == 0 ? null : warnings);
         }
     }
 
-    // Identity-tested: a literal, or a class that is a segment list or that the inventory cannot place.
+    /// <summary>The segment test the patterns of this run use.</summary>
+    public string SegmentTest => segmentTest;
+
+    // Only identity labels; engine tests the target as a rule does and env sides are exact as in a rule.
     private bool IsIdentityTested(PhonLeaf leaf)
     {
-        if (!matcher.MatchesByIdentity) return false;
+        if (segmentTest != PhonSegmentTest.Identity) return false;
         if (leaf.Plan.HasLiteral) return true;
         if (leaf.Plan.ClassTokens.Count == 0) return false;
         foreach (var token in leaf.Plan.ClassTokens)
@@ -69,7 +73,7 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
     internal void Resolve(IReadOnlyList<PhonLeaf> leaves, IEnumerable<string> forms, CancellationToken cancellationToken = default)
     {
         Ran = true;
-        if (!_inventoryRead && matcher.MatchesByIdentity && leaves.Any(leaf => leaf.Plan.ClassTokens.Count > 0))
+        if (!_inventoryRead && segmentTest == PhonSegmentTest.Identity && leaves.Any(leaf => leaf.Plan.ClassTokens.Count > 0))
         {
             try { _inventory = matcher.Inventory(cancellationToken); }
             catch (QueryRefusalException) { _inventory = null; }
@@ -90,7 +94,7 @@ public sealed class PhonSession(IPhonMatcher matcher, int batchSize = PhonSessio
                     bytes += Encoding.UTF8.GetByteCount(words[offset + count++]) + WordOverhead;
                 var batch = words.AsMemory(offset, count).ToArray();
                 offset += count;
-                var result = matcher.Match(leaf.Plan.Text, batch, cancellationToken);
+                var result = matcher.Match(leaf.Plan.Text, batch, segmentTest, cancellationToken);
                 _requests++;
                 if (result.Words.Count != batch.Length)
                     throw QueryRefusalException.PhonFailed("PanGloss answered a match request with the wrong number of words.");

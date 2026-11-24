@@ -36,11 +36,13 @@ public sealed record QuerySkippedWord(string Word, string Reason, int? CharIndex
 /// <param name="StopReason">PanGloss's first stop reason when <paramref name="Complete"/> is false.</param>
 /// <param name="ParserVersion">The PanGloss version that answered.</param>
 /// <param name="Requests">The <c>match</c> requests sent; one per pattern per batch, never one per word.</param>
-/// <param name="MatchMode"><c>identity</c> when a pattern holds a literal or a segment-list class, which PanGloss tests by identity rather than by the engine's feature test; null otherwise.</param>
+/// <param name="SegmentTest">The segment test every pattern ran under, <c>engine</c> or <c>identity</c> (see <see cref="PhonSegmentTest"/>).</param>
+/// <param name="MatchMode"><c>identity</c> under <c>--segment-test identity</c> when a pattern holds a literal or a segment-list class, which that test treats as exact members and so may miss segments a rule treats as the same; null otherwise, and always null under <c>engine</c>.</param>
 /// <param name="MayUnderReport">True with <paramref name="MatchMode"/> <c>identity</c>: a span list may miss segments a rule would treat as the same.</param>
 /// <param name="Warnings">What the answer does not prove, such as absence under <c>not</c> over an identity-tested pattern.</param>
 public sealed record PhonReport(int Candidates, int Unsegmentable, IReadOnlyList<QuerySkippedWord> UnsegmentableSample,
     int Incomplete, IReadOnlyList<QuerySkippedWord> IncompleteSample, bool Complete, string? StopReason, string? ParserVersion, int Requests,
+    string SegmentTest = PhonSegmentTest.Engine,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? MatchMode = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool MayUnderReport = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? Warnings = null);
@@ -50,7 +52,8 @@ public sealed record PhonReport(int Candidates, int Unsegmentable, IReadOnlyList
 /// <param name="Name">The grammar's label for the class, or null.</param>
 /// <param name="Id">The class's id in the grammar.</param>
 /// <param name="Kind"><c>segment</c> (an explicit segment list) or <c>feature</c> (a feature structure).</param>
-public sealed record PhonInventoryClass(string? Token, string? Name, string Id, string Kind);
+/// <param name="FullName">The class's Name in the analysis writing system as FieldWorks shows it (<c>Vowels</c> for the label <c>V</c>); null when it has none or the grammar was loaded from HermitCrab XML.</param>
+public sealed record PhonInventoryClass(string? Token, string? Name, string Id, string Kind, string? FullName = null);
 
 /// <summary>A phonological feature as PanGloss's <c>inventory</c> op lists it.</summary>
 /// <param name="Name">The feature's name.</param>
@@ -66,17 +69,36 @@ public sealed record PhonInventoryFeature(string Name, string Id, IReadOnlyList<
 public sealed record PhonInventory(IReadOnlyList<PhonInventoryClass> Classes, IReadOnlyList<PhonInventoryFeature> Features, bool Complete = true, string? StopReason = null);
 
 /// <summary>
-/// The one switch for the identity label. Until PanGloss tests literals and segment-list classes by the engine's
-/// feature test, <c>match</c> tests them by identity and its spans may under-report. When a PanGloss with that fix is
-/// pinned, set <see cref="MatchTestsFeaturesLikeRules"/> to true and the label, and the absence warning, go away.
+/// How PanGloss's <c>match</c> tests a segment against a pattern node. <c>engine</c> is rule application's own test, so a literal
+/// matches every segment with its feature bundle and a segment-list <c>[class]</c> matches the union of its members' features; the
+/// spans are a superset of what a rule rewrites (positions it leaves unchanged and overlapping spans included). <c>identity</c> is
+/// the exact test: a literal names one segment and a class its members. Environment sides are exact under both, as in a rule.
 /// </summary>
-public static class PhonIdentityLabel
+public static class PhonSegmentTest
 {
-    /// <summary>Whether the pinned PanGloss's <c>match</c> tests literals and segment-list classes as a rule does.</summary>
-    public const bool MatchTestsFeaturesLikeRules = false;
+    /// <summary>Rule application's test; Motif's default, because the point of a pattern is to find the words a rule would touch.</summary>
+    public const string Engine = "engine";
 
-    /// <summary>The <c>matchMode</c> a report carries while a pattern is tested by identity.</summary>
+    /// <summary>The exact test, for "exactly these letters".</summary>
     public const string Identity = "identity";
+
+    /// <summary>What Motif sends when none is given.</summary>
+    public const string Default = Engine;
+
+    /// <summary>The accepted spellings.</summary>
+    public static IReadOnlyList<string> All { get; } = [Engine, Identity];
+
+    /// <summary>The mode named, or <see cref="Default"/> when none is; a spelling that is neither is refused.</summary>
+    /// <param name="text">What the person or document wrote, or null.</param>
+    /// <param name="path">Where it was written, for the refusal.</param>
+    /// <exception cref="QueryRefusalException">The text is neither mode.</exception>
+    public static string Normalize(string? text, string path = "segmentTest") =>
+        text is null ? Default
+        : All.Contains(text, StringComparer.Ordinal) ? text
+        : throw QueryRefusalException.DocumentInvalid($"The segment test is engine or identity, not '{text}'.", path);
+
+    /// <summary>The <c>matchMode</c> a report carries under <see cref="Identity"/> while a pattern holds a literal or a segment-list class.</summary>
+    public const string IdentityLabel = "identity";
 }
 
 /// <summary>PanGloss's answer for one word.</summary>
@@ -101,13 +123,10 @@ public interface IPhonMatcher
     /// <summary>The version of the matcher that answers, or null when unknown.</summary>
     string? ParserVersion { get; }
 
-    /// <summary>Whether literals and segment-list classes are tested by identity; see <see cref="PhonIdentityLabel"/>.</summary>
-    bool MatchesByIdentity => !PhonIdentityLabel.MatchTestsFeaturesLikeRules;
-
     /// <summary>The grammar's classes and features from PanGloss's <c>inventory</c> op, or null when unavailable.</summary>
     PhonInventory? Inventory(CancellationToken cancellationToken) => null;
 
-    /// <summary>Applies the pattern to the words and returns one result per word, in order, in one request.</summary>
+    /// <summary>Applies the pattern to the words under the segment test and returns one result per word, in order, in one request.</summary>
     /// <exception cref="QueryRefusalException">The matcher is unavailable or refused the pattern; the refusal says why.</exception>
-    PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken);
+    PhonBatchResult Match(string patternText, IReadOnlyList<string> words, string segmentTest, CancellationToken cancellationToken);
 }

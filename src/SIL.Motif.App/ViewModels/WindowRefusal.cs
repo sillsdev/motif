@@ -301,6 +301,8 @@ public sealed partial record WindowRefusal
         [C.WhyNotInputRefused] = () => MotifAppStrings.RefusalWhyNotInputRefused,
         [C.WhyNotMalformed] = () => MotifAppStrings.RefusalWhyNotMalformed,
         [C.WhyNotUnfinished] = () => MotifAppStrings.RefusalWhyNotUnfinished,
+        [C.WhyLostRequestInvalid] = () => MotifAppStrings.RefusalWhyLostRequestInvalid,
+        [C.WhyLostIncomparable] = () => MotifAppStrings.RefusalWhyLostIncomparable,
         [C.FormsExplainRequestInvalid] = () => MotifAppStrings.RefusalFormsExplainRequestInvalid,
         [C.FormsExplainParserUnsupported] = () => MotifAppStrings.RefusalFormsExplainParserUnsupported,
         [C.FormsExplainMorphemeUnresolved] = () => MotifAppStrings.RefusalFormsExplainMorphemeUnresolved,
