@@ -10226,6 +10226,42 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_why_lost",
+    "description": "Why a word lost a Reading. Compares a word\u0027s parse at the Baseline with its parse on a Proposal\u0027s Trial copy and, for each lost Reading, reports the stop PanGloss recorded and the Proposal operation that names the blocking form. Use it to find which edit lost a Reading.\nCommand: proposal why-lost. Agent class: Evaluate.\nword: The exact word form to parse on both sides.\nproposal: The Proposal whose latest Trial copy is read.\nmax_paths: The most terminal paths to read per side, 1 through 64; omitted reads 64.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "word": {
+          "type": "string",
+          "description": "The word that lost a Reading in the Trial."
+        },
+        "proposal": {
+          "type": "string",
+          "description": "The proposal id whose latest Trial copy to compare with the Baseline."
+        },
+        "max_paths": {
+          "type": "integer",
+          "description": "Most terminal paths to read per side; default 64.",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "word",
+        "proposal",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_finalize_proposal",
     "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {
