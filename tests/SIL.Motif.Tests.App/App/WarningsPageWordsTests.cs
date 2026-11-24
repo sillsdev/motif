@@ -112,7 +112,7 @@ public sealed class WarningsPageWordsTests
         });
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CapturedParserAdviceReachesTheStoredWarningsViewForEveryKind()
     {
         using var pristine = new PristineProjectFixture();

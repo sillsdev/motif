@@ -32,7 +32,7 @@ public sealed class BaselineViewModelTests
         Assert.False(viewModel.RefreshCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SettingAProjectWithNoBaselineYetShowsTheAbsentStateAndEnablesRefresh()
     {
         var fake = new FakeCommandClient();
@@ -47,7 +47,7 @@ public sealed class BaselineViewModelTests
         Assert.Equal(ProjectPath, Assert.Single(fake.CurrentBaselineRequests).ProjectPath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SettingAProjectWithACapturedBaselineShowsItsTimeAndTheExactFreshnessSentence()
     {
         var fake = new FakeCommandClient();
@@ -63,7 +63,7 @@ public sealed class BaselineViewModelTests
         Assert.Equal("as of FieldWorks' last save", BaselineViewModel.FreshnessSentence);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(true, "FieldWorks holds this project open right now.")]
     [InlineData(false, "FieldWorks does not currently hold this project.")]
     public async Task TheHeldNoticeNamesWhetherFieldWorksHoldsTheProjectNow(bool held, string expected)
@@ -77,7 +77,7 @@ public sealed class BaselineViewModelTests
         Assert.Equal(expected, viewModel.HeldStatusText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshCommandUpdatesStateOnSuccess()
     {
         var fake = new FakeCommandClient();
@@ -99,7 +99,7 @@ public sealed class BaselineViewModelTests
         Assert.Equal(ProjectPath, Assert.Single(fake.CaptureBaselineRequests).ProjectPath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshCommandLeavesStateUntouchedAndShowsTheRefusalOnRefusal()
     {
         var fake = new FakeCommandClient();
@@ -119,7 +119,7 @@ public sealed class BaselineViewModelTests
         Assert.Contains(refusal.Message, viewModel.ShownRefusal!.Details);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshRaisesTheCapturedEventAfterUpdatingTheBaseline()
     {
         var fake = new FakeCommandClient();

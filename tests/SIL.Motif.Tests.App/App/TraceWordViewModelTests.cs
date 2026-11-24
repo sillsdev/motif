@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed class TraceWordViewModelTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task LiveAndReopenedTracesDisplayTheCapturedRuleName()
     {
         var response = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
@@ -95,7 +95,7 @@ public sealed class TraceWordViewModelTests
         AssertNoMilliseconds(trace.ParserWorkText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalTraceWithoutAPairedBaselineDoesNotShowAbsoluteParserWork()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -222,7 +222,7 @@ public sealed class TraceWordViewModelTests
         Assert.DoesNotContain("Rejection details not recorded", step.RecordedRejectionText);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false, "Producer name")]
     [InlineData(true, "Producer name")]
     [InlineData(false, "Vowel harmony")]
@@ -267,7 +267,7 @@ public sealed class TraceWordViewModelTests
         Assert.False(trace.TryCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAnotherWordCancelsTheTraceStillRunning()
     {
         var fake = new FakeCommandClient();
@@ -295,7 +295,7 @@ public sealed class TraceWordViewModelTests
         Assert.Null(trace.Refusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheSummarySaysHowHardTheParserWorked_AndWhyATraceStoppedShort()
     {
         var fake = new FakeCommandClient();
@@ -330,7 +330,7 @@ public sealed class TraceWordViewModelTests
         Assert.Empty(trace.Effort);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FailedAttemptsAreGroupedByTheRuleThatStoppedThem_ClosestFirstAndFilterable()
     {
         static TraceCandidate Attempt(string rule, string reason, string surface, int morphs) =>
@@ -508,7 +508,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal(TraceFailureSentences.Explain("SomeNewReason"), group.ReasonText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACandidateKeepsItsIdentityAcrossReads()
     {
         var fake = new FakeCommandClient();
@@ -538,7 +538,7 @@ public sealed class TraceWordViewModelTests
         Assert.Null(trace.Result);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryingAWordCallsTheClientWithTheTypedWordAndPublishesCandidates()
     {
         var fake = new FakeCommandClient();
@@ -626,7 +626,7 @@ public sealed class TraceWordViewModelTests
         Assert.True(failing.HasFailureReason);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task EachCandidateCarriesItsFullOrderedStepPathNotJustTheFinalFailure()
     {
         var fake = new FakeCommandClient();
@@ -681,7 +681,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("Show Analyses", trace.FocusToggleLabel);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheChosenWordsApprovedAnalysisSitsBesideTheAttemptThatGotFurthest()
     {
         var fake = new FakeCommandClient();
@@ -712,7 +712,7 @@ public sealed class TraceWordViewModelTests
         Assert.True(trace.ShowsOtherWord);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryingAWordTakesTheFullWidth()
     {
         var fake = new FakeCommandClient();
@@ -728,7 +728,7 @@ public sealed class TraceWordViewModelTests
         Assert.True(trace.IsFocused);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryingAWordClearsTheSelectedCandidateAndStepFromTheOldResult()
     {
         var fake = new FakeCommandClient();

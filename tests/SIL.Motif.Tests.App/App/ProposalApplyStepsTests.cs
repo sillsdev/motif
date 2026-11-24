@@ -53,7 +53,7 @@ public sealed class ProposalApplyStepsTests
     private static readonly ApplyProjection Receipt = new("published/one", false, "Saved", [], "effect",
         new AppliedLogEntrySummary("published/one", "now", "Person", "intent/one"));
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheApplyButtonStepsAsideWhileItsConfirmationIsOpenSoOnlyOneApplyShows()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -67,7 +67,7 @@ public sealed class ProposalApplyStepsTests
         Assert.True(opened.Document.ShowsPrepareApply);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyReappearsWhenEvidenceChangesUnderAnOpenConfirmation()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -80,7 +80,7 @@ public sealed class ProposalApplyStepsTests
         Assert.True(opened.Document.ShowsPrepareApply);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheConfirmationOfADeferredProposalSaysSoAndOtherConfirmationsDoNot()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -97,7 +97,7 @@ public sealed class ProposalApplyStepsTests
         Assert.Equal("This Proposal is Deferred.", MotifAppStrings.ProposalApplyDeferredNotice);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CancellingThePreparedApplyClosesTheQuestionAndWritesNothing()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -113,7 +113,7 @@ public sealed class ProposalApplyStepsTests
         Assert.Equal(0, opened.Refreshes);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APressWhileTheDocumentIsBeingReadWaitsForTheReadAndThenAsksForConfirmation()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -137,7 +137,7 @@ public sealed class ProposalApplyStepsTests
         Assert.True(opened.Document.IsConfirmingApply);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASecondReadStartedDuringAReadLeavesTheDocumentSettled()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -157,7 +157,7 @@ public sealed class ProposalApplyStepsTests
         Assert.NotNull(opened.Document.Detail);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APressDuringAReadThatNeverEndsReturnsWithAReasonAndCanBePressedAgain()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -179,7 +179,7 @@ public sealed class ProposalApplyStepsTests
         gate.SetCanceled();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APressWhoseReadEndsOutdatedDoesNotAskForConfirmation()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -193,7 +193,7 @@ public sealed class ProposalApplyStepsTests
         Assert.Equal(MotifAppStrings.ProposalDocumentOutdated, opened.Document.ApplyRefusal?.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyStaysOffWhileTheChangesAreBeingCheckedSoAPressCannotBeLost()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -225,7 +225,7 @@ public sealed class ProposalApplyStepsTests
         Assert.True(opened.Document.IsConfirmingApply);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APressThatCannotOpenTheConfirmationSaysWhy()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -246,7 +246,7 @@ public sealed class ProposalApplyStepsTests
         Assert.False(string.IsNullOrWhiteSpace(opened.Document.ApplyRefusal?.Sentence));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedApplyShowsItsRefusalWithoutAReceiptOrARefresh()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -264,7 +264,7 @@ public sealed class ProposalApplyStepsTests
         Assert.True(opened.Document.ShowsPrepareApply);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnAppliedPendingDraftShowsItsReceiptAndRefreshesTheProjectOnce()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -284,7 +284,7 @@ public sealed class ProposalApplyStepsTests
         Assert.Equal(1, opened.Refreshes);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReadingTheDocumentAgainClosesTheApplyQuestion()
     {
         await using var opened = await OpenMeasuredPendingAsync();
@@ -298,7 +298,7 @@ public sealed class ProposalApplyStepsTests
         Assert.Empty(opened.Fake.ApplyPendingRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADocumentWhoseEvidenceWentStaleStopsAskingAndCannotBeConfirmed()
     {
         await using var opened = await OpenMeasuredPendingAsync();

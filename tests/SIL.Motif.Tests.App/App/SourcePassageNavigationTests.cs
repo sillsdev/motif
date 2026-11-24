@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class SourcePassageNavigationTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task SwitchingProjectDropsLateSourceRowsAndLocalInput()
     {
         var old = new TaskCompletionSource<CommandOutcome<SourceListResponse>>();
@@ -29,7 +29,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ContextIsStagedWhileCurrentIsLocalAndNeitherChangesTheSavedContext()
     {
         var reloads = 0;
@@ -56,7 +56,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StaleSourceMetadataCannotEnableWritesOrShowAnExternalReader()
     {
         var client = new FakeCommandClient
@@ -77,7 +77,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedCurrentDoesNotStageAProposalOrReplaceItsContext()
     {
         var client = new FakeCommandClient
@@ -98,7 +98,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AContextReloadInvalidatesTheEarlierDetailAndPreservesTheSourceChoice()
     {
         var old = new TaskCompletionSource<CommandOutcome<SourceShowResponse>>();
@@ -123,7 +123,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ALocalWriteCompletingAfterASourceSwitchCannotPublishTheOldCurrent()
     {
         var saved = new TaskCompletionSource<CommandOutcome<SourceLocalResponse>>();
@@ -148,7 +148,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedCurrentReadCannotEnableActionsFromAnOlderDetail()
     {
         var client = new FakeCommandClient
@@ -167,7 +167,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReloadingExternalMetadataKeepsItsPassageAndNeverFlashesTheFieldWorksReader()
     {
         var client = new FakeCommandClient { SourceRows = [SourcesPageTests.Source("source")] };
@@ -188,7 +188,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingFieldWorksDuringASourceReloadKeepsTheReaderSelectedAfterTheListArrives()
     {
         var client = new FakeCommandClient { SourceRows = [SourcesPageTests.Source("source")] };
@@ -213,7 +213,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("source", "MAT 3")]
     [InlineData("second", "MAT 1")]
     public async Task ANewerPassageDuringASourceReloadKeepsItsLocatorAfterTheListArrives(string source, string passage)
@@ -241,7 +241,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SourceStagingNeverWritesIntoAnotherProposalsTarget()
     {
         var pending = false;
@@ -262,7 +262,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AChangedBaselineWhileLocatingAPassageDisablesMutationsUntilReload()
     {
         var client = new FakeCommandClient
@@ -286,7 +286,7 @@ public sealed class SourcePassageNavigationTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnInvalidExternalChapterIsRefusedByTheEngineWithoutChangingCurrent()
     {
         var client = new FakeCommandClient

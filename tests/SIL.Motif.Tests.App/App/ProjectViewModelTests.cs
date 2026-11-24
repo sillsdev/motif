@@ -14,7 +14,7 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed class ProjectViewModelTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task AQueryResultNeverPublishesAPartialKnownProjectList()
     {
         var fake = new FakeCommandClient();
@@ -31,7 +31,7 @@ public sealed class ProjectViewModelTests
         Assert.All(observed, list => Assert.Equal(projects, list));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LoadKnownProjectsAsyncPopulatesKnownProjectsInQueryOrder()
     {
         var fake = new FakeCommandClient();
@@ -48,7 +48,7 @@ public sealed class ProjectViewModelTests
         Assert.Equal(projects, viewModel.KnownProjects);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LoadingTheSameKnownProjectsDoesNotNotifyCollectionChanged()
     {
         var projects = new[]
@@ -74,7 +74,7 @@ public sealed class ProjectViewModelTests
         void CountNotification(object? sender, NotifyCollectionChangedEventArgs args) => notifications++;
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChangingOnlyLastSeenPublishesTheUpdatedSummary()
     {
         var project = new KnownProjectSummary(@"C:\projects\one.fwdata", DateTimeOffset.UtcNow);
@@ -93,7 +93,7 @@ public sealed class ProjectViewModelTests
         Assert.Equal(updated, Assert.Single(viewModel.KnownProjects));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SelectingAKnownProjectRaisesProjectChosenWithItsPath()
     {
         var fake = new FakeCommandClient();
@@ -109,7 +109,7 @@ public sealed class ProjectViewModelTests
         Assert.Equal(project.FullFwDataPath, chosen);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task BrowseCommandRaisesProjectChosenWithThePickedPath()
     {
         var picker = new FakeProjectPicker { PathToReturn = @"C:\projects\browsed.fwdata" };
@@ -122,7 +122,7 @@ public sealed class ProjectViewModelTests
         Assert.Equal(@"C:\projects\browsed.fwdata", chosen);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnOpenProjectIsShownAsThePickersChoiceWithoutBeingChosenAgain()
     {
         var fake = new FakeCommandClient();
@@ -145,7 +145,7 @@ public sealed class ProjectViewModelTests
         Assert.Equal(0, raised);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task BrowseCommandRaisesNothingWhenTheCallerCancels()
     {
         var picker = new FakeProjectPicker { PathToReturn = null };
@@ -158,7 +158,7 @@ public sealed class ProjectViewModelTests
         Assert.False(raised);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("corrupt")]
     [InlineData("wrong-schema")]
     public async Task ARefusedMachineStoreShowsRecoveryAndDoesNotBlockBrowse(string shape)

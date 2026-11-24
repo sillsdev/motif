@@ -69,7 +69,7 @@ public sealed class PassageOccurrenceTests
     private static readonly WordReadingOption One = new("a1", "one", true);
     private static readonly WordReadingOption Two = new("a2", "two", true);
 
-    [Fact]
+    [UiThreadFact]
     public async Task UntickingOneOfThreeStagesExactlyTheOtherTwoAnchors()
     {
         var actions = new Actions();
@@ -88,7 +88,7 @@ public sealed class PassageOccurrenceTests
         Assert.True(model.Page[0].IsStaged);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SelectionSurvivesPagingAndStagesPlacesOffThePage()
     {
         var actions = new Actions();
@@ -106,7 +106,7 @@ public sealed class PassageOccurrenceTests
         Assert.Equal([Anchor(2), Anchor(41)], actions.Staged.OrderBy(a => a.Index));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailureMarksOnlyThePlacesThatWereWritten()
     {
         var actions = new Actions { FailAfter = 1 };
@@ -121,7 +121,7 @@ public sealed class PassageOccurrenceTests
         Assert.Equal(2, model.SelectedCount);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CancellationLeavesLaterPlacesUnmarked()
     {
         var actions = new Actions();
@@ -136,7 +136,7 @@ public sealed class PassageOccurrenceTests
         Assert.Equal(2, model.SelectedCount);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SeveralGuessesNeedAnExplicitChoiceAndNoReadingHasNoKeep()
     {
         var actions = new Actions();
@@ -155,7 +155,7 @@ public sealed class PassageOccurrenceTests
         Assert.False(none.CanApprove);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NotAWordNamesTheSpellingScopeAndThePanelHasNoAskCommand()
     {
         var actions = new Actions();
@@ -169,7 +169,7 @@ public sealed class PassageOccurrenceTests
         Assert.Empty(actions.Staged);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChangesStagesOneApproveWithAnAnchorPerPlaceAndStopsOnRefusal()
     {
         var fake = new FakeCommandClient();

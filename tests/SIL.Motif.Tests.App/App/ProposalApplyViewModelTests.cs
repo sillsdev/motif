@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ProposalApplyViewModelTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyingMeasuredDraftRecordsReceiptAndClearsStagingHistory()
     {
         var fake = new FakeCommandClient();
@@ -37,7 +37,7 @@ public sealed class ProposalApplyViewModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task PendingDraftKeepsFitAndMeasurementBlockers()
     {
         var fake = new FakeCommandClient();
@@ -59,7 +59,7 @@ public sealed class ProposalApplyViewModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ALostApprovedAnalysisDisablesApplyBeforeAnyClick()
     {
         var fake = new FakeCommandClient();
@@ -95,7 +95,7 @@ public sealed class ProposalApplyViewModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProposalReadinessMustBelongToTheCurrentTrialAndContent()
     {
         var fake = new FakeCommandClient();
@@ -157,7 +157,7 @@ public sealed class ProposalApplyViewModelTests
         Assert.Equal("apply.other", apply.ApplyRefusal.Code);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProjectStopCancelsAndJoinsTheApplyWrite()
     {
         var fake = new FakeCommandClient();
@@ -182,7 +182,7 @@ public sealed class ProposalApplyViewModelTests
         Assert.False(context.ProposalApply.IsApplying);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConcurrentRequestsCannotStartTwoApplyWrites()
     {
         var fake = new FakeCommandClient();
@@ -205,7 +205,7 @@ public sealed class ProposalApplyViewModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ClearingAProjectStopsWaitingAndDoesNotPublishItsRefreshRefusal()
     {
         var context = WorkspaceContextTests.NewContext(new FakeCommandClient());

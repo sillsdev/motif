@@ -16,7 +16,7 @@ public sealed class ReviewPageModelTests
     private const string ProjectPath = @"C:\projects\one.fwdata";
     private const string InternalId = "12345678-1234-1234-1234-123456789abc";
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshRechecksChangeFitBeforeApply()
     {
         var fake = new FakeCommandClient();
@@ -40,7 +40,7 @@ public sealed class ReviewPageModelTests
         Assert.False(page.CanApply(null, null, null, null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshLoadsExternallyStagedChangesBeforeRechecking()
     {
         var fake = new FakeCommandClient();
@@ -107,7 +107,7 @@ public sealed class ReviewPageModelTests
     public void CheckRefusalsUseTheWindowsWords(string code, string expected) =>
         Assert.Equal(expected, WindowRefusal.From(new Refusal(code, FailureReason.Refused, "detail")).Sentence);
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATimedOutApplyShowsThatTheCheckWasStopped()
     {
         var fake = new FakeCommandClient();
@@ -128,7 +128,7 @@ public sealed class ReviewPageModelTests
             page.ApplyRefusal?.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAnotherProjectCancelsApplyAndDiscardsTheOldProjectResult()
     {
         var fake = new FakeCommandClient();
@@ -168,7 +168,7 @@ public sealed class ReviewPageModelTests
             request => request.FwDataPath == @"C:\projects\two.fwdata");
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyingMeasuredChangesShowsTheReceiptAndEmptiesTheList()
     {
         var fake = new FakeCommandClient();
@@ -200,7 +200,7 @@ public sealed class ReviewPageModelTests
             entry => Assert.Equal("apply --all-pending", entry.Command));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnApplyThatFoundNothingPendingShowsNoReceiptAndLeavesTheProjectUnchanged()
     {
         var fake = new FakeCommandClient();
@@ -222,7 +222,7 @@ public sealed class ReviewPageModelTests
         Assert.False(context.Evidence.AppliedSinceRefresh);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARegressionRefusalExplainsTheWorseResult()
     {
         var fake = new FakeCommandClient();
@@ -245,7 +245,7 @@ public sealed class ReviewPageModelTests
     private static PendingChange Change(string id, string word) =>
         new(id, "wordform/" + id, word, "approve", "assessment/one", "reading", ["operation/" + id]);
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task RemovingOneGroupedReviewChoiceKeepsTheOtherHomograph(bool nonFitting)

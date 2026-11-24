@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class GrammarGuidePageModelTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ListsStoredRecordsAndShowsTheSelectedDiscussion()
     {
         var fake = new FakeCommandClient();
@@ -26,7 +26,7 @@ public sealed class GrammarGuidePageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LateDiscussionForAnEarlierSelectionIsNotShown()
     {
         var fake = new FakeCommandClient();
@@ -49,7 +49,7 @@ public sealed class GrammarGuidePageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RecapturingBaselineKeepsTheOpenSectionWhileItsReplacementLoads()
     {
         var fake = new FakeCommandClient();
@@ -78,7 +78,7 @@ public sealed class GrammarGuidePageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoppingThePageCancelsAndJoinsItsOutstandingListRead()
     {
         var fake = new FakeCommandClient();

@@ -13,7 +13,7 @@ public sealed class ApplyRefusalTests
 {
     private const string ProjectPath = @"C:\projects\apply-refusal.fwdata";
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefusalKeepsTheChangeAndExplainsWhy()
     {
         var fake = new FakeCommandClient();

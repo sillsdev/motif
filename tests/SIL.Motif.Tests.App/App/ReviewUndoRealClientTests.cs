@@ -30,7 +30,7 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "Integration")]
 public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pristine)
 {
-    [Fact]
+    [UiThreadFact]
     public async Task RemoveAnalysisStagesAsRemovedAndUndoUsesTheRealClient()
     {
         using var project = new WalkthroughProject(pristine);
@@ -55,7 +55,7 @@ public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pri
         Assert.Empty(changes.Snapshot.Changes);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AcceptNewSetGroupsRealChangesAndUndoRemovesTheWholeGroup()
     {
         using var project = new WalkthroughProject(pristine);
@@ -80,7 +80,7 @@ public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pri
         Assert.Empty(changes.Snapshot.Changes);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AStoredDisapprovalFromMarkingAppearsInReviewGroups()
     {
         using var project = new WalkthroughProject(pristine);
@@ -129,7 +129,7 @@ public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pri
         Assert.Equal("Approved → Disapproved", Assert.Single(changes.Items).TransitionText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task UncertainChangesDisableApplyAfterARealRefresh()
     {
         using var project = new WalkthroughProject(pristine);

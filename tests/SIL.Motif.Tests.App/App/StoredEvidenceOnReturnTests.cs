@@ -28,7 +28,7 @@ public sealed class StoredEvidenceOnReturnTests
     private static readonly BaselineToken Token = new(
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReturningToTheWindowShowsAnAssessmentRecordedMeanwhile()
     {
         var (fake, workspace) = NewWorkspace();
@@ -44,7 +44,7 @@ public sealed class StoredEvidenceOnReturnTests
         Assert.Empty(fake.AssessRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReturningToTheWindowKeepsTheRunItShowsWhenTheStoreHoldsThatRun()
     {
         var (fake, workspace) = NewWorkspace();

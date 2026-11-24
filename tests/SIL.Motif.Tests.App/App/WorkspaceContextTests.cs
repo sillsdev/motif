@@ -162,7 +162,7 @@ public sealed class WorkspaceContextTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAProjectReadsItsStoredOverviewThroughThePageContext()
     {
         var (fake, context) = NewContextWithFake();
@@ -182,7 +182,7 @@ public sealed class WorkspaceContextTests
         Assert.Same(overview, overviewPage.Health.Overview);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CheckingGrammarReloadsHealthWarningsFromTheCommand()
     {
         var (fake, context) = NewContextWithFake();
@@ -206,7 +206,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal(readsBeforeCheck + 1, fake.OverviewRequests.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AStoredGrammarReadThatFinishesAfterACheckStartsLeavesTheCheckRunning()
     {
         var (fake, context) = NewContextWithFake();
@@ -307,7 +307,7 @@ public sealed class WorkspaceContextTests
     public void TimingDisplaysReadableRuleKindLabels(string storedKind, string label) =>
         Assert.Equal(label, TimingShare.KindName(storedKind));
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnAiHandoffPageModelBuiltFromAContextAloneCoversThePublishedAssessmentAndForgetsItOnClear()
     {
         var context = NewContext();
@@ -324,7 +324,7 @@ public sealed class WorkspaceContextTests
         Assert.False(context.HasEvidence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task PendingChangesFollowAProjectSwitchOnlyThroughTheirSlot()
     {
         var context = NewContext();
@@ -797,7 +797,7 @@ public sealed class WorkspaceContextTests
         Assert.False(context.CanOpenPage((WorkspacePage)int.MaxValue));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APageDefinedOutsideTheAppRunsItsOwnQueryAndIsOpenedThroughARegistryEntryAndTheContextAlone()
     {
         var (fake, context) = NewContextWithFake();
@@ -818,7 +818,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal("note", model.Received);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAProjectAndCapturingABaselineAwaitEveryPagesOwnLoad()
     {
         var context = NewContext();
@@ -915,7 +915,7 @@ public sealed class WorkspaceContextTests
         new OverviewTextCoverage(0, 0, 0, 0, 0, 0), new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0),
         new OverviewTiming(null, null, [], 0), null);
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpenProposalPublishesItsTrialThroughASeparateSelectionOwner()
     {
         var fake = new FakeCommandClient();
@@ -946,7 +946,7 @@ public sealed class WorkspaceContextTests
         Assert.True(proposalOwner.Generation > proposalGeneration);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAProposalPointsStagingAtItsDraftBeforeTheLensShows()
     {
         var fake = new FakeCommandClient();
@@ -972,7 +972,7 @@ public sealed class WorkspaceContextTests
         Assert.Null(fake.PendingLoadRequests.Last().ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProposalWithoutRootAssessmentStaysOnTheLensButPublishesNoAfterEvidence()
     {
         var fake = new FakeCommandClient();
@@ -995,7 +995,7 @@ public sealed class WorkspaceContextTests
         Assert.Empty(context.EvidenceLens.Sets);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpenProposalSurfacesAReadRefusalWithoutThrowing()
     {
         var fake = new FakeCommandClient();
@@ -1011,7 +1011,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal("trial.scratch-gone", context.Lens?.ReadRefusal?.Code);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATrialReadThatFinishesAfterAProjectSwitchDoesNotReplaceTheNewLens()
     {
         var fake = new FakeCommandClient();
@@ -1032,7 +1032,7 @@ public sealed class WorkspaceContextTests
         Assert.False(context.EvidenceLens.InProposalMode);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedTrialRefreshClearsStaleEvidenceAndSurfacesTheRefusal()
     {
         var fake = new FakeCommandClient();
@@ -1050,7 +1050,7 @@ public sealed class WorkspaceContextTests
         Assert.Null(context.EvidenceLens.Proposal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedTryAgainQueueIsShownWithoutKeepingTheOldTrialAsCurrent()
     {
         var fake = new FakeCommandClient();
@@ -1071,7 +1071,7 @@ public sealed class WorkspaceContextTests
         Assert.Empty(fake.WaitForJobRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshInProposalModeRefreshesFreshnessWithoutQueueingAnotherTrial()
     {
         var fake = new FakeCommandClient();
@@ -1088,7 +1088,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal(2, fake.ReadTrialRequests.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryAgainQueuesOnlyWhenExplicitlyRequested()
     {
         var fake = new FakeCommandClient();
@@ -1106,7 +1106,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal(2, fake.ReadTrialRequests.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryAgainWithoutAProjectIsARefusalNotAnException()
     {
         var fake = new FakeCommandClient();
@@ -1119,7 +1119,7 @@ public sealed class WorkspaceContextTests
         Assert.Empty(fake.EnqueueTrialRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryAgainSaysTryingUntilTheTrialEndsThenShowsItsResult()
     {
         // The window publishes Trial states through the context it was made on, which a pool thread is not.
@@ -1160,7 +1160,7 @@ public sealed class WorkspaceContextTests
         });
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedRetryAfterAGoodTrialIsRefusedAndKeepsTheGoodTrial()
     {
         var fake = new FakeCommandClient();
@@ -1180,7 +1180,7 @@ public sealed class WorkspaceContextTests
             context.TrialRun.StateFor("proposal/one").ShownRefusal?.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASecondTryAgainOfARunningProposalJoinsItAndAnotherProposalLeavesTheOpenOneAlone()
     {
         var fake = new FakeCommandClient();
@@ -1207,7 +1207,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal("proposal/one", context.Lens?.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LeavingTheProjectStopsFollowingItsTrials()
     {
         var fake = new FakeCommandClient();

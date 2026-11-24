@@ -55,7 +55,7 @@ public sealed class ProjectSwitchTests
     private static Task OpenProjectAsync(WorkspaceShellViewModel workspace, string path) =>
         workspace.SetProjectAsync(path);
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyingInOneProjectDoesNotMarkTheNextOneStale()
     {
         var parts = NewWorkspace();
@@ -77,7 +77,7 @@ public sealed class ProjectSwitchTests
         Assert.NotEqual("Numbers need refresh", parts.Workspace.FreshnessLabel);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATrialAfterAnApplyCapturesANewBaselineThroughTheShellsRefreshFirst()
     {
         var parts = NewWorkspace();
@@ -111,7 +111,7 @@ public sealed class ProjectSwitchTests
         Assert.Equal("proposal/two", Assert.Single(parts.Fake.EnqueueTrialRequests).ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASecondSwitchBeforeTheFirstFinishesShowsOnlyTheSecondProject()
     {
         var parts = NewWorkspace();
@@ -155,7 +155,7 @@ public sealed class ProjectSwitchTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnOldProjectsPendingAnswerThatLandsAfterTheSwitchIsDropped()
     {
         var parts = NewWorkspace();
@@ -183,7 +183,7 @@ public sealed class ProjectSwitchTests
         Assert.Empty(parts.Workspace.Context.Changes.Items);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnOldBulkCollectionRefusalDoesNotLeakAcrossAProjectSwitch()
     {
         var parts = NewWorkspace();
@@ -226,7 +226,7 @@ public sealed class ProjectSwitchTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefreshInFlightDoesNotLandInTheNextProject()
     {
         var parts = NewWorkspace();
@@ -331,7 +331,7 @@ public sealed class ProjectSwitchTests
         }, TimeSpan.FromSeconds(20));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoredNumbersAreClearedWhenTheNewBaselineIsCaptured()
     {
         var parts = NewWorkspace();
@@ -370,7 +370,7 @@ public sealed class ProjectSwitchTests
         Assert.Equal(2, parts.Fake.CurrentEvidenceRequests.Count(path => path == ProjectA));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NoProjectReadStartsBeforeTheBaselineAnswers()
     {
         var parts = NewWorkspace();
@@ -440,7 +440,7 @@ public sealed class ProjectSwitchTests
             item => Assert.True(item.index < setupIndex));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NoPageKeepsTheOldProjectsInputsAfterASwitch()
     {
         var parts = NewWorkspace();
@@ -474,7 +474,7 @@ public sealed class ProjectSwitchTests
         Assert.Equal(ResultsInTextFilter.New, texts.ResultsInText.Filter);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAProjectAfterStoppingWorkRefreshesRecentProjects()
     {
         var parts = NewWorkspace();
@@ -502,7 +502,7 @@ public sealed class ProjectSwitchTests
         Assert.DoesNotContain(parts.Workspace.RecentProjects, recent => recent.FullFwDataPath == ProjectB);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AMeasurementOrApplyErrorDoesNotFollowTheNextProject()
     {
         var parts = NewWorkspace();
@@ -532,7 +532,7 @@ public sealed class ProjectSwitchTests
         Assert.Null(apply.ApplyRefusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NoPendingChangeOfTheOldProjectIsVisibleOrWritableDuringTheSwitch()
     {
         var parts = NewWorkspace();
@@ -572,7 +572,7 @@ public sealed class ProjectSwitchTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task EveryParticipantIsClearedBeforeAnyLoads()
     {
         var parts = NewWorkspace();

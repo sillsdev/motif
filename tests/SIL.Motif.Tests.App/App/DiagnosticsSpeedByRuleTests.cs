@@ -41,7 +41,7 @@ public sealed class DiagnosticsSpeedByRuleTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(2, "6.00")]
     [InlineData(0, null)]
     public async Task DividesRecordedStepsByMeasuredWordsOnly(int measured, string? expected)
@@ -67,7 +67,7 @@ public sealed class DiagnosticsSpeedByRuleTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task BeginningAnotherReadHidesOldTotalsBeforeItCompletes()
     {
         var fake = new FakeCommandClient();
@@ -91,7 +91,7 @@ public sealed class DiagnosticsSpeedByRuleTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read);
         await context.StopProjectWorkAsync();
     }
-    [Fact]
+    [UiThreadFact]
     public async Task ASelectedRuleResolvesOnlyItsVerifiedFieldWorksLink()
     {
         var fake = new FakeCommandClient();

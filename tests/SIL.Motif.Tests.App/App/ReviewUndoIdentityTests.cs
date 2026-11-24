@@ -23,7 +23,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed partial class ReviewUndoRealClientTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task RemovingAStagedAddOnlyCancelsThePendingChange()
     {
         using var project = new WalkthroughProject(pristine);

@@ -49,7 +49,7 @@ public sealed class BoundedAssessmentProjectionTests
         compare.ReleaseVisibleRows();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task MatrixStagingFreezesEveryTargetBeforeAwaitWithoutRecreatingEvictedRows()
     {
         var fake = new FakeCommandClient();

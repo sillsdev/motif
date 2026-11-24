@@ -50,7 +50,7 @@ public sealed class AssessViewModelTests
         new(AssessmentStage.Complete, 2, 2, "Assessment complete."),
     ];
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACompletedRunIsStampedWithTheComposedClock()
     {
         var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
@@ -98,7 +98,7 @@ public sealed class AssessViewModelTests
         Assert.Same(response, assess.Result);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RerunningPreservesTheSelectionParserWorkLimit()
     {
         var (fake, selection, assess) = NewViewModel();
@@ -113,7 +113,7 @@ public sealed class AssessViewModelTests
         Assert.Equal("assessment/one", fake.AssessRequests[1].ReplaceAssessmentId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RetryWorkUsesThePreviousAssessmentAsItsSource()
     {
         var (fake, selection, assess) = NewViewModel();
@@ -127,7 +127,7 @@ public sealed class AssessViewModelTests
         Assert.Equal("assessment/one", request.RetrySourceAssessmentId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AParseListsObjectTimingAmongItsCollectorsWhileDiagnosticsIsOn()
     {
         var fake = new FakeCommandClient();
@@ -145,7 +145,7 @@ public sealed class AssessViewModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AParseLeavesTheCollectDefaultWhileDiagnosticsIsOff()
     {
         var fake = new FakeCommandClient();
@@ -160,7 +160,7 @@ public sealed class AssessViewModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RerunningCanUseALargerParserWorkLimitForTheChosenWords()
     {
         var (fake, _, assess) = NewViewModel();
@@ -209,7 +209,7 @@ public sealed class AssessViewModelTests
         Assert.Equal("initial", Assert.Single(merged.Measurements).AssessmentId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CancellingWhileRunningReachesCancelledWithTheCommandsOwnRefusalCode()
     {
         var (fake, _, assess) = NewViewModel();
@@ -246,7 +246,7 @@ public sealed class AssessViewModelTests
         Assert.DoesNotContain(ProjectPath, string.Join(" ", entry.ArgumentShape));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusalThatIsNotCancellationReachesRefusedAndDisplaysTheCommandsOwnMessage()
     {
         var (fake, _, assess) = NewViewModel();
@@ -269,7 +269,7 @@ public sealed class AssessViewModelTests
     }
 
     // A parse can run for minutes; the linguist keeps reading the last results until new ones replace them.
-    [Fact]
+    [UiThreadFact]
     public async Task TheLastResultsStayShownWhileAParseRunsAndAfterItIsRefused()
     {
         var (fake, _, assess) = NewViewModel();
@@ -307,7 +307,7 @@ public sealed class AssessViewModelTests
         Assert.False(assess.ShowsEarlierResults);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DisposalCancelsAndAwaitsAnActiveRun()
     {
         var (fake, _, assess) = NewViewModel();
@@ -349,7 +349,7 @@ public sealed class AssessViewModelTests
         Assert.Equal(0.5, assess.ProgressFraction);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAResultsRowPrimesTryAWordWithoutStartingATrace()
     {
         var (fake, _, assess) = NewViewModel();

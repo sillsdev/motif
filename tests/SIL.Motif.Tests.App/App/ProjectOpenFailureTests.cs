@@ -20,7 +20,7 @@ public sealed class ProjectOpenFailureTests
     private const string BundleDigest = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     private const string OpenRefusal = "Motif could not open this project.";
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailureWhileOpeningShowsARefusalAndKeepsThePickerUsable()
     {
         var fake = new FakeCommandClient();
@@ -66,7 +66,7 @@ public sealed class ProjectOpenFailureTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailureWhileOpeningFromOpenRecentShowsARefusal()
     {
         var fake = new FakeCommandClient();
@@ -87,7 +87,7 @@ public sealed class ProjectOpenFailureTests
         Assert.Equal(ProjectB, workspace.Context.ProjectPath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheFailureTextNamesTheOpenStepThatThrew()
     {
         var fake = new FakeCommandClient();
@@ -107,7 +107,7 @@ public sealed class ProjectOpenFailureTests
         Assert.Contains(nameof(SelectionViewModel.LoadTextsAsync), text, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ABackupIsRestoredAndItsRestoredCopyOpens()
     {
         const string backup = @"C:\projects\one 2026-10-07.fwbackup";
@@ -124,7 +124,7 @@ public sealed class ProjectOpenFailureTests
         Assert.Null(workspace.OpenRefusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ABackupThatCannotBeRestoredShowsItsRefusalAndOpensNothing()
     {
         var fake = new FakeCommandClient();
@@ -156,7 +156,7 @@ public sealed class ProjectOpenFailureTests
             new FakeFolderPicker(), new FakeDragSource(), fake);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AParticipantCancellationShowsAnOpenRefusal()
     {
         var fake = new FakeCommandClient();
@@ -173,7 +173,7 @@ public sealed class ProjectOpenFailureTests
         Assert.False(workspace.HasProject);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedOpenLeavesNothingOfEitherProjectActionable()
     {
         var fake = new FakeCommandClient();

@@ -254,7 +254,7 @@ public sealed class WindowRefusalDetailsTests
         Assert.Contains(text, shown.Details);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task LongStructuredCompileTextIsProcessedWithoutWorkThatGrowsWithTheSquareOfItsLength(bool hasPath)
@@ -355,7 +355,7 @@ public sealed class WindowRefusalDetailsTests
         Assert.Contains("The file is locked.", ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedOpenIsAWindowRefusalWithTheExceptionFoldedAway()
     {
         var fake = new FakeCommandClient();
@@ -377,7 +377,7 @@ public sealed class WindowRefusalDetailsTests
         Assert.Contains("The project could not be read.", ProblemReport.FromRefusal(refusal).ToText(includeLocalDetails: true));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedSavedDiagnosticIsShownAsItsWindowRefusal()
     {
         WindowRefusal? shown = null;
@@ -392,7 +392,7 @@ public sealed class WindowRefusalDetailsTests
         Assert.Equal("That file is not a diagnostic Motif can read. Choose a diagnostic Motif saved.", shown.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnreadableSavedDiagnosticIsShownAsAWindowRefusal()
     {
         WindowRefusal? shown = null;

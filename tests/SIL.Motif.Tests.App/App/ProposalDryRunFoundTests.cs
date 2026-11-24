@@ -39,7 +39,7 @@ public sealed class ProposalDryRunFoundTests
         return (context, documents, document);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheDryRunRowNamesTheOneFieldItWillChange()
     {
         var (context, documents, document) = await OpenAsync(Gloss("buy", "buy (demo)"));
@@ -51,7 +51,7 @@ public sealed class ProposalDryRunFoundTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheDryRunRowCountsManyFieldsAndShowsTheFirstThree()
     {
         var (context, documents, document) = await OpenAsync(Gloss("a", "b"), Gloss("c", "d"), Gloss("e", "f"),
@@ -64,7 +64,7 @@ public sealed class ProposalDryRunFoundTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TwoLanguagesOfOneFieldCountAsOneField()
     {
         var both = new EffectView("sense/two", SIL.Motif.Model.Snapshot.SnapshotFields.LexSenseGloss,
@@ -78,7 +78,7 @@ public sealed class ProposalDryRunFoundTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADryRunWithNoEffectsSaysItWillChangeNothing()
     {
         var (context, documents, document) = await OpenAsync();
@@ -89,7 +89,7 @@ public sealed class ProposalDryRunFoundTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheApplyConfirmationRepeatsTheDryRunSentence()
     {
         var (context, documents, document) = await OpenAsync(Gloss("buy", "buy (demo)"));

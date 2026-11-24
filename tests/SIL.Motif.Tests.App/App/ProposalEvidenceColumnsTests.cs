@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ProposalEvidenceColumnsTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task MechanicalFactsDoNotRenameOrAddOverlappingAdvisoryBuckets()
     {
         var fixture = new ProposalDifferenceFixture(3) { Warnings = [] };
@@ -35,7 +35,7 @@ public sealed class ProposalEvidenceColumnsTests
         Assert.DoesNotContain(summary.ImprovedWords.ToString(), columns.FillInCount);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task BoundedIncompleteAndExpiredEvidenceNeverClaimsZeroOrApprovedPlaces()
     {
         var fixture = new ProposalDifferenceFixture(1) { Cut = 900, Warnings = [] };
@@ -59,7 +59,7 @@ public sealed class ProposalEvidenceColumnsTests
         Assert.False(columns.ShowsZeroChange);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CompleteCompatibleEmptyTextEstablishesZeroAndInvalidationRemovesIt()
     {
         var fixture = new ProposalDifferenceFixture(0) { Warnings = [] };
@@ -77,7 +77,7 @@ public sealed class ProposalEvidenceColumnsTests
         Assert.Empty(columns.WillFillIn);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(HumanAgreementSpellingAcceptance.Unavailable)]
     [InlineData(HumanAgreementSpellingAcceptance.Incomplete)]
     public async Task ACompleteParserSearchCannotEstablishZeroWhenSpellingEvidenceIsMissing(
@@ -102,7 +102,7 @@ public sealed class ProposalEvidenceColumnsTests
         Assert.False(columns.ShowsPlacesNotice);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DifferentContentTrialOrParserCannotPublishCurrentEffects()
     {
         var fixture = new ProposalDifferenceFixture(0) { Warnings = [] };
@@ -129,7 +129,7 @@ public sealed class ProposalEvidenceColumnsTests
         Assert.False(columns.CanShowFacts);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task EvidenceForAnotherProposalIsRefusedBeforePublication(bool produced)

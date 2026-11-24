@@ -52,7 +52,7 @@ public sealed class ProposalCompareViewModelTests
             Scenario = scenario };
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProvenSameEvidenceListsOnlyTheWordsTheTwoTreatDifferentlyAndNamesTheBasis()
     {
         await using var arranged = await ArrangeAsync();
@@ -75,7 +75,7 @@ public sealed class ProposalCompareViewModelTests
         Assert.Equal("two", compare.Second.Document.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheSameLabelWithADifferentResultStillDiffersAndSaysSo()
     {
         await using var arranged = await ArrangeAsync(scenario => scenario
@@ -88,7 +88,7 @@ public sealed class ProposalCompareViewModelTests
         Assert.Equal(row.FirstEffect, row.SecondEffect);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TwoProposalsThatAgreeEverywhereAreComparableWithNoDifferingWords()
     {
         await using var arranged = await ArrangeAsync(scenario => scenario
@@ -124,7 +124,7 @@ public sealed class ProposalCompareViewModelTests
     private static Func<ProposalDifferenceSummary, ProposalDifferenceSummary> Break(
         Func<ProposalDifferenceSummary, ProposalDifferenceSummary> change) => change;
 
-    [Theory]
+    [UiThreadTheory]
     [MemberData(nameof(Breaks))]
     public async Task OneBrokenFactOfTheCommonReferenceMakesTheComparisonUnavailableAndNeverSubtracts(
         ProposalComparisonReason reason, bool remeasurable, Func<ProposalDifferenceSummary, ProposalDifferenceSummary> change)
@@ -146,7 +146,7 @@ public sealed class ProposalCompareViewModelTests
         Assert.Equal(remeasurable, compare.RemeasureCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NoSavedDifferenceOnASideIsUnavailableNotZero()
     {
         await using var arranged = await ArrangeAsync(scenario => scenario.Missing.Add("two"));
@@ -160,7 +160,7 @@ public sealed class ProposalCompareViewModelTests
         Assert.True(compare.CanRemeasure);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheStandingsOverlapNoteNeverMakesAnUnprovenPairComparable()
     {
         await using var arranged = await ArrangeAsync(scenario => scenario
@@ -177,7 +177,7 @@ public sealed class ProposalCompareViewModelTests
         Assert.Equal(string.Empty, compare.BasisText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ThePairMustBeExactlyTwoDocuments()
     {
         await using var arranged = await ArrangeAsync();
@@ -187,7 +187,7 @@ public sealed class ProposalCompareViewModelTests
             [arranged.First, arranged.Second, arranged.Documents.Open("three")], () => { }));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task BackAndDisposeLeaveTheDocumentsAndTheirChecksAlone()
     {
         await using var arranged = await ArrangeAsync();
@@ -212,7 +212,7 @@ public sealed class ProposalCompareViewModelTests
         Assert.Equal(0, changes);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DiagnosticsFollowsThePersonSwitchAndShowsForBothSidesOnlyWhenOn()
     {
         await using var arranged = await ArrangeAsync();

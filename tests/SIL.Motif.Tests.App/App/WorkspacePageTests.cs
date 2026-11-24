@@ -129,7 +129,7 @@ public sealed class WorkspacePageTests
         Assert.NotNull(texts.ResultsInText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AssessmentPublishesItsRecordedWordToTheSharedEvidence()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -147,7 +147,7 @@ public sealed class WorkspacePageTests
         Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAProjectFromAnotherPageNamesItAndOpensProgress()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -160,7 +160,7 @@ public sealed class WorkspacePageTests
         Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(true, WorkspacePage.Progress)]
     [InlineData(false, WorkspacePage.Progress)]
     public async Task OpeningAProjectStartsOnProgressRegardlessOfStandings(bool ready, WorkspacePage expected)
@@ -177,7 +177,7 @@ public sealed class WorkspacePageTests
         Assert.Equal(expected, workspace.CurrentPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StartingARunKeepsTheCurrentPage()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -192,7 +192,7 @@ public sealed class WorkspacePageTests
         await running;
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RerunningPublishesTheDifferenceWithoutChangingPages()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -216,7 +216,7 @@ public sealed class WorkspacePageTests
         Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoredGrammarFindingsAndProposalBadgeKeepTheirOwnCounts()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -240,7 +240,7 @@ public sealed class WorkspacePageTests
         Assert.Empty(fake.AssessRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StagedWordChangesShareOneOwnerAndCount()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -279,7 +279,7 @@ public sealed class WorkspacePageTests
         Assert.Equal(!collapsed, workspace.IsSidebarExpanded);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheProjectMenuSelectsANewProjectThroughThePicker()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -343,7 +343,7 @@ public sealed class WorkspacePageTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfigureOpensTheSetupDialogUnlessSomethingElseTakesTheHook()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -377,7 +377,7 @@ public sealed class WorkspacePageTests
         Assert.False(workspace.RefreshCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ABaselineOfTheLastSaveIsCurrent()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -392,7 +392,7 @@ public sealed class WorkspacePageTests
         Assert.True(workspace.RefreshCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyingChangesMakesTheNumbersStaleUntilRefresh()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -406,7 +406,7 @@ public sealed class WorkspacePageTests
         Assert.Contains("changes applied after it", workspace.FreshnessDetail);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedRefreshKeepsItsReasonAndFieldWorksHoldStatusVisible()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -424,7 +424,7 @@ public sealed class WorkspacePageTests
         Assert.Empty(fake.AssessRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASaveAfterTheBaselineShowsFieldWorksSavedSinceAndNothingReruns()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -443,7 +443,7 @@ public sealed class WorkspacePageTests
         Assert.Empty(fake.AssessRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAProjectSavedSinceItsBaselineSaysSoAtOnce()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -453,7 +453,7 @@ public sealed class WorkspacePageTests
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProjectWithNoBaselineSaysSo()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -479,7 +479,7 @@ public sealed class WorkspacePageTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshCapturesOnlyAndTheNextParseSaysWhatChanged()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -509,7 +509,7 @@ public sealed class WorkspacePageTests
         Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WhileRefreshingTheTopRowHidesBothActionsUntilCaptureFinishes()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -534,7 +534,7 @@ public sealed class WorkspacePageTests
         Assert.NotEqual(ProjectFreshness.Refreshing, workspace.Freshness);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshWithNothingToAssessOnlyCapturesTheBaseline()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -549,7 +549,7 @@ public sealed class WorkspacePageTests
         Assert.True(workspace.Context.NeedsAssessment);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshingTheBaselineChecksItsGrammarAgain()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -563,7 +563,7 @@ public sealed class WorkspacePageTests
         Assert.Empty(fake.AssessRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningWaitsForOtherParticipantsWithoutStartingGrammar()
     {
         using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
@@ -598,7 +598,7 @@ public sealed class WorkspacePageTests
         }
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task FailedOrCancelledProjectOpeningNeverStartsAutomaticGrammar(bool cancel)
@@ -642,7 +642,7 @@ public sealed class WorkspacePageTests
             remainingOpen.WaitAsync(cancellationToken);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAnUncheckedBaselineReadsOnlyUntilAnExplicitGrammarCheck()
     {
         using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
@@ -696,7 +696,7 @@ public sealed class WorkspacePageTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SwitchingProjectsCancelsAndDrainsGrammarWithoutPublishingItsOldResult()
     {
         using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
@@ -754,7 +754,7 @@ public sealed class WorkspacePageTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheNestedGrammarRetryPublishesOverviewAndStopsWithTheWorkspace()
     {
         using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
@@ -801,7 +801,7 @@ public sealed class WorkspacePageTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAProjectWithAStoredCheckShowsItAndLeavesReloadWorking()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -820,7 +820,7 @@ public sealed class WorkspacePageTests
         Assert.True(workspace.Context.GrammarCheck.CheckCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ClearingAProjectImmediatelyRemovesItsGrammarFindings()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -840,7 +840,7 @@ public sealed class WorkspacePageTests
         Assert.False(workspace.Context.GrammarCheck.HasChecked);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshClearsAnOlderAssessmentAndMakesTheNewBaselineReadyToParse()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -860,7 +860,7 @@ public sealed class WorkspacePageTests
         Assert.Equal("Refreshed. Parse all words to update the numbers.", workspace.FreshnessDetail);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshClearsOldNumbersAndLeavesTheNewBaselineUnmeasured()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -877,7 +877,7 @@ public sealed class WorkspacePageTests
         Assert.True(workspace.Context.NeedsAssessment);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task EvidencePublishedFromAnOlderSaveThanTheBaselineIsNotCurrent()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -894,7 +894,7 @@ public sealed class WorkspacePageTests
         Assert.Contains("saved", workspace.FreshnessDetail);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RecapturingTheSameSaveUnderAnAssessmentStaysCurrent()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();

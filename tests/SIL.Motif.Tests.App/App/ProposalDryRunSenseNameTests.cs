@@ -41,7 +41,7 @@ public sealed class ProposalDryRunSenseNameTests
     private static EffectView GlossOfSense(string before, string after) =>
         new(Sense, SnapshotFields.LexSenseGloss, [new EffectChange("en", before, after)]);
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheDryRunRowAndTheApplyConfirmationNameTheSense()
     {
         var fake = new FakeCommandClient();
@@ -58,7 +58,7 @@ public sealed class ProposalDryRunSenseNameTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASenseTheBaselineDoesNotHoldKeepsTheOriginalSentence()
     {
         var (context, documents, document) = await OpenAsync(new FakeCommandClient(), GlossOfSense("buy", "buy (demo)"));
@@ -69,7 +69,7 @@ public sealed class ProposalDryRunSenseNameTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheSharedEffectNamesTheSenseToo()
     {
         var many = new EffectView(Sense, SnapshotFields.LexSenseGloss, [new EffectChange("en", "buy", "buy (demo)")])

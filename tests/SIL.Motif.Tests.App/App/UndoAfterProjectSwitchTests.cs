@@ -14,7 +14,7 @@ public sealed class UndoAfterProjectSwitchTests
     private const string FirstProject = @"C:\projects\first.fwdata";
     private const string SecondProject = @"C:\projects\second.fwdata";
 
-    [Fact]
+    [UiThreadFact]
     public async Task UndoAllFromThePreviousProjectCannotRemoveTheNewProjectsChanges()
     {
         var firstSnapshot = Snapshot("draft/first", "first-word", "second-word");

@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ProposalDocumentOperationTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task TwoChangesToTheSameGlossKeepTheirAuthoredValues()
     {
         const string sense = "sense/one";
@@ -54,7 +54,7 @@ public sealed class ProposalDocumentOperationTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnAppliedProposalKeepsTheOldToNewValueAfterTheBaselineMoved()
     {
         const string sense = "sense/one";
@@ -115,7 +115,7 @@ public sealed class ProposalDocumentOperationTests
             " words · 18 changed approval", ProposalDocumentViewModel.DifferenceDetail(summary));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUntriedProposalSaysWhyApplyIsGreyInsteadOfLeavingAGap()
     {
         var op = new ProposalOperationView("op/one", LexicalSenseOperationKinds.SetGloss, "sense/one", null,
