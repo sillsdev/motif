@@ -251,7 +251,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             }
             catch (FeatureStructureNotationException exception)
             {
-                throw Refuse(RefusalCodes.RecordImportNotExecutable, change, exception.Code + ": " + exception.Message);
+                throw Refuse(exception.Code, change, exception.Message);
             }
             if (!string.Equals(current, change.Old, StringComparison.Ordinal))
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
@@ -269,12 +269,12 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             try
             {
                 var system = cache.LangProject.MsFeatureSystemOA ?? throw Refuse(RefusalCodes.RecordImportNotExecutable, change,
-                    FeatureStructureNotation.UnknownFeature + ": The project has no morphosyntactic feature system.");
+                    "The project has no morphosyntactic feature system.");
                 wanted = FeatureStructureNotation.Parse(change.New ?? "", system, cache);
             }
             catch (FeatureStructureNotationException exception)
             {
-                throw Refuse(RefusalCodes.RecordImportNotExecutable, change, exception.Code + ": " + exception.Message);
+                throw Refuse(exception.Code, change, exception.Message);
             }
             CanonicalId structure;
             if (held is null)

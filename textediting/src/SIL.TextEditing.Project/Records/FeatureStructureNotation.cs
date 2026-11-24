@@ -26,19 +26,33 @@ namespace SIL.TextEditing.Project
             Value = value;
         }
 
+        /// <summary>The closed feature the text names.</summary>
         public IFsClosedFeature Feature { get; }
+
+        /// <summary>The value of <see cref="Feature"/> the text gives it.</summary>
         public IFsSymFeatVal Value { get; }
     }
 
-    /// <summary>The text form of a feature structure (<c>FsFeatStruc</c> with closed values): <c>[cas:nominative num:singular]</c>.
-    /// <para>A structure is square brackets around zero or more <c>feature:value</c> pairs separated by white space; <c>[]</c> is the empty structure.
-    /// A feature is written by its abbreviation and a value by its name, in the project's default analysis writing system, the way FieldWorks
-    /// shows a structure (<c>[cas:nominative num:plural]</c>); an empty abbreviation (or name) falls back to the name (or abbreviation). In a label, a backslash, a square bracket, a colon and each white-space character are written after a backslash.
-    /// Pairs are in ordinal order of the feature label, so a render is canonical and a diff of two renders shows only the pairs that differ.
-    /// Reading ignores the white space around brackets and pairs and accepts any pair order; <see cref="Render"/> never emits them.</para>
-    /// <para>Only closed values are written. A structure that holds a complex, negated, shared, disjunctive or open value, a closed value with no feature or no value,
-    /// a feature twice, a label that is empty or has a control character, or a label that more than one feature (or more than one value of a feature) has,
-    /// cannot be written without losing or guessing: <see cref="Render"/> refuses it. A structure's declared type is not part of the text.</para></summary>
+    /// <summary>The text form of a feature structure (<c>FsFeatStruc</c> with closed values), such as <c>[cas:nom num:pl]</c>.
+    /// <para>Grammar: <c>structure = "[" { pair } "]"</c>, <c>pair = label ":" label</c>, with white space allowed around every token on reading.
+    /// A label is one or more characters; a backslash makes the next character literal, and a backslash, <c>[</c>, <c>]</c>, <c>:</c> and every
+    /// white-space character (.NET <c>char.IsWhiteSpace</c>, the Unicode White_Space set) must be escaped that way inside a label. A reader accepts a
+    /// redundant escape; <see cref="Render"/> never writes one. Inside a record file the text is a double-quoted string, so each notation backslash is
+    /// written twice there. Labels are compared case-sensitively after normalization to NFC; <c>[]</c> is a structure with no pair.</para>
+    /// <para>Labels (decision: abbreviation for both, never the show-in-gloss flag, so a file does not change meaning when someone toggles it): a feature and a
+    /// value are each written by their abbreviation, or by their name when no abbreviation exists. The text comes from the first analysis writing system that
+    /// has it, trying the default analysis writing system first and then the project's other current analysis writing systems in their order; vernacular
+    /// writing systems are not read. A change of default analysis writing system, or a rename in the project, can therefore change a render, and a file whose
+    /// old value no longer matches is refused as stale.</para>
+    /// <para>Order: pairs are in ordinal (<c>string.CompareOrdinal</c>) order of the feature label, so a render is canonical and a diff shows only the pairs that
+    /// differ. Reading accepts any order.</para>
+    /// <para>Only closed values of features in the project's morphosyntactic feature system are written. A structure that holds any other value (complex,
+    /// negated, shared, disjunctive, open), a closed value with no feature or no value, a feature twice, a feature outside that system, a value that is not one of its
+    /// feature's values, a label that is empty or has a control character, or a label that more than one feature (or more than one value of a feature) has,
+    /// cannot be written without losing or guessing: <see cref="Render"/> refuses it with a code, the record exporter lists it as an unexported value and
+    /// the field is locked against edits. A structure's declared type is not part of the text and an edit leaves it as it is.</para>
+    /// <para>Codes (<c>fs-notation.*</c>): <see cref="Syntax"/>, <see cref="UnknownFeature"/>, <see cref="UnknownValue"/>, <see cref="AmbiguousLabel"/>,
+    /// <see cref="RepeatedFeature"/>, <see cref="UnsupportedFeature"/>, <see cref="Unrenderable"/>.</para></summary>
     public static class FeatureStructureNotation
     {
         /// <summary>The notation name a record schema's <c>notation=</c> attribute gives.</summary>
@@ -66,7 +80,7 @@ namespace SIL.TextEditing.Project
         {
             if (structure == null) throw new ArgumentNullException(nameof(structure));
             if (cache == null) throw new ArgumentNullException(nameof(cache));
-            int ws = cache.DefaultAnalWs;
+            var system = cache.LangProject.MsFeatureSystemOA;
             var pairs = new List<(string Feature, string Value)>();
             var seen = new HashSet<Guid>();
             foreach (var spec in structure.FeatureSpecsOC)
@@ -75,16 +89,22 @@ namespace SIL.TextEditing.Project
                     throw new FeatureStructureNotationException(Unrenderable, "The structure holds a " + spec.ClassName + ", which the text form does not show.");
                 if (!(closed.FeatureRA is IFsClosedFeature feature) || closed.ValueRA == null)
                     throw new FeatureStructureNotationException(Unrenderable, "The structure holds a value with no feature or no choice.");
+                if (system == null || feature.Owner == null || feature.Owner.Guid != system.Guid)
+                    throw new FeatureStructureNotationException(Unrenderable, "Feature " + feature.Guid.ToString("D") + " is not in the morphosyntactic feature system.");
+                if (!feature.ValuesOC.Contains(closed.ValueRA))
+                    throw new FeatureStructureNotationException(Unrenderable, "Value " + closed.ValueRA.Guid.ToString("D") + " is not a value of feature " + feature.Guid.ToString("D") + ".");
                 if (!seen.Add(feature.Guid))
                     throw new FeatureStructureNotationException(Unrenderable, "The structure gives feature " + feature.Guid.ToString("D") + " more than once.");
-                string featureLabel = Label(feature.Abbreviation, feature.Name, ws)
-                    ?? throw new FeatureStructureNotationException(Unrenderable, "Feature " + feature.Guid.ToString("D") + " has no abbreviation or name in the default analysis writing system.");
-                string valueLabel = Label(closed.ValueRA.Name, closed.ValueRA.Abbreviation, ws)
-                    ?? throw new FeatureStructureNotationException(Unrenderable, "Value " + closed.ValueRA.Guid.ToString("D") + " has no abbreviation or name in the default analysis writing system.");
-                if (feature.Owner is IFsFeatureSystem system && FeaturesLabelled(system, featureLabel, ws).Count > 1)
-                    throw new FeatureStructureNotationException(AmbiguousLabel, "More than one feature is labelled " + featureLabel + ".");
-                if (feature.ValuesOC.Count(v => Label(v.Name, v.Abbreviation, ws) == valueLabel) > 1)
-                    throw new FeatureStructureNotationException(AmbiguousLabel, "More than one value of " + featureLabel + " is labelled " + valueLabel + ".");
+                string featureLabel = Label(feature.Abbreviation, feature.Name, cache)
+                    ?? throw new FeatureStructureNotationException(Unrenderable, "Feature " + feature.Guid.ToString("D") + " has no usable label.");
+                string valueLabel = Label(closed.ValueRA.Abbreviation, closed.ValueRA.Name, cache)
+                    ?? throw new FeatureStructureNotationException(Unrenderable, "Value " + closed.ValueRA.Guid.ToString("D") + " has no usable label.");
+                int sameFeature = FeaturesLabelled(system, featureLabel, cache).Count;
+                if (sameFeature > 1)
+                    throw new FeatureStructureNotationException(AmbiguousLabel, sameFeature.ToString(CultureInfo.InvariantCulture) + " features share the label of feature " + feature.Guid.ToString("D") + ".");
+                int sameValue = feature.ValuesOC.Count(v => Label(v.Abbreviation, v.Name, cache) == valueLabel);
+                if (sameValue > 1)
+                    throw new FeatureStructureNotationException(AmbiguousLabel, sameValue.ToString(CultureInfo.InvariantCulture) + " values of feature " + feature.Guid.ToString("D") + " share the label of value " + closed.ValueRA.Guid.ToString("D") + ".");
                 pairs.Add((featureLabel, valueLabel));
             }
             pairs.Sort((a, b) => string.CompareOrdinal(a.Feature, b.Feature));
@@ -104,15 +124,14 @@ namespace SIL.TextEditing.Project
             if (text == null) throw new ArgumentNullException(nameof(text));
             if (system == null) throw new ArgumentNullException(nameof(system));
             if (cache == null) throw new ArgumentNullException(nameof(cache));
-            int ws = cache.DefaultAnalWs;
             var result = new List<FeatureStructureSelection>();
             var seen = new HashSet<Guid>();
             foreach (var (featureLabel, valueLabel) in Pairs(text))
             {
-                var matches = FeaturesLabelled(system, featureLabel, ws);
+                var matches = FeaturesLabelled(system, featureLabel, cache);
                 if (matches.Count == 0)
                 {
-                    bool complex = system.FeaturesOC.Any(f => !(f is IFsClosedFeature) && Label(f.Abbreviation, f.Name, ws) == featureLabel);
+                    bool complex = system.FeaturesOC.Any(f => !(f is IFsClosedFeature) && Label(f.Abbreviation, f.Name, cache) == featureLabel);
                     throw new FeatureStructureNotationException(complex ? UnsupportedFeature : UnknownFeature,
                         complex ? "Feature " + featureLabel + " is complex, which the text form does not write."
                             : "The feature system has no closed feature labelled " + featureLabel + ".");
@@ -122,7 +141,7 @@ namespace SIL.TextEditing.Project
                 var feature = matches[0];
                 if (!seen.Add(feature.Guid))
                     throw new FeatureStructureNotationException(RepeatedFeature, "Feature " + featureLabel + " is named more than once.");
-                var values = feature.ValuesOC.Where(v => Label(v.Name, v.Abbreviation, ws) == valueLabel).ToList();
+                var values = feature.ValuesOC.Where(v => Label(v.Abbreviation, v.Name, cache) == valueLabel).ToList();
                 if (values.Count == 0)
                     throw new FeatureStructureNotationException(UnknownValue, "Feature " + featureLabel + " has no value labelled " + valueLabel + ".");
                 if (values.Count > 1)
@@ -132,15 +151,27 @@ namespace SIL.TextEditing.Project
             return result;
         }
 
-        static List<IFsClosedFeature> FeaturesLabelled(IFsFeatureSystem system, string label, int ws)
-            => system.FeaturesOC.OfType<IFsClosedFeature>().Where(f => Label(f.Abbreviation, f.Name, ws) == label).ToList();
+        static List<IFsClosedFeature> FeaturesLabelled(IFsFeatureSystem system, string label, LcmCache cache)
+            => system.FeaturesOC.OfType<IFsClosedFeature>().Where(f => Label(f.Abbreviation, f.Name, cache) == label).ToList();
 
-        static string? Label(IMultiUnicode first, IMultiUnicode second, int ws)
+        static string? Label(IMultiUnicode abbreviation, IMultiUnicode name, LcmCache cache)
         {
-            string text = first.get_String(ws)?.Text ?? string.Empty;
-            if (text.Length == 0) text = second.get_String(ws)?.Text ?? string.Empty;
+            string text = Best(abbreviation, cache);
+            if (text.Length == 0) text = Best(name, cache);
             text = text.Normalize(NormalizationForm.FormC);
             return text.Length == 0 || text.Any(char.IsControl) ? null : text;
+        }
+
+        static string Best(IMultiUnicode alternatives, LcmCache cache)
+        {
+            var handles = new List<int> { cache.DefaultAnalWs };
+            handles.AddRange(cache.ServiceLocator.WritingSystems.CurrentAnalysisWritingSystems.Select(w => w.Handle));
+            foreach (int handle in handles.Distinct())
+            {
+                string text = alternatives.get_String(handle)?.Text ?? string.Empty;
+                if (text.Length > 0) return text;
+            }
+            return string.Empty;
         }
 
         static string Escape(string label)
@@ -173,9 +204,11 @@ namespace SIL.TextEditing.Project
                         at += 2;
                     }
                     else if (c == ':' && feature) break;
-                    else if (c == ']' || c == '[' || c == ':' || char.IsWhiteSpace(c))
+                    else if (c == '[' || c == ']' && feature || c == ':')
+                        throw Bad("the character " + c + " needs a backslash in front of it inside a label");
+                    else if (c == ']' || char.IsWhiteSpace(c))
                     {
-                        if (feature) throw Bad("a feature is followed by a colon");
+                        if (feature) throw Bad("a feature must be followed by a colon");
                         break;
                     }
                     else { label.Append(c); at++; }
