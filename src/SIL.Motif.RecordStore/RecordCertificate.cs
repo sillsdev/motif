@@ -46,19 +46,31 @@ internal sealed class StoreCertificate
     public bool WriteInProgress { get; set; }
 }
 
+/// <summary>One format upgrade: the format the store had, the one it has now, how long the upgrading transaction ran, and how much of that wrote the derived tables.</summary>
+public sealed record StoreUpgrade(int FromFormat, int ToFormat, TimeSpan Elapsed, TimeSpan BackfillElapsed);
+
 /// <summary>Points in a guarded write where a test can stop it; a stop here is what a crash would leave.</summary>
 public enum WriteStage { HistoryWritten, StateWritten, Committed }
 
 public sealed partial class RecordStore
 {
     private bool upgrading;
-    private bool Certifiable => format >= StoreFormat || upgrading;
+    private bool Certifiable => format >= CertificateFormat || upgrading;
 
     /// <summary>Whether this handle verified history itself, trusted a certificate, or has done neither.</summary>
     public StoreVerification Verification { get; private set; }
 
-    /// <summary>True once a write by this handle upgraded the store from format 5 to 6; that write also backfilled the identity table.</summary>
+    /// <summary>True once a read-write operation by this handle upgraded the store; the same transaction backfilled what the new format adds.</summary>
     public bool UpgradedFormat { get; private set; }
+
+    /// <summary>What the last upgrade by this handle was and how long it held the transaction; null when it has not upgraded.</summary>
+    public StoreUpgrade? LastUpgrade { get; private set; }
+
+    // Set during an upgrade to format 7: the transaction must write the derived tables before it commits.
+    private bool backfillDerived;
+    private int upgradeFrom;
+    private TimeSpan backfillTime;
+    private System.Diagnostics.Stopwatch? upgradeClock;
 
     /// <summary>Told before a one-time cost starts, for example the format 5 to 6 upgrade; the write is busy until it returns.</summary>
     public Action<string>? Progress { get; set; }
@@ -109,6 +121,8 @@ public sealed partial class RecordStore
         var first = database.Database.SqlQuery<string>($"SELECT hex(Id) || '/' || Hash AS Value FROM Commits ORDER BY rowid LIMIT 1").ToList();
         var identity = first.Count == 0 ? null
             : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes("motif-record-store-identity/" + first[0])));
+        // A format 7 store is certified only while its binding row copies the state row.
+        if (format >= DerivedFormat && !BindingMatches(state)) return StoreVerification.Uncertified;
         return Trusted(certificate, state, identity, ownWriteFlag) ? StoreVerification.Certified : StoreVerification.Uncertified;
     }
 
@@ -129,12 +143,6 @@ public sealed partial class RecordStore
             ownWriteFlag = true;
         }
         return new(certificate, identity, setHere);
-    }
-
-    private async Task MarkWriteInProgressAsync()
-    {
-        if (Certifiable && await CertificateAsync() is not null)
-            await database.Database.ExecuteSqlRawAsync("UPDATE RecordStoreCertificate SET WriteInProgress = 1");
     }
 
     // Clearing the flag must not hide the failure that brought the write here.
@@ -198,18 +206,26 @@ public sealed partial class RecordStore
         CREATE TABLE IF NOT EXISTS RecordContentIdentity (Identity BLOB NOT NULL PRIMARY KEY, Id INTEGER NOT NULL) WITHOUT ROWID
         """;
 
-    /// <summary>Upgrades format 5 to 6 inside the caller's write transaction; a rollback undoes all of it.</summary>
+    /// <summary>Upgrades an older store to format 7 in the caller's transaction; a rollback undoes it.</summary>
     private async Task UpgradeInTransactionAsync()
     {
-        if (readOnly || format != PackedStoreFormat || upgrading) return;
+        if (readOnly || format >= StoreFormat || upgrading || format == LegacyStoreFormat) return;
         upgrading = true;
-        await database.Database.ExecuteSqlRawAsync(CertificateTable);
-        await database.Database.ExecuteSqlRawAsync(IdentityTable);
-        Progress?.Invoke("Upgrading the store to format 6: indexing its stored content once.");
-        await WriteIdentityTableAsync(content.AllIdentities());
+        upgradeFrom = format;
+        upgradeClock = System.Diagnostics.Stopwatch.StartNew();
+        if (format == PackedStoreFormat)
+        {
+            await database.Database.ExecuteSqlRawAsync(CertificateTable);
+            await database.Database.ExecuteSqlRawAsync(IdentityTable);
+            Progress?.Invoke("Upgrading the store to format 6: indexing its stored content once.");
+            await WriteIdentityTableAsync(content.AllIdentities());
+            content.PersistIdentities = true;
+            content.PersistedLookup = LookupIdentity;
+        }
+        Progress?.Invoke("Upgrading the store to format 7: writing its record headers, chunk digests and publication binding.");
+        CreateDerivedTables(database);
         await database.Database.ExecuteSqlRawAsync($"PRAGMA user_version={StoreFormat}");
-        content.PersistIdentities = true;
-        content.PersistedLookup = LookupIdentity;
+        backfillDerived = true;
     }
 
     // Replaces the identity table inside the current transaction, in multi-row statements.
@@ -290,19 +306,25 @@ public sealed partial class RecordStore
         UpgradedFormat = true;
         format = StoreFormat;
         upgrading = false;
+        backfillDerived = false;
+        LastUpgrade = new(upgradeFrom, StoreFormat, upgradeClock?.Elapsed ?? TimeSpan.Zero, backfillTime);
     }
 
     private void AbandonUpgrade()
     {
         if (!upgrading) return;
         upgrading = false;
-        content.PersistIdentities = false;
-        content.PersistedLookup = null;
+        backfillDerived = false;
+        if (format < CertificateFormat)
+        {
+            content.PersistIdentities = false;
+            content.PersistedLookup = null;
+        }
     }
 
     private void UseIdentityTable()
     {
-        if (readOnly || format < StoreFormat) return;
+        if (readOnly || format < CertificateFormat) return;
         content.PersistIdentities = true;
         content.PersistedLookup = LookupIdentity;
     }
@@ -326,8 +348,8 @@ public sealed partial class RecordStore
     private void RefreshFormat(string path)
     {
         var stored = ReadFormat(RecordSqlite.ConnectionString(path));
-        if (stored != StoreFormat || format == StoreFormat) return;
-        format = StoreFormat;
+        if (stored < CertificateFormat || stored > StoreFormat || stored <= format) return;
+        format = stored;
         UseIdentityTable();
     }
 
@@ -365,6 +387,7 @@ public sealed partial class RecordStore
                 if (await CommitRevisionAsync(ct) != state.Revision)
                     throw new InvalidOperationException("History changed while the store was being verified and is not published; the store was not re-certified.");
                 await UpgradeInTransactionAsync();
+                if (backfillDerived) WriteDerived(state, acquired.Derived!.Chunks, acquired.Derived.Headers);
                 await StageCertificateAsync(state, replay, CertificateProvenance.FullVerify);
                 await database.SaveChangesAsync(ct);
                 database.ChangeTracker.Clear();
@@ -379,7 +402,7 @@ public sealed partial class RecordStore
                 throw;
             }
         }
-        point = acquired with { Replay = replay };
+        point = acquired with { Replay = replay, Derived = null };
         Verification = StoreVerification.Full;
         if (AfterVerifyCertified is { } certified) await certified();
         return state;
@@ -429,6 +452,7 @@ public sealed partial class RecordStore
                 }
                 catch (InvalidDataException) { }
             }
+            if (format >= DerivedFormat && verified?.Derived is { } derived) await AddDerivedFindingsAsync(findings, state, derived, ct);
             if (certificate is not null)
             {
                 if (certificate.Revision != state.Revision) findings.Add("RecordStoreCertificate: its revision differs from RecordStoreState");

@@ -12,6 +12,10 @@ internal static class PhonText
     {
         text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Patterns: {0} candidate words in {1} PanGloss request(s){2}",
             phon.Candidates, phon.Requests, phon.ParserVersion is null ? "" : ", PanGloss " + phon.ParserVersion));
+        if (phon.MayUnderReport)
+            text.AppendLine("MATCH MODE: identity. A literal or a segment-list class matches only that segment, so spans may under-report segments the grammar's rules treat as the same.");
+        foreach (var warning in phon.Warnings ?? [])
+            text.AppendLine("WARNING: " + warning);
         if (phon.Unsegmentable > 0)
             text.AppendLine(string.Format(CultureInfo.InvariantCulture, "UNSEGMENTABLE: {0} words cannot be segmented by the grammar and match nothing, for example {1}",
                 phon.Unsegmentable, string.Join(", ", phon.UnsegmentableSample.Select(word => word.Word))));
@@ -27,11 +31,12 @@ internal static class PhonText
     {
         var text = new StringBuilder();
         string Feature(SIL.Motif.Commands.Queries.PhonValue value) =>
-            value.Name + (value.Abbreviation is null || value.Abbreviation == value.Name ? "" : " (" + value.Abbreviation + ")");
+            value.Name + (value.Values is { } values ? "  " + string.Join(" ", values) : "");
         // The first column is what to type in a pattern; a name with spaces needs the brackets shown.
         string Class(SIL.Motif.Commands.Queries.PhonValue value) =>
-            (value.Token ?? value.Abbreviation ?? value.Name) + "  " + value.Name + (value.Members is { } members ? $"  {members} phonemes" : "");
-        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}; the first column is what to type in a pattern, and a class is also named by its full name in brackets, as in [Name]:");
+            (value.Token ?? "(none)") + "  " + value.Name + (value.Kind is { } kind ? "  " + kind : "") +
+            (value.Token is null ? "  (no spelling reaches this class)" : "");
+        text.AppendLine($"Natural classes ({response.NaturalClasses.Count}), from the {response.Source}; the first column is what to type in a pattern, then PanGloss's label and the class kind:");
         foreach (var value in response.NaturalClasses) text.AppendLine("  " + Class(value));
         text.AppendLine($"Phonological features ({response.Features.Count}):");
         foreach (var value in response.Features) text.AppendLine("  " + Feature(value));

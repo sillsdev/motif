@@ -28,6 +28,8 @@ internal sealed record VerifiedPoint(StoreState State, Dictionary<Guid, GenericR
     SetDigest Snapshot, IndexDigest IndexDigest)
 {
     public ReplayState? Replay { get; init; }
+    /// <summary>Chunk digests and headers from the decode that built this point; kept only when a store older than format 7 needs them to upgrade.</summary>
+    internal DerivedSnapshot? Derived { get; init; }
     public bool IndexTrusted { get; init; } = true;
     public Guid? ProjectId { get; init; }
     public GenericRecord[] Anchors { get; init; } = [];

@@ -8,7 +8,7 @@ namespace SIL.Motif.Contract.Query.Phon;
 /// <param name="ByteStart">The UTF-8 byte offset of the start in the word's NFD form.</param>
 /// <param name="ByteEnd">The UTF-8 byte offset of the end.</param>
 /// <param name="Text">The matched text, from the NFD form.</param>
-/// <param name="TargetStart">For an <c>env</c>, the first segment of the target inside the match; null when the environment's context has no fixed width.</param>
+/// <param name="TargetStart">For an <c>env</c>, the first segment of the target, which is the span PanGloss reports; null for <c>phon</c>.</param>
 /// <param name="TargetEnd">For an <c>env</c>, one past the target's last segment.</param>
 public sealed record QueryMatchSpan(int Start, int End, int ByteStart, int ByteEnd, string Text, int? TargetStart = null, int? TargetEnd = null);
 
@@ -36,8 +36,48 @@ public sealed record QuerySkippedWord(string Word, string Reason, int? CharIndex
 /// <param name="StopReason">PanGloss's first stop reason when <paramref name="Complete"/> is false.</param>
 /// <param name="ParserVersion">The PanGloss version that answered.</param>
 /// <param name="Requests">The <c>match</c> requests sent; one per pattern per batch, never one per word.</param>
+/// <param name="MatchMode"><c>identity</c> when a pattern holds a literal or a segment-list class, which PanGloss tests by identity rather than by the engine's feature test; null otherwise.</param>
+/// <param name="MayUnderReport">True with <paramref name="MatchMode"/> <c>identity</c>: a span list may miss segments a rule would treat as the same.</param>
+/// <param name="Warnings">What the answer does not prove, such as absence under <c>not</c> over an identity-tested pattern.</param>
 public sealed record PhonReport(int Candidates, int Unsegmentable, IReadOnlyList<QuerySkippedWord> UnsegmentableSample,
-    int Incomplete, IReadOnlyList<QuerySkippedWord> IncompleteSample, bool Complete, string? StopReason, string? ParserVersion, int Requests);
+    int Incomplete, IReadOnlyList<QuerySkippedWord> IncompleteSample, bool Complete, string? StopReason, string? ParserVersion, int Requests,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? MatchMode = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool MayUnderReport = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<string>? Warnings = null);
+
+/// <summary>A natural class of the grammar as PanGloss's <c>inventory</c> op lists it.</summary>
+/// <param name="Token">The text between the brackets of <c>[token]</c> that reaches the class; null when none does.</param>
+/// <param name="Name">The grammar's label for the class, or null.</param>
+/// <param name="Id">The class's id in the grammar.</param>
+/// <param name="Kind"><c>segment</c> (an explicit segment list) or <c>feature</c> (a feature structure).</param>
+public sealed record PhonInventoryClass(string? Token, string? Name, string Id, string Kind);
+
+/// <summary>A phonological feature as PanGloss's <c>inventory</c> op lists it.</summary>
+/// <param name="Name">The feature's name.</param>
+/// <param name="Id">The feature's id in the grammar.</param>
+/// <param name="Values">The names of its symbols, in order.</param>
+public sealed record PhonInventoryFeature(string Name, string Id, IReadOnlyList<string> Values);
+
+/// <summary>PanGloss's answer to <c>inventory</c>: every natural class and feature of the loaded grammar.</summary>
+/// <param name="Classes">The classes in grammar order.</param>
+/// <param name="Features">The features in grammar order.</param>
+/// <param name="Complete">False when PanGloss stopped at a limit and listed only some.</param>
+/// <param name="StopReason">The stop, when <paramref name="Complete"/> is false.</param>
+public sealed record PhonInventory(IReadOnlyList<PhonInventoryClass> Classes, IReadOnlyList<PhonInventoryFeature> Features, bool Complete = true, string? StopReason = null);
+
+/// <summary>
+/// The one switch for the identity label. Until PanGloss tests literals and segment-list classes by the engine's
+/// feature test, <c>match</c> tests them by identity and its spans may under-report. When a PanGloss with that fix is
+/// pinned, set <see cref="MatchTestsFeaturesLikeRules"/> to true and the label, and the absence warning, go away.
+/// </summary>
+public static class PhonIdentityLabel
+{
+    /// <summary>Whether the pinned PanGloss's <c>match</c> tests literals and segment-list classes as a rule does.</summary>
+    public const bool MatchTestsFeaturesLikeRules = false;
+
+    /// <summary>The <c>matchMode</c> a report carries while a pattern is tested by identity.</summary>
+    public const string Identity = "identity";
+}
 
 /// <summary>PanGloss's answer for one word.</summary>
 /// <param name="Word">The word as sent.</param>
@@ -61,7 +101,13 @@ public interface IPhonMatcher
     /// <summary>The version of the matcher that answers, or null when unknown.</summary>
     string? ParserVersion { get; }
 
-    /// <summary>Applies the pattern text to the words and returns one result per word in order; one request, never one process per word.</summary>
+    /// <summary>Whether literals and segment-list classes are tested by identity; see <see cref="PhonIdentityLabel"/>.</summary>
+    bool MatchesByIdentity => !PhonIdentityLabel.MatchTestsFeaturesLikeRules;
+
+    /// <summary>The grammar's classes and features from PanGloss's <c>inventory</c> op, or null when unavailable.</summary>
+    PhonInventory? Inventory(CancellationToken cancellationToken) => null;
+
+    /// <summary>Applies the pattern to the words and returns one result per word, in order, in one request.</summary>
     /// <exception cref="QueryRefusalException">The matcher is unavailable or refused the pattern; the refusal says why.</exception>
     PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken);
 }

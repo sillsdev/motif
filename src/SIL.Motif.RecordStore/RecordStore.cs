@@ -18,8 +18,9 @@ public sealed record RecordCommit(Guid Id, DateTimeOffset UtcTime, long Counter,
 public sealed partial class RecordStore : IAsyncDisposable
 {
     public const int MaximumChangesPerCommit = 500;
-    // Format 6 adds the certificate and content identity tables; a format 5 store is upgraded by its first write.
-    private const int StoreFormat = 6;
+    // Format 6 adds the certificate, format 7 the derived tables; a first read-write operation upgrades.
+    private const int StoreFormat = 7;
+    private const int CertificateFormat = 6;
     private const int PackedStoreFormat = 5;
     private const int LegacyStoreFormat = 4;
     internal const int CompleteRecordModelVersion = 1;
@@ -51,7 +52,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         var services = new ServiceCollection();
         var connection = RecordSqlite.ConnectionString(path, readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate);
         var storedFormat = File.Exists(path) ? ReadFormat(connection) : 0;
-        if (storedFormat is not (0 or LegacyStoreFormat or PackedStoreFormat or StoreFormat) || storedFormat > highestFormat)
+        if (storedFormat is not (0 or LegacyStoreFormat or PackedStoreFormat or CertificateFormat or StoreFormat) || storedFormat > highestFormat)
             throw new InvalidDataException("Unsupported record store format.");
         // A new file is created in the current format; an existing one keeps its own until its first write upgrades it.
         format = storedFormat == 0 ? StoreFormat : storedFormat;
@@ -108,6 +109,7 @@ public sealed partial class RecordStore : IAsyncDisposable
             {
                 ReferencePersistence.Create(database);
                 database.Database.ExecuteSqlRaw(IdentityTable);
+                CreateDerivedTables(database);
                 database.Add(new StoreState());
                 database.SaveChanges();
             }
@@ -287,11 +289,13 @@ public sealed partial class RecordStore : IAsyncDisposable
     /// <summary>Number of snapshots this handle has decoded for verified reads.</summary>
     internal long SnapshotsDecoded { get; private set; }
 
-    private sealed record DecodedSnapshots(IReadOnlyList<GenericRecord> Records, SetDigest Digest);
+    private sealed record DecodedSnapshots(IReadOnlyList<GenericRecord> Records, SetDigest Digest, RecordHeader[] Tombstones,
+        DerivedSnapshot? Derived);
 
-    /// <summary>Live records in Harmony's order, decoded on workers, with their digest when asked.</summary>
-    private async Task<DecodedSnapshots> DecodeLatestAsync(bool digest, CancellationToken ct)
+    /// <summary>Live records in Harmony's order, decoded on workers; derived adds chunks and headers.</summary>
+    private async Task<DecodedSnapshots> DecodeLatestAsync(bool digest, CancellationToken ct, bool derived = false)
     {
+        derived &= digest;
         // Several failing rows may be reported in another order than sequentially: read errors win.
         var blobs = new List<byte[]>();
         var codec = database.Codec;
@@ -311,28 +315,52 @@ public sealed partial class RecordStore : IAsyncDisposable
         var chunks = (blobs.Count + size - 1) / size;
         var decoded = new GenericRecord?[blobs.Count];
         var partial = new SetDigest[chunks];
+        var partialChunks = derived ? new Dictionary<int, SetDigest>[chunks] : null;
+        var headers = derived ? new RecordHeader[blobs.Count] : null;
+        var tombstones = new RecordHeader?[blobs.Count];
         var workers = Workers ?? ParallelWork.DefaultWorkers;
         await Task.Run(() => ParallelWork.ForEachChunk(chunks, workers, ct, chunk =>
         {
             DecodeChunkStarted?.Invoke(chunk);
             var sum = new SetDigest();
+            var parts = derived ? new Dictionary<int, SetDigest>() : null;
             var end = Math.Min(blobs.Count, (chunk + 1) * size);
             for (var index = chunk * size; index < end; index++)
             {
                 ct.ThrowIfCancellationRequested();
                 var record = (GenericRecord)codec.Snapshot(blobs[index]);
-                if (record.DeletedAt is not null) continue;
+                if (headers is not null) headers[index] = RecordHeader.From(record);
+                if (record.DeletedAt is not null) { tombstones[index] = RecordHeader.From(record); continue; }
                 decoded[index] = record;
-                if (digest) sum = sum.Add(SnapshotItem(record));
+                if (!digest) continue;
+                var item = SnapshotItem(record);
+                sum = sum.Add(item);
+                if (parts is not null)
+                {
+                    var key = ChunkOf(record.Id);
+                    parts[key] = parts.GetValueOrDefault(key).Add(item);
+                }
             }
             partial[chunk] = sum;
+            if (partialChunks is not null) partialChunks[chunk] = parts!;
         }), ct);
         SnapshotsDecoded += blobs.Count;
         var records = new List<GenericRecord>(blobs.Count);
+        var seen = new HashSet<Guid>(blobs.Count);
         foreach (var record in decoded) if (record is not null) records.Add(record);
+        foreach (var id in records.Select(r => r.Id).Concat(tombstones.Where(t => t is not null).Select(t => t!.Value.Id)))
+            if (!seen.Add(id)) throw new InvalidDataException($"Snapshots: two latest snapshots decode to record {id}.");
         var total = new SetDigest();
         foreach (var part in partial) total = total.Combine(part);
-        return new(records, total);
+        DerivedSnapshot? derivedTables = null;
+        if (partialChunks is not null)
+        {
+            var sums = new SetDigest[ChunkCount];
+            foreach (var parts in partialChunks)
+                foreach (var (key, value) in parts) sums[key] = sums[key].Combine(value);
+            derivedTables = new DerivedSnapshot(sums, headers!);
+        }
+        return new(records, total, tombstones.Where(t => t is not null).Select(t => t!.Value).ToArray(), derivedTables);
     }
 
     public async Task<IReadOnlyList<RecordCommit>> CommitsAsync() => await database.Set<Commit>().AsNoTracking()
@@ -349,7 +377,7 @@ public sealed partial class RecordStore : IAsyncDisposable
     private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default, Action<string, string>? observe = null)
     {
         point = null;
-        var decoded = await DecodeLatestAsync(digest: true, ct);
+        var decoded = await DecodeLatestAsync(digest: true, ct, derived: observe is not null || !readOnly && format < DerivedFormat);
         var records = decoded.Records;
         // A verification reports the digests it computed instead of refusing at the first mismatch.
         observe?.Invoke("snapshot", decoded.Digest.Final("snapshot"));
@@ -389,7 +417,8 @@ public sealed partial class RecordStore : IAsyncDisposable
             Anchors = anchors.ToArray(),
             WritingSystems = systems.ToArray(),
             ProjectId = projects.Length == 1 ? projects[0].Id : null,
-            IndexTrusted = trusted
+            IndexTrusted = trusted,
+            Derived = decoded.Derived
         };
         ct.ThrowIfCancellationRequested();
         PointAcquisitions++;
@@ -425,29 +454,31 @@ public sealed partial class RecordStore : IAsyncDisposable
         using var writer = AcquireWriter();
         point = null;
         var state = await PublishedStateAsync(ct);
-        var records = await ReadRecordsAsync(ct);
-        VerifySnapshots(state, records);
+        var latest = await DecodeLatestAsync(digest: true, ct);
+        VerifySnapshots(state, latest.Digest);
         if (state.ReplayDigest != (await ReplayIntegrity.ScanAsync(database, Workers, ct: ct)).Final())
             throw new InvalidDataException("History is corrupt; the reference index cannot be republished.");
         ct.ThrowIfCancellationRequested();
-        await PublishIndexAsync(records, state.Revision);
+        await PublishIndexAsync(latest.Records, state.Revision, tombstones: latest.Tombstones);
     }
 
     /// <summary>Digests and index of records in hand; an import computes them while its rows are written.</summary>
-    private sealed record PublishedWork(Task<SetDigest> Snapshot, Task<ReferenceProjection> Projection)
+    private sealed record PublishedWork(Task<SetDigest[]> Snapshot, Task<ReferenceProjection> Projection)
     {
         public static PublishedWork Start(IReadOnlyList<GenericRecord> records) =>
-            new(Task.Run(() => SnapshotDigest(records)), Task.Run(() => ReferenceProjection.Build(records)));
+            new(Task.Run(() => ChunkDigests(records)), Task.Run(() => ReferenceProjection.Build(records)));
     }
 
     private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision, PublishedWork? work = null,
-        string provenance = CertificateProvenance.FullVerify)
+        string provenance = CertificateProvenance.FullVerify, IReadOnlyList<RecordHeader>? tombstones = null)
     {
         point = null;
+        var chunks = work is null ? ChunkDigests(records) : await work.Snapshot;
         var projection = work is null ? ReferenceProjection.Build(records) : await work.Projection;
         await using var transaction = database.Database.CurrentTransaction is null ? await database.Database.BeginTransactionAsync() : null;
         try
         {
+            tombstones ??= await ReadTombstonesAsync();
             await UpgradeInTransactionAsync();
             await ReferencePersistence.ReplaceAsync(database, projection.Edges);
             var state = await database.Set<StoreState>().SingleAsync();
@@ -457,10 +488,13 @@ public sealed partial class RecordStore : IAsyncDisposable
             HistoryScans++;
             var replay = await ReplayIntegrity.ScanAsync(database, Workers);
             state.ReplayDigest = replay.Final();
-            state.SnapshotDigest = (work is null ? SnapshotDigest(records) : await work.Snapshot).Final("snapshot");
+            state.SnapshotDigest = Total(chunks).Final("snapshot");
             state.ContentDigest = content.Digest();
             state.Published = true;
             await StageCertificateAsync(state, replay, provenance);
+            // Every full publication rewrites the derived tables; they are bound to this state row's digests.
+            if (format >= DerivedFormat || backfillDerived)
+                WriteDerived(state, chunks, records.Select(RecordHeader.From).Concat(tombstones).ToArray());
             await database.SaveChangesAsync();
             if (transaction is not null)
             {
@@ -547,9 +581,6 @@ public sealed partial class RecordStore : IAsyncDisposable
         return digest;
     }
 
-    private static SetDigest VerifySnapshots(StoreState state, IReadOnlyList<GenericRecord> records, CancellationToken ct = default) =>
-        VerifySnapshots(state, SnapshotDigest(records, ct));
-
     private static SetDigest VerifySnapshots(StoreState state, SetDigest digest)
     {
         if (state.SnapshotDigest != digest.Final("snapshot"))
@@ -587,9 +618,9 @@ public sealed partial class RecordStore : IAsyncDisposable
     {
         var state = await PublishedStateAsync();
         await model.RegenerateSnapshots();
-        var records = await ReadRecordsAsync();
-        VerifySnapshots(state, records);
-        await PublishIndexAsync(records, state.Revision);
+        var latest = await DecodeLatestAsync(digest: true, default);
+        VerifySnapshots(state, latest.Digest);
+        await PublishIndexAsync(latest.Records, state.Revision, tombstones: latest.Tombstones);
     }
 
     private static async Task CopyDatabaseAsync(string sourcePath, string destinationPath)

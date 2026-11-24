@@ -106,6 +106,7 @@ internal static class QueryEngine
             .Select(row => row.Get("form") is { Count: > 0 } form ? form[0] : "").Where(form => form.Length > 0);
         phon.Resolve([.. patterns.Select(pattern => pattern.Leaf)], candidates);
         phon.Reported(patterns.Where(pattern => pattern.Positive).Select(pattern => pattern.Leaf));
+        phon.Negated(patterns.Where(pattern => !pattern.Positive).Select(pattern => pattern.Leaf));
         var decided = QueryExprCompiler.CompileTri(query.Filter!, spec, phon.Lookup);
         return row => decided(row) == Tri.True;
     }

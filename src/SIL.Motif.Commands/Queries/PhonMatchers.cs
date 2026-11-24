@@ -27,20 +27,70 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
 
     public PhonBatchResult Match(string patternText, IReadOnlyList<string> words, CancellationToken cancellationToken)
     {
-        var reply = pool.TryMatchAsync(key, stateToken, grammarPath, new ServeMatchRequest(patternText, words, WordTimeoutMs: WordTimeoutMs), cancellationToken)
+        var reply = pool.TryMatchAsync(key, stateToken, grammarPath, new ServeMatchRequest(patternText, words, WordTimeoutMs: WordTimeoutMs) { Requires = PhonPattern.ConstructsOf(patternText) }, cancellationToken)
             .GetAwaiter().GetResult();
         switch (reply)
         {
             case WarmMatchResult.Completed completed:
                 return Read(completed.Json);
             case WarmMatchResult.Unsupported unsupported:
-                throw QueryRefusalException.PhonUnavailable(PanGlossInterfaceVersions.ServeMatchNeeded, unsupported.Detail);
+                throw QueryRefusalException.PhonUnavailable(unsupported.Detail.Contains("supported constructs", StringComparison.Ordinal)
+                    ? PanGlossInterfaceVersions.ServeMatchConstructsNeeded : PanGlossInterfaceVersions.ServeMatchNeeded, unsupported.Detail);
             case WarmMatchResult.Rejected rejected:
                 throw Refused(rejected, patternText);
             case WarmMatchResult.Failed failed:
                 throw QueryRefusalException.PhonFailed($"The resident PanGloss could not match the pattern ({failed.Code}): {failed.Message}");
             default:
                 throw new OperationCanceledException(cancellationToken);
+        }
+    }
+
+    /// <summary>The grammar's classes and features, from the resident parser's <c>inventory</c> op; null when PanGloss cannot list them.</summary>
+    public PhonInventory? Inventory(CancellationToken cancellationToken)
+    {
+        if (_inventory is { } known) return known;
+        var reply = pool.TryInventoryAsync(key, stateToken, grammarPath, cancellationToken).GetAwaiter().GetResult();
+        return _inventory = InventoryFrom(reply, cancellationToken);
+    }
+
+    internal static PhonInventory InventoryFrom(WarmMatchResult reply, CancellationToken cancellationToken)
+    {
+        switch (reply)
+        {
+            case WarmMatchResult.Completed completed:
+                return ReadInventory(completed.Json);
+            case WarmMatchResult.Unsupported unsupported:
+                throw QueryRefusalException.PhonUnavailable(PanGlossInterfaceVersions.ServeInventoryNeeded, unsupported.Detail);
+            case WarmMatchResult.Rejected rejected:
+                throw QueryRefusalException.PhonFailed($"PanGloss refused to list the grammar's classes ({rejected.Code}): {rejected.Message}");
+            case WarmMatchResult.Failed failed:
+                throw QueryRefusalException.PhonFailed($"The resident PanGloss could not list the grammar's classes ({failed.Code}): {failed.Message}");
+            default:
+                throw new OperationCanceledException(cancellationToken);
+        }
+    }
+
+    private PhonInventory? _inventory;
+
+    internal static PhonInventory ReadInventory(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            string? Text(JsonElement element, string name) =>
+                element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+            var classes = root.GetProperty("classes").EnumerateArray()
+                .Select(item => new PhonInventoryClass(Text(item, "token"), Text(item, "name"), Text(item, "id") ?? "", Text(item, "kind") ?? "")).ToArray();
+            var features = root.GetProperty("features").EnumerateArray()
+                .Select(item => new PhonInventoryFeature(Text(item, "name") ?? "", Text(item, "id") ?? "",
+                    [.. item.GetProperty("values").EnumerateArray().Select(value => value.GetString() ?? "")])).ToArray();
+            return new PhonInventory(classes, features, root.GetProperty("complete").GetBoolean(),
+                root.TryGetProperty("stopReason", out var stop) && stop.ValueKind == JsonValueKind.String ? stop.GetString() : null);
+        }
+        catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            throw QueryRefusalException.PhonFailed("PanGloss wrote an inventory answer Motif cannot read: " + exception.Message);
         }
     }
 
@@ -64,7 +114,7 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
         }
         catch (JsonException) { }
         var detail = facts.TryGetValue("construct", out var construct)
-            ? $"PanGloss does not support {construct} patterns yet ({rejected.Code}): {rejected.Message}"
+            ? $"PanGloss does not support {construct} patterns ({rejected.Code}): {rejected.Message}"
             : $"PanGloss refused the pattern ({rejected.Code}): {rejected.Message}";
         return QueryRefusalException.PhonPatternRefused(detail + $" The pattern sent was: {patternText}", facts);
     }
@@ -115,7 +165,7 @@ internal static class PhonMatchers
             return CommandOutcome<IPhonMatcher>.Refused(new Refusal(RefusalCodes.WordTraceNoBaseline, FailureReason.Refused,
                 "The project has no Baseline yet. Run 'motif baseline capture --project <fwdata>' before a phon or env query."));
         return CommandOutcome<IPhonMatcher>.Success(Resolving(new ResidentPhonMatcher(TryWordSessions.PoolFor(executable), projectKey,
-            TryWordSessions.TokenText(baseline.Token), baseline.FwDataPath, ParserExecutableIdentity.ReadVersion(executable)), baseline.FwDataPath));
+            TryWordSessions.TokenText(baseline.Token), baseline.FwDataPath, ParserExecutableIdentity.ReadVersion(executable))));
     }
 
     /// <summary>A grammar file named on the command line, such as <c>--grammar</c>; the state token is the file's digest so an edit restarts the session.</summary>
@@ -128,12 +178,11 @@ internal static class PhonMatchers
                 $"The grammar '{grammarPath}' is not a file."));
         var full = Path.GetFullPath(grammarPath);
         return CommandOutcome<IPhonMatcher>.Success(Resolving(new ResidentPhonMatcher(TryWordSessions.PoolFor(executable), full,
-            BatchInvocationEvidence.DigestFile(full), full, ParserExecutableIdentity.ReadVersion(executable)), full));
+            BatchInvocationEvidence.DigestFile(full), full, ParserExecutableIdentity.ReadVersion(executable))));
     }
 
-    // Full class names resolve lazily, after PanGloss answers unknown_natural_class.
-    private static IPhonMatcher Resolving(IPhonMatcher matcher, string grammarPath) => new ClassNameResolver(matcher,
-        () => PhonValues.ForGrammar(grammarPath) is { Succeeded: true, Value: { } values } ? values.NaturalClasses : null);
+    // Class names are checked lazily, after PanGloss answers unknown_natural_class.
+    private static IPhonMatcher Resolving(IPhonMatcher matcher) => new ClassNameResolver(matcher);
 
     private static CommandOutcome<IPhonMatcher> Missing() => CommandOutcome<IPhonMatcher>.Refused(new Refusal(
         RefusalCodes.WordTraceParserUnavailable, FailureReason.Refused, PanGlossExecutable.NotFoundMessage,

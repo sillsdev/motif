@@ -211,11 +211,12 @@ public static class QuerySchema
 
     /// <summary>The pattern language of <c>phon</c> and <c>env</c>, as PanGloss's match op reads it.</summary>
     public const string PatternSyntax =
-        "Pattern syntax, items separated by spaces: a natural-class abbreviation such as C or V (the first column of motif query --values classes), or by its full name in brackets, [Vowels]; a name with spaces can only be written in brackets, [Exact featured V]; " +
+        "Pattern syntax, items separated by spaces: a natural-class token such as C or V (the first column of motif query --values classes); a name with spaces is written in brackets, [Nasal Stop]; " +
         "a feature bundle [+voice -nasal]; an alpha variable [αvoice]; a literal segment /p/ (a bare letter is not a segment); " +
         "( ) groups, ( )* repeats a group, # is a word edge, + is a morpheme boundary. " +
         "The grammar's surface character table segments each word, so a pattern sees the word as the grammar does; a word it cannot segment is reported as unsegmentable and matches nothing, even under not. " +
-        "Feature bundles and alpha variables are gated in PanGloss 0.29.0 and refused as unsupported_construct. " +
+        "One alpha letter on two different features ([αvoice] _ [αson]) is refused as unsupported_construct (alphaAcrossFeatures). " +
+        "A literal or a segment-list class is tested by identity until PanGloss tests it as a rule does, so spans may under-report: the result says matchMode identity and mayUnderReport, and not over such a pattern warns that absence is not proven. " +
         "+ needs words with marked boundaries, which Motif does not send yet, so it is refused on ordinary words as boundary_needs_marked_input.";
 
     private static JsonObject Wrapper(string key, JsonObject inner, JsonObject? extra = null)

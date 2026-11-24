@@ -27,7 +27,11 @@ public sealed class PhonQueryTests : IDisposable
         private readonly PhonBatchResult _recorded = ResidentPhonMatcher.Read(RecordedMatch.Fill(recorded, sentWords));
         private Dictionary<string, PhonWordResult> _words => _recorded.Words.ToDictionary(word => word.Word);
 
-        public string? ParserVersion => "0.28.1";
+        public string? ParserVersion => "0.30.0";
+
+        public bool MatchesByIdentity { get; init; } = true;
+
+        public PhonInventory? Inventory(CancellationToken cancellationToken) => ResidentPhonMatcher.ReadInventory(RecordedMatch.Inventory);
 
         public List<IReadOnlyList<string>> Batches { get; } = [];
 
@@ -86,12 +90,91 @@ public sealed class PhonQueryTests : IDisposable
     [Fact]
     public void AnEnvSendsLeftTargetRightAndReportsTheTargetSpan()
     {
-        var session = new PhonSession(new Replay(RecordedMatch.WordEdge, "# [V]", "apa", "pa"));
-        var rows = CorpusFormsQuery.Run(Corpus("apa", "pa"), Where("env(V / # _)"), session);
+        var session = new PhonSession(new Replay(RecordedMatch.EnvEdge, "[V] / # _ [Stop]", "apa", "pa"));
+        var rows = CorpusFormsQuery.Run(Corpus("apa", "pa"), Where("env(V / # _ Stop)"), session);
         Assert.Equal("apa", Assert.Single(rows).Form);
         var span = Assert.Single(Assert.Single(rows[0].Matches!).Spans);
-        Assert.Equal((0, 1), (span.TargetStart, span.TargetEnd));
+        Assert.Equal((0, 1, "a"), (span.TargetStart, span.TargetEnd, span.Text));
         Assert.Equal("env", rows[0].Matches![0].Kind);
+    }
+
+    [Fact]
+    public void AnEnvWhoseTargetIsBetweenVowelsReportsTheTargetOnly()
+    {
+        var session = new PhonSession(new Replay(RecordedMatch.EnvNative, "[Stop] / [V] _ [V]", "pata", "kaki", "pat", "apa"));
+        var rows = CorpusFormsQuery.Run(Corpus("pata", "kaki", "pat", "apa"), Where("env(Stop / V _ V)"), session);
+        Assert.Equal(["apa", "kaki", "pata"], rows.Select(row => row.Form).Order());
+        var span = Assert.Single(rows.Single(row => row.Form == "kaki").Matches![0].Spans);
+        Assert.Equal((2, 3, "k"), (span.TargetStart, span.TargetEnd, span.Text));
+    }
+
+    [Fact]
+    public void AnEmptySideOfAnEnvIsLeftOutOfTheText()
+    {
+        var session = new PhonSession(new Replay(RecordedMatch.EnvEmptyLeft, "[V] / _ [Stop]", "apa", "pa"));
+        Assert.Equal(["apa"], CorpusFormsQuery.Run(Corpus("apa", "pa"), Where("env(V / _ Stop)"), session).Select(row => row.Form));
+    }
+
+    [Fact]
+    public void AFeatureBundleAndAnAlphaVariableAreSentAsWritten()
+    {
+        var bundle = new PhonSession(new Replay(RecordedMatch.FeatureBundle, "[+voice] [V]", "ba", "pa", "aba"));
+        Assert.Equal(["aba", "ba"], CorpusFormsQuery.Run(Corpus("ba", "pa", "aba"), Where("phon([+voice] V)"), bundle).Select(row => row.Form).Order());
+        var alpha = new PhonSession(new Replay(RecordedMatch.Alpha, "[αvoice] [αvoice]", "bada", "pata", "bata"));
+        Assert.Equal(["bada", "bata"], CorpusFormsQuery.Run(Corpus("bada", "pata", "bata"), Where("phon([αvoice] [αvoice])"), alpha).Select(row => row.Form).Order());
+        Assert.False(alpha.Report.MayUnderReport);
+    }
+
+    [Fact]
+    public void AClassNotListedAsAFeatureClassOrALiteralMakesTheReportSayIdentity()
+    {
+        var literal = new PhonSession(new Replay(RecordedMatch.Literals, "/pa/ ( [V])*", "paaa"));
+        CorpusFormsQuery.Run(Corpus("paaa"), Where("phon(/pa/ (V)*)"), literal);
+        Assert.Equal(("identity", true), (literal.Report.MatchMode, literal.Report.MayUnderReport));
+        Assert.Null(literal.Report.Warnings);
+        var segmentClass = new PhonSession(new Replay(RecordedMatch.CvcvClasses, "[Stop] [V] [Stop] [V]", "pata", "kaki", "pat", "atan"));
+        CorpusFormsQuery.Run(Corpus("pata", "kaki", "pat", "atan"), Where("phon(Stop V Stop V)"), segmentClass);
+        Assert.True(segmentClass.Report.MayUnderReport);
+        var featureClass = new PhonSession(new Replay(RecordedMatch.NaturalClass, "[Voiced] [V]", "ba", "pa"));
+        CorpusFormsQuery.Run(Corpus("ba", "pa"), Where("phon(Voiced V)"), featureClass);
+        Assert.True(featureClass.Report.MayUnderReport, "V is a segment list, so the pattern is identity-tested");
+        var onlyFeature = new PhonSession(new Replay(RecordedMatch.FeatureBundle, "[+voice] [Voiced]", "ba", "pa", "aba"));
+        CorpusFormsQuery.Run(Corpus("ba", "pa", "aba"), Where("phon([+voice] Voiced)"), onlyFeature);
+        Assert.Null(onlyFeature.Report.MatchMode);
+    }
+
+    [Fact]
+    public void NotOverAnIdentityTestedPatternWarnsAbsenceIsNotProvenAndTheLabelGoesWhenThePanGlossTestsLikeARule()
+    {
+        var negated = new PhonSession(new Replay(RecordedMatch.VowelWithUnsegmentable, "[V]", "pata", "xyz"));
+        CorpusFormsQuery.Run(Corpus("pata", "xyz"), Where("not phon(V)"), negated);
+        var warning = Assert.Single(negated.Report.Warnings!);
+        Assert.Contains("absence is not proven", warning);
+        var fixedPanGloss = new PhonSession(new Replay(RecordedMatch.VowelWithUnsegmentable, "[V]", "pata", "xyz") { MatchesByIdentity = false });
+        CorpusFormsQuery.Run(Corpus("pata", "xyz"), Where("not phon(V)"), fixedPanGloss);
+        Assert.Null(fixedPanGloss.Report.Warnings);
+        Assert.Null(fixedPanGloss.Report.MatchMode);
+    }
+
+    [Fact]
+    public void TheInventoryReplyIsReadWithItsKindsAndTokens()
+    {
+        var inventory = ResidentPhonMatcher.ReadInventory(RecordedMatch.Inventory);
+        Assert.Equal("segment", inventory.Classes.Single(c => c.Token == "V").Kind);
+        Assert.Equal("feature", inventory.Classes.Single(c => c.Token == "Voiced").Kind);
+        Assert.Null(inventory.Classes.Single(c => c.Id == "no]way").Token);
+        Assert.Equal(["+", "-"], inventory.Features.Single(f => f.Name == "voice").Values);
+    }
+
+    [Theory]
+    [InlineData("env", "V / # _ Stop", new[] { "environment" })]
+    [InlineData("phon", "[+voice] V", new[] { "featureBundle" })]
+    [InlineData("phon", "[αvoice] [-αvoice]", new[] { "alphaVariable" })]
+    [InlineData("phon", "V", new string[0])]
+    public void TheConstructsAPatternNeedsAreNamedForTheCapabilityCheck(string kind, string pattern, string[] needs)
+    {
+        var plan = kind == "env" ? PhonPattern.CompileEnv(pattern) : PhonPattern.CompilePhon(pattern);
+        Assert.Equal(needs, PhonPattern.ConstructsOf(plan.Text));
     }
 
     [Fact]
@@ -137,8 +220,8 @@ public sealed class PhonQueryTests : IDisposable
 
     [Theory]
     [InlineData("PlusNeedsMarker", RecordedMatch.PlusNeedsMarker, "boundary_needs_marked_input")]
-    [InlineData("FeatureBundleGated", RecordedMatch.FeatureBundleGated, "unsupported_construct")]
-    [InlineData("AlphaGated", RecordedMatch.AlphaGated, "unsupported_construct")]
+    [InlineData("AlphaAcrossFeatures", RecordedMatch.AlphaAcrossFeatures, "unsupported_construct")]
+    [InlineData("UnknownFeature", RecordedMatch.UnknownFeature, "unknown_feature")]
     [InlineData("UnknownClass", RecordedMatch.UnknownClass, "unknown_natural_class")]
     [InlineData("PatternParse", RecordedMatch.PatternParse, "pattern_parse")]
     public void PanGlossesTypedRefusalIsKeptWholeAsFacts(string name, string recorded, string code)
@@ -162,9 +245,20 @@ public sealed class PhonQueryTests : IDisposable
         ops.Remove("match");
         var without = PanGlossSurface.ReadDescription(node.ToJsonString(), out _)!;
         Assert.NotNull(without.ServeMatchRefusal());
+        ops["match"] = JsonNode.Parse(RecordedMatch.DescribeBefore030);
+        var older = PanGlossSurface.ReadDescription(node.ToJsonString(), out _)!;
+        Assert.Null(older.ServeMatchRefusal());
+        Assert.Null(older.ServeMatchRefusal(["naturalClass"]));
+        Assert.Contains("environment", older.ServeMatchRefusal(["environment"]));
+        Assert.Contains("featureBundle", older.ServeMatchRefusal(["featureBundle"]));
+        Assert.Contains("alphaVariable", older.ServeMatchRefusal(["alphaVariable"]));
         ops["match"] = JsonNode.Parse(RecordedMatch.Describe);
+        ops["inventory"] = JsonNode.Parse(RecordedMatch.DescribeInventory);
         var with = PanGlossSurface.ReadDescription(node.ToJsonString(), out _)!;
-        Assert.Null(with.ServeMatchRefusal());
+        Assert.Null(with.ServeMatchRefusal(["environment", "featureBundle", "alphaVariable"]));
+        Assert.Null(with.ServeInventoryRefusal());
+        ops.Remove("inventory");
+        Assert.NotNull(PanGlossSurface.ReadDescription(node.ToJsonString(), out _)!.ServeInventoryRefusal());
         Assert.Equal(1, with.ServeMatch!.Version);
         var unavailable = QueryRefusalException.PhonUnavailable(PanGlossInterfaceVersions.ServeMatchNeeded, "no match op");
         Assert.Equal(RefusalCodes.QueryPhonUnavailable, unavailable.Refusal.Code);
