@@ -83,7 +83,10 @@ public sealed class WhyLostTests
         Assert.Equal(entry, cause.Blocked!.EntryId);
         var operation = Assert.Single(cause.Operations);
         Assert.Equal((1, "creates"), (operation.Position, operation.Role));
-        Assert.Contains("Operation 1 (lexical/lexEntry/createAlternateForms) creates the blocking form.", cause.Sentence, StringComparison.Ordinal);
+        Assert.Contains("Overlap with the Proposal, not a recorded cause: Operation 1 (lexical/lexEntry/createAlternateForms) creates this form.", cause.Sentence, StringComparison.Ordinal);
+        Assert.Contains("blocked by the earlier form text:" + blocker + " (" + blocker + ")", cause.Sentence, StringComparison.Ordinal);
+        Assert.DoesNotContain("earlier the", cause.Sentence, StringComparison.Ordinal);
+        Assert.DoesNotContain("blocking form", cause.Sentence, StringComparison.Ordinal);
         Assert.Contains("text:" + blocker, cause.Sentence, StringComparison.Ordinal);
     }
 
@@ -95,7 +98,7 @@ public sealed class WhyLostTests
         var cause = Assert.Single(Assert.Single(response.Lost).Causes);
         Assert.Equal("recorded", cause.Attribution);
         Assert.Empty(cause.Operations);
-        Assert.Contains("No Proposal operation names the blocking form.", cause.Sentence, StringComparison.Ordinal);
+        Assert.Contains("No Proposal operation names the earlier form.", cause.Sentence, StringComparison.Ordinal);
     }
 
     [Fact]

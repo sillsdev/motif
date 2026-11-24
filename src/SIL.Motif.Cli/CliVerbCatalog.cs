@@ -577,7 +577,7 @@ public static class CliVerbCatalog
             {
                 "proposal why-lost <word> --project <fwdata> --proposal <id> [--max-paths <1-64>] [--json]",
                 "Which Readings of the word the Proposal's latest Trial copy lost against the Baseline, and for each the stop",
-                "PanGloss recorded and the Proposal operation that names the blocking form, or that nothing was recorded.",
+                "PanGloss recorded and the Proposal operations that overlap the earlier form (not a cause), or that nothing was recorded.",
             }),
         new CliVerbDescriptor(
             "Trace", "generate", "generate",

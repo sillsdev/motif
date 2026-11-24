@@ -1025,7 +1025,7 @@ internal static class AgentTools
                 WhyLostQuery.Compare(new WhyLostRequest(c.ProjectPath, a.Required("word"), a.Required("proposal"),
                     a.OptionalInt("max_paths")), c.ParserPath, ct),
                 _ => "A cause marked 'not-recorded' means PanGloss recorded no stop for that Reading; do not guess one. " +
-                    "A recorded cause names the form that was blocked, the form that blocked it and the operation that names it.")))
+                    "A recorded cause names the form that was blocked, the form that blocked it and the Proposal operations that overlap it, which is not a cause.")))
             { Requests = [typeof(WhyLostRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["ProposalId"] = "proposal", ["MaxPaths"] = "max_paths", ["ProjectPath"] = null } },
 
         new("motif_job",

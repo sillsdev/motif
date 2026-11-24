@@ -69,7 +69,7 @@ public sealed record WhyLostCause(string Attribution, string Sentence)
     /// <summary>The form that blocked it, or <see langword="null"/>.</summary>
     public WhyLostForm? Blocker { get; init; }
 
-    /// <summary>The Proposal operations that name the blocking form, empty when none does or none was recorded.</summary>
+    /// <summary>The Proposal operations whose ids overlap the earlier form, not a cause; empty when none does or none was recorded.</summary>
     public IReadOnlyList<WhyLostOperation> Operations { get; init; } = [];
 }
 

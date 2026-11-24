@@ -9,8 +9,8 @@ motif proposal why-lost mirusi --project "C:\FieldWorks\Projects\Koro\Koro.fwdat
 ## What you get
 
 - **Lost, gained and kept.** Both traces run under one parse lease, so they describe one project state. Readings are compared by the canonical ids of their morphs: entry, analysis and form.
-- **A recorded cause.** When PanGloss recorded an `allomorph_blocked` stop on the Trial copy that names a form the lost Reading uses, the answer names the blocked form and the earlier form that blocked it, with the form's written text where the Trial copy holds it.
-- **The operation.** The blocking form's id is joined to the Proposal's operations. An operation is named when it creates the form, edits it, is placed beside it, adds a member to it, or names an object the form belongs to. If none does, the answer says so.
+- **A recorded stop.** When PanGloss recorded an `allomorph_blocked` stop on some Trial path that names a form the lost Reading uses, the answer names the blocked form and the earlier form that blocked it, with the form's written text where the Trial copy holds it.
+- **Overlap, not cause.** The earlier form's id is joined to the Proposal's operations. An operation is listed when it creates the form, edits it, places a form beside it, adds a member to it, or names an object the form belongs to. That is an overlap of ids, not a recorded cause. If none does, the answer says so. The Baseline's describe is reported but only the Trial's decides whether a stop could be read.
 - **Not recorded stays not recorded.** Where PanGloss recorded no stop for a lost Reading, the answer says `not-recorded` and names no operation. Motif never infers a cause. A PanGloss whose `--describe` does not list an `allomorph_blocked` stop gets the same answer, with that reason.
 - **Which copy.** The answer names the Trial job whose copy it read. A later Trial of the same Proposal changes the copy.
 

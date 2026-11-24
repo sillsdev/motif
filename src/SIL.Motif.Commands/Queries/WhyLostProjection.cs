@@ -61,10 +61,10 @@ internal static class WhyLostProjection
 
         var notes = new List<string>
         {
-            "A cause is a stop PanGloss recorded on the Trial copy that names a form this Reading uses; where it recorded " +
+            "A recorded stop is one PanGloss recorded on some Trial path that names a form this Reading uses; where it recorded " +
             "none the answer is 'not recorded' and Motif names no operation.",
-            "An operation is named only when it creates, edits or is placed beside the blocking form's id, or names an " +
-            "object that form belongs to; the operation list is a join of ids, not a finding beyond what the stop says.",
+            "An operation is listed only when it creates, edits or places a form beside the earlier form's id, or names an " +
+            "object that form belongs to; the list is an overlap of ids, not a cause.",
         };
         if (baseline.Outputs.Count == 0) notes.Add("The word has no Reading at the Baseline, so nothing can be lost.");
         else if (lost.Count == 0) notes.Add("No Reading the Baseline has is missing from the Trial copy.");
@@ -155,14 +155,15 @@ internal static class WhyLostProjection
         var blocked = FormOf(block.Stop.Subject, forms, context);
         var blocker = block.Blocker is null ? new WhyLostForm(null, null, null) : FormOf(block.Blocker, forms, context);
         var operations = blocker.Id is null ? [] : Join(proposal, context, blocker.Id);
-        var text = $"PanGloss recorded {Name(blocked)} as blocked by the earlier {Name(blocker)} " +
-            $"(allomorph_blocked, stage {block.Stop.Stage}).";
+        var text = $"On a Trial path PanGloss recorded {Name(blocked)} as blocked by {Earlier(blocker)} " +
+            $"(allomorph_blocked, stage {block.Stop.Stage}); the lost Reading uses the blocked form.";
         if (blocker.Id is null)
-            text += " PanGloss did not bind the blocking form to an authored object, so Motif names no operation.";
+            text += " PanGloss did not bind the earlier form to an authored object, so Motif names no operation.";
         else if (operations.Count == 0)
-            text += " No Proposal operation names the blocking form.";
+            text += " No Proposal operation names the earlier form.";
         else
-            text += " " + string.Join(" ", operations.Select(operation => operation.Sentence));
+            text += " Overlap with the Proposal, not a recorded cause: " +
+                string.Join(" ", operations.Select(operation => operation.Sentence));
         return new WhyLostCause("recorded", text)
         {
             Reason = block.Stop.Reason, Stage = block.Stop.Stage, Blocked = blocked, Blocker = blocker, Operations = operations,
@@ -173,6 +174,10 @@ internal static class WhyLostProjection
         form.Id is null ? "a form with no authored identity"
         : form.Text is null ? $"the form {form.Id}" : $"the form {form.Text} ({form.Id})";
 
+    private static string Earlier(WhyLostForm form) =>
+        form.Id is null ? "an earlier form with no authored identity"
+        : form.Text is null ? $"the earlier form {form.Id}" : $"the earlier form {form.Text} ({form.Id})";
+
     private static WhyLostForm FormOf(RejectionTraceObject value, IFormReader forms, RegressionContext context)
     {
         var id = FormIdsOf(value) is { Length: > 0 } ids ? ids[0] : null;
@@ -181,7 +186,7 @@ internal static class WhyLostProjection
         return new WhyLostForm(id, entry ?? context.EntryOf(id) ?? forms.EntryOf(id), forms.TextOf(id));
     }
 
-    /// <summary>The operations that name <paramref name="formId"/>, strongest relation first.</summary>
+    /// <summary>The operations that name <paramref name="formId"/>, in Proposal order.</summary>
     internal static IReadOnlyList<WhyLostOperation> Join(Proposal proposal, RegressionContext context, string formId)
     {
         var guid = RegressionContext.ToGuid(formId);
@@ -203,14 +208,14 @@ internal static class WhyLostProjection
     private static (string Role, string Sentence)? RoleOf(OperationEnvelope operation, Guid id, IReadOnlySet<Guid> expanded)
     {
         if (Is(operation.EntityId, id) || Is(operation.StorageIdOverride, id))
-            return ("creates", "creates the blocking form.");
-        if (Is(operation.Target, id)) return ("edits", "edits the blocking form.");
+            return ("creates", "creates this form.");
+        if (Is(operation.Target, id)) return ("edits", "edits this form.");
         if (Is(operation.Placement?.After, id) || Is(operation.Placement?.Before, id))
-            return ("placed-beside", "is placed beside the blocking form.");
+            return ("placed-beside", "places a form beside this form.");
         if (OwnerOf(operation) is { } owner && owner == id)
-            return ("added-to", "adds a member to the blocking form.");
+            return ("added-to", "adds a member to this form.");
         return expanded.Contains(id)
-            ? ("names-object-it-uses", "names an object the blocking form belongs to or uses.")
+            ? ("names-object-it-uses", "names an object this form belongs to or uses.")
             : null;
     }
 

@@ -2106,7 +2106,7 @@
   },
   "proposal why-lost": {
     "title": "Why a word lost a Reading",
-    "description": "Compares a word's parse at the Baseline with its parse on a Proposal's Trial copy and, for each lost Reading, reports the stop PanGloss recorded and the Proposal operation that names the blocking form. Use it to find which edit lost a Reading.",
+    "description": "Compares a word's parse at the Baseline with its parse on a Proposal's Trial copy and, for each lost Reading, reports the stop PanGloss recorded and the Proposal operations that overlap the earlier form it names. The overlap is not a cause; use it to find which edits to look at.",
     "source": "Hand-written from command behavior."
   },
   "proposal review": {

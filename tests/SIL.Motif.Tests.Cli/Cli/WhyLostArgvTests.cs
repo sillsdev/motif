@@ -51,7 +51,7 @@ public sealed class WhyLostArgvTests : IDisposable
             "unique_association", []);
         var lost = new WhyLostReading("a+b", [morph])
         {
-            Causes = [new WhyLostCause("recorded", "PanGloss recorded the form F1 as blocked by the earlier form F2.")],
+            Causes = [new WhyLostCause("recorded", "sentence from the projection")],
         };
         var response = new WhyLostResponse("w", "P1", "job-1", new WhyLostSide("baseline", producer, search, 1, true),
             new WhyLostSide("proposal P1", producer, search, 0, true), [lost], [], [])
@@ -62,7 +62,7 @@ public sealed class WhyLostArgvTests : IDisposable
         Assert.Contains("Why lost, w: Baseline against proposal P1 (Trial job job-1).", text, StringComparison.Ordinal);
         Assert.Contains("Baseline 1 Reading, Trial copy 0 Readings: lost 1, gained 0, kept 0.", text, StringComparison.Ordinal);
         Assert.Contains("Lost Reading 1: [entry E1 msa M1 form F1]", text, StringComparison.Ordinal);
-        Assert.Contains("  PanGloss recorded the form F1 as blocked by the earlier form F2.", text, StringComparison.Ordinal);
+        Assert.Contains("  sentence from the projection", text, StringComparison.Ordinal);
         Assert.Contains("Note: a note", text, StringComparison.Ordinal);
     }
 
