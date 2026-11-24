@@ -1,8 +1,8 @@
 {
-  "version": "0.32.0",
-  "tag": "v0.32.0",
+  "version": "0.33.0",
+  "tag": "v0.33.0",
   "interfaces": {
-    "sourceTag": "v0.32.0",
+    "sourceTag": "v0.33.0",
     "describeSchemaVersion": 1,
     "grammarHealthSchemaVersion": 5,
     "traceDetailsSchemaId": "pangloss.trace-details.v5",
@@ -77,20 +77,20 @@
   },
   "assets": {
     "win-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.32.0/pangloss-win-x64.exe",
-      "sha256": "4487df36ad9fd7f40b836048124f0e89e3732b840ab0c4287d35386000c64203"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.33.0/pangloss-win-x64.exe",
+      "sha256": "c9ef0eeaed86a6db37ae5c9f861dcca31cca7deb907208960561d9070e37907e"
     },
     "linux-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.32.0/pangloss-linux-x64",
-      "sha256": "95f33b7f5f80b744e32577b6b88aaff3a01dde8efb69aa8427e8ba19d582b5a4"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.33.0/pangloss-linux-x64",
+      "sha256": "14243e6c02fdb615fa53f768a1a8de8e14d01092e38fa649e1a52ed93f1bc441"
     },
     "osx-arm64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.32.0/pangloss-osx-arm64",
-      "sha256": "ec25ea1caf1ee6518ce7721514df669d2d9cb9341919570a9946b4bd1b4a0f95"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.33.0/pangloss-osx-arm64",
+      "sha256": "c6ab34f9ae3b206140050ef3878525adfd5b9fb32861a222a7f6ad47674781a5"
     },
     "osx-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.32.0/pangloss-osx-x64",
-      "sha256": "4239f0f7b7b3660a484f8410873e5fd0d91c06b1e002b018b93374e36136cdea"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.33.0/pangloss-osx-x64",
+      "sha256": "513fc912f6f63a1fbe3be28c8a32a1716c0e19cc5cc1e3fd719e5908414f26d7"
     }
   }
 }
