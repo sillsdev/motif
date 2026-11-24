@@ -912,6 +912,8 @@ public static class RefusalCatalog
             Command("baseline capture", Caller("project"))),
         Spec(HostRefusalCodes.CliCancelled, FailureReason.Cancelled),
         Spec(HostRefusalCodes.CliOutOfMemory, FailureReason.Refused),
+        Spec(HostRefusalCodes.CliStoreBusy, FailureReason.Busy,
+            NextStep.Repeat()),
         Spec(HostRefusalCodes.CliUnexpected, FailureReason.StoreInconsistent),
         Spec(HostRefusalCodes.GrammarUnknownKind, FailureReason.InvalidArgument),
         Spec(HostRefusalCodes.GuideUnknownTopic, FailureReason.InvalidArgument),

@@ -17,6 +17,8 @@ public static class HostRefusalCodes
     public const string CliCancelled = "cli.cancelled";
     /// <summary>The CLI process ran out of memory outside any command that anticipated it.</summary>
     public const string CliOutOfMemory = "cli.out-of-memory";
+    /// <summary>A Motif store stayed locked by another process past the busy timeout; repeat the call.</summary>
+    public const string CliStoreBusy = "cli.store-busy";
     /// <summary>The CLI hit an error no command anticipated.</summary>
     public const string CliUnexpected = "cli.unexpected";
 

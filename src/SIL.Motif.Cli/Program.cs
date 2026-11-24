@@ -3611,6 +3611,17 @@ catch (OutOfMemoryException ex)
         error.WriteLine($"{HostRefusalCodes.CliOutOfMemory}: {message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
 }
+catch (Exception ex) when (SqliteConnections.IsBusyInChain(ex))
+{
+    // Another process held a store lock past the busy timeout. Nothing is damaged; the same call can be repeated.
+    const string message = "Motif's store is locked by another process. Wait a few seconds and repeat the same call.";
+    if (asJson)
+        error.WriteLine(ProjectionJson.Serialize(
+            new FailureEnvelope(FailureReason.Busy, message, code: HostRefusalCodes.CliStoreBusy)));
+    else
+        error.WriteLine($"{HostRefusalCodes.CliStoreBusy}: {message}");
+    return FailureEnvelope.ExitCodeFor(FailureReason.Busy);
+}
 catch (Exception ex)
 {
     // Nothing decided this; it escaped. That is a bug, not a refusal, and it gets its own code.
