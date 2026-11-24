@@ -250,6 +250,11 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             var field = schema.Schema.ObjectType(type)?.Field(key);
             if (field is null)
                 throw Refuse(RefusalCodes.RecordImportFieldUncovered, change, $"The schema has no field '{key}' on {type}.");
+            if (field.Paragraphs)
+            {
+                LowerParagraphs(change, type, key, binding, target, role, owner, text);
+                return;
+            }
             var tsOld = fresh ? null : Current(change, target, binding, ws);
             if (!fresh && old is not null && tsOld is { } held && !SameText(held.Text, PlainText(change, old, ws)))
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
@@ -272,9 +277,6 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 var payload = new TextRichStringPayload(name, multi ? ws : null, runs, expected);
                 _pending.Add(Operation(Id(role + ":" + kind), kind, target, payload.ToJson()));
             }
-            else if (kind is "text/setParagraphs")
-                throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
-                    "A field of paragraphs is replaced by paragraph keys and digests, which this lowering does not author.");
             else
             {
                 var tag = ws ?? (runs.Count > 0 ? runs[0].Ws : DefaultWs(field));
@@ -534,6 +536,92 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 ws > 0 ? cache.WritingSystemFactory.GetStrFromWs(ws) : "", ints, strings, objData);
         }));
 
+        // The file has no paragraph keys, so paragraphs pair with the stored ones by position.
+        private void LowerParagraphs(RecordChange change, string type, string key,
+            (string DeclaringClass, string Field, bool IsCustom) binding, CanonicalId target, string role, Guid owner, string? text)
+        {
+            var verb = text is null ? RecordWriteVerb.ClearRich : RecordWriteVerb.SetRich;
+            var kind = KindFor(change, type, key, verb);
+            var flid = cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true);
+            var data = cache.DomainDataByFlid;
+            var hvo = data.get_ObjectProp(cache.ServiceLocator.GetObject(owner).Hvo, flid);
+            var held = hvo == 0 ? [] : cache.ServiceLocator.GetObject(hvo) is IStText stText
+                ? stText.ParagraphsOS.OfType<IStTxtPara>().ToArray() : [];
+            var field = schema.Schema.ObjectType(type)!.Field(key)!;
+            var oldParagraphs = change.Old is null ? [] : ParseParagraphs(change, change.Old, DefaultWs(field));
+            if (oldParagraphs.Count != held.Length || oldParagraphs.Zip(held).Any(pair =>
+                    !SameText(held: pair.Second.Contents?.Text ?? "", file: pair.First.Text)))
+                throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
+            var order = new List<string?>();
+            var changed = new List<TextParagraphChange>();
+            var removed = new List<string>();
+            var wanted = new HashSet<string>(StringComparer.Ordinal);
+            string KeyOf(int index) => CanonicalId.FromGuid(held[index].Guid).Value;
+            if (text is null)
+            {
+                if (held.Length > 0)
+                {
+                    order.Add(KeyOf(0));
+                    changed.Add(new TextParagraphChange(0, KeyOf(0), held[0].StyleName is { Length: > 0 } style ? style : null, [], null));
+                    wanted.Add(KeyOf(0));
+                }
+                for (var i = 1; i < held.Length; i++) { removed.Add(KeyOf(i)); wanted.Add(KeyOf(i)); }
+            }
+            else
+            {
+                var read = ParseParagraphs(change, text, DefaultWs(field));
+                var pairs = GdrMarkdownImport.Match(oldParagraphs.Count, read.Count,
+                    (o, n) => MarkdownConverter.AreEquivalent(oldParagraphs[o], read[n]));
+                var keyFor = new string?[read.Count];
+                var unchanged = new bool[read.Count];
+                foreach (var (o, n) in pairs) { keyFor[n] = KeyOf(o); unchanged[n] = true; }
+                int previousOld = -1, previousNew = -1;
+                foreach (var (o, n) in pairs.Append((oldParagraphs.Count, read.Count)))
+                {
+                    var oldGap = Enumerable.Range(previousOld + 1, o - previousOld - 1).ToArray();
+                    var newGap = Enumerable.Range(previousNew + 1, n - previousNew - 1).ToArray();
+                    for (var i = 0; i < Math.Max(oldGap.Length, newGap.Length); i++)
+                    {
+                        if (i < oldGap.Length && i < newGap.Length) keyFor[newGap[i]] = KeyOf(oldGap[i]);
+                        else if (i < oldGap.Length) removed.Add(KeyOf(oldGap[i]));
+                    }
+                    previousOld = o;
+                    previousNew = n;
+                }
+                order.AddRange(keyFor);
+                for (var n = 0; n < read.Count; n++)
+                    if (!unchanged[n])
+                        changed.Add(new TextParagraphChange(n, keyFor[n], read[n].Style.Length > 0 ? read[n].Style : null,
+                            GdrMarkdownImport.Runs(read[n]), GdrMarkdownImport.ParagraphProps(read[n])));
+                if (changed.Count == 0 && removed.Count == 0)
+                    return;
+                foreach (var name in changed.Select(item => item.Key).Concat(removed).OfType<string>()) wanted.Add(name);
+            }
+            var expected = new Dictionary<string, TextParagraphExpected>(StringComparer.Ordinal);
+            for (var i = 0; i < held.Length; i++)
+                if (wanted.Contains(KeyOf(i)))
+                    expected[KeyOf(i)] = new TextParagraphExpected(held[i].Contents?.Text ?? "", held[i].StyleName ?? "",
+                        held[i].Contents is { Length: > 0 } contents ? Digest(contents) : TextRunsDigest.Of([]));
+            var payload = new TextParagraphsPayload(binding.DeclaringClass + "." + binding.Field, order, changed, removed, expected);
+            _pending.Add(Operation(Id(role + ":" + kind), kind, target, payload.ToJson()));
+        }
+
+        private List<Paragraph> ParseParagraphs(RecordChange change, string text, string defaultWs)
+        {
+            var options = new MarkdownOptions
+            {
+                WritingSystems = new Defaults(markdown.WritingSystems, defaultWs),
+                StyleNames = markdown.StyleNames, Styles = markdown.Styles, NormalizeText = markdown.NormalizeText,
+                Objects = markdown.Objects, Paths = markdown.Paths, WriteFrontMatter = false, LinkForm = markdown.LinkForm,
+                LinkBase = markdown.LinkBase, ProjectName = markdown.ProjectName, SilfwDatabase = markdown.SilfwDatabase,
+                UnknownGuids = markdown.UnknownGuids,
+            };
+            var result = MarkdownConverter.Parse(text, options);
+            if (result.HasErrors)
+                throw Refuse(RefusalCodes.RecordImportNotExecutable, change, "The value does not read as FieldWorks Markdown.");
+            return result.Document.Paragraphs.ToList();
+        }
+
         private static bool SameText(string held, string file) =>
             held.Normalize(NormalizationForm.FormC) == file.Normalize(NormalizationForm.FormC);
 
@@ -582,6 +670,7 @@ public static class RecordLoweringRules
     /// <summary>Whether the lowerer authors <paramref name="write"/> as declared by <paramref name="kind"/>.</summary>
     public static bool Lowers(string kind, FieldWriteCapability write) => write.Verb switch
     {
+        RecordWriteVerb.SetRich or RecordWriteVerb.ClearRich when kind == TextParagraphsOperationKinds.Set => true,
         RecordWriteVerb.Set or RecordWriteVerb.Clear or RecordWriteVerb.SetRich or RecordWriteVerb.ClearRich =>
             write.Payload == FieldWritePayload.Generic,
         RecordWriteVerb.SetAlternative or RecordWriteVerb.ClearAlternative or RecordWriteVerb.SetPlainRich or
