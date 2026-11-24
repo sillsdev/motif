@@ -194,7 +194,7 @@ public sealed class FakePanGlossSurfaceTests
                 { ParserWorkLimit = SIL.Motif.Contract.Assess.ParserWorkLimit.Default },
         ];
         if (!includeFacts) requests = requests.Where(request => request is not PanGlossRequest.Facts).ToArray();
-        // Trace requests are checked elsewhere; WhyNot is not in the 0.27.0 pin.
+        // Trace requests are checked elsewhere; the fake parser does not advertise why-not.
         var requestTypes = typeof(PanGlossRequest).GetNestedTypes()
             .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type) && type != typeof(PanGlossRequest.Trace) &&
                 type != typeof(PanGlossRequest.RejectionTrace) && type != typeof(PanGlossRequest.PhonologyExamples) &&

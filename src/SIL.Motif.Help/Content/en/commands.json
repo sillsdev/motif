@@ -486,8 +486,13 @@
     "source": "Hand-written from command behavior."
   },
   "generate": {
-    "title": "Explain a generation",
-    "description": "Refuses with a typed reason until the pinned PanGloss can trace generation. Use parse --trace to explain a word that does not parse.",
+    "title": "Explain a root's forms",
+    "description": "Generates the forms of one root alone and shows the rules that made each, the same as forms explain with a root and nothing else. Use it for a quick look at what a stem becomes.",
+    "source": "Hand-written from command behavior."
+  },
+  "forms explain": {
+    "title": "Explain a morpheme's forms",
+    "description": "Asks PanGloss to generate every form of a root, alone or with the morphemes you list, and shows each surface, the allomorphs chosen and the rules that fired in order. Use it to see why a morpheme surfaces as it does, and to learn whether a cap stopped the generation.",
     "source": "Hand-written from command behavior."
   },
   "trace --load": {
@@ -2743,8 +2748,13 @@
   },
   "query forms": {
     "title": "Query forms",
-    "description": "Filters and groups forms, stems, uses or objects from available Trial evidence, reads forms from the Baseline or a Proposal's Trial copy with parse state and analyses (--as-of, --sides both), or runs the saved query of a Parsimony Measure.",
+    "description": "Filters and groups forms, stems, uses or objects from available Trial evidence with and, or, not and typed field predicates, reads forms from the Baseline or a Proposal's Trial copy with parse state and analyses (--as-of, --sides both), runs a motif.query.v2 JSON document (--query-json) or prints its schema (--schema), or runs the saved query of a Parsimony Measure.",
     "source": "Hand-written from the query contract."
+  },
+  "query pairs": {
+    "title": "Find affix pairs in words",
+    "description": "Reads a plain word list (a TSV of form and count, or a folder of text files) with no project and finds pairs of words that differ only by a suffix or prefix, with the bases, tokens and examples of each differing part and the parts each base takes. Optional regular expression on the differing part, bases having all of several parts, bounded and deterministic.",
+    "source": "Hand-written from the corpus query contract."
   },
   "source approve": {
     "title": "Approve an Occurrence of a Source",

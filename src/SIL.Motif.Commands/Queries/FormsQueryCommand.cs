@@ -20,6 +20,9 @@ public sealed record FormsQueryRequest(string FwDataPath, string ProductVersion,
 public sealed record FormsQueryResponse(string TrialId, string GrammarHash, string BundleId, bool IsStale,
     int UnresolvedVariants, QueryResult Result)
 {
+    /// <summary>The version of the query language and answer shape this response follows.</summary>
+    public string SchemaVersion { get; init; } = QueryDocument.Version;
+
     /// <summary>What the facts did not measure that this query's source would otherwise present as complete.</summary>
     public IReadOnlyList<string> NotMeasured { get; init; } = [];
 
@@ -33,7 +36,31 @@ public static class FormsQueryCommand
 {
     /// <summary>Reads the current Trial and evaluates a closed query record.</summary>
     public static CommandOutcome<FormsQueryResponse> Run(FormsQueryRequest request, FormsQuerySnapshotCache? cache = null,
-        string? parserPath = null) =>
+        string? parserPath = null)
+    {
+        var outcome = RunUnlimited(request, cache, parserPath);
+        return request.Query.Limit is { } limit && outcome.Succeeded
+            ? CommandOutcome<FormsQueryResponse>.Success(Limited(outcome.Value!, limit)) : outcome;
+    }
+
+    // Keeps at most limit rows, groups or ids; the sides rows of an as-of run are cut the same way.
+    private static FormsQueryResponse Limited(FormsQueryResponse response, int limit)
+    {
+        var result = response.Result;
+        var cut = result with
+        {
+            Rows = [.. result.Rows.Take(limit)], Groups = [.. result.Groups.Take(limit)], Ids = [.. result.Ids.Take(limit)],
+            Items = result.Items is null ? null : [.. result.Items.Take(limit)],
+        };
+        return response with
+        {
+            Result = cut,
+            Sides = response.Sides is null ? null : response.Sides with { Rows = [.. response.Sides.Rows.Take(limit)] },
+        };
+    }
+
+    private static CommandOutcome<FormsQueryResponse> RunUnlimited(FormsQueryRequest request, FormsQuerySnapshotCache? cache,
+        string? parserPath) =>
         request.Query.AsOf is not null || request.Query.Sides is not null || request.Query.Sort is not null
             ? FormsQuerySides.RunAsOf(request, parserPath)
             : ProjectStoreCommand.ReadExisting(request.FwDataPath,
@@ -66,6 +93,7 @@ public static class FormsQueryCommand
                     if (query.From == QuerySources.Forms)
                     {
                         if ((query.Where?.Any(condition => condition?.Col == "tokens") == true ||
+                             QueryExprTools.Leaves(query.Filter).Any(leaf => leaf.Field == "tokens") ||
                              query.Group?.Contains("tokens") == true) &&
                             snapshot.Snapshot.Forms.All(form => form.Tokens is null))
                             return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryInvalid,
@@ -108,6 +136,10 @@ public static class FormsQueryCommand
                     return CommandOutcome<FormsQueryResponse>.Success(new(snapshot.TrialId, snapshot.GrammarHash,
                         snapshot.BundleId, stale, snapshot.Snapshot.UnresolvedVariants, result) { NotMeasured = [.. NotMeasuredNotes(query.From, coverage), .. hypothesisNotes] });
                 }
+                catch (QueryRefusalException error)
+                {
+                    return CommandOutcome<FormsQueryResponse>.Refused(error.Refusal);
+                }
                 catch (QueryTooManyGroupsException error)
                 {
                     return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryTooManyGroups,
@@ -141,7 +173,12 @@ public static class FormsQueryCommand
     private static HashSet<string> Selected(QueryRecord query, string column)
     {
         var selected = new HashSet<string>(AllKinds, StringComparer.Ordinal);
-        foreach (var condition in query.Where ?? [])
+        // A predicate under or or not narrows nothing safely, so the column stays fully selectable.
+        if (QueryExprTools.Required(query.Filter).Count(leaf => leaf.Field == column) !=
+            QueryExprTools.Leaves(query.Filter).Count(leaf => leaf.Field == column))
+            return selected;
+        foreach (var condition in (query.Where ?? []).Concat(QueryExprTools.Required(query.Filter)
+                     .Select(QueryExprTools.ToCondition).OfType<QueryCondition>()))
         {
             if (condition?.Col != column || condition.Value is null) continue;
             var values = condition.Value.Split(',', StringSplitOptions.TrimEntries);
@@ -155,7 +192,8 @@ public static class FormsQueryCommand
     private static Refusal? NotMeasuredRefusal(QueryRecord query, QueryCoverage coverage)
     {
         if (query.From == QuerySources.Uses && coverage.MissingUseKinds.Count > 0 &&
-            (query.Where ?? []).Any(c => c?.Col == "target-kind" && c.Op is "is" or "in" or "not"))
+            ((query.Where ?? []).Any(c => c?.Col == "target-kind" && c.Op is "is" or "in" or "not") ||
+             QueryExprTools.Leaves(query.Filter).Any(leaf => leaf.Field == "target-kind")))
         {
             var missing = Selected(query, "target-kind").Intersect(coverage.MissingUseKinds).Order(StringComparer.Ordinal).ToArray();
             if (missing.Length > 0)
@@ -165,6 +203,7 @@ public static class FormsQueryCommand
         }
         if (query.From == QuerySources.Objects && coverage.MissingObjectClasses.Count > 0 &&
             ((query.Where ?? []).Any(c => c?.Col is "uses" or "applied") || (query.Group ?? []).Any(g => g is "uses" or "applied") ||
+             QueryExprTools.Leaves(query.Filter).Any(leaf => leaf.Field is "uses" or "applied") ||
              query.Distinct is "uses" or "applied"))
         {
             var missing = Selected(query, "class").Intersect(coverage.MissingObjectClasses).Order(StringComparer.Ordinal).ToArray();
@@ -188,7 +227,9 @@ public static class FormsQueryCommand
 
     // A target-kind selector narrows the uses rows decoded; the query still applies every selector itself.
     private static string[]? UseTargetKinds(QueryRecord query) => query.From != QuerySources.Uses ? null :
-        query.Where?.FirstOrDefault(c => c?.Col == "target-kind" && c.Op is "is" or "in" && c.Value is not null)
+        (query.Where?.FirstOrDefault(c => c?.Col == "target-kind" && c.Op is "is" or "in" && c.Value is not null)
+            ?? QueryExprTools.Required(query.Filter).Select(QueryExprTools.ToCondition).OfType<QueryCondition>()
+                .FirstOrDefault(c => c.Col == "target-kind" && c.Op is "is" or "in"))
             ?.Value.Split(',', StringSplitOptions.TrimEntries);
 
     internal static IReadOnlyList<FoldRule> ProjectFold(SIL.Motif.Contract.Projects.ProjectLocator project)

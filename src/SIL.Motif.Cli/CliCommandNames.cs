@@ -21,7 +21,10 @@ internal static class CliCommandNames
             return "proposal trial export";
         if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note")
             return "proposal " + positionals[0];
-        if (verb == "query" && positionals.FirstOrDefault() is "forms" or "stems" or "uses" or "objects" or "saved" or "evidence") return "query forms";
+        if (verb == "query" && flags.ContainsKey("corpus")) return "query pairs";
+        if (verb == "forms" && positionals.FirstOrDefault() == "explain") return "forms explain";
+        if (verb == "query" && (positionals.FirstOrDefault() is "forms" or "stems" or "uses" or "objects" or "saved" or "evidence" ||
+                                flags.ContainsKey("schema") || flags.ContainsKey("query-json"))) return "query forms";
         if (verb == "parsimony")
         {
             if (positionals.SequenceEqual(new[] { "expectations" })) return "parsimony expectations";

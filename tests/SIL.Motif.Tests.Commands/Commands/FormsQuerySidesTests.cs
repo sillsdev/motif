@@ -253,7 +253,7 @@ public sealed class FormsQuerySidesTests(PristineProjectFixture pristine) : IDis
         var actual = string.Join('\n', lines);
         if (Environment.GetEnvironmentVariable("MOTIF_UPDATE_GOLDEN") == "1") File.WriteAllText(path, actual);
         Assert.Equal(File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal), actual);
-        Assert.Equal(new[] { "bundleId", "grammarHash", "isStale", "notMeasured", "result", "sides", "trialId", "unresolvedVariants" },
+        Assert.Equal(new[] { "bundleId", "grammarHash", "isStale", "notMeasured", "result", "schemaVersion", "sides", "trialId", "unresolvedVariants" },
             document.RootElement.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
     }
 

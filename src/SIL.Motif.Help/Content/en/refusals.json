@@ -56,6 +56,38 @@
     "why": "PanGloss did not finish the why-not question or wrote no report. Try fewer candidates or choices, then try again.",
     "source": "Hand-written from the why-not run outcomes."
   },
+  "forms-explain.request-invalid": {
+    "why": "Motif cannot send this question. Name one root morpheme, or one word with --word, not both; give each --with morpheme as an entry guid, entry:msa, or a form in the lexicon.",
+    "source": "Hand-written from the forms-explain request check."
+  },
+  "forms-explain.parser-unsupported": {
+    "why": "The installed PanGloss cannot generate forms with a rule trace: its --describe does not declare interfaces.serveOps.generate. Install a PanGloss release after 0.27.0 that does (sillsdev/PanGloss#434), then try again.",
+    "source": "Hand-written from the forms-explain capability check."
+  },
+  "forms-explain.morpheme-unresolved": {
+    "why": "No entry in the project's saved copy matches the morpheme you named. Check its spelling, or name it by entry guid or entry:msa.",
+    "source": "Hand-written from the forms-explain morpheme lookup."
+  },
+  "forms-explain.morpheme-ambiguous": {
+    "why": "The morpheme you named matches more than one entry or analysis. The refusal lists them; name one as entry:msa and try again.",
+    "source": "Hand-written from the forms-explain morpheme lookup."
+  },
+  "forms-explain.parser-refused": {
+    "why": "PanGloss refused the generate request and said why, such as an unknown entry or an analysis class it cannot generate from. Read its reason, correct the morpheme, and try again.",
+    "source": "Hand-written from PanGloss's serve generate errors."
+  },
+  "forms-explain.malformed": {
+    "why": "PanGloss wrote a generate answer Motif cannot read. Update Motif and PanGloss together, then try again.",
+    "source": "Hand-written from the forms-explain reader."
+  },
+  "forms-explain.unfinished": {
+    "why": "The resident PanGloss failed, died or timed out before it answered. Try again; if it repeats, name fewer morphemes.",
+    "source": "Hand-written from the forms-explain run outcomes."
+  },
+  "forms-explain.no-reading": {
+    "why": "PanGloss gave the word no analysis Motif can name in the lexicon, so there is nothing to generate from. Parse the word with motif parse --trace to see why.",
+    "source": "Hand-written from the forms-explain word path."
+  },
   "project.startup-busy": {
     "why": "Wait for the Motif task using the project to finish, then repeat the command.",
     "source": "Hand-written from the project startup refusal."

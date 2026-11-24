@@ -39,16 +39,6 @@ public static class RejectionTraceQuery
         return Parse(request, invoker, cancellationToken);
     }
 
-    /// <summary>Answers a generation request with a typed reason and a sentence.</summary>
-    public static CommandOutcome<RejectionTraceResponse> Generate(GenerateTraceRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        if (Check(request.Entry, request.At, request.MaxPaths) is { } invalid) return invalid;
-        return Refuse(RefusalCodes.RejectionTraceUnsupported, FailureReason.Refused,
-            "The pinned PanGloss traces parsing only, so a generation request cannot be explained yet. " +
-            "Use 'motif parse <word> --trace' to see why a word does not parse.");
-    }
-
     internal static CommandOutcome<RejectionTraceResponse> Parse(
         ParseTraceRequest request, IPanGlossInvoker invoker, CancellationToken cancellationToken)
     {

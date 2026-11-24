@@ -2291,9 +2291,60 @@ try
 
         case "query":
         {
+            if (CorpusQueryCli.Handles(flags))
+            {
+                if (!CorpusQueryCli.TryBuildRequest(flags, positionals, out var corpusRequest)) return Usage(UsageLineFor("query pairs"), asJson);
+                result = RenderCommand(CorpusQueryCommand.Pairs(corpusRequest));
+                break;
+            }
             var queryUsage = UsageLineFor("query forms");
-            if (!flags.TryGetValue("project", out var queryProject) ||
-                !QueryRunLine.TryBuildQuery(flags, positionals, rest, true, out var queryArguments, out _)) return Usage(queryUsage, asJson);
+            if (flags.ContainsKey("schema"))
+            {
+                if (positionals.Count != 0 || flags.Keys.Any(key => key is not ("schema" or "json"))) return Usage(queryUsage, asJson);
+                result = new CommandResult(0, QuerySchema.Generate());
+                break;
+            }
+            QueryArguments? queryArguments;
+            if (!flags.TryGetValue("project", out var queryProject)) return Usage(queryUsage, asJson);
+            if (flags.TryGetValue("query-json", out var queryJsonSource))
+            {
+                if (positionals.Count != 0 || flags.Keys.Any(key => key is not ("project" or "query-json" or "json")))
+                    return Usage(queryUsage, asJson);
+                string queryJson;
+                try
+                {
+                    queryJson = queryJsonSource == "-"
+                        ? new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false)).ReadToEnd()
+                        : File.ReadAllText(queryJsonSource);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return Usage($"The --query-json '{queryJsonSource}' cannot be read: {exception.Message}", asJson);
+                }
+                QueryRecord? documentRecord = null;
+                Refusal? documentRefusal;
+                try
+                {
+                    if (QueryDocument.TryParse(queryJson, out var queryDocument, out documentRefusal))
+                        documentRecord = queryDocument.ToRecord();
+                }
+                catch (QueryRefusalException refused)
+                {
+                    documentRefusal = refused.Refusal;
+                }
+                if (documentRecord is null)
+                {
+                    result = RenderCommand(CommandOutcome<FormsQueryResponse>.Refused(documentRefusal!));
+                    break;
+                }
+                queryArguments = new QueryArguments(documentRecord, queryProject, documentRecord.AsOf, false, false, null);
+            }
+            else if (!QueryRunLine.TryBuildQuery(flags, positionals, rest, true, out queryArguments, out var buildRefusal))
+            {
+                if (buildRefusal.Code != RefusalCodes.QueryNotYetAvailable) return Usage(queryUsage, asJson);
+                result = RenderCommand(CommandOutcome<FormsQueryResponse>.Refused(buildRefusal));
+                break;
+            }
             var record = queryArguments.Record;
             if (record.AsOf is not null || record.Sides is not null) asJson = true;
             if (queryArguments.MembersFile is { } membersFile)
@@ -2950,7 +3001,8 @@ try
         {
             var traceVerb = verb;
             if (!flags.TryGetValue("project", out var rejectionProject) || positionals.Count != 1 ||
-                !flags.ContainsKey("trace") || flags["trace"] != "true")
+                !flags.ContainsKey("trace") || flags["trace"] != "true" ||
+                traceVerb == "generate" && flags.ContainsKey("max-paths"))
                 return Usage("Usage: motif " + UsageLineFor(traceVerb), asJson);
             int? rejectionMax = null;
             if (flags.TryGetValue("max-paths", out var maxPathsText))
@@ -2966,8 +3018,30 @@ try
             result = traceVerb == "parse"
                 ? RunWithConsoleCancellation(token => RenderCommand(RejectionTraceQuery.Parse(
                     new ParseTraceRequest(rejectionProject, positionals[0], rejectionAt, rejectionMax), token)))
-                : RenderCommand(RejectionTraceQuery.Generate(
-                    new GenerateTraceRequest(rejectionProject, positionals[0], rejectionAt, rejectionMax)));
+                : RunWithConsoleCancellation(token => RenderCommand(FormsExplainQuery.Generate(
+                    new GenerateTraceRequest(rejectionProject, positionals[0], rejectionAt), token)));
+            break;
+        }
+
+        case "forms":
+        {
+            var wordFlag = flags.GetValueOrDefault("word");
+            var allowed = new[] { "project", "with", "word", "at", "json", "md", "timeout-ms", "max-work" };
+            if (!flags.TryGetValue("project", out var formsProject) || positionals.FirstOrDefault() != "explain" ||
+                flags.Keys.Any(flag => !allowed.Contains(flag)) || flags.ContainsKey("json") && flags.ContainsKey("md") ||
+                wordFlag == "true" || flags.GetValueOrDefault("with") == "true" ||
+                positionals.Count != (wordFlag is null ? 2 : 1))
+                return Usage("Usage: motif " + UsageLineFor("forms explain"), asJson);
+            var timeoutText = flags.GetValueOrDefault("timeout-ms");
+            var workText = flags.GetValueOrDefault("max-work");
+            if (timeoutText is not null && !int.TryParse(timeoutText, NumberStyles.None, CultureInfo.InvariantCulture, out _) ||
+                workText is not null && !long.TryParse(workText, NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                return Usage("Usage: motif " + UsageLineFor("forms explain"), asJson);
+            int? formsTimeout = timeoutText is null ? null : int.Parse(timeoutText, CultureInfo.InvariantCulture);
+            long? formsMaxWork = workText is null ? null : long.Parse(workText, CultureInfo.InvariantCulture);
+            var formsRequest = new FormsExplainRequest(formsProject, wordFlag is null ? positionals[1] : null,
+                ReadRepeatedFlagValues(flags, "with"), wordFlag, flags.GetValueOrDefault("at"), formsTimeout, formsMaxWork);
+            result = RunWithConsoleCancellation(token => RenderCommand(FormsExplainQuery.Explain(formsRequest, token)));
             break;
         }
 
@@ -3984,7 +4058,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens")
             {
                 flags[name] = "true";
                 continue;
@@ -4004,7 +4078,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
             else
             {
                 var value = tokens[++i];
-                flags[name] = name is "assessment" or "expect" or "job" && flags.TryGetValue(name, out var previous)
+                flags[name] = name is "assessment" or "expect" or "job" or "with" && flags.TryGetValue(name, out var previous)
                     ? previous + "\n" + value
                     : value;
             }

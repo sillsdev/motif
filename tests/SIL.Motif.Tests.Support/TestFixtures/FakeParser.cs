@@ -151,6 +151,10 @@ internal static class FakeParser
         return CopyWithSentinel(candidateDirectory, WrongDescriptionFileName);
     }
 
+    /// <summary>Copies the fake into <paramref name="directory"/> with a <c>--describe</c> that declares the traced serve <c>generate</c> op.</summary>
+    internal static string CopyDeclaringServeGenerate(string directory) =>
+        CopyWithSentinel(directory, "_fake-pangloss-serve-generate");
+
     internal static string CopyWithSentinel(string candidateDirectory, string sentinel)
     {
         var executable = Copy(candidateDirectory);

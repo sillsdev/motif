@@ -34,12 +34,13 @@ internal static class QueryEngine
         if (query.Distinct is not null && (!spec.IsColumn(query.Distinct) || query.Group.Count == 0))
             throw new ArgumentException("Distinct needs a known column and a grouping.");
         var conditions = query.Where.Select(c => Compile(c, spec)).ToArray();
+        var filter = query.Filter is null ? null : QueryExprCompiler.Compile(query.Filter, spec);
         var selected = new List<IQueryRowView>();
         var ids = new List<string>();
         var groups = new Dictionary<string, GroupBuilder>(StringComparer.Ordinal);
         foreach (var row in rows)
         {
-            if (conditions.Any(c => !c(row))) continue;
+            if (conditions.Any(c => !c(row)) || filter is not null && !filter(row)) continue;
             observe?.Invoke(row);
             if (query.Group.Count == 0)
             {

@@ -49,6 +49,7 @@
     { "tool": "motif_proposal_difference" },
     { "tool": "motif_difference_produce" },
     { "tool": "motif_query" },
+    { "tool": "motif_query_schema" },
     { "tool": "motif_guide_show" },
     { "tool": "motif_group" },
     { "tool": "motif_proposal_compare" },

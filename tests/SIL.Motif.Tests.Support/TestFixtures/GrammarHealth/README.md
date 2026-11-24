@@ -30,8 +30,8 @@ The schema-v4 producer and error fixtures cover structured subject status and na
 
 The input is the synthetic `rust/crates/pg-fwdata/tests/data/fixture.fwdata` from PanGloss tag `v0.10.0`, prepared exactly as `pg-cli/src/tests.rs::fwdata_fixture_with_pattern_root` with no extra HC settings: repair the dangling environment reference, replace the ranna form with `t[V]*d`, and change that entry's MSA category to Noun. Prepared input SHA-256: `7076b021c908d0a9d8cc9b0945bb678b180c4e5744dc54da303e661887819ce0`. Capture command: `pangloss grammar-health fixture.fwdata --fw-project "release compatibility probe"`. Output SHA-256: `7acccd09b6dd4927b66bb222d8bcdf034d9487632ca2ca74d383e80e18f17fc0`. The recorded project name is synthetic.
 
-`import-warning-codes-v0.27.0.json` lists the 86 `ImportWarningCode` values of PanGloss tag `v0.27.0`, commit
-`38603c2c064c2aa43791057367279d10ee4bf9a2`, `rust/crates/pg-snapshot/src/warning.rs` (`import_warning_codes!`). Its separate `grammarHealthCodes` array
+`import-warning-codes-v0.28.1.json` lists the 86 `ImportWarningCode` values of PanGloss tag `v0.28.1`, commit
+`c23aff7ab252bed71523979b6f98e04885b6cf61`, `rust/crates/pg-snapshot/src/warning.rs` (`import_warning_codes!`). Its separate `grammarHealthCodes` array
 contains the 15 additional codes documented under `docs/diagnostics/`; these are not import codes.
 The two arrays cover all 101 diagnostic pages at that tag. It holds codes only and no
 grammar data. `DroppedGrammarClassifierTests` checks that every code on Motif's dropped-grammar list is in it.
@@ -42,7 +42,7 @@ The `schema-v5-*` files are explicit schema-5 derivatives of the historical capt
 fixtures above. They add `fst_checked: false`, `fst_check_error: null`, and nonblocking FST labels.
 They are not claimed as unmodified release captures. `schema-v5-navigation.json` derives from the
 0.10.0 capture and `schema-v5-seeded.json` from the 0.6.2 capture. The parser integration tests build
-disposable LibLCM projects and verify schema 5 directly with the pinned 0.27.0 executable.
+disposable LibLCM projects and verify schema 5 directly with the pinned 0.28.1 executable.
 
 `pangloss-v0.16.0-producer.json` is unmodified stdout from the released Linux x64 0.16.0 binary,
 SHA-256 `5d40168401ef7fb6a0c2851ee6b3969d8f0e580c22825a096303833284675f9a`.

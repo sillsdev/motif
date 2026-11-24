@@ -200,6 +200,7 @@ public sealed class ToolSurfaceTests
             "hypothesis report",
             "list hypotheses",
             "project tag",
+            "query pairs",
             "store artifacts",
             "store prune",
             "store relocate",
@@ -240,7 +241,7 @@ public sealed class ToolSurfaceTests
         });
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
-            command.Name != "activity" && command.Name != "hand-analysis check" &&
+            command.Name != "activity" && command.Name != "hand-analysis check" && command.Name != "query pairs" &&
             command.Name != "project tag" && command.Name != "proposal trial" && command.Name != "generate" &&
             command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
             command.Name is not ("wordform dispose" or "wordform dispose --from-file" or "wordform undispose" or "worker stop") &&

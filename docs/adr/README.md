@@ -36,6 +36,7 @@ Decisions in force are edited in place; new topics receive new numbers.
 - [ADR 0033](0033-lexicon-import-accepts-only-lift-and-lowers-through-composers.md)
 - [ADR 0034](0034-the-record-store-is-sqlite-rows-and-typed-blobs-reached-by-bulk-writes-then-streaming.md)
 - [ADR 0035](0035-the-record-text-format-covers-rich-text-notation-and-labels-and-typed-operations-cover-the-rest.md)
+- [ADR 0036](0036-motif-query-v2-is-one-json-ast-with-a-text-and-a-builder-view.md)
 
 ## Historical crosswalk
 

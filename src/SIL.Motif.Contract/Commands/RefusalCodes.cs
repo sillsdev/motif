@@ -370,6 +370,12 @@ public static class RefusalCodes
     public const string QueryNotMeasured = "query.not-measured";
     /// <summary>A scorer was asked to count in a unit its hits or exceptions are not in.</summary>
     public const string QueryMixedUnits = "query.mixed-units";
+    /// <summary>A query's op does not fit the type of the column it names, such as a numeric comparison on text.</summary>
+    public const string QueryOpTypeMismatch = "query.op-type-mismatch";
+    /// <summary>A query uses a kind the schema reserves for a later release: morph, seq, phon, env or realizes.</summary>
+    public const string QueryNotYetAvailable = "query.not-yet-available";
+    /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>
+    public const string QueryDocumentInvalid = "query.document-invalid";
     public const string QueryNoTrialRows = "query.no-trial-rows";
     /// <summary>A Guide query's run line is not one well-formed <c>motif query</c> or <c>motif group</c> command.</summary>
     public const string GuideQueryRunInvalid = "guide-query.run-invalid";
@@ -377,6 +383,10 @@ public static class RefusalCodes
     public const string GuideQueryRunNotReadOnly = "guide-query.run-not-read-only";
     /// <summary>The Baseline or Proposal Trial copy a query was asked to read as of is not available.</summary>
     public const string QueryAsOfUnavailable = "query.as-of-unavailable";
+    /// <summary>A corpus word list or segment file named by a corpus query cannot be read or is malformed.</summary>
+    public const string QueryCorpusUnreadable = "query.corpus-unreadable";
+    /// <summary>A corpus query option is out of range or its pattern is not a valid regular expression.</summary>
+    public const string QueryCorpusInvalid = "query.corpus-invalid";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
@@ -529,6 +539,22 @@ public static class RefusalCodes
     public const string WhyNotMalformed = "why-not.malformed";
     /// <summary>The why-not run ended without a complete report, by the wall-clock limit or an unreadable result.</summary>
     public const string WhyNotUnfinished = "why-not.unfinished";
+    /// <summary>A forms-explain request names no morpheme or word, names both, or is over a cap.</summary>
+    public const string FormsExplainRequestInvalid = "forms-explain.request-invalid";
+    /// <summary>The installed PanGloss does not declare a traced <c>generate</c> serve op, so it cannot generate forms.</summary>
+    public const string FormsExplainParserUnsupported = "forms-explain.parser-unsupported";
+    /// <summary>A morpheme named in a forms-explain request matches nothing in the project's lexicon.</summary>
+    public const string FormsExplainMorphemeUnresolved = "forms-explain.morpheme-unresolved";
+    /// <summary>A morpheme named in a forms-explain request matches more than one entry or analysis.</summary>
+    public const string FormsExplainMorphemeAmbiguous = "forms-explain.morpheme-ambiguous";
+    /// <summary>PanGloss rejected the generate request, such as an unknown entry, and said why.</summary>
+    public const string FormsExplainParserRefused = "forms-explain.parser-refused";
+    /// <summary>PanGloss wrote a generate answer Motif cannot read.</summary>
+    public const string FormsExplainMalformed = "forms-explain.malformed";
+    /// <summary>The resident PanGloss failed or timed out before it answered the generate request.</summary>
+    public const string FormsExplainUnfinished = "forms-explain.unfinished";
+    /// <summary>No analysis of the word could be explained: it has none, or every one has a morph the lexicon cannot name.</summary>
+    public const string FormsExplainNoReading = "forms-explain.no-reading";
     public const string WordTraceCancelled = "wordtrace.cancelled";
     public const string WordTraceMalformedDiagnostic = "wordtrace.malformed-diagnostic";
     public const string WordTraceMalformedOutput = "wordtrace.malformed-output";

@@ -17,6 +17,7 @@ public sealed class ParsimonyToolSurfaceTests
         "motif_finalize_proposal",
         "motif_dry_run",
         "motif_query",
+        "motif_query_schema",
         "motif_parsimony_measures",
         "motif_run_parsimony_measure",
         "motif_parsimony_report",

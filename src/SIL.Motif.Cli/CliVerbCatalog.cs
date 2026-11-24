@@ -26,7 +26,8 @@ public static class CliVerbCatalog
 
     public static IReadOnlyList<CliVerbDescriptor> All { get; } = AddCitationOptions(new[]
     {
-        new CliVerbDescriptor("Project", "query", "query forms", new[] { "query forms --project <fwdata> [--where <selector>] [--group <columns>] [--min-count <n>] [--distinct <column>] [--fold <set>] [--examples <n>] [--ids] [--raw-letters] [--trial <id>] [--as-of baseline|<proposalId> [--sides both] [--sort [baseline.|proposal.]<column>[:desc]]] [--json] OR motif query stems --project <fwdata> --change <from>><to> --affixes <list> [--at final|initial] [--wordset <ids>] [--discovery <ids>] [--heldout <ids>] [--score tolerance,reliability,control,split,size] [--exception <selector>] [--members <file>] [--context <selector>] [--unit msa|stem] [--controls <n>] [--control-letters <list>] [--test-result] [--where <selector>] [--group <columns>] [--examples <n>] [--json] OR motif query <stems|uses|objects> --project <fwdata> [--where <selector>] [--group <columns>] [--min-count <n>] [--distinct <column>] [--fold <set>] [--examples <n>] [--ids] [--raw-letters] [--trial <id>] [--json] OR motif query evidence <stems|forms> --project <fwdata> (--where <selector> | --members <file>) [--change <from>><to> --affixes <list> --wordset <ids>] [--examples <n>] [--json] OR motif query saved <measure-id> --project <fwdata> [--examples <n>] [--trial <id>] [--json]" }),
+        new CliVerbDescriptor("Project", "query", "query pairs", new[] { "query pairs --corpus <words.tsv|folder> --differ suffix|prefix [--x <regex>] [--having <x1,x2>] [--segments <file>] [--fold-case] [--split-hyphens] [--max-x <1-12>] [--limit <n>] [--examples <n>] [--json]" }),
+        new CliVerbDescriptor("Project", "query", "query forms", new[] { "query forms --project <fwdata> [--where <selector>] [--group <columns>] [--min-count <n>] [--distinct <column>] [--fold <set>] [--examples <n>] [--ids] [--raw-letters] [--trial <id>] [--limit <n>] [--as-of baseline|<proposalId> [--sides both] [--sort [baseline.|proposal.]<column>[:desc]]] [--json] OR motif query --project <fwdata> --query-json <file|-> [--json] OR motif query --schema OR motif query stems --project <fwdata> --change <from>><to> --affixes <list> [--at final|initial] [--wordset <ids>] [--discovery <ids>] [--heldout <ids>] [--score tolerance,reliability,control,split,size] [--exception <selector>] [--members <file>] [--context <selector>] [--unit msa|stem] [--controls <n>] [--control-letters <list>] [--test-result] [--where <selector>] [--group <columns>] [--examples <n>] [--json] OR motif query <stems|uses|objects> --project <fwdata> [--where <selector>] [--group <columns>] [--min-count <n>] [--distinct <column>] [--fold <set>] [--examples <n>] [--ids] [--raw-letters] [--trial <id>] [--json] OR motif query evidence <stems|forms> --project <fwdata> (--where <selector> | --members <file>) [--change <from>><to> --affixes <list> --wordset <ids>] [--examples <n>] [--json] OR motif query saved <measure-id> --project <fwdata> [--examples <n>] [--trial <id>] [--json]" }),
         new CliVerbDescriptor("Commands", "open", "open", new[] { "open <fwdata> [--json]" }),
         new CliVerbDescriptor("Project", "hand-analysis", "hand-analysis check",
             new[] { "hand-analysis check --project <project> --input <file.json> [--json]" }),
@@ -572,8 +573,20 @@ public static class CliVerbCatalog
             "Trace", "generate", "generate",
             new[]
             {
-                "generate <entry-id> --project <fwdata> --trace [--at <baseline|proposal-id>] [--max-paths <1-64>] [--json]",
-                "Refuses with a typed reason until the pinned PanGloss can trace generation.",
+                "generate <root> --project <fwdata> --trace [--at <baseline|proposal-id>] [--json]",
+                "The forms PanGloss generates from one root alone, with the rules that made each; the same as forms explain <root>.",
+            }),
+        new CliVerbDescriptor(
+            "Trace", "forms", "forms explain",
+            new[]
+            {
+                "forms explain <root> --project <fwdata> [--with <morpheme> ...] [--at <baseline|proposal-id>] [--timeout-ms <n>] [--max-work <n>] [--json|--md] OR " +
+                "motif forms explain --word <form> --project <fwdata> [--at <baseline|proposal-id>] [--timeout-ms <n>] [--max-work <n>] [--json|--md]",
+                "Every form PanGloss generates for a root, alone or with the listed morphemes: each surface, the allomorphs",
+                "chosen, and the rules that fired in order with the word before and after each. With --word, parses the word and",
+                "explains each analysis from its own morphemes. A root is an entry guid or Motif id, entry:msa, or a form in the",
+                "lexicon. Each request has a deadline of 30000 ms (--timeout-ms) and PanGloss's own work cap unless --max-work lowers it.",
+                "Says when a cap stopped the generation, so a missing form is never read as an impossible one.",
             }),
 
         new CliVerbDescriptor(

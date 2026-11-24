@@ -2902,6 +2902,22 @@ public static class MotifAppStrings
 
     public static string RefusalWhyNotUnfinished => Text("MotifApp.RefusalWhyNotUnfinished");
 
+    public static string RefusalFormsExplainRequestInvalid => Text("MotifApp.RefusalFormsExplainRequestInvalid");
+
+    public static string RefusalFormsExplainParserUnsupported => Text("MotifApp.RefusalFormsExplainParserUnsupported");
+
+    public static string RefusalFormsExplainMorphemeUnresolved => Text("MotifApp.RefusalFormsExplainMorphemeUnresolved");
+
+    public static string RefusalFormsExplainMorphemeAmbiguous => Text("MotifApp.RefusalFormsExplainMorphemeAmbiguous");
+
+    public static string RefusalFormsExplainParserRefused => Text("MotifApp.RefusalFormsExplainParserRefused");
+
+    public static string RefusalFormsExplainMalformed => Text("MotifApp.RefusalFormsExplainMalformed");
+
+    public static string RefusalFormsExplainUnfinished => Text("MotifApp.RefusalFormsExplainUnfinished");
+
+    public static string RefusalFormsExplainNoReading => Text("MotifApp.RefusalFormsExplainNoReading");
+
     public static string RefusalWordTraceCancelled => Text("MotifApp.RefusalWordTraceCancelled");
 
     public static string RefusalWordTraceMalformedDiagnostic => Text("MotifApp.RefusalWordTraceMalformedDiagnostic");

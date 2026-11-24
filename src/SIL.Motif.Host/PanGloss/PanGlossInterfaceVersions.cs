@@ -6,7 +6,7 @@ namespace SIL.Motif.Host.PanGloss;
 public static class PanGlossInterfaceVersions
 {
     /// <summary>The PanGloss source tag that defines the formats Motif reads.</summary>
-    public const string SourceTag = "v0.27.0";
+    public const string SourceTag = "v0.28.1";
     /// <summary>The version of the object returned by <c>pangloss --describe</c>.</summary>
     public const int DescribeSchemaVersion = 1;
     /// <summary>The version of reports returned by <c>pangloss grammar-health</c>.</summary>
@@ -21,6 +21,9 @@ public static class PanGlossInterfaceVersions
     public const string WhyNotSchemaId = "pangloss.whynot.v1";
     /// <summary>The id promise a why-not capability must make: every id in a report is a <c>grammar.xml</c> id.</summary>
     public const string WhyNotIds = "grammar-xml";
+    /// <summary>What a PanGloss must declare to generate forms with a rule trace, written for the refusal that names it.</summary>
+    public const string ServeGenerateNeeded =
+        "a PanGloss release after 0.27.0 whose --describe declares interfaces.serveOps.generate (sillsdev/PanGloss#434)";
     /// <summary>The capture modes the pinned release advertises for bounded rejection diagnostics.</summary>
     public static ImmutableArray<string> RejectionTraceModes { get; } = ["lineage"];
     /// <summary>The full SQLite cache version written by <c>batch --stats</c>, without compact storage.</summary>

@@ -19,6 +19,10 @@ public static partial class FormQuery
     };
     private static readonly HashSet<string> Sets = new(StringComparer.Ordinal)
         { "environments", "category", "letters.dropped", "letters.gained" };
+    internal static IReadOnlyList<string> FormColumnNames { get; } = [.. Columns.Order(StringComparer.Ordinal)];
+
+    internal static bool IsFormSet(string column) => Sets.Contains(column);
+
     private static readonly QuerySpec FormSpec = new(
         c => Columns.Contains(c) || QuerySources.IsTextColumn(c), Sets.Contains, c => QuerySources.IsNumeric(QuerySources.Forms, c));
 
