@@ -55,8 +55,13 @@ public sealed class CatalogWritableFields : WritableFields
             .Where(slot => OperationHandlerRegistry.RegisteredKinds.SelectMany(OperationHandlerRegistry.FieldWrites).Any(write =>
                 write.Verb == RecordWriteVerb.AddObject && write.DeclaringClass == slot.DeclaringClass && write.Field == slot.Field &&
                 write.ChildClasses.Contains(RecordWritableFields.FeatureStructureClass)));
+        var formulas = schema.Schema.ObjectTypes.SelectMany(type => type.Fields.Where(RecordWritableFields.IsRuleFormula)
+                .Select(field => schema.FieldBinding(type.Name, field.Name)))
+            .Where(binding => binding is { IsCustom: false }).Select(binding => (binding!.Value.DeclaringClass, binding.Value.Field))
+            .Where(slot => all.Any(write => write.Verb == RecordWriteVerb.AddObject && write.DeclaringClass == slot.DeclaringClass &&
+                write.Field == slot.Field));
         _writable = all.Where(write => WriteVerbs.Contains(write.Verb))
-            .Select(write => (write.DeclaringClass, write.Field)).Concat(customs).Concat(structures).ToFrozenSet();
+            .Select(write => (write.DeclaringClass, write.Field)).Concat(customs).Concat(structures).Concat(formulas).ToFrozenSet();
         _creates = all.Where(write => write.Verb == RecordWriteVerb.AddObject)
             .ToLookup(write => (write.DeclaringClass, write.Field));
         _deletes = all.Where(write => write.Verb == RecordWriteVerb.RemoveObject)
