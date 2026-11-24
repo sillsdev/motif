@@ -81,6 +81,6 @@ public sealed class CatalogWritableFields : WritableFields
         Allows(_deletes, ownerClassName, ownerFieldName, className);
 
     private static bool Allows(ILookup<(string Class, string Field), FieldWriteCapability> kinds, string owner, string field,
-        string child) => kinds[(owner, field)].Any(write =>
+        string child) => !RecordWritableFields.IsTypedOnlyMembership(owner, field) && kinds[(owner, field)].Any(write =>
         write.ChildClasses.Count == 0 || write.ChildClasses.Contains(child, StringComparer.Ordinal));
 }

@@ -27,6 +27,7 @@ public static partial class RecordImportCommand
         () => ProjectRecordSchema.LexiconEntryOverlay,
         () => ProjectRecordSchema.NotebookRecordOverlay,
         () => ProjectRecordSchema.ListItemOverlay,
+        () => ProjectRecordSchema.PhonologicalRuleOverlay,
     ];
 
     /// <summary>Runs the import described by <paramref name="request"/>.</summary>

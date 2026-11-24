@@ -1,0 +1,38 @@
+<overlay version="1" id="https://software.sil.org/textediting/schemas/phonological-rule-v1.json">
+  <kind name="grammar/phonological-rule" root="PhSegmentRule" pathSegments="3" subclasses="true" />
+  <class name="CmObject">
+    <exclude name="Self" />
+    <exclude name="Owner" />
+    <exclude name="OwningFlid" />
+    <exclude name="OwnOrd" />
+    <exclude name="Guid" />
+    <exclude name="ShortNameTSS" />
+    <exclude name="ClassID" />
+  </class>
+  <class name="PhSegmentRule">
+    <field name="Name" key="name" />
+    <field name="Description" key="description" />
+    <field name="Direction" key="direction" />
+    <field name="Disabled" key="disabled" />
+    <field name="StrucDesc" key="struc-desc" notation="rule-formula" />
+    <exclude name="OrderNumber" />
+    <exclude name="InitialStratum" />
+    <exclude name="FinalStratum" />
+  </class>
+  <class name="PhRegularRule">
+    <field name="RightHandSides" key="right-hand-sides" />
+    <exclude name="FeatureConstraints" />
+  </class>
+  <class name="PhMetathesisRule">
+    <exclude name="StrucChange" />
+  </class>
+  <class name="PhSegRuleRHS">
+    <exclude name="OwningRule" />
+    <field name="StrucChange" key="struc-change" notation="rule-formula" />
+    <field name="LeftContext" key="left-context" notation="rule-formula" />
+    <field name="RightContext" key="right-context" notation="rule-formula" />
+    <field name="InputPOSes" key="input-poses" />
+    <field name="ReqRuleFeats" key="req-rule-feats" />
+    <field name="ExclRuleFeats" key="excl-rule-feats" />
+  </class>
+</overlay>

@@ -40,6 +40,7 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
             ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay),
             ProjectRecordSchema.Generate(cache, ProjectRecordSchema.NotebookRecordOverlay),
             ProjectRecordSchema.Generate(cache, ProjectRecordSchema.ListItemOverlay),
+            ProjectRecordSchema.Generate(cache, ProjectRecordSchema.PhonologicalRuleOverlay),
         };
 
         var schemaFields = schemas.SelectMany(schema => ReachableFields(schema.Schema)).ToHashSet();
