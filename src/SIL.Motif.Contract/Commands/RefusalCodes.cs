@@ -356,6 +356,10 @@ public static class RefusalCodes
     public const string FsNotationUnsupportedFeature = "fs-notation.unsupported-feature";
     /// <summary>The project's feature structure holds something the text cannot show, so a change to it cannot be checked.</summary>
     public const string FsNotationUnrenderable = "fs-notation.unrenderable";
+    /// <summary>The rule-formula text of an affix process or phonological rule field is shown but an import does not write it yet.</summary>
+    public const string RuleNotationReadOnly = "rule-notation.read-only";
+    /// <summary>The project's rule-formula field holds something the text cannot show, so a change to it cannot be checked.</summary>
+    public const string RuleNotationUnrenderable = "rule-notation.unrenderable";
     /// <summary>The page asked for is not a page number from 1.</summary>
     public const string RecordImportInvalidPage = "record-import.invalid-page";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";

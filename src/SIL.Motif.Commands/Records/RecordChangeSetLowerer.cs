@@ -215,6 +215,8 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 LowerFeatureStructure(change, type, key, target, role);
                 return;
             }
+            if (field is not null && RecordWritableFields.IsRuleFormula(field))
+                throw RefuseRuleFormula(change, binding: schema.FieldBinding(type, key)!.Value);
             var set = change.Kind == RecordChangeKind.Set;
             var kind = KindFor(change, type, key, set ? RecordWriteVerb.Set : RecordWriteVerb.Clear);
             object? after = new { };
@@ -232,6 +234,23 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
                     $"A {field?.Kind.ToString() ?? "missing"} value has no payload shape for {kind}.");
             _pending.Add(Operation(Id(role + ":" + kind), kind, target, Named(type, key, after)));
+        }
+
+        private Stop RefuseRuleFormula(RecordChange change, (string DeclaringClass, string Field, bool IsCustom) binding)
+        {
+            if (RuleNotation.TryFieldOf(binding.DeclaringClass, binding.Field, out var ruleField) && change.ObjectGuid is { } guid)
+            {
+                try
+                {
+                    RuleNotation.Render(cache.ServiceLocator.GetObject(guid), ruleField, cache);
+                }
+                catch (RuleNotationException exception)
+                {
+                    return Refuse(exception.Code, change, exception.Message);
+                }
+            }
+            return Refuse(RefusalCodes.RuleNotationReadOnly, change,
+                "This field is shown as rule-formula text, which an import does not write yet; edit it in the project.");
         }
 
         private void LowerFeatureStructure(RecordChange change, string type, string key, CanonicalId target, string role)

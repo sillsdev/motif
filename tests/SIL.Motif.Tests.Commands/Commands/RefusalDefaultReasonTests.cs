@@ -90,6 +90,8 @@ public sealed class RefusalDefaultReasonTests
         ["fs-notation.repeated-feature"] = "reason not determinable statically: RecordLoweringRefusal carries the code a FeatureStructureNotationException names and always reports Refused",
         ["fs-notation.unsupported-feature"] = "reason not determinable statically: RecordLoweringRefusal carries the code a FeatureStructureNotationException names and always reports Refused",
         ["fs-notation.unrenderable"] = "reason not determinable statically: RecordLoweringRefusal carries the code a FeatureStructureNotationException names and always reports Refused",
+        ["rule-notation.read-only"] = "reason not determinable statically: RecordLoweringRefusal carries the code chosen at the lowering site and always reports Refused",
+        ["rule-notation.unrenderable"] = "reason not determinable statically: RecordLoweringRefusal carries the code a RuleNotationException names and always reports Refused",
         ["evidence.missing"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["evidence.wrong-target"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["hand-analysis.busy"] = "contract code for an annotation mutation lease outcome, outside identity resolution",
