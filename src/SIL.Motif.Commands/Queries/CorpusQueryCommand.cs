@@ -75,6 +75,8 @@ public static class CorpusQueryCommand
             }
             if (QueryExprTools.HasPatterns(where) && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(QueryRefusalException.PhonNeedsGrammar().Refusal);
+            if (RealizesLowering.Has(where) && string.IsNullOrWhiteSpace(request.GrammarPath))
+                return CommandOutcome<CorpusFormsResponse>.Refused(RealizesRefusals.NeedsProject().Refusal);
         }
         catch (QueryRefusalException refused)
         {
@@ -91,6 +93,12 @@ public static class CorpusQueryCommand
             return CommandOutcome<CorpusFormsResponse>.Refused(new Refusal(RefusalCodes.QueryCorpusUnreadable, FailureReason.InvalidArgument,
                 exception.Message));
         }
+        RealizesRun? realizes = null;
+        if (RealizesLowering.Has(where))
+        {
+            try { realizes = RealizesQuery.Prepare(where!, request.GrammarPath!, request.FoldCase); }
+            catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
+        }
         PhonSession? phon = null;
         if (QueryExprTools.HasPatterns(where))
         {
@@ -100,11 +108,12 @@ public static class CorpusQueryCommand
         }
         try
         {
-            var rows = CorpusFormsQuery.Run(corpus, where, phon);
+            var rows = CorpusFormsQuery.Run(corpus, realizes is null ? where : realizes.Lowered, phon);
+            if (realizes is not null) rows = [.. rows.Select(row => row with { Realizes = realizes.HitsFor(row.Form) })];
             var summary = new CorpusSummary(request.CorpusPath, corpus.TypeCount, corpus.TokenCount,
                 phon is { Ran: true } ? "grammar" : corpus.SegmentationLabel, request.FoldCase);
             return CommandOutcome<CorpusFormsResponse>.Success(new CorpusFormsResponse(CorpusFormsResponse.SchemaName, summary,
-                where is null ? null : QueryExprText.Print(where), rows.Count, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null));
+                where is null ? null : QueryExprText.Print(where), rows.Count, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null, realizes?.Sets));
         }
         catch (QueryRefusalException refused)
         {

@@ -89,7 +89,6 @@ public sealed class QueryDocumentTests
     [Theory]
     [InlineData("morph", "{\"and\":[]}")]
     [InlineData("seq", "[]")]
-    [InlineData("realizes", "{\"morpheme\":\"root:kaon\"}")]
     public void ReservedKindsParseAndRefuseWhenRun(string kind, string body)
     {
         var json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"and\":[" + Field("kind", "eq", "\"variant\"") +
@@ -99,6 +98,36 @@ public sealed class QueryDocumentTests
         var error = Assert.Throws<QueryRefusalException>(() => document.ToRecord());
         Assert.Equal(RefusalCodes.QueryNotYetAvailable, error.Refusal.Code);
         Assert.Equal(kind, error.Refusal.Facts["kind"]);
+    }
+
+    [Fact]
+    public void RealizesDocumentsRoundTripAndPrintAsText()
+    {
+        var json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"and\":[" + Field("kind", "eq", "\"variant\"") +
+                   ",{\"realizes\":{\"morpheme\":\"sfx:-an\",\"tier\":\"attested\"}}]}}";
+        var document = Parse(json);
+        Assert.Equal(json, document.ToJson());
+        Assert.Equal("kind is variant and realizes(sfx:-an, attested)", QueryExprText.Print(document.Where!));
+    }
+
+    [Theory]
+    [InlineData("{\"morpheme\":\"sfx:-an\"}")]
+    [InlineData("{\"morpheme\":\"sfx:-an\",\"tier\":\"sometimes\"}")]
+    [InlineData("{\"morpheme\":\" \",\"tier\":\"attested\"}")]
+    [InlineData("{\"morpheme\":\"sfx:-an\",\"tier\":\"attested\",\"more\":1}")]
+    public void MalformedRealizesIsRefused(string body)
+    {
+        var json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"realizes\":" + body + "}}";
+        Assert.False(QueryDocument.TryParse(json, out _, out var refusal));
+        Assert.Equal(RefusalCodes.QueryDocumentInvalid, refusal!.Code);
+    }
+
+    [Fact]
+    public void RealizesIsNotRunnableOverAFormsSourceAndSaysSo()
+    {
+        var document = Parse("{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"realizes\":{\"morpheme\":\"sfx:-an\",\"tier\":\"attested\"}}}");
+        var error = Assert.Throws<QueryRefusalException>(() => FormQuery.Run(document.ToRecord(), Rows, []));
+        Assert.Equal(RefusalCodes.QueryNotYetAvailable, error.Refusal.Code);
     }
 
     [Theory]

@@ -22,7 +22,9 @@ public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null,
 /// <param name="Tokens">How often it occurs.</param>
 /// <param name="ParseState">Its parse state when the list carried one.</param>
 /// <param name="Matches">Where each <c>phon</c> or <c>env</c> predicate matched it; null when the query has none.</param>
-public sealed record CorpusFormRow(string Form, long Tokens, string? ParseState = null, IReadOnlyList<QueryMatch>? Matches = null);
+/// <param name="Realizes">For each <c>realizes</c> predicate the word satisfies, the forms of its variant set the word carries; null when the query has none.</param>
+public sealed record CorpusFormRow(string Form, long Tokens, string? ParseState = null, IReadOnlyList<QueryMatch>? Matches = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RealizesHit>? Realizes = null);
 
 /// <summary>The words of a corpus that satisfy a query, versioned <see cref="SchemaName"/>.</summary>
 /// <param name="Schema">The schema name.</param>
@@ -31,9 +33,11 @@ public sealed record CorpusFormRow(string Form, long Tokens, string? ParseState 
 /// <param name="Matched">Every word that satisfied it.</param>
 /// <param name="Rows">At most <c>Limit</c> of them, by token count then form.</param>
 /// <param name="Phon">What the pattern predicates could not decide, counted; null when the query has none.</param>
+/// <param name="Realizes">The variant set each <c>realizes</c> predicate searched for, with its completeness and compiled pattern; null when the query has none.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsResponse(string Schema, CorpusSummary Corpus, string? Where, int Matched,
-    IReadOnlyList<CorpusFormRow> Rows, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PhonReport? Phon)
+    IReadOnlyList<CorpusFormRow> Rows, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PhonReport? Phon,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RealizesResult>? Realizes = null)
 {
     /// <summary>The schema name of the JSON form.</summary>
     public const string SchemaName = "motif.query.corpus-forms.v1";

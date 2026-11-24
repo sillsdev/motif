@@ -95,11 +95,32 @@ public sealed class QueryTextRoundTripTests
 
     [Theory]
     [InlineData("morph(sfx:-an)")]
-    [InlineData("realizes(root:kaon, generated)")]
     public void ReservedKindsInTextAreRefusedAsNotYetAvailable(string text)
     {
         Assert.False(QueryExprText.TryParse(text, out _, out var refusal));
         Assert.Equal(RefusalCodes.QueryNotYetAvailable, refusal.Code);
+    }
+
+    [Theory]
+    [InlineData("realizes(sfx:-an, attested)")]
+    [InlineData("realizes(\"root:kaon ate\", possible)")]
+    [InlineData("kind is a and not realizes(pfx:mag-, generated)")]
+    public void RealizesRoundTripsThroughText(string text)
+    {
+        var ast = QueryExprText.Parse(text);
+        var canonical = QueryExprText.Print(ast);
+        Assert.Equal(Wrap(ast).ToJson(), Wrap(QueryExprText.Parse(canonical)).ToJson());
+        Assert.Equal(text.Replace("-an,", "-an,"), canonical);
+    }
+
+    [Theory]
+    [InlineData("realizes(sfx:-an)")]
+    [InlineData("realizes(sfx:-an, sometimes)")]
+    [InlineData("realizes(sfx:-an, attested")]
+    public void MalformedRealizesTextIsRefusedWithAPosition(string text)
+    {
+        Assert.False(QueryExprText.TryParse(text, out _, out var refusal));
+        Assert.Equal(RefusalCodes.QueryDocumentInvalid, refusal.Code);
     }
 
     [Theory]

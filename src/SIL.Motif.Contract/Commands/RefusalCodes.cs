@@ -376,8 +376,14 @@ public static class RefusalCodes
     public const string QueryMixedUnits = "query.mixed-units";
     /// <summary>A query's op does not fit the type of the column it names, such as a numeric comparison on text.</summary>
     public const string QueryOpTypeMismatch = "query.op-type-mismatch";
-    /// <summary>A query uses a kind the schema reserves for a later release: morph, seq, phon, env or realizes.</summary>
+    /// <summary>A query uses a kind the schema reserves for a later release: morph or seq, or a realizes tier that is not built yet.</summary>
     public const string QueryNotYetAvailable = "query.not-yet-available";
+    /// <summary><c>not realizes(...)</c> was asked over a variant set that is not complete, so the absence it would claim is not proven.</summary>
+    public const string QueryRealizesNegationIncomplete = "query.realizes-negation-incomplete";
+    /// <summary><c>realizes(M, attested)</c> found no stored analysis that uses the morpheme to read its forms from.</summary>
+    public const string QueryRealizesNoParses = "query.realizes-no-parses";
+    /// <summary><c>realizes</c> ran with no project to resolve the morpheme in; corpus mode names one with <c>--grammar</c>.</summary>
+    public const string QueryRealizesNeedsProject = "query.realizes-needs-project";
     /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>
     public const string QueryDocumentInvalid = "query.document-invalid";
     public const string QueryNoTrialRows = "query.no-trial-rows";
