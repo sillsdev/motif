@@ -191,7 +191,7 @@ public static class QuerySchema
         };
         var expr = new JsonObject
         {
-            ["description"] = "One of: and, or, not, a field predicate, phon, env, or a reserved kind (parsed, refused as not yet available).",
+            ["description"] = "One of: and, or, not, a field predicate, phon, env, realizes, or a reserved kind (parsed, refused as not yet available).",
             ["oneOf"] = new JsonArray(
                 Wrapper("and", new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = "#/$defs/expr" }, ["minItems"] = 1 }),
                 Wrapper("or", new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = "#/$defs/expr" }, ["minItems"] = 1 }),
@@ -199,6 +199,18 @@ public static class QuerySchema
                 new JsonObject { ["$ref"] = "#/$defs/field" },
                 Wrapper("phon", new JsonObject { ["type"] = "string", ["description"] = PatternSyntax }),
                 Wrapper("env", new JsonObject { ["type"] = "string", ["description"] = "target / left _ right: the target pattern must occur between the left and right patterns, either of which may be empty. Each part uses the phon pattern syntax. The match spans the target. " + PatternSyntax }),
+                Wrapper("realizes", new JsonObject
+                {
+                    ["description"] = "A morpheme in any of its surface forms. The tier says where the forms come from: attested reads the stored analyses; possible and generated are named and refused until they are built. The forms compile to a search over surface text, may over-match, and a negation over a set that is not complete is refused. Runs over a corpus with --grammar.",
+                    ["type"] = "object",
+                    ["additionalProperties"] = false,
+                    ["required"] = new JsonArray("morpheme", "tier"),
+                    ["properties"] = new JsonObject
+                    {
+                        ["morpheme"] = new JsonObject { ["type"] = "string", ["minLength"] = 1, ["description"] = "entry:msa, an entry or analysis id, or a form in the lexicon, optionally led by root:, pfx: or sfx:." },
+                        ["tier"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray([.. RealizesTiers.All.Select(t => (JsonNode?)t)]) },
+                    },
+                }),
                 new JsonObject
                 {
                     ["description"] = "Reserved: " + string.Join(", ", QueryOps.ReservedKinds) + ".",

@@ -2332,7 +2332,7 @@ try
                         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return null; }
                     }, out var corpusFormsRequest))
                     return Usage(UsageLineFor("query corpus forms"), asJson);
-                result = RenderCommand(CorpusQueryCommand.Forms(corpusFormsRequest, JobRunnerLaunchOptions.ResolveParserPath()));
+                result = RenderCommand(CorpusQueryCommand.Forms(corpusFormsRequest, JobRunnerLaunchOptions.ResolveParserPath(), notice: error.WriteLine));
                 break;
             }
             if (CorpusQueryCli.Handles(flags))

@@ -334,6 +334,8 @@ internal static class QueryDocumentJson
                 return key == "and" ? new QueryAnd(children) : new QueryOr(children);
             case "not":
                 return new QueryNot(ReadExpr(inner, path + ".not"));
+            case "realizes":
+                return ReadRealizes(inner, path + ".realizes");
             case "env":
                 if (inner is not JsonValue || inner.GetValueKind() != JsonValueKind.String)
                     throw QueryRefusalException.DocumentInvalid("env is an environment string, <target> / <left> _ <right>.", path + ".env");
@@ -344,6 +346,19 @@ internal static class QueryDocumentJson
                 if (QueryOps.Reserved.Contains(key)) return new QueryReserved(key, inner?.ToJsonString() ?? "null");
                 throw QueryRefusalException.DocumentInvalid($"'{key}' is not an expression kind.", path);
         }
+    }
+
+    private static QueryRealizes ReadRealizes(JsonNode? node, string path)
+    {
+        const string shape = "realizes is {morpheme, tier}: the morpheme as entry:msa, an id or a form, and one of attested, possible, generated.";
+        if (node is not JsonObject body) throw QueryRefusalException.DocumentInvalid(shape, path);
+        Known(body, ["morpheme", "tier"], path);
+        var morpheme = Text(body, "morpheme", path);
+        var tier = Text(body, "tier", path);
+        if (string.IsNullOrWhiteSpace(morpheme)) throw QueryRefusalException.DocumentInvalid(shape, path + ".morpheme");
+        if (tier is null || !RealizesTiers.All.Contains(tier))
+            throw QueryRefusalException.DocumentInvalid($"tier is one of {string.Join(", ", RealizesTiers.All)}.", path + ".tier");
+        return new QueryRealizes(morpheme.Trim(), tier);
     }
 
     private static object ReadValue(string op, JsonNode? node, string path)
@@ -376,6 +391,7 @@ internal static class QueryDocumentJson
         QueryOr or => new JsonObject { ["or"] = new JsonArray([.. or.Items.Select(WriteExpr)]) },
         QueryNot not => new JsonObject { ["not"] = WriteExpr(not.Item) },
         QueryReserved reserved => new JsonObject { [reserved.Kind] = JsonNode.Parse(reserved.Body) },
+        QueryRealizes realizes => new JsonObject { ["realizes"] = new JsonObject { ["morpheme"] = realizes.Morpheme, ["tier"] = realizes.Tier } },
         QueryPhon phon => new JsonObject { ["phon"] = phon.Pattern },
         QueryEnv env => new JsonObject { ["env"] = env.Environment },
         QueryField field => WriteField(field),

@@ -33,7 +33,7 @@ public static class QueryOps
     public static bool TakesList(string op) => op is In or Nin or Has;
 
     /// <summary>The kinds reserved for later phases: the schema names them so it stays stable, and a query that uses one is refused.</summary>
-    public static IReadOnlyList<string> ReservedKinds { get; } = ["morph", "seq", "realizes"];
+    public static IReadOnlyList<string> ReservedKinds { get; } = ["morph", "seq"];
 
     /// <summary>The pattern kinds, which PanGloss's <c>match</c> op runs over surface forms.</summary>
     public static IReadOnlyList<string> PatternKinds { get; } = ["phon", "env"];
@@ -59,7 +59,7 @@ public sealed record QueryNot(QueryExpr Item) : QueryExpr;
 /// <param name="Value">A string, a long (<c>lt</c>, <c>gt</c>), a bool (<c>exists</c>) or a <c>string[]</c> (<c>in</c>, <c>nin</c>, <c>has</c>).</param>
 public sealed record QueryField(string Field, string Op, object Value) : QueryExpr;
 
-/// <summary>A reserved kind (<c>morph</c>, <c>seq</c>, <c>realizes</c>): it parses, and running it is refused.</summary>
+/// <summary>A reserved kind (<c>morph</c>, <c>seq</c>): it parses, and running it is refused.</summary>
 /// <param name="Kind">The reserved kind.</param>
 /// <param name="Body">The kind's JSON body, kept so the document survives a round trip through the AST.</param>
 public sealed record QueryReserved(string Kind, string Body) : QueryExpr;

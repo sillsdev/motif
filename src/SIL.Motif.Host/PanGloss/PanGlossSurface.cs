@@ -16,8 +16,13 @@ internal sealed record PanGlossCapabilities(
     bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null,
     PanGlossWhyNotCapability? WhyNot = null, PanGlossServeGenerateCapability? ServeGenerate = null,
     PanGlossServeMatchCapability? ServeMatch = null, PanGlossServeInventoryCapability? ServeInventory = null,
-    ImmutableArray<string>? DiagnosticRejectReasons = null)
+    ImmutableArray<string>? DiagnosticRejectReasons = null,
+    PanGlossServeEffectsCapability? ServeEffects = null)
 {
+    /// <summary>Why this parser cannot say which phonological rules may change a morpheme on <c>serve</c>, or null when it can: the description must declare <c>interfaces.serveOps.effects</c>.</summary>
+    internal string? ServeEffectsRefusal() =>
+        ServeEffects is null ? "its description declares no interfaces.serveOps.effects" : null;
+
     /// <summary>
     /// Why this parser cannot match pattern text over a word list on <c>serve</c>, or null when it can: the description must
     /// declare <c>interfaces.serveOps.match</c>, and list every construct the pattern needs (<c>environment</c>,
@@ -150,6 +155,11 @@ internal sealed record PanGlossServeMatchCapability(int? Version, ImmutableHashS
 /// <param name="Version">The op's own version, or null when the key is missing.</param>
 internal sealed record PanGlossServeInventoryCapability(int? Version);
 
+/// <summary>What <c>interfaces.serveOps.effects</c> declares.</summary>
+/// <param name="Version">The op's own version, or null when the key is missing.</param>
+/// <param name="NonLocalCriteria">The names of the criteria under which a rule reaches beyond a morpheme's edges: <c>unboundedQuantifier</c>, <c>alphaAgreement</c>, <c>iterativeSpreading</c>.</param>
+internal sealed record PanGlossServeEffectsCapability(int? Version, ImmutableArray<string> NonLocalCriteria);
+
 /// <summary>What <c>interfaces.serveOps.generate</c> declares.</summary>
 /// <param name="Version">The op's own version, or null when the key is missing.</param>
 /// <param name="Trace">Whether the op can return each surface's rule steps.</param>
@@ -267,7 +277,7 @@ internal static class PanGlossSurface
             batchElement.ValueKind == JsonValueKind.Number && batchElement.TryGetInt32(out var batchVersion) ? batchVersion : null;
         return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv,
             ReadWhyNot(root), ReadServeGenerate(root), ReadServeMatch(root), ReadServeInventory(root),
-            ReadDiagnosticRejectReasons(root));
+            ReadDiagnosticRejectReasons(root), ReadServeEffects(root));
     }
 
     /// <summary>The rejection reasons <c>interfaces.diagnostic.eventTuples</c> lists; null when none.</summary>
@@ -306,6 +316,20 @@ internal static class PanGlossSurface
                 if (item.ValueKind == JsonValueKind.String) tests.Add(item.GetString()!);
         return new PanGlossServeMatchCapability(match.TryGetProperty("version", out var version) &&
             version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null, supported.ToImmutable(), tests.ToImmutable());
+    }
+
+    private static PanGlossServeEffectsCapability? ReadServeEffects(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("serveOps", out var ops) || ops.ValueKind != JsonValueKind.Object ||
+            !ops.TryGetProperty("effects", out var effects) || effects.ValueKind != JsonValueKind.Object)
+            return null;
+        var criteria = ImmutableArray.CreateBuilder<string>();
+        if (effects.TryGetProperty("nonLocalCriteria", out var list) && list.ValueKind == JsonValueKind.Array)
+            foreach (var item in list.EnumerateArray())
+                if (item.ValueKind == JsonValueKind.String) criteria.Add(item.GetString()!);
+        return new PanGlossServeEffectsCapability(effects.TryGetProperty("version", out var version) &&
+            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null, criteria.ToImmutable());
     }
 
     private static PanGlossServeInventoryCapability? ReadServeInventory(JsonElement root)

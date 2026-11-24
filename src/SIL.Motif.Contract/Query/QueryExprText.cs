@@ -86,6 +86,8 @@ public static class QueryExprText
                 return PrintField(field);
             case QueryReserved reserved:
                 throw QueryRefusalException.NotYetAvailable(reserved.Kind);
+            case QueryRealizes realizes:
+                return "realizes(" + Quote(realizes.Morpheme, forList: true) + ", " + realizes.Tier + ")";
             case QueryPhon phon:
                 return "phon(" + phon.Pattern + ")";
             case QueryEnv env:
@@ -181,12 +183,33 @@ public static class QueryExprText
             if (field.Length == 0) throw Error("Expected a column name.");
             if (field is "and" or "or" or "not") throw Error($"'{field}' is a keyword, not a column name.");
             if (_at < text.Length && text[_at] == '(' && field is "phon" or "env") return ParsePattern(field);
+            if (_at < text.Length && text[_at] == '(' && field == "realizes") return ParseRealizes();
             if (_at < text.Length && text[_at] == '(' && QueryOps.Reserved.Contains(field))
                 throw QueryRefusalException.NotYetAvailable(field);
             SkipSpace();
             var op = ReadOp();
             if (op.Op == QueryOps.Exists) return new QueryField(field, QueryOps.Exists, op.Text != "missing");
             return new QueryField(field, op.Op, ReadValue(op.Op));
+        }
+
+        // realizes(<morpheme>, <tier>): a word or a quoted string, then attested, possible or generated.
+        private QueryExpr ParseRealizes()
+        {
+            _at++;
+            SkipSpace();
+            var morpheme = ReadOne(forList: true);
+            SkipSpace();
+            if (_at >= text.Length || text[_at] != ',') throw Error("Expected ',' and a tier after the morpheme of realizes(...).");
+            _at++;
+            SkipSpace();
+            var start = _at;
+            while (_at < text.Length && char.IsLetter(text[_at])) _at++;
+            var tier = text[start.._at];
+            if (!RealizesTiers.All.Contains(tier)) throw Error($"Expected a tier: {string.Join(", ", RealizesTiers.All)}.");
+            SkipSpace();
+            if (_at >= text.Length || text[_at] != ')') throw Error("Expected ')' to close realizes(...).");
+            _at++;
+            return new QueryRealizes(morpheme, tier);
         }
 
         // phon(<pattern>) and env(<target> / <left> _ <right>).

@@ -7,22 +7,27 @@ namespace SIL.Motif.Contract.Query.Corpus;
 /// <param name="CorpusPath">A TSV word list or a folder of .txt files.</param>
 /// <param name="Where">The expression text, <c>phon(C V C V)</c> or any v2 text expression; null with <paramref name="QueryJson"/>.</param>
 /// <param name="QueryJson">A <c>motif.query.v2</c> document over the <c>forms</c> source; its <c>where</c> and <c>limit</c> apply.</param>
-/// <param name="GrammarPath">The grammar PanGloss loads to segment words and name natural classes; needed by <c>phon</c> and <c>env</c>.</param>
+/// <param name="GrammarPath">The grammar PanGloss loads to segment words and name natural classes; needed by <c>phon</c> and <c>env</c>, and parsed with by <c>realizes</c>.</param>
 /// <param name="SegmentsPath">An optional segment file of multi-character graphemes for the surface-only predicates.</param>
 /// <param name="FoldCase">Lower-case every form before counting.</param>
 /// <param name="SplitHyphens">Split running text at hyphens between letters.</param>
 /// <param name="Limit">The most rows returned; default 100.</param>
 /// <param name="SegmentTest"><c>engine</c> (the default) or <c>identity</c>, how <c>phon</c> and <c>env</c> test a segment; overrides the document's <c>segmentTest</c>.</param>
+/// <param name="ProjectPath">A FieldWorks project whose lexicon and stored analyses <c>realizes</c> reads; with <paramref name="GrammarPath"/> both sources are used.</param>
+/// <param name="Sample">How many matching word types <c>realizes</c> traces for the morpheme's surface piece, chosen by frequency; default 50, zero for every match.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null, string? QueryJson = null, string? GrammarPath = null,
-    string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null, string? SegmentTest = null);
+    string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null, string? SegmentTest = null,
+    string? ProjectPath = null, int? Sample = null);
 
 /// <summary>One word of a corpus that satisfied the query.</summary>
 /// <param name="Form">The word.</param>
 /// <param name="Tokens">How often it occurs.</param>
 /// <param name="ParseState">Its parse state when the list carried one.</param>
 /// <param name="Matches">Where each <c>phon</c> or <c>env</c> predicate matched it; null when the query has none.</param>
-public sealed record CorpusFormRow(string Form, long Tokens, string? ParseState = null, IReadOnlyList<QueryMatch>? Matches = null);
+/// <param name="Realizes">For each <c>realizes</c> predicate the word satisfies, the forms of its variant set the word carries; null when the query has none.</param>
+public sealed record CorpusFormRow(string Form, long Tokens, string? ParseState = null, IReadOnlyList<QueryMatch>? Matches = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RealizesHit>? Realizes = null);
 
 /// <summary>The words of a corpus that satisfy a query, versioned <see cref="SchemaName"/>.</summary>
 /// <param name="Schema">The schema name.</param>
@@ -31,9 +36,11 @@ public sealed record CorpusFormRow(string Form, long Tokens, string? ParseState 
 /// <param name="Matched">Every word that satisfied it.</param>
 /// <param name="Rows">At most <c>Limit</c> of them, by token count then form.</param>
 /// <param name="Phon">What the pattern predicates could not decide, counted; null when the query has none.</param>
+/// <param name="Realizes">The variant set each <c>realizes</c> predicate searched for, with its completeness and compiled pattern; null when the query has none.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsResponse(string Schema, CorpusSummary Corpus, string? Where, int Matched,
-    IReadOnlyList<CorpusFormRow> Rows, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PhonReport? Phon)
+    IReadOnlyList<CorpusFormRow> Rows, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PhonReport? Phon,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RealizesResult>? Realizes = null)
 {
     /// <summary>The schema name of the JSON form.</summary>
     public const string SchemaName = "motif.query.corpus-forms.v1";

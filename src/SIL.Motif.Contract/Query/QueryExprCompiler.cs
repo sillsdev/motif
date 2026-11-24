@@ -22,6 +22,8 @@ internal static class QueryExprCompiler
                 return row => !inner(row);
             case QueryReserved reserved:
                 throw QueryRefusalException.NotYetAvailable(reserved.Kind);
+            case QueryRealizes:
+                throw QueryRefusalException.NotYetAvailable("realizes on this source; it runs over a corpus with --grammar");
             case QueryPhon or QueryEnv:
                 throw QueryRefusalException.NotYetAvailable(expr is QueryPhon ? "phon" : "env");
             case QueryField field:
@@ -74,6 +76,8 @@ internal static class QueryExprCompiler
                 return row => row.Get("form") is { Count: > 0 } form ? phon(leaf, form[0]) : Tri.False;
             case QueryReserved reserved:
                 throw QueryRefusalException.NotYetAvailable(reserved.Kind);
+            case QueryRealizes:
+                throw QueryRefusalException.NotYetAvailable("realizes on this source; it runs over a corpus with --grammar");
             case QueryField field:
                 var test2 = CompileField(field, spec);
                 return row => test2(row) ? Tri.True : Tri.False;
