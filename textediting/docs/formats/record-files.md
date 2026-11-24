@@ -329,8 +329,10 @@ is edited in FieldWorks by the inflection-feature chooser (`MsaInflectionFeature
 
 `notation="rule-formula"` (`text/x-fieldworks-rule-formula`) marks a field that holds a phonological formula: the Input and Output of an affix process, and the
 structural description, structural change, left context and right context of a phonological rule. `RuleNotation` renders and reads it in one place. An affix
-process shows its text under its field's one key, `input` and `output`, and an import of that text writes the objects FieldWorks's affix editor makes; there is no
-second object-list key for these two fields. The fields of a phonological rule are shown and an import refuses a change to one with `rule-notation.read-only`.
+process shows its text under its field's one key, `input` and `output`, and an import of that text writes the objects FieldWorks's affix editor makes. The same
+objects also appear under `input-parts` and `output-parts`, which an import uses only to reach a member's own fields (a context's name and description, an alpha
+constraint on a class, a feature structure, a copy's or insertion's content); adding, removing or moving a member under those keys is not offered, because the
+text is the one key that does it. The fields of a phonological rule are shown and an import refuses a change to one with `rule-notation.read-only`.
 
 - **Writing an affix process.** An import reads the new text, checks it, and diffs it against the project by longest common subsequence of the canonical text of
   each element (Input columns, Output steps), leftmost on a tie. A kept element keeps its object; a changed or moved element is deleted and created, and a copy or
@@ -341,7 +343,7 @@ second object-list key for these two fields. The fields of a phonological rule a
   is refused: `rule-notation.unsupported-class` for a group that names one unit twice, `rule-notation.limit-exceeded` past 16 columns or 256 steps. Each edit the
   former object-list keys allowed is a text edit: add, remove or move a column or step; set a context's phoneme, boundary or class; add, remove or move a group's
   members; set a copy's column; set a modification's class; set an insertion's class; add or remove an inserted unit. The name and description of a context, and an
-  alpha constraint on an affix class, are not part of the text and are no longer written.
+  alpha constraint on an affix class, are not part of the text; they stay writable under `input-parts` and `output-parts`.
 
 - **Tokens.** A field is a list of tokens separated by white space; no meaning depends on how much white space there is, or whether there is any between a
   bracket and its neighbours. Two lexical modes: outside brackets, a literal (a phoneme code) must escape backslash, `[` `]` `(` `)` `{` `}` `<` `>` `$` `~` `*` `#`

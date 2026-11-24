@@ -206,6 +206,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             foreach (var field in type.Fields)
             {
                 if (RecordWritableFields.IsFeatureStructure(field) || RecordWritableFields.IsRuleFormula(field) ||
+                    RecordWritableFields.IsRuleParts(type, field, _schema) ||
                     _schema.FieldBinding(type.Name, field.Name) is not { } binding ||
                     !resolver.Entries.Any(e => e.Key.Class == type.Name && e.Key.Field == field.Name))
                     continue;
@@ -508,7 +509,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
     // Why liblcm cannot make an owned class generically: rules about classes, not pairs.
     /// <summary>Remove and Move on references whose target class is abstract with no standalone subclass.</summary>
-    private const int UnexercisedAbstractReferencePairs = 24;
+    private const int UnexercisedAbstractReferencePairs = 29;
     private const string AbstractClass = "the class is abstract and no concrete subclass stands alone in the fixture";
     private const string NoOwnerChain = "no owning field leads from an object the project holds to the class";
     private const string CreationRefused = "only the class's own composer creates it, or no create kind does, so the fixture holds none";

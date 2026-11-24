@@ -41,6 +41,7 @@ public sealed class RecordWritableFields : IWritableFields
                     throw new InvalidOperationException($"No model binding for record field '{type.Name}.{field.Name}'.");
                 fields.Add((type.Name, field.Name));
                 var refusal = FieldRefusal(field, binding);
+                var parts = IsRuleParts(type, field, schema);
                 foreach (var verb in Verbs(field))
                 {
                     var structure = IsFeatureStructure(field) || IsRuleFormula(field);
@@ -48,7 +49,7 @@ public sealed class RecordWritableFields : IWritableFields
                         : verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb;
                     var candidates = (binding.IsCustom
                         ? catalog[(CustomFieldOperationKinds.DeclaringClass, CustomFieldCatalog.TypeOf(field) ?? "", handlerVerb)]
-                        : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)]).ToArray();
+                        : parts ? [] : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)]).ToArray();
                     entries.Add((type.Name, field.Name, verb), new FieldEntry(type.Name, field, structure ? handlerVerb : verb, candidates, refusal,
                         IsFeatureStructure(field) ? [FeatureStructureClass] : IsRuleFormula(field) ? RuleFormulaChildren(binding.Field) : null));
                 }
@@ -81,6 +82,11 @@ public sealed class RecordWritableFields : IWritableFields
     /// <summary>Whether the field is rule-formula text; its set and clear are the creates and deletes of the owned objects it describes.</summary>
     internal static bool IsRuleFormula(RecordField field) =>
         field is { Kind: RecordFieldKind.Notation, Notation: SIL.TextEditing.Project.RuleNotation.Name };
+
+    // The formula is the one key that adds, removes and moves members; the parts key only reaches into the members' own fields.
+    internal static bool IsRuleParts(RecordObjectType type, RecordField field, ProjectRecordSchemaResult schema) =>
+        field is { Kind: RecordFieldKind.Sequence } && type.Fields.Any(other => IsRuleFormula(other) &&
+            schema.FieldBinding(type.Name, other.Name) == schema.FieldBinding(type.Name, field.Name));
 
     private static string[] RuleFormulaChildren(string field) => field == "Input"
         ? ["PhVariable", "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext"]

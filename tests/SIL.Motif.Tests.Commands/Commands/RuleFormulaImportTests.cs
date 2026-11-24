@@ -203,7 +203,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void TheFieldsExportUnderOneKeyEach()
+    public void TheFormulaIsTheOneTextKeyAndThePartsKeyReachesTheMembers()
     {
         using var cache = pristine.NewScratch();
         Build(cache);
@@ -211,8 +211,8 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         var process = Process(new ProjectRecordExporter(cache, schema).Export(EntryId).Document);
         Assert.Equal("*", ((RecordScalar)process["input"]!).Text);
         Assert.Equal("$1 m", ((RecordScalar)process["output"]!).Text);
-        Assert.Null(process["input-formula"]);
-        Assert.Null(process["output-formula"]);
+        Assert.NotNull(process["input-parts"]);
+        Assert.NotNull(process["output-parts"]);
     }
 
     // ---- worked examples 1-5 of the design, through real import and export
@@ -391,19 +391,39 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         Assert.Equal(2, lowering.RefusedChanges!.Count);
     }
 
-    [Theory]
-    [InlineData("input-formula", "* a")]
-    [InlineData("output-formula", "a $1")]
-    public void TheCatalogDoesNotOfferAFormulaWriteAndRefusesItWhenPlanned(string key, string text)
+    private static void AddSegmentContext(LcmCache cache)
+    {
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var process = cache.LangProject.LexDbOA.Entries.Single(e => e.Guid == EntryId).AlternateFormsOS.OfType<IMoAffixProcess>().Single();
+            var segment = cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create();
+            process.InputOS.Insert(0, segment);
+            segment.FeatureStructureRA = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS[0].PhonemesOC.First();
+        });
+    }
+
+    [Fact]
+    public void AContextDescriptionStaysWritableThroughTheInputParts()
     {
         using var cache = pristine.NewScratch();
         Build(cache);
-        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
-        var exporter = new ProjectRecordExporter(cache, schema);
-        var read = RecordFileReader.Read(exporter.Export(EntryId).Text!, schema.Schema, exporter.CreateReadOptions());
-        Process(read.Document!).Set(key, new RecordScalar(text));
-        var plan = new ProjectRecordImporter(exporter).Plan(RecordFileWriter.Write(read.Document!, schema.Schema), new CatalogWritableFields(schema));
-        Assert.Equal(RecordRefusalKind.FieldNotWritable, Assert.Single(plan.ChangeSet.Refusals).Kind);
+        AddSegmentContext(cache);
+        var plan = PlanEdit(cache, process => ((RecordObject)((RecordList)process["input-parts"]!).Items[0])
+            .Set("description", new RecordScalar("lead")), out var schema);
+        Assert.Empty(plan.ChangeSet.Refusals);
+        var lowering = new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
+        Assert.Empty(lowering.Refusals);
+        Assert.Contains(lowering.Operations, operation => operation.Kind == "text/setParagraphs");
+    }
+
+    [Fact]
+    public void AMemberCannotBeRemovedThroughThePartsKey()
+    {
+        using var cache = pristine.NewScratch();
+        Build(cache);
+        var plan = PlanEdit(cache, process => ((RecordList)process["input-parts"]!).Items.Clear(), out var schema);
+        var lowering = plan.ChangeSet.Refusals.Count > 0 ? null : new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
+        Assert.True(plan.ChangeSet.Refusals.Count > 0 || lowering!.Refusals.Count > 0);
     }
 
     private static void BuildUnrenderable(LcmCache cache)

@@ -251,6 +251,11 @@
     <exclude name="FeatureConstraints" />
     <field name="Input" key="input" notation="rule-formula" />
     <field name="Output" key="output" notation="rule-formula" />
+    <field name="Input" key="input-parts" alias="true" />
+    <field name="Output" key="output-parts" alias="true" />
+  </class>
+  <class name="MoCopyFromInput">
+    <field name="Content" key="content" />
   </class>
   <class name="MoDerivAffMsa">
     <field name="AffixCategory" key="affix-category" />
@@ -292,6 +297,16 @@
     <exclude name="ShortNameTSS" />
     <field name="Slots" key="slots" />
   </class>
+  <class name="MoInsertNC">
+    <field name="Content" key="content" />
+  </class>
+  <class name="MoInsertPhones">
+    <field name="Content" key="content" />
+  </class>
+  <class name="MoModifyFromInput">
+    <field name="Content" key="content" />
+    <field name="Modification" key="modification" />
+  </class>
   <class name="MoMorphSynAnalysis">
     <field name="Components" key="components" />
     <exclude name="ExceptionFeaturesTSS" />
@@ -307,6 +322,8 @@
     <exclude name="MorphTypes" />
     <exclude name="OwningEntry" />
     <exclude name="Slots" />
+  </class>
+  <class name="MoRuleMapping">
   </class>
   <class name="MoStemAllomorph">
     <field name="PhoneEnv" key="phone-env" />
@@ -325,5 +342,34 @@
   <class name="MoUnclassifiedAffixMsa">
     <exclude name="IsEmpty" />
     <field name="PartOfSpeech" key="part-of-speech" />
+  </class>
+  <class name="PhContextOrVar">
+  </class>
+  <class name="PhIterationContext">
+    <field name="Maximum" key="maximum" />
+    <field name="Member" key="member" />
+    <field name="Minimum" key="minimum" />
+  </class>
+  <class name="PhPhonContext">
+    <field name="Description" key="description" />
+    <field name="Name" key="name" />
+  </class>
+  <class name="PhSequenceContext">
+    <field name="Members" key="members" />
+  </class>
+  <class name="PhSimpleContext">
+  </class>
+  <class name="PhSimpleContextBdry">
+    <field name="FeatureStructure" key="feature-structure" />
+  </class>
+  <class name="PhSimpleContextNC">
+    <field name="FeatureStructure" key="feature-structure" />
+    <field name="MinusConstr" key="minus-constr" />
+    <field name="PlusConstr" key="plus-constr" />
+  </class>
+  <class name="PhSimpleContextSeg">
+    <field name="FeatureStructure" key="feature-structure" />
+  </class>
+  <class name="PhVariable">
   </class>
 </overlay>
