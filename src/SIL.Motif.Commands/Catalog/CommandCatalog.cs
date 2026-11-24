@@ -52,6 +52,10 @@ public static class CommandCatalog
         new CommandDescriptor("query forms", typeof(FormsQueryRequest), typeof(FormsQueryResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("query pairs", typeof(PairsQueryRequest), typeof(PairsQueryResponse), CommandSurface.Released, AgentClass.Read)
             { ExposeAsAgentTool = false },
+        new CommandDescriptor("query values", typeof(QueryValuesRequest), typeof(PhonValuesResponse), CommandSurface.Released, AgentClass.Read)
+            { ExposeAsAgentTool = false },
+        new CommandDescriptor("query corpus forms", typeof(CorpusFormsRequest), typeof(CorpusFormsResponse), CommandSurface.Released, AgentClass.Read)
+            { ExposeAsAgentTool = false },
         // ProposalCommands
         new CommandDescriptor("open", typeof(OpenRequest), typeof(ProjectSummaryProjection), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("hand-analysis check", typeof(HandAnalysisCheckRequest), typeof(HandAnalysisCheckResponse),

@@ -2751,6 +2751,16 @@
     "description": "Filters and groups forms, stems, uses or objects from available Trial evidence with and, or, not and typed field predicates, reads forms from the Baseline or a Proposal's Trial copy with parse state and analyses (--as-of, --sides both), runs a motif.query.v2 JSON document (--query-json) or prints its schema (--schema), or runs the saved query of a Parsimony Measure.",
     "source": "Hand-written from the query contract."
   },
+  "query values": {
+    "title": "List pattern class names",
+    "description": "Lists the natural-class and phonological-feature names of a project's Baseline (--project) or of a grammar file (--grammar), for writing phon and env patterns; read from the grammar, because PanGloss does not list them.",
+    "source": "Hand-written from the query contract."
+  },
+  "query corpus forms": {
+    "title": "Query forms of a word list",
+    "description": "Reads a plain word list with no project and returns the words that satisfy a query expression, including phon(...) and env(...) patterns, which PanGloss evaluates against the grammar given by --grammar; unsegmentable words are counted and sampled, never dropped.",
+    "source": "Hand-written from the corpus query contract."
+  },
   "query pairs": {
     "title": "Find affix pairs in words",
     "description": "Reads a plain word list (a TSV of form and count, or a folder of text files) with no project and finds pairs of words that differ only by a suffix or prefix, with the bases, tokens and examples of each differing part and the parts each base takes. Optional regular expression on the differing part, bases having all of several parts, bounded and deterministic.",
