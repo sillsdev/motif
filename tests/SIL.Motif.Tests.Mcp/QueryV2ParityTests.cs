@@ -59,7 +59,7 @@ public sealed class QueryV2ParityTests : IDisposable
     {
         var cli = await CliProcess.RunAsync(Path.Combine(_root, "worker"), null, false, "query", "--schema");
         Assert.True(cli.ExitCode == 0, cli.FailureDetails);
-        Assert.Equal(QuerySchema.Generate().ReplaceLineEndings("\n"), cli.Output.ReplaceLineEndings("\n"));
+        Assert.Equal(QuerySchema.Generate(), cli.Output);
     }
 
     [Fact]

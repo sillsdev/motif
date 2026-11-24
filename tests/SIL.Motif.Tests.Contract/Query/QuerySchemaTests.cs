@@ -16,7 +16,7 @@ public sealed class QuerySchemaTests
         var generated = QuerySchema.Generate();
         var path = GoldenPath();
         if (Environment.GetEnvironmentVariable("MOTIF_UPDATE_GOLDEN") == "1") File.WriteAllText(path, generated);
-        Assert.Equal(File.ReadAllText(path).ReplaceLineEndings("\n"), generated);
+        Assert.Equal(File.ReadAllText(path), generated);
     }
 
     [Fact]
@@ -44,6 +44,9 @@ public sealed class QuerySchemaTests
         Assert.Equal(declared, listed);
         Assert.Equal(["from", "version"], schema["required"]!.AsArray().Select(name => name!.GetValue<string>()).Order(StringComparer.Ordinal));
     }
+
+    [Fact]
+    public void TheSchemaUsesLfNewlinesOnEveryPlatform() => Assert.DoesNotContain("\r", QuerySchema.Generate());
 
     [Fact]
     public void TheSchemaIsDeterministic() => Assert.Equal(QuerySchema.Generate(), QuerySchema.Generate());
