@@ -78,7 +78,7 @@ internal sealed class AffixProcessMemberDeleteHandler(string kind, string field)
             throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{kind}' requires 'after'.");
         FsFeatStrucFeatureSpecsPayload.Parse(after, kind);
         var (id, member) = TargetResolution.Resolve<ICmObject>(cache, operation, kind);
-        var ok = IsInput ? member is IPhContextOrVar && member.Owner is IMoAffixProcess process && process.InputOS.Contains(member)
+        var ok = IsInput ? member is IPhVariable or IPhSimpleContext or IPhSequenceContext && member.Owner is IMoAffixProcess process && process.InputOS.Contains(member)
             : member is IMoRuleMapping && member.Owner is IMoAffixProcess owner && owner.OutputOS.Contains(member);
         if (!ok)
             throw new InvalidOperationException($"'{kind}': '{id.Value}' is not a member of an affix process's {(IsInput ? "Input" : "Output")}.");
