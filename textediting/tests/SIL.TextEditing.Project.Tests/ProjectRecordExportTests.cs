@@ -591,6 +591,7 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        [ExportReason(nameof(ExportReasons.RecordNotExported))]
         public void OneRecordThatFailsIsReportedAndTheOthersStillExport()
         {
             using var fixture = new ProjectFixture();
@@ -611,6 +612,7 @@ namespace SIL.TextEditing.Project.Tests
             var report = Assert.Single(failed.Unexported);
             Assert.Equal(bad, report.Object);
             Assert.Equal("(record)", report.Field);
+            Assert.Contains(ExportReasons.RecordNotExported, report.Reason);
             Assert.Contains("NullReferenceException", report.Reason);
             Assert.DoesNotContain("secret-headword-value", report.Reason);
             Assert.Equal(2, all.Count(e => e.Text != null));
