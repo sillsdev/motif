@@ -179,8 +179,17 @@ public sealed partial class DeletionSafetyTests
         await Assert.ThrowsAsync<InvalidDataException>(() => Bump(forced, seed.FirstEntryId, revision2, old2, old2.GetInt32() + 1));
     }
 
+    private void MakeFormatSix()
+    {
+        Run("DROP TABLE RecordHeaders");
+        Run("DROP TABLE RecordChunks");
+        Run("DROP TABLE RecordPublicationBinding");
+        Run("PRAGMA user_version=6");
+    }
+
     private void MakeFormatFive()
     {
+        MakeFormatSix();
         Run("DROP TABLE RecordStoreCertificate");
         Run("DROP TABLE RecordContentIdentity");
         Run("PRAGMA user_version=5");
@@ -204,7 +213,7 @@ public sealed partial class DeletionSafetyTests
             await Bump(reader, seed.FirstEntryId, revision, old, old.GetInt32() + 1);
             Assert.Equal(1, reader.HistoryScans);
         }
-        Assert.Equal(6L, Scalar("PRAGMA user_version"));
+        Assert.Equal(7L, Scalar("PRAGMA user_version"));
         Assert.Equal("full-verify", Scalar("SELECT Provenance FROM RecordStoreCertificate"));
         Assert.Equal(Scalar("SELECT count(*) FROM RecordContent"), Scalar("SELECT count(*) FROM RecordContentIdentity"));
         await using var upgraded = new Store(Database);
@@ -213,10 +222,10 @@ public sealed partial class DeletionSafetyTests
     }
 
     [Fact]
-    public async Task AFormatFiveReaderRefusesAFormatSixStore()
+    public async Task AFormatFiveReaderRefusesAFormatSevenStore()
     {
         await Import();
-        Assert.Equal(6L, Scalar("PRAGMA user_version"));
+        Assert.Equal(7L, Scalar("PRAGMA user_version"));
         var failure = Assert.Throws<InvalidDataException>(() => Store.OpenWithFormatCeiling(Database, 5));
         Assert.Equal("Unsupported record store format.", failure.Message);
         MakeFormatFive();
@@ -317,6 +326,7 @@ public sealed partial class DeletionSafetyTests
     {
         var seed = await Import();
         if (format == 5) MakeFormatFive();
+        else MakeFormatSix();
         await using (var store = new Store(Database))
         {
             var (revision, old) = await Current(store, seed.FirstEntryId);
@@ -326,11 +336,11 @@ public sealed partial class DeletionSafetyTests
             if (format == 6) Assert.Equal(0L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
             var moved = await Bump(store, seed.FirstEntryId, revision, old, old.GetInt32() + 1);
             Assert.NotEqual(revision, moved);
-            Assert.Equal(format == 5, store.UpgradedFormat);
+            Assert.True(store.UpgradedFormat);
             Assert.Equal(0L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
             await store.VerifyAsync();
         }
-        Assert.Equal(6L, Scalar("PRAGMA user_version"));
+        Assert.Equal(7L, Scalar("PRAGMA user_version"));
         await using var reopened = new Store(Database);
         Assert.Equal(StoreVerification.Certified, reopened.Verification);
     }
@@ -349,7 +359,7 @@ public sealed partial class DeletionSafetyTests
         Assert.Equal(5L, Scalar("PRAGMA user_version"));
         var (revision, _) = await Current(store, seed.FirstEntryId);
         await Bump(store, seed.FirstEntryId, revision, old, old.GetInt32() + 1);
-        Assert.Single(told);
+        Assert.Equal(2, told.Count);
         Assert.True(store.UpgradedFormat);
     }
 
@@ -418,23 +428,34 @@ public sealed partial class DeletionSafetyTests
         Assert.Equal(StoreVerification.Certified, watcher.Verification);
     }
 
-    [Fact]
-    public async Task ACrashBetweenAListOperationsHistoryAndItsPublicationLeavesTheFlagAndNoCertifiedMismatch()
+    [Theory]
+    [InlineData(WriteStage.HistoryWritten)]
+    [InlineData(WriteStage.StateWritten)]
+    [InlineData(WriteStage.Committed)]
+    public async Task AListOperationIsOneTransactionSoACrashAtAnyStageLeavesTheOldPointOrTheNewNeverAGap(WriteStage stage)
     {
-        var seed = await Import();
+        await Import();
         string oldRevision;
         await using (var crashing = new Store(Database))
         {
             oldRevision = (await crashing.ReferencesAsync()).Revision;
             var swap = await SwapFirstList(crashing);
-            crashing.WriteStageReached = reached => { if (reached == WriteStage.HistoryWritten) throw new Crash(); };
+            crashing.WriteStageReached = reached => { if (reached == stage) throw new Crash(); };
             await Assert.ThrowsAsync<Crash>(() => crashing.CommitListOperationsAsync([swap], Guid.NewGuid()));
         }
-        Assert.Equal(1L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
-        Assert.Equal(oldRevision, Scalar("SELECT Revision FROM RecordStoreState"));
-        Assert.Equal(oldRevision, Scalar("SELECT Revision FROM RecordStoreCertificate"));
-        // History and content are ahead of the published point, so the store will not open.
-        Assert.Throws<InvalidDataException>(() => new Store(Database));
+        var committed = stage == WriteStage.Committed;
+        var state = (string)Scalar("SELECT Revision FROM RecordStoreState")!;
+        Assert.Equal(committed, state != oldRevision);
+        // History, state row, certificate and binding always agree.
+        Assert.Equal(state, Scalar("SELECT Revision FROM RecordStoreCertificate"));
+        Assert.Equal(state, Scalar("SELECT Revision FROM RecordPublicationBinding"));
+        Assert.Equal(0L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
+        await using var reopened = new Store(Database);
+        Assert.Equal(StoreVerification.Certified, reopened.Verification);
+        Assert.Equal(state, (await reopened.ReferencesAsync()).Revision);
+        await reopened.VerifyAsync();
+        await reopened.CommitListOperationsAsync([await SwapFirstList(reopened)], Guid.NewGuid());
+        await reopened.VerifyAsync();
     }
 
     [Fact]
@@ -554,15 +575,13 @@ public sealed partial class DeletionSafetyTests
         await using var verifier = new Store(Database);
         verifier.AfterVerifyScan = async () =>
         {
-            // Another process commits a list operation and dies before publishing.
-            await using var crashing = new Store(Database);
-            var swap = await SwapFirstList(crashing);
-            crashing.WriteStageReached = reached => { if (reached == WriteStage.HistoryWritten) throw new Crash(); };
-            await Assert.ThrowsAsync<Crash>(() => crashing.CommitListOperationsAsync([swap], Guid.NewGuid()));
+            // Another process commits history and dies before publishing it (here, by committing through Harmony alone).
+            await using var other = new Store(Database);
+            var swap = await SwapFirstList(other);
+            await other.Model.AddChange(Guid.NewGuid(), swap);
         };
         var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => verifier.VerifyAsync());
         Assert.Contains("not published", failure.Message);
-        Assert.Equal(1L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
         Assert.NotEqual(StoreVerification.Full, verifier.Verification);
     }
 
