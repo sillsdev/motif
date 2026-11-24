@@ -22,6 +22,12 @@ public static class RealizesRefusals
         $"realizes({morpheme}, attested) found no analysis that uses {morpheme}: {finding}. Parse more of the corpus (--sample), name a project with stored analyses (--project), or ask for tier possible or generated.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["morpheme"] = morpheme, ["tier"] = RealizesTiers.Attested }));
 
+    /// <summary>The parse index of the corpus could not be built; <paramref name="detail"/> carries the stderr tail or the line number.</summary>
+    public static QueryRefusalException IndexFailed(string detail) => new(new Refusal(
+        RefusalCodes.QueryRealizesIndexFailed, FailureReason.Refused,
+        $"realizes could not build the parse index of the corpus with the grammar: {detail}",
+        new Dictionary<string, string>(StringComparer.Ordinal) { ["detail"] = detail }));
+
     /// <summary><c>realizes</c> needs a grammar to parse the corpus with, a project to read stored analyses from, or both.</summary>
     public static QueryRefusalException NeedsProject() => new(new Refusal(
         RefusalCodes.QueryRealizesNeedsProject, FailureReason.InvalidArgument,

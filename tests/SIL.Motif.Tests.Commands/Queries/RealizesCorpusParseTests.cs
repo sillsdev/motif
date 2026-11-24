@@ -56,13 +56,13 @@ public sealed class RealizesCorpusParseTests : IDisposable
     private string Grammar => Path.Combine(_folder, "grammar.fwdata");
 
     private CommandOutcome<CorpusFormsResponse> Run(Replay parser, string where, string[] words, int? sample = null,
-        RecordedIndex? index = null, List<string>? notices = null)
+        RecordedIndex? index = null, List<string>? notices = null, IRealizesIndexBuilder? builder = null)
     {
         var path = Path.Combine(_folder, "words.tsv");
         File.WriteAllText(path, string.Concat(words.Select((word, position) => word + "\t" + Math.Max(1, 10 - position) + "\n")));
         if (!File.Exists(Grammar)) File.WriteAllText(Grammar, "grammar one");
         return CorpusQueryCommand.Forms(new CorpusFormsRequest(path, Where: where, GrammarPath: Grammar, Sample: sample), null, default, parser,
-            index ?? new RecordedIndex(), Path.Combine(_folder, "cache"), (notices ?? []).Add);
+            builder ?? index ?? new RecordedIndex(), Path.Combine(_folder, "cache"), (notices ?? []).Add);
     }
 
     [Fact]
@@ -203,6 +203,84 @@ public sealed class RealizesCorpusParseTests : IDisposable
         Assert.Equal(1, other.Builds);
         Run(Recorded(), where, [.. words, "extra"], 0, other, notices);
         Assert.Equal(1, other.Builds);
+    }
+
+    private sealed class FailingIndex(string message) : IRealizesIndexBuilder
+    {
+        public string Identity => "failing-build-000001";
+
+        public string Build(string grammarPath, IReadOnlyList<string> words, CancellationToken cancellationToken) =>
+            throw new RealizesIndexException(message);
+    }
+
+    [Fact]
+    public void ABatchThatFailsIsRefusedWithItsErrorOutput()
+    {
+        var outcome = Run(Recorded(), $"realizes({Suffix}, attested)", ["tikas"], sample: 0,
+            index: null, builder: new FailingIndex("pangloss batch exited 3 and wrote no analyses. grammar load failed"));
+        Assert.Equal(RefusalCodes.QueryRealizesIndexFailed, outcome.Refusal!.Code);
+        Assert.Contains("exited 3", outcome.Refusal.Message);
+        Assert.Contains("grammar load failed", outcome.Refusal.Facts!["detail"]);
+    }
+
+    [Fact]
+    public void AMalformedAnalysesLineIsRefusedWithItsLineNumber()
+    {
+        var lines = RecordedParse.BatchAnalyses.Split('\n');
+        var broken = new RecordedIndex(string.Join("\n", lines[0], "{\"word\":", lines[2]));
+        var outcome = Run(Recorded(), $"realizes({Suffix}, attested)", ["tikas", "itkas"], sample: 0, index: broken);
+        Assert.Equal(RefusalCodes.QueryRealizesIndexFailed, outcome.Refusal!.Code);
+        Assert.Contains("line 2", outcome.Refusal.Message);
+        Assert.False(Directory.Exists(Path.Combine(_folder, "cache")));
+    }
+
+    private string TheOnlyCacheFile() => Assert.Single(Directory.EnumerateFiles(Path.Combine(_folder, "cache"), "*.gz"));
+
+    [Theory]
+    [InlineData("truncated")]
+    [InlineData("garbage")]
+    [InlineData("badrow")]
+    public void AnUnreadableCachedIndexIsDeletedAndRebuiltOnceWithANote(string damage)
+    {
+        var notices = new List<string>();
+        var index = new RecordedIndex();
+        var where = $"realizes({Suffix}, attested)";
+        Run(Recorded(), where, ["tikas", "itkas"], 0, index, notices);
+        var file = TheOnlyCacheFile();
+        switch (damage)
+        {
+            case "truncated": File.WriteAllBytes(file, File.ReadAllBytes(file)[..20]); break;
+            case "garbage": File.WriteAllText(file, "not a gzip file"); break;
+            default:
+                using (var stream = File.Create(file))
+                using (var zip = new System.IO.Compression.GZipStream(stream, System.IO.Compression.CompressionLevel.Fastest))
+                using (var writer = new StreamWriter(zip))
+                    writer.Write("motif-realizes-parse-index/v1\ntikas\t0\tno-colon-here\n");
+                break;
+        }
+        var outcome = Run(Recorded(), where, ["tikas", "itkas"], 0, index, notices);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(2, index.Builds);
+        Assert.Single(notices, notice => notice.Contains("discarding the cached parse index"));
+        Run(Recorded(), where, ["tikas", "itkas"], 0, index, notices);
+        Assert.Equal(2, index.Builds);
+    }
+
+    [Fact]
+    public void OnlyTheNewestEightIndexesAreKept()
+    {
+        var cache = Directory.CreateDirectory(Path.Combine(_folder, "cache")).FullName;
+        for (var i = 0; i < 10; i++)
+        {
+            var old = Path.Combine(cache, $"old-{i:D2}.gz");
+            File.WriteAllText(old, "x");
+            File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddHours(-20 + i));
+        }
+        Run(Recorded(), $"realizes({Suffix}, attested)", ["tikas", "itkas"], 0);
+        var kept = Directory.EnumerateFiles(cache, "*.gz").Select(Path.GetFileName).Order().ToList();
+        Assert.Equal(RealizesParseIndexCache.KeepIndexes, kept.Count);
+        Assert.DoesNotContain("old-00.gz", kept);
+        Assert.Contains("old-09.gz", kept);
     }
 
     [Fact]

@@ -8,6 +8,9 @@ using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Commands.Queries;
 
+/// <summary>The parse index could not be built: <c>pangloss batch</c> failed, or what it wrote is malformed.</summary>
+internal sealed class RealizesIndexException(string message) : Exception(message);
+
 /// <summary>How the grammar answered one word of the index.</summary>
 internal enum IndexedStatus
 {
@@ -51,20 +54,29 @@ internal sealed class RealizesParseIndex
     public static RealizesParseIndex FromBatch(string analysesPath, IEnumerable<string> words)
     {
         var read = new Dictionary<string, IndexedWord>(StringComparer.Ordinal);
+        var number = 0;
         foreach (var line in File.ReadLines(analysesPath))
         {
+            number++;
             if (string.IsNullOrWhiteSpace(line)) continue;
-            using var document = JsonDocument.Parse(line);
-            var row = document.RootElement;
-            var word = row.GetProperty("word").GetString()!;
-            var status = Flag(row, "invalidShape") ? IndexedStatus.Unsegmentable : Flag(row, "timedOut") ? IndexedStatus.TimedOut
-                : Flag(row, "capped") ? IndexedStatus.Capped : IndexedStatus.Ok;
-            var analyses = new List<IReadOnlyList<IndexedMorph>>();
-            if (row.TryGetProperty("analyses", out var listed) && listed.ValueKind == JsonValueKind.Array)
-                foreach (var analysis in listed.EnumerateArray())
-                    analyses.Add([.. analysis.GetProperty("morphs").EnumerateArray()
-                        .Select(morph => new IndexedMorph(Text(morph, "form"), Text(morph, "msa")))]);
-            read[word] = new IndexedWord(status, analyses);
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                var row = document.RootElement;
+                var word = row.GetProperty("word").GetString() ?? throw new KeyNotFoundException("word");
+                var status = Flag(row, "invalidShape") ? IndexedStatus.Unsegmentable : Flag(row, "timedOut") ? IndexedStatus.TimedOut
+                    : Flag(row, "capped") ? IndexedStatus.Capped : IndexedStatus.Ok;
+                var analyses = new List<IReadOnlyList<IndexedMorph>>();
+                if (row.TryGetProperty("analyses", out var listed) && listed.ValueKind == JsonValueKind.Array)
+                    foreach (var analysis in listed.EnumerateArray())
+                        analyses.Add([.. analysis.GetProperty("morphs").EnumerateArray()
+                            .Select(morph => new IndexedMorph(Text(morph, "form"), Text(morph, "msa")))]);
+                read[word] = new IndexedWord(status, analyses);
+            }
+            catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
+            {
+                throw new RealizesIndexException($"line {number} of the analyses pangloss batch wrote is malformed ({exception.Message}).");
+            }
         }
         var all = new Dictionary<string, IndexedWord>(StringComparer.Ordinal);
         foreach (var word in words) all[word] = read.GetValueOrDefault(word) ?? new IndexedWord(IndexedStatus.Failed, []);
@@ -98,12 +110,19 @@ internal sealed class RealizesParseIndex
         {
             var parts = line.Split('\t');
             if (parts.Length != 3 || !int.TryParse(parts[1], out var status)) return null;
-            var analyses = parts[2].Length == 0 ? [] : parts[2].Split('|').Select(analysis => (IReadOnlyList<IndexedMorph>)
-                [.. analysis.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(morph =>
+            var analyses = new List<IReadOnlyList<IndexedMorph>>();
+            if (parts[2].Length > 0)
+                foreach (var analysis in parts[2].Split('|'))
                 {
-                    var at = morph.IndexOf(':');
-                    return new IndexedMorph(morph[..at], morph[(at + 1)..]);
-                })]).ToList();
+                    var morphs = new List<IndexedMorph>();
+                    foreach (var morph in analysis.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var at = morph.IndexOf(':');
+                        if (at < 0) return null;
+                        morphs.Add(new IndexedMorph(morph[..at], morph[(at + 1)..]));
+                    }
+                    analyses.Add(morphs);
+                }
             words[parts[0]] = new IndexedWord((IndexedStatus)status, analyses);
         }
         return new RealizesParseIndex(words);
@@ -145,23 +164,42 @@ internal sealed class PanGlossIndexBuilder(string executable) : IRealizesIndexBu
                      "--threads", Math.Clamp(Environment.ProcessorCount / 2, 1, 4).ToString(), "--analyses", analyses,
                  })
             start.ArgumentList.Add(argument);
-        using var process = Process.Start(start) ?? throw new IOException("pangloss batch did not start.");
-        var errors = process.StandardError.ReadToEndAsync(CancellationToken.None);
-        process.StandardOutput.ReadToEndAsync(CancellationToken.None);
-        try { process.WaitForExitAsync(cancellationToken).GetAwaiter().GetResult(); }
-        catch (OperationCanceledException)
+        var kept = false;
+        try
         {
-            try { process.Kill(true); } catch (InvalidOperationException) { }
-            Directory.Delete(folder, true);
-            throw;
+            Process process;
+            try { process = Process.Start(start) ?? throw new RealizesIndexException("pangloss batch did not start."); }
+            catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or IOException)
+            {
+                throw new RealizesIndexException($"pangloss batch did not start: {exception.Message}");
+            }
+            using (process)
+            {
+                var errors = process.StandardError.ReadToEndAsync(CancellationToken.None);
+                process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+                try { process.WaitForExitAsync(cancellationToken).GetAwaiter().GetResult(); }
+                catch (OperationCanceledException)
+                {
+                    try { process.Kill(true); } catch (InvalidOperationException) { }
+                    throw;
+                }
+                if (process.ExitCode != 0 || !File.Exists(analyses))
+                    throw new RealizesIndexException($"pangloss batch exited {process.ExitCode} and wrote no analyses. " + Tail(errors.GetAwaiter().GetResult()));
+            }
+            kept = true;
+            return analyses;
         }
-        if (process.ExitCode != 0 || !File.Exists(analyses))
+        finally
         {
-            var message = errors.GetAwaiter().GetResult();
-            Directory.Delete(folder, true);
-            throw new IOException($"pangloss batch exited {process.ExitCode} and wrote no analyses. {message}".Trim());
+            if (!kept) TryDelete(folder);
         }
-        return analyses;
+    }
+
+    private static string Tail(string text) => text.Length <= 400 ? text.Trim() : "..." + text[^400..].Trim();
+
+    private static void TryDelete(string folder)
+    {
+        try { Directory.Delete(folder, true); } catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
     }
 }
 
@@ -182,6 +220,22 @@ internal static class RealizesParseIndexCache
         return $"{grammar[..16]}-{corpus[..16]}-{Bare(parserIdentity)[..16]}.gz";
     }
 
+    /// <summary>How many parse indexes stay under the cache folder; the newest by modified time.</summary>
+    internal const int KeepIndexes = 8;
+
+    private static void Prune(string root, string written)
+    {
+        try
+        {
+            foreach (var old in new DirectoryInfo(root).EnumerateFiles("*.gz").Where(file => file.FullName != written)
+                         .OrderByDescending(file => file.LastWriteTimeUtc).Skip(KeepIndexes - 1))
+                old.Delete();
+            foreach (var orphan in new DirectoryInfo(root).EnumerateFiles("*.tmp").Where(file => file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1)))
+                orphan.Delete();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+    }
+
     private static string Bare(string digest) => digest[(digest.IndexOf(':') + 1)..];
 
     /// <summary>The cached index, or one built now; <paramref name="notice"/> hears before a slow build starts.</summary>
@@ -192,12 +246,19 @@ internal static class RealizesParseIndexCache
         var path = Path.Combine(root, KeyFor(grammarPath, words, builder.Identity));
         if (File.Exists(path))
         {
+            string? why = null;
             try
             {
                 using var stream = File.OpenRead(path);
                 if (RealizesParseIndex.Read(stream) is { } cached) return (cached, false, Math.Round(clock.Elapsed.TotalSeconds, 1));
+                why = "it is not a parse index";
             }
-            catch (Exception exception) when (exception is IOException or InvalidDataException) { }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or ArgumentException or FormatException)
+            {
+                why = exception.Message;
+            }
+            notice($"discarding the cached parse index {Path.GetFileName(path)} ({why}); rebuilding it");
+            try { File.Delete(path); } catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
         }
         notice($"building parse index for {words.Count} word types (one-off per grammar, corpus and PanGloss build; a large grammar takes about a minute and a half)");
         var analyses = builder.Build(grammarPath, words, cancellationToken);
@@ -208,6 +269,7 @@ internal static class RealizesParseIndexCache
             var temporary = path + "." + Environment.ProcessId + ".tmp";
             using (var stream = File.Create(temporary)) index.Write(stream);
             File.Move(temporary, path, true);
+            Prune(root, path);
             return (index, true, Math.Round(clock.Elapsed.TotalSeconds, 1));
         }
         finally

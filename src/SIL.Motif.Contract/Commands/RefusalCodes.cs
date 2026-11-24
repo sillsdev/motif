@@ -382,6 +382,8 @@ public static class RefusalCodes
     public const string QueryRealizesNegationIncomplete = "query.realizes-negation-incomplete";
     /// <summary><c>realizes(M, attested)</c> found no stored analysis that uses the morpheme to read its forms from.</summary>
     public const string QueryRealizesNoParses = "query.realizes-no-parses";
+    /// <summary><c>realizes(M, attested)</c> could not build the parse index of the corpus: <c>pangloss batch</c> failed or its analyses file is malformed.</summary>
+    public const string QueryRealizesIndexFailed = "query.realizes-index-failed";
     /// <summary><c>realizes</c> ran with no project to resolve the morpheme in; corpus mode names one with <c>--grammar</c>.</summary>
     public const string QueryRealizesNeedsProject = "query.realizes-needs-project";
     /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>

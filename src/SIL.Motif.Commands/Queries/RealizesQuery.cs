@@ -122,8 +122,12 @@ internal static class RealizesQuery
                 if (context.GrammarPath is not null)
                 {
                     var corpus = context.Corpus.Words.Select(word => (word.Form, word.Tokens)).ToList();
-                    index ??= RealizesParseIndexCache.GetOrBuild(context.CacheRoot, context.GrammarPath, [.. corpus.Select(word => word.Form)],
-                        context.IndexBuilder(), context.Notice, cancellationToken);
+                    try
+                    {
+                        index ??= RealizesParseIndexCache.GetOrBuild(context.CacheRoot, context.GrammarPath, [.. corpus.Select(word => word.Form)],
+                            context.IndexBuilder(), context.Notice, cancellationToken);
+                    }
+                    catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
                     var (variants, parse) = RealizesCorpusSource.Collect(index.Value.Index, (index.Value.Built, index.Value.Seconds),
                         context.Parser, target, corpus, context.Sample, cancellationToken);
                     parts.Add(variants);
