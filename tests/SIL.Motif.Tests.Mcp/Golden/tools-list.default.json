@@ -10789,10 +10789,14 @@
   },
   {
     "name": "motif_query",
-    "description": "Query forms. Filters and groups forms, stems, uses or objects from available Trial evidence, reads forms from the Baseline or a Proposal\u0027s Trial copy with parse state and analyses (--as-of, --sides both), or runs the saved query of a Parsimony Measure.\nCommand: query forms. Agent class: Read.\n",
+    "description": "Query forms. Filters and groups forms, stems, uses or objects from available Trial evidence with and, or, not and typed field predicates, reads forms from the Baseline or a Proposal\u0027s Trial copy with parse state and analyses (--as-of, --sides both), runs a motif.query.v2 JSON document (--query-json) or prints its schema (--schema), or runs the saved query of a Parsimony Measure.\nCommand: query forms. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
       "properties": {
+        "query": {
+          "type": "object",
+          "description": "A motif.query.v2 document: version \u0022motif.query.v2\u0022, from, where (and/or/not over {field, op, value} predicates; ops eq ne in nin lt gt has regex contains exists; regex is anchored, contains is not), side, sides, sort, limit, group and the options below. Replaces every other query argument. The full JSON Schema is returned by motif_query_schema and printed by motif query --schema. morph, seq, phon, env and realizes are reserved and refused as not yet available."
+        },
         "saved": {
           "type": "string",
           "description": "A measure id whose saved query replaces from, where and group.",
@@ -11072,6 +11076,26 @@
           "type": "string",
           "description": "Order of an asOf run\u0027s rows: [baseline.|proposal.]column[:desc], with column form, base, kind, entry, id, morph-type, variant-type, environments, category, tokens, parse-state or parse-tokens."
         },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_query_schema",
+    "description": "Returns the JSON Schema of a motif.query.v2 document: every op, source and column with its type, and the reserved kinds.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
         "project": {
           "type": "string",
           "description": "Known project name or recorded .fwdata path."
