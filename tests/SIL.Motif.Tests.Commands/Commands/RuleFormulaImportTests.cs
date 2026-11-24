@@ -353,10 +353,176 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         new FwDataProjectLoader().Save(cache);
         var written = new[] { ("p + [C] <[C] [V]> *", "$1 $2 $3~[voi:+] $4 $5"), ("*", "m <a i> [V] $1") }
             .SelectMany(pair => Lower(cache, pair.Item1, pair.Item2).Operations).Select(operation => operation.Kind).ToHashSet();
+        var (path, _) = Start();
+        Import(path, "seed", "<[C] [V]> *", "$1 $2 <a i>");
+        using (var seeded = new FwDataProjectLoader().LoadCache(path))
+            written.UnionWith(Lower(seeded, "<[C] a p> *", "$1 $2 <a p>").Operations.Select(operation => operation.Kind));
         var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
         var owned = new RecordWritableFields(schema).Entries.Where(entry => entry.Value is WritableFieldResolution.Covered { Owner: not null }).ToList();
         Assert.NotEmpty(owned);
         Assert.All(owned, entry => Assert.Contains(((WritableFieldResolution.Covered)entry.Value).Kind, written));
+    }
+
+
+    // ---- in-place lowering: a field that was only edited keeps its object
+
+    private static (List<Guid> Inputs, List<Guid> Outputs) Members(string path)
+    {
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        var process = cache.LangProject.LexDbOA.Entries.Single(e => e.Guid == EntryId).AlternateFormsOS.OfType<IMoAffixProcess>().Single();
+        return (process.InputOS.Select(item => item.Guid).ToList(), process.OutputOS.Select(item => item.Guid).ToList());
+    }
+
+    private static Guid? ContentOf(string path, Guid output)
+    {
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        var mapping = cache.ServiceLocator.GetObject(output);
+        return mapping switch { IMoCopyFromInput copy => copy.ContentRA?.Guid, IMoModifyFromInput modify => modify.ContentRA?.Guid, _ => null };
+    }
+
+    [Fact]
+    public void AFeatureChangeInOneColumnKeepsEveryGuid()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "[C] [V] *", "$1 $2 $3 a");
+        var before = Members(path);
+        Import(path, "two", "[C] p *", "$1 $2 $3 a");
+        var after = Members(path);
+        Assert.Equal(before.Inputs, after.Inputs);
+        Assert.Equal(before.Outputs, after.Outputs);
+        Assert.Equal(after.Inputs[2], ContentOf(path, after.Outputs[2]));
+    }
+
+    [Fact]
+    public void AReorderKeepsGuidsByPositionWithChangedContents()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "[C] [V] *", "$1 $2 $3");
+        var before = Members(path);
+        Import(path, "two", "[V] [C] *", "$3 $1 $2");
+        var after = Members(path);
+        Assert.Equal(before.Inputs, after.Inputs);
+        Assert.Equal(before.Outputs, after.Outputs);
+        Assert.Equal(after.Inputs[2], ContentOf(path, after.Outputs[0]));
+        Assert.Equal(after.Inputs[0], ContentOf(path, after.Outputs[1]));
+        Assert.Equal(after.Inputs[1], ContentOf(path, after.Outputs[2]));
+    }
+
+    [Fact]
+    public void AnInsertionAtTheEndKeepsTheEarlierGuids()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "[C] *", "$1 $2");
+        var before = Members(path);
+        Import(path, "two", "[C] * [V]", "$1 $2 $3");
+        var after = Members(path);
+        Assert.Equal(before.Inputs, after.Inputs.Take(2));
+        Assert.Equal(before.Outputs, after.Outputs.Take(2));
+        Assert.Equal(3, after.Inputs.Count);
+        Assert.Equal(3, after.Outputs.Count);
+    }
+
+    [Fact]
+    public void AKindChangeAtOnePositionRecreatesOnlyThatObject()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "[C] [V] *", "$1 $2 $3 a");
+        var before = Members(path);
+        Import(path, "two", "[C] # *", null);
+        var after = Members(path);
+        Assert.Equal(before.Inputs[0], after.Inputs[0]);
+        Assert.NotEqual(before.Inputs[1], after.Inputs[1]);
+        Assert.Equal(before.Inputs[2], after.Inputs[2]);
+        Assert.Equal(before.Outputs, after.Outputs);
+        Assert.Equal(after.Inputs[1], ContentOf(path, after.Outputs[1]));
+        Import(path, "three", null, "$1 $2 $3 <a i>");
+        var last = Members(path);
+        Assert.Equal(after.Outputs, last.Outputs);
+    }
+
+    [Fact]
+    public void AnOutputKindChangeRecreatesOnlyThatMapping()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "[C] *", "$1 a $2");
+        var before = Members(path);
+        Import(path, "two", "[C] *", "$1 [V] $2");
+        var after = Members(path);
+        Assert.Equal(before.Inputs, after.Inputs);
+        Assert.Equal(before.Outputs[0], after.Outputs[0]);
+        Assert.NotEqual(before.Outputs[1], after.Outputs[1]);
+        Assert.Equal(before.Outputs[2], after.Outputs[2]);
+    }
+
+    [Fact]
+    public void ACopyFollowsTheKeptContextWhenOnlyTheInputChanges()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "[C] [V] *", "$1 $2 $3");
+        var before = Members(path);
+        Import(path, "two", "[C] + *", null);
+        var after = Members(path);
+        Assert.Equal(before.Outputs, after.Outputs);
+        Assert.Equal(before.Inputs[0], after.Inputs[0]);
+        for (var i = 0; i < 3; i++)
+            Assert.Equal(after.Inputs[i], ContentOf(path, after.Outputs[i]));
+    }
+
+    [Fact]
+    public void ASequenceKeepsItsGuidAndItsSameKindMembers()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "<[C] [V] [C]> *", "$1 $2");
+        var before = Members(path);
+        List<Guid> Parts()
+        {
+            using var cache = new FwDataProjectLoader().LoadCache(path);
+            return ((IPhSequenceContext)cache.ServiceLocator.GetObject(before.Inputs[0])).MembersRS.Select(member => member.Guid).ToList();
+        }
+        var members = Parts();
+        Import(path, "two", "<[V] a> *", "$1 $2");
+        var after = Members(path);
+        var changed = Parts();
+        Assert.Equal(before.Inputs, after.Inputs);
+        Assert.Equal(2, changed.Count);
+        Assert.Equal(members[0], changed[0]);
+        Assert.NotEqual(members[1], changed[1]);
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        Assert.Equal(cache.LangProject.PhonologicalDataOA.ContextsOS.Count,
+            cache.LangProject.PhonologicalDataOA.ContextsOS.Count(context => context.ReferringObjects.Any()));
+        Assert.Equal(2, cache.LangProject.PhonologicalDataOA.ContextsOS.Count);
+    }
+
+    [Fact]
+    public void AnInsertedGroupKeepsItsMappingAndItsLeadingUnits()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "[C] *", "$1 <a i> $2");
+        var before = Members(path);
+        Import(path, "two", "[C] *", "$1 <a p u> $2");
+        Assert.Equal(before.Outputs, Members(path).Outputs);
+        Import(path, "three", "[C] *", "$1 a $2");
+        Assert.Equal(before.Outputs, Members(path).Outputs);
+    }
+
+    [Fact]
+    public void AnUnchangedFormulaEmitsNoOperations()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "[C] <[C] [V]> *", "$1~[voi:+] $2 $3 <a i> [V]");
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        Assert.Empty(Lower(cache, "[C] <[C] [V]> *", "$1~[voi:+] $2 $3 <a i> [V]").Operations);
+    }
+
+    [Fact]
+    public void AnEditedModifyKeepsItsClassWhenOnlyTheColumnMoves()
+    {
+        var (path, _) = Start();
+        Import(path, "one", "[C] [V] *", "$1~[voi:+] $2 $3");
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        var lowering = Lower(cache, null, "$2~[voi:+] $1 $3");
+        Assert.DoesNotContain(lowering.Operations, operation => operation.Kind.Contains("phPhonData/createNaturalClasses", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(lowering.Operations, operation => operation.Kind == "grammar/moModifyFromInput/setContent");
     }
 
     [Fact]
