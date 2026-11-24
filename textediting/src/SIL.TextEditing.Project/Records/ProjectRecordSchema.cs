@@ -245,7 +245,10 @@ namespace SIL.TextEditing.Project
             bool isRich = t == CellarPropertyType.String || t == CellarPropertyType.MultiString;
             bool paragraph = t == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "StText";
             bool featureStructure = t == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "FsFeatStruc" && notation == FeatureStructureNotation.Name;
-            if (notation != null && !isText && !isRich && !featureStructure) throw new ArgumentException("Notation requires a string field or an owned feature structure: " + key);
+            bool ruleFormula = t == CellarPropertyType.OwningSequence && notation == RuleNotation.Name
+                && RuleNotation.TryFieldOf(m.GetOwnClsName(field), m.GetFieldName(field), out _);
+            if (notation != null && !isText && !isRich && !featureStructure && !ruleFormula)
+                throw new ArgumentException("Notation requires a string field, an owned feature structure or a rule-formula field: " + key);
             if (blockText != null && !paragraph) throw new ArgumentException("Blocks require a paragraph field: " + key);
             string? wsText = (string?)entry.Attribute("ws");
             if (wsText != null && (!(isText || isRich || paragraph) || multi))
