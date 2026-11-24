@@ -449,8 +449,6 @@ Covered	PartOfSpeech	description	CmPossibility.Description	SetRich	text/setRichS
 Covered	PartOfSpeech	description	CmPossibility.Description	ClearRich	text/setRichString	-	-
 Covered	PartOfSpeech	discussion	CmPossibility.Discussion	SetRich	text/setParagraphs	-	-
 Covered	PartOfSpeech	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
-Covered	PartOfSpeech	inflectable-feats	PartOfSpeech.InflectableFeats	AddReference	grammar/partOfSpeech/addRefInflectableFeats	-	-
-Covered	PartOfSpeech	inflectable-feats	PartOfSpeech.InflectableFeats	RemoveReference	grammar/partOfSpeech/removeRefInflectableFeats	-	-
 Covered	PartOfSpeech	inflection-classes	PartOfSpeech.InflectionClasses	AddObject	grammar/partOfSpeech/createInflectionClasses	-	-
 Covered	PartOfSpeech	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
 Covered	PartOfSpeech	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
@@ -1174,6 +1172,8 @@ OtherFields	PartOfSpeech	help-id	CmPossibility.HelpId	Set	none	NoOperationKind	-
 OtherFields	PartOfSpeech	help-id	CmPossibility.HelpId	Clear	none	NoOperationKind	-
 OtherFields	PartOfSpeech	hidden	CmPossibility.Hidden	Set	none	NoOperationKind	-
 OtherFields	PartOfSpeech	hidden	CmPossibility.Hidden	Clear	none	NoOperationKind	-
+OtherFields	PartOfSpeech	inflectable-feats	PartOfSpeech.InflectableFeats	AddReference	none	NoOperationKind	-
+OtherFields	PartOfSpeech	inflectable-feats	PartOfSpeech.InflectableFeats	RemoveReference	none	NoOperationKind	-
 OtherFields	PartOfSpeech	inflection-classes	PartOfSpeech.InflectionClasses	RemoveObject	none	NoOperationKind	-
 OtherFields	PartOfSpeech	inher-feat-val	PartOfSpeech.InherFeatVal	AddObject	none	NoOperationKind	-
 OtherFields	PartOfSpeech	inher-feat-val	PartOfSpeech.InherFeatVal	RemoveObject	none	NoOperationKind	-
@@ -1555,7 +1555,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/moStratum/setAbbreviation	MoStratum	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
 # Handler	grammar/moUnclassifiedAffixMsa/clearPartOfSpeech	MoUnclassifiedAffixMsa	PartOfSpeech	Clear	Forbidden	-		Unspecified	False
 # Handler	grammar/moUnclassifiedAffixMsa/setPartOfSpeech	MoUnclassifiedAffixMsa	PartOfSpeech	Set	Forbidden	-		Unspecified	False
-# Handler	grammar/partOfSpeech/addRefInflectableFeats	PartOfSpeech	InflectableFeats	AddReference	Forbidden	-		Unspecified	False
+# Handler	grammar/partOfSpeech/addRefInflectableFeats	(no direct field edit)
 # Handler	grammar/partOfSpeech/clearDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Clear	Forbidden	-		Unspecified	False
 # Handler	grammar/partOfSpeech/createAffixSlots	PartOfSpeech	AffixSlots	AddObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
 # Handler	grammar/partOfSpeech/createAffixTemplates	PartOfSpeech	AffixTemplates	AddObject	RequiredWhenNonempty	-	MoInflAffixTemplate	Unspecified	False
@@ -1563,7 +1563,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/partOfSpeech/createStemNames	PartOfSpeech	StemNames	AddObject	Forbidden	-	MoStemName	Unspecified	False
 # Handler	grammar/partOfSpeech/deleteAffixSlots	PartOfSpeech	AffixSlots	RemoveObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
 # Handler	grammar/partOfSpeech/moveAffixTemplates	PartOfSpeech	AffixTemplates	MoveObject	Required	-		Unspecified	False
-# Handler	grammar/partOfSpeech/removeRefInflectableFeats	PartOfSpeech	InflectableFeats	RemoveReference	Forbidden	-		Unspecified	False
+# Handler	grammar/partOfSpeech/removeRefInflectableFeats	(no direct field edit)
 # Handler	grammar/partOfSpeech/setDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Set	Forbidden	-		Unspecified	False
 # Handler	grammar/phCode/clearRepresentation	PhCode	Representation	ClearAlternative	Forbidden	-		Unspecified	False
 # Handler	grammar/phCode/setRepresentation	PhCode	Representation	SetAlternative	Forbidden	-		Unspecified	False

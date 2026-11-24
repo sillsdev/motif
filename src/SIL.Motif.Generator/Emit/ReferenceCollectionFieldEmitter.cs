@@ -29,6 +29,7 @@ public static class ReferenceCollectionFieldEmitter
                 : !spec.SupportsPlacement
                     ? LegacyAddRefLoweringBlock
                     : PlacementAddRefLoweringBlock)
+            .Replace("__HANDLERREGISTRATION__", spec.FeatureSystemExpression is not null ? TypedOnlyRegistration : RecordFileRegistration)
             .Replace("__MOVE_BLOCK__", spec.MoveKind is null ? string.Empty : "\n\n" + MoveBlock)
             .Replace("__MOVE_REGISTRATION__", spec.MoveKind is null ? string.Empty : MoveRegistration + "\n")
             .Replace("__PREFIX__", prefix)
@@ -62,6 +63,20 @@ public static class ReferenceCollectionFieldEmitter
                 ? $"{prefix}AddRefLowering.Apply(cache, {varName}, memberId);"
                 : $"{prefix}AddRefLowering.Apply(cache, {varName}, memberId, operation.Placement);");
     }
+
+    private const string RecordFileRegistration = """
+        OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance,
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.AddReference,
+                        FieldWritePlacement.__ADD_PLACEMENT__) { Payload = FieldWritePayload.Generic });
+                OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance,
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
+        """;
+
+    // A typed operation with no record-file capability: the field has no text form.
+    private const string TypedOnlyRegistration = """
+        OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance);
+                OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance);
+        """;
 
     private const string MoveRegistration = """
                 OperationKindRegistry.Register(Move__FIELDNAME__);
@@ -198,11 +213,7 @@ public static class ReferenceCollectionFieldEmitter
             {
                 OperationKindRegistry.Register(AddRef__FIELDNAME__);
                 OperationKindRegistry.Register(RemoveRef__FIELDNAME__);
-                OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance,
-                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.AddReference,
-                        FieldWritePlacement.__ADD_PLACEMENT__) { Payload = FieldWritePayload.Generic });
-                OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance,
-                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
+                __HANDLERREGISTRATION__
                 OperationSlotRegistry.RegisterMember(AddRef__FIELDNAME__, __SNAPSHOTFIELD__);
                 OperationSlotRegistry.RegisterMember(RemoveRef__FIELDNAME__, __SNAPSHOTFIELD__);
         __MOVE_REGISTRATION__    }

@@ -31,11 +31,8 @@ public static class PartOfSpeechInflectableFeatsOperationKinds
     {
         OperationKindRegistry.Register(AddRefInflectableFeats);
         OperationKindRegistry.Register(RemoveRefInflectableFeats);
-        OperationHandlerRegistry.Register(AddRefInflectableFeats, PartOfSpeechInflectableFeatsAddRefHandler.Instance,
-            new FieldWriteCapability("PartOfSpeech", "InflectableFeats", RecordWriteVerb.AddReference,
-                FieldWritePlacement.Forbidden) { Payload = FieldWritePayload.Generic });
-        OperationHandlerRegistry.Register(RemoveRefInflectableFeats, PartOfSpeechInflectableFeatsRemoveRefHandler.Instance,
-            new FieldWriteCapability("PartOfSpeech", "InflectableFeats", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
+        OperationHandlerRegistry.Register(AddRefInflectableFeats, PartOfSpeechInflectableFeatsAddRefHandler.Instance);
+        OperationHandlerRegistry.Register(RemoveRefInflectableFeats, PartOfSpeechInflectableFeatsRemoveRefHandler.Instance);
         OperationSlotRegistry.RegisterMember(AddRefInflectableFeats, SnapshotFields.PartOfSpeechInflectableFeats);
         OperationSlotRegistry.RegisterMember(RemoveRefInflectableFeats, SnapshotFields.PartOfSpeechInflectableFeats);
     }
