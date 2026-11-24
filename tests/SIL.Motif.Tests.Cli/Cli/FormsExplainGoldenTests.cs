@@ -178,7 +178,8 @@ public sealed class FormsExplainGoldenTests
         Assert.Equal(("00000000", "id"), (surface.Allomorphs[1].Label, surface.Allomorphs[1].LabelSource));
         Assert.Contains("| rannas | ranna, 00000000 | 00000000 |", Markdown(response), StringComparison.Ordinal);
 
-        var bare = Unnamed.Replace("\"msaGuid\":\"00000000-0000-0000-0000-000000000052\",\"role\"", "\"role\"", StringComparison.Ordinal);
+        var bare = Unnamed.Replace("\"msaGuid\":\"00000000-0000-0000-0000-000000000052\",\"role\"", "\"role\"", StringComparison.Ordinal)
+            .Replace("\"entryGuid\":\"00000000-0000-0000-0000-000000000050\"", "\"entryGuid\":null", StringComparison.Ordinal);
         var none = Run(new("ranna", null, [new FormsContextPlan([Root])], []), _ => Completed(bare)).Contexts[0].Surfaces[0];
         Assert.Equal(("unnamed affix", "none"), (none.Allomorphs[1].Label, none.Allomorphs[1].LabelSource));
     }
@@ -188,5 +189,16 @@ public sealed class FormsExplainGoldenTests
     {
         var allomorph = Recorded().Contexts[0].Surfaces[0].Allomorphs[1];
         Assert.Equal(("-s", "ruleName"), (allomorph.Label, allomorph.LabelSource));
+    }
+
+    [Fact]
+    public void AnUnnamedAffixIsNamedByItsGuidsNeverByItsPosition()
+    {
+        // Position 1 carries the root's MSA guid: the id wins, so the label is the root's form, not the affix's.
+        var crossed = Unnamed.Replace("\"msaGuid\":\"00000000-0000-0000-0000-000000000052\",\"role\"",
+            "\"msaGuid\":\"" + RecordedGenerate.RootMsa + "\",\"role\"", StringComparison.Ordinal);
+        var allomorph = Run(Explicit(), _ => Completed(crossed)).Contexts[0].Surfaces[0].Allomorphs[1];
+
+        Assert.Equal(("ranna", "morpheme"), (allomorph.Label, allomorph.LabelSource));
     }
 }

@@ -31,7 +31,7 @@ internal static class FormsExplainProjection
             foreach (var seed in Required(root, "seeds").EnumerateArray())
             {
                 var key = Text(seed, "seedKey") ?? throw new FormatException("a seed has no seedKey");
-                var allomorphs = Required(seed, "allomorphs").EnumerateArray().Select((allomorph, index) => Allomorph(allomorph, index, morphemes)).ToArray();
+                var allomorphs = Required(seed, "allomorphs").EnumerateArray().Select(allomorph => Allomorph(allomorph, morphemes)).ToArray();
                 var truncated = seed.TryGetProperty("traceTruncated", out var cut) && cut.ValueKind == JsonValueKind.True;
                 foreach (var surface in Required(seed, "surfaces").EnumerateArray())
                 {
@@ -65,7 +65,7 @@ internal static class FormsExplainProjection
             ? list.EnumerateArray().Select(step => Step(step, morphemes)).ToArray() : [];
 
     // An unnamed affix process rule is valid FieldWorks data, so a missing name is labelled, never refused.
-    private static FormsExplainAllomorph Allomorph(JsonElement element, int index, IReadOnlyList<ResolvedMorpheme> morphemes)
+    private static FormsExplainAllomorph Allomorph(JsonElement element, IReadOnlyList<ResolvedMorpheme> morphemes)
     {
         var shape = Text(element, "shape");
         var ruleName = Text(element, "ruleName");
@@ -77,10 +77,12 @@ internal static class FormsExplainProjection
             if (ruleName is not null) (label, source) = (ruleName, "ruleName");
             else
             {
-                // Allomorphs follow morpheme order, so position names the morpheme when no msa guid does.
-                var morpheme = morphemes.FirstOrDefault(m => msa is not null && string.Equals(m.MsaGuid, msa, StringComparison.OrdinalIgnoreCase))
-                    ?? (index > 0 && index < morphemes.Count ? morphemes[index] : null);
-                (label, source) = Synthesised(morpheme?.Form, msa ?? morpheme?.MsaGuid);
+                // A morpheme names the affix only when an MSA or entry guid ties them; position alone never does.
+                var entry = Text(element, "entryGuid");
+                var morpheme = morphemes.FirstOrDefault(m =>
+                    (msa is not null && string.Equals(m.MsaGuid, msa, StringComparison.OrdinalIgnoreCase)) ||
+                    (msa is null && entry is not null && string.Equals(m.EntryGuid, entry, StringComparison.OrdinalIgnoreCase)));
+                (label, source) = Synthesised(morpheme?.Form, msa ?? morpheme?.MsaGuid ?? entry);
             }
         }
         return new(Text(element, "role"), shape, ruleName, id, Text(element, "entryGuid"), msa, Text(element, "formGuid"), label, source);
