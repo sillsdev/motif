@@ -91,6 +91,14 @@ public sealed class ApprovedReadingSet
         return "sha256:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
     }
 
+    /// <summary>Builds a set from facts already read, for callers that hold the facts but not the open project.</summary>
+    public static ApprovedReadingSet From(IEnumerable<ApprovedAnalysisFact> analyses, int skippedOtherHumanAgentApprovals = 0)
+    {
+        ArgumentNullException.ThrowIfNull(analyses);
+        var facts = analyses.OrderBy(fact => fact.AnalysisId).ToImmutableArray();
+        return new(facts, facts.Select(fact => fact.WordformId).Distinct().Count(), skippedOtherHumanAgentApprovals, []);
+    }
+
     /// <summary>Reads the approvals from an open project without changing it.</summary>
     public static ApprovedReadingSet Read(LcmCache cache, CancellationToken ct = default)
     {

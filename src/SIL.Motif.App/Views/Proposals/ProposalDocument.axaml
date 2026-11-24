@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:guide="clr-namespace:SIL.Motif.App.Views.Guide"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ProposalDocument"
              x:DataType="vm:ProposalDocumentViewModel">
@@ -11,6 +12,10 @@
   <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
     <views:CopyableTextBlock Classes="displayTitle" Text="{Binding Label}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding StatusText}" IsVisible="{Binding ShowsLifecycleStatus}" TextWrapping="Wrap" />
+    <Button Classes="secondary" Content="{x:Static app:MotifAppStrings.ProposalBringBack}" Command="{Binding BringBackCommand}"
+            AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalBringBack}"
+            IsVisible="{Binding ShowsBringBack}" HorizontalAlignment="Left" />
+    <views:RefusalBlock DataContext="{Binding BringBackRefusal}" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding Card.BuiltByText}" IsVisible="{Binding Card.HasBuilder}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding Card.ModelText}" IsVisible="{Binding Card.HasModel}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Classes="muted" Text="{Binding Card.QuestionText}" IsVisible="{Binding Card.HasQuestion}" TextWrapping="Wrap" />
@@ -23,12 +28,44 @@
               <views:CopyableTextBlock Text="{Binding Title}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding Values}" IsVisible="{Binding HasValues}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Classes="muted" Text="{Binding Target}" IsVisible="{Binding HasTarget}" TextWrapping="Wrap" />
+              <StackPanel IsVisible="{Binding HasSenses}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                <views:CopyableTextBlock Classes="muted" Text="{Binding SensesHeading}" TextWrapping="Wrap" />
+                <ItemsControl x:Name="ProposalSenseItems" ItemsSource="{Binding SenseItemList}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ProposalSenseItem">
+                      <Border Classes="proposalSense" Classes.target="{Binding IsTarget}">
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding Text}" TextWrapping="Wrap" />
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
             </StackPanel>
           </DataTemplate>
         </views:ProgressiveItemsControl.ItemTemplate>
       </views:ProgressiveItemsControl>
       <views:ProgressiveItemsControl x:Name="ProposalSharedEffects" FullItemsSource="{Binding SharedEffectSummaries}"
                                      IsVisible="{Binding HasSharedEffectSummaries}">
+        <views:ProgressiveItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+        </views:ProgressiveItemsControl.ItemTemplate>
+      </views:ProgressiveItemsControl>
+    </StackPanel>
+    <views:CopyableTextBlock Classes="muted" Text="{Binding CurrentUnavailableNotice}" IsVisible="{Binding CurrentUnavailableNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+    <views:RefusalBlock DataContext="{Binding EntryRefusal}" />
+    <StackPanel x:Name="ProposalAppliedRecord" IsVisible="{Binding HasAppliedRecord}" Spacing="{DynamicResource Intent.Space.Related}">
+      <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalAppliedHeading}" />
+      <views:CopyableTextBlock Text="{Binding AppliedHeading}" TextWrapping="Wrap" />
+      <views:ProgressiveItemsControl x:Name="ProposalAppliedEffects" FullItemsSource="{Binding AppliedEffects}">
+        <views:ProgressiveItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+        </views:ProgressiveItemsControl.ItemTemplate>
+      </views:ProgressiveItemsControl>
+      <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalAppliedEvidenceHeading}" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalAppliedNoEvidence}"
+                               IsVisible="{Binding !HasAppliedEvidence}" TextWrapping="Wrap" />
+      <views:ProgressiveItemsControl x:Name="ProposalAppliedEvidence" FullItemsSource="{Binding AppliedEvidence}"
+                                     IsVisible="{Binding HasAppliedEvidence}">
         <views:ProgressiveItemsControl.ItemTemplate>
           <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
         </views:ProgressiveItemsControl.ItemTemplate>
@@ -95,6 +132,7 @@
     <views:ProposalApplyPanel />
     <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalRationale}" />
     <views:RationaleEditor x:Name="ProposalRationaleEditor" DataContext="{Binding RationaleEditor}" />
+    <guide:GuideQueryTables x:Name="ProposalQueries" DataContext="{Binding Queries}" />
     <views:ProposalPicturesPanel DataContext="{Binding Pictures}" />
     <views:ProposalEvidenceColumns DataContext="{Binding Evidence}" />
     <ContentControl x:Name="ProposalDiagnosticsSlot" Content="{Binding DiagnosticsContent}"

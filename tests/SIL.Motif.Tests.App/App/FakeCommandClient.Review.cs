@@ -11,10 +11,15 @@ public sealed partial class FakeCommandClient
     public Func<ShowProposalRequest, CancellationToken, Task<CommandOutcome<ProposalDetailProjection>>>?
         ShowProposalHandler { get; set; }
 
+    public List<ShowProposalRequest> ShowProposalRequests { get; } = [];
+
     public Task<CommandOutcome<ProposalDetailProjection>> ShowProposalAsync(
-        ShowProposalRequest request, CancellationToken cancellationToken) =>
-        ShowProposalHandler?.Invoke(request, cancellationToken) ??
-        Completed(ProposalDetail ?? new ProposalDetailProjection(request.ProposalId, "proposed", null, null, null, []));
+        ShowProposalRequest request, CancellationToken cancellationToken)
+    {
+        ShowProposalRequests.Add(request);
+        return ShowProposalHandler?.Invoke(request, cancellationToken) ??
+            Completed(ProposalDetail ?? new ProposalDetailProjection(request.ProposalId, "proposed", null, null, null, []));
+    }
 
     public List<SetRationaleRequest> SetRationaleRequests { get; } = [];
 
@@ -89,6 +94,40 @@ public sealed partial class FakeCommandClient
     {
         DeferProposalRequests.Add(request);
         return Completed(new ProposalStatusChangedResponse(request.ProposalId, "deferred", null));
+    }
+
+    public List<LexicalEntryRequest> LexicalEntryRequests { get; } = [];
+
+    /// <summary>The entries the Baseline holds, by the id a lookup is asked with; any other id is not found.</summary>
+    public Dictionary<string, LexicalEntryLookup> LexicalEntries { get; } = new(StringComparer.Ordinal);
+
+    public Refusal? LexicalEntryRefusal { get; set; }
+
+    public Task<CommandOutcome<LexicalEntryResponse>> ReadLexicalEntriesAsync(
+        LexicalEntryRequest request, CancellationToken cancellationToken)
+    {
+        LexicalEntryRequests.Add(request);
+        if (LexicalEntryRefusal is { } refusal)
+            return Task.FromResult(CommandOutcome<LexicalEntryResponse>.Refused(refusal));
+        var lookups = request.Ids.Select(id => LexicalEntries.TryGetValue(id, out var held) ? held :
+            new LexicalEntryLookup(id, false, null, null, null, [])).ToArray();
+        return Completed(new LexicalEntryResponse(lookups, WorkspaceContextTests.Assessment().Baseline.Token,
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
+    }
+
+    public List<UndeferRequest> UndeferProposalRequests { get; } = [];
+
+    /// <summary>What an undefer answers; null brings the Proposal back to Waiting as the store would.</summary>
+    public Refusal? UndeferRefusal { get; set; }
+
+    public Task<CommandOutcome<ProposalStatusChangedResponse>> UndeferProposalAsync(
+        UndeferRequest request, CancellationToken cancellationToken)
+    {
+        UndeferProposalRequests.Add(request);
+        if (UndeferRefusal is { } refusal)
+            return Task.FromResult(CommandOutcome<ProposalStatusChangedResponse>.Refused(refusal));
+        if (ProposalDetail is { } stored) ProposalDetail = stored with { Status = "proposed" };
+        return Completed(new ProposalStatusChangedResponse(request.ProposalId, "proposed", null));
     }
 
     public List<ProposalReviewRequest> ProposalReviewRequests { get; } = [];

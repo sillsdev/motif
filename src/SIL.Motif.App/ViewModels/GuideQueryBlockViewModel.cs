@@ -22,12 +22,14 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
     private readonly Func<string, string, Task<string?>>? _save;
     private CancellationTokenSource? _running;
     private int _generation;
+    private readonly string? _saveUnavailable;
 
     internal GuideQueryBlockViewModel(string id, string title, string body, IReadOnlyList<GuideShowDirective> shows,
         GuideQueryContext context, Func<string?> projectPath,
         Func<GuideQueryRunRequest, CancellationToken, Task<CommandOutcome<FormsQueryResponse>>> run, Func<string, string, Task<string?>>? save,
-        Action<string>? openWord, GuideSort? sort)
+        Action<string>? openWord, GuideSort? sort, string? saveUnavailable = null)
     {
+        _saveUnavailable = saveUnavailable;
         Id = id;
         Title = title.Length > 0 ? title : id;
         Body = body;
@@ -64,7 +66,7 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
 
     /// <summary>Whether the query text is being edited.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsReading), nameof(ShowsQueryText), nameof(CanSave), nameof(SaveReason), nameof(HasSaveReason))]
+    [NotifyPropertyChangedFor(nameof(IsReading), nameof(ShowsQueryText), nameof(ShowsSave), nameof(CanSave), nameof(SaveReason), nameof(HasSaveReason))]
     private bool _isEditing;
 
     /// <summary>Whether a run is under way.</summary>
@@ -92,11 +94,17 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
     /// <summary>Whether <see cref="Status"/> says anything.</summary>
     public bool HasStatus => IsRunning;
 
+    /// <summary>Whether the block offers Save at all: a block shown where its text cannot be written offers none.</summary>
+    public bool OffersSave => _save is not null;
+
+    /// <summary>Whether the Save button is shown: while editing, in a block that offers Save.</summary>
+    public bool ShowsSave => IsEditing && OffersSave;
+
     /// <summary>Whether the edited text differs from the stored text and parses as one query.</summary>
     public bool CanSave => IsEditing && _save is not null && DraftText != Body && DraftProblem is null;
 
     /// <summary>Why Save is not available while editing; empty when it is or when not editing.</summary>
-    public string SaveReason => !IsEditing ? "" : _save is null ? MotifAppStrings.GuideQuerySaveUnavailable
+    public string SaveReason => !IsEditing ? "" : _save is null ? _saveUnavailable ?? MotifAppStrings.GuideQuerySaveUnavailable
         : DraftProblem ?? (DraftText == Body ? MotifAppStrings.GuideQueryNothingToSave : "");
 
     /// <summary>Whether <see cref="SaveReason"/> says anything.</summary>
@@ -177,7 +185,7 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
             if (generation != _generation || cancellation.IsCancellationRequested) return;
             if (!outcome.Succeeded || outcome.Value is not { } response)
             {
-                Fail(outcome.Refusal?.Message ?? MotifAppStrings.GuideQueryNoAnswer);
+                Fail(outcome.Refusal is { } refused ? Describe(refused) : MotifAppStrings.GuideQueryNoAnswer);
                 return;
             }
             var (run, unreadable) = GuideQueryRun.From(response);
@@ -204,6 +212,14 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
         _running?.Cancel();
         IsRunning = false;
         OnPropertyChanged(nameof(Status));
+    }
+
+    // An author-fixable line keeps the command's detail under the sentence; a Proposal state is the sentence alone.
+    private static string Describe(Refusal refusal)
+    {
+        var shown = WindowRefusal.From(refusal, refusal.Message);
+        return refusal.Code is RefusalCodes.QueryInvalid or RefusalCodes.GuideQueryRunInvalid or RefusalCodes.GuideQueryRunNotReadOnly
+            && shown.Details is { Length: > 0 } details ? shown.Sentence + " " + details : shown.Sentence;
     }
 
     private void Fail(string message)

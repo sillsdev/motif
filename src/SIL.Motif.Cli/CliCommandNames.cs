@@ -6,6 +6,21 @@ namespace SIL.Motif.Cli;
 /// <summary>Maps a verb with its flags and positionals to the catalog command name the surface gate checks.</summary>
 internal static class CliCommandNames
 {
+    /// <summary>
+    /// The words of <c>query corpus forms ...</c> and <c>query values ...</c>, the names the usage lines print, reduced to the
+    /// <c>query --corpus ... forms ...</c> and <c>query --values ...</c> the dispatch reads; every other invocation is returned as is.
+    /// </summary>
+    internal static List<string> NormalizeQueryWords(string verb, IReadOnlyDictionary<string, string> flags,
+        List<string> positionals)
+    {
+        if (verb != "query") return positionals;
+        var words = positionals.ToList();
+        if (words is ["corpus", "forms", ..] && flags.ContainsKey("corpus")) words.RemoveAt(0);
+        if (words is ["forms", "forms", ..]) words.RemoveAt(0);
+        if (words is ["values", ..] && flags.ContainsKey("values")) words.RemoveAt(0);
+        return words;
+    }
+
     internal static string Resolve(string verb, IReadOnlyDictionary<string, string> flags,
         IReadOnlyList<string> positionals)
     {
@@ -21,9 +36,13 @@ internal static class CliCommandNames
             return "proposal compare";
         if (verb == "proposal" && positionals is ["trial", "export", ..])
             return "proposal trial export";
-        if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note")
+        if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note" or "why-lost")
             return "proposal " + positionals[0];
-        if (verb == "query" && positionals.FirstOrDefault() is "forms" or "stems" or "uses" or "objects" or "saved" or "evidence") return "query forms";
+        if (verb == "query" && flags.ContainsKey("values")) return "query values";
+        if (verb == "query" && flags.ContainsKey("corpus")) return positionals.FirstOrDefault() == "forms" ? "query corpus forms" : "query pairs";
+        if (verb == "forms" && positionals.FirstOrDefault() == "explain") return "forms explain";
+        if (verb == "query" && (positionals.FirstOrDefault() is "forms" or "stems" or "uses" or "objects" or "saved" or "evidence" ||
+                                flags.ContainsKey("schema") || flags.ContainsKey("query-json"))) return "query forms";
         if (verb == "parsimony")
         {
             if (positionals.SequenceEqual(new[] { "expectations" })) return "parsimony expectations";

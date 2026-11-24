@@ -24,11 +24,20 @@ internal static class ProjectReadCache
         return ReadSaved(project, (copy, cache) => action(cache, copy.SourceLastWriteUtc.UtcDateTime.Ticks));
     }
 
+    /// <summary>Where private scratch copies are made; tests set it for their own async flow only, to see that none is left behind.</summary>
+    internal static string? ScratchRoot
+    {
+        get => _scratchRoot.Value;
+        set => _scratchRoot.Value = value;
+    }
+
+    private static readonly AsyncLocal<string?> _scratchRoot = new();
+
     /// <summary>Reads one complete saved file through its private scratch copy, retaining that save's timestamp.</summary>
     internal static T ReadSaved<T>(ProjectLocator project, Func<SavedProjectFilesCopy, LcmCache, T> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        var directory = Path.Combine(Path.GetTempPath(), "SIL.Motif.ProjectRead", Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(ScratchRoot ?? Path.Combine(Path.GetTempPath(), "SIL.Motif.ProjectRead"), Guid.NewGuid().ToString("N"));
         try
         {
             SavedProjectFilesCopy copy;

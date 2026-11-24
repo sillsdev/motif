@@ -15,8 +15,8 @@ namespace SIL.Motif.RecordStore.HandAnalysis;
 internal sealed partial class StoreSnapshot : IHandAnalysisSnapshot
 {
     private static readonly JsonSerializerOptions ReadJson = MotifJson.CreateHandAnalysisReadOptions();
-    private static readonly ImmutableArray<ReadLimitation> UseCountLimitation = [new("use-count-unavailable", [],
-        "Occurrence use counts are unavailable.")];
+    private static readonly ImmutableArray<ReadLimitation> UseCountLimitation = [new("use-count-native-only", [],
+        "Use counts include native Text attachments and anchor records; occurrences in an external Source are outside the store.")];
     private PinnedPoint? held;
     private HandAnalysisHost? host;
     private PinnedPoint Point => Volatile.Read(ref held) ?? throw new ObjectDisposedException(nameof(StoreSnapshot));
@@ -30,15 +30,6 @@ internal sealed partial class StoreSnapshot : IHandAnalysisSnapshot
 
     public SnapshotStamp Stamp { get; }
 
-    public ProjectRead Project
-    {
-        get
-        {
-            _ = Point;
-            return new ProjectRead.Unavailable(Stamp, Unavailable("project"));
-        }
-    }
-
     /// <summary>Checks the current published proof independently of this pin's immutable facts.</summary>
     public bool IsCurrent => Volatile.Read(ref host)?.IsCurrent(Point.Proof) == true;
 
@@ -46,6 +37,10 @@ internal sealed partial class StoreSnapshot : IHandAnalysisSnapshot
     internal int BundleCount => Point.Projection.BundleOwner.Count;
     internal string WfiFactsDigest => Point.Projection.FactsDigest;
     internal WfiProjection Projection => Point.Projection;
+    internal HandAnalysisProjection Hand => Point.Hand;
+
+    /// <summary>Rows or slots examined by lookups on this point since it was built; for indexed-lookup tests.</summary>
+    internal long RowsTouched => Point.Hand.Touched;
 
     public ValueTask<CommandOutcome<Page<WordFact>>> WordsAsync(WordQuery query, PageRequest page, CancellationToken ct = default) =>
         Read(query, page, ct, (point, request) => Words(point.Projection, query, request, ct));
@@ -65,18 +60,22 @@ internal sealed partial class StoreSnapshot : IHandAnalysisSnapshot
                 var analysis = gloss is { } id ? projection.GlossOwner.GetValueOrDefault(id)
                     : reading.Key is ReadingKey.Analysis { Reference: AnalysisRef.Native native } ? native.Id : Guid.Empty;
                 WordFact[] match = projection.Readings.TryGetValue(analysis, out var found)
-                    ? [found.Fact with { SelectedGlossId = gloss }] : [];
+                    ? [found.Fact with { SelectedGlossId = gloss,
+                        OccurrenceUseCount = gloss is { } g ? Hand.Occurrences.Counts.GetValueOrDefault(g) : found.Fact.OccurrenceUseCount }] : [];
                 return Paginate(request, match, _ => 0, match.Length == 0 ? [] : UseCountLimitation);
-            case WordQuery.Alternatives { Order: WordOrder.DefaultRank }:
-                return Missing<WordFact>(request, new("rank-unavailable", [], "Default rank requires occurrence counts."));
             case WordQuery.Alternatives alternatives:
-                var ordered = Headers(projection, alternatives.Wordform).SelectMany(h => h.Analyses).Select(id =>
+                var ranked = alternatives.Order == WordOrder.DefaultRank;
+                var ordered = (ranked
+                    ? Headers(projection, alternatives.Wordform).SelectMany(h => h.Analyses).Select(id => projection.Readings[id])
+                        .OrderBy(r => r.Fact.DefaultRankKey, StringComparer.Ordinal)
+                    : Headers(projection, alternatives.Wordform).SelectMany(h => h.Analyses).Select(id => projection.Readings[id])
+                        .OrderBy(r => r.Ordinal)).Select((r, i) =>
                 {
                     ct.ThrowIfCancellationRequested();
-                    return projection.Readings[id];
-                }).OrderBy(r => r.Ordinal).ToArray();
-                var rows = Paginate(request, ordered, r => r.Ordinal, UseCountLimitation);
-                return new(Stamp, rows.Items.Select(r => (WordFact)r.Fact).ToImmutableArray(),
+                    return (Key: (long)i, Reading: r);
+                }).ToArray();
+                var rows = Paginate(request, ordered, r => r.Key, UseCountLimitation);
+                return new(Stamp, rows.Items.Select(r => (WordFact)r.Reading.Fact).ToImmutableArray(),
                     rows.Total, rows.NextCursor, rows.Complete, rows.Limitations);
             default: throw new ArgumentException("Unknown word query.", nameof(query));
         }
@@ -184,20 +183,10 @@ internal sealed partial class StoreSnapshot : IHandAnalysisSnapshot
         return new(Stamp, items, complete ? ordered.Count : null, cursor, complete, limitations);
     }
 
-    private static ReadLimitation Unavailable(string family) => new(family + "-unavailable", [],
+    internal static ReadLimitation Unavailable(string family) => new(family + "-unavailable", [],
         $"The {family} facts are unavailable in this index.");
 
     private Page<T> Missing<T>(PagePosition request, ReadLimitation limitation) => Paginate<T>(request, [], _ => 0, [limitation], false);
-
-    public ValueTask<CommandOutcome<OccurrencePage>> OccurrencesAsync(OccurrenceQuery query, PageRequest page, CancellationToken ct) =>
-        Read(query, page, ct, (_, request) => new OccurrencePage(Missing<OccurrenceFact>(request, Unavailable("occurrence")),
-            new(null, null, null, null, null, null, null, false)));
-
-    public ValueTask<CommandOutcome<Page<FormHit>>> FormsAsync(FormQuery query, PageRequest page, CancellationToken ct) =>
-        Read(query, page, ct, (_, request) => Missing<FormHit>(request, Unavailable("form")));
-
-    public ValueTask<CommandOutcome<Page<LexicalFact>>> LexiconAsync(LexiconQuery query, PageRequest page, CancellationToken ct) =>
-        Read(query, page, ct, (_, request) => Missing<LexicalFact>(request, Unavailable("lexicon")));
 
     public ValueTask DisposeAsync()
     {

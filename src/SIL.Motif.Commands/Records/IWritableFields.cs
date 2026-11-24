@@ -23,6 +23,8 @@ public enum UncoveredFieldReason
     VerbNotExpressible,
     ComputedField,
     CustomField,
+    /// <summary>An owned StText custom field: its paragraphs are replaced by paragraph keys and digests, which no kind takes from a record file.</summary>
+    CustomStText,
     NoOperationKind,
     AmbiguousOperationKind,
     UnsupportedOwnerClass,
@@ -39,6 +41,7 @@ public abstract record WritableFieldResolution
 {
     private WritableFieldResolution() { }
 
-    public sealed record Covered(string Kind) : WritableFieldResolution;
+    /// <summary>A write the executable catalog covers; <paramref name="Owner"/> is the key whose text writes it when the field is not written under its own key.</summary>
+    public sealed record Covered(string Kind, string? Owner = null) : WritableFieldResolution;
     public sealed record Uncovered(UncoveredFieldReason Reason, string? ManifestClassification = null) : WritableFieldResolution;
 }

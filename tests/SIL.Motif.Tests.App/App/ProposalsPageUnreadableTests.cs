@@ -8,7 +8,7 @@ public sealed class ProposalsPageUnreadableTests
 {
     private const string ProjectPath = @"C:\projects\one.fwdata";
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheWindowSaysHowManyProposalsCouldNotBeReadAndNamesThemBesideTheReadableOnes()
     {
         var card = new ProposalCard("p/ok", "Fine", "proposed", ProposalGroup.NotTried, false, [],
@@ -30,7 +30,7 @@ public sealed class ProposalsPageUnreadableTests
         Assert.Equal("Fine", Assert.Single(page.Groups.SelectMany(group => group.Cards)).Label);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OneUnreadableProposalAloneStillShowsTheLineInsteadOfTheEmptyPage()
     {
         var page = await OpenAsync(new ProposalStandings([], 0)
@@ -44,7 +44,7 @@ public sealed class ProposalsPageUnreadableTests
             StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReadableProposalsOnlyShowNoLine()
     {
         var page = await OpenAsync(new ProposalStandings([], 0));

@@ -239,7 +239,7 @@
     <exclude name="VisibleComplexFormEntries" />
   </class>
   <class name="MoAffixAllomorph">
-    <field name="MsEnvFeatures" key="ms-env-features" />
+    <field name="MsEnvFeatures" key="ms-env-features" notation="feature-structure" />
     <field name="MsEnvPartOfSpeech" key="ms-env-part-of-speech" />
     <field name="PhoneEnv" key="phone-env" />
     <field name="Position" key="position" />
@@ -249,8 +249,10 @@
   </class>
   <class name="MoAffixProcess">
     <exclude name="FeatureConstraints" />
-    <field name="Input" key="input" />
-    <field name="Output" key="output" />
+    <field name="Input" key="input" notation="rule-formula" />
+    <field name="Output" key="output" notation="rule-formula" />
+    <field name="Input" key="input-parts" alias="true" />
+    <field name="Output" key="output-parts" alias="true" />
   </class>
   <class name="MoCopyFromInput">
     <field name="Content" key="content" />
@@ -258,14 +260,14 @@
   <class name="MoDerivAffMsa">
     <field name="AffixCategory" key="affix-category" />
     <field name="FromInflectionClass" key="from-inflection-class" />
-    <field name="FromMsFeatures" key="from-ms-features" />
+    <field name="FromMsFeatures" key="from-ms-features" notation="feature-structure" />
     <field name="FromPartOfSpeech" key="from-part-of-speech" />
     <field name="FromProdRestrict" key="from-prod-restrict" />
     <field name="FromStemName" key="from-stem-name" />
     <exclude name="IsEmpty" />
     <field name="Stratum" key="stratum" />
     <field name="ToInflectionClass" key="to-inflection-class" />
-    <field name="ToMsFeatures" key="to-ms-features" />
+    <field name="ToMsFeatures" key="to-ms-features" notation="feature-structure" />
     <field name="ToPartOfSpeech" key="to-part-of-speech" />
     <field name="ToProdRestrict" key="to-prod-restrict" />
   </class>
@@ -289,7 +291,7 @@
     <field name="AffixCategory" key="affix-category" />
     <field name="FromProdRestrict" key="from-prod-restrict" />
     <exclude name="Gloss" />
-    <field name="InflFeats" key="infl-feats" />
+    <field name="InflFeats" key="infl-feats" notation="feature-structure" />
     <exclude name="IsEmpty" />
     <field name="PartOfSpeech" key="part-of-speech" />
     <exclude name="ShortNameTSS" />
@@ -331,7 +333,7 @@
     <field name="FromPartsOfSpeech" key="from-parts-of-speech" />
     <field name="InflectionClass" key="inflection-class" />
     <exclude name="IsEmpty" />
-    <field name="MsFeatures" key="ms-features" />
+    <field name="MsFeatures" key="ms-features" notation="feature-structure" />
     <field name="PartOfSpeech" key="part-of-speech" />
     <field name="ProdRestrict" key="prod-restrict" />
     <field name="Slots" key="slots" />

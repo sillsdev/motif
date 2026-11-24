@@ -111,6 +111,8 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        [ExportReason(nameof(ExportReasons.Timestamp))]
+        [ExportReason(nameof(ExportReasons.GeneralDate))]
         public void TimestampsAndCustomFieldsTheSchemaOmitsAreReportedWithTheirValues()
         {
             using var fixture = new ProjectFixture();
@@ -123,10 +125,10 @@ namespace SIL.TextEditing.Project.Tests
             var export = exporter.Export(entry.Guid);
             var created = Assert.Single(export.Unexported, u => u.Object == entry.Guid && u.Field == "DateCreated");
             Assert.Matches(@"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{7}Z$", created.Value);
-            Assert.Contains("timestamp", created.Reason);
+            Assert.Contains(ExportReasons.Timestamp, created.Reason);
             var seen = Assert.Single(export.Unexported, u => u.Field == "Seen");
             Assert.Equal("AD 2024-3-5 Approximate", seen.Value);
-            Assert.Contains("general date", seen.Reason);
+            Assert.Contains(ExportReasons.GeneralDate, seen.Reason);
             Assert.All(export.Unexported, u => Assert.NotEqual("Guid", u.Field));
             Assert.Equal(export.Unexported.Select(u => u.ToString()), exporter.Export(entry.Guid).Unexported.Select(u => u.ToString()));
         }
@@ -324,6 +326,7 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        [ExportReason(nameof(ExportReasons.UndefinedCharacterStyle))]
         public void ACharacterStyleTheProjectLacksIsReportedAndLeftOutSoTheFileReadsBack()
         {
             using var fixture = new ProjectFixture();
@@ -347,7 +350,7 @@ namespace SIL.TextEditing.Project.Tests
             ReadsBackClean(exporter, export);
             var style = Assert.Single(export.Unexported, u => u.Value == "Homograph-Number");
             Assert.Equal("Homograph-Number", style.Value);
-            Assert.Contains("character style", style.Reason);
+            Assert.Contains(ExportReasons.UndefinedCharacterStyle, style.Reason);
         }
 
 
@@ -371,6 +374,7 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        [ExportReason(nameof(ExportReasons.PlainFieldFormatting))]
         public void FormattingInAPlainAlternativeIsReportedWithItsWritingSystem()
         {
             using var fixture = new ProjectFixture();
@@ -385,6 +389,7 @@ namespace SIL.TextEditing.Project.Tests
             var exporter = new ProjectRecordExporter(cache, ProjectRecordSchema.Generate(cache, Notation("LexEntry", "Comment", "test")));
             var export = exporter.Export(entry.Guid);
             var lost = Assert.Single(export.Unexported, u => u.Field == "Comment");
+            Assert.Contains(ExportReasons.PlainFieldFormatting, lost.Reason);
             Assert.Contains("alternative en", lost.Reason);
             Assert.Equal("loud", ((RecordAlternatives)export.Document.Data["comment"]!)["en"]!.Text);
         }
@@ -445,6 +450,7 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        [ExportReason(nameof(ExportReasons.BinaryData))]
         public void BinaryCustomFieldsAreReportedAsBase64AndALongOneByLengthAndHash()
         {
             using var fixture = new ProjectFixture();
@@ -467,7 +473,7 @@ namespace SIL.TextEditing.Project.Tests
             var big = Assert.Single(export.Unexported, u => u.Field == "Large");
             Assert.StartsWith("2048 bytes, sha256 ", big.Value);
             Assert.Equal(64, big.Value!.Substring("2048 bytes, sha256 ".Length).Length);
-            Assert.Contains("Binary", big.Reason);
+            Assert.Contains(ExportReasons.BinaryData, big.Reason);
         }
 
         [Fact]

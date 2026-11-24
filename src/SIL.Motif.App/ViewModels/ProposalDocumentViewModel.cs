@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.GuideQueries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
@@ -41,6 +42,11 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             context.OpenWord, context.Commands.ProduceProposalDifferenceAsync,
             DifferenceTexts);
         Evidence = new ProposalEvidenceColumnsViewModel(Difference, context.TextStyles);
+        Queries = new GuideQueryTablesViewModel(new GuideQueryContext(proposalId), () => context.ProjectPath,
+            (request, token) => context.Commands.RunGuideQueryAsync(request, token), word => context.OpenWord(word))
+        {
+            SaveUnavailableReason = MotifAppStrings.ProposalQuerySaveUnsupported,
+        };
         Parsimony = new ProposalParsimonyViewModel(context.Commands.ReadProposalParsimonyStatusAsync,
             parsimonyDelay, context.Commands.ReadParsimonyReportAsync, context.Commands.ReadParsimonyViewAsync);
         Pictures = new ProposalPicturesViewModel(context.Commands.ShowProposalPicturesAsync,
@@ -90,6 +96,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         };
     public ProposalDifferenceViewModel Difference { get; }
     public ProposalEvidenceColumnsViewModel Evidence { get; }
+    /// <summary>The query tables of the Proposal's Rationale: each <c>motif-query</c> run at the Baseline and at the Proposal.</summary>
+    public GuideQueryTablesViewModel Queries { get; }
     public ProposalParsimonyViewModel Parsimony { get; }
     public ProposalPicturesViewModel Pictures { get; }
     public Task Reading { get; private set; } = Task.CompletedTask;
@@ -121,7 +129,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private bool _isOutdated;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowsPrepareApply), nameof(ShowsDeferredApplyNotice))]
+    [NotifyPropertyChangedFor(nameof(ShowsPrepareApply), nameof(ShowsDeferredApplyNotice), nameof(ShowsBringBack))]
     private bool _isConfirmingApply;
     private object? _diagnosticsContent;
     public object? DiagnosticsContent
@@ -273,6 +281,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(IsDeferred));
         OnPropertyChanged(nameof(ShowsDeferredApplyNotice));
+        RaiseBringBack();
         OnPropertyChanged(nameof(IsPending));
         OnPropertyChanged(nameof(CanAddComment));
         OnPropertyChanged(nameof(ShowsPrepareApply));
@@ -280,13 +289,18 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         FreezeEditorsIfClosed();
         RaiseApply();
     }
+    /// <summary>Says the current values could not be read, or null when they were or were not asked for.</summary>
+    public string? CurrentUnavailableNotice => Detail?.CurrentUnavailable is null ? null : MotifAppStrings.ProposalCurrentUnavailable;
+
     partial void OnDetailChanged(ProposalDetailProjection? value)
     {
+        OnPropertyChanged(nameof(CurrentUnavailableNotice));
         RefreshOperationDisplay();
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(IsDeferred));
         OnPropertyChanged(nameof(ShowsDeferredApplyNotice));
+        RaiseBringBack();
         OnPropertyChanged(nameof(CanAddComment));
         OnPropertyChanged(nameof(ShowsPrepareApply));
         AddCommentCommand.NotifyCanExecuteChanged();
@@ -357,12 +371,15 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
 
     private bool Current(int generation) => !_stopped && generation == _generation && _context.ProjectPath == ProjectPath;
 
+    // Current saved values stand in for the old value until a Trial gives one.
+    private bool ReadsCurrentValues => Card?.Card is not { } card || card.Trial is null && !IsDecided(card.Status);
+
     private async Task ReadAsync(int generation, CancellationTokenSource cancellation)
     {
         try
         {
             var shown = await _context.Commands.ShowProposalAsync(new ShowProposalRequest(ProjectPath,
-                MotifProductVersion.CurrentText, ProposalId), cancellation.Token).ConfigureAwait(true);
+                MotifProductVersion.CurrentText, ProposalId, WithCurrent: ReadsCurrentValues), cancellation.Token).ConfigureAwait(true);
             if (!Current(generation) || cancellation.IsCancellationRequested) return;
             if (!shown.Succeeded)
             {
@@ -389,6 +406,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             if (!Current(generation) || cancellation.IsCancellationRequested) return;
             if (!review.Succeeded) DetailRefusal = WindowRefusal.From(review.Refusal!);
             _review = review.Succeeded && review.Value!.ProposalId == ProposalId ? review.Value : null;
+            ShowQueries(detail);
             var words = _review?.Entries.OfType<WordChangeEntry>().ToArray() ?? [];
             OperationDescriptions = detail.Operations.Select(operation => ProposalOperationSentence.For(operation,
                 words.Where(word => word.OperationIds.Contains(operation.OperationId))
@@ -396,6 +414,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             ReviewProgress = _review is null ? string.Empty : string.Format(CultureInfo.CurrentCulture,
                 MotifAppStrings.ProposalReviewProgressFormat, _review.LookedAtCount, _review.Entries.Count);
             IsOutdated = _context.Evidence.IsStale || Card?.Standing.Kind == TrialStandingKind.NeedsAnotherTry;
+            await ReadEntryNamesAsync(detail, cancellation.Token).ConfigureAwait(true);
+            if (!Current(generation) || cancellation.IsCancellationRequested) return;
             RefreshOperationDisplay();
             var offer = Offer();
             var identity = new DifferenceIdentity(detail.CurrentIntentDigest,
@@ -444,21 +464,29 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     {
         if (Detail is not { } detail)
         {
+            RefreshAppliedRecord(null);
             OperationRows = [];
             SharedEffectSummaries = [];
             return;
         }
         // An Applied Proposal keeps its recorded old-to-new values although the project has since moved on.
-        var applied = detail.Status == "applied";
-        var effects = (applied || (!IsOutdated && _review?.Trial is { Freshness: TrialFreshness.Current })) &&
-            _review?.Trial is { } trial && trial.IntentDigest == detail.CurrentIntentDigest
-            ? trial.DryRun?.Effects ?? [] : [];
+        RefreshAppliedRecord(detail);
+        var effects = ShownEffects(detail);
         var byOperation = effects.Where(effect => effect.OperationIds.Count == 1)
             .ToLookup(effect => effect.OperationIds[0], StringComparer.Ordinal);
         OperationRows = detail.Operations.Select(operation =>
-            ProposalOperationRow.For(operation, byOperation[operation.OperationId])).ToArray();
+            ProposalOperationRow.For(operation, byOperation[operation.OperationId], _entryNames)).ToArray();
         SharedEffectSummaries = effects.Where(effect => effect.OperationIds.Count > 1 && effect.Changes.Count > 0)
-            .Select(ProposalEffectText.Shared).ToArray();
+            .Select(effect => ProposalEffectText.Shared(effect, _entryNames)).ToArray();
+    }
+
+    // The effects the page shows: an Applied Proposal keeps its recorded ones; otherwise a current Trial's.
+    private IReadOnlyList<EffectView> ShownEffects(ProposalDetailProjection detail)
+    {
+        var applied = detail.Status == "applied";
+        return (applied || (!IsOutdated && _review?.Trial is { Freshness: TrialFreshness.Current })) &&
+            _review?.Trial is { } trial && trial.IntentDigest == detail.CurrentIntentDigest
+            ? trial.DryRun?.Effects ?? [] : [];
     }
 
     private DifferenceOffer Offer() => (Detail is { } detail && IsDecided(detail.Status)) ||

@@ -5,6 +5,7 @@
   "defaultDetail": "detailed",
   "tools": [
     { "tool": "motif_query" },
+    { "tool": "motif_query_schema" },
     { "tool": "motif_parsimony_measures" },
     { "tool": "motif_run_parsimony_measure" },
     { "tool": "motif_parsimony_report" },

@@ -58,10 +58,7 @@ internal static class ReferenceFieldLowering
         string field, Func<LcmCache, ICmPossibilityList?> list)
         where TRef : ICmPossibility
     {
-        var member = Resolve<TRef>(cache, refId, kind);
-        if (member.OwningList.Guid != list(cache)?.Guid)
-            throw new ReferenceFieldRefusal(RefusalCodes.ReferenceWrongList, kind, field,
-                $"Referenced object '{refId.Value}' is not in the list {field} takes.");
+        var member = ListBoundReference.Resolve<TRef>(cache, refId, kind, field, list(cache)?.Guid ?? Guid.Empty);
         setter(member);
     }
 
@@ -78,8 +75,3 @@ internal static class ReferenceFieldLowering
         setter(default!);
     }
 }
-
-/// <summary>A reference write the field's list does not take, with the field it names.</summary>
-internal sealed class ReferenceFieldRefusal(string code, string kind, string field, string reason)
-    : ProposalRefusalException(code, FailureReason.Refused, $"'{kind}': {reason}",
-        new Dictionary<string, string> { ["kind"] = kind, ["field"] = field });

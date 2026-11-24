@@ -497,7 +497,8 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
         var expected = rows.Where(row => row.HcReferenced == "no" && row.HcReachable == "no" && row.Verbs.Split('|').Contains("set"))
             .Select(row => $"{row.Class}.{row.Field}").Except(ownedElsewhere).Order().ToArray();
 
-        Assert.Equal(expected, TextRichStringFields.Names.Order());
+        string[] addedForRecordFiles = ["CmDomainQ.ExampleSentences"];
+        Assert.Equal(expected.Concat(addedForRecordFiles).Order(), TextRichStringFields.Names.Order());
         Assert.All(rows.Where(row => TextRichStringFields.Names.Contains($"{row.Class}.{row.Field}")),
             row => Assert.Equal(row.Sig == "MultiString", TextRichStringFields.IsMultiString($"{row.Class}.{row.Field}")));
         Assert.Contains("PhEnvironment.StringRepresentation", rows.Select(row => $"{row.Class}.{row.Field}"));

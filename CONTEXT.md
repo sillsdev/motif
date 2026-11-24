@@ -184,7 +184,7 @@ from the no-loss checks ([ADR 0033](docs/adr/0033-lexicon-import-accepts-only-li
 _Avoid_: merge (FieldWorks' LIFT merge is a different thing), JSONL import, dictionary load
 
 **Record file**:
-Motif's own round-trip edit format for one record of the saved project (a lexicon entry, a notebook record or a list
+Motif's own edit and bulk format for records (a lexicon entry, a notebook record or a list
 item): `motif record export` writes it, a person or agent edits it, and `motif import` plans the edits back as Draft
 operations. It lists every value it leaves out, and it is refused whole once the project changes after the export; it
 is not an interchange format, and a lexicon from outside still enters as LIFT

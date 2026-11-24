@@ -587,7 +587,7 @@ public sealed class KeyboardInteractionContractTests
         return name == $"{typeName}.cs" || name == $"{typeName}.axaml.cs";
     });
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("Approve", ReadingGrade.Candidate, ChangeKinds.Approve)]
     [InlineData("Disapprove", ReadingGrade.Approved, ChangeKinds.Reject)]
     [InlineData("Unknown", ReadingGrade.Approved, ChangeKinds.Candidate)]
@@ -607,7 +607,7 @@ public sealed class KeyboardInteractionContractTests
         Assert.Equal("analysis-1", staged.StoredAnalysisId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpinionShortcutExplainsAmbiguousAndUnavailableActionsWithoutStaging()
     {
         var calls = 0;

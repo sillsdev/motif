@@ -162,6 +162,8 @@ internal static class AgentTools
                 ("exact", Schema.String("Only objects whose name or abbreviation equals this text, ignoring case."), false),
                 ("id", Schema.String("Only the object with this canonical id."), false),
                 ("offset", Schema.Integer("Items to skip; a result's nextOffset is the value for the next page.", 0, 100000), false),
+                ("at", Schema.String("What to read: 'baseline' (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal's edits applied. " +
+                    "The result returns at, and for a Proposal also atLabel: the Trial's copy of the grammar, not the Baseline."), false),
                 ..Schema.Verbosity()]),
             true,
             true,
@@ -174,7 +176,7 @@ internal static class AgentTools
             AgentClass.Read,
             Schema.Object([("query", Schema.String("Text the headword, a gloss or a form contains."), false),
                 ("exact", Schema.String("Only entries whose headword or a form equals this text, ignoring case; " +
-                    "a bare 'zi' also finds the affix 'zi-', while 'zi-' finds only that prefix."), false),
+                    "a bare 'zi' also finds the affix 'zi-' and exactNote says so, while 'zi-' finds only that prefix."), false),
                 ("morphType", Schema.StringArray("Only entries of these morph types, such as 'stem', 'root', 'prefix' or 'suffix'."), false),
                 ("affix", Schema.Boolean("True keeps affix entries (prefix, suffix, infix, circumfix and the like); false keeps the rest."), false),
                 ("category", Schema.String("Only entries with an analysis in this category, by exact name or id."), false),
@@ -182,6 +184,8 @@ internal static class AgentTools
                 ("headwordContains", Schema.String("Only entries whose headword contains this text."), false),
                 ("hasGloss", Schema.Boolean("True keeps entries with a gloss; false keeps those without one."), false),
                 ("offset", Schema.Integer("Entries to skip; a result's nextOffset is the value for the next page.", 0, 100000), false),
+                ("at", Schema.String("What to read: 'baseline' (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal's edits applied. " +
+                    "The result returns at, and for a Proposal also atLabel: the Trial's copy of the grammar, not the Baseline."), false),
                 ..Schema.Verbosity()]),
             true,
             true,
@@ -271,7 +275,8 @@ internal static class AgentTools
             AgentClass.Draft,
             Schema.Object([("file", Schema.String("Path of the edited record file, exported from this project."), true),
                 ("draft", Schema.String("A new Draft name to stage the operations in. Leave it out for a dry run that writes nothing."), false),
-                ("page", Schema.Integer("Page of operations and refusals to list. Default 1.", 1, 100000), false)]),
+                ("page", Schema.Integer("Page of changes, operations and refusals to list. Default 1.", 1, 100000), false),
+                ("strict", Schema.Boolean("Needs a draft name: refuse to stage when any change is refused. Default false."), false)]),
             false,
             false,
             false,
@@ -282,7 +287,7 @@ internal static class AgentTools
             OutputSchema = RecordImportToolSchema.Output,
             FieldNames = new Dictionary<string, string?>
             {
-                ["FilePath"] = "file", ["DraftName"] = "draft", ["Page"] = "page",
+                ["FilePath"] = "file", ["DraftName"] = "draft", ["Page"] = "page", ["Strict"] = "strict",
             },
         },
 
@@ -984,7 +989,7 @@ internal static class AgentTools
                 RejectionTraceQuery.Parse(new ParseTraceRequest(c.ProjectPath, a.Required("word"), a.Optional("at"),
                     a.OptionalInt("max_paths")), c.ParserPath, ct),
                 _ => "A path with attribution 'unknown' has no recorded stop; do not guess one. Fix the first named stop, then call motif_try_word.")))
-            { Requests = [typeof(ParseTraceRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["At"] = "at", ["MaxPaths"] = "max_paths", ["ProjectPath"] = null } },
+            { Requests = [typeof(ParseTraceRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["At"] = "at", ["TimeoutMs"] = "timeoutMs", ["MaxWork"] = "maxWork", ["MaxPaths"] = "max_paths", ["ProjectPath"] = null } },
 
         new("motif_why_not",
             string.Empty,
@@ -1005,6 +1010,43 @@ internal static class AgentTools
                 _ => "A rejected candidate names the first failing constraint and the grammar object it is about; an unknown one says why PanGloss " +
                     "could not tell, so do not guess a cause. Fix the first named failure, then call motif_try_word.")))
             { Requests = [typeof(WhyNotRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["Expect"] = "expect", ["At"] = "at", ["ProjectPath"] = null } },
+
+        new("motif_forms_explain",
+            string.Empty,
+            AgentClass.Evaluate,
+            Schema.Object([("morpheme", Schema.String("The root: an entry guid or Motif id, 'entryGuid:msaGuid', or a form in the lexicon. Give this or word."), false),
+                ("with", Schema.StringArray("Morphemes to generate with the root, in order, each named like the root. Only with morpheme."), false),
+                ("word", Schema.String("A word to parse; each of its analyses is generated from its own morphemes. Give this or morpheme."), false),
+                ("at", Schema.String("'baseline' (default) for the current Baseline, or a proposal id for that Draft or Proposal's latest Trial copy."), false),
+                ("timeoutMs", Schema.Integer("Deadline for each generate request in milliseconds, 1 to 240000; default 30000. Past it the result is incomplete with stopReason 'deadline'.", 1, 240000), false),
+                ("maxWork", Schema.Integer("Lowers PanGloss's generation work cap for each request; omitted leaves PanGloss's own cap. Past it the result is incomplete with stopReason 'work_limit'.", 1, int.MaxValue), false)]),
+            true,
+            true,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(
+                FormsExplainQuery.Explain(new FormsExplainRequest(c.ProjectPath, a.Optional("morpheme"), a.List("with"),
+                    a.Optional("word"), a.Optional("at"), a.OptionalInt("timeoutMs"), a.OptionalInt("maxWork")), c.ParserPath, ct),
+                _ => "complete:false means PanGloss stopped at stopReason, so a missing form is not an impossible one; " +
+                    "do not claim a form cannot occur from an incomplete result.")))
+            { Requests = [typeof(FormsExplainRequest)], FieldNames = new Dictionary<string, string?> { ["Morpheme"] = "morpheme", ["With"] = "with", ["Word"] = "word", ["At"] = "at", ["TimeoutMs"] = "timeoutMs", ["MaxWork"] = "maxWork", ["ProjectPath"] = null } },
+
+        new("motif_why_lost",
+            string.Empty,
+            AgentClass.Evaluate,
+            Schema.Object([("word", Schema.String("The word that lost a Reading in the Trial."), true),
+                ("proposal", Schema.String("The proposal id whose latest Trial copy to compare with the Baseline."), true),
+                ("max_paths", Schema.Integer("Most terminal paths to read per side; default 64.", 1, 64), false)]),
+            false,
+            true,
+            true,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(
+                WhyLostQuery.Compare(new WhyLostRequest(c.ProjectPath, a.Required("word"), a.Required("proposal"),
+                    a.OptionalInt("max_paths")), c.ParserPath, ct),
+                _ => "A cause marked 'not-recorded' means PanGloss recorded no stop for that Reading; do not guess one. " +
+                    "A recorded cause names the form that was blocked, the form that blocked it and the Proposal operations that overlap it, which is not a cause.")))
+            { Requests = [typeof(WhyLostRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["ProposalId"] = "proposal", ["MaxPaths"] = "max_paths", ["ProjectPath"] = null } },
 
         new("motif_job",
             string.Empty,
@@ -1578,7 +1620,8 @@ internal static class AgentTools
         if (RecordImportCommand.RefuseOutsideAgentRoots(context.ProjectPath, file, Directory.GetCurrentDirectory()) is { } refusal)
             return ToolOutcome.Refused(refusal);
         return ToolOutcome.From(RecordImportCommand.Run(new RecordImportRequest(
-            context.ProjectPath, file, args.Optional("draft"), args.OptionalInt("page") ?? 1)));
+            context.ProjectPath, file, args.Optional("draft"), args.OptionalInt("page") ?? 1,
+            args.OptionalBoolean("strict") ?? false)));
     }
 
     private static ToolOutcome StartProposal(ServerContext context, ToolArgs args)
@@ -1687,7 +1730,7 @@ internal static class AgentTools
         var detailed = args.Optional("detail") == "detailed";
         var offset = args.Int("offset", 0);
         var limit = args.Int("limit", 25);
-        var outcome = BaselineReads.Read(context.ProjectPath, cache => kind is null
+        var outcome = BaselineReads.ReadAt(context.ProjectPath, args.Optional("at"), cache => kind is null
             ? GrammarReader.Summary(cache) : GrammarReader.Page(GrammarReader.Read(cache, kind, args.Optional("query"),
                 detailed, args.Optional("exact"), args.Optional("id")), offset, limit));
         return ToolOutcome.From(outcome, kind is null
@@ -1702,7 +1745,8 @@ internal static class AgentTools
         var filter = new LexiconFilter(args.Optional("query"), args.List("morphType"), args.OptionalBoolean("affix"),
             args.Optional("category"), args.Optional("headword"), args.Optional("headwordContains"),
             args.OptionalBoolean("hasGloss"), args.Optional("exact"));
-        var outcome = BaselineReads.ReadLexicon(context.ProjectPath, filter, args.Int("limit", 25), args.Int("offset", 0), detailed);
+        var outcome = BaselineReads.ReadLexicon(context.ProjectPath, filter, args.Int("limit", 25), args.Int("offset", 0), detailed,
+            args.Optional("at"));
         return ToolOutcome.From(outcome, "Narrow with morphType, affix, category or headword, or page on with offset. " +
             "Concise entries carry the entry and sense ids changes need; detail=detailed adds allomorphs and grammatical info.");
     }

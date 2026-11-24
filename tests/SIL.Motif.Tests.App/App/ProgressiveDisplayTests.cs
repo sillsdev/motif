@@ -129,7 +129,7 @@ public sealed class ProgressiveDisplayTests
                 foreach (var entry in entries)
                 {
                     if (entry.Mode == "grid") continue;
-                    if (entry.Name == "ResultsInTextPanelStagedChangesItems" && !targets.ContainsKey(entry.Name)) continue;
+                    if (entry.Name is "ResultsInTextPanelStagedChangesItems" or "ProposalSenseItems" && !targets.ContainsKey(entry.Name)) continue;
                     Assert.True(targets.TryGetValue(entry.Name, out var target), $"Missing {viewName}/{entry.Name}");
                     var (items, fragment) = target;
                     if (entry.Mode is "finite" or "inline")

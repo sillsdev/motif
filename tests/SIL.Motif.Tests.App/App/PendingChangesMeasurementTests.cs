@@ -8,7 +8,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class PendingChangesMeasurementTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task CompleteMeasurementIsBoundToTheCurrentDraftRevision()
     {
         var fake = new FakeCommandClient();
@@ -36,7 +36,7 @@ public sealed class PendingChangesMeasurementTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChangedDraftRevisionDoesNotPublishOldMeasurement()
     {
         var fake = new FakeCommandClient();
@@ -61,7 +61,7 @@ public sealed class PendingChangesMeasurementTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReplacedDraftIsNotMeasuredAfterRefreshFinishes()
     {
         var fake = new FakeCommandClient();
@@ -90,7 +90,7 @@ public sealed class PendingChangesMeasurementTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProjectStopCancelsAndJoinsPendingMeasurement()
     {
         var fake = new FakeCommandClient();

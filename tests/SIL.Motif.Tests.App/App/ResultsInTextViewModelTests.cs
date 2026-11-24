@@ -2187,7 +2187,7 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
         Assert.Null(typeof(ResultsInTextViewModel).GetProperty("ObjectTimingDetailText"));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ItSaysItIsReadingSelectedTextsOnlyWhenSomeTextIsSelected()
     {
         var fake = new FakeCommandClient();

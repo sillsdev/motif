@@ -31,7 +31,7 @@ public sealed class ProposalWorkflowModelTests
         }).VerdictText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SelectingAProposalReadsItsRationaleAndDescribesEveryOperation()
     {
         var fake = NewFake();
@@ -58,7 +58,7 @@ public sealed class ProposalWorkflowModelTests
             page.OperationDescriptions);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReReadDuringThePersonsOwnSaveLeavesNoChangedElsewhereNotice()
     {
         var fake = NewFake();
@@ -93,7 +93,7 @@ public sealed class ProposalWorkflowModelTests
         Assert.Equal("Why this helps Typed.", editor.Markdown);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARationaleBeingEditedSurvivesARereadOfTheSameProposal()
     {
         var fake = NewFake();
@@ -126,7 +126,7 @@ public sealed class ProposalWorkflowModelTests
         Assert.Equal("Why this helps Typed.", editor.Text());
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASlowDetailReadCannotReplaceTheNewSelection()
     {
         var firstRead = new TaskCompletionSource<CommandOutcome<ProposalDetailProjection>>(
@@ -157,7 +157,7 @@ public sealed class ProposalWorkflowModelTests
         Assert.Equal("proposal/two", page.Detail!.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DecliningSavesTheReasonBeforeTheProposalCloses()
     {
         var fake = NewFake();
@@ -176,7 +176,7 @@ public sealed class ProposalWorkflowModelTests
         Assert.Equal("Declined.", page.DecisionNotice);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DecidingLaterMovesTheReadyProposalToDeferred()
     {
         var fake = NewFake();
@@ -190,7 +190,7 @@ public sealed class ProposalWorkflowModelTests
         Assert.Empty(fake.DeclineProposalRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalBecomesReadOnlyWhenAPersonSelectsItNotWhenTheListSelectsIt()
     {
         var fake = new FakeCommandClient();
@@ -214,7 +214,7 @@ public sealed class ProposalWorkflowModelTests
         Assert.Equal(ReviewMarkKeys.ProposalRead, Assert.Single(fake.ReviewMarkRequests).EntryKey);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AListReloadThatReselectsTheProposalDoesNotMarkItRead()
     {
         var fake = new FakeCommandClient();
@@ -288,7 +288,7 @@ public sealed class ProposalWorkflowModelTests
         Assert.False(SIL.Motif.Commands.ChangeVocabulary.MakesNamedThing("unknown/kind"));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnOperationThatNamesWhatItMakesSaysSoAndOmitsAnUnknownCount()
     {
         var fake = NewFake();

@@ -1,0 +1,52 @@
+{
+  "schema": "pangloss.whynot.v1",
+  "word": "banku",
+  "results": [
+    {
+      "expect": [
+        [
+          {
+            "morpheme": "eBan"
+          }
+        ],
+        [
+          {
+            "morpheme": "mrDat"
+          }
+        ]
+      ],
+      "result": "rejected",
+      "analysis": null,
+      "failure": {
+        "kind": "other_gate",
+        "plain": "mrDat (\"DAT\") [subKu] is blocked: the earlier mrDat (\"DAT\") [subKa] also fits here, and HermitCrab uses only the first allomorph that fits",
+        "position": 1,
+        "hc_reason": null,
+        "provenance": "derived",
+        "object": {
+          "type": "allomorph",
+          "id": "subKu",
+          "guid": null
+        },
+        "morphs": [
+          {
+            "morpheme": "mrDat",
+            "allomorph": "subKu"
+          },
+          {
+            "morpheme": "mrDat",
+            "allomorph": "subKa"
+          }
+        ],
+        "context": null,
+        "environment": null,
+        "stem_name": null,
+        "features": [],
+        "alternatives": null,
+        "gate": "disjunctive_allomorph"
+      },
+      "stop": null
+    }
+  ],
+  "best": 0
+}

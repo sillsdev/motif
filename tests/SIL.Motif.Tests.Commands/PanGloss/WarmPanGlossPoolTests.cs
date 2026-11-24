@@ -567,4 +567,65 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         public void KillProcessTree() { }
         public void Dispose() { }
     }
+
+    private static ServeGenerateRequest GenerateRequest() =>
+        new(new GenerateMorpheme("11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222", "MoStemMsa"), []);
+
+    [Fact]
+    public async Task AGenerateAnswerFromADeclaringParserIsReturnedWithTheRequestOnTheWire()
+    {
+        var copy = FakeParser.CopyDeclaringServeGenerate(Path.Combine(_root, "declares"));
+        var (grammar, _, _) = Project("gen");
+        var log = Path.Combine(Path.GetDirectoryName(grammar)!, "generate.log");
+        FakeParser.Behave(Path.GetDirectoryName(grammar)!, new Dictionary<string, object?>
+        {
+            ["ServeGenerateLog"] = log,
+            ["ServeGenerate"] = System.Text.Json.JsonDocument.Parse(RecordedGenerate.RootAffix).RootElement,
+        });
+        using var pool = Pool(executable: copy);
+
+        var answer = Assert.IsType<WarmGenerateResult.Completed>(
+            await pool.TryGenerateAsync(grammar, "t1", grammar, GenerateRequest(), CancellationToken.None));
+
+        Assert.Contains("\"op\":\"generate\"", answer.Json);
+        Assert.Contains("\"complete\":true", answer.Json);
+        Assert.Contains("\"surface\":\"rannas\"", answer.Json);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(answer.Json, "\"op\":").Cast<System.Text.RegularExpressions.Match>());
+        var sent = System.Text.Json.JsonDocument.Parse(Assert.Single(File.ReadAllLines(log))).RootElement;
+        Assert.Equal("generate", sent.GetProperty("op").GetString());
+        Assert.True(sent.GetProperty("trace").GetBoolean());
+        Assert.Equal("MoStemMsa", sent.GetProperty("request").GetProperty("root").GetProperty("msaClass").GetString());
+    }
+
+    [Fact]
+    public async Task AParserThatDeclaresNoServeGenerateIsNeverSentTheOp()
+    {
+        var (grammar, _, requestLog) = Project("nogen");
+        var log = Path.Combine(Path.GetDirectoryName(grammar)!, "generate.log");
+        FakeParser.Behave(Path.GetDirectoryName(grammar)!, new Dictionary<string, object?> { ["ServeGenerateLog"] = log });
+        using var pool = Pool();
+
+        var answer = Assert.IsType<WarmGenerateResult.Unsupported>(
+            await pool.TryGenerateAsync(grammar, "t1", grammar, GenerateRequest(), CancellationToken.None));
+
+        Assert.Contains("interfaces.serveOps.generate", answer.Detail);
+        Assert.False(File.Exists(log));
+    }
+
+    [Fact]
+    public async Task APanGlossErrorToAGenerateRequestIsRejectedWithItsCode()
+    {
+        var copy = FakeParser.CopyDeclaringServeGenerate(Path.Combine(_root, "declares2"));
+        var (grammar, _, _) = Project("generr");
+        FakeParser.Behave(Path.GetDirectoryName(grammar)!, new Dictionary<string, object?>
+        {
+            ["ServeGenerate"] = System.Text.Json.JsonDocument.Parse("{\"error\":{\"code\":\"unknown_entry\",\"message\":\"nope\"}}").RootElement,
+        });
+        using var pool = Pool(executable: copy);
+
+        var answer = Assert.IsType<WarmGenerateResult.Rejected>(
+            await pool.TryGenerateAsync(grammar, "t1", grammar, GenerateRequest(), CancellationToken.None));
+
+        Assert.Equal("unknown_entry", answer.Code);
+    }
 }

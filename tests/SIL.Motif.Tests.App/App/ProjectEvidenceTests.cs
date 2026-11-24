@@ -63,7 +63,7 @@ public sealed class ProjectEvidenceTests
         }, TimeSpan.FromSeconds(10));
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("current")]
     [InlineData("fieldworks-saved-since")]
     [InlineData("applied-since")]
@@ -107,7 +107,7 @@ public sealed class ProjectEvidenceTests
         Assert.Equal(stale ? ProjectFreshness.SavedSince : ProjectFreshness.Current, workspace.Freshness);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReaderPublicationNamesTheShownRunAcrossSelectionChangesAndOlderStoredEvidence()
     {
         var fake = new FakeCommandClient();
@@ -139,7 +139,7 @@ public sealed class ProjectEvidenceTests
         await context.SelectionReads.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ABurstOfPublicationsReachesEachPageOnceMoreWithTheLatestEvidence()
     {
         var fake = new FakeCommandClient();
@@ -159,7 +159,7 @@ public sealed class ProjectEvidenceTests
         Assert.Equal(["invocation/first", "invocation/third"], probe.Seen);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheFreshnessLineShowsOnlyTheBaselineWhenCurrentAndDatesBothTimesWhenStale()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
@@ -183,7 +183,7 @@ public sealed class ProjectEvidenceTests
         Assert.Contains("saved Sat 5 Sep, 11:58 AM", detail, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheGrammarCheckReadsTheContextsClock()
     {
         var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
@@ -203,7 +203,7 @@ public sealed class ProjectEvidenceTests
         await checking;
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheHandoffReadsTheContextsClock()
     {
         var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
@@ -221,7 +221,7 @@ public sealed class ProjectEvidenceTests
         Assert.Equal(clock.GetLocalNow(), handoff.Handoff.WrittenAt);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("en-US", "8:00 PM")]
     [InlineData("en-GB", "20:00")]
     public async Task TheHandoffCoverageNamesTheParseInTheContextsTimeZone(string cultureName, string expectedTime)
@@ -248,7 +248,7 @@ public sealed class ProjectEvidenceTests
         }
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ExternalReplacementRefreshesEveryDependentPage(bool reopened)

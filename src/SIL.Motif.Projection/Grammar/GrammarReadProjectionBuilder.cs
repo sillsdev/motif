@@ -56,11 +56,19 @@ public static class GrammarReadProjectionBuilder
         };
     }
 
-    private static string? ExactNote(string? exact, GrammarReadItem[] matches)
+    private static string? ExactNote(string? exact, GrammarReadItem[] matches) =>
+        ExactNote(exact, matches.OfType<GrammarLexicalEntryRead>().Select(entry => (entry.Headword, entry.Id)));
+
+    /// <summary>
+    /// The note for a bare exact form that matched marked headwords only by stripping the marker, or null.
+    /// Callers that filter by morph type skip it, since they already narrowed the kind of form.
+    /// </summary>
+    /// <param name="exact">The exact form asked for.</param>
+    /// <param name="matched">The headword and id of every entry the exact form matched.</param>
+    public static string? ExactNote(string? exact, IEnumerable<(string? Headword, string Id)> matched)
     {
         if (string.IsNullOrWhiteSpace(exact)) return null;
-        var marked = matches.OfType<GrammarLexicalEntryRead>()
-            .Where(entry => FormMatch.MatchesOnlyByMarker(exact, [entry.Headword])).ToArray();
+        var marked = matched.Where(entry => FormMatch.MatchesOnlyByMarker(exact, [entry.Headword])).ToArray();
         if (marked.Length == 0) return null;
         var names = marked.Select(entry => entry.Headword ?? entry.Id).ToArray();
         return $"'{exact.Trim()}' also matched {marked.Length} marked headword(s): {string.Join(", ", names)}. " +

@@ -34,7 +34,7 @@ public sealed class ImportRecordViewModelTests
         return (new ImportRecordViewModel(client, Project) { FilePath = "record.md" }, client);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task PreviewShowsCountsChangesAndRefusalsWithoutADraftName()
     {
         var (model, client) = Make((_, _) => Ok(Plan(operations: 2, refusals: 1)));
@@ -52,7 +52,7 @@ public sealed class ImportRecordViewModelTests
         Assert.False(model.IsBusy);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task PagingRequestsTheNeighbouringPageAndStopsAtTheEnds()
     {
         var (model, client) = Make((request, _) => Ok(Plan(request.Page, pageCount: 2, operations: 5)));
@@ -68,7 +68,7 @@ public sealed class ImportRecordViewModelTests
         Assert.True(model.PreviousPageCommand.CanExecute(null));
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(RefusalCodes.RecordImportPlanRefused)]
     [InlineData(RefusalCodes.RecordImportInvalidPage)]
     [InlineData(RefusalCodes.RecordImportFileUnreadable)]
@@ -85,7 +85,7 @@ public sealed class ImportRecordViewModelTests
         Assert.False(model.CanStage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StageNeedsADraftNameThenReturnsTheDraftId()
     {
         var (model, client) = Make((request, _) => Ok(request.DraftName is null ? Plan() : Plan(draft: request.DraftName)));
@@ -103,7 +103,7 @@ public sealed class ImportRecordViewModelTests
         Assert.False(model.CanStage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APreviewWithNoOperationsCannotBeStaged()
     {
         var (model, _) = Make((_, _) => Ok(Plan(operations: 0, refusals: 1)));
@@ -115,7 +115,7 @@ public sealed class ImportRecordViewModelTests
         Assert.False(model.CanStage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedStageKeepsThePreviewSoTheNameCanBeFixed()
     {
         var (model, _) = Make((request, _) =>
@@ -132,7 +132,7 @@ public sealed class ImportRecordViewModelTests
         Assert.True(model.CanStage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChangingTheFileDropsThePreviewAndAReviewReadsTheNewOne()
     {
         var operations = 2;
@@ -155,7 +155,7 @@ public sealed class ImportRecordViewModelTests
         Assert.Equal(ImportRecordState.Loaded, model.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APreviewAgainAfterStagingStartsOver()
     {
         var (model, _) = Make((request, _) => Ok(Plan(draft: request.DraftName)));
@@ -168,7 +168,7 @@ public sealed class ImportRecordViewModelTests
         Assert.Equal(ImportRecordState.Loaded, model.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CommandsAreDisabledWhileBusyAndCancelRestoresThePriorPage()
     {
         var started = new TaskCompletionSource();
@@ -201,7 +201,7 @@ public sealed class ImportRecordViewModelTests
         Assert.True(model.PreviewCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACancelledFirstPreviewStaysIdle()
     {
         var started = new TaskCompletionSource();
@@ -222,7 +222,7 @@ public sealed class ImportRecordViewModelTests
         Assert.False(model.IsBusy);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnexpectedFailureIsAnErrorState()
     {
         var (model, _) = Make((_, _) => throw new IOException("disk gone"));
@@ -244,7 +244,7 @@ public sealed class ImportRecordViewModelTests
         Assert.True(model.PreviewCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APreviewInFlightWhenTheFileChangesIsNeverApplied()
     {
         var release = new TaskCompletionSource<CommandOutcome<RecordImportResponse>>();
@@ -270,7 +270,7 @@ public sealed class ImportRecordViewModelTests
         Assert.Equal("other.md", client.StageRecordImportRequests[^1].FilePath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CancelIsUnavailableWhileStagingAndTheResultStillSurfaces()
     {
         var release = new TaskCompletionSource<CommandOutcome<RecordImportResponse>>();
@@ -298,7 +298,7 @@ public sealed class ImportRecordViewModelTests
         Assert.False(model.IsBusy);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedPageNavigationKeepsTheCurrentPreview()
     {
         var (model, _) = Make((request, _) =>
@@ -312,7 +312,7 @@ public sealed class ImportRecordViewModelTests
         Assert.Equal(1, model.Page);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DisposeCancelsAPreviewInFlight()
     {
         var started = new TaskCompletionSource();

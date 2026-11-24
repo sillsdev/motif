@@ -301,7 +301,7 @@ namespace SIL.TextEditing.Project
                 {
                     string? kept = null;
                     try { Describe(obj.Hvo, flid, out kept); } catch (Exception) { kept = null; }
-                    run.Unexported.Add(new UnexportedValue(obj.Guid, obj.ClassName, _metadata.GetFieldName(flid), "The value could not be converted: " + e.Message, kept));
+                    run.Unexported.Add(new UnexportedValue(obj.Guid, obj.ClassName, _metadata.GetFieldName(flid), "The value could not be converted: " + (e is RuleNotationException rule ? rule.Code + ": " : "") + e.Message, kept));
                     continue;
                 }
                 if (value != null && !value.IsEmpty) result[field.Name] = value;
@@ -319,6 +319,18 @@ namespace SIL.TextEditing.Project
             {
                 case RecordFieldKind.Text:
                 case RecordFieldKind.Notation:
+                    if (type == CellarPropertyType.OwningAtomic)
+                    {
+                        int held = _data.get_ObjectProp(hvo, flid);
+                        return held == 0 ? null : new RecordScalar(FeatureStructureNotation.Render((IFsFeatStruc)Hvo(held), _cache));
+                    }
+                    if (type == CellarPropertyType.OwningSequence)
+                    {
+                        if (!RuleNotation.TryFieldOf(_metadata.GetOwnClsName(flid), _metadata.GetFieldName(flid), out var ruleField))
+                            throw new NotSupportedException("No rule-formula field is bound to " + _metadata.GetFieldName(flid) + ".");
+                        string rule = RuleNotation.Render(obj, ruleField, _cache);
+                        return rule.Length == 0 ? null : new RecordScalar(rule);
+                    }
                     if (type == CellarPropertyType.String)
                     {
                         var s = _data.get_StringProp(hvo, flid);

@@ -49,6 +49,9 @@ record GDRs) is `grammar-discovery-loop`.
    costly: in the synthetic Bantu sample 160 of them added no measurable work, while a duplicated real
    affix raised it 19.5×. Measure the grammar in front of you.
 
+6. **Read [references/lessons.md](references/lessons.md)** when an edit does nothing, words disappear or
+   readings double: shadowed alternates, class-free twins, retire versus block, sibling checks.
+
 ## Rules
 
 - **Synthetic data only.** Every sample says SYNTHETIC EXAMPLE and names the language it is modelled

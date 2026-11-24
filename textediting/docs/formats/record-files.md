@@ -297,6 +297,97 @@ to pay money for [something]{.v}
   is the host's `INotationChecker` for notation fields.
 - Not checked yet: whether a reference resolves, its target's class, collection order, deletes and moves. They are planned.
 
+## Feature-structure notation
+
+A project record schema marks an owned feature structure (`FsFeatStruc`) with `notation="feature-structure"` and the field is then one double-quoted
+notation value, `text/x-fieldworks-feature-structure`. `FeatureStructureNotation` renders and reads it in one place. The five fields that carry it are
+`MoStemMsa.MsFeatures`, `MoInflAffMsa.InflFeats`, `MoDerivAffMsa.FromMsFeatures`, `MoDerivAffMsa.ToMsFeatures` and `MoAffixAllomorph.MsEnvFeatures`; each
+is edited in FieldWorks by the inflection-feature chooser (`MsaInflectionFeatureListDlgLauncherSlice` in `MorphologyParts.xml`).
+
+- **Grammar.** `structure = ws "[" { ws pair } ws "]" ws`, `pair = label ":" label`, `label = { char | backslash any }` with at least one character. `ws` is
+  zero or more white-space characters, meaning the Unicode White_Space set (.NET `char.IsWhiteSpace`). Inside a label a backslash, `[`, `]`, `:` and every
+  white-space character must follow a backslash; a backslash before any character gives that character, so a reader accepts a redundant escape and a render never
+  writes one. `[]` is a structure that exists and holds no feature; a structure that does not exist has no key in the file.
+- **Two escape layers.** The notation sits inside the record file's double-quoted string, so each notation backslash is written twice there: the label `a b` as a
+  feature appears in a file as `"[a\\ b:c]"`. The string layer is read first, the notation layer second.
+- **Labels.** A feature and a value are each written by their abbreviation, or by their name when there is no abbreviation; this is the decision, and the
+  show-in-gloss flag is not consulted, so the text does not change meaning when someone toggles it. FieldWorks shows a value by its abbreviation when its show-in-gloss flag is set (as it is for values FieldWorks creates, so a typical project shows `[cas:nom num:pl]`) and by its name otherwise. The text is the first non-empty
+  alternative among the default analysis writing system and then the project's other current analysis writing systems in their order (vernacular writing systems
+  are never read), so a change of default analysis writing system or a rename in the project can change a render; a file whose old value no longer matches is
+  stale and refused. Labels are normalized to NFC and compared case-sensitively.
+- **Order.** Pairs are in ordinal order (`string.CompareOrdinal`) of the feature label, so a render is canonical and a diff shows only the pairs that differ.
+  FieldWorks orders by the structure's type and then by feature name; this notation does not. Reading accepts any order.
+- **Not written.** Only closed values of features in the project's morphosyntactic feature system are written. A structure that holds a complex, negated, shared,
+  disjunctive or open value, a feature twice, a closed value with no feature or no choice, a feature outside that system, a value that is not one of its feature's
+  values, or a label that is empty, has a control character or is not unique (two features, or two values of one feature) is listed as an unexported value and its
+  field is locked: the file never shows a guess. A structure's declared type is not in the text and an edit leaves it as it is.
+- **Codes.** Reading and writing refuse with a code and never guess: `fs-notation.syntax` (not well formed), `fs-notation.unknown-feature`,
+  `fs-notation.unknown-value`, `fs-notation.ambiguous-label`, `fs-notation.repeated-feature`, `fs-notation.unsupported-feature` (a complex feature) and
+  `fs-notation.unrenderable` (the project's structure cannot be shown, so an edit cannot be checked). An import reports them as the code of the refused change.
+
+## Rule-formula notation
+
+`notation="rule-formula"` (`text/x-fieldworks-rule-formula`) marks a field that holds a phonological formula: the Input and Output of an affix process, and the
+structural description, structural change, left context and right context of a phonological rule. `RuleNotation` renders and reads it in one place. An affix
+process shows its text under its field's one key, `input` and `output`, and an import of that text writes the objects FieldWorks's affix editor makes. The same
+objects also appear under `input-parts` and `output-parts`, which an import uses only to reach what the text cannot say (a context's description, an alpha
+constraint on a class); a field the text already says (a copy's, modify's or insertion's content, a modification class, a context's phoneme, boundary or class,
+a group's members) is shown there and an import refuses a change to it. Adding, removing or moving a member under those keys is not offered, because the
+text is the one key that does it. Clearing `input` or `output` is not offered either: an affix process needs at least one column and one step. The fields of a phonological rule are shown and an import refuses a change to one with `rule-notation.read-only`.
+
+- **Writing an affix process.** An import reads the new text, checks it, and diffs it against the project by longest common subsequence of the canonical text of
+  each element (Input columns, Output steps), leftmost on a tie. A kept element keeps its object; a changed or moved element is deleted and created, and a copy or
+  modify has its content set explicitly from its `$n` against the Input as it will stand, so a change to Input and Output in one file is checked together. An
+  Input-only change that would leave a kept Output step pointing at a column it removes is refused (`rule-notation.dangling-index`). A column that was a group
+  also drops the member contexts only it used, as FieldWorks's editor does. An anonymous class written in a bracket is created as a new natural class named
+  `Created automatically for rule "..."` each time, as FieldWorks does, and is never shared with another rule; a class a change stops using is never deleted, and a named class is only ever referenced. A modify of a stem variable (`*`) is refused with `rule-notation.context-not-allowed`, as FieldWorks's editor does not offer it. An edit that the text cannot say
+  is refused: `rule-notation.unsupported-class` for a group that names one unit twice, `rule-notation.limit-exceeded` past 16 columns or 256 steps. Each edit the
+  former object-list keys allowed is a text edit: add, remove or move a column or step; set a context's phoneme, boundary or class; add, remove or move a group's
+  members; set a copy's column; set a modification's class; set an insertion's class; add or remove an inserted unit. The name and description of a context, and an
+  alpha constraint on an affix class, are not part of the text; they stay writable under `input-parts` and `output-parts`.
+
+- **Tokens.** A field is a list of tokens separated by white space; no meaning depends on how much white space there is, or whether there is any between a
+  bracket and its neighbours. Two lexical modes: outside brackets, a literal (a phoneme code) must escape backslash, `[` `]` `(` `)` `{` `}` `<` `>` `$` `~` `*` `#`
+  `+` `_` `/` `|` and white space with a backslash (`\+` is the phoneme coded `+`, `+` is the morpheme boundary; a bare `_`, `/` or `|` is refused; `:` needs no escape); inside brackets, labels use exactly the escape set of
+  [feature-structure notation](#feature-structure-notation), plus the escaping of a value label that is a lone Greek letter or `-` followed by one (`\α`). A
+  reader accepts any redundant escape; a render writes none. As in feature structures, the notation sits inside the file's double-quoted string.
+- **Grammar.**
+
+  ```
+  affix-input   = { column }                column = simple | "<" simple { simple } ">" | "*"
+  affix-output  = { step }                  step = "$" n [ "~" class ] | literal | "<" literal { literal } ">" | class
+  simple        = literal | "#" | "+" | class
+  rule-items    = { simple }              (* structural description, structural change: no repeat, group or gap *)
+  rule-context  = { item }                item = simple [ repeat ] | "(" simple ")"      (* left and right context *)
+  repeat        = "{" min "," ( max | "∞" | "*" ) "}"
+  class         = "[" ( abbreviation { alpha } | pair { pair } ) "]"      pair = feature ":" ( value | alpha | "-" alpha )
+  ```
+
+  `*` is only the gap (a variable), in any column of an affix input; `[C]*` reads as two items, which a context refuses (`rule-notation.context-not-allowed`) and an affix input takes as two columns. `(x)` is `x{0,1}`, and `x{m,n}` has `m` at least 0, `n` at least 1 and at least `m`;
+  `∞` is the canonical unbounded maximum and `*` is accepted there on read only. `$n` copies input column `n` (counting from 1); `$n~[voi:+]` modifies it by a
+  feature class. `<a b>` is one insert of several units. A structural description and structural change are plain contexts (no repeat, group or gap), and the
+  word boundary `#` may be only the first (left context) or last (right context) element.
+- **Labels.** A phoneme is written by its first code in the first phoneme set; the default vernacular writing system's code comes first, then the project's other
+  current vernacular writing systems. A code that two phonemes or markers share is `rule-notation.ambiguous-label` when that code is the one being written or read; the other codes are unaffected. A phoneme coded `+` or `#` is written `\+` or `\#`. Boundaries are the
+  standard word and morpheme boundary markers, found by identity, written `#` and `+`. A natural class is written `[abbreviation]` when it has an abbreviation and
+  otherwise as its features, `[cons:+ son:-]`, in the order of [feature-structure notation](#feature-structure-notation).
+- **Alpha variables.** `voi:α` means the feature agrees across the rule, `voi:-α` that it disagrees. The letter is the position of the feature's constraint in the
+  rule's constraint list, `α` to `ω` (24), in FieldWorks's order: the structural description, then for each right-hand side the structural change, left context and
+  right context, plus constraints before minus, so a letter is the same in every field of one rule and an edit to one field can re-letter another on the next
+  export. A letter must name one feature, a feature must have one letter, and more than 24 letters is refused (`rule-notation.alpha-mismatch`). A named class
+  takes alpha pairs only (`[Obs voi:α]`); a deliberate extension, as FieldWorks does not show a named class's constraints.
+- **Canonical form.** `render(parse(x))` is the canonical text of `x`: single spaces, features sorted, letters in constraint order, `∞`, `(x)`. The one
+  non-injective case is a one-member group or sequence, which reads as its bare member. A context that is absent is the empty text and has no key.
+- **Not written.** A field that cannot be shown is unexported with `rule-notation.unrenderable` and the others still write: a metathesis rule's description, a
+  context that is not in the project's context list in a form the notation has, a sequence with no member, two constraints on one feature, more than 24 letters, a
+  copy whose content is not in the process's input, a class with a constraint in an affix field.
+- **Codes.** `rule-notation.syntax`, `rule-notation.bad-repeat`, `rule-notation.unknown-phoneme`, `rule-notation.unknown-natural-class`,
+  `rule-notation.ambiguous-label`, `rule-notation.alpha-mismatch`, `rule-notation.index-out-of-range`, `rule-notation.dangling-index`, `rule-notation.context-not-allowed`,
+  `rule-notation.limit-exceeded`, `rule-notation.unsupported-class`, `rule-notation.unrenderable` and, for an import of a rule field, `rule-notation.read-only`; a feature label that does not resolve reports its `fs-notation.*` code.
+- **Examples.** An affix process `m a $1` (prefix `ma-`), input `[C] *` with output `$1 u m $2` (infix), input `<[C] [V]> *` with output `$1 $1 $2`
+  (reduplication), output `$1~[voi:+] $2` (voice the first consonant); a rule context `# [C]{1,3} (a) [V]`, a change `[voi:α]` with a right context
+  `[cons:+ voi:α]` (assimilation), and `[cons:+ voi:-α]` (dissimilation).
+
 ## Block features
 
 A rich field of paragraphs says which of tables, lists and headings it allows (ADR 0033). The default is all three. A field of one

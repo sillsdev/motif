@@ -207,13 +207,13 @@ public static class GdrMarkdownImport
         return pairs;
     }
 
-    private static IReadOnlyList<TextRun> Runs(Paragraph paragraph) => paragraph.Runs.Select(run =>
+    internal static IReadOnlyList<TextRun> Runs(Paragraph paragraph) => paragraph.Runs.Select(run =>
     {
         var style = run.Props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
         return new TextRun(run.Text, run.Ws, style, Props(run.Props), run.ObjData);
     }).ToArray();
 
-    private static TextProps ParagraphProps(Paragraph paragraph)
+    internal static TextProps ParagraphProps(Paragraph paragraph)
     {
         var props = paragraph.Props.Clone();
         if (paragraph.Rtl || props.IntProps.ContainsKey(128)) props.IntProps[128] = new IntPropValue(0, paragraph.Rtl ? 1 : 0);

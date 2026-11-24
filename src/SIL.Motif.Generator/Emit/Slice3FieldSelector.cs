@@ -72,6 +72,12 @@ public static class Slice3FieldSelector
         new FieldKey("LexExampleSentence", "DoNotPublishIn"),
     };
 
+    // Features the part-of-speech editor chooses, beyond HcReachable.
+    private static readonly HashSet<FieldKey> FeatureSystemCollectionFields = new()
+    {
+        new FieldKey("PartOfSpeech", "InflectableFeats"),
+    };
+
     private static readonly string[] BasicOkSigs = { "MultiUnicode", "MultiString", "Boolean" };
 
     private static readonly HashSet<FieldKey> OrderedTemplateSlotFields = new()
@@ -108,7 +114,7 @@ public static class Slice3FieldSelector
             row.Kind == FieldKind.Rel &&
             (row.Card == FieldCard.Col || row.Card == FieldCard.Seq) &&
             (row.Manifest.Verbs == "addRef|removeRef" || row.Manifest.Verbs == "addRef|removeRef|move"),
-            LexiconEditCollectionFields);
+            LexiconEditCollectionFields.Union(FeatureSystemCollectionFields).ToHashSet());
 
     public static IReadOnlyList<JoinedRow> SelectOrderedTemplateSlotSequences(IReadOnlyList<JoinedRow> rows) =>
         Filter(rows, row =>

@@ -39,16 +39,6 @@ public static class RejectionTraceQuery
         return Parse(request, invoker, cancellationToken);
     }
 
-    /// <summary>Answers a generation request with a typed reason and a sentence.</summary>
-    public static CommandOutcome<RejectionTraceResponse> Generate(GenerateTraceRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        if (Check(request.Entry, request.At, request.MaxPaths) is { } invalid) return invalid;
-        return Refuse(RefusalCodes.RejectionTraceUnsupported, FailureReason.Refused,
-            "The pinned PanGloss traces parsing only, so a generation request cannot be explained yet. " +
-            "Use 'motif parse <word> --trace' to see why a word does not parse.");
-    }
-
     internal static CommandOutcome<RejectionTraceResponse> Parse(
         ParseTraceRequest request, IPanGlossInvoker invoker, CancellationToken cancellationToken)
     {
@@ -72,9 +62,21 @@ public static class RejectionTraceQuery
         IPanGlossInvoker invoker, string grammarPath, string projectPath, string word, int maxPaths,
         string tracedAgainst, CancellationToken cancellationToken)
     {
+        return RunDescribed(invoker, grammarPath, projectPath, word, maxPaths, tracedAgainst, cancellationToken).Result;
+    }
+
+    /// <summary>
+    /// Runs the capture like <see cref="Run"/> and also returns the rejection reasons the parser's description lists,
+    /// or null when it lists none, so a caller can tell a reason the parser never records from one it did not meet.
+    /// </summary>
+    internal static (CommandOutcome<RejectionTraceResponse> Result, IReadOnlyList<string>? DescribedRejectReasons) RunDescribed(
+        IPanGlossInvoker invoker, string grammarPath, string projectPath, string word, int maxPaths,
+        string tracedAgainst, CancellationToken cancellationToken)
+    {
         var outcome = invoker.RunAsync(new PanGlossRequest.RejectionTrace(grammarPath, word, maxPaths),
             "rejection-trace:" + word, cancellationToken).GetAwaiter().GetResult();
-        return Shape(outcome, projectPath, word, maxPaths, tracedAgainst);
+        return (Shape(outcome, projectPath, word, maxPaths, tracedAgainst),
+            (outcome as PanGlossOutcome.Completed)?.DescribedRejectReasons);
     }
 
     internal static CommandOutcome<RejectionTraceResponse> Shape(
@@ -138,7 +140,7 @@ public static class RejectionTraceQuery
     private static string? ProposalOf(string? at) =>
         string.IsNullOrWhiteSpace(at) || at == "baseline" ? null : at;
 
-    private static CommandOutcome<RejectionTraceResponse>? Check(string subject, string? at, int? maxPaths)
+    internal static CommandOutcome<RejectionTraceResponse>? Check(string subject, string? at, int? maxPaths)
     {
         if (string.IsNullOrWhiteSpace(subject) || subject.EnumerateRunes().Count() > MaxWordScalars)
             return Refuse(RefusalCodes.RejectionTraceRequestInvalid, FailureReason.InvalidArgument,

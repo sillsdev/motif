@@ -33,7 +33,7 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         var tool = AgentTools.All.Single(item => item.Name == "motif_import_record");
         Assert.Equal(SIL.Motif.Commands.Catalog.AgentClass.Draft, tool.Class);
         Assert.False(tool.ReadOnly);
-        Assert.Equal(["draft", "file", "page", "project"], tool.ArgumentNames.Order(StringComparer.Ordinal));
+        Assert.Equal(["draft", "file", "page", "project", "strict"], tool.ArgumentNames.Order(StringComparer.Ordinal));
         Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
         Assert.NotNull(tool.OutputSchema);
         Assert.Contains(tool.Routes, route => route.Command == "import");
@@ -68,6 +68,39 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         var file = Path.Combine(Path.GetDirectoryName(path)!, "entry.md");
         File.WriteAllText(file, RecordFileWriter.Write(read.Document!, schema.Schema));
         return (path, file);
+    }
+
+
+    /// <summary>A saved project and a file editing seven senses' glosses, so lists span two pages.</summary>
+    private static (string Project, string File) SevenEdits(PristineProjectFixture pristine, string folder)
+    {
+        Directory.CreateDirectory(folder);
+        using var cache = pristine.NewScratch();
+        Guid entryId = default;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var entry = services.GetInstance<ILexEntryFactory>().Create();
+            entryId = entry.Guid;
+            var form = services.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = form;
+            form.Form.set_String(cache.DefaultVernWs, "zzword");
+            for (var index = 0; index < 7; index++)
+            {
+                var sense = services.GetInstance<ILexSenseFactory>().Create();
+                entry.SensesOS.Add(sense);
+                sense.Gloss.set_String(cache.DefaultAnalWs, "zzgloss" + index);
+            }
+        });
+        new FwDataProjectLoader().Save(cache);
+        var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(cache, schema);
+        var read = RecordFileReader.Read(exporter.Export(entryId).Text!, schema.Schema, exporter.CreateReadOptions());
+        foreach (var item in ((RecordList)read.Document!.Data["senses"]!).Items)
+            ((RecordAlternatives)((RecordObject)item)["gloss"]!).Add("en", new RecordScalar("zzedited"));
+        var file = Path.Combine(folder, "seven.md");
+        File.WriteAllText(file, RecordFileWriter.Write(read.Document!, schema.Schema));
+        return (cache.ProjectId.Path, file);
     }
 
     private static ServerContext Context(string path, ToolProfile profile) =>
@@ -203,5 +236,71 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         var validator = JsonSchema.FromText(RecordImportToolSchema.Output.ToJsonString());
         Assert.True(validator.Evaluate(called.StructuredContent.Value).IsValid);
         Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(path)));
+    }
+
+    [Fact]
+    public async Task PageTwoThroughTheToolListsTheRest()
+    {
+        var (path, file) = SevenEdits(pristine, _folder);
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "import-page");
+        var profile = new ToolProfile("import-page", null, null, "concise", [], AllTools: true);
+        var tools = MotifMcpServer.Expose(profile);
+        var inside = Path.Combine(Path.GetDirectoryName(path)!, "seven.md");
+        File.Copy(file, inside, true);
+
+        var called = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+            Args(("project", path), ("file", inside), ("page", 2)), CancellationToken.None);
+
+        Assert.False(called.IsError == true, called.StructuredContent?.ToString());
+        var result = JsonNode.Parse(called.StructuredContent!.Value.GetRawText())!["result"]!.AsObject();
+        Assert.Equal(2, result["page"]!.GetValue<int>());
+        Assert.Equal(3, result["pageCount"]!.GetValue<int>());
+        Assert.Equal(3, result["operations"]!.AsArray().Count);
+        Assert.Equal(3, result["changes"]!.AsArray().Count);
+    }
+
+    [Fact]
+    public async Task StrictThroughTheToolIsAcceptedOnACleanFile()
+    {
+        var (path, file) = Fixture();
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "import-strict");
+        var profile = new ToolProfile("import-strict", null, null, "concise", [], AllTools: true);
+
+        var called = await MotifMcpServer.CallAsync(Context(path, profile), MotifMcpServer.Expose(profile),
+            "motif_import_record", Args(("project", path), ("file", file), ("draft", "strict-draft"), ("strict", true)),
+            CancellationToken.None);
+
+        Assert.False(called.IsError == true, called.StructuredContent?.ToString());
+        Assert.Equal("draft", JsonNode.Parse(called.StructuredContent!.Value.GetRawText())!["result"]!["mode"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task StrictWithARefusedChangeIsAnErrorAndAPartialStageSucceedsWithTheCount()
+    {
+        var (path, file) = RecordImportDoomedFile.Create(pristine, Path.Combine(_folder, "doomed"));
+        var inside = Path.Combine(Path.GetDirectoryName(path)!, "doomed.md");
+        File.Copy(file, inside, true);
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "import-doomed");
+        var profile = new ToolProfile("import-doomed", null, null, "concise", [], AllTools: true);
+        var tools = MotifMcpServer.Expose(profile);
+
+        var strict = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+            Args(("project", path), ("file", inside), ("draft", "mcp-strict"), ("strict", true)), CancellationToken.None);
+        Assert.True(strict.IsError == true);
+        Assert.Contains(RefusalCodes.RecordImportStrictRefused, strict.StructuredContent?.ToString(), StringComparison.Ordinal);
+        Assert.Empty(ProposalCommands.List(new(path, "0.1.0")).Value?.Proposals ?? []);
+
+        var partial = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+            Args(("project", path), ("file", inside), ("draft", "mcp-partial")), CancellationToken.None);
+        Assert.False(partial.IsError == true, partial.StructuredContent?.ToString());
+        Assert.Equal(1, JsonNode.Parse(partial.StructuredContent!.Value.GetRawText())!["result"]!["refusalCount"]!.GetValue<int>());
+
+        var noDraft = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+            Args(("project", path), ("file", inside), ("strict", true)), CancellationToken.None);
+        Assert.True(noDraft.IsError == true);
+        Assert.Contains(RefusalCodes.RecordImportStrictNeedsDraft, noDraft.StructuredContent?.ToString(), StringComparison.Ordinal);
     }
 }

@@ -46,7 +46,7 @@ public sealed partial class ProposalDocumentViewModel
     /// <summary>What the bound Dry Run will change, from its recorded effects, or null when none are on hand.</summary>
     public string? DryRunFound => DryRunChecked && Detail is { } detail && _review?.Trial is { } trial &&
         trial.IntentDigest == detail.CurrentIntentDigest && trial.DryRun is { } dryRun
-        ? ProposalEffectText.WillChange(dryRun.Effects) : null;
+        ? ProposalEffectText.WillChange(dryRun.Effects, _entryNames) : null;
 
     /// <summary>The Dry Run's finding repeated in the Apply confirmation, or empty.</summary>
     public string ApplyWillChangeText => DryRunFound ?? string.Empty;

@@ -298,7 +298,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AddingAReadyPictureStoresItAndShowsItAndRemovingItClearsIt()
     {
         var fake = new FakeCommandClient();
@@ -339,7 +339,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(model.IsEmpty);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACaptionTypedBeforeAddingGoesWithThePictureAndTheCountAndLimitFollowTheCap()
     {
         var fake = new FakeCommandClient();
@@ -364,7 +364,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         Assert.Null(fake.AddPictureRequests[1].Caption);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(PictureIntakeStatus.Unreadable)]
     [InlineData(PictureIntakeStatus.Unsupported)]
     [InlineData(PictureIntakeStatus.TooLarge)]
@@ -387,7 +387,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         Assert.Empty(model.Items);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CancellingThePickerChangesNothingAndADecidedProposalOffersNoEditing()
     {
         var fake = new FakeCommandClient();
@@ -404,7 +404,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         Assert.False(model.AddCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedAddShowsTheStoresRefusalAndAWindowWithoutAPickerOffersNoAdd()
     {
         var fake = new FakeCommandClient { PictureWriteRefusal = "proposal.picture-invalid" };
@@ -418,7 +418,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         Assert.False(Model(fake, null).CanAdd);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SelectingAProposalReadsItsPicturesAndADecidedOneIsFrozen()
     {
         var fake = new FakeCommandClient();

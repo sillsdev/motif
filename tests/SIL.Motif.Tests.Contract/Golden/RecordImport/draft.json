@@ -17,5 +17,17 @@
   ],
   "refusals": [],
   "draftName": "import-1",
-  "proposalId": "-DDDDDDDDDDDDDDDDDDDDDD"
+  "proposalId": "-DDDDDDDDDDDDDDDDDDDDDD",
+  "changes": [
+    {
+      "kind": "Set",
+      "class": "LexSense",
+      "field": "gloss",
+      "object": "-CCCCCCCCCCCCCCCCCCCCCC",
+      "writingSystem": "en",
+      "old": "buy",
+      "new": "purchase",
+      "status": "staged"
+    }
+  ]
 }

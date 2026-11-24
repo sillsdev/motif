@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using SIL.Motif.Contract.HandAnalyses;
+using SIL.Motif.Contract.Query.Corpus;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
@@ -49,6 +50,12 @@ public static class CommandCatalog
     private static CommandDescriptor[] HandWritten() => new[]
     {
         new CommandDescriptor("query forms", typeof(FormsQueryRequest), typeof(FormsQueryResponse), CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("query pairs", typeof(PairsQueryRequest), typeof(PairsQueryResponse), CommandSurface.Released, AgentClass.Read)
+            { ExposeAsAgentTool = false },
+        new CommandDescriptor("query values", typeof(QueryValuesRequest), typeof(PhonValuesResponse), CommandSurface.Released, AgentClass.Read)
+            { ExposeAsAgentTool = false },
+        new CommandDescriptor("query corpus forms", typeof(CorpusFormsRequest), typeof(CorpusFormsResponse), CommandSurface.Released, AgentClass.Read)
+            { ExposeAsAgentTool = false },
         // ProposalCommands
         new CommandDescriptor("open", typeof(OpenRequest), typeof(ProjectSummaryProjection), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("hand-analysis check", typeof(HandAnalysisCheckRequest), typeof(HandAnalysisCheckResponse),
@@ -317,8 +324,10 @@ public static class CommandCatalog
         new CommandDescriptor("trace", typeof(WordTraceRequest), typeof(WordTraceResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("trace --load", typeof(WordTraceLoadRequest), typeof(WordTraceResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("parse", typeof(ParseTraceRequest), typeof(RejectionTraceResponse), CommandSurface.Released, AgentClass.Evaluate),
-        new CommandDescriptor("generate", typeof(GenerateTraceRequest), typeof(RejectionTraceResponse), CommandSurface.Released, AgentClass.Evaluate) { ExposeAsAgentTool = false },
+        new CommandDescriptor("generate", typeof(GenerateTraceRequest), typeof(FormsExplainResponse), CommandSurface.Released, AgentClass.Evaluate) { ExposeAsAgentTool = false },
+        new CommandDescriptor("forms explain", typeof(FormsExplainRequest), typeof(FormsExplainResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("why-not", typeof(WhyNotRequest), typeof(WhyNotResponse), CommandSurface.Released, AgentClass.Evaluate),
+        new CommandDescriptor("proposal why-lost", typeof(WhyLostRequest), typeof(WhyLostResponse), CommandSurface.Released, AgentClass.Evaluate),
 
         // HandoffCommand
         new CommandDescriptor("handoff", typeof(HandoffRequest), typeof(HandoffCommandResponse), CommandSurface.Released, AgentClass.HumanOnly),

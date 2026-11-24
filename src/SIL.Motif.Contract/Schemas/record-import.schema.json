@@ -34,6 +34,9 @@
         "page": {
           "type": "integer",
           "minimum": 1
+        },
+        "strict": {
+          "type": "boolean"
         }
       }
     },
@@ -58,6 +61,47 @@
         }
       }
     },
+    "Change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "field"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "class": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "object": {
+          "type": "string"
+        },
+        "writingSystem": {
+          "type": "string"
+        },
+        "old": {
+          "type": "string"
+        },
+        "new": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "staged",
+            "refused"
+          ]
+        },
+        "refusalCode": {
+          "type": "string"
+        }
+      }
+    },
     "Refusal": {
       "type": "object",
       "additionalProperties": false,
@@ -73,7 +117,27 @@
             "record-import.field-uncovered",
             "record-import.shape-unsupported",
             "record-import.value-stale",
-            "record-import.not-executable"
+            "record-import.not-executable",
+            "fs-notation.syntax",
+            "fs-notation.unknown-feature",
+            "fs-notation.unknown-value",
+            "fs-notation.ambiguous-label",
+            "fs-notation.repeated-feature",
+            "fs-notation.unsupported-feature",
+            "fs-notation.unrenderable",
+            "rule-notation.read-only",
+            "rule-notation.syntax",
+            "rule-notation.bad-repeat",
+            "rule-notation.unknown-phoneme",
+            "rule-notation.unknown-natural-class",
+            "rule-notation.ambiguous-label",
+            "rule-notation.alpha-mismatch",
+            "rule-notation.index-out-of-range",
+            "rule-notation.dangling-index",
+            "rule-notation.context-not-allowed",
+            "rule-notation.limit-exceeded",
+            "rule-notation.unsupported-class",
+            "rule-notation.unrenderable"
           ]
         },
         "class": {
@@ -162,6 +226,13 @@
         },
         "proposalId": {
           "type": "string"
+        },
+        "changes": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/Change"
+          }
         }
       },
       "allOf": [

@@ -331,8 +331,57 @@ public static class RefusalCodes
     public const string RecordImportChangeRefused = "record-import.change-refused";
     /// <summary>The record file cannot be read from the path given.</summary>
     public const string RecordImportFileUnreadable = "record-import.file-unreadable";
+    /// <summary>The project changed between the preview and the stage, so what would be staged is no longer what was previewed.</summary>
+    public const string RecordImportChangedSincePreview = "record-import.changed-since-preview";
+
+    /// <summary>Strict was asked for without a Draft name, so there is no stage for it to govern.</summary>
+    public const string RecordImportStrictNeedsDraft = "record-import.strict-needs-draft";
+
+    /// <summary>Strict mode refused to stage an import in which some change was refused.</summary>
+    public const string RecordImportStrictRefused = "record-import.strict-refused";
+
     /// <summary>Staging was asked for, but the file lowers to no operation, so no Draft was made.</summary>
     public const string RecordImportNothingToStage = "record-import.nothing-to-stage";
+    /// <summary>The feature-structure text is not a bracketed list of feature:value pairs.</summary>
+    public const string FsNotationSyntax = "fs-notation.syntax";
+    /// <summary>The feature-structure text names a feature the project's feature system does not have.</summary>
+    public const string FsNotationUnknownFeature = "fs-notation.unknown-feature";
+    /// <summary>The feature-structure text gives a feature a value it does not have.</summary>
+    public const string FsNotationUnknownValue = "fs-notation.unknown-value";
+    /// <summary>More than one feature, or more than one value of a feature, has the label, so it names none.</summary>
+    public const string FsNotationAmbiguousLabel = "fs-notation.ambiguous-label";
+    /// <summary>The feature-structure text names one feature twice.</summary>
+    public const string FsNotationRepeatedFeature = "fs-notation.repeated-feature";
+    /// <summary>The feature-structure text names a complex feature, which the notation does not write.</summary>
+    public const string FsNotationUnsupportedFeature = "fs-notation.unsupported-feature";
+    /// <summary>The project's feature structure holds something the text cannot show, so a change to it cannot be checked.</summary>
+    public const string FsNotationUnrenderable = "fs-notation.unrenderable";
+    /// <summary>The rule-formula text of an affix process or phonological rule field is shown and an import does not write it.</summary>
+    public const string RuleNotationReadOnly = "rule-notation.read-only";
+    /// <summary>The rule-formula text is not well formed outside a bracket.</summary>
+    public const string RuleNotationSyntax = "rule-notation.syntax";
+    /// <summary>A repeat count in the rule-formula text is below 1 for its maximum or below its minimum.</summary>
+    public const string RuleNotationBadRepeat = "rule-notation.bad-repeat";
+    /// <summary>No phoneme or boundary marker of the first phoneme set has the code the rule-formula text writes.</summary>
+    public const string RuleNotationUnknownPhoneme = "rule-notation.unknown-phoneme";
+    /// <summary>No natural class has the abbreviation the rule-formula text writes.</summary>
+    public const string RuleNotationUnknownNaturalClass = "rule-notation.unknown-natural-class";
+    /// <summary>Two phonemes, markers or classes share the code or abbreviation the rule-formula text writes, so it names none.</summary>
+    public const string RuleNotationAmbiguousLabel = "rule-notation.ambiguous-label";
+    /// <summary>The rule-formula text uses one alpha letter for two features, two letters for one feature, or more than 24 letters.</summary>
+    public const string RuleNotationAlphaMismatch = "rule-notation.alpha-mismatch";
+    /// <summary>An output $n of the rule-formula text names a column beyond the input as it will stand.</summary>
+    public const string RuleNotationIndexOutOfRange = "rule-notation.index-out-of-range";
+    /// <summary>An input-only change would leave an output element pointing at a column it removes.</summary>
+    public const string RuleNotationDanglingIndex = "rule-notation.dangling-index";
+    /// <summary>The rule-formula text holds a construct its field cannot hold.</summary>
+    public const string RuleNotationContextNotAllowed = "rule-notation.context-not-allowed";
+    /// <summary>The rule-formula text is longer than the model allows: 16 inputs or 256 outputs.</summary>
+    public const string RuleNotationLimitExceeded = "rule-notation.limit-exceeded";
+    /// <summary>The rule-formula text needs an object the operation catalog cannot create.</summary>
+    public const string RuleNotationUnsupportedClass = "rule-notation.unsupported-class";
+    /// <summary>The project's rule-formula field holds something the text cannot show, so a change to it cannot be checked.</summary>
+    public const string RuleNotationUnrenderable = "rule-notation.unrenderable";
     /// <summary>The page asked for is not a page number from 1.</summary>
     public const string RecordImportInvalidPage = "record-import.invalid-page";
     /// <summary>The request names neither one record nor all records of a kind, or both, or an unusable value.</summary>
@@ -353,6 +402,20 @@ public static class RefusalCodes
     public const string QueryNotMeasured = "query.not-measured";
     /// <summary>A scorer was asked to count in a unit its hits or exceptions are not in.</summary>
     public const string QueryMixedUnits = "query.mixed-units";
+    /// <summary>A query's op does not fit the type of the column it names, such as a numeric comparison on text.</summary>
+    public const string QueryOpTypeMismatch = "query.op-type-mismatch";
+    /// <summary>A query uses a kind the schema reserves for a later release: morph or seq, or a realizes tier that is not built yet.</summary>
+    public const string QueryNotYetAvailable = "query.not-yet-available";
+    /// <summary><c>not realizes(...)</c> was asked over a variant set that is not complete, so the absence it would claim is not proven.</summary>
+    public const string QueryRealizesNegationIncomplete = "query.realizes-negation-incomplete";
+    /// <summary><c>realizes(M, attested)</c> found no stored analysis that uses the morpheme to read its forms from.</summary>
+    public const string QueryRealizesNoParses = "query.realizes-no-parses";
+    /// <summary><c>realizes(M, attested)</c> could not build the parse index of the corpus: <c>pangloss batch</c> failed or its analyses file is malformed.</summary>
+    public const string QueryRealizesIndexFailed = "query.realizes-index-failed";
+    /// <summary><c>realizes</c> ran with no project to resolve the morpheme in; corpus mode names one with <c>--grammar</c>.</summary>
+    public const string QueryRealizesNeedsProject = "query.realizes-needs-project";
+    /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>
+    public const string QueryDocumentInvalid = "query.document-invalid";
     public const string QueryNoTrialRows = "query.no-trial-rows";
     /// <summary>A Guide query's run line is not one well-formed <c>motif query</c> or <c>motif group</c> command.</summary>
     public const string GuideQueryRunInvalid = "guide-query.run-invalid";
@@ -360,6 +423,18 @@ public static class RefusalCodes
     public const string GuideQueryRunNotReadOnly = "guide-query.run-not-read-only";
     /// <summary>The Baseline or Proposal Trial copy a query was asked to read as of is not available.</summary>
     public const string QueryAsOfUnavailable = "query.as-of-unavailable";
+    /// <summary>A corpus word list or segment file named by a corpus query cannot be read or is malformed.</summary>
+    public const string QueryCorpusUnreadable = "query.corpus-unreadable";
+    /// <summary>A corpus query option is out of range or its pattern is not a valid regular expression.</summary>
+    public const string QueryCorpusInvalid = "query.corpus-invalid";
+    /// <summary>A <c>phon</c> or <c>env</c> predicate ran with no grammar to segment words and name natural classes; corpus mode needs <c>--grammar</c>.</summary>
+    public const string QueryPhonNeedsGrammar = "query.phon-needs-grammar";
+    /// <summary>The installed PanGloss does not declare the <c>match</c> serve op, so <c>phon</c> and <c>env</c> cannot run.</summary>
+    public const string QueryPhonUnavailable = "query.phon-unavailable";
+    /// <summary>PanGloss refused a <c>phon</c> or <c>env</c> pattern with a typed reason: a parse error, an unknown class or feature, or a construct it does not yet support.</summary>
+    public const string QueryPhonPatternRefused = "query.phon-pattern-refused";
+    /// <summary>The resident PanGloss failed, timed out or sent a reply Motif cannot read while matching a <c>phon</c> or <c>env</c> pattern.</summary>
+    public const string QueryPhonFailed = "query.phon-failed";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
@@ -512,6 +587,26 @@ public static class RefusalCodes
     public const string WhyNotMalformed = "why-not.malformed";
     /// <summary>The why-not run ended without a complete report, by the wall-clock limit or an unreadable result.</summary>
     public const string WhyNotUnfinished = "why-not.unfinished";
+    /// <summary>A forms-explain request names no morpheme or word, names both, or is over a cap.</summary>
+    public const string FormsExplainRequestInvalid = "forms-explain.request-invalid";
+    /// <summary>The installed PanGloss does not declare a traced <c>generate</c> serve op, so it cannot generate forms.</summary>
+    public const string FormsExplainParserUnsupported = "forms-explain.parser-unsupported";
+    /// <summary>A morpheme named in a forms-explain request matches nothing in the project's lexicon.</summary>
+    public const string FormsExplainMorphemeUnresolved = "forms-explain.morpheme-unresolved";
+    /// <summary>A morpheme named in a forms-explain request matches more than one entry or analysis.</summary>
+    public const string FormsExplainMorphemeAmbiguous = "forms-explain.morpheme-ambiguous";
+    /// <summary>PanGloss rejected the generate request, such as an unknown entry, and said why.</summary>
+    public const string FormsExplainParserRefused = "forms-explain.parser-refused";
+    /// <summary>PanGloss wrote a generate answer Motif cannot read.</summary>
+    public const string FormsExplainMalformed = "forms-explain.malformed";
+    /// <summary>The resident PanGloss failed or timed out before it answered the generate request.</summary>
+    public const string FormsExplainUnfinished = "forms-explain.unfinished";
+    /// <summary>No analysis of the word could be explained: it has none, or every one has a morph the lexicon cannot name.</summary>
+    public const string FormsExplainNoReading = "forms-explain.no-reading";
+    /// <summary>A why-lost request names no word or no Proposal id, or a word or cap Motif cannot trace.</summary>
+    public const string WhyLostRequestInvalid = "why-lost.request-invalid";
+    /// <summary>The Baseline and Trial captures were made with grammar hashes that do not compare, so no diff is read.</summary>
+    public const string WhyLostIncomparable = "why-lost.incomparable";
     public const string WordTraceCancelled = "wordtrace.cancelled";
     public const string WordTraceMalformedDiagnostic = "wordtrace.malformed-diagnostic";
     public const string WordTraceMalformedOutput = "wordtrace.malformed-output";
@@ -786,6 +881,12 @@ public static class RefusalCodes
 
     /// <summary>A reference write names an object outside the possibility list FieldWorks offers for the field.</summary>
     public const string ReferenceWrongList = "reference.wrong-list";
+
+    /// <summary>A reference write names an object of a class the field does not refer to.</summary>
+    public const string ReferenceWrongClass = "reference.wrong-class";
+
+    /// <summary>A reference write names an object the project does not contain.</summary>
+    public const string ReferenceUnknown = "reference.unknown";
 
     /// <summary>A custom-field operation names a field the target's class does not have.</summary>
     public const string CustomFieldMissing = "custom-field.missing";

@@ -37,7 +37,7 @@ public static class QueryRunLine
     [
         "project", "where", "group", "min-count", "examples", "ids", "raw-letters", "json", "trial", "fold", "distinct",
         "change", "at", "affixes", "wordset", "discovery", "heldout", "score", "exception", "unit", "controls",
-        "control-letters", "test-result", "members", "context", "sides", "sort",
+        "control-letters", "test-result", "members", "context", "sides", "sort", "limit", "segment-test",
     ];
 
     private static readonly string[] SavedFlags = ["project", "examples", "json", "trial"];
@@ -158,14 +158,32 @@ public static class QueryRunLine
             var selectors = new List<QueryCondition>();
             var exceptionList = new List<QueryCondition>();
             var contextList = new List<QueryCondition>();
+            var filters = new List<QueryExpr>();
             foreach (var (values, target, name) in new[] { (wheres, selectors, "where"), (exceptions, exceptionList, "exception"), (contexts, contextList, "context") })
                 foreach (var text in values)
-                    try { target.Add(QueryConditionParser.Parse(text)); }
-                    catch (ArgumentException)
+                {
+                    if (!TryParseSelector(text, out var condition, out var expression, out var selectorRefusal))
                     {
-                        refusal = Invalid("A selector needs a column, operator and value.", ("flag", name), ("value", text));
+                        refusal = selectorRefusal.Code == RefusalCodes.QueryNotYetAvailable ? selectorRefusal
+                            : Invalid("A selector needs a column, operator and value.", ("flag", name), ("value", text));
                         return false;
                     }
+                    if (condition is not null) target.Add(condition);
+                    else if (name == "where") filters.Add(expression!);
+                    else
+                    {
+                        refusal = Invalid("--exception and --context take one column, operator and value each.", ("flag", name), ("value", text));
+                        return false;
+                    }
+                }
+            if (!TryOptionalCount(flags, "limit", out var limit, out refusal)) return false;
+            var filter = QueryExprTools.AllOf(filters);
+            if ((flags.ContainsKey("as-of") || flags.ContainsKey("sides") || flags.ContainsKey("sort")) &&
+                QueryExprTools.TryLower(filter, out var lowered))
+            {
+                selectors.AddRange(lowered);
+                filter = null;
+            }
             QueryHypothesis? hypothesis = null;
             if (flags.TryGetValue("change", out var changeText))
             {
@@ -184,16 +202,62 @@ public static class QueryRunLine
                 refusal = Invalid("--at, --affixes, --wordset, --discovery, --heldout, --controls and --control-letters need --change.");
                 return false;
             }
+            string? segmentTest = null;
+            if (flags.TryGetValue("segment-test", out var segmentTestText))
+            {
+                if (!SIL.Motif.Contract.Query.Phon.PhonSegmentTest.All.Contains(segmentTestText))
+                {
+                    refusal = Invalid("--segment-test is engine or identity.", ("flag", "segment-test"), ("value", segmentTestText));
+                    return false;
+                }
+                segmentTest = segmentTestText;
+            }
             record = new QueryRecord(source!, selectors, List(flags, "group"), minCount, examples, flags.ContainsKey("ids"),
                 flags.ContainsKey("raw-letters"), flags.GetValueOrDefault("trial"), flags.GetValueOrDefault("fold"),
                 flags.GetValueOrDefault("distinct"), hypothesis, flags.ContainsKey("score") ? List(flags, "score") : null,
                 exceptionList.Count == 0 ? null : exceptionList, flags.GetValueOrDefault("unit"), null,
                 contextList.Count == 0 ? null : contextList, evidence, flags.GetValueOrDefault("as-of"),
-                flags.GetValueOrDefault("sides"), flags.GetValueOrDefault("sort"));
+                flags.GetValueOrDefault("sides"), flags.GetValueOrDefault("sort"), filter, limit, segmentTest);
         }
         parsed = new QueryArguments(record, flags.GetValueOrDefault("project"), flags.GetValueOrDefault("as-of"),
             flags.ContainsKey("json"), flags.ContainsKey("test-result"), flags.GetValueOrDefault("members"));
         return true;
+    }
+
+    /// <summary>
+    /// Parses one <c>--where</c> text: a v1 selector exactly as before, or a v2 expression. A text that starts with
+    /// <c>(</c> or <c>not </c>, or holds the words <c>and</c> or <c>or</c>, is read as an expression when it parses as one;
+    /// every other text is read as a v1 selector first, and as an expression only when it is not one.
+    /// </summary>
+    /// <param name="text">The selector text.</param>
+    /// <param name="condition">The v1 selector, set when the text is one.</param>
+    /// <param name="expression">The expression, set otherwise.</param>
+    /// <param name="refusal">Why the text is neither.</param>
+    public static bool TryParseSelector(string text, out QueryCondition? condition, out QueryExpr? expression,
+        [NotNullWhen(false)] out Refusal? refusal)
+    {
+        condition = null;
+        expression = null;
+        refusal = null;
+        Refusal? expressionRefusal = null;
+        if (QueryExprText.LooksBoolean(text))
+        {
+            if (QueryExprText.TryParse(text, out expression, out expressionRefusal)) return true;
+            if (expressionRefusal.Code == RefusalCodes.QueryNotYetAvailable)
+            {
+                refusal = expressionRefusal;
+                return false;
+            }
+        }
+        try
+        {
+            condition = QueryConditionParser.Parse(text);
+            return true;
+        }
+        catch (ArgumentException) { }
+        if (QueryExprText.TryParse(text, out expression, out expressionRefusal)) return true;
+        refusal = expressionRefusal;
+        return false;
     }
 
     /// <summary>Splits a run line into words with shell-style quotes, refusing a line break and anything that would chain, redirect or substitute outside quotes.</summary>
@@ -292,7 +356,7 @@ public static class QueryRunLine
         return true;
     }
 
-    private static bool TryReadFlags(IReadOnlyList<string> tokens, out Dictionary<string, string> flags, out List<string> positionals,
+    internal static bool TryReadFlags(IReadOnlyList<string> tokens, out Dictionary<string, string> flags, out List<string> positionals,
         [NotNullWhen(false)] out Refusal? refusal)
     {
         flags = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -346,7 +410,7 @@ public static class QueryRunLine
         return false;
     }
 
-    private static string[] List(IReadOnlyDictionary<string, string> flags, string name) => flags.TryGetValue(name, out var list)
+    internal static string[] List(IReadOnlyDictionary<string, string> flags, string name) => flags.TryGetValue(name, out var list)
         ? list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : [];
 
     private static Refusal Invalid(string message, params (string Key, string Value)[] facts) =>

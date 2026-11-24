@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using SIL.Motif.Contract.Query.Phon;
 
 namespace SIL.Motif.Contract.Query;
 
@@ -25,7 +26,7 @@ internal sealed record QueryOutcome(List<IQueryRowView> Selected, List<string> I
 internal static class QueryEngine
 {
     public static QueryOutcome Execute(QueryRecord query, IEnumerable<IQueryRowView> rows, QuerySpec spec,
-        Action<IQueryRowView>? observe = null)
+        Action<IQueryRowView>? observe = null, PhonSession? phon = null)
     {
         if (query.Where is null || query.Group is null || query.MinCount < 1 || query.Examples < 0 ||
             query.Examples > 1000 || query.Group.Count > 8) throw new ArgumentException("Invalid query.");
@@ -34,12 +35,21 @@ internal static class QueryEngine
         if (query.Distinct is not null && (!spec.IsColumn(query.Distinct) || query.Group.Count == 0))
             throw new ArgumentException("Distinct needs a known column and a grouping.");
         var conditions = query.Where.Select(c => Compile(c, spec)).ToArray();
+        Func<IQueryRowView, bool>? filter;
+        if (QueryExprTools.HasPatterns(query.Filter))
+        {
+            if (phon is null) throw QueryRefusalException.NotYetAvailable("phon and env with this source or option");
+            var materialised = rows as IReadOnlyList<IQueryRowView> ?? [.. rows];
+            filter = Resolve(query, materialised, spec, conditions, phon);
+            rows = materialised;
+        }
+        else filter = query.Filter is null ? null : QueryExprCompiler.Compile(query.Filter, spec);
         var selected = new List<IQueryRowView>();
         var ids = new List<string>();
         var groups = new Dictionary<string, GroupBuilder>(StringComparer.Ordinal);
         foreach (var row in rows)
         {
-            if (conditions.Any(c => !c(row))) continue;
+            if (conditions.Any(c => !c(row)) || filter is not null && !filter(row)) continue;
             observe?.Invoke(row);
             if (query.Group.Count == 0)
             {
@@ -84,6 +94,21 @@ internal static class QueryEngine
             .Select(g => new QueryOutcome.Group(g.Key, g.Count, g.Tokens, [.. g.Examples.UnorderedItems.Select(x => x.Element)
                 .OrderBy(x => x.SortKey, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal)])).ToList();
         return new QueryOutcome(selected, [.. ids.Distinct(StringComparer.Ordinal)], result);
+    }
+
+    // Cheaper predicates run first; PanGloss sees only the forms left undecided, once per pattern, in batches.
+    private static Func<IQueryRowView, bool> Resolve(QueryRecord query, IReadOnlyList<IQueryRowView> rows, QuerySpec spec,
+        Func<IQueryRowView, bool>[] conditions, PhonSession phon)
+    {
+        var patterns = QueryExprTools.Patterns(query.Filter);
+        var optimistic = QueryExprCompiler.CompileTri(query.Filter!, spec, (_, _) => Tri.Unknown);
+        var candidates = rows.Where(row => conditions.All(c => c(row)) && optimistic(row) != Tri.False)
+            .Select(row => row.Get("form") is { Count: > 0 } form ? form[0] : "").Where(form => form.Length > 0);
+        phon.Resolve([.. patterns.Select(pattern => pattern.Leaf)], candidates);
+        phon.Reported(patterns.Where(pattern => pattern.Positive).Select(pattern => pattern.Leaf));
+        phon.Negated(patterns.Where(pattern => !pattern.Positive).Select(pattern => pattern.Leaf));
+        var decided = QueryExprCompiler.CompileTri(query.Filter!, spec, phon.Lookup);
+        return row => decided(row) == Tri.True;
     }
 
     internal static Func<IQueryRowView, bool> Compile(QueryCondition condition, QuerySpec spec)

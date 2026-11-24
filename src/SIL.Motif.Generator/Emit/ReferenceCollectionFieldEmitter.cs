@@ -24,9 +24,12 @@ public static class ReferenceCollectionFieldEmitter
         return Template
             .Replace("__ADDREFLOWERINGBLOCK__", spec.PossibilityListExpression is not null
                 ? ListAddRefLoweringBlock.Replace("__LISTEXPR__", spec.PossibilityListExpression)
+                : spec.FeatureSystemExpression is not null
+                ? FeatureSystemAddRefLoweringBlock.Replace("__SYSTEMEXPR__", spec.FeatureSystemExpression)
                 : !spec.SupportsPlacement
                     ? LegacyAddRefLoweringBlock
                     : PlacementAddRefLoweringBlock)
+            .Replace("__HANDLERREGISTRATION__", spec.FeatureSystemExpression is not null ? TypedOnlyRegistration : RecordFileRegistration)
             .Replace("__MOVE_BLOCK__", spec.MoveKind is null ? string.Empty : "\n\n" + MoveBlock)
             .Replace("__MOVE_REGISTRATION__", spec.MoveKind is null ? string.Empty : MoveRegistration + "\n")
             .Replace("__PREFIX__", prefix)
@@ -61,6 +64,20 @@ public static class ReferenceCollectionFieldEmitter
                 : $"{prefix}AddRefLowering.Apply(cache, {varName}, memberId, operation.Placement);");
     }
 
+    private const string RecordFileRegistration = """
+        OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance,
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.AddReference,
+                        FieldWritePlacement.__ADD_PLACEMENT__) { Payload = FieldWritePayload.Generic });
+                OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance,
+                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
+        """;
+
+    // A typed operation with no record-file capability: the field has no text form.
+    private const string TypedOnlyRegistration = """
+        OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance);
+                OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance);
+        """;
+
     private const string MoveRegistration = """
                 OperationKindRegistry.Register(Move__FIELDNAME__);
                 OperationHandlerRegistry.Register(Move__FIELDNAME__, __PREFIX__MoveHandler.Instance,
@@ -91,6 +108,19 @@ public static class ReferenceCollectionFieldEmitter
                 ReferenceCollectionFieldLowering.ApplyAddRefInList<__REFIFACE__>(
                     cache, __VAR__.__ACCESSOR__, memberId, __PREFIX__OperationKinds.AddRef__FIELDNAME__,
                     "__DECLARINGCLASS__.__FIELDNAME__", __LISTEXPR__);
+        }
+        """;
+
+    private const string FeatureSystemAddRefLoweringBlock = """
+        /// <summary>Lowers <see cref="__PREFIX__OperationKinds.AddRef__FIELDNAME__"/>: resolves the
+        /// referenced __REFIFACE__, refuses one outside the feature system the field takes, and adds it to
+        /// <c>__VAR__.__ACCESSOR__</c> (a no-op if already present).</summary>
+        public static class __PREFIX__AddRefLowering
+        {
+            public static void Apply(LcmCache cache, __TARGETIFACE__ __VAR__, CanonicalId memberId) =>
+                ReferenceCollectionFieldLowering.ApplyAddRefInFeatureSystem<__REFIFACE__>(
+                    cache, __VAR__.__ACCESSOR__, memberId, __PREFIX__OperationKinds.AddRef__FIELDNAME__,
+                    "__DECLARINGCLASS__.__FIELDNAME__", __SYSTEMEXPR__);
         }
         """;
 
@@ -183,11 +213,7 @@ public static class ReferenceCollectionFieldEmitter
             {
                 OperationKindRegistry.Register(AddRef__FIELDNAME__);
                 OperationKindRegistry.Register(RemoveRef__FIELDNAME__);
-                OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance,
-                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.AddReference,
-                        FieldWritePlacement.__ADD_PLACEMENT__) { Payload = FieldWritePayload.Generic });
-                OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance,
-                    new FieldWriteCapability("__DECLARINGCLASS__", "__FIELDNAME__", RecordWriteVerb.RemoveReference) { Payload = FieldWritePayload.Generic });
+                __HANDLERREGISTRATION__
                 OperationSlotRegistry.RegisterMember(AddRef__FIELDNAME__, __SNAPSHOTFIELD__);
                 OperationSlotRegistry.RegisterMember(RemoveRef__FIELDNAME__, __SNAPSHOTFIELD__);
         __MOVE_REGISTRATION__    }

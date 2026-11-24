@@ -57,6 +57,8 @@ public sealed class RecordExportToolTests(PristineProjectFixture pristine) : IDi
     {
         var tool = AgentTools.All.Single(item => item.Name == "motif_record_export");
         Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
+        Assert.False(tool.ReadOnly);
+        Assert.False(tool.Idempotent);
         Assert.Equal(["all", "kind", "out", "project", "recordId"], tool.ArgumentNames.Order(StringComparer.Ordinal));
         Assert.Contains(tool.Routes, route => route.Command == "record export");
         Assert.DoesNotContain(AgentTools.All, item => item.Name.Contains("apply", StringComparison.Ordinal));

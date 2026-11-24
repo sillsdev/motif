@@ -28,6 +28,9 @@
                                IsVisible="{Binding !!ApplyWillChangeText}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalApplyDeferredNotice}"
                                IsVisible="{Binding ShowsDeferredApplyNotice}" TextWrapping="Wrap" />
+      <Button Classes="secondary" Content="{x:Static app:MotifAppStrings.ProposalBringBack}" Command="{Binding BringBackCommand}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalApplyBringBack}"
+              IsVisible="{Binding ShowsDeferredApplyNotice}" HorizontalAlignment="Left" />
       <views:CopyableTextBlock x:Name="ApplyBackupNotice" Text="{x:Static app:MotifAppStrings.ApplyBackupNotice}" TextWrapping="Wrap" />
       <HyperlinkButton x:Name="ApplyBackupLink" Content="{x:Static app:MotifAppStrings.ApplyBackupLink}"
                        Command="{Binding OpenBackupHelpCommand}" HorizontalAlignment="Left" />

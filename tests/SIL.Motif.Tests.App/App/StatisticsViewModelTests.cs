@@ -43,7 +43,7 @@ public sealed class StatisticsViewModelTests
             statistics.Groups);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LoadingForwardsTheSelectedGroupAndPopulatesRows()
     {
         var (fake, statistics) = NewViewModel();
@@ -73,7 +73,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal(new[] { "fwDataPath:text", "group:text" }, entry.ArgumentShape);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnknownJsonPropertyIsRetainedInTheRowsDetailsMapRatherThanDropped()
     {
         var (fake, statistics) = NewViewModel();
@@ -89,7 +89,7 @@ public sealed class StatisticsViewModelTests
         Assert.DoesNotContain("kind", row.Details.Keys);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FilteringAndSortingNeverIssueASecondStatsRequest()
     {
         var (fake, statistics) = NewViewModel();
@@ -108,7 +108,7 @@ public sealed class StatisticsViewModelTests
         Assert.Single(fake.UsageEntries);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WordRowsUseTheTimingSelectionAndKeepOneSelectedWordScale()
     {
         var (fake, statistics) = NewViewModel();
@@ -135,7 +135,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("By word · no words selected in Timing.", statistics.ScopeNote);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NonWordStatisticsNameTheirCompleteParseScope()
     {
         var (fake, statistics) = NewViewModel();
@@ -152,7 +152,7 @@ public sealed class StatisticsViewModelTests
             statistics.ScopeNote);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FilteringKeepsOnlyRowsWhoseRawTextContainsTheFilterText()
     {
         var (fake, statistics) = NewViewModel();
@@ -167,7 +167,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("alpha", row.Word);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SortingANumericColumnOrdersByValueRatherThanText()
     {
         var (fake, statistics) = NewViewModel();
@@ -184,7 +184,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal([10, 9], statistics.Rows.Select(row => row.Attempts));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SortingATextColumnOrdersLexicographicallyRatherThanNumerically()
     {
         var (fake, statistics) = NewViewModel();
@@ -199,7 +199,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal(["10", "9"], statistics.Rows.Select(row => row.Word));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusalLeavesTheLastSuccessfulResultVisibleButMarkedStale()
     {
         var (fake, statistics) = NewViewModel();
@@ -217,7 +217,7 @@ public sealed class StatisticsViewModelTests
         Assert.Same(refusal, statistics.Refusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ANewSuccessfulRunClearsStaleResultsAndReplacesTheRows()
     {
         var (fake, statistics) = NewViewModel();
@@ -248,7 +248,7 @@ public sealed class StatisticsViewModelTests
 
         Assert.True(statistics.LoadCommand.CanExecute(null));
     }
-    [Fact]
+    [UiThreadFact]
     public async Task CapturedStatisticsRetainMetadataAndProjectRealWordAndObjectColumns()
     {
         var (fake, statistics) = NewViewModel();
@@ -280,7 +280,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal(1, item.Details["uses"].GetInt32());
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(true, false, "step or memory limit")]
     [InlineData(false, true, "time safety net")]
     [InlineData(true, true, "step or memory limit and time safety net")]
@@ -303,7 +303,7 @@ public sealed class StatisticsViewModelTests
         }, statistics.IncompleteDetail);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StatisticsCompletionUsesItsOwnRowsWhenAssessmentCompletionDisagrees()
     {
         var (fake, statistics) = NewViewModel();
@@ -329,7 +329,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Stopped 1", statistics.IncompleteHeadline);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoppedStatisticsDoNotAddAnotherSlowestWordSummary()
     {
         var (fake, statistics) = NewViewModel();
@@ -344,7 +344,7 @@ public sealed class StatisticsViewModelTests
         Assert.DoesNotContain("Raise", statistics.IncompleteDetail, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ANoParseWithNoLimitIsNotCountedAsStopped()
     {
         var (fake, statistics) = NewViewModel();
@@ -358,7 +358,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Search completed", statistics.Rows.Single().CompletionStatus);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task MultipleReadingsDoNotSuggestWhyTheParserBuiltThem()
     {
         var (fake, statistics) = NewViewModel();
@@ -378,7 +378,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Completion unavailable", new StatsRowViewModel(Row(json)).CompletionStatus);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheSelectedAssessmentIsForwardedAndThereIsNoProposalSelector()
     {
         var (fake, statistics) = NewViewModel();
@@ -394,7 +394,7 @@ public sealed class StatisticsViewModelTests
         Assert.Empty(statistics.Metadata);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WordRowsCountSearchStepsAndWholeWordTime()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
@@ -409,7 +409,7 @@ public sealed class StatisticsViewModelTests
         Assert.DoesNotContain("statistics pass", statistics.ShadingNote, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AWordWithNoWorkCountSaysParserWorkNotRecordedAndNeverShowsMilliseconds()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
@@ -429,7 +429,7 @@ public sealed class StatisticsViewModelTests
         Assert.DoesNotContain("ms)", statistics.WorkHeader, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SortingByParserWorkOrdersWordsByTheirWork()
     {
         var (fake, statistics) = NewViewModel();
@@ -444,7 +444,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal(["small", "middle", "big"], statistics.Rows.Select(row => row.Word));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ObjectAttemptsAreShadedOnlyAgainstTheirOwnKind()
     {
         var (fake, statistics) = NewViewModel();

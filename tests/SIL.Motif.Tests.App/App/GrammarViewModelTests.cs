@@ -41,7 +41,7 @@ public sealed class GrammarViewModelTests
     }
 
     // A view knows only what it is told: the last notified value of each state must match the outcome.
-    [Fact]
+    [UiThreadFact]
     public async Task AViewThatOnlyListensSeesTheFindingsTableAndNeverTheEmptyStateOnceFindingsArrive()
     {
         var fake = new FakeCommandClient();
@@ -69,7 +69,7 @@ public sealed class GrammarViewModelTests
         Assert.False(seen[nameof(GrammarViewModel.ShowLoading)]);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheElapsedTimeOfACheckIsReadFromTheComposedClock()
     {
         var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
@@ -87,7 +87,7 @@ public sealed class GrammarViewModelTests
         await setting;
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SettingAProjectChecksItImmediatelyAndShowsFindings()
     {
         var fake = new FakeCommandClient();
@@ -109,7 +109,7 @@ public sealed class GrammarViewModelTests
         Assert.Equal(ProjectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NoFindingsShowsTheEmptyStateRatherThanTheTable()
     {
         var fake = new FakeCommandClient();
@@ -122,7 +122,7 @@ public sealed class GrammarViewModelTests
         Assert.Equal("No grammar findings were reported.", grammar.SummaryText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NoBaselineShowsItsOwnStateRatherThanAnEmptyFindingsTable()
     {
         var fake = new FakeCommandClient();
@@ -136,7 +136,7 @@ public sealed class GrammarViewModelTests
         Assert.Equal("Capture a Baseline first", grammar.SummaryText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusalShowsTheWindowSentenceAndCountsAsCheckedForTheStepper()
     {
         var fake = new FakeCommandClient();
@@ -153,7 +153,7 @@ public sealed class GrammarViewModelTests
         Assert.Contains(refusal.Message, grammar.ShownRefusal!.Details);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CheckCommandRechecksTheSameProjectOnDemand()
     {
         var fake = new FakeCommandClient();
@@ -167,7 +167,7 @@ public sealed class GrammarViewModelTests
         Assert.All(fake.CheckGrammarRequests, request => Assert.Equal(ProjectPath, request.ProjectPath));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SettingANewProjectClearsTheOldOnesFindingsBeforeCheckingTheNewOne()
     {
         var fake = new FakeCommandClient();

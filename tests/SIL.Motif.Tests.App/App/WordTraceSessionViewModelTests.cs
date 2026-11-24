@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class WordTraceSessionViewModelTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task TypedWordLoadsEveryStoredOpinionWithoutAnAssessment()
     {
         var fake = new FakeCommandClient();
@@ -35,7 +35,7 @@ public sealed class WordTraceSessionViewModelTests
         await session.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task PastedWordIsNormalizedBeforeReadingFieldWorks()
     {
         var fake = new FakeCommandClient();
@@ -107,7 +107,7 @@ public sealed class WordTraceSessionViewModelTests
             TraceReadingBuilder.Build("word", step with { SourceIdentityQuality = "grammar-local" }, [], [])).StatusParts);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChangingTheTraceWordReadsItsStoredContextWithoutOpeningAPage()
     {
         var fake = new FakeCommandClient();
@@ -160,7 +160,7 @@ public sealed class WordTraceSessionViewModelTests
         await session.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WorkspaceOwnsAndStopsTheSharedTraceSession()
     {
         var fake = new FakeCommandClient();
@@ -183,7 +183,7 @@ public sealed class WordTraceSessionViewModelTests
         Assert.Null(session.WordContext);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LateWordContextCannotReplaceTheNewWord()
     {
         var fake = new FakeCommandClient();
@@ -204,7 +204,7 @@ public sealed class WordTraceSessionViewModelTests
         Assert.Null(session.WordContext);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StaleProjectCannotPublishAnEarlierWordContext()
     {
         var fake = new FakeCommandClient();
@@ -224,7 +224,7 @@ public sealed class WordTraceSessionViewModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ContextFromADifferentBaselineIsNotShown()
     {
         static BaselineToken Token(char digit) => new("project", "sha256:" + new string(digit, 64), "1",
@@ -304,7 +304,7 @@ public sealed class WordTraceSessionViewModelTests
         await session.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StopCancelsAndJoinsPendingContextReads()
     {
         var fake = new FakeCommandClient();

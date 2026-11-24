@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.TextEditing.Markdown.Records;
@@ -119,22 +120,6 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         return ScratchDryRun.Of(_cache, Proposal(lowering.Operations));
     }
 
-    /// <summary>Why a covered pair is not offered: the Decision A families, each with its reason.</summary>
-    private static readonly Dictionary<string, string> DecisionA = new()
-    {
-        ["bespoke-payload"] = "the kind's payload carries more than the verb and field (digests, paragraph keys, a census), so only its own composer authors it",
-        ["create-composer"] = "the create kind takes its own payload (morph type, reference, forms), which only its composer authors",
-        ["delete-composer"] = "the delete is built from the project by its own composer, which the lowerer calls only for senses",
-    };
-
-    private static string? DecisionAFamily(RecordWriteVerb verb, FieldWriteCapability write) => verb switch
-    {
-        RecordWriteVerb.AddObject => "create-composer",
-        RecordWriteVerb.RemoveObject => "delete-composer",
-        _ when write.Payload == FieldWritePayload.Bespoke => "bespoke-payload",
-        _ => null,
-    };
-
     /// <summary>How the Runner declares the field: a custom one by its type.</summary>
     private (string Class, string Field) DeclaredAs((string DeclaringClass, string Field, bool IsCustom) binding) =>
         !binding.IsCustom ? (binding.DeclaringClass, binding.Field)
@@ -169,7 +154,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var failures = new List<string>();
         var familiesSeen = new HashSet<string>();
         // Every (declaring class, field) phase 3 covers on some verb, gathered across the schema types that bind to it.
-        var covered = resolver.Entries.Where(entry => entry.Value is WritableFieldResolution.Covered)
+        bool Structure(string className, string field) => RecordWritableFields.IsFeatureStructure(_schema.Schema.ObjectType(className)!.Field(field)!) ||
+            RecordWritableFields.IsRuleFormula(_schema.Schema.ObjectType(className)!.Field(field)!);
+        var covered = resolver.Entries.Where(entry => entry.Value is WritableFieldResolution.Covered { Owner: null } && !Structure(entry.Key.Class, entry.Key.Field))
             .Select(entry => (Entry: entry.Key, Binding: _schema.FieldBinding(entry.Key.Class, entry.Key.Field)!.Value))
             .GroupBy(item => (item.Binding.DeclaringClass, item.Binding.Field)).ToArray();
         foreach (var group in covered)
@@ -204,9 +191,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                     offeredWrite = true;
                 if (!lowerable)
                 {
-                    var family = declared.Select(d => DecisionAFamily(verb, d.Write)).FirstOrDefault(f => f is not null);
+                    var family = declared.Select(d => RecordLoweringRules.NotLowered(d.Kind, d.Write)).FirstOrDefault(f => f is not null);
                     if (family is null)
-                        failures.Add($"{subject}: not offered, and no Decision A family explains it.");
+                        failures.Add($"{subject}: not offered, and no not-lowered reason explains it.");
                     else
                         familiesSeen.Add(family);
                 }
@@ -218,7 +205,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         foreach (var type in _schema.Schema.ObjectTypes)
             foreach (var field in type.Fields)
             {
-                if (_schema.FieldBinding(type.Name, field.Name) is not { } binding ||
+                if (RecordWritableFields.IsFeatureStructure(field) || RecordWritableFields.IsRuleFormula(field) ||
+                    RecordWritableFields.IsRuleParts(type, field, _schema) ||
+                    _schema.FieldBinding(type.Name, field.Name) is not { } binding ||
                     !resolver.Entries.Any(e => e.Key.Class == type.Name && e.Key.Field == field.Name))
                     continue;
                 if (catalog.CanWrite(binding.DeclaringClass, binding.Field) &&
@@ -228,7 +217,9 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                     failures.Add($"{type.Name}.{field.Name}: the adapter offers a write phase 3 does not cover and the lowerer does not lower.");
             }
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures.Distinct()));
-        Assert.All(familiesSeen, family => Assert.Contains(family, DecisionA.Keys));
+        Assert.All(familiesSeen, family => Assert.Contains(family, RecordLoweringRules.NotLoweredReasons.Keys));
+        Assert.True(catalog.CanWrite("MoStemMsa", "MsFeatures"));
+        Assert.True(catalog.CanWrite("MoInflAffMsa", "InflFeats"));
         Assert.True(catalog.CanWrite("LexSense", "Gloss"));
         Assert.False(catalog.CanWrite("LexEntry", "HomographNumber"));
         Assert.True(catalog.CanCreate("LexEntry", "Senses", "LexSense"));
@@ -518,7 +509,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
     // Why liblcm cannot make an owned class generically: rules about classes, not pairs.
     /// <summary>Remove and Move on references whose target class is abstract with no standalone subclass.</summary>
-    private const int UnexercisedAbstractReferencePairs = 29;
+    private const int UnexercisedAbstractReferencePairs = 26;
     private const string AbstractClass = "the class is abstract and no concrete subclass stands alone in the fixture";
     private const string NoOwnerChain = "no owning field leads from an object the project holds to the class";
     private const string CreationRefused = "only the class's own composer creates it, or no create kind does, so the fixture holds none";
@@ -740,7 +731,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var unexercised = new List<string>();
         foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
         {
-            if (resolution is not WritableFieldResolution.Covered)
+            if (resolution is not WritableFieldResolution.Covered { Owner: null })
                 continue;
             var type = _schema.Schema.ObjectType(typeName)!;
             var field = type.Field(fieldName)!;
@@ -833,7 +824,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         var allReasons = new List<string>();
         foreach (var ((typeName, fieldName, verb), resolution) in resolver.Entries)
         {
-            if (resolution is not WritableFieldResolution.Covered || _schema.Schema.ObjectType(typeName)?.Field(fieldName) is not { } field
+            if (resolution is not WritableFieldResolution.Covered { Owner: null } || _schema.Schema.ObjectType(typeName)?.Field(fieldName) is not { } field
                 || _schema.FieldBinding(typeName, fieldName) is not { } binding)
                 continue;
             var declared = Declarations(binding, verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb)
@@ -976,6 +967,76 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     }
 
     [Fact]
+    public void ADeleteOfANonSenseOwnedObjectIsRefusedWithATypedCodeAndNoOperation()
+    {
+        var change = NewChange(RecordChangeKind.RemoveObject, c =>
+        {
+            Put(c, "ObjectGuid", _entry.Guid);
+            Put(c, "ObjectType", "LexEntry");
+            Put(c, "Field", "allomorphs");
+            Put(c, "ItemGuid", Guid.NewGuid());
+        });
+        var lowering = new RecordChangeSetLowerer(_schema, new RecordWritableFields(_schema)).LowerChanges(_cache, "delete", [change]);
+        Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(lowering.Refusals).Code);
+        Assert.Empty(lowering.Operations);
+    }
+
+    [Fact]
+    public void AChangeToAGenDateCustomFieldIsRefusedNotDropped()
+    {
+        var change = NewChange(RecordChangeKind.Set, c =>
+        {
+            Put(c, "ObjectGuid", _entry.Guid);
+            Put(c, "ObjectType", "LexEntry");
+            Put(c, "Field", Custom("ZedDate"));
+            Put(c, "New", "AD 2000-1-1");
+        });
+        var lowering = new RecordChangeSetLowerer(_schema, new RecordWritableFields(_schema)).LowerChanges(_cache, "date", [change]);
+        Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(lowering.Refusals).Code);
+        Assert.Empty(lowering.Operations);
+    }
+
+    [Fact]
+    public void AnOwnedStTextCustomFieldIsRefusedWithItsOwnReasonAndAGenDateOneIsReportedOmitted()
+    {
+        var metadata = (IFwMetaDataCacheManaged)_cache.MetaDataCacheAccessor;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            metadata.AddCustomField("LexEntry", "ZedText", CellarPropertyType.OwningAtomic, metadata.GetClassId("StText")));
+        var schema = ProjectRecordSchema.Generate(_cache, ProjectRecordSchema.LexiconEntryOverlay);
+        var fields = new RecordWritableFields(schema);
+        Assert.Equal(new WritableFieldResolution.Uncovered(UncoveredFieldReason.CustomStText),
+            fields.Resolve("LexEntry", Custom("ZedText"), RecordWriteVerb.SetRich));
+        Assert.Equal(new WritableFieldResolution.Uncovered(UncoveredFieldReason.CustomStText),
+            fields.Resolve("LexEntry", Custom("ZedText"), RecordWriteVerb.ClearRich));
+        Assert.False(new CatalogWritableFields(schema).CanWrite("LexEntry", "ZedText"));
+        var omitted = Assert.Single(schema.OmittedCustomFields, item => item.Field == "ZedDate");
+        Assert.Contains("GenDate", omitted.Reason);
+        Assert.Null(schema.FieldBinding("LexEntry", Custom("ZedDate")));
+    }
+
+    [Fact]
+    public void AddingASecondDialectLabelAfterTheHeldOneAppendsAndAnInsertBeforeItIsRefused()
+    {
+        var held = NewSetItem("dialect-labels");
+        var added = NewSetItem("dialect-labels");
+        AttachToSense("dialect-labels", held);
+
+        var appended = Lower(PlanEdit(d => SenseAt(d, 0).Set("dialect-labels",
+            new RecordList().Add(new RecordScalar(LinkTo(held))).Add(new RecordScalar(LinkTo(added))))));
+        Assert.Empty(appended.Refusals);
+        var operation = Assert.Single(appended.Operations);
+        Assert.Equal("lexical/lexSense/addRefDialectLabels", operation.Kind);
+        Assert.Null(operation.Placement);
+        var effect = Assert.Single(DryRun(appended).ExpectedEffects);
+        Assert.Contains(effect.After.Values, value => CanonicalId.Parse(value).ToGuid() == added.Guid);
+
+        var inserted = Lower(PlanEdit(d => SenseAt(d, 0).Set("dialect-labels",
+            new RecordList().Add(new RecordScalar(LinkTo(added))).Add(new RecordScalar(LinkTo(held))))));
+        Assert.Empty(inserted.Operations);
+        Assert.Equal(RefusalCodes.RecordImportFieldUncovered, Assert.Single(inserted.Refusals).Code);
+    }
+
+    [Fact]
     public void ClearingEveryCustomFieldShapeLowersToItsKindAndReadsBack()
     {
         var held = UnheldPublication();
@@ -1007,7 +1068,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     {
         var operation = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), kind,
             target: CanonicalId.FromGuid(target ?? _entry.Guid), after: JsonSerializer.SerializeToElement(after));
-        var refusal = Assert.ThrowsAny<SIL.Motif.Runner.Execution.ProposalRefusalException>(() => ScratchDryRun.Of(_cache, Proposal([operation])));
+        var refusal = Assert.ThrowsAny<ProposalRefusalException>(() => ScratchDryRun.Of(_cache, Proposal([operation])));
         Assert.Equal(code, refusal.Code);
         Assert.Contains(code, RefusalCatalog.Specs.Keys);
     }
@@ -1235,8 +1296,8 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
         var wrongClass = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), "lexical/lexSense/addRefSemanticDomains",
             target: CanonicalId.FromGuid(_sense.Guid), after: JsonSerializer.SerializeToElement(new { member = CanonicalId.FromGuid(parent.Guid).Value }));
-        var failure = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, Proposal([wrongClass])));
-        Assert.Contains("is not a CmSemanticDomain (it is a CmPossibility)", failure.Message);
+        var failure = Assert.ThrowsAny<ProposalRefusalException>(() => ScratchDryRun.Of(_cache, Proposal([wrongClass])));
+        Assert.Equal(RefusalCodes.ReferenceWrongClass, failure.Code);
     }
 
     private OperationEnvelope SenseSetOp(string kind, ICmObject member, ICmObject? target = null) =>
@@ -1289,5 +1350,85 @@ public sealed class RecordChangeSetLowererTests : IDisposable
             new { member = CanonicalId.FromGuid(usage.Guid).Value });
         RefusedWith(RefusalCodes.ReferenceWrongList, "lexical/lexEntry/addRefDialectLabels",
             new { member = CanonicalId.FromGuid(_publication.Guid).Value });
+    }
+
+    private string Outcome(string kind, object after, Guid? target = null)
+    {
+        var operation = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), kind,
+            target: CanonicalId.FromGuid(target ?? _entry.Guid), after: JsonSerializer.SerializeToElement(after));
+        try
+        {
+            ScratchDryRun.Of(_cache, Proposal([operation]));
+            return "accepted";
+        }
+        catch (ProposalRefusalException refusal)
+        {
+            return refusal.Code;
+        }
+        catch (InvalidOperationException)
+        {
+            return "InvalidOperationException";
+        }
+    }
+
+    /// <summary>One row per (site, verb, member); the settled behaviour is that only a write checks the list, and a remove never does.</summary>
+    [Fact]
+    public void EveryReferenceSiteChecksListMembershipOnWritesAndNeverOnRemoves()
+    {
+        NewListItem(StatusList);
+        var statusItem = CanonicalId.FromGuid(StatusList().PossibilitiesOS[0].Guid).Value;
+        var inList = CanonicalId.FromGuid(UnheldPublication().Guid).Value;
+        var otherList = CanonicalId.FromGuid(NewPartOfSpeech()).Value;
+        var notAPossibility = CanonicalId.FromGuid(_entry.Guid).Value;
+        var unknown = CanonicalId.FromGuid(Guid.NewGuid()).Value;
+        var rows = new List<(string Row, string Actual, string Expected)>
+        {
+            ("stock set, in list", Outcome("lexical/lexSense/setStatus", new { @ref = statusItem }, _sense.Guid), "accepted"),
+            ("stock set, other list", Outcome("lexical/lexSense/setStatus", new { @ref = otherList }, _sense.Guid), "reference.wrong-list"),
+            ("stock set, wrong class", Outcome("lexical/lexSense/setStatus", new { @ref = notAPossibility }, _sense.Guid), "reference.wrong-class"),
+            ("stock add, in list", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = inList }), "accepted"),
+            ("stock add, other list", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = otherList }), "reference.wrong-list"),
+            ("stock add, wrong class", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = notAPossibility }), "reference.wrong-class"),
+            ("stock remove, in list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = inList }), "accepted"),
+            ("stock remove, other list", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = otherList }), "accepted"),
+            ("stock remove, wrong class", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = notAPossibility }), "accepted"),
+            ("custom set, in list", Outcome("customField/setReference", new { field = "ZedReference", @ref = inList }), "accepted"),
+            ("custom set, other list", Outcome("customField/setReference", new { field = "ZedReference", @ref = otherList }), "custom-field.wrong-list"),
+            ("custom set, wrong class", Outcome("customField/setReference", new { field = "ZedReference", @ref = notAPossibility }), "custom-field.wrong-class"),
+            ("custom add, in list", Outcome("customField/addReference", new { field = "ZedReferences", member = inList }), "accepted"),
+            ("custom add, other list", Outcome("customField/addReference", new { field = "ZedReferences", member = otherList }), "custom-field.wrong-list"),
+            ("custom add, wrong class", Outcome("customField/addReference", new { field = "ZedReferences", member = notAPossibility }), "custom-field.wrong-class"),
+            ("custom remove, in list", Outcome("customField/removeReference", new { field = "ZedReferences", member = inList }), "accepted"),
+            ("custom remove, other list", Outcome("customField/removeReference", new { field = "ZedReferences", member = otherList }), "accepted"),
+            ("stock set, unknown id", Outcome("lexical/lexSense/setStatus", new { @ref = unknown }, _sense.Guid), "reference.unknown"),
+            ("stock add, unknown id", Outcome("lexical/lexEntry/addRefDoNotPublishIn", new { member = unknown }), "reference.unknown"),
+            ("stock remove, unknown id", Outcome("lexical/lexEntry/removeRefDoNotPublishIn", new { member = unknown }), "reference.unknown"),
+            ("custom set, unknown id", Outcome("customField/setReference", new { field = "ZedReference", @ref = unknown }), "reference.unknown"),
+            ("custom add, unknown id", Outcome("customField/addReference", new { field = "ZedReferences", member = unknown }), "reference.unknown"),
+            ("custom remove, unknown id", Outcome("customField/removeReference", new { field = "ZedReferences", member = unknown }), "reference.unknown"),
+            ("custom remove, wrong class", Outcome("customField/removeReference", new { field = "ZedReferences", member = notAPossibility }), "accepted"),
+        };
+        Assert.Equal(rows.Select(r => r.Row + " => " + r.Expected), rows.Select(r => r.Row + " => " + r.Actual));
+    }
+
+    [Fact]
+    public void ARemoveOfAMemberTheFieldDoesNotHoldReportsNoChange()
+    {
+        var other = CanonicalId.FromGuid(NewPartOfSpeech()).Value;
+        var wrongClass = CanonicalId.FromGuid(_sense.Guid).Value;
+        foreach (var (kind, after) in new (string, object)[]
+        {
+            ("lexical/lexEntry/removeRefDoNotPublishIn", new { member = other }),
+            ("lexical/lexEntry/removeRefDoNotPublishIn", new { member = wrongClass }),
+            ("customField/removeReference", new { field = "ZedReferences", member = other }),
+            ("customField/removeReference", new { field = "ZedReferences", member = wrongClass }),
+        })
+        {
+            var operation = new OperationEnvelope(CanonicalId.FromGuid(Guid.NewGuid()), kind,
+                target: CanonicalId.FromGuid(_entry.Guid), after: JsonSerializer.SerializeToElement(after));
+            var effects = ScratchDryRun.Of(_cache, Proposal([operation])).ExpectedEffects;
+            Assert.NotEmpty(effects);
+            Assert.All(effects, effect => Assert.Equal(effect.Before.Values, effect.After.Values));
+        }
     }
 }

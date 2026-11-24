@@ -1,0 +1,815 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/schemas/query.schema.json",
+  "title": "motif.query.v2",
+  "description": "A Motif query: a source, a boolean where over its columns, and the options motif query takes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "from"
+  ],
+  "properties": {
+    "version": {
+      "const": "motif.query.v2",
+      "description": "The query language version."
+    },
+    "from": {
+      "type": "string",
+      "enum": [
+        "forms",
+        "stems",
+        "uses",
+        "objects"
+      ],
+      "description": "The source the rows come from."
+    },
+    "where": {
+      "$ref": "#/$defs/expr",
+      "description": "The row filter; omit to select every row."
+    },
+    "side": {
+      "type": "string",
+      "description": "Read the forms source as of the Baseline (baseline) or a Proposal's Trial copy (a Proposal id) instead of the latest Trial."
+    },
+    "sides": {
+      "type": "string",
+      "enum": [
+        "both"
+      ],
+      "description": "both returns the Baseline and the Proposal named by side, side by side."
+    },
+    "sort": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field"
+        ],
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "A column, optionally prefixed baseline. or proposal."
+          },
+          "dir": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "default": "asc"
+          }
+        }
+      },
+      "description": "Order of an as-of run's rows; one key."
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The most rows, groups or ids returned."
+    },
+    "group": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Columns to group by."
+    },
+    "minCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The fewest rows a group needs."
+    },
+    "examples": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "The most examples per group."
+    },
+    "ids": {
+      "type": "boolean",
+      "description": "Return canonical ids."
+    },
+    "rawLetters": {
+      "type": "boolean",
+      "description": "Use characters instead of the project's graphemes."
+    },
+    "trial": {
+      "type": "string",
+      "description": "The Trial id the rows must come from; only the latest Trial has query rows."
+    },
+    "fold": {
+      "type": "string",
+      "description": "Fold set of the fold column: comma-separated nfc, case, iy~y, o~u, e~i, c~k, from>to or project."
+    },
+    "distinct": {
+      "type": "string",
+      "description": "A column of which a group needs two different values."
+    },
+    "score": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Scorers run over the whole selected universe: tolerance, reliability, control, split, size."
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "msa",
+        "stem"
+      ],
+      "description": "The unit stem scorers count."
+    },
+    "evidence": {
+      "type": "boolean",
+      "description": "Return the one-screen evidence composite for the grouping where or members names."
+    },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Row ids that are the deviants of split and size, or the grouping of evidence."
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/field"
+      },
+      "description": "Predicates that mark a universe row an exception for tolerance; all must hold."
+    },
+    "context": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/field"
+      },
+      "description": "Predicates naming the context size weighs; all must hold."
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dropped",
+        "affixes",
+        "wordSets"
+      ],
+      "properties": {
+        "dropped": {
+          "type": "string"
+        },
+        "gained": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string",
+          "enum": [
+            "final",
+            "initial"
+          ]
+        },
+        "affixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "wordSets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "discovery": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "heldOut": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "controls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "controlLetters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "A hypothesised boundary change over the stems source."
+    },
+    "segmentTest": {
+      "type": "string",
+      "enum": [
+        "engine",
+        "identity"
+      ],
+      "description": "How phon and env test a segment: engine (the default) is rule application's own test, so a literal matches every segment with its feature bundle and a [class] matches the union of its members' features, and the spans are a superset of what a rule rewrites (positions it leaves unchanged and overlapping spans included); identity is exact, a literal naming one segment and a [class] its members. Environment sides are exact under both. Every phon and env result reports the mode it used."
+    }
+  },
+  "$defs": {
+    "expr": {
+      "description": "One of: and, or, not, a field predicate, phon, env, realizes, or a reserved kind (parsed, refused as not yet available).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "and"
+          ],
+          "properties": {
+            "and": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/expr"
+              },
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "or"
+          ],
+          "properties": {
+            "or": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/expr"
+              },
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "not"
+          ],
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/expr"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/field"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "phon"
+          ],
+          "properties": {
+            "phon": {
+              "type": "string",
+              "description": "Pattern syntax, items separated by spaces: a natural-class token such as C or V (the first column of motif query --values classes); a name with spaces is written in brackets, [Nasal Stop]; a feature bundle [+voice -nasal]; an alpha variable [αvoice]; a literal segment /p/ (a bare letter is not a segment); ( ) groups, ( )* repeats a group, # is a word edge, + is a morpheme boundary. The grammar's surface character table segments each word, so a pattern sees the word as the grammar does; a word it cannot segment is reported as unsegmentable and matches nothing, even under not. One alpha letter on two different features ([αvoice] _ [αson]) is refused as unsupported_construct (alphaAcrossFeatures). Segments are tested as rule application tests them (segmentTest engine, the default): a literal matches every segment with its feature bundle, a [class] the union of its members' features, so the spans are a superset of what a rule rewrites, positions it leaves unchanged and overlapping spans included. segmentTest identity is exact (a literal names one segment, a [class] its members), and then the result says matchMode identity and mayUnderReport, and not over such a pattern warns that absence is not proven. Environment sides are exact under both, as in a rule. Every result reports its segmentTest. + needs words with marked boundaries, which Motif does not send yet, so it is refused on ordinary words as boundary_needs_marked_input."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "env"
+          ],
+          "properties": {
+            "env": {
+              "type": "string",
+              "description": "target / left _ right: the target pattern must occur between the left and right patterns, either of which may be empty. Each part uses the phon pattern syntax. The match spans the target. Pattern syntax, items separated by spaces: a natural-class token such as C or V (the first column of motif query --values classes); a name with spaces is written in brackets, [Nasal Stop]; a feature bundle [+voice -nasal]; an alpha variable [αvoice]; a literal segment /p/ (a bare letter is not a segment); ( ) groups, ( )* repeats a group, # is a word edge, + is a morpheme boundary. The grammar's surface character table segments each word, so a pattern sees the word as the grammar does; a word it cannot segment is reported as unsegmentable and matches nothing, even under not. One alpha letter on two different features ([αvoice] _ [αson]) is refused as unsupported_construct (alphaAcrossFeatures). Segments are tested as rule application tests them (segmentTest engine, the default): a literal matches every segment with its feature bundle, a [class] the union of its members' features, so the spans are a superset of what a rule rewrites, positions it leaves unchanged and overlapping spans included. segmentTest identity is exact (a literal names one segment, a [class] its members), and then the result says matchMode identity and mayUnderReport, and not over such a pattern warns that absence is not proven. Environment sides are exact under both, as in a rule. Every result reports its segmentTest. + needs words with marked boundaries, which Motif does not send yet, so it is refused on ordinary words as boundary_needs_marked_input."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "realizes"
+          ],
+          "properties": {
+            "realizes": {
+              "description": "A morpheme in any of its surface forms. The tier says where the forms come from: attested reads the stored analyses; possible and generated are named and refused until they are built. The forms compile to a search over surface text, may over-match, and a negation over a set that is not complete is refused. Runs over a corpus with --grammar.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "morpheme",
+                "tier"
+              ],
+              "properties": {
+                "morpheme": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "entry:msa, an entry or analysis id, or a form in the lexicon, optionally led by root:, pfx: or sfx:."
+                },
+                "tier": {
+                  "type": "string",
+                  "enum": [
+                    "attested",
+                    "possible",
+                    "generated"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Reserved: morph, seq.",
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "morph",
+              "seq"
+            ]
+          }
+        }
+      ]
+    },
+    "field": {
+      "description": "A predicate on one column; the op must fit the column's type (x-columns): lt and gt need numeric, has needs set, regex and contains need text or set.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "op"
+      ],
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "A column of the source."
+        },
+        "op": {
+          "enum": [
+            "eq",
+            "ne",
+            "in",
+            "nin",
+            "lt",
+            "gt",
+            "has",
+            "regex",
+            "contains",
+            "exists"
+          ],
+          "description": "regex is anchored at both ends; contains searches anywhere; both are NonBacktracking and at most 256 characters."
+        },
+        "value": {
+          "description": "A string, an integer (lt, gt), a list of strings (in, nin, has) or a boolean (exists, default true)."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "eq",
+                  "ne",
+                  "regex",
+                  "contains"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "in",
+                  "nin",
+                  "has"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "lt",
+                  "gt"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "exists"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "x-columns": {
+    "forms": [
+      {
+        "name": "base",
+        "type": "text"
+      },
+      {
+        "name": "category",
+        "type": "set"
+      },
+      {
+        "name": "change",
+        "type": "text"
+      },
+      {
+        "name": "change.abstract",
+        "type": "text"
+      },
+      {
+        "name": "change.at",
+        "type": "text"
+      },
+      {
+        "name": "change.dropped",
+        "type": "text"
+      },
+      {
+        "name": "change.gained",
+        "type": "text"
+      },
+      {
+        "name": "change.left",
+        "type": "text"
+      },
+      {
+        "name": "change.right",
+        "type": "text"
+      },
+      {
+        "name": "entry",
+        "type": "text"
+      },
+      {
+        "name": "environments",
+        "type": "set"
+      },
+      {
+        "name": "final:1",
+        "type": "text"
+      },
+      {
+        "name": "final:2",
+        "type": "text"
+      },
+      {
+        "name": "final:3",
+        "type": "text"
+      },
+      {
+        "name": "final:4",
+        "type": "text"
+      },
+      {
+        "name": "final:5",
+        "type": "text"
+      },
+      {
+        "name": "final:6",
+        "type": "text"
+      },
+      {
+        "name": "final:7",
+        "type": "text"
+      },
+      {
+        "name": "final:8",
+        "type": "text"
+      },
+      {
+        "name": "fold",
+        "type": "text"
+      },
+      {
+        "name": "form",
+        "type": "text"
+      },
+      {
+        "name": "id",
+        "type": "text"
+      },
+      {
+        "name": "initial:1",
+        "type": "text"
+      },
+      {
+        "name": "initial:2",
+        "type": "text"
+      },
+      {
+        "name": "initial:3",
+        "type": "text"
+      },
+      {
+        "name": "initial:4",
+        "type": "text"
+      },
+      {
+        "name": "initial:5",
+        "type": "text"
+      },
+      {
+        "name": "initial:6",
+        "type": "text"
+      },
+      {
+        "name": "initial:7",
+        "type": "text"
+      },
+      {
+        "name": "initial:8",
+        "type": "text"
+      },
+      {
+        "name": "kind",
+        "type": "text"
+      },
+      {
+        "name": "letters.dropped",
+        "type": "set"
+      },
+      {
+        "name": "letters.gained",
+        "type": "set"
+      },
+      {
+        "name": "morph-type",
+        "type": "text"
+      },
+      {
+        "name": "shape",
+        "type": "text"
+      },
+      {
+        "name": "syllables",
+        "type": "numeric"
+      },
+      {
+        "name": "tokens",
+        "type": "numeric"
+      },
+      {
+        "name": "variant-type",
+        "type": "text"
+      }
+    ],
+    "stems": [
+      {
+        "name": "alternates",
+        "type": "numeric"
+      },
+      {
+        "name": "category",
+        "type": "set"
+      },
+      {
+        "name": "entry",
+        "type": "text"
+      },
+      {
+        "name": "features",
+        "type": "set"
+      },
+      {
+        "name": "final:1",
+        "type": "text"
+      },
+      {
+        "name": "final:2",
+        "type": "text"
+      },
+      {
+        "name": "final:3",
+        "type": "text"
+      },
+      {
+        "name": "final:4",
+        "type": "text"
+      },
+      {
+        "name": "final:5",
+        "type": "text"
+      },
+      {
+        "name": "final:6",
+        "type": "text"
+      },
+      {
+        "name": "final:7",
+        "type": "text"
+      },
+      {
+        "name": "final:8",
+        "type": "text"
+      },
+      {
+        "name": "fold",
+        "type": "text"
+      },
+      {
+        "name": "form",
+        "type": "text"
+      },
+      {
+        "name": "gloss",
+        "type": "text"
+      },
+      {
+        "name": "id",
+        "type": "text"
+      },
+      {
+        "name": "initial:1",
+        "type": "text"
+      },
+      {
+        "name": "initial:2",
+        "type": "text"
+      },
+      {
+        "name": "initial:3",
+        "type": "text"
+      },
+      {
+        "name": "initial:4",
+        "type": "text"
+      },
+      {
+        "name": "initial:5",
+        "type": "text"
+      },
+      {
+        "name": "initial:6",
+        "type": "text"
+      },
+      {
+        "name": "initial:7",
+        "type": "text"
+      },
+      {
+        "name": "initial:8",
+        "type": "text"
+      },
+      {
+        "name": "msa-count",
+        "type": "numeric"
+      },
+      {
+        "name": "shape",
+        "type": "text"
+      },
+      {
+        "name": "syllables",
+        "type": "numeric"
+      }
+    ],
+    "uses": [
+      {
+        "name": "effect",
+        "type": "text"
+      },
+      {
+        "name": "id",
+        "type": "text"
+      },
+      {
+        "name": "role",
+        "type": "text"
+      },
+      {
+        "name": "target",
+        "type": "text"
+      },
+      {
+        "name": "target-kind",
+        "type": "text"
+      },
+      {
+        "name": "user",
+        "type": "text"
+      },
+      {
+        "name": "user-kind",
+        "type": "text"
+      }
+    ],
+    "objects": [
+      {
+        "name": "applied",
+        "type": "numeric"
+      },
+      {
+        "name": "carriers",
+        "type": "numeric"
+      },
+      {
+        "name": "class",
+        "type": "text"
+      },
+      {
+        "name": "id",
+        "type": "text"
+      },
+      {
+        "name": "key",
+        "type": "text"
+      },
+      {
+        "name": "label",
+        "type": "text"
+      },
+      {
+        "name": "users",
+        "type": "numeric"
+      },
+      {
+        "name": "uses",
+        "type": "numeric"
+      }
+    ]
+  },
+  "x-reserved": [
+    "morph",
+    "seq"
+  ]
+}

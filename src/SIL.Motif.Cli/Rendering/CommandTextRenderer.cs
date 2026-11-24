@@ -137,6 +137,9 @@ public static class CommandTextRenderer
             WarningsResponse r => RenderWarnings(r),
             ProposalDifferenceResponse r => RenderProposalDifference(r),
             TimingResponse r => TimingTextRenderer.RenderTiming(r),
+            SIL.Motif.Contract.Query.Corpus.PairsQueryResponse r => PairsText.Render(r),
+            SIL.Motif.Contract.Query.Corpus.CorpusFormsResponse r => CorpusFormsText.Render(r),
+            SIL.Motif.Commands.Queries.PhonValuesResponse r => PhonText.Values(r),
             ActivitySummary r => RenderActivity(r),
             ObjectUsesResponse r => RenderUses(r),
             InspectResponse r => RenderInspect(r),
@@ -144,6 +147,8 @@ public static class CommandTextRenderer
             WordTraceResponse r => RenderTrace(r),
             RejectionTraceResponse r => RenderRejectionTrace(r),
             WhyNotResponse r => WhyNotRenderer.Render(r),
+            WhyLostResponse r => WhyLostRenderer.Render(r),
+            FormsExplainResponse r => FormsExplainMarkdown.Render(r),
             FormsQueryResponse r => RenderFormsQuery(r),
             GrammarReadResponse r => GrammarReadTextRenderer.Render(r),
             ProjectStoreResetResponse r => r.Deleted
@@ -746,12 +751,22 @@ public static class CommandTextRenderer
         }
         if (comparison.ApprovedSkippedOtherAgents > 0)
             text.Append($"{comparison.ApprovedSkippedOtherAgents:N0} analyses approved only by another human agent are not counted as approved.\n");
+        text.Append($"Approved analyses: {comparison.ApprovedTotal:N0}; {comparison.ApprovedUncounted:N0} counted in no column.\n");
         text.Append(comparison.Complete ? "Comparison complete" :
-            "Comparison incomplete: " + string.Join(", ", comparison.Limitations.Select(item => item.Code + " " + item.Count)));
+            "Comparison incomplete: " + string.Join(", ", comparison.Limitations.Select(RenderLimitation)));
         if (comparison.Page is { } page)
             foreach (var row in page.Rows) text.Append('\n').Append(ProjectionJson.Serialize(row));
         return text.ToString();
     }
+
+    private static string RenderLimitation(CompareLimitation item) => item.Code switch
+    {
+        CompareLimitation.ParserVersionDiffers => $"{item.Code} {item.Count} (PanGloss versions: {item.Detail ?? "unrecorded"})",
+        CompareLimitation.TrialStale => $"{item.Code} {item.Count} (the Proposal changed after its Trial)",
+        CompareLimitation.TrialSuperseded => $"{item.Code} {item.Count} (a newer Trial exists or the Proposal was superseded)",
+        CompareLimitation.ApprovedUncounted => $"{item.Code} {item.Count} (approved analyses with no Reading identity or on words no Trial measured)",
+        _ => item.Code + " " + item.Count,
+    };
 
     private static string RenderTrialExport(TrialExportReceipt receipt)
     {
@@ -1632,9 +1647,12 @@ public static class CommandTextRenderer
     {
         var text = new StringBuilder();
         text.AppendLine(r.Mode == "draft"
-            ? $"Staged {r.OperationCount:N0} operation(s) from the {r.RecordKind} file in Draft {r.DraftName} ({r.ProposalId}). Nothing was applied."
+            ? $"Staged {r.OperationCount:N0} operation(s) from the {r.RecordKind} file in Draft {r.DraftName} ({r.ProposalId}); {r.RefusalCount:N0} change(s) refused and not staged. Nothing was applied."
             : $"Dry run of the {r.RecordKind} file: {r.ChangeCount:N0} change(s) lower to {r.OperationCount:N0} operation(s). Nothing was written.");
         text.AppendLine($"  record: {r.RecordId}; base: {r.BaseVerdict}; refused: {r.RefusalCount:N0}; page {r.Page} of {r.PageCount}");
+        foreach (var change in r.Changes ?? [])
+            text.AppendLine($"  change {(change.Status == "refused" ? "REFUSED " + change.RefusalCode + " " : "")}{change.Kind}  {change.Class}.{change.Field}{(change.WritingSystem is null ? "" : "[" + change.WritingSystem + "]")}: " +
+                $"{change.Old ?? "(none)"} -> {change.New ?? "(cleared)"}");
         foreach (var operation in r.Operations)
             text.AppendLine($"  op {operation.OperationId}  {operation.Kind}  {operation.Target}");
         foreach (var refusal in r.Refusals)

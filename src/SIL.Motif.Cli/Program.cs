@@ -134,6 +134,7 @@ var usageArguments = args.Length > 0
     ? ParseArgs(args[1..])
     : (new Dictionary<string, string>(StringComparer.Ordinal), new List<string>(),
         (IReadOnlyList<string>)Array.Empty<string>());
+usageArguments.Item2 = CliCommandNames.NormalizeQueryWords(usageVerb, usageArguments.Item1, usageArguments.Item2);
 var resolvedUsageCommand = args.Length > 0
     ? CliCommandNames.Resolve(usageVerb, usageArguments.Item1, usageArguments.Item2)
     : usageVerb;
@@ -174,7 +175,8 @@ string? namedProject = null;
 
 try
 {
-    var (flags, positionals, forwardedArguments) = ParseArgs(rest);
+    var (flags, parsedPositionals, forwardedArguments) = ParseArgs(rest);
+    var positionals = CliCommandNames.NormalizeQueryWords(verb, flags, parsedPositionals);
     var waitForTerminal = flags.ContainsKey("wait-terminal");
     if (waitForTerminal && !(verb is "dry-run" or "trial" && flags.ContainsKey("wait")) &&
         !(verb == "jobs" && positionals.FirstOrDefault() == "wait"))
@@ -400,15 +402,16 @@ try
         case "import":
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var importProject) ||
                 !flags.TryGetValue("file", out var importFile) ||
-                flags.Keys.Any(key => key is not ("project" or "file" or "draft" or "page" or "json")) ||
-                flags.TryGetValue("draft", out var importDraft) && importDraft == "true")
+                flags.Keys.Any(key => key is not ("project" or "file" or "draft" or "page" or "strict" or "json")) ||
+                flags.TryGetValue("draft", out var importDraft) && importDraft == "true" ||
+                flags.ContainsKey("strict") && !flags.ContainsKey("draft"))
                 return Usage(UsageLineFor("import"), asJson);
             var importPage = 1;
             if (flags.TryGetValue("page", out var importPageText) &&
                 (!int.TryParse(importPageText, NumberStyles.None, CultureInfo.InvariantCulture, out importPage) || importPage < 1))
                 return Usage(UsageLineFor("import"), asJson);
             result = RenderCommand(RecordImportCommand.Run(new RecordImportRequest(
-                importProject, importFile, flags.GetValueOrDefault("draft"), importPage)));
+                importProject, importFile, flags.GetValueOrDefault("draft"), importPage, flags.ContainsKey("strict"))));
             break;
 
         case "record":
@@ -1885,6 +1888,26 @@ try
         }
 
         case "proposal":
+            if (positionals.Count >= 1 && positionals[0] == "why-lost")
+            {
+                if (!flags.TryGetValue("project", out var whyLostProject) || positionals.Count != 2 ||
+                    !flags.TryGetValue("proposal", out var whyLostProposal) || whyLostProposal == "true" ||
+                    flags.Keys.Any(flag => flag is not ("project" or "proposal" or "max-paths" or "json" or "autonomous")))
+                    return Usage("Usage: motif " + UsageLineFor("proposal why-lost"), asJson);
+                int? whyLostMax = null;
+                if (flags.TryGetValue("max-paths", out var whyLostMaxText))
+                {
+                    if (!int.TryParse(whyLostMaxText, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var parsedWhyLostMax))
+                    {
+                        result = RenderCommand(RejectionTraceQuery.InvalidCap(whyLostMaxText));
+                        break;
+                    }
+                    whyLostMax = parsedWhyLostMax;
+                }
+                result = RunWithConsoleCancellation(token => RenderCommand(WhyLostQuery.Compare(
+                    new WhyLostRequest(whyLostProject, positionals[1], whyLostProposal, whyLostMax), token)));
+                break;
+            }
             if (positionals.Count == 1 && positionals[0] == "review" &&
                 flags.TryGetValue("project", out var proposalReviewProject))
             {
@@ -2028,8 +2051,11 @@ try
             if (positionals is ["compare", ..])
             {
                 if (positionals.Count < 3 || !flags.TryGetValue("project", out var compareReadProject) ||
-                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "page" or "at" or "snapshot")))
+                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "page" or "at" or "snapshot" or "job")))
                     return Usage(UsageLineFor("proposal compare"), asJson);
+                if (flags.ContainsKey("snapshot") && !flags.ContainsKey("page"))
+                    return Usage("--snapshot checks the Trials a page was read from, so it needs --page. " +
+                        UsageLineFor("proposal compare"), asJson);
                 int? proposalComparePage = null;
                 if (flags.TryGetValue("page", out var proposalCompareText))
                 {
@@ -2039,7 +2065,7 @@ try
                 }
                 result = RenderCommand(ProposalCompareReads.Read(new CompareProposalsRequest(compareReadProject,
                     positionals.Skip(1).ToArray(), flags.GetValueOrDefault("at"), proposalComparePage,
-                    flags.GetValueOrDefault("snapshot"))));
+                    flags.GetValueOrDefault("snapshot"), ReadRepeatedFlagValues(flags, "job"))));
                 break;
             }
             if (positionals is ["trial", "export", ..])
@@ -2299,9 +2325,82 @@ try
 
         case "query":
         {
+            if (flags.TryGetValue("values", out var valuesKind))
+            {
+                if (valuesKind != "classes" || positionals.Count != 0 || flags.Keys.Any(key => key is not ("values" or "project" or "grammar" or "json" or "verbose")))
+                    return Usage(UsageLineFor("query values"), asJson);
+                result = RenderCommand(PhonValues.Read(new QueryValuesRequest(flags.GetValueOrDefault("project"), flags.GetValueOrDefault("grammar")),
+                    flags.ContainsKey("verbose") ? error.WriteLine : null));
+                break;
+            }
+            if (CorpusQueryCli.Handles(flags) && CorpusQueryCli.IsForms(positionals))
+            {
+                if (!CorpusQueryCli.TryBuildFormsRequest(flags, positionals, source =>
+                    {
+                        try
+                        {
+                            return source == "-" ? new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false)).ReadToEnd() : File.ReadAllText(source);
+                        }
+                        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return null; }
+                    }, out var corpusFormsRequest))
+                    return Usage(UsageLineFor("query corpus forms"), asJson);
+                result = RenderCommand(CorpusQueryCommand.Forms(corpusFormsRequest, JobRunnerLaunchOptions.ResolveParserPath(), notice: error.WriteLine));
+                break;
+            }
+            if (CorpusQueryCli.Handles(flags))
+            {
+                if (!CorpusQueryCli.TryBuildRequest(flags, positionals, out var corpusRequest)) return Usage(UsageLineFor("query pairs"), asJson);
+                result = RenderCommand(CorpusQueryCommand.Pairs(corpusRequest));
+                break;
+            }
             var queryUsage = UsageLineFor("query forms");
-            if (!flags.TryGetValue("project", out var queryProject) ||
-                !QueryRunLine.TryBuildQuery(flags, positionals, rest, true, out var queryArguments, out _)) return Usage(queryUsage, asJson);
+            if (flags.ContainsKey("schema"))
+            {
+                if (positionals.Count != 0 || flags.Keys.Any(key => key is not ("schema" or "json"))) return Usage(queryUsage, asJson);
+                result = new CommandResult(0, QuerySchema.Generate());
+                break;
+            }
+            QueryArguments? queryArguments;
+            if (!flags.TryGetValue("project", out var queryProject)) return Usage(queryUsage, asJson);
+            if (flags.TryGetValue("query-json", out var queryJsonSource))
+            {
+                if (positionals.Count != 0 || flags.Keys.Any(key => key is not ("project" or "query-json" or "json")))
+                    return Usage(queryUsage, asJson);
+                string queryJson;
+                try
+                {
+                    queryJson = queryJsonSource == "-"
+                        ? new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false)).ReadToEnd()
+                        : File.ReadAllText(queryJsonSource);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return Usage($"The --query-json '{queryJsonSource}' cannot be read: {exception.Message}", asJson);
+                }
+                QueryRecord? documentRecord = null;
+                Refusal? documentRefusal;
+                try
+                {
+                    if (QueryDocument.TryParse(queryJson, out var queryDocument, out documentRefusal))
+                        documentRecord = queryDocument.ToRecord();
+                }
+                catch (QueryRefusalException refused)
+                {
+                    documentRefusal = refused.Refusal;
+                }
+                if (documentRecord is null)
+                {
+                    result = RenderCommand(CommandOutcome<FormsQueryResponse>.Refused(documentRefusal!));
+                    break;
+                }
+                queryArguments = new QueryArguments(documentRecord, queryProject, documentRecord.AsOf, false, false, null);
+            }
+            else if (!QueryRunLine.TryBuildQuery(flags, positionals, rest, true, out queryArguments, out var buildRefusal))
+            {
+                if (buildRefusal.Code != RefusalCodes.QueryNotYetAvailable) return Usage(queryUsage, asJson);
+                result = RenderCommand(CommandOutcome<FormsQueryResponse>.Refused(buildRefusal));
+                break;
+            }
             var record = queryArguments.Record;
             if (record.AsOf is not null || record.Sides is not null) asJson = true;
             if (queryArguments.MembersFile is { } membersFile)
@@ -2335,6 +2434,13 @@ try
                 var columns = QuerySources.StoredColumns(record.From == "forms" ? "stems" : record.From);
                 if (record.Change is not null) columns = [.. columns, "predicted", "evidence", "collides"];
                 string Item(QueryItem item) => item.Id + "\t" + string.Join("\t", columns.Select(c => string.Join(",", item.Values[c])));
+                if (response.Result.Phon is { } phonReport)
+                {
+                    var phonHeader = new StringBuilder();
+                    PhonText.Append(phonHeader, phonReport);
+                    var phonLines = phonHeader.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r'));
+                    foreach (var line in phonLines) (record.Ids ? (Action<string>)Console.Error.WriteLine : lines.Add)(line);
+                }
                 if (record.Evidence) { }
                 else if (record.Ids)
                     lines.AddRange(response.Result.Ids);
@@ -2343,7 +2449,8 @@ try
                 else if (groups.Count == 0)
                     lines.AddRange(response.Result.Rows.Select(row =>
                         $"{row.Form}\t{row.Base}\t{row.Kind}\t{row.Id}\t{row.Entry}\t{row.MorphType}\t" +
-                        $"{row.VariantType}\t{string.Join(",", row.Environments)}\t{string.Join(",", row.Category)}"));
+                        $"{row.VariantType}\t{string.Join(",", row.Environments)}\t{string.Join(",", row.Category)}" +
+                        (row.Matches is { Count: > 0 } ? "\t" + PhonText.Spans(row.Matches) : "")));
                 else
                     foreach (var group in response.Result.Groups)
                     {
@@ -2958,7 +3065,8 @@ try
         {
             var traceVerb = verb;
             if (!flags.TryGetValue("project", out var rejectionProject) || positionals.Count != 1 ||
-                !flags.ContainsKey("trace") || flags["trace"] != "true")
+                !flags.ContainsKey("trace") || flags["trace"] != "true" ||
+                traceVerb == "generate" && flags.ContainsKey("max-paths"))
                 return Usage("Usage: motif " + UsageLineFor(traceVerb), asJson);
             int? rejectionMax = null;
             if (flags.TryGetValue("max-paths", out var maxPathsText))
@@ -2974,8 +3082,30 @@ try
             result = traceVerb == "parse"
                 ? RunWithConsoleCancellation(token => RenderCommand(RejectionTraceQuery.Parse(
                     new ParseTraceRequest(rejectionProject, positionals[0], rejectionAt, rejectionMax), token)))
-                : RenderCommand(RejectionTraceQuery.Generate(
-                    new GenerateTraceRequest(rejectionProject, positionals[0], rejectionAt, rejectionMax)));
+                : RunWithConsoleCancellation(token => RenderCommand(FormsExplainQuery.Generate(
+                    new GenerateTraceRequest(rejectionProject, positionals[0], rejectionAt), token)));
+            break;
+        }
+
+        case "forms":
+        {
+            var wordFlag = flags.GetValueOrDefault("word");
+            var allowed = new[] { "project", "with", "word", "at", "json", "md", "timeout-ms", "max-work" };
+            if (!flags.TryGetValue("project", out var formsProject) || positionals.FirstOrDefault() != "explain" ||
+                flags.Keys.Any(flag => !allowed.Contains(flag)) || flags.ContainsKey("json") && flags.ContainsKey("md") ||
+                wordFlag == "true" || flags.GetValueOrDefault("with") == "true" ||
+                positionals.Count != (wordFlag is null ? 2 : 1))
+                return Usage("Usage: motif " + UsageLineFor("forms explain"), asJson);
+            var timeoutText = flags.GetValueOrDefault("timeout-ms");
+            var workText = flags.GetValueOrDefault("max-work");
+            if (timeoutText is not null && !int.TryParse(timeoutText, NumberStyles.None, CultureInfo.InvariantCulture, out _) ||
+                workText is not null && !long.TryParse(workText, NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                return Usage("Usage: motif " + UsageLineFor("forms explain"), asJson);
+            int? formsTimeout = timeoutText is null ? null : int.Parse(timeoutText, CultureInfo.InvariantCulture);
+            long? formsMaxWork = workText is null ? null : long.Parse(workText, CultureInfo.InvariantCulture);
+            var formsRequest = new FormsExplainRequest(formsProject, wordFlag is null ? positionals[1] : null,
+                ReadRepeatedFlagValues(flags, "with"), wordFlag, flags.GetValueOrDefault("at"), formsTimeout, formsMaxWork);
+            result = RunWithConsoleCancellation(token => RenderCommand(FormsExplainQuery.Explain(formsRequest, token)));
             break;
         }
 
@@ -3992,7 +4122,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens")
             {
                 flags[name] = "true";
                 continue;
@@ -4012,7 +4142,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
             else
             {
                 var value = tokens[++i];
-                flags[name] = name is "assessment" or "expect" && flags.TryGetValue(name, out var previous)
+                flags[name] = name is "assessment" or "expect" or "job" or "with" && flags.TryGetValue(name, out var previous)
                     ? previous + "\n" + value
                     : value;
             }

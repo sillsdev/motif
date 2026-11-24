@@ -207,8 +207,11 @@ public static class Trials
     }
 
     private static IReadOnlyList<JobRecord> OrderedJobs(MotifDatabase database, string projectKey) =>
-        new JobRepository(database).ListByProjectAndKind(projectKey, TrialJobHandler.TrialKind)
-            .OrderByDescending(job => DateTimeOffset.Parse(job.CreatedUtc, CultureInfo.InvariantCulture))
+        NewestFirst(new JobRepository(database).ListByProjectAndKind(projectKey, TrialJobHandler.TrialKind));
+
+    /// <summary>Newest first by creation time; equal times order by job id, the greater id being newer.</summary>
+    internal static IReadOnlyList<JobRecord> NewestFirst(IEnumerable<JobRecord> jobs) =>
+        jobs.OrderByDescending(job => DateTimeOffset.Parse(job.CreatedUtc, CultureInfo.InvariantCulture))
             .ThenByDescending(job => job.JobId, StringComparer.Ordinal).ToArray();
 
     internal static string ProposalOf(JobRecord job) =>

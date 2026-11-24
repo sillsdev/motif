@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using SIL.Harmony;
 using SIL.Harmony.Core;
@@ -18,10 +19,13 @@ public sealed record RecordCommit(Guid Id, DateTimeOffset UtcTime, long Counter,
 public sealed partial class RecordStore : IAsyncDisposable
 {
     public const int MaximumChangesPerCommit = 500;
-    private const int StoreFormat = 5;
+    // Format 6 adds the certificate, format 7 the derived tables; a first read-write operation upgrades.
+    private const int StoreFormat = 7;
+    private const int CertificateFormat = 6;
+    private const int PackedStoreFormat = 5;
     private const int LegacyStoreFormat = 4;
     internal const int CompleteRecordModelVersion = 1;
-    private readonly int format;
+    private int format;
     private int ModelVersion => format == LegacyStoreFormat ? 0 : CompleteRecordModelVersion;
     private readonly ServiceProvider provider;
     private readonly AsyncServiceScope scope;
@@ -35,9 +39,13 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     public RecordStore(string path, TimeProvider? timeProvider = null) : this(ResolvePath(path), timeProvider, false) { }
 
+    /// <summary>Opens as a reader that predates a format would: anything newer than <paramref name="highestFormat"/> is refused.</summary>
+    internal static RecordStore OpenWithFormatCeiling(string path, int highestFormat) =>
+        new(ResolvePath(path), null, false, highestFormat);
+
     internal static RecordStore OpenPublishedReader(string resolvedPath) => new(resolvedPath, null, true);
 
-    private RecordStore(string path, TimeProvider? timeProvider, bool readOnly)
+    private RecordStore(string path, TimeProvider? timeProvider, bool readOnly, int highestFormat = StoreFormat)
     {
         this.readOnly = readOnly;
         writeLockPath = path + ".write.lock";
@@ -45,9 +53,10 @@ public sealed partial class RecordStore : IAsyncDisposable
         var services = new ServiceCollection();
         var connection = RecordSqlite.ConnectionString(path, readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate);
         var storedFormat = File.Exists(path) ? ReadFormat(connection) : 0;
-        if (storedFormat is not (0 or LegacyStoreFormat or StoreFormat))
+        if (storedFormat is not (0 or LegacyStoreFormat or PackedStoreFormat or CertificateFormat or StoreFormat) || storedFormat > highestFormat)
             throw new InvalidDataException("Unsupported record store format.");
-        format = storedFormat == LegacyStoreFormat ? LegacyStoreFormat : StoreFormat;
+        // A new file is created in the current format; an existing one keeps its own until its first write upgrades it.
+        format = storedFormat == 0 ? StoreFormat : storedFormat;
         services.AddSingleton<RecordContent>();
         // Converters close over this store's immutable content cache; their EF model must have the same lifetime.
         services.AddDbContext<RecordDatabase>(options => options.UseSqlite(connection).EnableServiceProviderCaching(false));
@@ -100,6 +109,8 @@ public sealed partial class RecordStore : IAsyncDisposable
             if (created)
             {
                 ReferencePersistence.Create(database);
+                database.Database.ExecuteSqlRaw(IdentityTable);
+                CreateDerivedTables(database);
                 database.Add(new StoreState());
                 database.SaveChanges();
             }
@@ -107,6 +118,9 @@ public sealed partial class RecordStore : IAsyncDisposable
             if (readOnly && !state.Published) throw new InvalidDataException("The store import has not been published.");
             if (!readOnly && state.Published && state.ContentDigest != content.Digest())
                 throw new InvalidDataException("Corrupt immutable record content.");
+            UseIdentityTable();
+            if (readOnly && format >= DerivedFormat) UseDemandedContent();
+            Verification = OpenVerification(state);
             database.ChangeTracker.Clear();
             model = scope.ServiceProvider.GetRequiredService<DataModel>();
         }
@@ -162,7 +176,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         ImportAsync(records, clientId, nativeCoverage, packed: false);
 
     internal Task ImportNativeAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage coverage) =>
-        ImportAsync(records, clientId, coverage, packed: format == StoreFormat);
+        ImportAsync(records, clientId, coverage, packed: format >= PackedStoreFormat);
 
     private async Task ImportAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage? nativeCoverage, bool packed)
     {
@@ -189,6 +203,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         PublishedWork? work = null;
         try
         {
+            await UpgradeInTransactionAsync();
             if (baseline is not null)
             {
                 work = PublishedWork.Start(baseline);
@@ -202,12 +217,15 @@ public sealed partial class RecordStore : IAsyncDisposable
                     await model.AddChanges(clientId, batch);
                 database.ChangeTracker.Clear();
             }
-            await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync(), work);
+            await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync(), work, CertificateProvenance.FullImport,
+                refuseUnprovenNative: true);
             await transaction.CommitAsync();
+            CompleteUpgrade();
         }
         catch
         {
             requiresReopen = true;
+            AbandonUpgrade();
             // The overlapped work only reads the records; let it finish so nothing outlives a failed import.
             if (work is not null) await Task.WhenAll(work.Snapshot, work.Projection).ContinueWith(_ => { });
             throw;
@@ -274,11 +292,13 @@ public sealed partial class RecordStore : IAsyncDisposable
     /// <summary>Number of snapshots this handle has decoded for verified reads.</summary>
     internal long SnapshotsDecoded { get; private set; }
 
-    private sealed record DecodedSnapshots(IReadOnlyList<GenericRecord> Records, SetDigest Digest);
+    private sealed record DecodedSnapshots(IReadOnlyList<GenericRecord> Records, SetDigest Digest, RecordHeader[] Tombstones,
+        DerivedSnapshot? Derived);
 
-    /// <summary>Live records in Harmony's order, decoded on workers, with their digest when asked.</summary>
-    private async Task<DecodedSnapshots> DecodeLatestAsync(bool digest, CancellationToken ct)
+    /// <summary>Live records in Harmony's order, decoded on workers; derived adds chunks and headers.</summary>
+    private async Task<DecodedSnapshots> DecodeLatestAsync(bool digest, CancellationToken ct, bool derived = false)
     {
+        derived &= digest;
         // Several failing rows may be reported in another order than sequentially: read errors win.
         var blobs = new List<byte[]>();
         var codec = database.Codec;
@@ -298,28 +318,52 @@ public sealed partial class RecordStore : IAsyncDisposable
         var chunks = (blobs.Count + size - 1) / size;
         var decoded = new GenericRecord?[blobs.Count];
         var partial = new SetDigest[chunks];
+        var partialChunks = derived ? new Dictionary<int, SetDigest>[chunks] : null;
+        var headers = derived ? new RecordHeader[blobs.Count] : null;
+        var tombstones = new RecordHeader?[blobs.Count];
         var workers = Workers ?? ParallelWork.DefaultWorkers;
         await Task.Run(() => ParallelWork.ForEachChunk(chunks, workers, ct, chunk =>
         {
             DecodeChunkStarted?.Invoke(chunk);
             var sum = new SetDigest();
+            var parts = derived ? new Dictionary<int, SetDigest>() : null;
             var end = Math.Min(blobs.Count, (chunk + 1) * size);
             for (var index = chunk * size; index < end; index++)
             {
                 ct.ThrowIfCancellationRequested();
                 var record = (GenericRecord)codec.Snapshot(blobs[index]);
-                if (record.DeletedAt is not null) continue;
+                if (headers is not null) headers[index] = RecordHeader.From(record);
+                if (record.DeletedAt is not null) { tombstones[index] = RecordHeader.From(record); continue; }
                 decoded[index] = record;
-                if (digest) sum = sum.Add(SnapshotItem(record));
+                if (!digest) continue;
+                var item = SnapshotItem(record);
+                sum = sum.Add(item);
+                if (parts is not null)
+                {
+                    var key = ChunkOf(record.Id);
+                    parts[key] = parts.GetValueOrDefault(key).Add(item);
+                }
             }
             partial[chunk] = sum;
+            if (partialChunks is not null) partialChunks[chunk] = parts!;
         }), ct);
         SnapshotsDecoded += blobs.Count;
         var records = new List<GenericRecord>(blobs.Count);
+        var seen = new HashSet<Guid>(blobs.Count);
         foreach (var record in decoded) if (record is not null) records.Add(record);
+        foreach (var id in records.Select(r => r.Id).Concat(tombstones.Where(t => t is not null).Select(t => t!.Value.Id)))
+            if (!seen.Add(id)) throw new InvalidDataException($"Snapshots: two latest snapshots decode to record {id}.");
         var total = new SetDigest();
         foreach (var part in partial) total = total.Combine(part);
-        return new(records, total);
+        DerivedSnapshot? derivedTables = null;
+        if (partialChunks is not null)
+        {
+            var sums = new SetDigest[ChunkCount];
+            foreach (var parts in partialChunks)
+                foreach (var (key, value) in parts) sums[key] = sums[key].Combine(value);
+            derivedTables = new DerivedSnapshot(sums, headers!);
+        }
+        return new(records, total, tombstones.Where(t => t is not null).Select(t => t!.Value).ToArray(), derivedTables);
     }
 
     public async Task<IReadOnlyList<RecordCommit>> CommitsAsync() => await database.Set<Commit>().AsNoTracking()
@@ -328,20 +372,32 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     public async Task<ReferenceIndexSnapshot> ReferencesAsync(ReferenceEvidence? evidence = null)
     {
-        var index = (await PointAsync()).GetPlanningIndex();
+        var (_, index) = await PlanningPointAsync();
         return evidence is null ? index : index.WithObservations(evidence);
     }
 
     /// <summary>Reads and verifies the published point; a trusted result is retained for reuse.</summary>
-    private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default)
+    private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default, Action<string, string>? observe = null)
     {
         point = null;
-        var decoded = await DecodeLatestAsync(digest: true, ct);
+        // A verification (observe) always decodes and digests everything; so does any point that cannot be certified.
+        var downgraded = false; // derived tables disagreed with a trusted certificate: vouch only after a history scan
+        if (observe is null && CertifiedAcquisitionAllowed && format >= DerivedFormat && OpenVerification(state) == StoreVerification.Certified &&
+            !state.IndexLimitations.Contains(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal))
+        {
+            if (await DerivedFindingAsync(state, ct) is null && await AcquireCertifiedAsync(state, ct) is { } certified) return certified;
+            downgraded = true;
+        }
+        await EnsureContentAsync(state, ct);
+        var decoded = await DecodeLatestAsync(digest: true, ct, derived: observe is not null || !readOnly && format < DerivedFormat);
         var records = decoded.Records;
-        var snapshot = VerifySnapshots(state, decoded.Digest);
+        // A verification reports the digests it computed instead of refusing at the first mismatch.
+        observe?.Invoke("snapshot", decoded.Digest.Final("snapshot"));
+        var snapshot = observe is null ? VerifySnapshots(state, decoded.Digest) : decoded.Digest;
         var native = new Dictionary<Guid, GenericRecord>();
         var headers = new List<ReferenceRecord>();
         var anchors = new List<GenericRecord>();
+        var systems = new List<GenericRecord>();
         foreach (var record in records)
         {
             ct.ThrowIfCancellationRequested();
@@ -351,11 +407,13 @@ public sealed partial class RecordStore : IAsyncDisposable
                 headers.Add(new(record.Id, record.ClassId, record.Owner, record.OwningField));
             }
             else if (record.Kind == HandAnalysisKinds.Anchor) anchors.Add(record);
+            else if (record.Kind == "writing-system") systems.Add(record);
         }
         var projection = new ReferenceProjection(await ReferencePersistence.ReadAsync(database, ct), headers.ToArray(),
             state.IndexLimitations.Split('\n', StringSplitOptions.RemoveEmptyEntries));
         var limitations = projection.Limitations.ToList();
         var digest = projection.Accumulate(ct);
+        observe?.Invoke("index", digest.Final());
         var trusted = digest.Final() == state.IndexDigest;
         if (!trusted) limitations.Add("Incoming-reference index is corrupt; rebuild it before use.");
         var schema = NativeUsageSchema.Read(records, ct);
@@ -365,16 +423,24 @@ public sealed partial class RecordStore : IAsyncDisposable
             ct.ThrowIfCancellationRequested();
             return r.ClassId == projectClass;
         }).Take(2).ToArray() : [];
-        var verified = new VerifiedPoint(state, native,
+        var verified = new VerifiedPoint(state, RecordSource.Eager(native),
             new ReferenceIndexSnapshot(state.Revision, projection.Edges, projection.Records, limitations, schema, ct), snapshot, digest)
         {
             Anchors = anchors.ToArray(),
+            WritingSystems = systems.ToArray(),
             ProjectId = projects.Length == 1 ? projects[0].Id : null,
-            IndexTrusted = trusted
+            IndexTrusted = trusted,
+            Derived = decoded.Derived,
+            UnprovenNative = decoded.Derived is null ? null : NativeUsageSchema.ProvenanceFailure(records)
         };
         ct.ThrowIfCancellationRequested();
         PointAcquisitions++;
-        if (trusted) point = verified;
+        if (observe is null)
+        {
+            // Another handle may have written since this one last looked; what it reads again is not what it verified.
+            Verification = downgraded ? StoreVerification.Uncertified : OpenVerification(state);
+            if (trusted) point = verified;
+        }
         return verified;
     }
 
@@ -386,51 +452,97 @@ public sealed partial class RecordStore : IAsyncDisposable
     /// <summary>Number of full verified acquisitions this handle has performed.</summary>
     internal int PointAcquisitions { get; private set; }
 
+    /// <summary>Times the in-memory identity dictionary was built over every content row.</summary>
+    internal int ContentIdentityDictionaryBuilds => content.IdentityBuilds;
+
     /// <summary>The reference snapshot that planning and guarded writes currently reuse.</summary>
-    internal async Task<ReferenceIndexSnapshot> PlanningIndexAsync() => (await PointAsync()).GetPlanningIndex();
+    internal async Task<ReferenceIndexSnapshot> PlanningIndexAsync() => (await PlanningPointAsync()).Index;
+
+    // The point and its planning index come from one read transaction, so no publication can fall between them.
+    private Task<(VerifiedPoint Point, ReferenceIndexSnapshot Index)> PlanningPointAsync(CancellationToken ct = default) =>
+        ReadPublishedAsync(async state =>
+        {
+            var served = point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct);
+            return (served, await served.GetPlanningIndexAsync(ct));
+        }, ct, lazyContent: true);
 
     private Task<VerifiedPoint> PointAsync(CancellationToken ct = default) => ReadPublishedAsync(async state =>
-        point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct), ct);
+        point is not null && point.State.SamePoint(state) ? point : await AcquireAsync(state, ct), ct, lazyContent: true);
 
-    public async Task RebuildReferenceIndexAsync()
+    /// <summary>Cancelling before the single publishing transaction starts changes nothing; the transaction itself is not interrupted.</summary>
+    public async Task RebuildReferenceIndexAsync(CancellationToken ct = default)
     {
         using var writer = AcquireWriter();
         point = null;
-        var state = await PublishedStateAsync();
-        var records = await ReadRecordsAsync();
-        VerifySnapshots(state, records);
-        if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database, Workers))
+        var state = await PublishedStateAsync(ct);
+        var latest = await DecodeLatestAsync(digest: true, ct);
+        VerifySnapshots(state, latest.Digest);
+        if (state.ReplayDigest != (await ReplayIntegrity.ScanAsync(database, Workers, ct: ct)).Final())
             throw new InvalidDataException("History is corrupt; the reference index cannot be republished.");
-        await PublishIndexAsync(records, state.Revision);
+        ct.ThrowIfCancellationRequested();
+        await PublishIndexAsync(latest.Records, state.Revision, tombstones: latest.Tombstones);
     }
 
     /// <summary>Digests and index of records in hand; an import computes them while its rows are written.</summary>
-    private sealed record PublishedWork(Task<SetDigest> Snapshot, Task<ReferenceProjection> Projection)
+    private sealed record PublishedWork(Task<SetDigest[]> Snapshot, Task<ReferenceProjection> Projection)
     {
         public static PublishedWork Start(IReadOnlyList<GenericRecord> records) =>
-            new(Task.Run(() => SnapshotDigest(records)), Task.Run(() => ReferenceProjection.Build(records)));
+            new(Task.Run(() => ChunkDigests(records)), Task.Run(() => ReferenceProjection.Build(records)));
     }
 
-    private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision, PublishedWork? work = null)
+    private async Task PublishIndexAsync(IReadOnlyList<GenericRecord> records, string revision, PublishedWork? work = null,
+        string provenance = CertificateProvenance.FullVerify, IReadOnlyList<RecordHeader>? tombstones = null,
+        bool refuseUnprovenNative = false)
     {
         point = null;
+        derivedChecked = null;
+        var chunks = work is null ? ChunkDigests(records) : await work.Snapshot;
         var projection = work is null ? ReferenceProjection.Build(records) : await work.Projection;
+        if (LegacyProvenanceForTests)
+            projection = projection with { Limitations = projection.Limitations.Where(l => !l.StartsWith(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal)).ToArray() };
         await using var transaction = database.Database.CurrentTransaction is null ? await database.Database.BeginTransactionAsync() : null;
+        try
+        {
+            var state = await database.Set<StoreState>().SingleAsync();
+            // New native records must pass the provenance proof; a store already failing it keeps the limitation.
+            if (refuseUnprovenNative && !LegacyProvenanceForTests && !state.IndexLimitations.Contains(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal) &&
+                projection.Limitations.FirstOrDefault(l => l.StartsWith(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal)) is { } unproven)
+                throw new InvalidDataException(unproven);
+            await UpgradeInTransactionAsync();
+            // Tombstone headers are read only when derived tables are written.
+            var writeDerived = format >= DerivedFormat || backfillDerived;
+            if (writeDerived) tombstones ??= await ReadTombstonesAsync();
             await ReferencePersistence.ReplaceAsync(database, projection.Edges);
-        var state = await database.Set<StoreState>().SingleAsync();
-        state.Revision = revision;
-        state.IndexDigest = projection.Digest();
-        state.IndexLimitations = string.Join("\n", projection.Limitations);
-        state.ReplayDigest = await ReplayIntegrity.DigestAsync(database, Workers);
-        state.SnapshotDigest = (work is null ? SnapshotDigest(records) : await work.Snapshot).Final("snapshot");
-        state.ContentDigest = content.Digest();
-        state.Published = true;
-        await database.SaveChangesAsync();
-        if (transaction is not null) await transaction.CommitAsync();
+            state.Revision = revision;
+            state.IndexDigest = projection.Digest();
+            state.IndexLimitations = string.Join("\n", projection.Limitations);
+            HistoryScans++;
+            var replay = await ReplayIntegrity.ScanAsync(database, Workers);
+            state.ReplayDigest = replay.Final();
+            state.SnapshotDigest = Total(chunks).Final("snapshot");
+            state.ContentDigest = content.Digest();
+            state.Published = true;
+            await StageCertificateAsync(state, replay, provenance);
+            // Every full publication rewrites the derived tables; they are bound to this state row's digests.
+            if (writeDerived)
+                WriteDerived(state, chunks, records.Select(RecordHeader.From).Concat(tombstones!).ToArray());
+            await database.SaveChangesAsync();
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync();
+                CompleteUpgrade();
+            }
+        }
+        catch
+        {
+            if (transaction is not null) AbandonUpgrade();
+            throw;
+        }
         database.ChangeTracker.Clear();
+        Verification = StoreVerification.Full;
     }
 
-    private async Task<StoreState> PublishedStateAsync(CancellationToken ct = default)
+    private async Task<StoreState> PublishedStateAsync(CancellationToken ct = default, bool lazyContent = false)
     {
         if (requiresReopen) throw new InvalidOperationException("A failed field write requires reopening this handle.");
         var state = await database.Set<StoreState>().AsNoTracking().SingleAsync(ct);
@@ -439,12 +551,47 @@ public sealed partial class RecordStore : IAsyncDisposable
         {
             if (!readOnly)
                 throw new InvalidOperationException("The store was published through another handle; reopen this handle before reading.");
-            var rows = await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct);
-            content.Reload(rows, state.ContentDigest, ct);
+            // A certified point reads the few rows it needs by id; every other reader loads and checks them all.
+            if (!lazyContent) await ReloadContentAsync(state, ct);
         }
-        if (state.Revision != await CommitRevisionAsync(ct)) throw new InvalidOperationException("The store index revision is unavailable.");
+        if (state.Revision != await CommitRevisionAsync(ct)) throw new StoreRevisionUnavailableException();
         return state;
     }
+
+    private async Task ReloadContentAsync(StoreState state, CancellationToken ct)
+    {
+        var rows = await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct);
+        content.Reload(rows, state.ContentDigest, ct);
+    }
+
+    // A reader that served a certified point must hold every content row before a full verification.
+    private async Task EnsureContentAsync(StoreState state, CancellationToken ct)
+    {
+        if (readOnly && state.ContentDigest != content.Digest(ct)) await ReloadContentAsync(state, ct);
+    }
+
+    // A format 7 reader may fetch a content row by id, checked against the identity table.
+    private void UseDemandedContent()
+    {
+        content.PersistedLookup = LookupIdentity;
+        content.RowReader = id =>
+        {
+            var connection = (SqliteConnection)database.Database.GetDbConnection();
+            database.Database.OpenConnection();
+            try
+            {
+                using var command = connection.CreateCommand();
+                command.Transaction = database.Database.CurrentTransaction?.GetDbTransaction() as SqliteTransaction;
+                command.CommandText = "SELECT Data FROM RecordContent WHERE Id = $id";
+                command.Parameters.AddWithValue("$id", id);
+                return command.ExecuteScalar() as byte[];
+            }
+            finally { database.Database.CloseConnection(); }
+        };
+    }
+
+    /// <summary>The state row's revision is not the revision of the commits it was published for.</summary>
+    internal sealed class StoreRevisionUnavailableException() : InvalidOperationException("The store index revision is unavailable.");
 
     private async Task<string> CommitRevisionAsync(CancellationToken ct = default)
     {
@@ -497,9 +644,6 @@ public sealed partial class RecordStore : IAsyncDisposable
         return digest;
     }
 
-    private static SetDigest VerifySnapshots(StoreState state, IReadOnlyList<GenericRecord> records, CancellationToken ct = default) =>
-        VerifySnapshots(state, SnapshotDigest(records, ct));
-
     private static SetDigest VerifySnapshots(StoreState state, SetDigest digest)
     {
         if (state.SnapshotDigest != digest.Final("snapshot"))
@@ -527,6 +671,7 @@ public sealed partial class RecordStore : IAsyncDisposable
                     throw new InvalidDataException("Replay changed immutable content; the original store has been preserved.");
             }
             await CopyDatabaseAsync(stagedPath, originalPath);
+            RefreshFormat(originalPath);
             database.ChangeTracker.Clear();
         }
         finally { temporary.Delete(true); }
@@ -536,9 +681,9 @@ public sealed partial class RecordStore : IAsyncDisposable
     {
         var state = await PublishedStateAsync();
         await model.RegenerateSnapshots();
-        var records = await ReadRecordsAsync();
-        VerifySnapshots(state, records);
-        await PublishIndexAsync(records, state.Revision);
+        var latest = await DecodeLatestAsync(digest: true, default);
+        VerifySnapshots(state, latest.Digest);
+        await PublishIndexAsync(latest.Records, state.Revision, tombstones: latest.Tombstones);
     }
 
     private static async Task CopyDatabaseAsync(string sourcePath, string destinationPath)

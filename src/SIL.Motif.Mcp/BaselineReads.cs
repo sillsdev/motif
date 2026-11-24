@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using SIL.LCModel;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -25,6 +26,13 @@ internal static class BaselineReads
     public static CommandOutcome<JsonObject> Read(string projectPath, Func<LcmCache, JsonObject> read) =>
         Read(projectPath, (cache, _) => read(cache), SharedReaders);
 
+    /// <summary>
+    /// Runs <paramref name="read"/> at <paramref name="at"/>: the current Baseline (<c>baseline</c> or absent), or a
+    /// Proposal's id for the grammar its latest Trial ran against. The result says which it read.
+    /// </summary>
+    public static CommandOutcome<JsonObject> ReadAt(string projectPath, string? at, Func<LcmCache, JsonObject> read) =>
+        ReadAtOutcome(projectPath, at, (cache, _) => CommandOutcome<JsonObject>.Success(read(cache)));
+
     /// <summary>Runs a read with an isolated reader session.</summary>
     internal static CommandOutcome<JsonObject> Read(
         string projectPath, Func<LcmCache, JsonObject> read, BaselineReadSession readers) =>
@@ -32,8 +40,8 @@ internal static class BaselineReads
 
     /// <summary>A lexicon page with the captured source of its entries and filtered count.</summary>
     public static CommandOutcome<JsonObject> ReadLexicon(string projectPath, LexiconFilter filter,
-        int limit, int offset, bool detailed) =>
-        ReadOutcome(projectPath, (cache, baseline) =>
+        int limit, int offset, bool detailed, string? at = null) =>
+        ReadAtOutcome(projectPath, at, (cache, baseline) =>
         {
             if (filter.MorphTypesOrNull is { Count: > 0 } types &&
                 GrammarReadProjectionBuilder.UnknownMorphTypes(cache, string.Join(",", types)) is { Count: > 0 } unknown)
@@ -41,10 +49,25 @@ internal static class BaselineReads
                     $"Unknown morph type {string.Join(", ", unknown.Select(name => $"'{name}'"))}. " +
                     $"Morph types are: {string.Join(", ", GrammarReadProjectionBuilder.MorphTypeNames(cache))}.");
             var result = LexiconReader.Read(cache, filter, limit, offset, detailed);
-            result["source"] = JsonNode.Parse(ProjectionJson.Serialize(new BaselineReadSource(
-                baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc)));
+            if (baseline is not null)
+                result["source"] = JsonNode.Parse(ProjectionJson.Serialize(new BaselineReadSource(
+                    baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc)));
             return CommandOutcome<JsonObject>.Success(result);
-        }, SharedReaders);
+        });
+
+    private static CommandOutcome<JsonObject> ReadAtOutcome(string projectPath, string? at,
+        Func<LcmCache, BaselineRecord?, CommandOutcome<JsonObject>> read)
+    {
+        if (GrammarReadQuery.ValidateAt(at, out var proposalId, "at") is { } invalid)
+            return CommandOutcome<JsonObject>.Refused(invalid);
+        if (proposalId is not null)
+            return GrammarReadQuery.ReadAtProposal(projectPath, proposalId, cache => read(cache, null));
+        return ReadOutcome(projectPath, (cache, baseline) => read(cache, baseline).Map(result =>
+        {
+            result["at"] = "baseline";
+            return result;
+        }), SharedReaders);
+    }
 
     private static CommandOutcome<JsonObject> Read(
         string projectPath, Func<LcmCache, BaselineRecord, JsonObject> read, BaselineReadSession readers) =>

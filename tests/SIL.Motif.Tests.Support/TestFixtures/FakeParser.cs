@@ -151,6 +151,18 @@ internal static class FakeParser
         return CopyWithSentinel(candidateDirectory, WrongDescriptionFileName);
     }
 
+    /// <summary>Copies the fake into <paramref name="directory"/> with a <c>--describe</c> that declares the traced serve <c>generate</c> op.</summary>
+    internal static string CopyDeclaringServeGenerate(string directory) =>
+        CopyWithSentinel(directory, "_fake-pangloss-serve-generate");
+
+    /// <summary>Copies the fake into <paramref name="directory"/> with a <c>--describe</c> that declares the serve <c>effects</c> op as <paramref name="declared"/> (recorded from a real PanGloss) says.</summary>
+    internal static string CopyDeclaringServeEffects(string directory, string declared)
+    {
+        var executable = Copy(directory);
+        File.WriteAllText(Path.Combine(directory, "_fake-pangloss-serve-effects"), declared);
+        return executable;
+    }
+
     internal static string CopyWithSentinel(string candidateDirectory, string sentinel)
     {
         var executable = Copy(candidateDirectory);

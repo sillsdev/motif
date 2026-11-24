@@ -1,5 +1,6 @@
 using System.Globalization;
 using SIL.Motif.Contract.Parsimony.RuleAttempts;
+using SIL.Motif.Contract.Query.Phon;
 
 namespace SIL.Motif.Contract.Query;
 
@@ -19,11 +20,20 @@ public static partial class FormQuery
     };
     private static readonly HashSet<string> Sets = new(StringComparer.Ordinal)
         { "environments", "category", "letters.dropped", "letters.gained" };
+    internal static IReadOnlyList<string> FormColumnNames { get; } = [.. Columns.Order(StringComparer.Ordinal)];
+
+    internal static bool IsFormSet(string column) => Sets.Contains(column);
+
     private static readonly QuerySpec FormSpec = new(
         c => Columns.Contains(c) || QuerySources.IsTextColumn(c), Sets.Contains, c => QuerySources.IsNumeric(QuerySources.Forms, c));
 
-    /// <summary>Validates the complete record, then returns matching rows or grouped counts.</summary>
-    public static QueryResult Run(QueryRecord query, IReadOnlyList<QueryForm> rows, IReadOnlyList<string> graphemes)
+    /// <summary>Evaluates a forms query over the rows: matching rows or grouped counts.</summary>
+    /// <param name="query">The record to evaluate.</param>
+    /// <param name="rows">The Trial's form rows.</param>
+    /// <param name="graphemes">The project's grapheme table.</param>
+    /// <param name="phon">Resolves the <c>phon</c> and <c>env</c> predicates through PanGloss; without it a query that has any cannot run.</param>
+    public static QueryResult Run(QueryRecord query, IReadOnlyList<QueryForm> rows, IReadOnlyList<string> graphemes,
+        PhonSession? phon = null)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(rows);
@@ -33,10 +43,16 @@ public static partial class FormQuery
         var fold = QueryFold.Compile(query.Fold);
         var segmentIndex = Index(query.RawLetters ? [] : graphemes);
         if (QueryAnalysis.Wants(query)) return AnalyseForms(query, rows, graphemes, segmentIndex, fold);
-        var outcome = QueryEngine.Execute(query, rows.Select(row => (IQueryRowView)new FormValues(row, segmentIndex, fold)), FormSpec);
-        return new QueryResult([.. outcome.Selected.Select(v => ((FormValues)v).Project())],
-            [.. outcome.Groups.Select(g => new QueryGroup(g.Key, g.Count, g.Tokens,
-                [.. g.Examples.Select(v => ((FormValues)v).Project())]))], outcome.Ids);
+        var outcome = QueryEngine.Execute(query, rows.Select(row => (IQueryRowView)new FormValues(row, segmentIndex, fold)), FormSpec,
+            phon: phon);
+        QueryForm Project(IQueryRowView view)
+        {
+            var form = ((FormValues)view).Project();
+            return phon is { Ran: true } ? form with { Matches = phon.MatchesFor(form.Form) } : form;
+        }
+        return new QueryResult([.. outcome.Selected.Select(Project)],
+            [.. outcome.Groups.Select(g => new QueryGroup(g.Key, g.Count, g.Tokens, [.. g.Examples.Select(Project)]))], outcome.Ids)
+        { Phon = phon is { Ran: true } ? phon.Report : null };
     }
 
     /// <summary>Evaluates a query over the stems, uses or objects source.</summary>

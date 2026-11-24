@@ -49,8 +49,20 @@ public sealed class CatalogWritableFields : WritableFields
             .Where(item => item.Binding is { IsCustom: true } && !item.Field.Computed &&
                 CustomFieldCatalog.TypeOf(item.Field) is { } kind && customTypes.Contains(kind))
             .Select(item => (item.Binding!.Value.DeclaringClass, item.Binding.Value.Field));
+        var structures = schema.Schema.ObjectTypes.SelectMany(type => type.Fields.Where(RecordWritableFields.IsFeatureStructure)
+                .Select(field => schema.FieldBinding(type.Name, field.Name)))
+            .Where(binding => binding is { IsCustom: false }).Select(binding => (binding!.Value.DeclaringClass, binding.Value.Field))
+            .Where(slot => OperationHandlerRegistry.RegisteredKinds.SelectMany(OperationHandlerRegistry.FieldWrites).Any(write =>
+                write.Verb == RecordWriteVerb.AddObject && write.DeclaringClass == slot.DeclaringClass && write.Field == slot.Field &&
+                write.ChildClasses.Contains(RecordWritableFields.FeatureStructureClass)));
+        var formulas = schema.Schema.ObjectTypes.SelectMany(type => type.Fields.Where(RecordWritableFields.IsRuleFormula)
+                .Select(field => schema.FieldBinding(type.Name, field.Name)))
+            .Where(binding => binding is { IsCustom: false }).Select(binding => (binding!.Value.DeclaringClass, binding.Value.Field))
+            .Where(slot => all.Any(write => write.Verb == RecordWriteVerb.AddObject && write.DeclaringClass == slot.DeclaringClass &&
+                write.Field == slot.Field));
         _writable = all.Where(write => WriteVerbs.Contains(write.Verb))
-            .Select(write => (write.DeclaringClass, write.Field)).Concat(customs).ToFrozenSet();
+            .Select(write => (write.DeclaringClass, write.Field)).Concat(customs).Concat(structures).Concat(formulas)
+            .Where(slot => !RecordWritableFields.IsFormulaOwned(slot.DeclaringClass, slot.Field)).ToFrozenSet();
         _creates = all.Where(write => write.Verb == RecordWriteVerb.AddObject)
             .ToLookup(write => (write.DeclaringClass, write.Field));
         _deletes = all.Where(write => write.Verb == RecordWriteVerb.RemoveObject)

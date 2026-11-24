@@ -5,8 +5,8 @@ the entry composers, and carries its source and licence with it. Motif owns no o
 
 **Status:** Accepted, 2026-11-17.
 
-**Amended 2026-11-23:** D1 names LIFT the only format for bringing a lexicon from outside a project; a record file is
-a second, separate thing, Motif's own round-trip edit format.
+**Amended 2026-11-24:** D1 names LIFT the interchange format with other tools; a record file is a second, separate
+thing, Motif's own edit and bulk format for existing and new records, always imported as a Proposal.
 
 ## Context
 
@@ -28,13 +28,23 @@ a 0.14 or 0.15 file is refused with "convert to 0.13". The alternatives were a M
 (rejected: a second format for converters to track) and FieldWorks' own LIFT merge (rejected: it creates categories,
 classes and features that Motif must not invent, and it bypasses Draft, Trial and the gates).
 
-Amendment: this rule is about lexicons that come from outside a project, and LIFT stays the interchange format for
-them. A record file is not an interchange format. It is Motif's own round-trip edit format: `motif record export`
-writes a record of the saved project as a file, a person or agent edits it, and `motif import` plans the edits back
-against that same project, lowering them to Draft operations and never applying them. A record file carries the
-digest of the record as exported and is refused whole when the project changed since, so it is not read for a
-different project and is not a source for converters to target. Nothing in this ADR's other decisions changes: a
-lexicon from outside enters as LIFT through the entry composers.
+Amendment: LIFT is the interchange format with other tools, and a lexicon from outside a project still enters as
+LIFT. A record file ([ADR 0035](0035-the-record-text-format-covers-rich-text-notation-and-labels-and-typed-operations-cover-the-rest.md)) is not an interchange
+format. It is Motif's own edit and bulk format, for existing records and for new ones: `motif record export` writes a
+record of the saved project as a file, a person or agent edits it, and `motif import` plans the edits back against
+that project, lowering them to Draft operations. A record file is always imported as a Proposal, never applied
+directly, and Apply stays HumanOnly. A record file carries the digest of the record as exported and is refused whole
+when the project changed since, so it is not a source for converters to target.
+
+Planned, not yet built:
+
+1. A record file may create a new record: a new GUID and no `base:` line.
+2. A reference in a record file may point at an existing object or at another record that is new in the same batch,
+   by GUID.
+3. `motif import --dir` turns many files into one Proposal, each file checked against its own base.
+
+Motif never invents list items: categories, classes and features must already exist, for a record file as for LIFT.
+That is the original reason this decision refused FieldWorks' LIFT merge, and it still holds.
 
 ### D2. Validation first, with the referenced libraries
 

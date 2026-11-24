@@ -15,7 +15,7 @@ public sealed class PendingChangesViewModelTests
 {
     private const string InternalId = "12345678-1234-1234-1234-123456789abc";
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(ChangeKinds.Approve, true)]
     [InlineData(ChangeKinds.Reject, true)]
     [InlineData(ChangeKinds.Candidate, true)]
@@ -48,7 +48,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal(hasOccurrence ? anchor : null, request.Change.Occurrence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARecordMarkingChoiceKeepsItsTargetWhileTheWindowMovesAndReportsContextRefusal()
     {
         var fake = new FakeCommandClient();
@@ -81,7 +81,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Empty(changes.Items);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CollectionReportsReplacementsAndSkippedBulkWords()
     {
         var fake = new FakeCommandClient();
@@ -118,7 +118,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("Skipped one word because a choice is already pending.", changes.CollectionNotice);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(ChangeKinds.Approve)]
     [InlineData(ChangeKinds.Reject)]
     [InlineData(ChangeKinds.Candidate)]
@@ -144,7 +144,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal(kind, Assert.Single(changes.Items).Kind);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OneStagingActionCanUndoAndRedoSeveralChangesTogether()
     {
         var fake = new FakeCommandClient();
@@ -164,7 +164,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal(2, changes.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task UndoRefusesWhenAnotherWriterChangedThePendingChange()
     {
         var fake = new FakeCommandClient();
@@ -181,7 +181,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("changed elsewhere", Assert.Single(changes.Items).Word);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RemovingAChangeCanBeUndoneThroughThePutCommand()
     {
         var fake = new FakeCommandClient();
@@ -195,7 +195,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("change/one", Assert.Single(changes.Items).ChangeId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NewStagingActionClearsRedoHistory()
     {
         var fake = new FakeCommandClient();
@@ -209,7 +209,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("change/two", Assert.Single(changes.Items).ChangeId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task UndoAllIsOneUndoableAndRedoableStagingAction()
     {
         var fake = new FakeCommandClient();
@@ -230,7 +230,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal(4, fake.PendingPutRequests.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task BulkCandidatesSendEveryParserReadingWithItsAssessmentIndex()
     {
         var fake = new FakeCommandClient();
@@ -254,7 +254,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("second", fake.PendingPutRequests.Last().Change.Reading!.Morphs.Single().GuessedString);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApprovingAStoredAnalysisUsesItsIdentityWithoutAParserReading()
     {
         var fake = new FakeCommandClient();
@@ -275,7 +275,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal(WorkspacePage.Words.ToString(), change.OriginPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RemovingAStoredAnalysisUsesTheCommandAndPublishesARemovedChange()
     {
         var removed = new PendingChange("change/remove", "wordform/one", "kitabu", ChangeKinds.RemoveAnalysis,
@@ -302,7 +302,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal(ChangeKinds.RemoveAnalysis, Assert.Single(changes.Items).Kind);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AcceptingASetUsesItsTextScopeAndPublishesOneUndoGroup()
     {
         var textId = Guid.Parse("00000001-0000-0000-0000-000000000001");
@@ -330,7 +330,7 @@ public sealed class PendingChangesViewModelTests
         Assert.All(changes.Items, change => Assert.Equal("group/accepted", change.GroupId));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WordAndCompareChangesDoNotCarryAnOccurrenceAnchor()
     {
         var fake = new FakeCommandClient();
@@ -351,7 +351,7 @@ public sealed class PendingChangesViewModelTests
         Assert.All(fake.PendingPutRequests, request => Assert.Null(request.Change.Occurrence));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedCandidateDoesNotHideLaterParserReadings()
     {
         var fake = new FakeCommandClient
@@ -378,7 +378,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("change.cannot-compose", changes.LastRefusal?.Code);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReloadDisplaysTheDraftWrittenThroughTheCommandClient()
     {
         var fake = new FakeCommandClient();
@@ -394,7 +394,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("revision/one", changes.Snapshot.Revision);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task UndoingOneAcceptedChoiceKeepsTheOtherReading()
     {
         const string groupId = "accept/group";
@@ -414,7 +414,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal(second.ChangeId, Assert.Single(changes.Items).ChangeId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AStaleChangeIsVisibleAndBlocksReview()
     {
         var fake = new FakeCommandClient();
@@ -439,7 +439,7 @@ public sealed class PendingChangesViewModelTests
         Assert.DoesNotContain(InternalId, Assert.Single(changes.Items).FitStatus);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusalShowsMappedTextWithoutInternalTermsOrIds()
     {
         var fake = new FakeCommandClient
@@ -457,7 +457,7 @@ public sealed class PendingChangesViewModelTests
         Assert.DoesNotContain(InternalId, changes.ShownRefusal?.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RevisionConflictReloadsTheDraftAndKeepsTheRefusalVisible()
     {
         var fake = new FakeCommandClient();
@@ -490,7 +490,7 @@ public sealed class PendingChangesViewModelTests
             DragDropEffects allowedEffects) => Task.FromResult(allowedEffects);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReplacingTheChangeListRaisesOneCollectionNotificationHoweverManyChangesArrive()
     {
         var fake = new FakeCommandClient();

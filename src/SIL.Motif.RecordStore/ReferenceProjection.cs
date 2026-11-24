@@ -21,19 +21,25 @@ internal sealed class StoreState
 }
 
 /// <summary>
-/// A fully verified published point retained by one handle: the native records, the reference snapshot and the
+/// A published point retained by one handle: the native records, the reference snapshot and the
 /// incrementally updatable digests that bind them to the stored state row. History is scanned lazily, once.
+/// A certified point has read only headers, edges and a few schema records.
 /// </summary>
-internal sealed record VerifiedPoint(StoreState State, Dictionary<Guid, GenericRecord> Records, ReferenceIndexSnapshot Index,
+internal sealed record VerifiedPoint(StoreState State, RecordSource Records, ReferenceIndexSnapshot Index,
     SetDigest Snapshot, IndexDigest IndexDigest)
 {
     public ReplayState? Replay { get; init; }
+    /// <summary>Chunk digests and headers from the decode that built this point; kept only when a store older than format 7 needs them to upgrade.</summary>
+    internal DerivedSnapshot? Derived { get; init; }
     public bool IndexTrusted { get; init; } = true;
+    /// <summary>The first native record failing the provenance proof, computed only for a store older than format 7.</summary>
+    internal Guid? UnprovenNative { get; init; }
     public Guid? ProjectId { get; init; }
     public GenericRecord[] Anchors { get; init; } = [];
+    public GenericRecord[] WritingSystems { get; init; } = [];
     private ReferenceIndexSnapshot? planningIndex;
-    public ReferenceIndexSnapshot GetPlanningIndex(CancellationToken ct = default) =>
-        planningIndex ??= HandAnalysisReferences.WithAnchors(Index, Records, Anchors, ct);
+    public async Task<ReferenceIndexSnapshot> GetPlanningIndexAsync(CancellationToken ct = default) =>
+        planningIndex ??= await HandAnalysisReferences.WithAnchorsAsync(Index, Records, Anchors, ct);
 }
 
 internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRecord[] Records, string[] Limitations)
@@ -50,6 +56,8 @@ internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRec
             if (HandAnalysisKinds.AnchorTarget(anchor) is not { } at || !records.ContainsKey(at))
                 missing.Add("A hand-anchor record is malformed or targets an unknown native record.");
         ValidateCoverage(all, records.Values, missing);
+        if (NativeUsageSchema.ProvenanceFailure(all) is { } unproven)
+            missing.Add($"{NativeUsageSchema.ProvenanceLimitation}: record {unproven:D}.");
         var edges = new List<NativeReference>();
         var project = all.FirstOrDefault(r => r.Kind == "manifest")?.Values.GetValueOrDefault("nativeProject");
         var projectName = project?.ValueKind == JsonValueKind.String ? project.Value.GetString() : null;
@@ -149,6 +157,30 @@ internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRec
             edges = edges.Add(IndexDigest.Item(edge));
         }
         return new IndexDigest(records, edges, Limitations.Order(StringComparer.Ordinal).ToArray());
+    }
+
+    /// <summary>The same accumulators as <see cref="Accumulate"/>, hashed on worker threads; sums are order-independent.</summary>
+    public IndexDigest AccumulateParallel(int workers, CancellationToken ct = default)
+    {
+        const int Slice = 32768;
+        var recordSlices = (Records.Length + Slice - 1) / Slice;
+        var edgeSlices = (Edges.Length + Slice - 1) / Slice;
+        var parts = new (SetDigest Records, SetDigest Edges)[recordSlices + edgeSlices];
+        ParallelWork.ForEachChunk(parts.Length, workers, ct, slice =>
+        {
+            ct.ThrowIfCancellationRequested();
+            var records = new SetDigest();
+            var edges = new SetDigest();
+            if (slice < recordSlices)
+                for (var i = slice * Slice; i < Math.Min(Records.Length, (slice + 1) * Slice); i++) records = records.Add(IndexDigest.Item(Records[i]));
+            else
+                for (var i = (slice - recordSlices) * Slice; i < Math.Min(Edges.Length, (slice - recordSlices + 1) * Slice); i++) edges = edges.Add(IndexDigest.Item(Edges[i]));
+            parts[slice] = (records, edges);
+        });
+        var recordsTotal = new SetDigest();
+        var edgesTotal = new SetDigest();
+        foreach (var (records, edges) in parts) { recordsTotal = recordsTotal.Combine(records); edgesTotal = edgesTotal.Combine(edges); }
+        return new IndexDigest(recordsTotal, edgesTotal, Limitations.Order(StringComparer.Ordinal).ToArray());
     }
 
     public string Digest() => Accumulate().Final();

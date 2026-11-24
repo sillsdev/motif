@@ -314,6 +314,26 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void ACustomFieldAddedAfterTheExportIsASchemaMismatchNotAStaleBase()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var before = LexiconExporter(fixture);
+            var text = before.Export(w.Entry.Guid).Text!;
+            AddCustom(fixture.Cache, "LexEntry", "AddedLater", CellarPropertyType.Integer);
+            var after = LexiconExporter(fixture);
+            Assert.NotEqual(before.Schema.Id, after.Schema.Id);
+
+            var plan = Plan(after, text);
+
+            Assert.True(plan.ChangeSet.IsRefusedWhole);
+            Assert.Empty(plan.ChangeSet.Changes);
+            Assert.Equal(ProjectRecordBaseVerdict.NotChecked, plan.BaseVerdict);
+            Assert.DoesNotContain(plan.ChangeSet.Refusals, r => r.Kind == RecordRefusalKind.StaleBase);
+            Assert.Contains(plan.ChangeSet.Refusals, r => r.Reason.Contains("fwmd.record.schema-mismatch", StringComparison.Ordinal));
+        }
+
+        [Fact]
         public void AChangeToAValueTheFileCannotShowStalesTheFileToo()
         {
             using var fixture = new ProjectFixture();
@@ -790,6 +810,28 @@ namespace SIL.TextEditing.Project.Tests
                 ((RecordList)d.Data["senses"]!).Add(new RecordObject { Class = "LexSense", Guid = w.OtherDomain.Guid }.Set("gloss", new RecordAlternatives().Add("en", new RecordScalar("x")))));
             var plan = Plan(exporter, text);
             Single(plan, RecordRefusalKind.GuidInUse);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void ADeleteOfAnObjectTheProjectDoesNotHoldIsRefusedAsAnUnknownTarget()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var export = exporter.Export(w.Entry.Guid);
+            var read = RecordFileReader.Read(export.Text!, exporter.Schema, exporter.CreateReadOptions());
+            Assert.False(read.HasErrors);
+            var ghost = new RecordObject { Class = "LexSense", Guid = Guid.NewGuid() }.Set("gloss", new RecordAlternatives().Add("en", new RecordScalar("ghost")));
+            ((RecordList)read.Document!.Data["senses"]!).Add(ghost);
+            string withGhost = RecordFileWriter.Write(read.Document!, exporter.Schema);
+            var importer = new ProjectRecordImporter(exporter)
+            {
+                ExportOverride = (k, g) => new ProjectRecordExport(export.Kind, export.Guid, export.Path, withGhost, read.Document!, export.Unexported),
+            };
+            var plan = importer.Plan(export.Text!);
+            var refusal = Single(plan, RecordRefusalKind.UnknownDeleteTarget);
+            Assert.Contains("not in the project", refusal.Reason);
             Assert.Empty(plan.ChangeSet.Changes);
         }
 

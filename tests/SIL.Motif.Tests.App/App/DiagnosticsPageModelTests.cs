@@ -25,7 +25,7 @@ public sealed class DiagnosticsPageModelTests
         Assert.Equal(0, page.SelectedTabIndex);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SpeedByRuleRetainsUnattributedRecordedWork()
     {
         var fake = new FakeCommandClient();
@@ -53,7 +53,7 @@ public sealed class DiagnosticsPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReplacementAssessmentHidesAnEarlierTimingRead()
     {
         var fake = new FakeCommandClient();
@@ -81,7 +81,7 @@ public sealed class DiagnosticsPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("stale")]
     [InlineData("saved-since")]
     [InlineData("partial-totals")]
@@ -115,7 +115,7 @@ public sealed class DiagnosticsPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task SpeedByRuleSaysWhyWhenTheStoredAssessmentSkippedPerObjectTiming(bool storedNumbers)
@@ -149,7 +149,7 @@ public sealed class DiagnosticsPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SpeedByRuleExplainsKnownParserWorkAbsence()
     {
         var text = await ReadParserWorkUnavailableText(ParserWorkAbsence.SumsDoNotMatch);
@@ -157,7 +157,7 @@ public sealed class DiagnosticsPageModelTests
         Assert.Equal("The rule totals do not add up to the measured words' Parser Steps.", text);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("future-reason")]
     [InlineData(null)]
     public async Task SpeedByRuleUsesGenericSentenceForUnknownOrMissingParserWorkAbsence(string? reason)
@@ -185,7 +185,7 @@ public sealed class DiagnosticsPageModelTests
         return text;
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SpeedByRuleUsesCompleteTotalsWhenPerWordDetailIsIncomplete()
     {
         var fake = new FakeCommandClient();
@@ -207,7 +207,7 @@ public sealed class DiagnosticsPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReadsRecordedWarningsWithoutStartingAGrammarCheck()
     {
         var fake = new FakeCommandClient();
@@ -231,7 +231,7 @@ public sealed class DiagnosticsPageModelTests
         Assert.Empty(page.Warnings.Findings);
         await context.StopProjectWorkAsync();
     }
-    [Fact]
+    [UiThreadFact]
     public async Task FindingsWithoutABaselineAreNotPresentedAsCurrent()
     {
         var fake = new FakeCommandClient();
@@ -249,7 +249,7 @@ public sealed class DiagnosticsPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProjectChangesHideStoredFindingsUntilFreshEvidenceIsRead()
     {
         var fake = new FakeCommandClient();
@@ -268,7 +268,7 @@ public sealed class DiagnosticsPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TurningDiagnosticsOffCancelsAReadAndHidesItsLateResult()
     {
         var fake = new FakeCommandClient();
@@ -294,7 +294,7 @@ public sealed class DiagnosticsPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TurningDiagnosticsOffCancelsTimingAndRejectsItsLateRows()
     {
         var fake = new FakeCommandClient();
@@ -324,7 +324,7 @@ public sealed class DiagnosticsPageModelTests
         Assert.Empty(page.SpeedByRule.Rows);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ANewWarningReadHidesTheOldRowsAndRejectsItsLatePredecessor()
     {
         var fake = new FakeCommandClient();

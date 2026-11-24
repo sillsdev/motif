@@ -3,9 +3,17 @@
 # The Example* fields are project-local custom fields: one of each type a kind writes, a Boolean no kind writes, and a date the schema omits.
 # One row per reachable concrete schema class, record field key and verb.
 # Covered rows are subject to the placement, owner, child and shape in the Runner declarations.
+# A Covered row marked written-by-input or written-by-output is written by that rule-formula key, not under its own key.
 # Non-authorable fields cite their classification in manifest/liblcm-inventory.tsv.
 # LexiconEditReferenceSets require a Lexicon Edit detail slice in manifest/fieldworks-labels.tsv.
-# Group	Class	Field key	LibLCM field	Verb	Runner kind	Uncovered reason	Manifest classification
+# CoveredNotLowered rows have a Runner kind that record import does not author; the reason column says why:
+#   bespoke-payload: the kind's payload carries more than the verb and field (digests, paragraph keys, a census), so only its own composer authors it
+#   create-composer: the create kind takes its own payload (morph type, reference, forms), which only its composer authors
+#   delete-composer: the delete takes a payload only its own kind builds (a child id or none, by kind), and only the sense delete is authored
+# LexiconEditReferenceSets rows are uncovered, and the last column says why:
+#   append-only-kind: the add kind appends to the end of the sequence and takes no placement, so an insert elsewhere is refused
+#   no-kind-built: no operation kind writes this edit of the field
+# Group	Class	Field key	LibLCM field	Verb	Runner kind	Uncovered reason	Manifest classification or exclusion reason
 Covered	ChkTerm	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
 Covered	ChkTerm	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
 Covered	ChkTerm	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
@@ -42,6 +50,9 @@ Covered	CmCustomItem	discussion	CmPossibility.Discussion	SetRich	text/setParagra
 Covered	CmCustomItem	discussion	CmPossibility.Discussion	ClearRich	text/setParagraphs	-	-
 Covered	CmCustomItem	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
 Covered	CmCustomItem	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
+Covered	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetPlainRich	text/setRichString	-	-
+Covered	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetRich	text/setRichString	-	-
+Covered	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	ClearRich	text/setRichString	-	-
 Covered	CmLocation	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
 Covered	CmLocation	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
 Covered	CmLocation	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
@@ -99,7 +110,6 @@ Covered	FsComplexValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFe
 Covered	FsDisjunctiveValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
 Covered	FsDisjunctiveValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatureSpecification/clearFeature	-	-
 Covered	FsFeatStruc	feature-specs	FsFeatStruc.FeatureSpecs	AddObject	grammar/fsFeatStruc/createFeatureSpecs	-	-
-Covered	FsFeatStruc	feature-specs	FsFeatStruc.FeatureSpecs	RemoveObject	grammar/fsFeatStruc/deleteFeatureSpecs	-	-
 Covered	FsNegatedValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
 Covered	FsNegatedValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatureSpecification/clearFeature	-	-
 Covered	FsOpenValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
@@ -107,7 +117,6 @@ Covered	FsOpenValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatu
 Covered	FsSharedValue	feature	FsFeatureSpecification.Feature	Set	grammar/fsFeatureSpecification/setFeature	-	-
 Covered	FsSharedValue	feature	FsFeatureSpecification.Feature	Clear	grammar/fsFeatureSpecification/clearFeature	-	-
 Covered	LexEntry	allomorphs	LexEntry.AlternateForms	AddObject	lexical/lexEntry/createAlternateForms	-	-
-Covered	LexEntry	allomorphs	LexEntry.AlternateForms	RemoveObject	lexical/lexEntry/removeAlternateForm	-	-
 Covered	LexEntry	allomorphs	LexEntry.AlternateForms	MoveObject	lexical/lexEntry/moveAlternateForms	-	-
 Covered	LexEntry	bibliography	LexEntry.Bibliography	SetPlainRich	lexical/lexEntry/setBibliography	-	-
 Covered	LexEntry	bibliography	LexEntry.Bibliography	SetRich	text/setRichString	-	-
@@ -137,12 +146,10 @@ Covered	LexEntry	do-not-use-for-parsing	LexEntry.DoNotUseForParsing	Set	lexical/
 Covered	LexEntry	do-not-use-for-parsing	LexEntry.DoNotUseForParsing	Clear	lexical/lexEntry/clearDoNotUseForParsing	-	-
 Covered	LexEntry	entry-refs	LexEntry.EntryRefs	AddObject	lexical/lexEntry/createVariantRef	-	-
 Covered	LexEntry	lexeme-form	LexEntry.LexemeForm	AddObject	lexical/lexEntry/createLexemeForm	-	-
-Covered	LexEntry	lexeme-form	LexEntry.LexemeForm	RemoveObject	lexical/lexEntry/deleteLexemeForm	-	-
 Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	SetPlainRich	lexical/lexEntry/setLiteralMeaning	-	-
 Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	SetRich	text/setRichString	-	-
 Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	ClearRich	text/setRichString	-	-
 Covered	LexEntry	morpho-syntax-analyses	LexEntry.MorphoSyntaxAnalyses	AddObject	lexical/lexEntry/createMorphoSyntaxAnalyses	-	-
-Covered	LexEntry	morpho-syntax-analyses	LexEntry.MorphoSyntaxAnalyses	RemoveObject	lexical/lexEntry/deleteMorphoSyntaxAnalyses	-	-
 Covered	LexEntry	restrictions	LexEntry.Restrictions	SetPlainRich	lexical/lexEntry/setRestrictions	-	-
 Covered	LexEntry	restrictions	LexEntry.Restrictions	SetRich	text/setRichString	-	-
 Covered	LexEntry	restrictions	LexEntry.Restrictions	ClearRich	text/setRichString	-	-
@@ -309,7 +316,7 @@ Covered	MoAffixAllomorph	is-abstract	MoForm.IsAbstract	Set	grammar/moForm/setIsA
 Covered	MoAffixAllomorph	is-abstract	MoForm.IsAbstract	Clear	grammar/moForm/clearIsAbstract	-	-
 Covered	MoAffixAllomorph	morph-type	MoForm.MorphType	Set	grammar/moForm/setMorphType	-	-
 Covered	MoAffixAllomorph	morph-type	MoForm.MorphType	Clear	grammar/moForm/clearMorphType	-	-
-Covered	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	AddObject	grammar/moAffixAllomorph/createMsEnvFeatures	-	-
+Covered	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	Set	grammar/moAffixAllomorph/createMsEnvFeatures	-	-
 Covered	MoAffixAllomorph	phone-env	MoAffixAllomorph.PhoneEnv	AddReference	grammar/moAffixAllomorph/addRefPhoneEnv	-	-
 Covered	MoAffixAllomorph	phone-env	MoAffixAllomorph.PhoneEnv	RemoveReference	grammar/moAffixAllomorph/removeRefPhoneEnv	-	-
 Covered	MoAffixAllomorph	position	MoAffixAllomorph.Position	AddReference	grammar/moAffixAllomorph/addRefPosition	-	-
@@ -320,17 +327,16 @@ Covered	MoAffixProcess	form	MoForm.Form	SetAlternative	grammar/moForm/setForm	-	
 Covered	MoAffixProcess	form	MoForm.Form	ClearAlternative	grammar/moForm/clearForm	-	-
 Covered	MoAffixProcess	inflection-classes	MoAffixForm.InflectionClasses	AddReference	grammar/moAffixForm/addRefInflectionClasses	-	-
 Covered	MoAffixProcess	inflection-classes	MoAffixForm.InflectionClasses	RemoveReference	grammar/moAffixForm/removeRefInflectionClasses	-	-
-Covered	MoAffixProcess	input	MoAffixProcess.Input	AddObject	grammar/moAffixProcess/createInput	-	-
+Covered	MoAffixProcess	input	MoAffixProcess.Input	Set	grammar/moAffixProcess/createInput	-	-
 Covered	MoAffixProcess	is-abstract	MoForm.IsAbstract	Set	grammar/moForm/setIsAbstract	-	-
 Covered	MoAffixProcess	is-abstract	MoForm.IsAbstract	Clear	grammar/moForm/clearIsAbstract	-	-
 Covered	MoAffixProcess	morph-type	MoForm.MorphType	Set	grammar/moForm/setMorphType	-	-
 Covered	MoAffixProcess	morph-type	MoForm.MorphType	Clear	grammar/moForm/clearMorphType	-	-
-Covered	MoAffixProcess	output	MoAffixProcess.Output	AddObject	grammar/moAffixProcess/createOutput	-	-
-Covered	MoCopyFromInput	content	MoCopyFromInput.Content	Set	grammar/moCopyFromInput/setContent	-	-
-Covered	MoCopyFromInput	content	MoCopyFromInput.Content	Clear	grammar/moCopyFromInput/clearContent	-	-
+Covered	MoAffixProcess	output	MoAffixProcess.Output	Set	grammar/moAffixProcess/createOutput	-	-
+Covered	MoCopyFromInput	content	MoCopyFromInput.Content	Set	grammar/moCopyFromInput/setContent	written-by-output	-
 Covered	MoDerivAffMsa	from-inflection-class	MoDerivAffMsa.FromInflectionClass	Set	grammar/moDerivAffMsa/setFromInflectionClass	-	-
 Covered	MoDerivAffMsa	from-inflection-class	MoDerivAffMsa.FromInflectionClass	Clear	grammar/moDerivAffMsa/clearFromInflectionClass	-	-
-Covered	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	AddObject	grammar/moDerivAffMsa/createFromMsFeatures	-	-
+Covered	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	Set	grammar/moDerivAffMsa/createFromMsFeatures	-	-
 Covered	MoDerivAffMsa	from-part-of-speech	MoDerivAffMsa.FromPartOfSpeech	Set	grammar/moDerivAffMsa/setFromPartOfSpeech	-	-
 Covered	MoDerivAffMsa	from-part-of-speech	MoDerivAffMsa.FromPartOfSpeech	Clear	grammar/moDerivAffMsa/clearFromPartOfSpeech	-	-
 Covered	MoDerivAffMsa	from-prod-restrict	MoDerivAffMsa.FromProdRestrict	AddReference	grammar/moDerivAffMsa/addRefFromProdRestrict	-	-
@@ -339,14 +345,14 @@ Covered	MoDerivAffMsa	from-stem-name	MoDerivAffMsa.FromStemName	Set	grammar/moDe
 Covered	MoDerivAffMsa	from-stem-name	MoDerivAffMsa.FromStemName	Clear	grammar/moDerivAffMsa/clearFromStemName	-	-
 Covered	MoDerivAffMsa	to-inflection-class	MoDerivAffMsa.ToInflectionClass	Set	grammar/moDerivAffMsa/setToInflectionClass	-	-
 Covered	MoDerivAffMsa	to-inflection-class	MoDerivAffMsa.ToInflectionClass	Clear	grammar/moDerivAffMsa/clearToInflectionClass	-	-
-Covered	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	AddObject	grammar/moDerivAffMsa/createToMsFeatures	-	-
+Covered	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	Set	grammar/moDerivAffMsa/createToMsFeatures	-	-
 Covered	MoDerivAffMsa	to-part-of-speech	MoDerivAffMsa.ToPartOfSpeech	Set	grammar/moDerivAffMsa/setToPartOfSpeech	-	-
 Covered	MoDerivAffMsa	to-part-of-speech	MoDerivAffMsa.ToPartOfSpeech	Clear	grammar/moDerivAffMsa/clearToPartOfSpeech	-	-
 Covered	MoDerivAffMsa	to-prod-restrict	MoDerivAffMsa.ToProdRestrict	AddReference	grammar/moDerivAffMsa/addRefToProdRestrict	-	-
 Covered	MoDerivAffMsa	to-prod-restrict	MoDerivAffMsa.ToProdRestrict	RemoveReference	grammar/moDerivAffMsa/removeRefToProdRestrict	-	-
 Covered	MoInflAffMsa	from-prod-restrict	MoInflAffMsa.FromProdRestrict	AddReference	grammar/moInflAffMsa/addRefFromProdRestrict	-	-
 Covered	MoInflAffMsa	from-prod-restrict	MoInflAffMsa.FromProdRestrict	RemoveReference	grammar/moInflAffMsa/removeRefFromProdRestrict	-	-
-Covered	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	AddObject	grammar/moInflAffMsa/createInflFeats	-	-
+Covered	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	Set	grammar/moInflAffMsa/createInflFeats	-	-
 Covered	MoInflAffMsa	part-of-speech	MoInflAffMsa.PartOfSpeech	Set	grammar/moInflAffMsa/setPartOfSpeech	-	-
 Covered	MoInflAffMsa	part-of-speech	MoInflAffMsa.PartOfSpeech	Clear	grammar/moInflAffMsa/clearPartOfSpeech	-	-
 Covered	MoInflAffMsa	slots	MoInflAffMsa.Slots	AddReference	grammar/moInflAffMsa/addRefSlots	-	-
@@ -383,14 +389,10 @@ Covered	MoInflClass	description	MoInflClass.Description	ClearRich	text/setRichSt
 Covered	MoInflClass	name	MoInflClass.Name	SetAlternative	grammar/moInflClass/setName	-	-
 Covered	MoInflClass	name	MoInflClass.Name	ClearAlternative	grammar/moInflClass/clearName	-	-
 Covered	MoInflClass	subclasses	MoInflClass.Subclasses	AddObject	grammar/moInflClass/createSubclasses	-	-
-Covered	MoInsertNC	content	MoInsertNC.Content	Set	grammar/moInsertNC/setContent	-	-
-Covered	MoInsertNC	content	MoInsertNC.Content	Clear	grammar/moInsertNC/clearContent	-	-
-Covered	MoInsertPhones	content	MoInsertPhones.Content	AddReference	grammar/moInsertPhones/addRefContent	-	-
-Covered	MoInsertPhones	content	MoInsertPhones.Content	RemoveReference	grammar/moInsertPhones/removeRefContent	-	-
-Covered	MoModifyFromInput	content	MoModifyFromInput.Content	Set	grammar/moModifyFromInput/setContent	-	-
-Covered	MoModifyFromInput	content	MoModifyFromInput.Content	Clear	grammar/moModifyFromInput/clearContent	-	-
-Covered	MoModifyFromInput	modification	MoModifyFromInput.Modification	Set	grammar/moModifyFromInput/setModification	-	-
-Covered	MoModifyFromInput	modification	MoModifyFromInput.Modification	Clear	grammar/moModifyFromInput/clearModification	-	-
+Covered	MoInsertNC	content	MoInsertNC.Content	Set	grammar/moInsertNC/setContent	written-by-output	-
+Covered	MoInsertPhones	content	MoInsertPhones.Content	AddReference	grammar/moInsertPhones/addRefContent	written-by-output	-
+Covered	MoModifyFromInput	content	MoModifyFromInput.Content	Set	grammar/moModifyFromInput/setContent	written-by-output	-
+Covered	MoModifyFromInput	modification	MoModifyFromInput.Modification	Set	grammar/moModifyFromInput/setModification	written-by-output	-
 Covered	MoMorphType	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
 Covered	MoMorphType	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
 Covered	MoMorphType	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
@@ -417,8 +419,8 @@ Covered	MoStemMsa	from-parts-of-speech	MoStemMsa.FromPartsOfSpeech	AddReference	
 Covered	MoStemMsa	from-parts-of-speech	MoStemMsa.FromPartsOfSpeech	RemoveReference	grammar/moStemMsa/removeRefFromPartsOfSpeech	-	-
 Covered	MoStemMsa	inflection-class	MoStemMsa.InflectionClass	Set	grammar/moStemMsa/setInflectionClass	-	-
 Covered	MoStemMsa	inflection-class	MoStemMsa.InflectionClass	Clear	grammar/moStemMsa/clearInflectionClass	-	-
-Covered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	AddObject	grammar/moStemMsa/createMsFeatures	-	-
-Covered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	RemoveObject	grammar/moStemMsa/deleteMsFeatures	-	-
+Covered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	Set	grammar/moStemMsa/createMsFeatures	-	-
+Covered	MoStemMsa	ms-features	MoStemMsa.MsFeatures	Clear	grammar/moStemMsa/deleteMsFeatures	-	-
 Covered	MoStemMsa	part-of-speech	MoStemMsa.PartOfSpeech	Set	grammar/moStemMsa/setPartOfSpeech	-	-
 Covered	MoStemMsa	part-of-speech	MoStemMsa.PartOfSpeech	Clear	grammar/moStemMsa/clearPartOfSpeech	-	-
 Covered	MoStemMsa	prod-restrict	MoStemMsa.ProdRestrict	AddReference	grammar/moStemMsa/addRefProdRestrict	-	-
@@ -438,7 +440,6 @@ Covered	MoUnclassifiedAffixMsa	part-of-speech	MoUnclassifiedAffixMsa.PartOfSpeec
 Covered	PartOfSpeech	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
 Covered	PartOfSpeech	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
 Covered	PartOfSpeech	affix-slots	PartOfSpeech.AffixSlots	AddObject	grammar/partOfSpeech/createAffixSlots	-	-
-Covered	PartOfSpeech	affix-slots	PartOfSpeech.AffixSlots	RemoveObject	grammar/partOfSpeech/deleteAffixSlots	-	-
 Covered	PartOfSpeech	affix-templates	PartOfSpeech.AffixTemplates	AddObject	grammar/partOfSpeech/createAffixTemplates	-	-
 Covered	PartOfSpeech	affix-templates	PartOfSpeech.AffixTemplates	MoveObject	grammar/partOfSpeech/moveAffixTemplates	-	-
 Covered	PartOfSpeech	default-inflection-class	PartOfSpeech.DefaultInflectionClass	Set	grammar/partOfSpeech/setDefaultInflectionClass	-	-
@@ -470,56 +471,69 @@ Covered	PhPhonRuleFeat	name	CmPossibility.Name	SetAlternative	lists/cmPossibilit
 Covered	PhPhonRuleFeat	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
 Covered	PhSequenceContext	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSequenceContext	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
-Covered	PhSequenceContext	members	PhSequenceContext.Members	AddReference	grammar/phSequenceContext/addRefMembers	-	-
-Covered	PhSequenceContext	members	PhSequenceContext.Members	InsertReference	grammar/phSequenceContext/addRefMembers	-	-
-Covered	PhSequenceContext	members	PhSequenceContext.Members	RemoveReference	grammar/phSequenceContext/removeRefMembers	-	-
-Covered	PhSequenceContext	members	PhSequenceContext.Members	MoveReference	grammar/phSequenceContext/moveMembers	-	-
+Covered	PhSequenceContext	members	PhSequenceContext.Members	AddReference	grammar/phSequenceContext/addRefMembers	written-by-input	-
 Covered	PhSimpleContextBdry	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSimpleContextBdry	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
-Covered	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Set	grammar/phSimpleContextBdry/setFeatureStructure	-	-
-Covered	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Clear	grammar/phSimpleContextBdry/clearFeatureStructure	-	-
+Covered	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Set	grammar/phSimpleContextBdry/setFeatureStructure	written-by-input	-
 Covered	PhSimpleContextNC	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSimpleContextNC	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
-Covered	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Set	grammar/phSimpleContextNC/setFeatureStructure	-	-
-Covered	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Clear	grammar/phSimpleContextNC/clearFeatureStructure	-	-
+Covered	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Set	grammar/phSimpleContextNC/setFeatureStructure	written-by-input	-
 Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	AddReference	grammar/phSimpleContextNC/addRefMinusConstr	-	-
 Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefMinusConstr	-	-
 Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	AddReference	grammar/phSimpleContextNC/addRefPlusConstr	-	-
 Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefPlusConstr	-	-
 Covered	PhSimpleContextSeg	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSimpleContextSeg	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
-Covered	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Set	grammar/phSimpleContextSeg/setFeatureStructure	-	-
-Covered	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Clear	grammar/phSimpleContextSeg/clearFeatureStructure	-	-
+Covered	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Set	grammar/phSimpleContextSeg/setFeatureStructure	written-by-input	-
+Covered	RnGenericRec	conclusions	RnGenericRec.Conclusions	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	conclusions	RnGenericRec.Conclusions	ClearRich	text/setParagraphs	-	-
 Covered	RnGenericRec	description	RnGenericRec.Description	SetRich	text/setParagraphs	-	-
 Covered	RnGenericRec	description	RnGenericRec.Description	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	discussion	RnGenericRec.Discussion	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	discussion	RnGenericRec.Discussion	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	ClearRich	text/setParagraphs	-	-
+Covered	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	SetRich	text/setParagraphs	-	-
+Covered	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	ClearRich	text/setParagraphs	-	-
 Covered	RnGenericRec	title	RnGenericRec.Title	SetPlainRich	system/rnGenericRec/setTitle	-	-
 Covered	RnGenericRec	title	RnGenericRec.Title	ClearRich	system/rnGenericRec/clearTitle	-	-
 Covered	RnGenericRec	type	RnGenericRec.Type	Set	system/rnGenericRec/setType	-	-
 Covered	RnGenericRec	type	RnGenericRec.Type	Clear	system/rnGenericRec/clearType	-	-
+CoveredNotLowered	FsFeatStruc	feature-specs	FsFeatStruc.FeatureSpecs	RemoveObject	grammar/fsFeatStruc/deleteFeatureSpecs	delete-composer	-
+CoveredNotLowered	LexEntry	allomorphs	LexEntry.AlternateForms	RemoveObject	lexical/lexEntry/removeAlternateForm	delete-composer	-
+CoveredNotLowered	LexEntry	lexeme-form	LexEntry.LexemeForm	RemoveObject	lexical/lexEntry/deleteLexemeForm	delete-composer	-
+CoveredNotLowered	LexEntry	morpho-syntax-analyses	LexEntry.MorphoSyntaxAnalyses	RemoveObject	lexical/lexEntry/deleteMorphoSyntaxAnalyses	delete-composer	-
+CoveredNotLowered	PartOfSpeech	affix-slots	PartOfSpeech.AffixSlots	RemoveObject	grammar/partOfSpeech/deleteAffixSlots	delete-composer	-
 CustomFields	LexEntry	custom-LexEntry-ExampleFlag	LexEntry.ExampleFlag	Set	none	CustomField	-
 CustomFields	LexEntry	custom-LexEntry-ExampleFlag	LexEntry.ExampleFlag	Clear	none	CustomField	-
 CustomFields	LexEntry	custom-LexEntry-ExampleTag	LexEntry.ExampleTag	SetRich	none	NoOperationKind	-
 CustomFields	LexSense	custom-LexSense-ExampleNote	LexSense.ExampleNote	SetRich	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntry	dialect-labels	LexEntry.DialectLabels	InsertReference	none	UnsupportedPlacement	-
-LexiconEditReferenceSets	LexEntry	dialect-labels	LexEntry.DialectLabels	MoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	AddReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	InsertReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	RemoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	MoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	component-lexemes	LexEntryRef.ComponentLexemes	InsertReference	none	UnsupportedPlacement	-
-LexiconEditReferenceSets	LexEntryRef	component-lexemes	LexEntryRef.ComponentLexemes	MoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	AddReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	InsertReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	RemoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	MoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEntryRef	variant-entry-types	LexEntryRef.VariantEntryTypes	InsertReference	none	UnsupportedPlacement	-
-LexiconEditReferenceSets	LexEntryRef	variant-entry-types	LexEntryRef.VariantEntryTypes	MoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	AddReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	InsertReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	RemoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	MoveReference	none	NoOperationKind	-
-LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	InsertReference	none	UnsupportedPlacement	-
-LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	MoveReference	none	NoOperationKind	-
+LexiconEditReferenceSets	LexEntry	dialect-labels	LexEntry.DialectLabels	InsertReference	none	UnsupportedPlacement	append-only-kind
+LexiconEditReferenceSets	LexEntry	dialect-labels	LexEntry.DialectLabels	MoveReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	AddReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	InsertReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	RemoveReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	complex-entry-types	LexEntryRef.ComplexEntryTypes	MoveReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	component-lexemes	LexEntryRef.ComponentLexemes	InsertReference	none	UnsupportedPlacement	append-only-kind
+LexiconEditReferenceSets	LexEntryRef	component-lexemes	LexEntryRef.ComponentLexemes	MoveReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	AddReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	InsertReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	RemoveReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	primary-lexemes	LexEntryRef.PrimaryLexemes	MoveReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEntryRef	variant-entry-types	LexEntryRef.VariantEntryTypes	InsertReference	none	UnsupportedPlacement	append-only-kind
+LexiconEditReferenceSets	LexEntryRef	variant-entry-types	LexEntryRef.VariantEntryTypes	MoveReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	AddReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	InsertReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	RemoveReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexEtymology	language	LexEtymology.Language	MoveReference	none	NoOperationKind	no-kind-built
+LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	InsertReference	none	UnsupportedPlacement	append-only-kind
+LexiconEditReferenceSets	LexSense	dialect-labels	LexSense.DialectLabels	MoveReference	none	NoOperationKind	no-kind-built
 OtherFields	ChkRef	key-word	ChkRef.KeyWord	SetPlainRich	none	NoOperationKind	-
 OtherFields	ChkRef	key-word	ChkRef.KeyWord	SetRich	none	NoOperationKind	-
 OtherFields	ChkRef	key-word	ChkRef.KeyWord	ClearRich	none	NoOperationKind	-
@@ -678,9 +692,6 @@ OtherFields	CmCustomItem	under-color	CmPossibility.UnderColor	Set	none	NoOperati
 OtherFields	CmCustomItem	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
 OtherFields	CmCustomItem	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
 OtherFields	CmCustomItem	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
-OtherFields	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetPlainRich	none	NoOperationKind	-
-OtherFields	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	SetRich	none	NoOperationKind	-
-OtherFields	CmDomainQ	example-sentences	CmDomainQ.ExampleSentences	ClearRich	none	NoOperationKind	-
 OtherFields	CmDomainQ	example-words	CmDomainQ.ExampleWords	SetAlternative	none	NoOperationKind	-
 OtherFields	CmDomainQ	example-words	CmDomainQ.ExampleWords	ClearAlternative	none	NoOperationKind	-
 OtherFields	CmDomainQ	question	CmDomainQ.Question	SetAlternative	none	NoOperationKind	-
@@ -1008,27 +1019,32 @@ OtherFields	LexSense	senses	LexSense.Senses	AddObject	none	NoOperationKind	-
 OtherFields	LexSense	senses	LexSense.Senses	MoveObject	none	NoOperationKind	-
 OtherFields	LexSense	thesaurus-items	LexSense.ThesaurusItems	AddReference	none	NoOperationKind	-
 OtherFields	LexSense	thesaurus-items	LexSense.ThesaurusItems	RemoveReference	none	NoOperationKind	-
-OtherFields	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoAffixAllomorph	ms-env-features	MoAffixAllomorph.MsEnvFeatures	Clear	none	NoOperationKind	-
 OtherFields	MoAffixAllomorph	ms-env-part-of-speech	MoAffixAllomorph.MsEnvPartOfSpeech	Set	none	NoOperationKind	-
 OtherFields	MoAffixAllomorph	ms-env-part-of-speech	MoAffixAllomorph.MsEnvPartOfSpeech	Clear	none	NoOperationKind	-
-OtherFields	MoAffixProcess	input	MoAffixProcess.Input	RemoveObject	none	NoOperationKind	-
-OtherFields	MoAffixProcess	input	MoAffixProcess.Input	MoveObject	none	NoOperationKind	-
-OtherFields	MoAffixProcess	output	MoAffixProcess.Output	RemoveObject	none	NoOperationKind	-
-OtherFields	MoAffixProcess	output	MoAffixProcess.Output	MoveObject	none	NoOperationKind	-
+OtherFields	MoAffixProcess	input	MoAffixProcess.Input	Clear	none	NoOperationKind	-
+OtherFields	MoAffixProcess	input-parts	MoAffixProcess.Input	AddObject	none	NoOperationKind	-
+OtherFields	MoAffixProcess	input-parts	MoAffixProcess.Input	RemoveObject	none	NoOperationKind	-
+OtherFields	MoAffixProcess	input-parts	MoAffixProcess.Input	MoveObject	none	NoOperationKind	-
+OtherFields	MoAffixProcess	output	MoAffixProcess.Output	Clear	none	NoOperationKind	-
+OtherFields	MoAffixProcess	output-parts	MoAffixProcess.Output	AddObject	none	NoOperationKind	-
+OtherFields	MoAffixProcess	output-parts	MoAffixProcess.Output	RemoveObject	none	NoOperationKind	-
+OtherFields	MoAffixProcess	output-parts	MoAffixProcess.Output	MoveObject	none	NoOperationKind	-
+OtherFields	MoCopyFromInput	content	MoCopyFromInput.Content	Clear	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	affix-category	MoDerivAffMsa.AffixCategory	Set	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	affix-category	MoDerivAffMsa.AffixCategory	Clear	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	AddReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	InsertReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	RemoveReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	components	MoMorphSynAnalysis.Components	MoveReference	none	NoOperationKind	-
-OtherFields	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	from-ms-features	MoDerivAffMsa.FromMsFeatures	Clear	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	AddReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	InsertReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	RemoveReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	MoveReference	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	stratum	MoDerivAffMsa.Stratum	Set	none	NoOperationKind	-
 OtherFields	MoDerivAffMsa	stratum	MoDerivAffMsa.Stratum	Clear	none	NoOperationKind	-
-OtherFields	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	RemoveObject	none	NoOperationKind	-
+OtherFields	MoDerivAffMsa	to-ms-features	MoDerivAffMsa.ToMsFeatures	Clear	none	NoOperationKind	-
 OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	AddReference	none	NoOperationKind	-
 OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	InsertReference	none	NoOperationKind	-
 OtherFields	MoDerivStepMsa	components	MoMorphSynAnalysis.Components	RemoveReference	none	NoOperationKind	-
@@ -1057,7 +1073,7 @@ OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	AddReferenc
 OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	InsertReference	none	NoOperationKind	-
 OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	RemoveReference	none	NoOperationKind	-
 OtherFields	MoInflAffMsa	gloss-bundle	MoMorphSynAnalysis.GlossBundle	MoveReference	none	NoOperationKind	-
-OtherFields	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	RemoveObject	none	NoOperationKind	-
+OtherFields	MoInflAffMsa	infl-feats	MoInflAffMsa.InflFeats	Clear	none	NoOperationKind	-
 OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	AddReference	none	NoOperationKind	-
 OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	InsertReference	none	NoOperationKind	-
 OtherFields	MoInflAffixTemplate	enclitic-slots	MoInflAffixTemplate.EncliticSlots	RemoveReference	none	NoOperationKind	-
@@ -1082,8 +1098,12 @@ OtherFields	MoInflClass	rules-of-referral	MoInflClass.RulesOfReferral	MoveObject
 OtherFields	MoInflClass	stem-names	MoInflClass.StemNames	AddObject	none	NoOperationKind	-
 OtherFields	MoInflClass	stem-names	MoInflClass.StemNames	RemoveObject	none	NoOperationKind	-
 OtherFields	MoInflClass	subclasses	MoInflClass.Subclasses	RemoveObject	none	NoOperationKind	-
-OtherFields	MoInsertPhones	content	MoInsertPhones.Content	InsertReference	none	UnsupportedPlacement	-
+OtherFields	MoInsertNC	content	MoInsertNC.Content	Clear	none	NoOperationKind	-
+OtherFields	MoInsertPhones	content	MoInsertPhones.Content	InsertReference	none	NoOperationKind	-
+OtherFields	MoInsertPhones	content	MoInsertPhones.Content	RemoveReference	none	NoOperationKind	-
 OtherFields	MoInsertPhones	content	MoInsertPhones.Content	MoveReference	none	NoOperationKind	-
+OtherFields	MoModifyFromInput	content	MoModifyFromInput.Content	Clear	none	NoOperationKind	-
+OtherFields	MoModifyFromInput	modification	MoModifyFromInput.Modification	Clear	none	NoOperationKind	-
 OtherFields	MoMorphType	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
 OtherFields	MoMorphType	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
 OtherFields	MoMorphType	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
@@ -1225,22 +1245,26 @@ OtherFields	PhPhonRuleFeat	under-color	CmPossibility.UnderColor	Set	none	NoOpera
 OtherFields	PhPhonRuleFeat	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
+OtherFields	PhSequenceContext	members	PhSequenceContext.Members	InsertReference	none	NoOperationKind	-
+OtherFields	PhSequenceContext	members	PhSequenceContext.Members	RemoveReference	none	NoOperationKind	-
+OtherFields	PhSequenceContext	members	PhSequenceContext.Members	MoveReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSequenceContext	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
+OtherFields	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Clear	none	NoOperationKind	-
 OtherFields	PhSimpleContextBdry	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextBdry	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
+OtherFields	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Clear	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	InsertReference	none	UnsupportedPlacement	-
 OtherFields	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	MoveReference	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	InsertReference	none	UnsupportedPlacement	-
 OtherFields	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	MoveReference	none	NoOperationKind	-
+OtherFields	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Clear	none	NoOperationKind	-
 OtherFields	PhSimpleContextSeg	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextSeg	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
 OtherFields	RnGenericRec	anthro-codes	RnGenericRec.AnthroCodes	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	anthro-codes	RnGenericRec.AnthroCodes	RemoveReference	none	NoOperationKind	-
-OtherFields	RnGenericRec	conclusions	RnGenericRec.Conclusions	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	conclusions	RnGenericRec.Conclusions	ClearRich	none	NoOperationKind	-
 OtherFields	RnGenericRec	confidence	RnGenericRec.Confidence	Set	none	NoOperationKind	-
 OtherFields	RnGenericRec	confidence	RnGenericRec.Confidence	Clear	none	NoOperationKind	-
 OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	AddReference	none	NoOperationKind	-
@@ -1249,26 +1273,14 @@ OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	RemoveRef
 OtherFields	RnGenericRec	counter-evidence	RnGenericRec.CounterEvidence	MoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	cross-references	RnGenericRec.CrossReferences	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	cross-references	RnGenericRec.CrossReferences	RemoveReference	none	NoOperationKind	-
-OtherFields	RnGenericRec	discussion	RnGenericRec.Discussion	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	discussion	RnGenericRec.Discussion	ClearRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	external-materials	RnGenericRec.ExternalMaterials	ClearRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	further-questions	RnGenericRec.FurtherQuestions	ClearRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	hypothesis	RnGenericRec.Hypothesis	ClearRich	none	NoOperationKind	-
 OtherFields	RnGenericRec	locations	RnGenericRec.Locations	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	locations	RnGenericRec.Locations	RemoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	participants	RnGenericRec.Participants	AddObject	none	NoOperationKind	-
 OtherFields	RnGenericRec	participants	RnGenericRec.Participants	RemoveObject	none	NoOperationKind	-
-OtherFields	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	personal-notes	RnGenericRec.PersonalNotes	ClearRich	none	NoOperationKind	-
 OtherFields	RnGenericRec	phrase-tags	RnGenericRec.PhraseTags	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	phrase-tags	RnGenericRec.PhraseTags	RemoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	reminders	RnGenericRec.Reminders	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	reminders	RnGenericRec.Reminders	RemoveReference	none	NoOperationKind	-
-OtherFields	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	SetRich	none	NoOperationKind	-
-OtherFields	RnGenericRec	research-plan	RnGenericRec.ResearchPlan	ClearRich	none	NoOperationKind	-
 OtherFields	RnGenericRec	researchers	RnGenericRec.Researchers	AddReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	researchers	RnGenericRec.Researchers	RemoveReference	none	NoOperationKind	-
 OtherFields	RnGenericRec	restrictions	RnGenericRec.Restrictions	AddReference	none	NoOperationKind	-
@@ -1437,8 +1449,10 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/moAffixAllomorph/removeRefPosition	MoAffixAllomorph	Position	RemoveReference	Forbidden	-		Unspecified	False
 # Handler	grammar/moAffixForm/addRefInflectionClasses	MoAffixForm	InflectionClasses	AddReference	Forbidden	-		Unspecified	False
 # Handler	grammar/moAffixForm/removeRefInflectionClasses	MoAffixForm	InflectionClasses	RemoveReference	Forbidden	-		Unspecified	False
-# Handler	grammar/moAffixProcess/createInput	MoAffixProcess	Input	AddObject	RequiredWhenNonempty	-	PhSimpleContextNC,PhSimpleContextSeg,PhVariable	Unspecified	False
+# Handler	grammar/moAffixProcess/createInput	MoAffixProcess	Input	AddObject	RequiredWhenNonempty	-	PhSequenceContext,PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg,PhVariable	Unspecified	False
 # Handler	grammar/moAffixProcess/createOutput	MoAffixProcess	Output	AddObject	RequiredWhenNonempty	-	MoCopyFromInput,MoInsertNC,MoInsertPhones,MoModifyFromInput	Unspecified	False
+# Handler	grammar/moAffixProcess/deleteInput	MoAffixProcess	Input	RemoveObject	Forbidden	-	PhSequenceContext,PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg,PhVariable	Unspecified	False
+# Handler	grammar/moAffixProcess/deleteOutput	MoAffixProcess	Output	RemoveObject	Forbidden	-	MoCopyFromInput,MoInsertNC,MoInsertPhones,MoModifyFromInput	Unspecified	False
 # Handler	grammar/moAlloAdhocProhib/addRefAllomorphs	MoAlloAdhocProhib	Allomorphs	AddReference	Forbidden	-		Unspecified	False
 # Handler	grammar/moAlloAdhocProhib/addRefRestOfAllos	MoAlloAdhocProhib	RestOfAllos	AddReference	Forbidden	-		Unspecified	False
 # Handler	grammar/moAlloAdhocProhib/clearFirstAllomorph	MoAlloAdhocProhib	FirstAllomorph	Clear	Forbidden	-		Unspecified	False
@@ -1548,6 +1562,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/moStratum/setAbbreviation	MoStratum	Abbreviation	SetAlternative	Forbidden	-		Unspecified	False
 # Handler	grammar/moUnclassifiedAffixMsa/clearPartOfSpeech	MoUnclassifiedAffixMsa	PartOfSpeech	Clear	Forbidden	-		Unspecified	False
 # Handler	grammar/moUnclassifiedAffixMsa/setPartOfSpeech	MoUnclassifiedAffixMsa	PartOfSpeech	Set	Forbidden	-		Unspecified	False
+# Handler	grammar/partOfSpeech/addRefInflectableFeats	(no direct field edit)
 # Handler	grammar/partOfSpeech/clearDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Clear	Forbidden	-		Unspecified	False
 # Handler	grammar/partOfSpeech/createAffixSlots	PartOfSpeech	AffixSlots	AddObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
 # Handler	grammar/partOfSpeech/createAffixTemplates	PartOfSpeech	AffixTemplates	AddObject	RequiredWhenNonempty	-	MoInflAffixTemplate	Unspecified	False
@@ -1555,6 +1570,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/partOfSpeech/createStemNames	PartOfSpeech	StemNames	AddObject	Forbidden	-	MoStemName	Unspecified	False
 # Handler	grammar/partOfSpeech/deleteAffixSlots	PartOfSpeech	AffixSlots	RemoveObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
 # Handler	grammar/partOfSpeech/moveAffixTemplates	PartOfSpeech	AffixTemplates	MoveObject	Required	-		Unspecified	False
+# Handler	grammar/partOfSpeech/removeRefInflectableFeats	(no direct field edit)
 # Handler	grammar/partOfSpeech/setDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Set	Forbidden	-		Unspecified	False
 # Handler	grammar/phCode/clearRepresentation	PhCode	Representation	ClearAlternative	Forbidden	-		Unspecified	False
 # Handler	grammar/phCode/setRepresentation	PhCode	Representation	SetAlternative	Forbidden	-		Unspecified	False
@@ -1765,8 +1781,25 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	text/setParagraphs	LexDb	Introduction	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	PhPhonContext	Description	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	PhPhonContext	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Conclusions	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Conclusions	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	RnGenericRec	Description	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	RnGenericRec	Description	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Discussion	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Discussion	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	ExternalMaterials	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	ExternalMaterials	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	FurtherQuestions	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	FurtherQuestions	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Hypothesis	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	Hypothesis	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	PersonalNotes	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	PersonalNotes	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	ResearchPlan	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	RnGenericRec	ResearchPlan	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmDomainQ	ExampleSentences	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setRichString	CmDomainQ	ExampleSentences	SetPlainRich	Forbidden	-		Unspecified	True
+# Handler	text/setRichString	CmDomainQ	ExampleSentences	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setRichString	CmMedia	Label	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setRichString	CmMedia	Label	SetPlainRich	Forbidden	-		Unspecified	True
 # Handler	text/setRichString	CmMedia	Label	SetRich	Forbidden	-		Unspecified	False

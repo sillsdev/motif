@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class CommandSeamCoverageTests(PristineProjectFixture pristine)
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ConfigurationSelectionPersistsThroughTheRealClientWithoutAWindow()
     {
         using var project = new WalkthroughProject(pristine);
@@ -47,7 +47,7 @@ public sealed class CommandSeamCoverageTests(PristineProjectFixture pristine)
         Assert.Equal(6_600, changedReadBack.Value.Selection.PerWordParserWorkLimit!.Work);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ScopedActionsPassTheChosenScopeAcrossTheRealClient()
     {
         using var project = new WalkthroughProject(pristine);

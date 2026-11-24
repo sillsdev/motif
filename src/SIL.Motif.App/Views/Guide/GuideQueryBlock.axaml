@@ -20,7 +20,7 @@
           <Button Command="{Binding EditCommand}" Content="{x:Static app:MotifAppStrings.GuideQueryEdit}"
                   IsVisible="{Binding IsReading}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryEdit}" />
           <Button Command="{Binding SaveCommand}" Content="{x:Static app:MotifAppStrings.GuideQuerySave}"
-                  IsVisible="{Binding IsEditing}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQuerySave}" />
+                  IsVisible="{Binding ShowsSave}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQuerySave}" />
           <Button Command="{Binding CancelCommand}" Content="{x:Static app:MotifAppStrings.GuideQueryCancel}"
                   IsVisible="{Binding IsEditing}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryCancel}" />
         </StackPanel>

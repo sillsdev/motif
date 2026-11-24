@@ -9,6 +9,27 @@ motif query forms --project "project.fwdata" --where kind=alternate --where 'cha
 motif query forms --project "project.fwdata" --where kind=alternate --group letters.dropped --json
 ```
 
+A `--where` can also be a boolean expression: predicates `column op value` joined by `and`, `or` and `not`, with parentheses. `not` binds tighter than `and`, which binds tighter than `or`. The text ops are `is`, `not`, `in`, `not in`, `has`, `<`, `>`, `~` (unanchored regular expression), `matches` (a regular expression that must match the whole value), `exists` and `missing`. A value is a bare word or a double-quoted string, and `in`, `not in` and `has` take comma-separated values. A `--where` that starts with `(` or `not `, or that holds the words `and` or `or` and parses as an expression, is read as an expression; every other `--where` is read as a v1 selector first, so a v1 line keeps its meaning unless it uses an unquoted `and`, `or` or `not` as an operator; words inside double quotes never count. Wrap a single predicate in parentheses to force the expression reading, for example `--where "(kind not in a,b)"`.
+
+```powershell
+motif query forms --project "project.fwdata" --where "kind is variant or (kind is alternate and tokens > 5)" --limit 20
+```
+
+`--limit` keeps at most that many rows, groups or ids. A `--as-of` run takes a conjunction of `is`, `not`, `in`, `has`, `<`, `>` and `~` selectors only.
+
+## The JSON form: `--query-json` and `--schema`
+
+`motif query --project "project.fwdata" --query-json <file|->` runs one `motif.query.v2` document, from a file or from standard input with `-`, and takes no other query flag. `motif query --schema` prints its JSON Schema, which is generated from the same records the engine reads; it lists every op, source and column with its type, and the reserved kinds. The MCP tool `motif_query` takes the same document as its `query` argument, and `motif_query_schema` returns the schema. Every response carries `schemaVersion`.
+
+```json
+{ "version": "motif.query.v2", "from": "forms",
+  "where": { "and": [ { "field": "kind", "op": "in", "value": ["alternate", "variant"] },
+                      { "not": { "field": "form", "op": "regex", "value": "sa.*" } } ] },
+  "limit": 50 }
+```
+
+A predicate is `{field, op, value}` with op `eq`, `ne`, `in`, `nin`, `lt`, `gt`, `has`, `regex`, `contains` or `exists`. `regex` must match the whole value and `contains` matches anywhere; both use the non-backtracking engine and are limited to 256 characters. An op that does not fit its column (`lt` on text, `has` on a single value, `regex` on a number) is refused with `query.op-type-mismatch`. `morph`, `seq` and `realizes` are reserved: a document that uses one is refused with `query.not-yet-available`. `phon` and `env` are real; see the next section. A malformed document is refused with `query.document-invalid`, naming the path.
+
 `--group` accepts comma-separated columns, `--min-count` filters groups, and `--examples` selects examples ordered by form. `--ids` includes ids for use by other commands. `--trial` selects the Trial whose evidence is available; only one evidence bundle has query rows. Token frequency is not available in this phase. Forms use the project's graphemes; `--raw-letters` uses individual characters instead.
 
 ## Reading the Baseline or a Proposal: `--as-of` and `--sides both`
@@ -92,3 +113,22 @@ motif query evidence stems --project "project.fwdata" --where "final:2=ad" --cha
 ## Saved queries
 
 `motif query saved <measure-id>` runs the query that detects the same items as the Measure: `P-msa-no-category`, `P-statement-unused`, `P-env-duplicate`, `P-feature-few-carriers` and `P-lexeme-near-duplicate`. The Measure remains the command that records findings; the saved query lists the items and nothing else.
+
+## Phonological patterns: `phon` and `env`
+
+`{"phon": "Stop V Stop V"}` keeps the forms the pattern matches somewhere; `{"env": "[Voiced] / # _ V"}` keeps the forms in which the target occurs between the left and right patterns. In text they are `phon(Stop V Stop V)` and `env(Voiced / # _ V)`, usable in `--where` and anywhere a predicate goes, with `and`, `or` and `not`. A pattern is items separated by spaces: a natural class by its token (`C`, `V`; the first column of `motif query --values classes`, written in brackets when it has spaces, `[Nasal Stop]`) or by its full FieldWorks name (`[Vowels]` for `V`; the second column; case does not matter, and Motif resolves it to the token before it sends the pattern, refusing a name two classes share), a feature bundle `[+voice -nasal]`, an alpha variable `[αvoice]`, a literal segment `/p/` (a bare letter is not a segment), `( )` and `( )*`, `#` for the word edge and `+` for a morpheme boundary.
+
+PanGloss does the matching. It segments each word with the grammar's surface character table, the one `parse` uses, so a pattern sees the word the way the parser does. Motif sends the forms left after the cheaper predicates have run, in batches, to the resident `pangloss serve` of the project's Baseline; it never starts a process per word. Each result row then carries `matches`, the spans (segment and byte offsets, and the matched text) of each predicate. A word the grammar cannot segment is `unsegmentable`: it matches no pattern and is not matched by `not` of one. The result header counts such words and lists a sample (`phon.unsegmentable`, `phon.unsegmentableSample` in JSON); a word PanGloss stopped on at a work, deadline or match cap is counted as `incomplete` the same way; if it kept matches before the stop, they are returned flagged `partial`, and a `not` over that word still excludes it. With `--ids` the counts go to standard error so the ids stay pipeable. Nothing is dropped silently.
+
+PanGloss's `match` op needs a release that declares `interfaces.serveOps.match` and lists `engine` and `identity` under its `segmentTests` (v0.31.0); with an older one the query is refused with `query.phon-unavailable`, naming the release. Feature bundles, alpha variables and `env` run on PanGloss 0.30.0 and later, and an older parser is refused with `query.phon-unavailable`. One alpha letter on two different features (`[αvoice] _ [αson]`) is refused with `query.phon-pattern-refused` carrying PanGloss's own code (`unsupported_construct`, construct `alphaAcrossFeatures`).  `+` needs words with marked boundaries, which Motif does not send yet, so on ordinary words it is refused the same way (`boundary_needs_marked_input`).
+
+### Segment test: `engine` or `identity`
+
+`--segment-test engine|identity` (JSON `segmentTest`, MCP `segmentTest`; the corpus `forms` command takes the flag too) chooses how a segment is tested against a pattern. The default is `engine`, rule application's own test, because the purpose of a pattern is to find the words a rule will touch.
+
+- Under `engine` a literal `/i/` matches every segment with `i`'s feature bundle, and a segment-list `[class]` means the union of its members' features, so it can match segments the class does not list. The spans are a superset of what a rule rewrites: they include positions a rule leaves unchanged (its output equals its input) and overlapping spans, because a rule applies leftmost and non-overlapping. Only the target is widened: the sides of an `env` are exact, as they are in a rule, so under `engine` every position a rule's environment accepts is found.
+- Under `identity` a literal names exactly one segment and a `[class]` exactly its members: use it for "exactly these letters". A literal or a segment-list class then may miss a segment a rule treats as the same, so the result carries `matchMode: "identity"` and `mayUnderReport: true`, the header says so, and `not` over such a pattern warns that absence is not proven.
+
+Every `phon` and `env` result states the mode it ran under: `segmentTest` in the JSON `phon` object and a `SEGMENT TEST:` line in the text header.
+
+`motif query --values classes --project "project.fwdata"` (or the MCP `motif_query_schema` with `values: "classes"`) lists the natural classes and phonological features of the Baseline: for each class the token to type, its full name (`fullName` in JSON; the label when the class has none) and its kind. The names are read from PanGloss's `inventory` op.

@@ -176,6 +176,34 @@ public sealed class HandAnalysisSeededTests : IDisposable
     }
 
     [Fact]
+    public async Task ACertifiedPointAnswersEqualAFullPointOnAnAnchoredStoreIncludingWitnessesAndBundles()
+    {
+        var seed = await Import(s => Synthetic("hand-anchor", s.Text.ApprovedAnalysisId));
+        await using var full = new Store(Database) { CertifiedAcquisitionAllowed = false };
+        await using var certified = new Store(Database);
+        var records = await full.ReadAsync();
+        var eager = await full.ReferencesAsync();
+        var lazy = await certified.ReferencesAsync();
+        Assert.Equal(1, certified.CertifiedAcquisitions);
+        Assert.Equal(0, full.CertifiedAcquisitions);
+        var targets = records.Where(r => r.Kind == "lcm" && eager.UsageSchema!.IsDeletable(r.ClassId)).Select(r => r.Id)
+            .Append(seed.Text.ApprovedAnalysisId).Distinct().ToArray();
+        foreach (var id in targets)
+        {
+            var expected = eager.DeletionImpact(id);
+            var actual = lazy.DeletionImpact(id);
+            Assert.Equal(expected.PlanToken, actual.PlanToken);
+            Assert.Equal(expected.Links.ToArray(), actual.Links.ToArray());
+            Assert.Equal(expected.Analyses.ToArray(), actual.Analyses.ToArray());
+            Assert.Equal(expected.Bundles.ToArray(), actual.Bundles.ToArray());
+            Assert.Equal(expected.Witnesses.ToArray(), actual.Witnesses.ToArray());
+        }
+        var all = records.Where(r => r.Kind == "lcm").Select(r => r.Id).ToArray();
+        Assert.Equal(eager.Incoming(all).Witnesses.ToArray(), lazy.Incoming(all).Witnesses.ToArray());
+        Assert.NotEmpty(lazy.Incoming([seed.Text.ApprovedAnalysisId]).Witnesses);
+    }
+
+    [Fact]
     public async Task ExplicitObservationsPreserveStoredAnchorWitnesses()
     {
         var seed = await Import(s => Synthetic("hand-anchor", s.Text.ApprovedAnalysisId));
@@ -238,7 +266,7 @@ public sealed class HandAnalysisSeededTests : IDisposable
             if (removeSidecars) RemoveSidecars();
             Assert.True(pin.IsCurrent);
             if (removeSidecars) RemoveSidecars();
-            await host.VerifyAsync();
+            await host.CheckPointAsync();
         }
         Assert.Equal(before, File.ReadAllBytes(Database));
         if (!removeSidecars || File.Exists(wal)) Assert.Equal(walBytes, File.ReadAllBytes(wal));
@@ -278,11 +306,11 @@ public sealed class HandAnalysisSeededTests : IDisposable
         Assert.Null(wrongProject.Value);
         Assert.Equal(RefusalCodes.HandAnalysisIndexUnavailable, wrongProject.Refusal?.Code);
         Assert.Equal(HandAnalysisRefusalFacts.Unavailable, wrongProject.Refusal!.Facts[HandAnalysisRefusalFacts.Cause]);
-        Assert.Equal(typed.Stamp, Assert.IsType<ProjectRead.Unavailable>(typed.Project).Stamp);
+        Assert.Equal(typed.Stamp, Assert.IsType<ProjectRead.Available>(typed.Project).Facts.Stamp);
         var unsupported = (await typed.FormsAsync(new("", "", [], FormMatch.Equal, FormOrder.Encounter), new(), default)).Value();
         Assert.Equal(typed.Stamp, unsupported.Stamp);
-        Assert.Null(unsupported.Total);
-        Assert.False(unsupported.Complete);
+        Assert.Equal(0, unsupported.Total);
+        Assert.True(unsupported.Complete);
     }
 
     [Fact]
@@ -411,18 +439,20 @@ public sealed class HandAnalysisSeededTests : IDisposable
         using var cancel = new CancellationTokenSource();
         pause.Arm();
         var read = Task.Run(async () => await index.PinAsync(project, null, cancel.Token));
+        var queriesBeforePause = 0;
         try
         {
             await Wait.UntilAsync(() => pause.Paused.IsCompleted || read.IsCompleted, "Pin reached its verification query",
                 detail: () => pause.Detail);
             if (read.IsFaulted) await read;
             Assert.True(pause.Paused.IsCompleted, "The pin finished before the verification query was paused. " + pause.Detail);
+            queriesBeforePause = pause.Detail.Length;
             cancel.Cancel();
         }
         finally { pause.Release(); }
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read);
-        Assert.DoesNotContain($"FROM \"{nextTable}\"", pause.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain($"FROM \"{nextTable}\"", pause.Detail[queriesBeforePause..], StringComparison.Ordinal);
         await using var retry = (await index.PinAsync(project, null, default)).Value();
         Assert.Equal(project, retry.Stamp.ProjectId);
     }

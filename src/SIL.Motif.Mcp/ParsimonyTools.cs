@@ -21,6 +21,14 @@ internal static class ParsimonyTools
     [
         new("motif_query", "Reads and groups forms, stems, uses or objects from available Trial evidence, scores a hypothesised change on stems, or runs a saved query.", AgentClass.Read,
             Schema.Object(
+                ("query", new JsonObject
+                {
+                    ["type"] = "object",
+                    ["description"] = "A motif.query.v2 document: version \"motif.query.v2\", from, where (and/or/not over {field, op, value} " +
+                        "predicates; ops eq ne in nin lt gt has regex contains exists; regex is anchored, contains is not), side, sides, " +
+                        "sort, limit, group and the options below. Replaces every other query argument. The full JSON Schema is " +
+                        "returned by motif_query_schema and printed by motif query --schema. phon {\"phon\":\"Stop V Stop V\"} and env {\"env\":\"[Stop] / # _ V\"} match phonological patterns through PanGloss (syntax in motif_query_schema; class names from motif_query_schema values=classes); morph, seq and realizes are reserved and refused as not yet available.",
+                }, false),
                 ("saved", Schema.String("A measure id whose saved query replaces from, where and group.", SavedQueries.Ids.ToArray()), false),
                 ("from", Schema.String("Query source; required unless saved is given.", QuerySources.All.ToArray()), false),
                 ("where", Schema.Array("ANDed selectors.", Schema.Object(
@@ -34,6 +42,7 @@ internal static class ParsimonyTools
                 ("examples", Schema.Integer("Maximum examples per group.", 0, 1000), false),
                 ("ids", Schema.Boolean("Include canonical ids."), false),
                 ("rawLetters", Schema.Boolean("Use characters instead of graphemes."), false),
+                ("segmentTest", Schema.String("How phon and env test a segment: engine (the default) is rule application's test, a literal matches every segment with its feature bundle and a [class] the union of its members' features, and the spans are a superset of what a rule rewrites; identity is exact members only. Every phon and env result reports the mode it used.", "engine", "identity"), false),
                 ("trialId", Schema.String("Trial id; only the latest Trial has query rows."), false),
                 ("change", Schema.Object(
                     ("dropped", Schema.String("Letters the stem edge has today."), true),
@@ -67,6 +76,22 @@ internal static class ParsimonyTools
                 {
                     var input = a.Copy();
                     input.Remove("project");
+                    if (input["query"] is { } queryNode)
+                    {
+                        if (queryNode is not JsonObject queryObject || input.Any(pair => pair.Key != "query"))
+                            throw new ToolArgumentException("tool.invalid-argument", "query is one motif.query.v2 object and replaces every other argument.");
+                        try
+                        {
+                            return Task.FromResult(ToolOutcome.From(!QueryDocument.TryParse(queryObject, out var document, out var documentRefusal)
+                                ? CommandOutcome<FormsQueryResponse>.Refused(documentRefusal)
+                                : FormsQueryCommand.Run(new FormsQueryRequest(c.ProjectPath, c.ProductVersion, document.ToRecord()), c.QueryCache,
+                                    c.JobParserPath)));
+                        }
+                        catch (QueryRefusalException refused)
+                        {
+                            return Task.FromResult(ToolOutcome.From(CommandOutcome<FormsQueryResponse>.Refused(refused.Refusal)));
+                        }
+                    }
                     var savedId = input["saved"]?.GetValue<string>();
                     input.Remove("saved");
                     if (savedId is not null)
@@ -94,6 +119,20 @@ internal static class ParsimonyTools
                     throw new ToolArgumentException("tool.invalid-argument", error.Message);
                 }
             }) { Requests = [typeof(FormsQueryRequest)], FieldNames = new Dictionary<string, string?> { ["Query"] = null } },
+        new("motif_query_schema",
+            "Returns the JSON Schema of a motif.query.v2 document: every op, source and column with its type, the phon and env pattern syntax, and the reserved kinds. " +
+            "With values=classes it instead lists the natural-class and feature names of the project's Baseline, for writing phon and env patterns.",
+            AgentClass.Read,
+            Schema.Object(("values", Schema.String("Set to classes to list the project's natural-class and feature names instead of the schema.", "classes"), false)),
+            true,
+            true,
+            false,
+            false,
+            (c, a, ct) => Task.FromResult(a.Optional("values") is { } values
+                ? values == "classes"
+                    ? ToolOutcome.From(PhonValues.Read(new QueryValuesRequest(c.ProjectPath)))
+                    : ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "values is classes or omitted.")
+                : ToolOutcome.Ok(JsonNode.Parse(QuerySchema.Generate())!))),
         new("motif_parsimony_measures",
             string.Empty,
             AgentClass.Read,

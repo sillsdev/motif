@@ -8,7 +8,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class RecentProjectRowTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ARecentRefreshPublishesOnlyTheCompleteProjectList()
     {
         var projects = Enumerable.Range(0, 3).Select(index => new KnownProjectSummary(
@@ -37,7 +37,7 @@ public sealed class RecentProjectRowTests
         Assert.Equal("Sample", recent.Name);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpenProjectChipShowsTheFileNameForEitherPathSeparator()
     {
         await using var workspace = NewWorkspace(new FakeCommandClient(), new RecordingLauncher());
@@ -47,7 +47,7 @@ public sealed class RecentProjectRowTests
         Assert.Equal(@"C:\Users\linguist\FieldWorks\Sample.fwdata", workspace.ProjectPathTooltip);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StatusBarNamesTheParsingSelectionWhenNothingIsSelected()
     {
         await using var workspace = NewWorkspace(new FakeCommandClient(), new RecordingLauncher());
@@ -57,7 +57,7 @@ public sealed class RecentProjectRowTests
         Assert.Equal("Parse Selection: 1 pasted word", workspace.SelectionSummaryText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheRecentMenuKeepsTheNewestCopyAndShowsItsStoredFieldsAndFolderLink()
     {
         var folder = Path.Combine(Path.GetTempPath(), "MotifSyntheticTurkic", Guid.NewGuid().ToString("N"));
@@ -108,7 +108,7 @@ public sealed class RecentProjectRowTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARecentProjectWithAMissingFolderHasNoWorkingFolderLink()
     {
         var missingFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
@@ -148,7 +148,7 @@ public sealed class RecentProjectRowTests
         Assert.Equal(paths[1].FullFwDataPath, recent.FullFwDataPath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RecentCopiesOfTheOpenProjectAreExcludedByTheirIdentity()
     {
         const string identity = "abcdefab-cdef-4abc-8def-abcdefabcdef";
@@ -173,7 +173,7 @@ public sealed class RecentProjectRowTests
         finally { await workspace.DisposeAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CopiesOfTheOpenProjectAreExcludedWithoutABaselineToken()
     {
         var root = Path.Combine(Path.GetTempPath(), "MotifRecentWithoutBaseline", Guid.NewGuid().ToString("N"));

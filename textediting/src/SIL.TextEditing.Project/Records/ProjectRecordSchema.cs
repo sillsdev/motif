@@ -99,7 +99,9 @@ namespace SIL.TextEditing.Project
                         int field = metadata.GetFieldId2(ancestor, fieldName, false);
                         if (field == 0 || metadata.GetOwnClsId(field) != ancestor) throw new ArgumentException("Unknown declared field " + className + "." + fieldName + ".");
                         if (managed.IsCustom(field) && entry.Name != "exclude") throw new ArgumentException("Custom fields may only be excluded: " + className + "." + fieldName + ".");
-                        if (!decisions.Add(field)) throw new ArgumentException("Duplicate field decision " + className + "." + fieldName + ".");
+                        bool alias = (string?)entry.Attribute("alias") == "true";
+                        if (alias ? !decisions.Contains(field) || entry.Name != "field" : !decisions.Add(field))
+                            throw new ArgumentException((alias ? "Alias without a field decision " : "Duplicate field decision ") + className + "." + fieldName + ".");
                         if (entry.Name == "field") Add(type, entry, field, metadata, managed, classes, keys);
                         else
                         {
@@ -244,7 +246,11 @@ namespace SIL.TextEditing.Project
             bool isText = t == CellarPropertyType.Unicode || t == CellarPropertyType.MultiUnicode;
             bool isRich = t == CellarPropertyType.String || t == CellarPropertyType.MultiString;
             bool paragraph = t == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "StText";
-            if (notation != null && !isText && !isRich) throw new ArgumentException("Notation requires a string field: " + key);
+            bool featureStructure = t == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "FsFeatStruc" && notation == FeatureStructureNotation.Name;
+            bool ruleFormula = t == CellarPropertyType.OwningSequence && notation == RuleNotation.Name
+                && RuleNotation.TryFieldOf(m.GetOwnClsName(field), m.GetFieldName(field), out _);
+            if (notation != null && !isText && !isRich && !featureStructure && !ruleFormula)
+                throw new ArgumentException("Notation requires a string field or an owned feature structure: " + key);
             if (blockText != null && !paragraph) throw new ArgumentException("Blocks require a paragraph field: " + key);
             string? wsText = (string?)entry.Attribute("ws");
             if (wsText != null && (!(isText || isRich || paragraph) || multi))

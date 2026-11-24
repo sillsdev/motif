@@ -48,6 +48,12 @@ internal static class Program
     /// <summary>One command name per line, for each invocation of a copy that carries the sentinel.</summary>
     internal const string InvocationsFileName = "_pangloss-invocations.log";
 
+    /// <summary>Beside a copy, makes --describe declare interfaces.serveOps.generate.</summary>
+    internal const string ServeGenerateSentinel = "_fake-pangloss-serve-generate";
+
+    /// <summary>Beside a copy, makes --describe declare interfaces.serveOps.effects; the file holds the declared object, recorded from a real PanGloss.</summary>
+    internal const string ServeEffectsSentinel = "_fake-pangloss-serve-effects";
+
     /// <summary>Beside a recording copy, one word per trace request a resident serve answered.</summary>
     internal const string ServeTraceRequestsFileName = "_pangloss-serve-trace-requests.log";
 
@@ -237,12 +243,7 @@ internal static class Program
         {
             schema_version = 1,
             binary = "pangloss",
-            interfaces = new
-            {
-                serveProtocol = 2,
-                batchTsv = 5,
-                diagnostic = new { schemaVersion = "pangloss.diagnostic.v1", modes = new[] { "lineage" } },
-            },
+            interfaces = DescribedInterfaces(),
             facts = new
             {
                 format = FactsArtifact.Format,
@@ -649,6 +650,57 @@ internal static class Program
         return behaviour.ExitCode;
     }
 
+    // A copy beside which this sentinel sits declares the traced serve generate op, as PanGloss's --describe does.
+    private static object DescribedInterfaces()
+    {
+        var interfaces = new Dictionary<string, object>
+        {
+            ["serveProtocol"] = 2,
+            ["batchTsv"] = 5,
+            ["diagnostic"] = new { schemaVersion = "pangloss.diagnostic.v1", modes = new[] { "lineage" } },
+        };
+        var ops = new Dictionary<string, object>();
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, ServeGenerateSentinel)))
+            ops["generate"] = new { version = 1, trace = true, requestSchema = 1 };
+        if (Path.Combine(AppContext.BaseDirectory, ServeEffectsSentinel) is var effects && File.Exists(effects))
+            ops["effects"] = JsonSerializer.Deserialize<JsonElement>(File.ReadAllText(effects));
+        if (ops.Count > 0) interfaces["serveOps"] = ops;
+        return interfaces;
+    }
+
+    // One generate op: the reply configured for the request's root, else the general one; logs the request.
+    private static string AnswerGenerate(JsonElement request, string line, Behaviour behaviour)
+    {
+        var id = request.GetProperty("id").GetString();
+        if (behaviour.ServeGenerateLog is { } log) File.AppendAllText(log, line + "\n");
+        var root = request.TryGetProperty("request", out var body) && body.TryGetProperty("root", out var r) &&
+            r.TryGetProperty("entryGuid", out var guid) ? guid.GetString() : null;
+        JsonElement? reply = root is not null && behaviour.ServeGenerateByRoot?.TryGetValue(root, out var chosen) == true
+            ? chosen : behaviour.ServeGenerate;
+        if (reply is not { ValueKind: JsonValueKind.Object } answer)
+            return JsonSerializer.Serialize(new { id, type = "error", code = "unknown_entry", message = "the fake has no answer for this entry" });
+        if (answer.TryGetProperty("error", out var error))
+            return JsonSerializer.Serialize(new { id, type = "error", code = error.GetProperty("code").GetString(),
+                message = error.GetProperty("message").GetString() });
+        var fields = new Dictionary<string, JsonElement>();
+        foreach (var property in answer.EnumerateObject()) fields[property.Name] = property.Value;
+        var text = new StringBuilder("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"op\":\"generate\"");
+        foreach (var (name, value) in fields.Where(field => field.Key is not ("id" or "type" or "op"))) text.Append(',').Append(JsonSerializer.Serialize(name)).Append(':').Append(value.GetRawText());
+        return text.Append('}').ToString();
+    }
+
+    // One effects op: the recorded reply, written back under the request's id; logs the request.
+    private static string AnswerEffects(JsonElement request, string line, Behaviour behaviour)
+    {
+        var id = request.GetProperty("id").GetString();
+        if (behaviour.ServeEffectsLog is { } log) File.AppendAllText(log, line + "\n");
+        if (behaviour.ServeEffects is not { ValueKind: JsonValueKind.Object } recorded)
+            return JsonSerializer.Serialize(new { id, type = "error", code = "unknown_morpheme", message = "the fake has no answer for this morpheme" });
+        var node = System.Text.Json.Nodes.JsonNode.Parse(recorded.GetRawText())!.AsObject();
+        node["id"] = id;
+        return node.ToJsonString(new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+    }
+
     // serve --project <path>: the resident protocol. One JSON line in, one JSON line out, in order.
     private static int RunServe(string[] args)
     {
@@ -699,6 +751,16 @@ internal static class Program
             {
                 output.WriteLine(JsonSerializer.Serialize(new { id, type = "bye" }));
                 return 0;
+            }
+            if (op == "generate")
+            {
+                output.WriteLine(AnswerGenerate(request.RootElement, line, behaviour));
+                continue;
+            }
+            if (op == "effects")
+            {
+                output.WriteLine(AnswerEffects(request.RootElement, line, behaviour));
+                continue;
             }
             var word = request.RootElement.GetProperty("word").GetString() ?? string.Empty;
             if (behaviour.ServeRequestLog is { } requestLog) File.AppendAllText(requestLog, word + "\n");
@@ -1066,6 +1128,13 @@ internal static class Program
         public long? ServeParserWork { get; init; }
         public string? ServeStatus { get; init; }
         public int ServeAllocateBytes { get; init; }
+        // serve generate: the reply body, or one per root entry guid; an object with "error" answers with it.
+        public JsonElement? ServeGenerate { get; init; }
+        public Dictionary<string, JsonElement>? ServeGenerateByRoot { get; init; }
+        public string? ServeGenerateLog { get; init; }
+        // serve effects: the recorded reply, whose id is replaced by the request's.
+        public JsonElement? ServeEffects { get; init; }
+        public string? ServeEffectsLog { get; init; }
 
         internal static Behaviour Read(string? directory, string? subcommand = null, bool probe = false)
         {

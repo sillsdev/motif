@@ -98,6 +98,10 @@
           "minimum": 0,
           "maximum": 100000
         },
+        "at": {
+          "type": "string",
+          "description": "What to read: \u0027baseline\u0027 (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal\u0027s edits applied. The result returns at, and for a Proposal also atLabel: the Trial\u0027s copy of the grammar, not the Baseline."
+        },
         "detail": {
           "type": "string",
           "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
@@ -138,7 +142,7 @@
         },
         "exact": {
           "type": "string",
-          "description": "Only entries whose headword or a form equals this text, ignoring case; a bare \u0027zi\u0027 also finds the affix \u0027zi-\u0027, while \u0027zi-\u0027 finds only that prefix."
+          "description": "Only entries whose headword or a form equals this text, ignoring case; a bare \u0027zi\u0027 also finds the affix \u0027zi-\u0027 and exactNote says so, while \u0027zi-\u0027 finds only that prefix."
         },
         "morphType": {
           "type": "array",
@@ -172,6 +176,10 @@
           "description": "Entries to skip; a result\u0027s nextOffset is the value for the next page.",
           "minimum": 0,
           "maximum": 100000
+        },
+        "at": {
+          "type": "string",
+          "description": "What to read: \u0027baseline\u0027 (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal\u0027s edits applied. The result returns at, and for a Proposal also atLabel: the Trial\u0027s copy of the grammar, not the Baseline."
         },
         "detail": {
           "type": "string",
@@ -10218,6 +10226,42 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_why_lost",
+    "description": "Why a word lost a Reading. Compares a word\u0027s parse at the Baseline with its parse on a Proposal\u0027s Trial copy and, for each lost Reading, reports the stop PanGloss recorded and the Proposal operations that overlap the earlier form it names. The overlap is not a cause; use it to find which edits to look at.\nCommand: proposal why-lost. Agent class: Evaluate.\nword: The exact word form to parse on both sides.\nproposal: The Proposal whose latest Trial copy is read.\nmax_paths: The most terminal paths to read per side, 1 through 64; omitted reads 64.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "word": {
+          "type": "string",
+          "description": "The word that lost a Reading in the Trial."
+        },
+        "proposal": {
+          "type": "string",
+          "description": "The proposal id whose latest Trial copy to compare with the Baseline."
+        },
+        "max_paths": {
+          "type": "integer",
+          "description": "Most terminal paths to read per side; default 64.",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "word",
+        "proposal",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_finalize_proposal",
     "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {
@@ -10781,10 +10825,14 @@
   },
   {
     "name": "motif_query",
-    "description": "Query forms. Filters and groups forms, stems, uses or objects from available Trial evidence, reads forms from the Baseline or a Proposal\u0027s Trial copy with parse state and analyses (--as-of, --sides both), or runs the saved query of a Parsimony Measure.\nCommand: query forms. Agent class: Read.\n",
+    "description": "Query forms. Filters and groups forms, stems, uses or objects from available Trial evidence with and, or, not and typed field predicates, reads forms from the Baseline or a Proposal\u0027s Trial copy with parse state and analyses (--as-of, --sides both), runs a motif.query.v2 JSON document (--query-json) or prints its schema (--schema), or runs the saved query of a Parsimony Measure.\nCommand: query forms. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
       "properties": {
+        "query": {
+          "type": "object",
+          "description": "A motif.query.v2 document: version \u0022motif.query.v2\u0022, from, where (and/or/not over {field, op, value} predicates; ops eq ne in nin lt gt has regex contains exists; regex is anchored, contains is not), side, sides, sort, limit, group and the options below. Replaces every other query argument. The full JSON Schema is returned by motif_query_schema and printed by motif query --schema. phon {\u0022phon\u0022:\u0022Stop V Stop V\u0022} and env {\u0022env\u0022:\u0022[Stop] / # _ V\u0022} match phonological patterns through PanGloss (syntax in motif_query_schema; class names from motif_query_schema values=classes); morph, seq and realizes are reserved and refused as not yet available."
+        },
         "saved": {
           "type": "string",
           "description": "A measure id whose saved query replaces from, where and group.",
@@ -10876,6 +10924,14 @@
         "rawLetters": {
           "type": "boolean",
           "description": "Use characters instead of graphemes."
+        },
+        "segmentTest": {
+          "type": "string",
+          "description": "How phon and env test a segment: engine (the default) is rule application\u0027s test, a literal matches every segment with its feature bundle and a [class] the union of its members\u0027 features, and the spans are a superset of what a rule rewrites; identity is exact members only. Every phon and env result reports the mode it used.",
+          "enum": [
+            "engine",
+            "identity"
+          ]
         },
         "trialId": {
           "type": "string",
@@ -11079,6 +11135,33 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_query_schema",
+    "description": "Returns the JSON Schema of a motif.query.v2 document: every op, source and column with its type, the phon and env pattern syntax, and the reserved kinds. With values=classes it instead lists the natural-class and feature names of the project\u0027s Baseline, for writing phon and env patterns.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "string",
+          "description": "Set to classes to list the project\u0027s natural-class and feature names instead of the schema.",
+          "enum": [
+            "classes"
+          ]
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_guide_show",
     "description": "Read a Grammar Guide section. Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied; available in Advanced AI mode.\nCommand: guide show. Agent class: Read.\nId: The record\u0027s GDR-n abbreviation or its canonical id.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.\nAsOf: A Draft name or Proposal id whose edits of this section are shown as if applied; null shows the Baseline.",
     "inputSchema": {
@@ -11244,7 +11327,7 @@
   },
   {
     "name": "motif_proposal_compare",
-    "description": "Compare Proposals. Compares two to eight Proposals side by side from each one\u0027s Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project\u0027s approved analyses and measures nothing.\nCommand: proposal compare. Agent class: Read.\nProposalIds: Two to eight distinct Proposal IDs. Each uses its newest completed Trial.\nAt: The Baseline digest every Trial must have been measured on. Omit to use the one they share.\nPage: The one-based page of form rows to read. Omit for the compact summary.\nSnapshot: The snapshot token from an earlier summary. Page calls pass it so every page reads the same Trials.",
+    "description": "Compare Proposals. Compares two to eight Proposals side by side from each one\u0027s Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project\u0027s approved analyses and measures nothing.\nCommand: proposal compare. Agent class: Read.\nProposalIds: Two to eight distinct Proposal IDs. Each uses its newest completed Trial unless pins one.\nAt: The Baseline digest every Trial must have been measured on. Omit to use the one they share.\nPage: The one-based page of form rows to read. Omit for the compact summary.\nSnapshot: The snapshot token from an earlier summary. Page calls pass it so every page reads the same Trials.\nJobs: Trial job IDs that pin a Proposal\u0027s column to that exact completed Trial. At most one per Proposal, each naming one of the Proposals; the rest use their newest.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -11269,6 +11352,14 @@
         "snapshot": {
           "type": "string",
           "description": "Value for the request field."
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Value for the request field."
+          },
+          "description": "Declared items."
         },
         "project": {
           "type": "string",

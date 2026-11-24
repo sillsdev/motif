@@ -30,7 +30,7 @@ public sealed class WindowFreshnessRuleTests
         { 1, 1, 0 },
     };
 
-    [Theory]
+    [UiThreadTheory]
     [MemberData(nameof(Saves))]
     public async Task TheWindowAndTheStoredReadApplyOneRule(int baselineHours, int measuredHours, int fileHours)
     {

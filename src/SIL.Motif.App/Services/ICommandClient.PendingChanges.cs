@@ -27,6 +27,14 @@ public partial interface ICommandClient
     Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(
         DeferRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Reads entries and their senses from the Baseline by entry or sense id.</summary>
+    Task<CommandOutcome<LexicalEntryResponse>> ReadLexicalEntriesAsync(
+        LexicalEntryRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Returns a Deferred Proposal to Waiting.</summary>
+    Task<CommandOutcome<ProposalStatusChangedResponse>> UndeferProposalAsync(
+        UndeferRequest request, CancellationToken cancellationToken);
+
     Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
         MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken);
     Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(

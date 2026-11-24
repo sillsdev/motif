@@ -6,8 +6,8 @@ namespace SIL.Motif.RecordStore.HandAnalysis;
 
 internal static class HandAnalysisReferences
 {
-    public static ReferenceIndexSnapshot WithAnchors(ReferenceIndexSnapshot index,
-        IReadOnlyDictionary<Guid, GenericRecord> records, GenericRecord[] anchors, CancellationToken ct)
+    public static async Task<ReferenceIndexSnapshot> WithAnchorsAsync(ReferenceIndexSnapshot index, RecordSource records,
+        GenericRecord[] anchors, CancellationToken ct)
     {
         var schema = index.UsageSchema;
         var fields = anchors.Length == 0 ? [] : BundleFields(schema);
@@ -16,7 +16,8 @@ internal static class HandAnalysisReferences
         foreach (var anchor in anchors)
         {
             ct.ThrowIfCancellationRequested();
-            if (HandAnalysisKinds.AnchorTarget(anchor) is not { } target || !records.TryGetValue(target, out var native))
+            // The headers name every native record, so only a bundle's field values are read from the store.
+            if (HandAnalysisKinds.AnchorTarget(anchor) is not { } target || index.Record(target) is not { } native)
             {
                 coverage = false;
                 continue;
@@ -29,11 +30,16 @@ internal static class HandAnalysisReferences
                 if (schema.IsAnalysis(native.ClassId) || schema.IsWordform(native.ClassId) ||
                     schema.IsBundle(native.ClassId) || schema.Is(native.ClassId, "WfiGloss"))
                 {
+                    var bundles = new List<Guid>();
                     foreach (var id in index.OwnedClosure([root], ct))
                     {
                         ct.ThrowIfCancellationRequested();
-                        var record = records[id];
-                        if (!schema.IsBundle(record.ClassId)) continue;
+                        if (index.Record(id) is { } header && schema.IsBundle(header.ClassId)) bundles.Add(id);
+                    }
+                    var read = await records.GetManyAsync(bundles, ct);
+                    for (var i = 0; i < bundles.Count; i++)
+                    {
+                        var record = read[i] ?? throw new InvalidDataException($"RecordHeaders: bundle {bundles[i]} has no stored record.");
                         foreach (var field in fields)
                             if (record.Values.TryGetValue(field, out var value) && value.ValueKind == JsonValueKind.String &&
                                 value.TryGetGuid(out var referent)) targets.Add(referent);

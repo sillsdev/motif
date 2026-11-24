@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class PendingChangesWindowActivationTests(PristineProjectFixture pristine)
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ActivatingTheWindowWithPendingChangesWhileHeldDoesNotFault()
     {
         string fwDataPath;

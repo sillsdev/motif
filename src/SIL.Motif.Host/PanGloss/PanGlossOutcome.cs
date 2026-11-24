@@ -33,6 +33,12 @@ public abstract record PanGlossOutcome
 
         /// <summary>The failure kinds the parser declared it answers, kept with a why-not report.</summary>
         public IReadOnlyList<string>? WhyNotKinds { get; init; }
+
+        /// <summary>
+        /// The rejection reasons the parser's description lists for its diagnostic capture, kept with a rejection trace;
+        /// null when the description lists none.
+        /// </summary>
+        public IReadOnlyList<string>? DescribedRejectReasons { get; init; }
         internal GrammarFactsArtifact? FactsArtifact { get; init; }
 
         /// <summary>The validated facts database written by a <c>facts</c> request.</summary>

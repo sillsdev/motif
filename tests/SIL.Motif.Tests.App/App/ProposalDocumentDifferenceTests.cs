@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ProposalDocumentDifferenceTests
 {
-    [Theory]
+    [UiThreadTheory]
     [InlineData("saved", false, false)]
     [InlineData("words", false, false)]
     [InlineData("places", false, false)]
@@ -112,7 +112,7 @@ public sealed class ProposalDocumentDifferenceTests
         }
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("intent")]
     [InlineData("trial")]
     public async Task RefreshingAChangedEvidenceIdentityReplacesTheOldNavigation(string changed)
@@ -133,7 +133,7 @@ public sealed class ProposalDocumentDifferenceTests
         await harness.Context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReturningThroughThePageAndRefreshingStandingsRetainsEachDocumentsSavedDifferenceAndPages()
     {
         var harness = new Harness();
@@ -163,7 +163,7 @@ public sealed class ProposalDocumentDifferenceTests
         await harness.Context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnAbsentDifferenceMadeElsewhereAppearsOnRefresh()
     {
         var harness = new Harness { Absent = true };
@@ -179,7 +179,7 @@ public sealed class ProposalDocumentDifferenceTests
         await harness.Context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASavedListGainsANewerEntryOnRefreshWhileTheChosenOneAndItsPagesStay()
     {
         var harness = new Harness();
@@ -199,7 +199,7 @@ public sealed class ProposalDocumentDifferenceTests
         await harness.Context.StopProjectWorkAsync();
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("offer")]
     [InlineData("baseline")]
     public async Task ARefreshWithAChangedOfferOrBaselineReplacesTheOldNavigation(string changed)

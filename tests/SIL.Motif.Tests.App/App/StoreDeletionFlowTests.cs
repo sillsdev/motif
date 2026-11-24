@@ -21,7 +21,7 @@ public sealed class StoreDeletionFlowTests
     private const string Digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     private const string BundleDigest = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
-    [Fact]
+    [UiThreadFact]
     public async Task DeletingAsksFirstAndCancelDeletesNothing()
     {
         var (fake, workspace) = await OpenRefusedProject();
@@ -42,7 +42,7 @@ public sealed class StoreDeletionFlowTests
         Assert.Equal(refusal, workspace.Baseline.ShownRefusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfirmingDeletesThatProjectsStoreAndReopensIt()
     {
         var (fake, workspace) = await OpenRefusedProject();
@@ -68,7 +68,7 @@ public sealed class StoreDeletionFlowTests
         Assert.Equal(Project, workspace.Context.ProjectPath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReopeningAfterRefusedStoreDeletionDoesNotCaptureAutomatically()
     {
         var (fake, workspace) = await OpenRefusedProject();
@@ -88,7 +88,7 @@ public sealed class StoreDeletionFlowTests
         Assert.Empty(fake.CaptureBaselineRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AStoreThatCannotBeDeletedSaysSoAndDoesNotReopen()
     {
         var (fake, workspace) = await OpenRefusedProject();
@@ -105,7 +105,7 @@ public sealed class StoreDeletionFlowTests
         Assert.Equal(RefusalCodes.StoreOtherVersion, workspace.Baseline.ShownRefusal!.Code);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OnlyAStoreFromAnotherVersionOffersDeletion()
     {
         var (_, workspace) = await OpenRefusedProject();
@@ -119,7 +119,7 @@ public sealed class StoreDeletionFlowTests
         Assert.False(workspace.DeleteRefusedStoreCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAnotherProjectDropsTheQuestion()
     {
         var (fake, workspace) = await OpenRefusedProject();

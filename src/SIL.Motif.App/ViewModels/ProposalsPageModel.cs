@@ -538,6 +538,7 @@ public sealed partial class ProposalsPageModel : PageModel
     private bool _retainedClosedCard;
     private string? _retainedRowId;
     private ProposalListFilter? _pausedGroupFilter;
+    // Read and changed on the UI thread only; a test that drives the page off one thread breaks that and must not.
     private readonly HashSet<RationaleEditorModel> _pausedEditors = [];
     private ProposalStandings _standings = new([], 0);
 

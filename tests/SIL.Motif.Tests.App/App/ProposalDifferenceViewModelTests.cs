@@ -22,7 +22,7 @@ public sealed class ProposalDifferenceViewModelTests
     private static DifferenceChipViewModel Chip(IEnumerable<DifferenceChipViewModel> chips, string label) =>
         Assert.Single(chips, chip => chip.Label == label);
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADifferenceThatWasNeverSavedLeavesTheSectionOpenToOfferMakingOne()
     {
         var model = new ProposalDifferenceViewModel(
@@ -37,7 +37,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Null(model.ShownRefusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnotherRefusalIsShownInTheWindowsWords()
     {
         var model = new ProposalDifferenceViewModel(
@@ -52,7 +52,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.True(model.IsVisible);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheSummaryIsReadFirstWithNoFilterAndShownAsCountsAndChips()
     {
         var (model, fixture, _) = Make();
@@ -84,7 +84,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.All(model.CheckChips.Concat(model.MovedChips), chip => Assert.True(chip.CanChoose));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NoLabelShowsAWireCodeOrARetiredWord()
     {
         var (model, _, _) = Make();
@@ -105,7 +105,7 @@ public sealed class ProposalDifferenceViewModelTests
             Enum.GetValues<ProposalDifferenceBucket>().Select(ProposalDifferenceWords.Bucket).Distinct().Count());
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingACategoryFiltersTheWordsAndChoosingItAgainLiftsTheFilter()
     {
         var (model, fixture, _) = Make();
@@ -134,7 +134,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Equal(30, model.MatchingWords);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AWordsToCheckChipAMovedChipAndALimitChipEachReachTheQuery()
     {
         var (model, fixture, _) = Make();
@@ -165,7 +165,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.All(model.LimitationChips, chip => Assert.True(chip.IsActive));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ShowMoreWordsReadsTheNextPageAndAppendsIt()
     {
         var (model, fixture, _) = Make();
@@ -181,7 +181,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Equal("Showing 30 of 30.", model.WordsStatusText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAWordListsItsPlacesAPageAtATimeAndCanOpenIt()
     {
         var (model, fixture, opened) = Make(new ProposalDifferenceFixture { PlacesPerWord = 30 });
@@ -218,7 +218,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Empty(model.Places);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheListsStopAtTheMostShownAndAskForANarrowerFilter()
     {
         var (model, fixture, _) = Make(new ProposalDifferenceFixture(wordCount: 150) { PlacesPerWord = 150 });
@@ -243,7 +243,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Equal(75, fixture.Requests[^1].OccurrenceOffset);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADecidedProposalShowsOnlyItsSummaryAndTheChipsOnlyCount()
     {
         var (model, fixture, _) = Make(new ProposalDifferenceFixture(wordDetailKept: false));
@@ -263,7 +263,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.False(model.CanShowMoreWords);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASlowEarlierReadNeverOverwritesALaterOne()
     {
         var fixture = new ProposalDifferenceFixture();
@@ -285,7 +285,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Equal(25, model.Words.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ClearForgetsTheDifference()
     {
         var (model, _, _) = Make();
@@ -298,7 +298,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Empty(model.Words);
         Assert.Empty(model.CheckChips);
     }
-    [Fact]
+    [UiThreadFact]
     public async Task NotesAreTheWindowsOwnWordsWithoutSidesHashesOrTokeniserNames()
     {
         var (model, _, _) = Make();
@@ -336,7 +336,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Empty(ProposalDifferenceWords.Notes([]));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APersonsDecisionsGetTheOrdinaryAdviceAndNoReferenceNote()
     {
         var (model, _, _) = Make();
@@ -348,7 +348,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.False(model.HasUnreadableEvidence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASourceValidatedDifferenceSaysSoAtTheTopAndItsAdviceDoesNotClaimAPersonApprovedAnything()
     {
         var warnings = new[] { ProposalDifferenceWarnings.SourceValidated + ": a named non-human agent staged them." };
@@ -368,7 +368,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.DoesNotContain("person", model.AdviceText, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnreadableAppliedProposalIsNamedAboveTheWordsAndTheWordsStillShow()
     {
         var (model, _, _) = Make(new ProposalDifferenceFixture
@@ -396,7 +396,7 @@ public sealed class ProposalDifferenceViewModelTests
             Unreadable = [new("proposal/9", "Stage sita", "The stored revision could not be read.")],
         };
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADecidedProposalWithNoWordsStillSaysDecisionsWereLeftOut()
     {
         var (model, _, _) = Make(SavedUnreadable(wordDetailKept: false));
@@ -410,7 +410,7 @@ public sealed class ProposalDifferenceViewModelTests
         WindowWordsTests.AssertWindowWords([model.UnreadableEvidenceText]);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFilterThatMatchesNothingStillSaysDecisionsWereLeftOut()
     {
         var (model, fixture, _) = Make(SavedUnreadable());
@@ -426,7 +426,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Equal(MotifAppStrings.ProposalDifferenceEvidenceUnreadableSaved, model.UnreadableEvidenceText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADifferenceThatLeftNothingOutSaysNothingWhenItHasNoWords()
     {
         var (model, _, _) = Make(new ProposalDifferenceFixture(wordDetailKept: false)
@@ -437,7 +437,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.False(model.HasUnreadableEvidence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AChosenWordSaysWhyItsDecisionsWereStagedInTheWindowsWords()
     {
         var evidence = new ProposalDifferenceWordEvidence[]
@@ -498,7 +498,7 @@ public sealed class ProposalDifferenceViewModelTests
         WindowWordsTests.AssertWindowWords(labels);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("filter")]
     [InlineData("more")]
     [InlineData("word")]
@@ -529,7 +529,7 @@ public sealed class ProposalDifferenceViewModelTests
             chip => Assert.False(chip.CanChoose));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFilterThenShowMoreNeverAppendsAPageOfAnotherFilter()
     {
         var gate = new TaskCompletionSource();
@@ -553,7 +553,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.All(model.Words, word => Assert.True(int.Parse(word.Label[4..]) < 10));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ShowMoreThatIsStillReadingWhenAFilterIsChosenNeverAppendsItsPage()
     {
         var gate = new TaskCompletionSource();
@@ -572,7 +572,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Equal(10, model.MatchingWords);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASupersededReadIsCancelledQuietlyAndIsNotShownAsAFailure()
     {
         var fixture = new ProposalDifferenceFixture();
@@ -597,7 +597,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Equal(5, model.Words.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ClearingTheDifferenceCancelsReadsStillRunning()
     {
         var fixture = new ProposalDifferenceFixture();
@@ -618,7 +618,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Null(model.ShownRefusal);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("filter")]
     [InlineData("more")]
     [InlineData("word")]
@@ -650,7 +650,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.False(model.IsReadingMore);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFirstReadThatThrowsLeavesTheSectionRefusedNotLoading()
     {
         var model = new ProposalDifferenceViewModel(
@@ -662,7 +662,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.NotNull(model.ShownRefusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheSectionSaysItIsReadingWhileAFilterReadRuns()
     {
         var gate = new TaskCompletionSource();

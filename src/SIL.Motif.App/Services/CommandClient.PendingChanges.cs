@@ -1,5 +1,6 @@
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Commands;
@@ -34,6 +35,14 @@ public sealed partial class CommandClient
     public Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(
         DeferRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => ProposalCommands.Defer(request), cancellationToken);
+
+    public Task<CommandOutcome<LexicalEntryResponse>> ReadLexicalEntriesAsync(
+        LexicalEntryRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => LexicalEntryQuery.Query(request), cancellationToken);
+
+    public Task<CommandOutcome<ProposalStatusChangedResponse>> UndeferProposalAsync(
+        UndeferRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalCommands.Undefer(request), cancellationToken);
 
     public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken) =>

@@ -39,8 +39,11 @@ public sealed record RecordLoweringRefusal(string Code, string Class, string Fie
 /// <param name="Operations">The operations, each with an id derived from the plan, so lowering one plan twice gives one intent digest.</param>
 /// <param name="Refusals">The plan's changes that have no operation, each named by (class, field).</param>
 /// <param name="PlanRefusals">The importer's own refusals, passed through untouched.</param>
+/// <param name="OperationChanges">For each operation, the index in the plan's changes of the change it came from; null when not tracked.</param>
+/// <param name="RefusedChanges">The refusal code of each plan change, by its index, that has no operation; null when not tracked.</param>
 public sealed record RecordLowering(IReadOnlyList<OperationEnvelope> Operations,
-    IReadOnlyList<RecordLoweringRefusal> Refusals, IReadOnlyList<RecordRefusal> PlanRefusals);
+    IReadOnlyList<RecordLoweringRefusal> Refusals, IReadOnlyList<RecordRefusal> PlanRefusals,
+    IReadOnlyList<int>? OperationChanges = null, IReadOnlyDictionary<int, string>? RefusedChanges = null);
 
 /// <summary>
 /// Lowers a planned record-file import to operations through the kinds the Runner catalog declares for each field
@@ -48,7 +51,7 @@ public sealed record RecordLowering(IReadOnlyList<OperationEnvelope> Operations,
 /// project value is no longer the one the file started from, is refused by code, never dropped and never approximated.
 /// A whole-file refusal in the plan lowers nothing.
 /// </summary>
-public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, RecordWritableFields catalog)
+public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, RecordWritableFields catalog)
 {
     private const string RichKind = TextRichStringOperationKinds.Set;
 
@@ -66,7 +69,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         }
         var seed = plan.Export?.Base ?? plan.RecordGuid?.ToString("D") ?? "";
         var lowered = LowerChanges(cache, seed, set.Changes);
-        return new(lowered.Operations, lowered.Refusals, set.Refusals);
+        return new(lowered.Operations, lowered.Refusals, set.Refusals, lowered.OperationChanges, lowered.RefusedChanges);
     }
 
     /// <summary>Lowers individual changes; <paramref name="seed"/> makes the operation ids, so one seed and one list give one intent digest.</summary>
@@ -74,10 +77,10 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(changes);
-        var run = new Run(schema, catalog, cache, seed, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown);
+        var run = new Run(schema, catalog, cache, seed, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown) { Changes = changes };
         for (var index = 0; index < changes.Count; index++)
             run.Lower(index, changes[index]);
-        return new(run.Operations, run.Refusals, []);
+        return new(run.Operations, run.Refusals, [], run.OperationChanges, run.RefusedCodes);
     }
 
     private sealed class Stop(RecordLoweringRefusal refusal) : Exception(refusal.Reason)
@@ -85,7 +88,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         internal RecordLoweringRefusal Refusal { get; } = refusal;
     }
 
-    private sealed class Run(ProjectRecordSchemaResult schema, RecordWritableFields catalog, LcmCache cache,
+    private sealed partial class Run(ProjectRecordSchemaResult schema, RecordWritableFields catalog, LcmCache cache,
         string seed, MarkdownOptions markdown)
     {
         private readonly string _seed = seed;
@@ -95,11 +98,14 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         private List<OperationEnvelope> _pending = [];
 
         internal List<OperationEnvelope> Operations { get; } = [];
+        internal List<int> OperationChanges { get; } = [];
+        internal Dictionary<int, string> RefusedCodes { get; } = [];
         internal List<RecordLoweringRefusal> Refusals { get; } = [];
 
         internal void Lower(int index, RecordChange change)
         {
             _pending = [];
+            _siblingRefusals.Clear();
             // A declined change leaves no trace in the caches, so nothing anchors on an object that never existed.
             var added = new Dictionary<int, CanonicalId>(_added);
             var lists = _lists.ToDictionary(pair => pair.Key, pair => pair.Value.ToList());
@@ -107,6 +113,7 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             {
                 LowerChange(index, change);
                 Operations.AddRange(_pending);
+                OperationChanges.AddRange(_pending.Select(operation => _attributed.TryGetValue(operation.OperationId, out var owner) ? owner : index));
             }
             catch (Stop stop)
             {
@@ -117,7 +124,14 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 foreach (var pair in lists)
                     _lists[pair.Key] = pair.Value;
                 _refused.Add(index);
+                RefusedCodes[index] = stop.Refusal.Code;
                 Refusals.Add(stop.Refusal);
+                foreach (var (sibling, refusal) in _siblingRefusals)
+                {
+                    _refused.Add(sibling);
+                    RefusedCodes[sibling] = refusal.Code;
+                    Refusals.Add(refusal);
+                }
             }
         }
 
@@ -203,6 +217,16 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
         private void LowerScalar(RecordChange change, string type, string key, CanonicalId target, string role)
         {
             var field = schema.Schema.ObjectType(type)?.Field(key);
+            if (field is not null && RecordWritableFields.IsFeatureStructure(field))
+            {
+                LowerFeatureStructure(change, type, key, target, role);
+                return;
+            }
+            if (field is not null && RecordWritableFields.IsRuleFormula(field))
+            {
+                LowerAffixFormula(change, type, key);
+                return;
+            }
             var set = change.Kind == RecordChangeKind.Set;
             var kind = KindFor(change, type, key, set ? RecordWriteVerb.Set : RecordWriteVerb.Clear);
             object? after = new { };
@@ -220,6 +244,82 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
                     $"A {field?.Kind.ToString() ?? "missing"} value has no payload shape for {kind}.");
             _pending.Add(Operation(Id(role + ":" + kind), kind, target, Named(type, key, after)));
+        }
+
+        private void LowerFeatureStructure(RecordChange change, string type, string key, CanonicalId target, string role)
+        {
+            var binding = schema.FieldBinding(type, key)!.Value;
+            var set = change.Kind == RecordChangeKind.Set;
+            var kind = KindFor(change, type, key, set ? RecordWriteVerb.Set : RecordWriteVerb.Clear,
+                RecordWritableFields.FeatureStructureClass);
+            var owner = cache.ServiceLocator.GetObject(change.ObjectGuid!.Value);
+            var flid = cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true);
+            var heldHvo = cache.DomainDataByFlid.get_ObjectProp(owner.Hvo, flid);
+            var held = heldHvo == 0 ? null : (IFsFeatStruc)cache.ServiceLocator.GetObject(heldHvo);
+            string? current;
+            try
+            {
+                current = held is null ? null : FeatureStructureNotation.Render(held, cache);
+            }
+            catch (FeatureStructureNotationException exception)
+            {
+                throw Refuse(exception.Code, change, exception.Message);
+            }
+            if (!string.Equals(current, change.Old, StringComparison.Ordinal))
+                throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
+            if (!set)
+            {
+                if (held is null)
+                    throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project holds no feature structure to clear.");
+                if (kind != MoStemMsaMsFeaturesOperationKinds.DeleteMsFeatures)
+                    throw Refuse(RefusalCodes.RecordImportFieldUncovered, change,
+                        "No operation deletes this feature structure; write [] to leave it with no features.");
+                _pending.Add(Operation(Id(role + ":" + kind), kind, target, new { }));
+                return;
+            }
+            IReadOnlyList<FeatureStructureSelection> wanted;
+            try
+            {
+                var system = cache.LangProject.MsFeatureSystemOA ?? throw Refuse(RefusalCodes.RecordImportNotExecutable, change,
+                    "The project has no morphosyntactic feature system.");
+                wanted = FeatureStructureNotation.Parse(change.New ?? "", system, cache);
+            }
+            catch (FeatureStructureNotationException exception)
+            {
+                throw Refuse(exception.Code, change, exception.Message);
+            }
+            CanonicalId structure;
+            if (held is null)
+            {
+                structure = Id(role + ":structure");
+                _pending.Add(Operation(Id(role + ":" + kind), kind, target, new { }, entity: structure));
+            }
+            else
+                structure = CanonicalId.FromGuid(held.Guid);
+            var existing = held?.FeatureSpecsOC.OfType<IFsClosedValue>().Where(spec => spec.FeatureRA is not null)
+                .ToDictionary(spec => spec.FeatureRA.Guid) ?? [];
+            var keep = wanted.Select(selection => selection.Feature.Guid).ToHashSet();
+            foreach (var spec in existing.Values.Where(spec => !keep.Contains(spec.FeatureRA.Guid)).OrderBy(spec => spec.Guid))
+                _pending.Add(Operation(Id(role + ":delete:" + spec.Guid.ToString("N")), FsFeatStrucFeatureSpecsOperationKinds.DeleteFeatureSpecs,
+                    CanonicalId.FromGuid(spec.Guid), new { }));
+            foreach (var selection in wanted)
+            {
+                var feature = selection.Feature.Guid.ToString("N");
+                if (existing.TryGetValue(selection.Feature.Guid, out var spec))
+                {
+                    if (spec.ValueRA?.Guid != selection.Value.Guid)
+                        _pending.Add(Operation(Id(role + ":value:" + feature), FsClosedValueValueOperationKinds.SetValue,
+                            CanonicalId.FromGuid(spec.Guid), new { @ref = CanonicalId.FromGuid(selection.Value.Guid).Value }));
+                    continue;
+                }
+                var created = Id(role + ":spec:" + feature);
+                _pending.Add(Operation(Id(role + ":create:" + feature), FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs,
+                    structure, new { }, entity: created));
+                _pending.Add(Operation(Id(role + ":feature:" + feature), FsFeatureSpecificationFeatureOperationKinds.SetFeature,
+                    created, new { @ref = CanonicalId.FromGuid(selection.Feature.Guid).Value }));
+                _pending.Add(Operation(Id(role + ":value:" + feature), FsClosedValueValueOperationKinds.SetValue,
+                    created, new { @ref = CanonicalId.FromGuid(selection.Value.Guid).Value }));
+            }
         }
 
         private void LowerAlternative(RecordChange change, string type, string key, CanonicalId target, string role, bool set)
@@ -243,6 +343,11 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             var field = schema.Schema.ObjectType(type)?.Field(key);
             if (field is null)
                 throw Refuse(RefusalCodes.RecordImportFieldUncovered, change, $"The schema has no field '{key}' on {type}.");
+            if (field.Paragraphs)
+            {
+                LowerParagraphs(change, type, key, binding, target, role, owner, text);
+                return;
+            }
             var tsOld = fresh ? null : Current(change, target, binding, ws);
             if (!fresh && old is not null && tsOld is { } held && !SameText(held.Text, PlainText(change, old, ws)))
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
@@ -265,9 +370,6 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 var payload = new TextRichStringPayload(name, multi ? ws : null, runs, expected);
                 _pending.Add(Operation(Id(role + ":" + kind), kind, target, payload.ToJson()));
             }
-            else if (kind is "text/setParagraphs")
-                throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
-                    "A field of paragraphs is replaced by paragraph keys and digests, which this lowering does not author.");
             else
             {
                 var tag = ws ?? (runs.Count > 0 ? runs[0].Ws : DefaultWs(field));
@@ -310,16 +412,33 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
             if (list is not null && verb != RecordWriteVerb.AddReference && !list.Contains(member.Value))
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project no longer holds the member the file moves.");
             var placement = list is null ? null : Place(change, list, change.Anchor, verb == RecordWriteVerb.AddReference ? null : member);
+            var memberClass = change.Subtree?.Class ?? ChildOf(type, key) ?? ClassOf(member.Value);
+            var appended = verb == RecordWriteVerb.AddReference && AppendsToTheEnd(type, key, memberClass, placement);
+            if (appended)
+                placement = null;
             var effective = verb == RecordWriteVerb.AddReference && placement is not null ? RecordWriteVerb.InsertReference : verb;
-            var kind = KindFor(change, type, key, effective, child: change.Subtree?.Class ?? ChildOf(type, key) ?? ClassOf(member.Value), placement);
+            var kind = KindFor(change, type, key, effective, child: memberClass, placement);
             _pending.Add(Operation(Id(role + ":" + kind), kind, target,
                 Named(type, key, new { member = CanonicalId.FromGuid(member.Value).Value }), placement));
             if (list is not null)
             {
                 list.Remove(member.Value);
-                var at = placement?.After is { } after ? list.IndexOf(after.ToGuid()) + 1 : 0;
+                var at = appended ? list.Count : placement?.After is { } after ? list.IndexOf(after.ToGuid()) + 1 : 0;
                 list.Insert(Math.Max(0, at), member.Value);
             }
+        }
+
+        /// <summary>Appends after the last member (FieldWorks VectorReferenceLauncher.cs:287, ADR 0003).</summary>
+        private bool AppendsToTheEnd(string type, string key, string? member, Placement? placement)
+        {
+            if (placement is not { After: not null, Before: null } ||
+                catalog.Resolve(type, key, RecordWriteVerb.InsertReference, member, placement) is WritableFieldResolution.Covered ||
+                catalog.Resolve(type, key, RecordWriteVerb.AddReference, member) is not WritableFieldResolution.Covered covered ||
+                schema.FieldBinding(type, key) is not { } binding)
+                return false;
+            return OperationHandlerRegistry.FieldWrites(covered.Kind).Any(write => write.Verb == RecordWriteVerb.AddReference &&
+                write.DeclaringClass == binding.DeclaringClass && write.Field == binding.Field &&
+                write.Placement == FieldWritePlacement.Forbidden);
         }
 
         private void LowerCreate(int index, RecordChange change, string type, string key,
@@ -510,6 +629,92 @@ public sealed class RecordChangeSetLowerer(ProjectRecordSchemaResult schema, Rec
                 ws > 0 ? cache.WritingSystemFactory.GetStrFromWs(ws) : "", ints, strings, objData);
         }));
 
+        // The file has no paragraph keys, so paragraphs pair with the stored ones by position.
+        private void LowerParagraphs(RecordChange change, string type, string key,
+            (string DeclaringClass, string Field, bool IsCustom) binding, CanonicalId target, string role, Guid owner, string? text)
+        {
+            var verb = text is null ? RecordWriteVerb.ClearRich : RecordWriteVerb.SetRich;
+            var kind = KindFor(change, type, key, verb);
+            var flid = cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true);
+            var data = cache.DomainDataByFlid;
+            var hvo = data.get_ObjectProp(cache.ServiceLocator.GetObject(owner).Hvo, flid);
+            var held = hvo == 0 ? [] : cache.ServiceLocator.GetObject(hvo) is IStText stText
+                ? stText.ParagraphsOS.OfType<IStTxtPara>().ToArray() : [];
+            var field = schema.Schema.ObjectType(type)!.Field(key)!;
+            var oldParagraphs = change.Old is null ? [] : ParseParagraphs(change, change.Old, DefaultWs(field));
+            if (oldParagraphs.Count != held.Length || oldParagraphs.Zip(held).Any(pair =>
+                    !SameText(held: pair.Second.Contents?.Text ?? "", file: pair.First.Text)))
+                throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
+            var order = new List<string?>();
+            var changed = new List<TextParagraphChange>();
+            var removed = new List<string>();
+            var wanted = new HashSet<string>(StringComparer.Ordinal);
+            string KeyOf(int index) => CanonicalId.FromGuid(held[index].Guid).Value;
+            if (text is null)
+            {
+                if (held.Length > 0)
+                {
+                    order.Add(KeyOf(0));
+                    changed.Add(new TextParagraphChange(0, KeyOf(0), held[0].StyleName is { Length: > 0 } style ? style : null, [], null));
+                    wanted.Add(KeyOf(0));
+                }
+                for (var i = 1; i < held.Length; i++) { removed.Add(KeyOf(i)); wanted.Add(KeyOf(i)); }
+            }
+            else
+            {
+                var read = ParseParagraphs(change, text, DefaultWs(field));
+                var pairs = GdrMarkdownImport.Match(oldParagraphs.Count, read.Count,
+                    (o, n) => MarkdownConverter.AreEquivalent(oldParagraphs[o], read[n]));
+                var keyFor = new string?[read.Count];
+                var unchanged = new bool[read.Count];
+                foreach (var (o, n) in pairs) { keyFor[n] = KeyOf(o); unchanged[n] = true; }
+                int previousOld = -1, previousNew = -1;
+                foreach (var (o, n) in pairs.Append((oldParagraphs.Count, read.Count)))
+                {
+                    var oldGap = Enumerable.Range(previousOld + 1, o - previousOld - 1).ToArray();
+                    var newGap = Enumerable.Range(previousNew + 1, n - previousNew - 1).ToArray();
+                    for (var i = 0; i < Math.Max(oldGap.Length, newGap.Length); i++)
+                    {
+                        if (i < oldGap.Length && i < newGap.Length) keyFor[newGap[i]] = KeyOf(oldGap[i]);
+                        else if (i < oldGap.Length) removed.Add(KeyOf(oldGap[i]));
+                    }
+                    previousOld = o;
+                    previousNew = n;
+                }
+                order.AddRange(keyFor);
+                for (var n = 0; n < read.Count; n++)
+                    if (!unchanged[n])
+                        changed.Add(new TextParagraphChange(n, keyFor[n], read[n].Style.Length > 0 ? read[n].Style : null,
+                            GdrMarkdownImport.Runs(read[n]), GdrMarkdownImport.ParagraphProps(read[n])));
+                if (changed.Count == 0 && removed.Count == 0)
+                    return;
+                foreach (var name in changed.Select(item => item.Key).Concat(removed).OfType<string>()) wanted.Add(name);
+            }
+            var expected = new Dictionary<string, TextParagraphExpected>(StringComparer.Ordinal);
+            for (var i = 0; i < held.Length; i++)
+                if (wanted.Contains(KeyOf(i)))
+                    expected[KeyOf(i)] = new TextParagraphExpected(held[i].Contents?.Text ?? "", held[i].StyleName ?? "",
+                        held[i].Contents is { Length: > 0 } contents ? Digest(contents) : TextRunsDigest.Of([]));
+            var payload = new TextParagraphsPayload(binding.DeclaringClass + "." + binding.Field, order, changed, removed, expected);
+            _pending.Add(Operation(Id(role + ":" + kind), kind, target, payload.ToJson()));
+        }
+
+        private List<Paragraph> ParseParagraphs(RecordChange change, string text, string defaultWs)
+        {
+            var options = new MarkdownOptions
+            {
+                WritingSystems = new Defaults(markdown.WritingSystems, defaultWs),
+                StyleNames = markdown.StyleNames, Styles = markdown.Styles, NormalizeText = markdown.NormalizeText,
+                Objects = markdown.Objects, Paths = markdown.Paths, WriteFrontMatter = false, LinkForm = markdown.LinkForm,
+                LinkBase = markdown.LinkBase, ProjectName = markdown.ProjectName, SilfwDatabase = markdown.SilfwDatabase,
+                UnknownGuids = markdown.UnknownGuids,
+            };
+            var result = MarkdownConverter.Parse(text, options);
+            if (result.HasErrors)
+                throw Refuse(RefusalCodes.RecordImportNotExecutable, change, "The value does not read as FieldWorks Markdown.");
+            return result.Document.Paragraphs.ToList();
+        }
+
         private static bool SameText(string held, string file) =>
             held.Normalize(NormalizationForm.FormC) == file.Normalize(NormalizationForm.FormC);
 
@@ -558,6 +763,7 @@ public static class RecordLoweringRules
     /// <summary>Whether the lowerer authors <paramref name="write"/> as declared by <paramref name="kind"/>.</summary>
     public static bool Lowers(string kind, FieldWriteCapability write) => write.Verb switch
     {
+        RecordWriteVerb.SetRich or RecordWriteVerb.ClearRich when kind == TextParagraphsOperationKinds.Set => true,
         RecordWriteVerb.Set or RecordWriteVerb.Clear or RecordWriteVerb.SetRich or RecordWriteVerb.ClearRich =>
             write.Payload == FieldWritePayload.Generic,
         RecordWriteVerb.SetAlternative or RecordWriteVerb.ClearAlternative or RecordWriteVerb.SetPlainRich or
@@ -566,5 +772,34 @@ public static class RecordLoweringRules
         RecordWriteVerb.AddObject => write.CreatePayload != OwningCreatePayload.Unspecified,
         RecordWriteVerb.RemoveObject => write.Payload == FieldWritePayload.Composer,
         _ => false,
+    };
+
+    /// <summary>
+    /// The reasons a declaration is covered by a kind and still not offered, keyed by the code <see cref="NotLowered"/> returns.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> NotLoweredReasons { get; } = new Dictionary<string, string>
+    {
+        ["bespoke-payload"] = "the kind's payload carries more than the verb and field (digests, paragraph keys, a census), so only its own composer authors it",
+        ["create-composer"] = "the create kind takes its own payload (morph type, reference, forms), which only its composer authors",
+        ["delete-composer"] = "the delete takes a payload only its own kind builds (a child id or none, by kind), and only the sense delete is authored",
+    };
+
+    /// <summary>The <see cref="NotLoweredReasons"/> code for a declaration the lowerer does not author, or null when it does or no code explains it.</summary>
+    public static string? NotLowered(string kind, FieldWriteCapability write) => Lowers(kind, write) ? null : write.Verb switch
+    {
+        RecordWriteVerb.AddObject => "create-composer",
+        RecordWriteVerb.RemoveObject => "delete-composer",
+        _ when write.Payload == FieldWritePayload.Bespoke => "bespoke-payload",
+        _ => null,
+    };
+
+    /// <summary>
+    /// Why a reference-set field of Lexicon Edit has an uncovered row: an insert at a position, or a reorder, has no kind,
+    /// and a field whose add and remove have no kind is not built.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> ExclusionReasons { get; } = new Dictionary<string, string>
+    {
+        ["append-only-kind"] = "the add kind appends to the end of the sequence and takes no placement, so an insert elsewhere is refused",
+        ["no-kind-built"] = "no operation kind writes this edit of the field",
     };
 }

@@ -8,7 +8,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ProposalDocumentApplyTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyingThePendingDraftKeepsItsPublishedReceiptAfterItsCardCloses()
     {
         var fake = new FakeCommandClient();
@@ -44,7 +44,7 @@ public sealed class ProposalDocumentApplyTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CheckingThePendingDraftLeavesAnotherCandidatesLensBeforeMeasuring()
     {
         var fake = new FakeCommandClient();
@@ -74,7 +74,7 @@ public sealed class ProposalDocumentApplyTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyRequiresHumanConfirmationTargetsOneCandidateAndInvalidatesTheOthers()
     {
         var fake = new FakeCommandClient();
