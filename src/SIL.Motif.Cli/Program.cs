@@ -134,6 +134,7 @@ var usageArguments = args.Length > 0
     ? ParseArgs(args[1..])
     : (new Dictionary<string, string>(StringComparer.Ordinal), new List<string>(),
         (IReadOnlyList<string>)Array.Empty<string>());
+usageArguments.Item2 = CliCommandNames.NormalizeQueryWords(usageVerb, usageArguments.Item1, usageArguments.Item2);
 var resolvedUsageCommand = args.Length > 0
     ? CliCommandNames.Resolve(usageVerb, usageArguments.Item1, usageArguments.Item2)
     : usageVerb;
@@ -174,7 +175,8 @@ string? namedProject = null;
 
 try
 {
-    var (flags, positionals, forwardedArguments) = ParseArgs(rest);
+    var (flags, parsedPositionals, forwardedArguments) = ParseArgs(rest);
+    var positionals = CliCommandNames.NormalizeQueryWords(verb, flags, parsedPositionals);
     var waitForTerminal = flags.ContainsKey("wait-terminal");
     if (waitForTerminal && !(verb is "dry-run" or "trial" && flags.ContainsKey("wait")) &&
         !(verb == "jobs" && positionals.FirstOrDefault() == "wait"))
