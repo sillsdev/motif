@@ -12,6 +12,7 @@
     <InternalsVisibleTo Include="SIL.Motif.Tests.App" />
     <InternalsVisibleTo Include="SIL.Motif.Tests.Cli" />
     <InternalsVisibleTo Include="SIL.Motif.Tests.LibLcm" />
+    <InternalsVisibleTo Include="SIL.Motif.Tests.Mcp" />
     <InternalsVisibleTo Include="motif" />
     <ProjectReference Include="..\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
     <ProjectReference Include="..\SIL.Motif.Host\SIL.Motif.Host.csproj" />
