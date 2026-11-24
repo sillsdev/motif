@@ -11,10 +11,10 @@ is a separate format and is not requested or accepted by Motif's direct readers.
 validates retained cache schema, counters and Selection coverage; incompatible caches cause a fresh
 Assessment. Earlier retained Assessment evidence is not rewritten. Direct reads of incompatible caches
 request a new Assessment. PanGloss also regenerates old 11/12 caches when opening them for writing.
-See the [pinned statistics cache contract](https://github.com/sillsdev/PanGloss/blob/v0.31.0/docs/formats/stats-cache.md).
+See the [pinned statistics cache contract](https://github.com/sillsdev/PanGloss/blob/v0.32.0/docs/formats/stats-cache.md).
 
 Motif uses the default HC engine. PanGloss adds a completion field to batch TSV and analysis JSONL
-only when a caller supplies [the engine flag](https://github.com/sillsdev/PanGloss/blob/v0.31.0/docs/formats/batch-tsv.md#engine-selection).
+only when a caller supplies [the engine flag](https://github.com/sillsdev/PanGloss/blob/v0.32.0/docs/formats/batch-tsv.md#engine-selection).
 
 Each word in the Assessment Selection has one record from the batch pass:
 
