@@ -162,7 +162,38 @@ A damaged chunk refuses with the table named while every other chunk stays reada
 rows against the binding's headers digest. This is a check of the consumed chunk, not of the store: a keyed read is never
 described as verified, and unread chunks stay unchecked until `VerifyAsync`, which also checks that the chunks sum to the state digest and
 equal the decoded records, that the headers equal the decoded records, that the binding equals the state row and the whole
-identity table. A checked chunk is kept for the life of one published point, and a keyed read returns copies of its records. A keyed read does not consult the certificate and does not check that the chunk rows sum to the state digest; the certified keyed path compares them in a later slice.
+identity table. A checked chunk is kept for the life of one published point, and a keyed read returns copies of its records. Before any keyed read is trusted, once per published point, the binding must equal the state row, the certificate must equal the state row, and the chunk rows must sum to the state row's snapshot digest and count; a mismatch refuses every keyed read with the table named, or the handle takes the full path.
+
+### The certified point
+
+A handle on a format 7 store whose state row, certificate and binding agree acquires a certified point without decoding the
+store. It reads the header rows (checked against the binding's headers digest and the chunk count), the incoming-reference
+rows into flat arrays, and by id the manifest, native-coverage, anchor and writing-system records. The index digest is
+recomputed over the headers and edges and must equal the state row's; a mismatch takes the full path and is never served as
+an empty answer. Grouped indexes are built lazily, once, thread-safely. A record is fetched by id from its chunk, whose items
+must sum to the stored chunk digest, with its content rows checked against `RecordContentIdentity`. `ReferencesAsync`,
+`PrepareDeletionAsync` and the first `SetFieldAsync` share this point; its planning index (anchors included) is built inside
+the read transaction that acquired it. A pin from it is stamped `Certified`; `--verify full`, a crash flag, a mismatched
+certificate or binding, a chunk-sum mismatch or a provenance limitation take the full path, the stamp says `Full` and a
+handle that saw a mismatch no longer reports `Certified`.
+
+What this does not check: unread chunks (a damaged or deleted snapshot in a chunk nothing consumed does not stop a reference
+query; `ReadRecordAsync` of that chunk and `ReadAsync` refuse, and `VerifyAsync` names `Snapshots`), and the incoming-reference
+rows beyond their digest. A lazy point read after another handle publishes refuses with the revision-unavailable refusal; the
+next query takes a fresh point.
+
+The usage schema of a certified point comes from the manifest, the coverage record and the headers. Its per-record provenance
+proof is a publication invariant: import, list operations and bootstrap refuse a native record whose provenance is missing,
+carries another traversal version or disagrees with its class (the refusal names the record); a republication of a store that
+already fails it (rebuild, regenerate) records "Native provenance disagrees with captured repository membership: record
+<id>." as an index limitation and serves no certified point. An older store (format 5 or 6) is checked across every decoded record when it upgrades: `VerifyAsync` leaves one that fails
+the proof un-upgraded, and the first write upgrades it but records the limitation, so both stay on the full path.
+A scalar write cannot change provenance or class.
+
+The remaining gap: a format 7 store written by the build that introduced format 7 (before this check) carries no limitation even
+if its records fail the proof, so it is served as certified until a rebuild or regenerate records the limitation; a list
+operation on it refuses and names the record. The FieldWorks adapter is the only writer and always passes the proof, so no
+such store is known to exist.
 
 A format 6 store opens read-only without being changed; a keyed read on it throws `DerivedTablesUnavailableException`
 ("tables: absent") and `HasDerivedTables` is false. A format 6 binary refuses format 7 with the usual refusal. Only a read-write
