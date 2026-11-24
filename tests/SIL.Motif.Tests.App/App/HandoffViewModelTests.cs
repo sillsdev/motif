@@ -55,7 +55,7 @@ public sealed class HandoffViewModelTests
         string outputDirectory, string pastedHeader, string handoffMarkdown) =>
         NewResponse(outputDirectory) with { PastedHeader = pastedHeader, HandoffMarkdown = handoffMarkdown };
 
-    [Fact]
+    [UiThreadFact]
     public async Task AWrittenHandoffIsStampedWithTheComposedClock()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
@@ -75,7 +75,7 @@ public sealed class HandoffViewModelTests
         Assert.Equal("Last written Wed 4 Mar, 10:30 AM", handoff.WrittenAtText.Replace('\u202f', ' '));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task HandoffDatesBothTimesWhenTheFilesAndParseAreOnDifferentDays()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
@@ -94,7 +94,7 @@ public sealed class HandoffViewModelTests
         Assert.Contains("Wed 4 Mar, 10:30 AM", text);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FilesWrittenBeforeTheLatestAssessmentSayTheyAreOutOfDate()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -116,7 +116,7 @@ public sealed class HandoffViewModelTests
         Assert.Contains("Write the AI Handoff again", handoff.OutOfDateText, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task BackingOutOfTheFolderDialogLeavesStateIdleAndNeverCallsHandoff()
     {
         var (fake, _, handoff) = NewViewModel(folder: null);
@@ -152,7 +152,7 @@ public sealed class HandoffViewModelTests
         Assert.False(handoff.RunCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RunningWritesTheDestinationAndExposesEveryFileAsADraggableRow()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -178,7 +178,7 @@ public sealed class HandoffViewModelTests
         Assert.Equal(expectedFiles, handoff.Files.Select(file => file.FullPath));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task PathsThatEscapeTheOutputDirectoryDoNotBecomeDraggableRows()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -193,7 +193,7 @@ public sealed class HandoffViewModelTests
         Assert.Equal("grammar.json", row.RelativePath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task PathComparisonFollowsTheOperatingSystemsCaseRules()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -232,7 +232,7 @@ public sealed class HandoffViewModelTests
     }
 
     // The pasted header and handoff.md are generated per run (ADR 0009 decision 13), not a static asset.
-    [Fact]
+    [UiThreadFact]
     public async Task RunningPopulatesThePastedHeaderAndHandoffMarkdownFromTheResponse()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -258,7 +258,7 @@ public sealed class HandoffViewModelTests
         Assert.Null(handoff.HandoffMarkdown);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RunningReplaysTheCommandsProgressStepsInOrderWithoutInventingAnyOfItsOwn()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -281,7 +281,7 @@ public sealed class HandoffViewModelTests
         Assert.Equal(RunState.Completed, handoff.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CancellingWhileRunningReachesCancelledWithTheCommandsOwnRefusalCode()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -312,7 +312,7 @@ public sealed class HandoffViewModelTests
         Assert.True(handoff.RunCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusalThatIsNotCancellationReachesRefusedAndDisplaysTheCommandsOwnMessage()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -330,7 +330,7 @@ public sealed class HandoffViewModelTests
         Assert.True(handoff.RunCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DisposalCancelsAndAwaitsAnActiveRun()
     {
         var (fake, _, handoff) = NewViewModel();
@@ -346,7 +346,7 @@ public sealed class HandoffViewModelTests
         Assert.Equal(RunState.Cancelled, handoff.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DragFileAsyncHandsTheDragAdapterExactlyThatFilesPath()
     {
         var (fake, dragSource, handoff) = NewViewModel();
@@ -359,7 +359,7 @@ public sealed class HandoffViewModelTests
         Assert.Equal([file.FullPath], dragSource.LastPaths);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DragAllFilesAsyncHandsTheDragAdapterEveryFilesPath()
     {
         var (fake, dragSource, handoff) = NewViewModel();

@@ -5,7 +5,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class HandoffSessionViewModelTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task SwitchingProjectsClearsTheWordsAndFilesFromThePreviousHandoff()
     {
         var context = WorkspaceContextTests.NewContext(new FakeCommandClient());

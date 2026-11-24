@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class SelectionSummaryCountsTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task CountsAndAssessmentLookupsUseCompactFactsBeforeAnyWordRowOrTextDetailIsLoaded()
     {
         var firstText = Guid.NewGuid();

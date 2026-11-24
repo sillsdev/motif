@@ -23,7 +23,7 @@ public sealed class RefreshBeforeCheckTests
     private static readonly BaselineToken Token = new(
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATrialAfterAnApplyRefreshesFirstAndSaysTryingWhileItRuns()
     {
         // The window publishes Trial states through the context it was made on, which a pool thread is not.
@@ -52,7 +52,7 @@ public sealed class RefreshBeforeCheckTests
         });
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATrialWithNothingAppliedSinceTheRefreshDoesNotRefresh()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -65,7 +65,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Single(fake.EnqueueTrialRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefreshThatDoesNotCaptureABaselineStopsTheTrialWithATrueMessage()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -85,7 +85,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Equal(ProposalId, context.Lens?.ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefreshThatThrowsStopsTheTrial()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -99,7 +99,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.False(context.TrialRun.IsRunning(ProposalId));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefreshThatCannotStartStopsTheTrial()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -116,7 +116,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Empty(fake.EnqueueTrialRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AWindowWithoutARefreshActionStopsTheTrialAfterAnApply()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -128,7 +128,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Empty(fake.EnqueueTrialRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CancellingWhileTheRefreshRunsStopsTheTrialAsCancelled()
     {
         // The window publishes Trial states through the context it was made on, which a pool thread is not.
@@ -154,7 +154,7 @@ public sealed class RefreshBeforeCheckTests
         });
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefreshAlreadyRunningIsJoinedNotStartedAgain()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -173,7 +173,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Single(fake.EnqueueTrialRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryingAProposalRefreshesFirstAfterAnApply()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -187,7 +187,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Single(fake.EnqueueTrialRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedRefreshRefusesTheTryAndQueuesNothing()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -200,7 +200,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Equal(WindowRefusal.RefreshFailedCode, outcome.Refusal?.Code);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheReviewPagesTryAgainRefreshesFirstAfterAnApply()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -214,7 +214,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Single(fake.EnqueueTrialRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AMeasureAfterAnApplyRefreshesFirstAndMeasuresTheReloadedChanges()
     {
         var fake = new FakeCommandClient();
@@ -239,7 +239,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.True(context.ProposalApply.CanApply(null, null, null, null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AMeasureWithNothingAppliedSinceTheRefreshDoesNotRefresh()
     {
         var fake = new FakeCommandClient();
@@ -257,7 +257,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Single(fake.MeasurePendingRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AMeasureAfterAnApplyStopsWhenTheRefreshFailsAndMeasuresNothing()
     {
         var fake = new FakeCommandClient();
@@ -275,7 +275,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.False(context.ProposalApply.CanApply(null, null, null, null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyingAgainAfterAnApplyWaitsForTheCheckThatRefreshesAndNeverAppliesOnAStaleBaseline()
     {
         var fake = new FakeCommandClient();
@@ -313,7 +313,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.Equal(["revision/one", "revision/two"], fake.ApplyPendingRequests.Select(request => request.Revision));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReRunOfAWordAfterAnApplyDoesNotHideThatTheBaselineIsStale()
     {
         var (fake, context) = await OpenProposalAsync();
@@ -331,7 +331,7 @@ public sealed class RefreshBeforeCheckTests
         Assert.False(context.Evidence.IsStale);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AMeasureAfterAnApplyAndAReRunOfAWordStillRefreshesFirst()
     {
         var fake = new FakeCommandClient();

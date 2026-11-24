@@ -17,7 +17,7 @@ public sealed class SelectionLinePagesThreadTests(ITestOutputHelper output)
     private const int ReadsPerLine = 40;
     private static readonly Guid TextId = Guid.NewGuid();
 
-    [Fact]
+    [UiThreadFact]
     public async Task PoolThreadsReadingLinePagesWhileThePumpRunsCorruptItsWaitingPages()
     {
         using var store = Store();
@@ -34,7 +34,7 @@ public sealed class SelectionLinePagesThreadTests(ITestOutputHelper output)
         output.WriteLine($"Attempt {attempt} raced after {clock.Elapsed.TotalSeconds:F1} s: {raced}");
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OneThreadReadingTheSameLinePagesCompletesEveryRead()
     {
         using var store = Store();

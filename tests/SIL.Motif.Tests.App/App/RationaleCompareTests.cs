@@ -160,7 +160,7 @@ public sealed class RationaleCompareTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedCurrentProposalReadKeepsTheDraftAndDoesNotOpenCompare()
     {
         var (fake, editor) = await EditingAsync();
@@ -178,7 +178,7 @@ public sealed class RationaleCompareTests
         Assert.Single(fake.SetRationaleRequests);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("agent-1", "Person 1", "agent-1")]
     [InlineData(null, "Person 1", "Person 1")]
     [InlineData(null, "", "a person")]
@@ -250,7 +250,7 @@ public sealed class RationaleCompareTests
         Assert.NotNull(editor.Refusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StartingAgainFromTheOtherVersionUsesThatVersionAsTheNextSavesBase()
     {
         var (fake, editor) = await EditingAsync();

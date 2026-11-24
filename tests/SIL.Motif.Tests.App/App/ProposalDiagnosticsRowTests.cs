@@ -34,7 +34,7 @@ public sealed class ProposalDiagnosticsRowTests
         [new GrammarChangeEntry("operation", 0, "Exact operation", ["op"], [], "content", false, "compose",
             "The actual grammar change", [], [], [])], trial, null, [], 0);
 
-    [Fact]
+    [UiThreadFact]
     public async Task MissingOrMismatchedTrialsNeverBecomeZeroChange()
     {
         var fake = new FakeCommandClient();
@@ -56,7 +56,7 @@ public sealed class ProposalDiagnosticsRowTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task IndependentCandidatesKeepTheirOwnWarningWorkAndParsimonyFacts()
     {
         var fake = new FakeCommandClient();
@@ -162,7 +162,7 @@ public sealed class ProposalDiagnosticsRowTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SwitchingAProposalCancelsTheReadAndRejectsItsLateResult()
     {
         var fake = new FakeCommandClient();
@@ -194,7 +194,7 @@ public sealed class ProposalDiagnosticsRowTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProjectShutdownCancelsAndJoinsTheDocumentRead()
     {
         var fake = new FakeCommandClient();
@@ -220,7 +220,7 @@ public sealed class ProposalDiagnosticsRowTests
         Assert.Empty(fake.ProposalParsimonyStatusRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AStatusForTheWrongTrialCannotPublishFindings()
     {
         var fake = new FakeCommandClient();

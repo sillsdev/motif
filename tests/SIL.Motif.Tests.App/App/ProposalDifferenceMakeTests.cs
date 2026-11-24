@@ -58,7 +58,7 @@ public sealed class ProposalDifferenceMakeTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WithNoSavedDifferenceTheSectionOffersToMakeOneForTheFirstText()
     {
         var harness = new Harness();
@@ -77,7 +77,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Empty(harness.Requests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task MakingSendsTheChosenTextAndShowsTheDifferenceAndOffersMakingItAgain()
     {
         var harness = new Harness();
@@ -99,7 +99,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Null(model.Maker.FailureShown);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalThatAlreadyHasADifferenceOffersMakingItAgainWithTheSameAction()
     {
         var harness = new Harness(alreadyMade: true);
@@ -118,7 +118,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(ProposalDifferenceState.Shown, model.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheTextListFollowsTheTextOfTheDifferenceShownAndTheLabelNamesWhetherThatTextHasOne()
     {
         var harness = new Harness(alreadyMade: true);
@@ -143,7 +143,7 @@ public sealed class ProposalDifferenceMakeTests
     private const string Human = ProposalDifferenceReferences.Human;
 
     // The window sends no reference: the shown Difference can be stale, so the store decides at the write.
-    [Theory]
+    [UiThreadTheory]
     [InlineData(Human, SourceValidated)]
     [InlineData(SourceValidated, Human)]
     public async Task MakingAgainKeepsWhatTheStoreHoldsNotWhatTheStaleShownDifferenceSays(string shown, string stored)
@@ -164,7 +164,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.True(model.HasAdviceText);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(Human, false)]
     [InlineData(SourceValidated, false)]
     [InlineData(Human, true)]
@@ -206,7 +206,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(ProposalDifferenceWords.Advice(model.Summary), model.AdviceText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoppingARunGivesBackTheShownDifferencesNoteAndAdvice()
     {
         var harness = new Harness(alreadyMade: true);
@@ -234,7 +234,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(MotifAppStrings.ProposalDifferenceAdviceSourceValidated, model.AdviceText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheLabelIsRaisedAgainWhenAMadeDifferenceForTheChosenTextIsAdopted()
     {
         var harness = new Harness(alreadyMade: true);
@@ -250,7 +250,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal("Make Difference Again", model.MakeLabel);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task MakingForAnotherTextThanTheShownOneReadsMakeDifferenceAndThenAgainOnceItIsShown()
     {
         var harness = new Harness(alreadyMade: true);
@@ -266,7 +266,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(ExodusId.ToString("D"), model.Summary!.TextId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARunThatStillCompletesAfterCancelShowsTheDifferenceItSavedInsteadOfPretendingOtherwise()
     {
         var harness = new Harness();
@@ -298,7 +298,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal("Make Difference Again", model.MakeLabel);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProgressIsToldInWordsAndTheRunCanBeCancelledAndSavesNothing()
     {
         var harness = new Harness();
@@ -347,7 +347,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.True(model.Maker.RunCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnknownTotalShowsReadingTheTextThenMakingTheDifference()
     {
         var harness = new Harness();
@@ -374,7 +374,7 @@ public sealed class ProposalDifferenceMakeTests
         await run;
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("difference.no-trial")]
     [InlineData("difference.trial-incomplete")]
     [InlineData("difference.no-parse-assessment")]
@@ -406,7 +406,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.True(model.Maker.RunCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARunThatThrowsIsShownAsARefusalInsteadOfGoingUnobserved()
     {
         var harness = new Harness();
@@ -420,7 +420,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(MotifAppStrings.ProposalDifferenceMakeFailed, model.Maker.FailureShown!.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalNeverTriedOrAlreadyDecidedOffersNoActionAndSaysWhy()
     {
         var harness = new Harness();
@@ -442,7 +442,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Empty(harness.Requests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADecidedProposalWithOnlyASummaryOffersNoAction()
     {
         var harness = new Harness(alreadyMade: true);
@@ -457,7 +457,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.False(harness.Model.Maker.RunCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADeferredProposalShowsItsSummaryAndOffersToMakeTheDifferenceAgainToSeeWords()
     {
         var harness = new Harness(alreadyMade: true);
@@ -475,7 +475,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.True(harness.Model.Maker.RunCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUndecidedProposalWithWordsShowsNoRemakeHint()
     {
         var harness = new Harness(alreadyMade: true);
@@ -486,7 +486,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.False(harness.Model.ShowsRemakeHint);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheSavedDifferencesAreListedWithTheirTextAndReferenceAndChoosingOneReadsIt()
     {
         var harness = new Harness(alreadyMade: true);
@@ -507,7 +507,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Contains("Genesis 1", harness.Model.BasisText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACappedSavedListThatEndsBeforeTheShownDifferenceKeepsItWithoutReadingEverythingAgain()
     {
         var harness = new Harness(alreadyMade: true);
@@ -527,7 +527,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(2, harness.Model.SavedNotListed);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheSavedListTellsDifferencesOfTheSameTextApartByWhenTheyWereMade()
     {
         var harness = new Harness(alreadyMade: true);
@@ -545,7 +545,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.DoesNotContain("text/one", labels[0]);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TwoTextsWithTheSameTitleAreToldApartByTheStartOfTheirId()
     {
         var harness = new Harness(alreadyMade: true);
@@ -559,7 +559,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Contains("bbbbbbbb", harness.Model.SavedChoices[1].Label);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASavedDifferenceThatCouldNotBeReadIsCountedInTheNoteBesideTheOnesListed()
     {
         var harness = new Harness(alreadyMade: true);
@@ -573,7 +573,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(0, harness.Model.SavedNotListed);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADamagedSavedDifferenceIsNamedByTextAndWhoseDecisionsAndTheReadableOneStillShows()
     {
         var harness = new Harness(alreadyMade: true);
@@ -592,7 +592,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(MotifAppStrings.ProposalDifferenceMake, harness.Model.MakeLabel);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADamagedDifferenceAgainstAProgramsDecisionsDoesNotPromiseTheButtonReplacesIt()
     {
         var harness = new Harness(alreadyMade: true);
@@ -605,7 +605,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.DoesNotContain(MotifAppStrings.ProposalDifferenceSavedDamagedRemake, harness.Model.SavedNoteText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ManyDamagedDifferencesAreNamedUpToAFewAndTheRestCounted()
     {
         var harness = new Harness(alreadyMade: true);
@@ -619,7 +619,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Contains("2 saved Differences could not be read.", harness.Model.SavedNoteText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OneSavedDifferenceShowsNoListButStillNamesItsTextAndReference()
     {
         var harness = new Harness(alreadyMade: true);
@@ -630,7 +630,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Contains("Genesis 1", harness.Model.BasisText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProjectWithNoTextsSaysSoInsteadOfOfferingAButton()
     {
         var harness = new Harness { Texts = [] };
@@ -650,7 +650,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.True(harness.Model.Maker.RunCommand.CanExecute(null));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshingTheTextsKeepsTheChosenOneAndFallsBackWhenItIsGone()
     {
         var harness = new Harness();
@@ -667,7 +667,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(GenesisId, model.SelectedText!.Id);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SelectingAnotherProposalWhileARunIsGoingCancelsItAndNeverShowsItsResult()
     {
         var harness = new Harness();
@@ -696,7 +696,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Null(model.Summary);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ClearingTheSectionCancelsARunInProgress()
     {
         var harness = new Harness();
@@ -725,7 +725,7 @@ public sealed class ProposalDifferenceMakeTests
         Assert.Equal(ProposalDifferenceState.None, model.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task EverythingTheMakingControlsSayUsesWindowWordsAndNeverTime()
     {
         var shown = new[]

@@ -13,7 +13,7 @@ public sealed class DiagnosticOpeningTests
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
         """;
 
-    [Fact]
+    [UiThreadFact]
     public async Task InvalidDiagnosticReportsTheParserErrorWithoutShowingADiagnostic()
     {
         const string invalidJson = "{";
@@ -32,7 +32,7 @@ public sealed class DiagnosticOpeningTests
         Assert.Equal(0, showDiagnosticCalls);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CancelledDiagnosticPickDoesNothing()
     {
         var showDiagnosticCalls = 0;
@@ -47,7 +47,7 @@ public sealed class DiagnosticOpeningTests
         Assert.Equal(0, showErrorCalls);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ValidDiagnosticIsShownOnce()
     {
         TraceWordViewModel? shownDiagnostic = null;

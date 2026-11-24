@@ -63,7 +63,7 @@ public sealed class TrialWorkNoticeTests
         Assert.Null(TrialRunState.Idle("proposal/one").WorkNotice);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryAgainKeepsTheWorkNoticeOfTheLatestTrialForTheProposal()
     {
         var fake = new FakeCommandClient();
@@ -82,7 +82,7 @@ public sealed class TrialWorkNoticeTests
         Assert.Null(context.TrialRun.StateFor("proposal/one").WorkNotice);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NoticeFollowsTheProposalAndClearsForPendingChanges()
     {
         var fake = new FakeCommandClient();
@@ -102,7 +102,7 @@ public sealed class TrialWorkNoticeTests
         Assert.Null(TrialWorkNotice.For(context.Lens?.Trial?.Work));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NoticeLoadsFromTheStoredTrialAndClearsWhenTheProjectChanges()
     {
         var fake = new FakeCommandClient();

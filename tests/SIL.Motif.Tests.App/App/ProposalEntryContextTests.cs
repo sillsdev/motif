@@ -24,7 +24,7 @@ public sealed class ProposalEntryContextTests
         [new ProposalOperationView("op/one", LexicalSenseOperationKinds.SetGloss, SenseTwo, null, [],
             """{"ws":"en","text":"buy (demo)"}""")]);
 
-    [Fact]
+    [UiThreadFact]
     public async Task AChangeNamesItsEntryAndListsTheSensesAroundTheOneItChanges()
     {
         var fake = new FakeCommandClient { ProposalDetail = GlossProposal() };
@@ -43,7 +43,7 @@ public sealed class ProposalEntryContextTests
         Assert.Null(opened.Document.EntryRefusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnEntryTheBaselineDoesNotHoldKeepsItsIdAndAnIdNotWorthAskingForIsNotAsked()
     {
         var detail = GlossProposal() with
@@ -64,7 +64,7 @@ public sealed class ProposalEntryContextTests
         Assert.Equal([SenseTwo], Assert.Single(fake.LexicalEntryRequests).Ids);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnchangedProposalReadsItsEntriesOnceAcrossARefresh()
     {
         var fake = new FakeCommandClient { ProposalDetail = GlossProposal() };
@@ -77,7 +77,7 @@ public sealed class ProposalEntryContextTests
         Assert.Equal("Sense 2 of palit", Assert.Single(opened.Document.OperationRows).Target);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(RefusalCodes.BaselineMissing)]
     [InlineData(RefusalCodes.LexicalEntryBaselineUnavailable)]
     [InlineData(RefusalCodes.LexicalEntryInvalidId)]

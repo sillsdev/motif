@@ -31,7 +31,7 @@ public sealed class ProgressPageModelTests
         Assert.Equal(string.Empty, health.SelectionSummary);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoredHealthAppearsWhileProposalStandingsAreStillLoading()
     {
         var fake = new FakeCommandClient();
@@ -55,7 +55,7 @@ public sealed class ProgressPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ComingBackToProgressWaitsForTheReadAlreadyRunningInsteadOfStartingOver()
     {
         var fake = new FakeCommandClient();
@@ -89,7 +89,7 @@ public sealed class ProgressPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReplacingEvidenceHidesTheOldHealthWhileItsReplacementIsRead()
     {
         var fake = new FakeCommandClient();
@@ -113,7 +113,7 @@ public sealed class ProgressPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NextOnlyShowsProposalsActuallyWaitingForADecision()
     {
         var fake = new FakeCommandClient();
@@ -134,7 +134,7 @@ public sealed class ProgressPageModelTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task PartialStandingsDoNotPresentACompleteWaitingCount()
     {
         var fake = new FakeCommandClient();

@@ -18,7 +18,7 @@ public sealed class TryWordSessionsTests
     private const string ProjectA = @"C:\projects\one.fwdata";
     private const string ProjectB = @"C:\projects\two.fwdata";
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningPagesDoesNotPrewarmAParser()
     {
         var (fake, context) = NewContext();
@@ -32,7 +32,7 @@ public sealed class TryWordSessionsTests
         await context.StopProjectWorkAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LeavingAProjectEvictsItBeforeTheNextOneOpens()
     {
         var (fake, context) = NewContext();
@@ -44,7 +44,7 @@ public sealed class TryWordSessionsTests
         Assert.Equal(["evict " + ProjectA], fake.TryWordSessionsFake.Calls);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedOpenEvictsTheProjectItLeaves()
     {
         var fake = new FakeCommandClient();
@@ -63,7 +63,7 @@ public sealed class TryWordSessionsTests
         Assert.Equal(["evict " + path], fake.TryWordSessionsFake.Calls);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASubmittedWordShowsLoadingUntilTheGrammarIsReady()
     {
         var fake = new FakeCommandClient();
@@ -94,7 +94,7 @@ public sealed class TryWordSessionsTests
         Assert.Equal(0, sessions.ListenerCount);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ALoadingPhaseThatEndsWithTheResultClearsTheLineAndUnsubscribes()
     {
         var fake = new FakeCommandClient();
@@ -114,7 +114,7 @@ public sealed class TryWordSessionsTests
         Assert.Equal(0, fake.TryWordSessionsFake.ListenerCount);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(WarmSessionPhase.Idle)]
     [InlineData(WarmSessionPhase.Ready)]
     [InlineData(WarmSessionPhase.Failed)]

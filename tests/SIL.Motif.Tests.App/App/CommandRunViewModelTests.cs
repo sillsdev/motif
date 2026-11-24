@@ -28,7 +28,7 @@ public sealed class CommandRunViewModelTests
         Assert.Equal(0.5, run.ProgressFraction);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProgressFromAnotherThreadGoesToTheOwnersContextOrAppliesDirectlyWithoutOne()
     {
         var progress = new AssessmentProgress(AssessmentStage.Parsing, 1, 2, "Parsing...");
@@ -135,7 +135,7 @@ public sealed class CommandRunViewModelTests
         Assert.Equal(Enum.GetValues<RunState>().Length, run.ResetCount);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DisposeCancelsAndAwaitsAnInFlightRun()
     {
         var run = new TestRunViewModel();

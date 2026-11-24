@@ -47,7 +47,7 @@ public sealed class ProposalReceiptTests
         return (clipboard, context, documents, document);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheReceiptSaysAppliedByYouWithLocalTimeAndNoRawId()
     {
         var (_, context, documents, document) = await AppliedAsync(Receipt());
@@ -62,7 +62,7 @@ public sealed class ProposalReceiptTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReceiptForAProposalThatWasAlreadyAppliedDoesNotClaimThePersonAppliedIt()
     {
         var (_, context, documents, document) = await AppliedAsync(Receipt(alreadyApplied: true));
@@ -73,7 +73,7 @@ public sealed class ProposalReceiptTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CopyReceiptIdPutsTheIdOnTheClipboardAndSaysSo()
     {
         var (clipboard, context, documents, document) = await AppliedAsync(Receipt());
@@ -89,7 +89,7 @@ public sealed class ProposalReceiptTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACopyThatFailsSaysSoInsteadOfLookingDone()
     {
         var (clipboard, context, documents, document) = await AppliedAsync(Receipt());
@@ -115,7 +115,7 @@ public sealed class ProposalReceiptTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SeeInTextsOpensTheReceiptsTrialWordWhenThereIsOne()
     {
         var (_, context, documents, document) = await AppliedAsync(Receipt(), word: "palit");
@@ -131,7 +131,7 @@ public sealed class ProposalReceiptTests
         finally { await documents.StopAsync(); await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SeeInTextsOpensTheTextsPage()
     {
         var (_, context, documents, document) = await AppliedAsync(Receipt());

@@ -57,7 +57,7 @@ public sealed class StoreCauseRefusalTests
         Assert.Contains("Check that the folder can be written to", WindowRefusal.From(plain).Sentence);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task ProgressNextNamesTheStoreCauseAndOffersNoTryAgain(bool missingLock)

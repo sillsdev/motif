@@ -28,7 +28,7 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
 {
     private readonly string _managedRoot = Path.Combine(Path.GetTempPath(), "Motif.CompareOverviewParity", Guid.NewGuid().ToString("N"));
 
-    [Fact]
+    [UiThreadFact]
     public async Task AppMatrixAndOverviewClassifyTheSameStoredAssessmentWords()
     {
         Directory.CreateDirectory(_managedRoot);

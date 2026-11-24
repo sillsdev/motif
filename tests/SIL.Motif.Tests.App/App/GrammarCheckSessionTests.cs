@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class GrammarCheckSessionTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAStoredCheckPublishesItsFindingsWithoutRunningACheck()
     {
         var fake = new FakeCommandClient();
@@ -26,7 +26,7 @@ public sealed class GrammarCheckSessionTests
         await workspace.DisposeAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUncheckedBaselineDoesNotStartAParserOnOpenAndAnExplicitCheckCanBeStopped()
     {
         var fake = new FakeCommandClient();

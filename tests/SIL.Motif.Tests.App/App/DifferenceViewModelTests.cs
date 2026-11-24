@@ -131,7 +131,7 @@ public sealed class DifferenceViewModelTests
             ProjectPath, DateTimeOffset.UtcNow, FieldWorksHeldProject: false, ReusedExistingBytes: true),
         new SelectionProjection([], []), ["assessment/one"], "(summary)") { Words = words };
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARerunIsComparedWithTheRunItFoldedInto()
     {
         var fake = new FakeCommandClient();

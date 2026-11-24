@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ParseProgressViewModelTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task EstimateUsesCompletedWordsAndAStalledWordDoesNotInflateTheMeasuredRate()
     {
         var clock = new FixedClock(DateTimeOffset.UtcNow);
@@ -46,7 +46,7 @@ public sealed class ParseProgressViewModelTests
         Assert.Equal("mtoto · Stopped at the time safety net · parser steps not recorded", timedOut.Text);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FinishingWordsAndReadingStatisticsNeverShowsANoProgressWarning()
     {
         var clock = new FixedClock(DateTimeOffset.UtcNow);

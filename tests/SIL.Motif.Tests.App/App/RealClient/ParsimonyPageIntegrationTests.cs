@@ -43,7 +43,7 @@ public sealed class ParsimonyPageIntegrationTests(PristineProjectFixture pristin
 
     private const string MeasureId = "P-adhoc-duplicate";
 
-    [Fact]
+    [UiThreadFact]
     public async Task AStoredReportAndItsFindingAreReadThroughTheCommandClient()
     {
         using var scenario = await CreateScenarioAsync(includeEditedJudgment: false);
@@ -63,7 +63,7 @@ public sealed class ParsimonyPageIntegrationTests(PristineProjectFixture pristin
             row.ReportId == report.ReportId && row.Finding.FindingId == finding.FindingId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task EditedJudgmentDataIsUnavailableAndHashFailed()
     {
         using var scenario = await CreateScenarioAsync(includeEditedJudgment: true);
@@ -80,7 +80,7 @@ public sealed class ParsimonyPageIntegrationTests(PristineProjectFixture pristin
         Assert.Equal("hash-failed", unresolved.Check);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADecisionStagesAProposalWithoutWritingTheProject()
     {
         using var scenario = await CreateScenarioAsync(includeEditedJudgment: false);

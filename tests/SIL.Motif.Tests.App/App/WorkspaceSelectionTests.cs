@@ -16,7 +16,7 @@ public sealed class WorkspaceSelectionTests(PristineProjectFixture pristine) : I
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.WorkspaceSelectionTests",
         Guid.NewGuid().ToString("N"));
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReplacementSharesCompactCountsAndDisposesThePreviousReader()
     {
         var (path, textId) = Capture();
@@ -61,7 +61,7 @@ public sealed class WorkspaceSelectionTests(PristineProjectFixture pristine) : I
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StopWaitsForAnIgnoringOpenAndDisposesItsLateReaderWithoutPublishingIt()
     {
         var (path, textId) = Capture();
@@ -94,7 +94,7 @@ public sealed class WorkspaceSelectionTests(PristineProjectFixture pristine) : I
         Assert.True(lateReader.Diagnostics.IsDisposed);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefusedReplacementClearsTheOldCountsAndRetainsItsTypedReason()
     {
         var (path, textId) = Capture();

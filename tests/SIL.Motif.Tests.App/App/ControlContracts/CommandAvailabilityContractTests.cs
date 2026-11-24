@@ -42,7 +42,7 @@ public sealed class CommandAvailabilityContractTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChangingAnAvailabilityInputNotifiesAndRecomputesTheCommand()
     {
         var (_, workspace) = CommandContractCases.CreateWorkspace();
@@ -61,7 +61,7 @@ public sealed class CommandAvailabilityContractTests
         }
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("completed")]
     [InlineData("refused")]
     [InlineData("cancelled")]

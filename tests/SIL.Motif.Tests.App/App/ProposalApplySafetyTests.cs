@@ -239,7 +239,7 @@ public sealed class ProposalApplySafetyTests
         }, TimeSpan.FromMinutes(2));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheDifferenceChooserStartsWithTheLargestSelectedTextAndSkipsEmptyTexts()
     {
         var fake = new FakeCommandClient();

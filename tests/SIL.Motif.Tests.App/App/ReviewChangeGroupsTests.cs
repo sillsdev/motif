@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ReviewChangeGroupsTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalChangeEntryUsesItsSuppliedActionsAndSharesTheLookedAtState()
     {
         var change = new ChangeViewModel(ChangeKinds.Approve, "word", "reading");
@@ -125,7 +125,7 @@ public sealed class ReviewChangeGroupsTests
         Assert.Equal("FieldWorks has not reparsed this paragraph after the edit.", Unsure(notReparsed).DetailText);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(ChangeFitStatus.Fits, "Still fits")]
     [InlineData(ChangeFitStatus.NoLongerFits, "No longer fits")]
     [InlineData(ChangeFitStatus.Uncertain, "Needs another look")]
@@ -152,7 +152,7 @@ public sealed class ReviewChangeGroupsTests
         Assert.Empty(fake.ApplyPendingRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CompactReviewWithoutAFitResultDoesNotClaimTheChangeStillFits()
     {
         var (context, fake) = await OpenReviewAsync([Change("one", "kitabu", ChangeKinds.Approve)]);

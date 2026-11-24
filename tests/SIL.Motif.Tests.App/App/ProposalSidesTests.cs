@@ -8,7 +8,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ProposalSidesTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAProposalKeepsProjectHealthAndWarningsOnTheCurrentEvidence()
     {
         var fake = new FakeCommandClient();

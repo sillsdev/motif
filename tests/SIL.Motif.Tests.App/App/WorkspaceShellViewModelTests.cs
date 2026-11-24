@@ -136,7 +136,7 @@ public sealed class WorkspaceShellViewModelTests
         }
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task DisposalWaitsForTheProjectMenuReadEvenWhenItFails(bool failRead)
@@ -166,7 +166,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Empty(workspace.Project.KnownProjects);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshRequestedDuringAReadRunsAgainWithTheLatestKnownProjects()
     {
         var firstRead = new TaskCompletionSource<IReadOnlyList<KnownProjectSummary>>(
@@ -198,7 +198,7 @@ public sealed class WorkspaceShellViewModelTests
         await workspace.DisposeAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RerunningFromDiagnosticsKeepsDiagnosticsOpen()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -212,7 +212,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(WorkspacePage.Diagnostics, workspace.Context.CurrentPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SwitchingProjectsClearsTheOldProjectsDiagnosticRows()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -231,7 +231,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Empty(speed.Rows);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAProjectLoadsBaselineAndTextStateAndPropagatesTheProjectToEveryChild()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -250,7 +250,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(["fwDataPath:text"], usage.ArgumentShape);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfigureOpensSetupWithoutNavigatingAwayFromTheCurrentPage()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -282,7 +282,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal("Next: Use This Selection", workspace.Context.Setup.NextButtonText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProjectWithoutADefaultSelectionOpensSetupOnItsFirstStep()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -294,7 +294,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(0, setup.Step);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SetupDoesNotRestartWhenBaselineArrivesDuringProjectLoading()
     {
         var (fake, _, _, _, workspace) = NewWorkspace();
@@ -325,7 +325,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(1, setup.Step);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SkippingFirstSetupDoesNotSaveADefaultSelection()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -343,7 +343,7 @@ public sealed class WorkspaceShellViewModelTests
             entry => Assert.Equal("setup skip", entry.Command));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FirstRunSavesTheSelectionAndUsesItWithTheChosenParserWorkLimit()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -379,7 +379,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.False(workspace.Context.Setup.IsOpen);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FirstRunClosesSetupOnTheFirstProgressEvent()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -407,7 +407,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(RunState.Completed, workspace.Assess.State);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FirstRunKeepsSetupOpenWhenAssessmentIsRefusedBeforeStarting()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -428,7 +428,7 @@ public sealed class WorkspaceShellViewModelTests
             entry => Assert.Equal("selection set-default", entry.Command));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FirstRunDoesNotReopenSetupWhenAnAssessmentFailsAfterItStarts()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -459,7 +459,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Null(setup.ShownRefusal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfigureStaysOpenWhenAnotherAssessmentReportsProgress()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -513,7 +513,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.False(workspace.Context.Setup.IsOpen);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AParserWorkLimitWhoseTimeEstimateDoesNotFitTheStoredLimitCanFinishWithoutATimeLimit()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -557,7 +557,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.DoesNotContain("time", setup.ParserWorkLimitEstimateText, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FirstRunCanUseNoParserWorkLimit()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -577,7 +577,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Contains("No parser step limit", workspace.Context.Setup!.ParserWorkLimitEstimateText, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FirstRunCannotStartBeforeTheLastSetupStep()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -593,7 +593,7 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     // The owner's first run: a project chosen before any capture showed no Texts even after Refresh succeeded.
-    [Fact]
+    [UiThreadFact]
     public async Task ChoosingAProjectWithoutABaselineCapturesItOnFirstOpen()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -620,7 +620,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(workspace.Context.NeedsAssessment);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task BaselineDatesFromEarlierYearsIncludeTheYear()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
@@ -636,7 +636,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Contains("2024", workspace.FreshnessDetail, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SidebarShowsLoadingWhileAProjectOpens()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -665,7 +665,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal($"Parse Selection: {workspace.Selection.SummaryText}", workspace.SelectionSummaryText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FreshnessRequestedAgainDuringAReadPublishesTheLaterResultBeforeItCompletes()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -698,7 +698,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(latest.Token, workspace.Baseline.Token);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoredSkipSuppressesFirstOpenButConfigureCanReopenSetup()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -716,7 +716,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(0, workspace.Context.Setup.Step);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task FirstRunSetupOpensAfterTheRefreshLineStopsSayingItIsCapturing()
     {
         var (fake, _, _, _, workspace) = NewWorkspace();
@@ -739,7 +739,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.NotEqual(ProjectFreshness.Refreshing, workspace.Freshness);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfigureOpensSetupAfterTheFirstOpenCapturedItsBaseline()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -762,7 +762,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(page, workspace.CurrentPage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task EachProjectWithoutAStoreIsCapturedOnItsFirstOpenOnly()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -797,7 +797,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Single(fake.CaptureBaselineRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfigureAfterFinishingSetupShowsTheSelectionJustSaved()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -819,7 +819,7 @@ public sealed class WorkspaceShellViewModelTests
         AssertConfigureShows(workspace, "added", 1m, 4321m);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfigureAfterSkippingSetupInThisSessionReopensIt()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -836,7 +836,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(SIL.Motif.App.MotifAppStrings.StartFirstRun, workspace.Context.Setup.FinishButtonText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfigureAfterARefreshOpensWithTheSavedSelection()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -854,7 +854,7 @@ public sealed class WorkspaceShellViewModelTests
         AssertConfigureShows(workspace, "one", 1.25m, 987m);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ConfigureAfterReopeningTheProjectShowsTheStoredSelection()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -889,7 +889,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(SIL.Motif.App.MotifAppStrings.UseThisSelection, setup.FinishButtonText);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(SelectionTimeLimitMode.Estimated, null)]
     [InlineData(SelectionTimeLimitMode.Explicit, 450)]
     public async Task RunningTheSavedSelectionSendsATimeLimitOnlyWhenTheSelectionChoseOne(
@@ -910,7 +910,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(new ParserWorkLimit(1234), request.PerWordParserWorkLimit);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LaterRunsAfterSetupLeaveAnEstimatedTimeLimitToTheCommandsSafetyNet()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -931,7 +931,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.DoesNotContain("perWordTimeLimitSeconds", shapes);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LaterRunsUseLimitsSavedWithTheDefaultSelection()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -953,7 +953,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.DoesNotContain("perWordTimeLimitSeconds", shapes);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshingKeepsACheckedTextTheNewBaselineStillHoldsAndTheOtherSources()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -977,7 +977,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal($"1 text, 1 pasted word, parser step limit {ParserWorkLimit.DefaultWork:N0}", workspace.Selection.SummaryText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACompletedAssessmentFeedsCurrentEvidenceAndHandoff()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -995,7 +995,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.False(workspace.Context.HasNoEvidence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshOffersParseAllWordsAndRunsTheSavedSelectionWithItsSavedLimits()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -1029,7 +1029,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal("(second)", workspace.Context.Evidence.Assessment!.Assessment.SummaryMarkdown);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CancellingParseLeavesTheParseActionAvailable()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -1067,7 +1067,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Single(fake.AssessRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedParseLeavesTheParseActionAvailable()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -1108,7 +1108,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(texts.ShowParsePrompt);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshDoesNotRunAnAssessmentAndLeavesTheNewBaselineUnmeasured()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -1127,7 +1127,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal("There is nothing to redo.", await workspace.Context.Changes.RedoStagingActionAsync());
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ParseDependentPagesShareThePromptAndKeepIndependentContentAvailable()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
@@ -1175,7 +1175,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Empty(workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Files);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheFullAgreedWorkflowCompletesAndProducesDraggableHandoffFiles()
     {
         var (fake, projectPicker, folderPicker, dragSource, workspace) = NewWorkspace();
@@ -1271,7 +1271,7 @@ public sealed class WorkspaceShellViewModelTests
         return store;
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheViewKeyResolvesAfterTheOpenAndOnlyThenDoTheViewsRestore()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
@@ -1293,7 +1293,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.False(warnings.MostYourWordsFirst);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProjectSwitchBeforeTheIdentityResolvesNeverRestoresIntoTheNewProject()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
@@ -1321,7 +1321,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(warnings.MostYourWordsFirst);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedIdentityReadKeysTheProjectByItsPath()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
@@ -1335,7 +1335,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.False(workspace.Context.GrammarCheck.Warnings.MostYourWordsFirst);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AChangeMadeBeforeTheKeyResolvesIsHeldAndSavedUnderTheFinalKey()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
@@ -1374,7 +1374,7 @@ public sealed class WorkspaceShellViewModelTests
         }
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("AssessWords", "Missed", "All")]
     [InlineData("Trace", "rule", "")]
     public async Task ViewFiltersFollowProjectsAndRestoreInFreshWorkspace(string view, string chosen, string fallback)
@@ -1416,7 +1416,7 @@ public sealed class WorkspaceShellViewModelTests
         }
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("Compare", "Slowest", "MostFrequent")]
     [InlineData("Warnings", "ReportOrder", "MostWords")]
     public async Task ViewSortsFollowProjectsSurviveLeavingAndRestoreInFreshWorkspace(string view, string chosen, string fallback)
@@ -1449,7 +1449,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(writes, store.Updates);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACompareSortChosenForYouWhenThereAreNoPlaceCountsIsNotRemembered()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
@@ -1467,7 +1467,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Null(store.GetViewState(KeyOf(null, PathOne), "Compare"));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnknownSavedSortFallsBackToTheDefault()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
@@ -1485,7 +1485,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(writes, store.Updates);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("AssessWords", "All")]
     public async Task UnknownSavedViewFilterFallsBack(string view, string fallback)
     {
@@ -1500,7 +1500,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(writes, store.Updates);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("AssessWords", "Missed")]
     [InlineData("Trace", "rule")]
     public async Task ViewFilterChangedBeforeIdentityIsHeld(string view, string chosen)
@@ -1521,7 +1521,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.NotEqual("older", store.GetViewState(KeyOf(IdentityA, PathOne), view)!.Filter);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TextWordsFilterChangedBeforeIdentityIsHeld()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
@@ -1540,7 +1540,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal("Approved", store.GetViewState(KeyOf(IdentityA, PathOne), "TextWords")!.Filter);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnOlderIdentityReadCannotResolveAReopenedPath()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
@@ -1557,7 +1557,7 @@ public sealed class WorkspaceShellViewModelTests
     }
 
 
-    [Fact]
+    [UiThreadFact]
     public async Task TraceOnlySavesTheRuleFilterInViewMemory()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();

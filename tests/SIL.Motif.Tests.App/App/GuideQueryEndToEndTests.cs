@@ -13,7 +13,7 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class GuideQueryEndToEndTests(PristineProjectFixture pristine)
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ABaselineQueryBlockFillsItsTableFromTheRealQueryCommandAndSavesNoRows()
     {
         var path = GroupCorpusFixture.Create(pristine);
@@ -36,7 +36,7 @@ public sealed class GuideQueryEndToEndTests(PristineProjectFixture pristine)
         Assert.False(display.HasBaselinePending);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalContextThatHasNoProposalShowsTheCommandsRefusalInTheBlock()
     {
         var path = GroupCorpusFixture.Create(pristine);

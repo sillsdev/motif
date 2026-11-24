@@ -167,7 +167,7 @@ public sealed class DiagnosticsPageTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnavailableCheckIsDistinctFromAMeasuredEmptyCheck()
     {
         var fake = new FakeCommandClient();

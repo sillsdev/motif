@@ -28,7 +28,7 @@ public sealed class WorkspaceSelectionListCountsTests
         return (client, new WorkspaceSelection(client) { HoldsListCounts = holds });
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheHeldListIsDroppedWhenTheSelectionIsClearedAndAReadStillRunningDoesNotBringItBack()
     {
         using var fixture = Fixture(List('c', 12));
@@ -45,7 +45,7 @@ public sealed class WorkspaceSelectionListCountsTests
         finally { await reads.StopAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheHeldListIsDroppedWhenTheProjectStopsAndSurvivesAReloadOfTheSameList()
     {
         using var fixture = Fixture(List('c', 12));
@@ -66,7 +66,7 @@ public sealed class WorkspaceSelectionListCountsTests
         Assert.Null(reads.ListCountOf("kaon"));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReaderReplacedWhileTheListIsBeingReadStillEndsHoldingTheListOnce()
     {
         using var fixture = Fixture(List('c', 12));
@@ -86,7 +86,7 @@ public sealed class WorkspaceSelectionListCountsTests
         finally { await reads.StopAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AHolderThatDoesNotHoldReadsNothingAndShowsNoCountSoAProposalLensCostsNoSecondRead()
     {
         using var fixture = Fixture(List('c', 12));
@@ -103,7 +103,7 @@ public sealed class WorkspaceSelectionListCountsTests
         finally { await reads.StopAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReadThatFailsForAnotherReasonThanADamagedListIsTriedAgainOnTheNextPublish()
     {
         using var fixture = Fixture(List('c', 12));

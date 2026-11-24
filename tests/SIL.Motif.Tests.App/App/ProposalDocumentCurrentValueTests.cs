@@ -15,7 +15,7 @@ public sealed class ProposalDocumentCurrentValueTests
             """{"ws":"en","text":"sales (demo)"}""")
         { Current = current };
 
-    [Fact]
+    [UiThreadFact]
     public async Task BeforeATrialEachChangeShowsTheValueTheProjectHoldsNow()
     {
         var detail = new ProposalDetailProjection("one", "proposed", "Change the gloss", null, "intent/one",
@@ -32,7 +32,7 @@ public sealed class ProposalDocumentCurrentValueTests
         Assert.True(Assert.Single(fake.ShowProposalRequests).WithCurrent);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WhenTheCurrentValuesCannotBeReadThePageSaysSo()
     {
         var unread = new ProposalDetailProjection("one", "proposed", "Change the gloss", null, "intent/one",
@@ -49,7 +49,7 @@ public sealed class ProposalDocumentCurrentValueTests
         Assert.DoesNotContain("could not be read: x", opened.Document.CurrentUnavailableNotice!, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFieldThatHoldsNothingNowSaysEmptyAndAnUnreadFieldKeepsTheProposedValue()
     {
         var empty = new ProposalDetailProjection("one", "proposed", "Change the gloss", null, "intent/one",
@@ -68,7 +68,7 @@ public sealed class ProposalDocumentCurrentValueTests
             Assert.Equal("Proposed value (en): sales (demo)", Assert.Single(opened.Document.OperationRows).Values);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADecidedProposalDoesNotAskForCurrentValues()
     {
         var detail = new ProposalDetailProjection("one", "applied", "Change the gloss", null, "intent/one",

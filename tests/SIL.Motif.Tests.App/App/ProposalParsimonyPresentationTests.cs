@@ -25,7 +25,7 @@ public sealed class ProposalParsimonyPresentationTests
     private const string Digest = "sha256:old";
     private const string Changed = "sha256:changed";
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheNewAndChangedFindingsAreListedWithTheirStoredDescriptions()
     {
         var (model, _) = await WatchedAsync();
@@ -42,7 +42,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.False(model.Groups[1].HasFindingsRead);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheReadCountsMeasuresAndNeverFindingsOrAScore()
     {
         var (model, _) = await WatchedAsync();
@@ -52,7 +52,7 @@ public sealed class ProposalParsimonyPresentationTests
             "1 measure gave no result.\nThe Text group was not measured.", model.ReadText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheReadSaysNothingIsNewOnlyWhenEveryGrammarMeasureComputed()
     {
         var (model, _) = await WatchedAsync(Quiet());
@@ -62,7 +62,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Empty(model.Groups[0].Findings);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AMeasureThatDidNotComputeIsNeverReadAsNothingNew()
     {
         var quiet = ProposalParsimonyStatusFixtures.Measured() with
@@ -77,7 +77,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.DoesNotContain("No measure found", model.ReadText);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(ProposalParsimonyGroupState.Failed)]
     [InlineData(ProposalParsimonyGroupState.Abstained)]
     public async Task AGrammarGroupThatGaveNoResultIsNeverReadAsNothingNew(ProposalParsimonyGroupState state)
@@ -90,7 +90,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Empty(fake.ParsimonyViewRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AMeasuredTextGroupIsNotSaidToBeUnmeasured()
     {
         var status = Quiet() with
@@ -103,7 +103,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Equal("No measure found a new Finding for this Proposal.", model.ReadText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NewFindingsThatAreAllAlreadyDecidedAreNotSaidToNeedALook()
     {
         var (model, _) = await WatchedAsync(OneNew(), Decided);
@@ -114,7 +114,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.DoesNotContain("Look at", model.ReadText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnActiveViewThatDidNotComputeIsUnreadableAndNeverAnAllClear()
     {
         var (model, _) = await WatchedAsync(OneNew(), (request, served) => Success(request, ParsimonyMeasureStatus.NotAvailable, []));
@@ -124,7 +124,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Equal("The Findings could not be read. The counts above still stand.", model.Groups[0].FindingsNote);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnActiveViewReadStoppedEarlyIsSaidToBeIncompleteAndNeverAnAllClear()
     {
         var (model, fake) = await WatchedAsync(OneNew(), (request, _) =>
@@ -139,7 +139,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Equal(21, fake.ParsimonyViewRequests.Count(request => request.Query.View == "parsimony-active-findings"));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnOutOfDateRunGivesNoReadAndNoFindings()
     {
         var (model, fake) = await WatchedAsync(ProposalParsimonyStatusFixtures.Stale(Id,
@@ -151,7 +151,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Empty(fake.ShowParsimonyReportRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DecisionCountsAreShownOnlyForMeasuresThatHaveSome()
     {
         var (model, _) = await WatchedAsync();
@@ -164,7 +164,7 @@ public sealed class ProposalParsimonyPresentationTests
         ], model.Groups[0].Judgments);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OneDecisionRecordUsesTheSingularSentence()
     {
         var (_, fake) = Setup();
@@ -184,7 +184,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Equal(["Repeated ad hoc restrictions: 1 Finding is back because its evidence changed"], model.Groups[0].Judgments);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AGroupListsAtMostAFewFindingsAndSaysWhichMeasuresTheRestBelongTo()
     {
         var grammar = ProposalParsimonyStatusFixtures.Measured() with
@@ -218,7 +218,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.True(group.HasFindingsMore);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task EvidenceIsReadOnlyWhenAskedForAndSaysNotKeptPlainly()
     {
         var (model, fake) = await WatchedAsync();
@@ -238,7 +238,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Equal("guid-1", evidence[0].Query.Filters.ObjectGuid);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AViewUnavailableForAnotherReasonIsNotSaidToBeUnkept()
     {
         var (_, fake) = Setup();
@@ -256,7 +256,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.DoesNotContain("not kept", finding.EvidenceText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task UnreadableActiveFindingsKeepTheCountsAndSayTheFindingsCouldNotBeRead()
     {
         var (_, fake) = Setup();
@@ -272,7 +272,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Empty(model.Groups[0].Findings);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnreadableBaselineReportLeavesNoGuessAtWhichFindingsAreNew()
     {
         var (_, fake) = Setup();
@@ -286,7 +286,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Equal("Which Findings are new could not be worked out, so none are listed.", model.Groups[0].FindingsNote);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReadThatThrowsReadsAsUnreadableNeverAsACrash()
     {
         var (_, fake) = Setup();
@@ -298,7 +298,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Equal("The Findings could not be read. The counts above still stand.", model.Groups[0].FindingsNote);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheSameCandidateReadAgainKeepsItsFindingsAndReadsNothingMore()
     {
         var (model, fake) = await WatchedAsync();
@@ -312,7 +312,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Equal(reports, fake.ShowParsimonyReportRequests.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OnlyWhatTheBaselineChangedIsReadFromItsReport()
     {
         var (_, fake) = await WatchedAsync();
@@ -327,7 +327,7 @@ public sealed class ProposalParsimonyPresentationTests
             });
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WallTimeIsShownOnlyAsWholeSecondsOrMinutes()
     {
         Assert.Equal("Measured in about 28 seconds.", (await WatchedAsync(Timed(28_400))).Model.WallTime);
@@ -341,7 +341,7 @@ public sealed class ProposalParsimonyPresentationTests
         })).Model.WallTime);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WallTimeIgnoresPerStageTimings()
     {
         var status = ProposalParsimonyStatusFixtures.Ready(Id);
@@ -408,7 +408,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Equal(string.Empty, model.ParserWork);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ParserWorkIsTheSameWholePercentAsTheTrialWorkNotice()
     {
         var model = Model(new FakeCommandClient());
@@ -429,7 +429,7 @@ public sealed class ProposalParsimonyPresentationTests
         await Task.CompletedTask;
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoppingCancelsAnEvidenceReadUnderWayAndClearsTheSection()
     {
         var (model, fake) = await WatchedAsync(Timed(28_400));
@@ -448,7 +448,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.Empty(model.Groups);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SwitchingProposalsCancelsEvidenceReadsAndALateResultNeverReachesTheOldFinding()
     {
         var (model, fake) = await WatchedAsync();
@@ -465,7 +465,7 @@ public sealed class ProposalParsimonyPresentationTests
         Assert.True(finding.CanShowEvidence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReadThatReturnsAfterItsFindingWasCancelledLeavesNoStuckReadingText()
     {
         var gate = new TaskCompletionSource();

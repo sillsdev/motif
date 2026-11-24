@@ -38,7 +38,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         new(json is null ? new TraceWordViewModel() : TraceWordViewModel.FromDiagnosticJson(json), _clipboard, _files,
             _files);
 
-    [Fact]
+    [UiThreadFact]
     public async Task CopyingTheDiagnosticPutsItsExactJsonOnTheClipboard()
     {
         var tools = ToolsFor(ValidDiagnosticJson);
@@ -49,7 +49,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Null(tools.Error);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CopyingForAChatModelIncludesInstructionsSummaryAndTheUnchangedTrace()
     {
         var tools = ToolsFor(ValidDiagnosticJson);
@@ -90,7 +90,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Contains("Search completion: not recorded", Assert.Single(_clipboard.Copied));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CopyingAnInvalidShapeSaysTheSearchDidNotRun()
     {
         var tools = ToolsFor(InvalidShapeDiagnosticJson);
@@ -102,7 +102,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.DoesNotContain("Search completion: incomplete", copied, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AClipboardThatFailsIsShownAsADiagnosticNotWritten()
     {
         var tools = ToolsFor(ValidDiagnosticJson);
@@ -118,7 +118,7 @@ public sealed class DesktopFileAndClipboardSeamTests
             ProblemReport.FromRefusal(tools.Error!).ToText(includeLocalDetails: true), StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SavingWritesTheExactJsonUnderTheWordsSuggestedName()
     {
         var tools = ToolsFor(ValidDiagnosticJson);
@@ -131,7 +131,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Null(tools.Error);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACancelledSaveWritesNothingAndShowsNoError()
     {
         var tools = ToolsFor(ValidDiagnosticJson);
@@ -144,7 +144,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Null(tools.Error);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASaveThatFailsIsShownAsADiagnosticNotWritten()
     {
         var tools = ToolsFor(ValidDiagnosticJson);
@@ -156,7 +156,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Equal("Motif could not save the diagnostic file.", tools.Error?.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ANewActionClearsTheLastActionsError()
     {
         var tools = ToolsFor(ValidDiagnosticJson);
@@ -169,7 +169,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Null(tools.Error);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OpeningAValidFileHandsItOnForAWindowWithItsOwnDialogs()
     {
         var tools = ToolsFor();
@@ -193,7 +193,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Equal(ValidDiagnosticJson, Assert.Single(_clipboard.Copied));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACancelledReadIsACancelledOpenNotAnUnreadableFile()
     {
         var tools = ToolsFor();
@@ -208,7 +208,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Null(tools.Error);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheOpenerTreatsACancelledReadAsACancelledOpen()
     {
         var shown = 0;
@@ -221,7 +221,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Equal(0, refused);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ACancelledOpenShowsNothing()
     {
         var tools = ToolsFor();
@@ -236,7 +236,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Null(tools.Error);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AMalformedFileIsRefusedWhereItWasOpened()
     {
         var tools = ToolsFor();
@@ -250,7 +250,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Equal(RefusalCodes.WordTraceMalformedDiagnostic, tools.Error?.Code);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFileThatCannotBeReadIsRefusedWhereItWasOpened()
     {
         var tools = ToolsFor();
@@ -262,7 +262,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Equal("Motif could not read that diagnostic file.", tools.Error?.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SharedTraceOpensAValidSavedDiagnosticForAWindowOfItsOwn()
     {
         var page = NewContext().WordTraceSession;
@@ -278,7 +278,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.False(page.Trace.HasResult);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SharedTraceShowsARefusedSavedDiagnosticInAWindowOfItsOwn()
     {
         var page = NewContext().WordTraceSession;
@@ -295,7 +295,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Equal(opened.Refusal, page.Diagnostics.ForOpened(opened, _files).Error);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SharedTraceIgnoresACancelledOpen()
     {
         var page = NewContext().WordTraceSession;
@@ -309,7 +309,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Equal(0, openedCount);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DiagnosticToolsCopyTheSharedTrace()
     {
         var context = NewContext();
@@ -323,7 +323,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Contains("Trace diagnostic JSON:\nNot recorded.", copied, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SettingsHandoffCopiesThroughTheComposedClipboard()
     {
         var page = new SettingsPageModel(NewContext()).Handoff;
@@ -334,7 +334,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Equal("the starter prompt", Assert.Single(_clipboard.Copied));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task HandoffCopiesTheExactFolderPathQuestionAndStarterPrompt()
     {
         var handoff = NewHandoff();
@@ -353,7 +353,7 @@ public sealed class DesktopFileAndClipboardSeamTests
             _clipboard.Copied);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task HandoffCopiesNothingBeforeTheFilesAreWritten()
     {
         var handoff = NewHandoff();

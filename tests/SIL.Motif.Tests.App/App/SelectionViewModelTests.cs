@@ -23,7 +23,7 @@ public sealed class SelectionViewModelTests
     private static readonly Guid AlphaId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid BetaId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
-    [Fact]
+    [UiThreadFact]
     public async Task RestoringManyTextsPublishesOnlyTheCompleteSelection()
     {
         var fake = new FakeCommandClient();
@@ -45,7 +45,7 @@ public sealed class SelectionViewModelTests
     }
 
     // A project switch or Refresh while a load is in flight must not let the older answer land last.
-    [Fact]
+    [UiThreadFact]
     public async Task AnOlderTextLoadCompletingAfterANewerOneIsDiscarded()
     {
         var fake = new FakeCommandClient();
@@ -69,7 +69,7 @@ public sealed class SelectionViewModelTests
     }
 
     // An empty box with no explanation is what stopped a real user choosing Texts at all.
-    [Fact]
+    [UiThreadFact]
     public async Task WithNoBaselineTheEmptyTextListSaysToCaptureOneRatherThanShowingNothing()
     {
         var fake = new FakeCommandClient();
@@ -84,7 +84,7 @@ public sealed class SelectionViewModelTests
             "Capture a Baseline to choose Texts.", selection.TextsEmptyMessage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WithABaselineThatHasNoTextsTheMessageSaysThatInstead()
     {
         var fake = new FakeCommandClient();
@@ -97,7 +97,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal("This Baseline has no Texts.", selection.TextsEmptyMessage);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WhenTextsLoadThereIsNoEmptyMessageAtAll()
     {
         var fake = new FakeCommandClient();
@@ -122,7 +122,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal("Nothing selected yet.", viewModel.SummaryText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SettingAProjectLoadsItsCurrentBaselineTextsByGuidAndTitle()
     {
         var fake = new FakeCommandClient();
@@ -139,7 +139,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal(ProjectPath, Assert.Single(fake.ListTextsRequests).ProjectPath);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TextChoicesShowCommandReportedInterlinearizationCoverage()
     {
         var fake = new FakeCommandClient();
@@ -154,7 +154,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal("60% interlinearized", text.InterlinearizedText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TextChoicesDisplayTheInterlinearizationShareFromTheCommandResponse()
     {
         var response = JsonSerializer.Deserialize<TextInventoryResponse>("""
@@ -178,7 +178,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal("0% interlinearized", text.InterlinearizedText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyingTheSavedDefaultChecksItsTextsAndAddsItsWords()
     {
         var fake = new FakeCommandClient();
@@ -206,7 +206,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal(ParserWorkLimit.Unbounded, selection.BuildRequest().PerWordParserWorkLimit);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusalWhileLoadingTextsShowsItsMessageAndLeavesTheListEmpty()
     {
         var fake = new FakeCommandClient();
@@ -220,7 +220,7 @@ public sealed class SelectionViewModelTests
         Assert.Contains(refusal.Message, viewModel.ShownRefusal!.Details);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CheckingATextAddsItsGuidToTheComposedRequestByIdentityNotTitle()
     {
         var fake = new FakeCommandClient();
@@ -235,7 +235,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal([BetaId], viewModel.BuildRequest().TextIds);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CheckingOrUncheckingATextRaisesChangeNotificationForChosenTextIds()
     {
         var fake = new FakeCommandClient();
@@ -254,7 +254,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal(2, raised);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SetTextCountsUpdatesTheMatchingTextAndClearCountsResetsEveryone()
     {
         var fake = new FakeCommandClient();
@@ -273,7 +273,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal(string.Empty, viewModel.Texts.Single(text => text.Id == AlphaId).CountsText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SearchingFiltersTheDisplayedListButNeverUnchecksAHiddenText()
     {
         var fake = new FakeCommandClient();
@@ -382,7 +382,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal("all wordforms, 2 pasted words, retry failed", viewModel.SummaryText);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChangingProjectResetsEveryFieldBeforeLoadingTheNewProjectsTexts()
     {
         var fake = new FakeCommandClient();

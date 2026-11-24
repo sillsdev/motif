@@ -24,7 +24,7 @@ public sealed class ProjectHistoryViewModelTests
         Assert.Empty(history.Entries);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SettingAProjectLoadsItsHistoryImmediately()
     {
         var fake = new FakeCommandClient();
@@ -39,7 +39,7 @@ public sealed class ProjectHistoryViewModelTests
         Assert.Equal(ProjectPath, Assert.Single(fake.ProjectHistoryRequests).ProjectPath);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(ProjectHistoryKind.Baseline, "Refresh")]
     [InlineData(ProjectHistoryKind.Assessment, "Parse all words")]
     [InlineData(ProjectHistoryKind.Handoff, "AI Handoff")]
@@ -66,7 +66,7 @@ public sealed class ProjectHistoryViewModelTests
         Assert.Equal("new Baseline from FieldWorks.", row.Summary);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusalShowsItsMessageAndLeavesTheListEmpty()
     {
         var fake = new FakeCommandClient();
@@ -80,7 +80,7 @@ public sealed class ProjectHistoryViewModelTests
         Assert.Contains(refusal.Message, history.ShownRefusal!.Details);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LoadAsyncRereadsTheSameProjectOnDemand()
     {
         var fake = new FakeCommandClient();
@@ -93,7 +93,7 @@ public sealed class ProjectHistoryViewModelTests
         Assert.Equal(2, fake.ProjectHistoryRequests.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SettingANewProjectClearsThePreviousOnesHistory()
     {
         var fake = new FakeCommandClient();

@@ -27,7 +27,7 @@ public sealed class ProposalParsimonyViewModelTests
         { ProposalParsimonyState.Failed, "Did Not Finish", "did not finish" },
     };
 
-    [Theory]
+    [UiThreadTheory]
     [MemberData(nameof(SevenStates))]
     public async Task EachOfTheSevenStatesReadsAsItself(ProposalParsimonyState state, string label, string phrase)
     {
@@ -48,7 +48,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal(7, labels.Distinct().Count());
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReadyDoesNotClaimToBeCurrentOnJudgmentsOrTheSelection()
     {
         var model = await WatchedAsync(ProposalParsimonyStatusFixtures.Ready(Id));
@@ -60,7 +60,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.DoesNotMatch(new Regex("up to date|is current|fully checked", RegexOptions.IgnoreCase), AllText(model));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StaleNamesEveryInputThatChangedIncludingTheReservedOnes()
     {
         var model = await WatchedAsync(ProposalParsimonyStatusFixtures.Stale(Id,
@@ -71,7 +71,7 @@ public sealed class ProposalParsimonyViewModelTests
             "the Parsimony Selection, a human judgment. It may no longer be right.", model.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StaleWithNoNamedReasonSaysItCouldNotBeChecked()
     {
         var model = await WatchedAsync(ProposalParsimonyStatusFixtures.Stale(Id));
@@ -79,7 +79,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal("Whether this advice is still current could not be checked.", model.Sentence);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(ProposalParsimonyFailureCategory.TimedOut, "PanGloss ran past its time limit")]
     [InlineData(ProposalParsimonyFailureCategory.ParserUnavailable, "PanGloss was missing")]
     [InlineData(ProposalParsimonyFailureCategory.FactsFailed, "PanGloss could not read the grammar")]
@@ -98,7 +98,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.DoesNotMatch(new Regex("block|error|cannot apply|must", RegexOptions.IgnoreCase), AllText(model));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATimedOutGrammarThatIsNotQueuedAgainSaysSo()
     {
         var model = await WatchedAsync(ProposalParsimonyStatusFixtures.Failed(Id,
@@ -107,7 +107,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Contains("not asked for again by itself", model.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task EachGroupShowsItsOwnStateWithPerMeasureCountsAndNoScore()
     {
         var model = await WatchedAsync(ProposalParsimonyStatusFixtures.Ready(Id));
@@ -124,7 +124,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.DoesNotMatch(new Regex("score|total|overall|grade|rating", RegexOptions.IgnoreCase), AllText(model));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TheTextGroupIsNotAutomaticAndSaysWhatItNeeds()
     {
         var needsSelection = await WatchedAsync(ProposalParsimonyStatusFixtures.Ready(Id));
@@ -144,7 +144,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal("The Text Group does not run on its own.", notYetRun.Groups[1].Note);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(ProposalParsimonyGroupState.Abstained, "Could Not Judge", "This is not a clean result")]
     [InlineData(ProposalParsimonyGroupState.Failed, "Did Not Finish", "failed while reading the evidence")]
     public async Task AGroupThatJudgedNothingNeverReadsAsClean(ProposalParsimonyGroupState state, string label,
@@ -157,7 +157,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Contains(phrase, model.Groups[0].Note);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARunningJobNamesItsStepAndShowsNoTimeOrDuration()
     {
         var model = await WatchedAsync(ProposalParsimonyStatusFixtures.Running(Id, "measure", 3, 6));
@@ -167,7 +167,7 @@ public sealed class ProposalParsimonyViewModelTests
             AllText(model));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AQueuedJobNamesWhatItIsWaitingBehindWithoutChangingTheShape()
     {
         var other = await WatchedAsync(ProposalParsimonyStatusFixtures.Waiting(Id));
@@ -180,7 +180,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal(other.Groups.Select(group => group.Measures.Count), running.Groups.Select(group => group.Measures.Count));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARefusedReadShowsASentenceAndTheRefusalAndStopsReading()
     {
         var reads = 0;
@@ -199,7 +199,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal(1, reads);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WatchingUpdatesWhileTheJobRunsAndReadsNothingElse()
     {
         var fake = new FakeCommandClient();
@@ -242,7 +242,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.All(delays.Waits, wait => Assert.Equal(ProposalParsimonyViewModel.PollInterval, wait));
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(ProposalParsimonyState.NotSetUp)]
     [InlineData(ProposalParsimonyState.Ready)]
     [InlineData(ProposalParsimonyState.Stale)]
@@ -263,7 +263,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Empty(delays.Waits);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATrialThatHasNotFinishedIsReadOnceBecauseNothingCanQueueYet()
     {
         var reads = 0;
@@ -281,7 +281,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Empty(delays.Waits);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFinishedTrialWithNoJobYetIsWatchedForAFewReadsOnly()
     {
         var reads = 0;
@@ -298,7 +298,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal("Not Yet Run", model.StateLabel);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APollSlowsDownAfterTheFastReadsButNeverGivesUpBeforeTheJobFinishes()
     {
         var reads = 0;
@@ -324,7 +324,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal(ProposalParsimonyViewModel.SlowPollInterval, waits[^1]);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ABusyProjectNeverEndsTheWatchAndTheLastGoodStateStaysShown()
     {
         var reads = 0;
@@ -350,7 +350,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.All(shownWhileBusy, label => Assert.Equal("Running", label));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ABusyFirstReadKeepsReadingAndThenShowsTheStatus()
     {
         var reads = 0;
@@ -371,7 +371,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal("Ready", model.StateLabel);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AStaleWholeReadsOutOfDateInItsMeasuredGroupWithTheCountsKept()
     {
         var model = await WatchedAsync(ProposalParsimonyStatusFixtures.Stale(Id,
@@ -382,7 +382,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal(3, model.Groups[0].Measures.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnknownStaleReasonSaysSomethingChangedNotAHumanJudgment()
     {
         var model = await WatchedAsync(ProposalParsimonyStatusFixtures.Stale(Id, (ProposalParsimonyStaleReason)99));
@@ -392,7 +392,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.DoesNotContain("judgment", model.Sentence);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnUnknownStateAndGroupStateReadAsNotKnownNeverAsDidNotFinish()
     {
         var status = ProposalParsimonyStatusFixtures.Ready(Id) with { State = (ProposalParsimonyState)99 };
@@ -404,7 +404,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.DoesNotMatch(new Regex("did not finish|block|error", RegexOptions.IgnoreCase), AllText(model));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ClosingTheProposalStopsTheReadsAtOnce()
     {
         var reads = 0;
@@ -428,7 +428,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.True(delays.LastWasCancelled);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task WatchingTheSameProposalAgainDoesNotStartASecondLoopOrBlankTheSection()
     {
         var reads = 0;
@@ -451,7 +451,7 @@ public sealed class ProposalParsimonyViewModelTests
         Assert.Equal(3, reads);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnotherProposalReplacesTheWatchAndAnOldAnswerNeverLandsOnIt()
     {
         var delays = new ManualDelays();

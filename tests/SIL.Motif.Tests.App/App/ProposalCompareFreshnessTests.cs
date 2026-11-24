@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ProposalCompareFreshnessTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task ApplyingOneSideMakesTheComparisonOutdatedAndSubtractsNothing()
     {
         await using var arranged = await ArrangeAsync();
@@ -40,7 +40,7 @@ public sealed class ProposalCompareFreshnessTests
         Assert.Empty(arranged.Fake.ProduceProposalDifferenceRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AChangedSideIsOutdatedUntilAPersonChoosesToMeasureAgainAndNothingMeasuresOnItsOwn()
     {
         await using var arranged = await ArrangeAsync();
@@ -65,7 +65,7 @@ public sealed class ProposalCompareFreshnessTests
         Assert.Empty(arranged.Fake.ProduceProposalDifferenceRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OnlyTheSideThatNeedsItIsMeasuredAgain()
     {
         await using var arranged = await ArrangeAsync();
@@ -78,7 +78,7 @@ public sealed class ProposalCompareFreshnessTests
         Assert.Equal(firstReads, arranged.Fake.ProposalDifferenceRequests.Count(request => request.ProposalId == "one"));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ALateReadForASupersededGenerationNeverMakesTheSideCurrent()
     {
         await using var arranged = await ArrangeAsync();
@@ -107,7 +107,7 @@ public sealed class ProposalCompareFreshnessTests
         Assert.False(compare.First.ShowsEffects);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ADifferentTrialOrIntentOnASideIsOutdatedNotComparable()
     {
         await using var arranged = await ArrangeAsync(scenario => scenario
@@ -119,7 +119,7 @@ public sealed class ProposalCompareFreshnessTests
         Assert.True(compare.CanRemeasure);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ChangedWorkspaceEvidenceMakesTheComparisonOutdated()
     {
         await using var arranged = await ArrangeAsync();
@@ -132,7 +132,7 @@ public sealed class ProposalCompareFreshnessTests
         Assert.Empty(compare.Rows);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LeavingTheComparisonStopsAMeasureAgainThatIsStillReading()
     {
         await using var arranged = await ArrangeAsync();
@@ -159,7 +159,7 @@ public sealed class ProposalCompareFreshnessTests
         Assert.Equal(1, arranged.Backs);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task DisposingTheComparisonStopsAMeasureAgainThatIsStillReading()
     {
         await using var arranged = await ArrangeAsync();

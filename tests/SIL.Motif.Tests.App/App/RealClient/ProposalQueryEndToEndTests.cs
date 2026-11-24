@@ -38,7 +38,7 @@ public sealed class ProposalQueryEndToEndTests(PristineProjectFixture pristine)
         "```motif-query\nid: stems\ntitle: Stems\nrun: motif query forms --where kind=lexeme\n```\n\n" +
         "```motif-show\nquery: stems\nshow: table\n```";
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalWithACompletedTrialShowsItsCurrentValuesAndBothSidesOfItsQuery()
     {
         var path = GroupCorpusFixture.Create(pristine);
@@ -99,7 +99,7 @@ public sealed class ProposalQueryEndToEndTests(PristineProjectFixture pristine)
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalWithNoTrialShowsItsSideAsPendingAtTheBaseline()
     {
         var path = GroupCorpusFixture.Create(pristine);

@@ -12,7 +12,7 @@ public sealed class ProgressNextRowsTests
 {
     public ProgressNextRowsTests() => AvaloniaHeadlessPlatform.Initialize();
 
-    [Fact]
+    [UiThreadFact]
     public async Task DeferredProposalsAreNotCountedAsWaiting()
     {
         var fake = new FakeCommandClient();
@@ -27,7 +27,7 @@ public sealed class ProgressNextRowsTests
         Assert.Equal(1, page.WaitingProposals);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task RefreshHidesThePreviousWaitingCountBeforeTheNewReadFinishes()
     {
         var fake = new FakeCommandClient();
@@ -56,7 +56,7 @@ public sealed class ProgressNextRowsTests
             await context.StopProjectWorkAsync();
         }
     }
-    [Fact]
+    [UiThreadFact]
     public async Task AReplacementReadCancelsTheReadItSupersedes()
     {
         var fake = new FakeCommandClient();
@@ -82,7 +82,7 @@ public sealed class ProgressNextRowsTests
         }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ANonDraftProposalThatNeedsAnotherTryCountsAsWaiting()
     {
         var fake = new FakeCommandClient();
@@ -98,7 +98,7 @@ public sealed class ProgressNextRowsTests
         finally { await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task NextListsOnlyWaitingProposalsAndNeverARequestRow()
     {
         var fake = new FakeCommandClient();
@@ -122,7 +122,7 @@ public sealed class ProgressNextRowsTests
         finally { await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task UnavailableAndUnreadableAreNotZeroAndRetryRestoresTheRows()
     {
         var fake = new FakeCommandClient();
@@ -147,7 +147,7 @@ public sealed class ProgressNextRowsTests
         finally { await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SuccessfulEmptyReadsLeaveNextOut()
     {
         var context = WorkspaceContextTests.NewContext(new FakeCommandClient());
@@ -162,7 +162,7 @@ public sealed class ProgressNextRowsTests
         finally { await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AContextChangeDisablesRetainedRowsAndClearsTheTotals()
     {
         var fake = new FakeCommandClient();
@@ -185,7 +185,7 @@ public sealed class ProgressNextRowsTests
         finally { await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AppliedEvidenceImmediatelyRemovesNextAndMakesOldCommandsInert()
     {
         var fake = new FakeCommandClient();
@@ -212,7 +212,7 @@ public sealed class ProgressNextRowsTests
         finally { await context.StopProjectWorkAsync(); }
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AStaleOverviewNeverPublishesCurrentWaitingTotals()
     {
         var fake = new FakeCommandClient();
@@ -232,7 +232,7 @@ public sealed class ProgressNextRowsTests
     }
 
 
-    [Fact]
+    [UiThreadFact]
     public async Task ReturningToProgressReadsActionsChangedOnAnotherPage()
     {
         var fake = new FakeCommandClient();
@@ -254,7 +254,7 @@ public sealed class ProgressNextRowsTests
     }
 
 
-    [Fact]
+    [UiThreadFact]
     public async Task ProjectSwitchCancelsAndJoinsTheOldReadBeforePublishingNewTotals()
     {
         var fake = new FakeCommandClient();

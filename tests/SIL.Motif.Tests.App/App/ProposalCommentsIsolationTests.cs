@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class ProposalCommentsIsolationTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task SwitchingAndRefreshingKeepTypingInEveryDocumentAndClosingHonorsTheGuard()
     {
         var fake = new FakeCommandClient();
@@ -41,7 +41,7 @@ public sealed class ProposalCommentsIsolationTests
         await documents.StopAsync();
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ClosedProposalFreezesCommentsWithoutDiscardingTyping(bool draft)

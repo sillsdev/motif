@@ -29,7 +29,7 @@ public sealed class ProposalQueryTablesTests
 
     internal delegate SIL.Motif.Commands.Queries.FormsQueryResponse FormsQueryAnswer();
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARationaleQueryRunsAtTheBaselineAndTheProposalAndShowsBothSides()
     {
         var fake = Fake(BothAnswer);
@@ -46,7 +46,7 @@ public sealed class ProposalQueryTablesTests
         Assert.Contains("ka-onan", display.Rows[0].BaselineAnalysis);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AProposalWithNoTrialShowsItsSideAsPendingAndStillShowsTheBaseline()
     {
         await using var opened = await ProposalEntryContextTests.Open(Fake(PendingAnswer));
@@ -58,7 +58,7 @@ public sealed class ProposalQueryTablesTests
         Assert.NotEmpty(display.Rows);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task SortAndFilterWorkOnEitherSideOfAProposalTable()
     {
         await using var opened = await ProposalEntryContextTests.Open(Fake(BothAnswer));
@@ -78,7 +78,7 @@ public sealed class ProposalQueryTablesTests
     private static ProposalReviewResponse ReviewWith(TrialRecord? trial) =>
         new("one", "intent/one", "revision/one", [], trial, null, [], 0);
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATrialThatCompletesAfterThePageOpenedRunsTheTablesAgain()
     {
         var fake = Fake(PendingAnswer);
@@ -96,7 +96,7 @@ public sealed class ProposalQueryTablesTests
         Assert.False(Assert.Single(Assert.Single(opened.Document.Queries.Blocks).Displays).HasProposalPending);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARerunKeepsTheEditedTextAndTheSortOfABlockWhoseDefinitionDidNotChange()
     {
         var fake = Fake(BothAnswer);
@@ -121,7 +121,7 @@ public sealed class ProposalQueryTablesTests
         Assert.Equal(2, fake.GuideQueryRequests.Count);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AnInvalidFilterShowsTheSentenceAndWhatTheCommandSaidAboutIt()
     {
         var fake = Fake(BothAnswer);
@@ -136,7 +136,7 @@ public sealed class ProposalQueryTablesTests
         Assert.Contains("'bogus' is not a forms column", notice);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task EditingAndRunningAProposalQueryWorksAndSaveIsHiddenWithTheReasonGiven()
     {
         var fake = Fake(BothAnswer);
@@ -155,7 +155,7 @@ public sealed class ProposalQueryTablesTests
         Assert.Empty(fake.SetRationaleRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ARationaleWithNoQueryBlockShowsNoTablesAndRunsNothing()
     {
         var fake = Fake(BothAnswer, "Only prose.");
@@ -166,7 +166,7 @@ public sealed class ProposalQueryTablesTests
         Assert.Empty(fake.GuideQueryRequests);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AReadWithTheSameRationaleAndStateDoesNotRunTheTablesAgain()
     {
         var fake = Fake(BothAnswer);
@@ -179,7 +179,7 @@ public sealed class ProposalQueryTablesTests
         Assert.Single(fake.GuideQueryRequests);
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData(RefusalCodes.QueryAsOfUnavailable)]
     [InlineData(RefusalCodes.QueryNoTrialRows)]
     public async Task AStateRefusalSaysWhyInTheWindowsWordsNotTheCommands(string code)

@@ -45,7 +45,7 @@ public sealed class TextsProposalMemoryTests(ITestOutputHelper output)
         return (summary, new WeakReference(trial), new WeakReference(trial[Words / 2]));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ASixHundredEightyEightThousandWordTrialIsHeldAsValuesAWordWithoutAnyOfItsRows()
     {
         GC.Collect();

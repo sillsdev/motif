@@ -65,7 +65,7 @@ public sealed class TrialBaselineNoticeTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task TryAgainKeepsTheWorkflowsWarningWithTheProposalsTrialRunAndNoWarningMeansNone()
     {
         var fake = new FakeCommandClient();

@@ -29,7 +29,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
                 inflType = (string?)null, guessedString = (string?)null },
         } } },
     };
-    [Fact]
+    [UiThreadFact]
     public async Task BeforeTheFirstParseAnalyzeTextsShowsTheTextAndItsFieldWorksAnalysesWithoutReadState()
     {
         using var project = new WalkthroughProject(pristine);

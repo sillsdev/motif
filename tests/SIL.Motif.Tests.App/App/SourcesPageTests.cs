@@ -12,7 +12,7 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class SourcesPageTests
 {
-    [Fact]
+    [UiThreadFact]
     public async Task SourceMetadataKeepsLocalCurrentSeparateFromContext()
     {
         var client = new FakeCommandClient();
@@ -28,7 +28,7 @@ public sealed class SourcesPageTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AFailedDetailReadDisablesStagingUntilASuccessfulReload()
     {
         var client = new FakeCommandClient
@@ -52,7 +52,7 @@ public sealed class SourcesPageTests
         await model.StopAsync();
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task OlderSourceDetailCannotReplaceANewerChoiceEvenWhenCancellationIsIgnored()
     {
         var client = new FakeCommandClient { SourceRows = [Source("alpha"), Source("beta")] };
@@ -71,7 +71,7 @@ public sealed class SourcesPageTests
         await model.StopAsync();
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("Removed", null)]
     [InlineData("Active", "Folder unavailable")]
     public async Task UnusableSourceHasNoCurrentOrContextActions(string status, string? error)

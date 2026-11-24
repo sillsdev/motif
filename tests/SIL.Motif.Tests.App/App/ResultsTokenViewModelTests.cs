@@ -190,7 +190,7 @@ public sealed class ResultsTokenViewModelTests
         Assert.All(token.ProposalReadings, reading => Assert.True(reading.HasMorphs));
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task AddAnExpectedParseStagesAddAndApproveWithTheTrialsAssessmentId()
     {
         var fake = new FakeCommandClient();
@@ -215,7 +215,7 @@ public sealed class ResultsTokenViewModelTests
             put.ExpectedContext?.Trial);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ApproveInThisProposalStagesIntoTheOpenProposal()
     {
         var fake = new FakeCommandClient();
@@ -237,7 +237,7 @@ public sealed class ResultsTokenViewModelTests
         Assert.Equal(ChangeKinds.Approve, put.Change.Kind);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task LeavingProposalModeStagesIntoThePendingDraftAgain()
     {
         var fake = new FakeCommandClient();
@@ -252,7 +252,7 @@ public sealed class ResultsTokenViewModelTests
         Assert.Equal("proposal/one", fake.PendingLoadRequests[^2].ProposalId);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task ATraceAgainstAGoneScratchOffersTryAgain()
     {
         var fake = new FakeCommandClient();

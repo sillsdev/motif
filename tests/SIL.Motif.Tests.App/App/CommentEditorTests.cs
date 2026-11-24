@@ -62,7 +62,7 @@ public sealed class CommentEditorTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(editor.IsEditing);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task CommentFormattingAndLinkAreRendered()
     {
         var comment = AgentComment() with { Markdown = "A **bold** [link](/lexicon/entry-1){guid=11111111-2222-4333-8444-555555555555}." };
@@ -77,7 +77,7 @@ public sealed class CommentEditorTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal(comment.Markdown, editor.Text());
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task StoredCommentShowsItsFindings()
     {
         var comment = AgentComment() with { Markdown = "An <b>unread</b> tag." };
@@ -92,7 +92,7 @@ public sealed class CommentEditorTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal(["1:3 Missing link"], decided.Findings);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APersonAddsACommentAndSeesFindings()
     {
         var (fake, editor, _) = await OpenAsync(null);
@@ -105,7 +105,7 @@ public sealed class CommentEditorTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(editor.CanDeleteComment);
     }
 
-    [Fact]
+    [UiThreadFact]
     public async Task APersonEditsAndDeletesAnAgentComment()
     {
         var (fake, editor, removed) = await OpenAsync(AgentComment());
@@ -125,7 +125,7 @@ public sealed class CommentEditorTests(AvaloniaHeadlessFixture avalonia)
         Assert.Same(editor, Assert.Single(removed));
     }
 
-    [Theory]
+    [UiThreadTheory]
     [InlineData("applied")]
     [InlineData("rejected")]
     [InlineData("superseded")]
