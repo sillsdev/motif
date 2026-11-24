@@ -8440,6 +8440,64 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-set-affix-max-apps"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-affix-max-apps.",
+                    "properties": {
+                      "msa": {
+                        "type": "string",
+                        "description": "The id of the affix\u0027s morphosyntactic analysis (inflectional, derivational or unclassified affix)."
+                      },
+                      "expectedMaxApps": {
+                        "type": "number",
+                        "description": "The affix\u0027s repeat count now: 1 when the project sets none."
+                      },
+                      "maxApps": {
+                        "type": "number",
+                        "description": "The repeat count to set, a whole number from 1 to 3; 1 is the default and removes the setting."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "msa",
+                      "expectedMaxApps",
+                      "maxApps"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-set-not-on-clitics"
                     ]
                   },
@@ -12905,6 +12963,46 @@
         "draft",
         "expectedNoDefaultCompounding",
         "noDefaultCompounding",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_set_affix_max_apps",
+    "description": "Set an affix\u0027s repeat count. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. Only sets one existing affix\u0027s repeat count; it repeats no template slot. Trial repeated forms first and ask the linguist (guide workflow). Stages one explicit change to how many times one affix may apply to a word, for an affix the language stacks (a verb extension said twice, a repeated converb suffix). The parser applies each affix once unless the project says otherwise; the expected value guards against stale evidence, and only a person can Apply.\nCommand: compose-set-affix-max-apps. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "msa": {
+          "type": "string",
+          "description": "The id of the affix\u0027s morphosyntactic analysis (inflectional, derivational or unclassified affix)."
+        },
+        "expectedMaxApps": {
+          "type": "number",
+          "description": "The affix\u0027s repeat count now: 1 when the project sets none."
+        },
+        "maxApps": {
+          "type": "number",
+          "description": "The repeat count to set, a whole number from 1 to 3; 1 is the default and removes the setting."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "msa",
+        "expectedMaxApps",
+        "maxApps",
         "project"
       ],
       "additionalProperties": false
