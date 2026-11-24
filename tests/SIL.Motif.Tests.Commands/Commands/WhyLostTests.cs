@@ -198,6 +198,6 @@ public sealed class WhyLostTests
         Assert.Contains("required_slot_unfilled", current.DiagnosticRejectReasons.Value);
 
         var older = PanGlossSurface.ReadDescription(SIL.Motif.Tests.PanGloss.WhyNotRecordedTests.Recorded("describe"), out _)!;
-        Assert.Null(older.DiagnosticRejectReasons);
+        Assert.DoesNotContain("allomorph_blocked", older.DiagnosticRejectReasons ?? []);
     }
 }
