@@ -60,7 +60,7 @@ public sealed partial class RecordStore
             database.ChangeTracker.Clear();
             WriteStageReached?.Invoke(WriteStage.HistoryWritten);
             var latest = await DecodeLatestAsync(digest: false, default);
-            await PublishIndexAsync(latest.Records, await CommitRevisionAsync(), tombstones: latest.Tombstones);
+            await PublishIndexAsync(latest.Records, await CommitRevisionAsync(), tombstones: latest.Tombstones, refuseUnprovenNative: true);
             WriteStageReached?.Invoke(WriteStage.StateWritten);
             await transaction.CommitAsync();
             CompleteUpgrade();

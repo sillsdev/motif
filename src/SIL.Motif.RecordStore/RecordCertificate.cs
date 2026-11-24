@@ -386,9 +386,15 @@ public sealed partial class RecordStore
                 // A crashed list operation commits history without moving the state row.
                 if (await CommitRevisionAsync(ct) != state.Revision)
                     throw new InvalidOperationException("History changed while the store was being verified and is not published; the store was not re-certified.");
-                await UpgradeInTransactionAsync();
-                if (backfillDerived) WriteDerived(state, acquired.Derived!.Chunks, acquired.Derived.Headers);
-                await StageCertificateAsync(state, replay, CertificateProvenance.FullVerify);
+                // An older store whose records fail the provenance proof is not upgraded: it stays on the full path.
+                var unproven = format < StoreFormat ? acquired.UnprovenNative : null;
+                if (unproven is null)
+                {
+                    await UpgradeInTransactionAsync();
+                    if (backfillDerived) WriteDerived(state, acquired.Derived!.Chunks, acquired.Derived.Headers);
+                }
+                else Progress?.Invoke($"{NativeUsageSchema.ProvenanceLimitation}: record {unproven:D}; the store is not upgraded and is read on the full path.");
+                if (unproven is null || format >= CertificateFormat) await StageCertificateAsync(state, replay, CertificateProvenance.FullVerify);
                 await database.SaveChangesAsync(ct);
                 database.ChangeTracker.Clear();
                 await transaction.CommitAsync(ct);
@@ -402,7 +408,8 @@ public sealed partial class RecordStore
                 throw;
             }
         }
-        point = acquired with { Replay = replay, Derived = null };
+        // A store left un-upgraded keeps its decode tables so the next write can upgrade it from this point.
+        point = acquired with { Replay = replay, Derived = acquired.UnprovenNative is null ? null : acquired.Derived };
         Verification = StoreVerification.Full;
         if (AfterVerifyCertified is { } certified) await certified();
         return state;

@@ -168,9 +168,9 @@ public sealed partial class DeletionSafetyTests
         await using var damaged = Store.OpenPublishedReader(Database);
         var refused = await Assert.ThrowsAsync<InvalidDataException>(() => damaged.ReadRecordAsync(target));
         Assert.Contains(table, refused.Message);
-        if (table == "RecordPublicationBinding")
+        if (table is "RecordPublicationBinding" or "RecordChunks")
         {
-            // The binding is consumed by every keyed read, whatever the chunk.
+            // The binding and the chunk-row sum are checked before any keyed read is trusted, whatever the chunk.
             await Assert.ThrowsAsync<InvalidDataException>(() => damaged.ReadRecordAsync(other));
             Assert.NotEqual(StoreVerification.Certified, damaged.Verification);
         }

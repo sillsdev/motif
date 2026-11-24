@@ -108,8 +108,11 @@ internal sealed class NativeUsageSchema
 
     private static readonly string[] Roles = ["LexEntry", "LexSense", "MoForm", "WfiAnalysis", "WfiMorphBundle", "WfiGloss", "WfiWordform"];
 
-    private NativeUsageSchema(JsonElement schema, GenericRecord[] native, string adapterVersion, CancellationToken ct)
+    private readonly string adapterVersion;
+
+    private NativeUsageSchema(JsonElement schema, string adapterVersion)
     {
+        this.adapterVersion = adapterVersion;
         var definitions = schema.GetProperty("classes").EnumerateArray().ToArray();
         classes = definitions.ToDictionary(c => c.GetProperty("name").GetString()!, c => c.GetProperty("id").GetInt32(), StringComparer.Ordinal);
         classNames = classes.ToDictionary(pair => pair.Value, pair => pair.Key);
@@ -137,22 +140,66 @@ internal sealed class NativeUsageSchema
                     throw new InvalidDataException("Invalid native class inheritance.");
             }
         }
-        var headers = native.ToDictionary(r =>
-        {
-            ct.ThrowIfCancellationRequested();
-            return r.Id;
-        });
+    }
+
+    /// <summary>Checks native classes and bundle ownership against the schema; headers suffice.</summary>
+    private void RequireHeaders(IReadOnlyList<ReferenceRecord> native, CancellationToken ct)
+    {
+        var bundles = new List<ReferenceRecord>();
         foreach (var record in native)
         {
             ct.ThrowIfCancellationRequested();
-            if (!bases.ContainsKey(record.ClassId) || record.Provenance is not { } provenance ||
-                provenance.TraversalVersion != adapterVersion ||
-                Roles.Any(role => IsA(record.ClassId, role) != provenance.RepositoryOrdinals.ContainsKey(role)))
+            if (!bases.ContainsKey(record.ClassId))
                 throw new InvalidDataException("Native class metadata disagrees with captured repository membership.");
-            if (IsBundle(record.ClassId) && (record.Owner is not { } owner || !headers.TryGetValue(owner, out var parent) ||
-                !IsAnalysis(parent.ClassId) || record.OwningField != BundlesField))
-                throw new InvalidDataException("Native morph bundle ownership disagrees with the retained schema.");
+            if (IsBundle(record.ClassId)) bundles.Add(record);
         }
+        if (bundles.Count == 0) return;
+        var owners = bundles.Where(b => b.Owner.HasValue).Select(b => b.Owner!.Value).ToHashSet();
+        var parents = new Dictionary<Guid, ReferenceRecord>();
+        foreach (var record in native)
+            if (owners.Contains(record.Id)) parents[record.Id] = record;
+        foreach (var record in bundles)
+            if (record.Owner is not { } owner || !parents.TryGetValue(owner, out var parent) ||
+                !IsAnalysis(parent.ClassId) || record.OwningField != BundlesField)
+                throw new InvalidDataException("Native morph bundle ownership disagrees with the retained schema.");
+    }
+
+    /// <summary>Each record's captured repository membership must agree with its class; needs the decoded records.</summary>
+    internal void RequireProvenance(IEnumerable<GenericRecord> native, CancellationToken ct)
+    {
+        foreach (var record in native)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!ProvenanceAgrees(record))
+                throw new InvalidDataException("Native class metadata disagrees with captured repository membership.");
+        }
+    }
+
+    private bool ProvenanceAgrees(GenericRecord record) =>
+        record.Provenance is { } provenance && provenance.TraversalVersion == adapterVersion &&
+        !Roles.Any(role => IsA(record.ClassId, role) != provenance.RepositoryOrdinals.ContainsKey(role));
+
+    /// <summary>The start of the limitation a publication records when a native record fails the provenance proof.</summary>
+    internal const string ProvenanceLimitation = "Native provenance disagrees with captured repository membership";
+
+    /// <summary>
+    /// The first native record (by id) that fails the provenance proof of a store whose schema is otherwise usable, or null.
+    /// A store without a usable schema has no proof to fail: both read paths already give it no schema.
+    /// </summary>
+    internal static Guid? ProvenanceFailure(IEnumerable<GenericRecord> records)
+    {
+        try
+        {
+            var all = records as GenericRecord[] ?? records.ToArray();
+            var manifests = all.Where(r => r.Kind == "manifest").ToArray();
+            var coverages = all.Where(r => r.Kind == "native-coverage").ToArray();
+            if (manifests.Length != 1 || coverages.Length != 1 || Parse(manifests[0], coverages[0]) is not { } schema) return null;
+            var native = all.Where(r => r.Kind == "lcm").ToArray();
+            schema.RequireHeaders(native.Select(r => new ReferenceRecord(r.Id, r.ClassId, r.Owner, r.OwningField)).ToArray(), default);
+            return native.Where(r => !schema.ProvenanceAgrees(r)).Select(r => (Guid?)r.Id).Order().FirstOrDefault();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or KeyNotFoundException or
+            InvalidDataException or ArgumentException or FormatException or OverflowException or JsonException) { return null; }
     }
 
     public static NativeUsageSchema? Read(IEnumerable<GenericRecord> records, CancellationToken ct = default)
@@ -161,15 +208,42 @@ internal sealed class NativeUsageSchema
         {
             ct.ThrowIfCancellationRequested();
             var all = records.ToArray();
-            var manifest = all.Single(r => r.Kind == "manifest");
-            var basis = all.Single(r => r.Kind == "native-coverage").Values["basis"].Deserialize<NativeImportCoverage>();
-            var schema = manifest.Values["schema"];
-            if (basis is null || basis.Version != 1 || basis.SchemaDigest != NativeImportCoverage.ComputeSchemaDigest(schema))
-                return null;
-            return new NativeUsageSchema(schema, all.Where(r => r.Kind == "lcm").ToArray(), basis.AdapterVersion, ct);
+            var schema = Parse(all.Single(r => r.Kind == "manifest"), all.Single(r => r.Kind == "native-coverage"));
+            if (schema is null) return null;
+            var native = all.Where(r => r.Kind == "lcm").ToArray();
+            schema.RequireHeaders(native.Select(r => new ReferenceRecord(r.Id, r.ClassId, r.Owner, r.OwningField)).ToArray(), ct);
+            schema.RequireProvenance(native, ct);
+            return schema;
         }
         catch (Exception exception) when (exception is InvalidOperationException or KeyNotFoundException or
             InvalidDataException or ArgumentException or FormatException or OverflowException or JsonException) { return null; }
+    }
+
+    /// <summary>
+    /// The schema of a certified point, from its manifest, its coverage record and the native headers alone; the
+    /// per-record provenance proof is not repeated here.
+    /// </summary>
+    public static NativeUsageSchema? ReadCertified(IReadOnlyList<GenericRecord> manifests, IReadOnlyList<GenericRecord> coverages,
+        IReadOnlyList<ReferenceRecord> native, CancellationToken ct = default)
+    {
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            var schema = Parse(manifests.Single(), coverages.Single());
+            schema?.RequireHeaders(native, ct);
+            return schema;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or KeyNotFoundException or
+            InvalidDataException or ArgumentException or FormatException or OverflowException or JsonException) { return null; }
+    }
+
+    private static NativeUsageSchema? Parse(GenericRecord manifest, GenericRecord coverage)
+    {
+        var basis = coverage.Values["basis"].Deserialize<NativeImportCoverage>();
+        var schema = manifest.Values["schema"];
+        if (basis is null || basis.Version != 1 || basis.SchemaDigest != NativeImportCoverage.ComputeSchemaDigest(schema))
+            return null;
+        return new NativeUsageSchema(schema, basis.AdapterVersion);
     }
 
     internal string? ClassName(int id) => classNames.GetValueOrDefault(id);

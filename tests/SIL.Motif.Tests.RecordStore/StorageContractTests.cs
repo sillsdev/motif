@@ -253,11 +253,11 @@ public sealed class StorageContractTests : IDisposable
     }
 
     [Fact]
-    public async Task MissingSnapshotCannotProduceSuccessfulPartialReadsOrCompleteReferenceFacts()
+    public async Task OnTheFullPathAMissingSnapshotCannotProduceSuccessfulPartialReadsOrCompleteReferenceFacts()
     {
         var path = PathFor("snapshot-root");
         var value = Record(Guid.NewGuid().ToString());
-        await using var store = new Store(path);
+        await using var store = new Store(path) { CertifiedAcquisitionAllowed = false };
         await store.ImportAsync([new(value, new Dictionary<int, int>())], Guid.NewGuid());
         using var connection = Open(path);
         using var command = connection.CreateCommand();
@@ -268,6 +268,52 @@ public sealed class StorageContractTests : IDisposable
         await Assert.ThrowsAsync<InvalidDataException>(() => store.RebuildReferenceIndexAsync());
         await store.RegenerateAsync();
         Assert.Equal(value.Values["text"].GetString(), Assert.Single(await store.ReadAsync()).Values["text"].GetString());
+    }
+
+    [Fact]
+    public async Task OnACertifiedPointDeletedSnapshotsDoNotStopAReferenceQueryButKeyedAndFullReadsRefuseAndVerifyNamesThem()
+    {
+        var path = PathFor("snapshot-certified");
+        var value = Record(Guid.NewGuid().ToString());
+        await using (var importer = new Store(path)) await importer.ImportAsync([new(value, new Dictionary<int, int>())], Guid.NewGuid());
+        using (var connection = Open(path))
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM Snapshots";
+            command.ExecuteNonQuery();
+        }
+        await using var store = new Store(path);
+        // The headers, edges and chunk rows are intact and no unread chunk is consulted, so the query is answered.
+        var index = await store.ReferencesAsync();
+        Assert.Equal(1, store.CertifiedAcquisitions);
+        Assert.NotEmpty(index.Revision);
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.ReadRecordAsync(value.Id));
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.ReadAsync());
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => new Store(path).VerifyAsync());
+        Assert.Contains("Snapshots", failure.Message);
+    }
+
+    [Theory]
+    [InlineData(4, 0)]
+    [InlineData(7, 1)]
+    public async Task APublicationReadsTombstonesOnlyWhenItWritesDerivedTables(int format, int reads)
+    {
+        var path = PathFor("tombstone-skip-" + format);
+        await using (var empty = new Store(path)) { }
+        if (format == 4)
+        {
+            using var connection = Open(path);
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA user_version=4";
+            command.ExecuteNonQuery();
+        }
+        var record = new GenericRecord { Id = Guid.NewGuid(), ClassId = 1 };
+        var types = ImmutableDictionary<int, int>.Empty;
+        var coverage = NativeImportCoverage.Capture([new(record.Id, 1, null, 0)],
+            ImmutableDictionary<int, ImmutableDictionary<int, int>>.Empty.Add(1, types), "tombstone fixture");
+        await using var store = new Store(path);
+        await store.ImportNativeAsync([new(record, types)], Guid.NewGuid(), coverage);
+        Assert.Equal(reads, store.TombstoneReads);
     }
 
     private static GenericRecord Record(string value)

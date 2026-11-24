@@ -37,13 +37,13 @@ internal sealed class HandAnalysisProjection
     {
         var usage = point.Index.UsageSchema;
         var systems = Systems(point);
-        var wfi = WfiProjection.Build(point.Records, usage, ct);
-        var scan = TextScan.Read(point.Records, usage ?? throw new IndexUnavailableException("The native schema proof is unavailable."), ct);
+        var wfi = WfiProjection.Build(point.Records.Loaded, usage, ct);
+        var scan = TextScan.Read(point.Records.Loaded, usage ?? throw new IndexUnavailableException("The native schema proof is unavailable."), ct);
         var anchors = TextScan.Anchors(point.Anchors);
         var counts = TextScan.Counts(scan.Slots, anchors);
         wfi = wfi.WithUseCounts(counts);
-        var project = ProjectProjection.Build(point.Records, usage, systems, collation.Version, ct);
-        var lexicon = LexiconProjection.Build(point.Records, usage, wfi, project, collation, ct);
+        var project = ProjectProjection.Build(point.Records.Loaded, usage, systems, collation.Version, ct);
+        var lexicon = LexiconProjection.Build(point.Records.Loaded, usage, wfi, project, collation, ct);
         var occurrences = OccurrenceProjection.Build(scan, anchors, counts, wfi, lexicon, project, ct);
         return new HandAnalysisProjection { Wfi = wfi, Lexicon = lexicon, Occurrences = occurrences, Project = project, ComparisonVersion = collation.Version }.WithCollation(collation);
     }

@@ -54,7 +54,7 @@ public sealed partial class RecordStore
                 var records = await candidate.ReadRecordsAsync();
                 foreach (var resource in records.Where(record => record.Kind == "resource"))
                     resources.Read(resource.Values["hash"].GetString()!);
-                await candidate.PublishIndexAsync(records, await candidate.CommitRevisionAsync());
+                await candidate.PublishIndexAsync(records, await candidate.CommitRevisionAsync(), refuseUnprovenNative: true);
                 var state = await candidate.PublishedStateAsync();
                 if (state.Revision != history.Revision || state.SnapshotDigest != history.SnapshotDigest ||
                     state.IndexDigest != history.IndexDigest)
