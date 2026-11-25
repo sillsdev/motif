@@ -73,8 +73,9 @@ public sealed partial class MotifDatabase : IDisposable
     /// The guarantee is that this never deletes a database this version of Motif can use or upgrade. Creation
     /// and upgrade hold the creation lock this method decides and deletes under. A database created
     /// while this waits for that lock is found usable and kept, pinned by
-    /// `ADatabaseCreatedWhileTheDeleteWaitsIsKept`; a delete that gets the lock first deletes, and the next open
-    /// creates a fresh database, pinned by `ADeleteThatWinsTheLockIsFollowedByACleanRecreate`.
+    /// `ADatabaseCreatedWhileTheDeleteWaitsIsKept`. A newer store is never deleted: it throws
+    /// <see cref="MotifStoreVersionException"/> with <see cref="MotifStoreVersionException.Newer"/> set, pinned by
+    /// `ANewerStoreIsNeverResetAndIsLeftByteForByte`.
     /// </para>
     /// <para>
     /// Each open holds a shared lease on the sibling <c>.use.lock</c> file for this store's lifetime. Other Motif
