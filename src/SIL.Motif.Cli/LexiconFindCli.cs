@@ -40,42 +40,66 @@ internal static class LexiconFindCli
     private static CommandResult RunBatch(string project, string source, string? at, bool asJson)
     {
         string[] lines;
-        try { lines = (source == "-" ? Console.In.ReadToEnd() : File.ReadAllText(source)).Split('\n'); }
+        try { lines = ReadSource(source).Split('\n'); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return Refuse($"--batch could not read '{source}': {exception.Message}", asJson);
         }
-        var inputs = new List<JsonObject>();
+        var slots = new List<(JsonNode Query, Refusal? Bad)>();
         var requests = new List<LexiconFindRequest>();
         foreach (var raw in lines.Select(line => line.Trim()).Where(line => line.Length > 0))
         {
             JsonObject? input;
             try { input = JsonNode.Parse(raw) as JsonObject; }
             catch (System.Text.Json.JsonException) { input = null; }
-            if (input is null) return Refuse($"--batch line {inputs.Count + 1} is not a JSON object.", asJson);
+            if (input is null)
+            {
+                slots.Add((JsonValue.Create(raw)!, BadLine(slots.Count + 1, "is not a JSON object")));
+                continue;
+            }
             var pairs = input.ToDictionary(pair => pair.Key, pair => pair.Value switch
             {
                 JsonValue value when value.TryGetValue<string>(out var text) => text,
                 JsonValue value => value.ToJsonString(),
                 _ => "",
             }, StringComparer.Ordinal);
-            var (request, refusal) = Build(project, pairs);
-            if (request is null) return Refuse(refusal?.Message ?? $"--batch line {inputs.Count + 1} names an unknown or malformed filter.", asJson);
-            inputs.Add(input);
+            var unknown = pairs.Keys.Where(name => name is not "project" and not "json" && !Names.Contains(name)).ToArray();
+            var (request, refusal) = unknown.Length > 0
+                ? (null, BadLine(slots.Count + 1, "names unknown filter(s) " + string.Join(", ", unknown)))
+                : Build(project, pairs);
+            if (request is null)
+            {
+                slots.Add((input, refusal ?? BadLine(slots.Count + 1, "has a malformed filter value")));
+                continue;
+            }
+            slots.Add((input, null));
             requests.Add(request with { At = at });
         }
         var outcome = LexiconFindCommand.FindMany(project, at, requests);
         if (!outcome.Succeeded) return CommandTextRenderer.Render(outcome, asJson);
         var text = new StringBuilder();
-        for (var index = 0; index < requests.Count; index++)
+        var next = 0;
+        foreach (var (query, bad) in slots)
         {
-            var answer = outcome.Value![index];
-            var line = new JsonObject { ["query"] = inputs[index] };
-            if (answer.Succeeded) line["result"] = answer.Value;
-            else line["refusal"] = new JsonObject { ["code"] = answer.Refusal!.Code, ["message"] = answer.Refusal.Message };
+            var line = new JsonObject { ["query"] = query };
+            var answer = bad is null ? outcome.Value![next++] : null;
+            var refused = bad ?? answer!.Refusal;
+            if (refused is null) line["result"] = answer!.Value;
+            else line["refusal"] = new JsonObject { ["code"] = refused.Code, ["message"] = refused.Message };
             text.Append(line.ToJsonString()).Append('\n');
         }
         return new CommandResult(0, text.ToString());
+    }
+
+    private static Refusal BadLine(int number, string problem) =>
+        new(RefusalCodes.LexiconFindInvalidRequest, FailureReason.InvalidArgument, $"--batch line {number} {problem}.");
+
+    // Standard input is decoded as UTF-8 whatever the console code page is.
+    private static string ReadSource(string source)
+    {
+        if (source != "-") return File.ReadAllText(source);
+        using var reader = new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false));
+        return reader.ReadToEnd();
     }
 
     // The request the flags name, or a refusal saying why not; neither means these are not lexicon find words.

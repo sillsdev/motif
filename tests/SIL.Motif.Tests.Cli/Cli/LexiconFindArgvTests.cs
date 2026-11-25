@@ -56,6 +56,30 @@ public sealed class LexiconFindArgvTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void ABatchAnswersMalformedUnknownKeyAndSlowLinesInPlaceAndKeepGoing()
+    {
+        using var project = new WalkthroughProject(pristine, _root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), _root).Succeeded);
+        var slow = "z";
+        for (var depth = 0; depth < 14; depth++) slow = ".*(?=" + slow + ")";
+        var file = Path.Combine(_root, "mixed.jsonl");
+        File.WriteAllText(file, "not json\n{\"form_regex\":\"a\"}\n{\"form-regex\":\"" + slow + "\"}\n[1]\n{\"exact\":\"" + SeededProject.FirstForm + "\"}\n");
+        var result = CliInProcess.Run(_root, null, developerCommands: true,
+            "lexicon", "find", "--project", project.FwDataPath, "--batch", file);
+        Assert.True(result.ExitCode == 0, result.Output + result.Error);
+        var lines = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => JsonDocument.Parse(line).RootElement).ToArray();
+        Assert.Equal(5, lines.Length);
+        string Code(int index) => lines[index].GetProperty("refusal").GetProperty("code").GetString()!;
+        Assert.Equal("lexicon-find.invalid-request", Code(0));
+        Assert.Equal("lexicon-find.invalid-request", Code(1));
+        Assert.Contains("form_regex", lines[1].GetProperty("refusal").GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.Equal("lexicon-find.invalid-request", Code(2));
+        Assert.Contains("seconds", lines[2].GetProperty("refusal").GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.Equal("lexicon-find.invalid-request", Code(3));
+        Assert.Equal(1, lines[4].GetProperty("result").GetProperty("matched").GetInt32());
+    }
+
+    [Fact]
     public void RefusesABadRegexAnOutOfRangePageAndAnUnknownIdFormat()
     {
         using var project = new WalkthroughProject(pristine, _root);
