@@ -230,6 +230,10 @@ public static class CommandCatalog
         // Saved default Selection
         new CommandDescriptor("project create", typeof(ProjectCreateRequest),
             typeof(ProjectCreatedResponse), CommandSurface.Autonomous, AgentClass.HumanOnly),
+        new CommandDescriptor("store backup", typeof(StoreBackupRequest),
+            typeof(StoreBackupResponse), CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
+        new CommandDescriptor("store restore", typeof(StoreRestoreRequest),
+            typeof(StoreRestoreResponse), CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("project word-forming", typeof(ProjectWordFormingRequest),
             typeof(ProjectWordFormingResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("project tag", typeof(ReadProjectTagRequest),

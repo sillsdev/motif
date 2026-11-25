@@ -14,7 +14,7 @@ internal static class CorpusQueryCli
     /// <summary>True for <c>query --corpus ...</c>, which never reads a project.</summary>
     public static bool Handles(IReadOnlyDictionary<string, string> flags) => flags.ContainsKey("corpus");
 
-    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "thorough", "segment-test", "group-by", "what-if-retire", "sum", "sample", "seed", "write-words", "with-counts", "force", "count-by", "adjacent", "by-morph", "twin", "json"];
+    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "thorough", "segment-test", "group-by", "what-if-retire", "sum", "sample", "seed", "write-words", "with-counts", "force", "count-by", "adjacent", "by-morph", "twin", "baseline-grammar", "json"];
 
     /// <summary>True for <c>query --corpus &lt;words&gt; forms ...</c>.</summary>
     public static bool IsForms(IReadOnlyList<string> positionals) => positionals.FirstOrDefault() == "forms";
@@ -42,7 +42,7 @@ internal static class CorpusQueryCli
             document = readJson(source);
             if (document is null) return false;
         }
-        var readingsOnly = groupBy is not null || retire is not null || flags.ContainsKey("sum") || flags.ContainsKey("count-by") || flags.ContainsKey("sample") || flags.ContainsKey("write-words");
+        var readingsOnly = groupBy is not null || retire is not null || flags.ContainsKey("sum") || flags.ContainsKey("count-by") || flags.ContainsKey("sample") || flags.ContainsKey("write-words") || flags.ContainsKey("baseline-grammar");
         if (!flags.TryGetValue("corpus", out var corpus) || ((where is null) == (document is null) && !(readingsOnly && where is null && document is null))) return false;
         int? limit = null;
         if (flags.TryGetValue("limit", out var raw))
@@ -66,7 +66,8 @@ internal static class CorpusQueryCli
             flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"), flags.GetValueOrDefault("project"), groupBy, retire, flags.ContainsKey("thorough"),
             flags.GetValueOrDefault("sum"), sample, seed, flags.GetValueOrDefault("write-words"), flags.ContainsKey("with-counts"), flags.TryGetValue("force", out var force) && force != "false",
             flags.GetValueOrDefault("count-by"), flags.TryGetValue("adjacent", out var adjacent) && adjacent != "false", flags.TryGetValue("by-morph", out var byMorph) && byMorph != "false",
-            flags.TryGetValue("twin", out var twin) ? twin.Split('\n', StringSplitOptions.RemoveEmptyEntries) : null);
+            flags.TryGetValue("twin", out var twin) ? twin.Split('\n', StringSplitOptions.RemoveEmptyEntries) : null,
+            flags.GetValueOrDefault("baseline-grammar"));
         return true;
     }
 

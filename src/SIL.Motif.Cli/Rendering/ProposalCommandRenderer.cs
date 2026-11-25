@@ -217,6 +217,8 @@ public static class ProposalCommandRenderer
                     : $"    {op.OperationId}  ({op.Kind})");
         }
         if (r.NextStep is { } nextStep) sb.AppendLine(nextStep);
+        foreach (var advisory in r.Advisories ?? [])
+            sb.AppendLine($"Advisory {advisory.Code} (intents {string.Join(", ", advisory.Intents)}): {advisory.Message}");
         sb.AppendLine($"Draft now has {r.OperationCount} operation(s).");
         return sb.ToString();
     }

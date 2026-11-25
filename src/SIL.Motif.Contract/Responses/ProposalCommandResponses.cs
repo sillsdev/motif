@@ -63,6 +63,29 @@ public sealed record ComposedIntentResult(
 }
 
 /// <summary>
+/// A Motif observation about composed intents that points at a likely better model, such as an inflection class or a
+/// phonological rule in place of many copies. The batch that raises it still composes, pinned by
+/// `FiveIntentsAddingTheSameAnalysisAreAdvisedTowardAClassOrAffix`; the codes are <see cref="ComposeAdvisoryCodes"/>.
+/// </summary>
+/// <param name="Code">A stable code a script can match.</param>
+/// <param name="Message">What was seen, what it usually means and what to use instead.</param>
+/// <param name="Intents">The positions of the intents it is about, counting expanded forEach intents.</param>
+public sealed record ComposeAdvisory(string Code, string Message, IReadOnlyList<int> Intents);
+
+/// <summary>The stable codes of <see cref="ComposeAdvisory"/>.</summary>
+public static class ComposeAdvisoryCodes
+{
+    /// <summary>Five or more intents add the same analysis, or give forms one environment spelled with literal sounds.</summary>
+    public const string RepeatedCondition = "compose.repeated-condition";
+
+    /// <summary>An environment with a word boundary on both sides and only literal sounds between them.</summary>
+    public const string WholeWordEnvironment = "compose.whole-word-environment";
+
+    /// <summary>An inflection class that a composed intent assigns and that then has exactly one stem.</summary>
+    public const string OneStemInflectionClass = "compose.one-stem-inflection-class";
+}
+
+/// <summary>
 /// Every intent of one <c>compose-batch</c> call, all appended to the Draft together; <c>OperationCount</c> is the
 /// Draft's operation count afterwards.
 /// </summary>
@@ -83,6 +106,10 @@ public sealed record ComposedBatchResponse(
     /// <summary>How to read what the cut left out; null when nothing was cut.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NextStep { get; init; }
+
+    /// <summary>Patterns in these intents that usually belong in a different model; null when there are none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<ComposeAdvisory>? Advisories { get; init; }
 
     /// <summary>
     /// The first <paramref name="operationLimit"/> operations and intents, in intent order. A listed intent keeps its
