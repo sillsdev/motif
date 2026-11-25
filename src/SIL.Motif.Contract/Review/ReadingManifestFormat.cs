@@ -2,14 +2,16 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using SIL.Motif.Contract.HandAnalysis;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Model;
 
 namespace SIL.Motif.Contract.Review;
 
 /// <summary>
 /// The expected-change manifest format the grammar lanes read and write: one JSON object per line holding a word,
 /// the Reading's signature as an ordered array of morpheme objects, and a copy count. Keys are sorted at every level and
-/// separators follow the lane writer (a comma and a colon each followed by a space), so a file written here is
-/// byte-identical to the one the lane's own writer produces for the same delta.
+/// separators follow the lane writer (a comma and a colon each followed by a space), so a file written here equals the
+/// one the lane's own writer produces for the same delta once the Proposal's created ids are aliased the same way.
 /// </summary>
 public static class ReadingManifestFormat
 {
@@ -28,10 +30,33 @@ public static class ReadingManifestFormat
             morpheme.MsaId is not null && morpheme.AllomorphId is not null &&
             (morpheme.SenseStatus == ReadingSenseStatus.Ambiguous || morpheme.SenseId is not null));
 
+    /// <summary>
+    /// The aliases the lane gate gives ids a Proposal creates: each operation whose kind contains "create" names one
+    /// entity, numbered <c>created:N</c> in first-appearance order, under its canonical, lower-case GUID and upper-case GUID spellings.
+    /// </summary>
+    /// <param name="operations">The Proposal's operations, in order.</param>
+    /// <returns>Each created id mapped to its alias.</returns>
+    public static IReadOnlyDictionary<string, string> CreatedAliases(IEnumerable<OperationEnvelope> operations)
+    {
+        var aliases = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var operation in operations)
+            if (operation.EntityId is { } entity && operation.Kind.Contains("create", StringComparison.OrdinalIgnoreCase) &&
+                !aliases.ContainsKey(entity.Value))
+                aliases[entity.Value] = "created:" + aliases.Count;
+        foreach (var (id, label) in aliases.ToArray())
+        {
+            var guid = CanonicalId.Parse(id).ToGuid().ToString("D", CultureInfo.InvariantCulture);
+            aliases[guid] = aliases[guid.ToUpperInvariant()] = label;
+        }
+        return aliases;
+    }
+
     /// <summary>The identity two signatures share when they are the same manifest Reading: compact, key-sorted JSON.</summary>
     /// <param name="signature">A complete signature.</param>
+    /// <param name="aliases">Ids to rename one at a time, or null to keep real ids.</param>
     /// <returns>The compact encoding of the morpheme array.</returns>
-    public static string Key(ReadingSignature signature) => Encode(Lane(signature), compact: true);
+    public static string Key(ReadingSignature signature, IReadOnlyDictionary<string, string>? aliases = null) =>
+        Encode(Lane(signature, aliases), compact: true);
 
     /// <summary>The signature as a manifest row writes it, for a reader that wants the array and not the line.</summary>
     /// <param name="signature">A complete signature.</param>
@@ -46,12 +71,14 @@ public static class ReadingManifestFormat
     /// <param name="word">The measured spelling.</param>
     /// <param name="signature">A complete signature.</param>
     /// <param name="count">The copies the manifest expects.</param>
+    /// <param name="aliases">Ids to rename one at a time, or null to keep real ids.</param>
     /// <returns>The row text.</returns>
-    public static string Row(string word, ReadingSignature signature, long count)
+    public static string Row(string word, ReadingSignature signature, long count,
+        IReadOnlyDictionary<string, string>? aliases = null)
     {
         var text = new StringBuilder("{\"word\": ");
         Quote(text, word);
-        return text.Append(", \"signature\": ").Append(Encode(Lane(signature), compact: false))
+        return text.Append(", \"signature\": ").Append(Encode(Lane(signature, aliases), compact: false))
             .Append(", \"count\": ").Append(count.ToString(CultureInfo.InvariantCulture)).Append('}').ToString();
     }
 
@@ -86,31 +113,33 @@ public static class ReadingManifestFormat
         }
     }
 
-    private static List<object?> Lane(ReadingSignature signature)
+    private static List<object?> Lane(ReadingSignature signature, IReadOnlyDictionary<string, string>? aliases = null)
     {
         if (!IsComplete(signature)) throw new ArgumentException("The Reading has no complete identity.", nameof(signature));
-        return [.. signature.Morphemes.Select(Morph)];
+        return [.. signature.Morphemes.Select(morpheme => Morph(morpheme, aliases))];
     }
 
-    private static SortedDictionary<string, object?> Morph(ReadingMorpheme morpheme)
+    private static SortedDictionary<string, object?> Morph(ReadingMorpheme morpheme, IReadOnlyDictionary<string, string>? aliases)
     {
+        string A(string id) => aliases is not null && aliases.TryGetValue(id, out var label) ? label : id;
         var features = new SortedDictionary<string, object?>(StringComparer.Ordinal);
         foreach (var feature in morpheme.FeatureValues)
-            features[RoleName(feature.Role) + ":" + string.Join("/", feature.FeaturePath)] =
-                string.Join(",", feature.ValueIds.Order(StringComparer.Ordinal));
+            features[RoleName(feature.Role) + ":" + string.Join("/", feature.FeaturePath.Select(A))] =
+                string.Join(",", feature.ValueIds.Select(A).Order(StringComparer.Ordinal));
         var result = new SortedDictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["allomorphId"] = morpheme.AllomorphId, ["entryId"] = morpheme.EntryId, ["features"] = features,
-            ["isStem"] = morpheme.IsStem, ["msaId"] = morpheme.MsaId,
+            ["allomorphId"] = A(morpheme.AllomorphId!), ["entryId"] = A(morpheme.EntryId!), ["features"] = features,
+            ["isStem"] = morpheme.IsStem, ["msaId"] = A(morpheme.MsaId!),
         };
         if (morpheme.SenseStatus == ReadingSenseStatus.Ambiguous)
-            result["senseCandidates"] = morpheme.SenseCandidates.Order(StringComparer.Ordinal).Cast<object?>().ToList();
-        else result["senseId"] = morpheme.SenseId;
-        if (morpheme.InflectionTypeId is not null) result["inflectionTypeId"] = morpheme.InflectionTypeId;
+            result["senseCandidates"] = morpheme.SenseCandidates.Select(A).Order(StringComparer.Ordinal).Cast<object?>().ToList();
+        else result["senseId"] = A(morpheme.SenseId!);
+        if (morpheme.InflectionTypeId is not null) result["inflectionTypeId"] = A(morpheme.InflectionTypeId);
         if (morpheme.Derivation is { } derivation)
             result["derivation"] = new SortedDictionary<string, object?>(StringComparer.Ordinal)
             {
-                ["fromCategoryId"] = derivation.FromCategoryId, ["toCategoryId"] = derivation.ToCategoryId,
+                ["fromCategoryId"] = derivation.FromCategoryId is null ? null : A(derivation.FromCategoryId),
+                ["toCategoryId"] = derivation.ToCategoryId is null ? null : A(derivation.ToCategoryId),
             };
         return result;
     }

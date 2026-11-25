@@ -55,4 +55,17 @@ public sealed class TrialDeltaArgvTests
 
         Assert.NotEqual(0, result.ExitCode);
     }
+
+    [Fact]
+    public async Task WriteManifestsWithoutADirectoryIsAUsageErrorNotASilentRead()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
+
+        var result = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--job", "job/x", "--write-manifests");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("--write-manifests", result.Output + result.Error);
+    }
 }

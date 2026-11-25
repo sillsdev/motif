@@ -4,7 +4,7 @@ namespace SIL.Motif.Contract.Requests;
 /// <param name="ProjectPath">The known project whose paired store retains the Trial evidence.</param>
 /// <param name="JobId">The exact Trial job. Give this or <paramref name="ProposalId"/>.</param>
 /// <param name="ProposalId">The Proposal whose newest completed Trial with retained evidence is read.</param>
-/// <param name="Classes">The classes to show: lost, gained, changed, doubled or rejected. Omit for the first four.</param>
+/// <param name="Classes">The classes to show: lost, gained, changed, doubled or stopped-negative. Omit for the first four.</param>
 /// <param name="Offset">How many rows to skip in each class.</param>
 /// <param name="Limit">The most rows to show in each class, from 1 to 200.</param>
 public sealed record ReadTrialDeltaRequest(string ProjectPath, string? JobId = null, string? ProposalId = null,

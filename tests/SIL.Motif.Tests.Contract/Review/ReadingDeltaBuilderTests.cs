@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using SIL.Motif.Contract.HandAnalysis;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Review;
 using Xunit;
 
@@ -49,5 +50,24 @@ public sealed class ReadingDeltaBuilderTests
         Assert.True(ReadingManifestFormat.TryParseRow(row, out var word, out var key, out var count));
         Assert.Equal(("k\"á", 2), (word, count));
         Assert.Equal(ReadingManifestFormat.Key(Copy(1).Signature), key);
+    }
+
+    [Fact]
+    public void OnlyOperationsWhoseKindCreatesNameAnAliasAndEveryIdSpellingIsCovered()
+    {
+        var created = CanonicalId.FromGuid(new Guid(5, 0, 0, [1, 2, 3, 4, 5, 6, 7, 8]));
+        var edited = CanonicalId.FromGuid(new Guid(6, 0, 0, [1, 2, 3, 4, 5, 6, 7, 8]));
+        var empty = System.Text.Json.JsonDocument.Parse("{}").RootElement.Clone();
+        var aliases = ReadingManifestFormat.CreatedAliases(
+        [
+            new OperationEnvelope(CanonicalId.Mint("operation/"), "lexical/lexEntry/setGloss", entityId: edited, after: empty),
+            new OperationEnvelope(CanonicalId.Mint("operation/"), "lexical/lexDb/createEntries", entityId: created, after: empty),
+            new OperationEnvelope(CanonicalId.Mint("operation/"), "lexical/lexDb/createEntries", entityId: created, after: empty),
+        ]);
+
+        Assert.Equal("created:0", aliases[created.Value]);
+        Assert.Equal("created:0", aliases[created.ToGuid().ToString("D")]);
+        Assert.Equal("created:0", aliases[created.ToGuid().ToString("D").ToUpperInvariant()]);
+        Assert.False(aliases.ContainsKey(edited.Value));
     }
 }

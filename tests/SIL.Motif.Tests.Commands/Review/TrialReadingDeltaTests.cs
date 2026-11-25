@@ -98,4 +98,70 @@ public sealed class TrialReadingDeltaTests
         Assert.Equal(RefusalCodes.TrialDeltaRequestInvalid,
             TrialReadingDelta.Read(new(fixture.Project, JobId: "job/x", Classes: ["nope"])).Refusal?.Code);
     }
+
+    private static string G(int number) => CanonicalId.FromGuid(Guid.Parse($"{number:x8}-0000-0000-0102-030405060708")).Value;
+
+    private static ReadingMorpheme Morph(int entry, int sense, int msa, int allomorph, bool stem = true, int? inflection = null,
+        (int, int)? derivation = null, ReadingFeatureValue[]? features = null, int[]? candidates = null) =>
+        new(G(entry), candidates is null ? G(sense) : null, candidates is null ? [] : [.. candidates.Select(G)],
+            candidates is null ? ReadingSenseStatus.Resolved : ReadingSenseStatus.Ambiguous, G(msa), G(allomorph),
+            inflection is { } type ? G(type) : null, stem, derivation is { } pair ? new ReadingDerivation(G(pair.Item1), G(pair.Item2)) : null,
+            [.. features ?? []]);
+
+    private static ReadingFeatureValue Feature(ReadingFeatureRole role, int[] path, int[] values) =>
+        new(role, [.. path.Select(G)], [.. values.Select(G)]);
+
+    private static string Rig(string name)
+    {
+        using var stream = typeof(TrialReadingDeltaTests).Assembly.GetManifestResourceStream("RigManifests." + name)!;
+        return new StreamReader(stream).ReadToEnd();
+    }
+
+    // The fixtures come from the lane gate's local_ids and draft_manifests run on the same data.
+    [Fact]
+    public void ManifestsAreByteForByteWhatTheLaneGateWritesWhenTheProposalCreatesIds()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var r1 = new ReadingSignature([Morph(1, 21, 2, 3,
+            features: [Feature(ReadingFeatureRole.Inflection, [31], [32, 33])])]);
+        var r2 = new ReadingSignature([Morph(11, 0, 12, 13, inflection: 41, derivation: (51, 52), candidates: [22, 23],
+            features: [Feature(ReadingFeatureRole.DerivationInput, [31, 32], [33, 32])])]);
+        var r3 = new ReadingSignature([Morph(1, 21, 2, 3), Morph(14, 23, 12, 13, stem: false,
+            features: [Feature(ReadingFeatureRole.Inflection, [31], [32])])]);
+        (string, int)[] created =
+        [
+            ("lexical/lexDb/createEntries", 11), ("lexical/lexEntry/createMorphoSyntaxAnalyses", 12),
+            ("lexical/lexEntry/createAlternateForms", 13), ("lexical/lexEntry/createSenses", 23),
+            ("lists/cmPossibilityList/createPossibilities", 32), ("lists/cmPossibilityList/createPossibilities", 51), ("lexical/lexEntry/createAlternateForms", 14),
+        ];
+        var operations = created.Select(item => (object)new
+        {
+            operationId = CanonicalId.Mint("operation/").Value, kind = item.Item1, entityId = G(item.Item2), after = new { },
+        }).ToArray();
+        var proposal = "";
+        var published = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, located) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, located,
+            [
+                new("Kata", [], []) { BeforeSignatures = [r1, r1], AfterSignatures = [r2] },
+                new("Ma\u0301ta", [], []) { BeforeSignatures = [r1], AfterSignatures = [] },
+                new("pata", [], []) { BeforeSignatures = [], AfterSignatures = [r3] },
+            ], operations: operations);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(published.Succeeded, published.Refusal?.Message);
+        var directory = Path.Combine(fixture.Root, "manifests");
+
+        var result = TrialReadingDelta.ReadAndWrite(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal), directory);
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(Rig("expect-retired.jsonl"), File.ReadAllText(Path.Combine(directory, "expect-retired.jsonl")));
+        Assert.Equal(Rig("expect-added.jsonl"), File.ReadAllText(Path.Combine(directory, "expect-added.jsonl")));
+        var real = TrialReadingDelta.ReadAndWrite(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal),
+            Path.Combine(fixture.Root, "real"), new ManifestOptions(AliasCreated: false, KeepCase: true));
+        Assert.True(real.Succeeded, real.Refusal?.Message);
+        var added = File.ReadAllText(Path.Combine(fixture.Root, "real", "expect-added.jsonl"));
+        Assert.DoesNotContain("created:", added);
+        Assert.StartsWith("{\"word\": \"Kata\"", added);
+    }
 }

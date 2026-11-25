@@ -11,7 +11,7 @@ namespace SIL.Motif.Cli;
 internal static class TrialDeltaCli
 {
     private static readonly string[] Allowed =
-        ["project", "json", "autonomous", "proposal", "job", "classes", "write-manifests", "limit", "offset", "page"];
+        ["project", "json", "autonomous", "proposal", "job", "classes", "write-manifests", "alias-created", "keep-case", "limit", "offset", "page"];
 
     /// <summary>The result, or null with <paramref name="usage"/> set when the flags do not form a request.</summary>
     internal static CommandResult? Run(IReadOnlyDictionary<string, string> flags, bool asJson, out string? usage)
@@ -25,8 +25,16 @@ internal static class TrialDeltaCli
             ? text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) : null;
         var request = new ReadTrialDeltaRequest(project, flags.GetValueOrDefault("job"), flags.GetValueOrDefault("proposal"),
             classes, window.Offset, window.Limit);
-        var outcome = flags.TryGetValue("write-manifests", out var directory) && directory != "true"
-            ? TrialReadingDelta.ReadAndWrite(request, directory) : TrialReadingDelta.Read(request);
+        if (flags.TryGetValue("write-manifests", out var directory))
+        {
+            if (directory is "true" or "") return Fail(out usage, "usage");
+            var alias = flags.GetValueOrDefault("alias-created", "true");
+            if (alias is not ("true" or "false")) return Fail(out usage, "usage");
+            var options = new ManifestOptions(alias == "true", flags.GetValueOrDefault("keep-case") == "true");
+            return CommandTextRenderer.Render(TrialReadingDelta.ReadAndWrite(request, directory, options), asJson);
+        }
+        if (flags.ContainsKey("alias-created") || flags.ContainsKey("keep-case")) return Fail(out usage, "usage");
+        var outcome = TrialReadingDelta.Read(request);
         return CommandTextRenderer.Render(outcome, asJson);
     }
 

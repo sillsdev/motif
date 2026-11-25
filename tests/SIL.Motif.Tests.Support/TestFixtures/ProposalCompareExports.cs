@@ -34,14 +34,15 @@ public static class ProposalCompareExports
     public static string AddTrial(MotifDatabase database, ProjectLocator project, IEnumerable<FormSpec> forms,
         string? proposalId = null, char baseline = 'a', int minute = 0, bool completed = true,
         string? sample = null, string? wordListDigest = null, int second = 0, string? jobId = null,
-        string? parserBefore = null, string? parserAfter = null)
+        string? parserBefore = null, string? parserAfter = null, IReadOnlyList<object>? operations = null)
     {
         proposalId ??= CanonicalId.Mint("proposal/").Value;
         jobId ??= "job/" + Guid.NewGuid().ToString("D");
         var key = ProjectWorkspaceKey.Compute(project);
         var proposalJson = JsonSerializer.Serialize(new
         {
-            contractVersions = new Dictionary<string, string>(), proposalId, operations = Array.Empty<object>(),
+            contractVersions = operations is null ? new Dictionary<string, string>() : new Dictionary<string, string> { ["lexical"] = "1.0", ["lists"] = "1.0" },
+            proposalId, operations = operations ?? (IReadOnlyList<object>)Array.Empty<object>(),
         });
         var input = new TrialJobInput(proposalJson, null) { Sample = sample, WordListDigest = wordListDigest };
         var created = new DateTimeOffset(2026, 1, 1, 0, minute, second, TimeSpan.Zero).ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
