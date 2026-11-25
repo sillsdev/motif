@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "project tag --set",
+  "slug": "project-tag-set",
+  "title": "Set a project tag",
+  "description": "Chooses the tag Motif stores for this project on this machine. The tag must follow the lowercase rules and be unused by every other Known project.",
+  "helpPage": "# Set a project tag\n\nChoose the tag Motif stores for this project on this machine. A tag starts with a lowercase letter, uses lowercase letters, digits and hyphens, contains at most ten characters, and must be unused by every other Known project.\n\n\u0060\u0060\u0060text\nmotif project tag --set cebu --project \u003Cfwdata\u003E\n\u0060\u0060\u0060\n\nUse \u0060--json\u0060 to receive the saved tag as structured output. The new tag remains in place when Motif records the project again.\n",
+  "usage": [
+    "Usage: motif project tag --set \u003Cnew-tag\u003E --project \u003Cfwdata\u003E [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/project-tag-set/"
+}

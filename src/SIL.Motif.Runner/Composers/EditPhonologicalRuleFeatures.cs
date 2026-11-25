@@ -18,8 +18,13 @@ namespace SIL.Motif.Runner.Composers;
 /// <param name="ExcludedFeatures">
 /// The exact set the word must carry none of for the rule to apply; null leaves it unchanged, empty clears it.
 /// </param>
+/// <param name="InputCategories">
+/// The exact set of parts of speech the rule is limited to (Black 6.1.2.2.1); null leaves it unchanged, empty clears it.
+/// FieldWorks stores required categories only.
+/// </param>
 public sealed record EditPhonologicalRuleFeaturesIntent(CanonicalId Rule,
-    IReadOnlyList<CanonicalId>? RequiredFeatures = null, IReadOnlyList<CanonicalId>? ExcludedFeatures = null);
+    IReadOnlyList<CanonicalId>? RequiredFeatures = null, IReadOnlyList<CanonicalId>? ExcludedFeatures = null,
+    IReadOnlyList<CanonicalId>? InputCategories = null);
 
 /// <summary>Parses the closed JSON intent for editing a rule's required and excluded features.</summary>
 public static class EditPhonologicalRuleFeaturesIntentParser
@@ -29,14 +34,16 @@ public static class EditPhonologicalRuleFeaturesIntentParser
     /// <summary>Reads the rule and at least one of the two sets.</summary>
     public static EditPhonologicalRuleFeaturesIntent Parse(JsonElement authored)
     {
-        SoundSystemIntentParsing.Object(authored, ConstructName, "rule", "requiredFeatures", "excludedFeatures");
+        SoundSystemIntentParsing.Object(authored, ConstructName, "rule", "requiredFeatures", "excludedFeatures", "inputCategories");
         var result = new EditPhonologicalRuleFeaturesIntent(SoundSystemIntentParsing.Id(authored, "rule"),
             authored.TryGetProperty("requiredFeatures", out _)
                 ? SoundSystemIntentParsing.Ids(authored, "requiredFeatures", ordered: false) : null,
             authored.TryGetProperty("excludedFeatures", out _)
-                ? SoundSystemIntentParsing.Ids(authored, "excludedFeatures", ordered: false) : null);
-        if (result.RequiredFeatures is null && result.ExcludedFeatures is null)
-            throw new ContractParseException($"'{ConstructName}': give 'requiredFeatures' or 'excludedFeatures'.");
+                ? SoundSystemIntentParsing.Ids(authored, "excludedFeatures", ordered: false) : null,
+            authored.TryGetProperty("inputCategories", out _)
+                ? SoundSystemIntentParsing.Ids(authored, "inputCategories", ordered: false) : null);
+        if (result.RequiredFeatures is null && result.ExcludedFeatures is null && result.InputCategories is null)
+            throw new ContractParseException($"'{ConstructName}': give 'requiredFeatures', 'excludedFeatures' or 'inputCategories'.");
         return result;
     }
 }
@@ -60,8 +67,8 @@ public static class EditPhonologicalRuleFeaturesComposer
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
-        if (intent.RequiredFeatures is null && intent.ExcludedFeatures is null)
-            throw new InvalidOperationException($"'{ConstructName}': give 'requiredFeatures' or 'excludedFeatures'.");
+        if (intent.RequiredFeatures is null && intent.ExcludedFeatures is null && intent.InputCategories is null)
+            throw new InvalidOperationException($"'{ConstructName}': give 'requiredFeatures', 'excludedFeatures' or 'inputCategories'.");
         var ruleId = LexicalFormAuthoring.Normalize(intent.Rule);
         var rule = LexicalFormAuthoring.Resolve<IPhSegmentRule>(cache, ruleId, ConstructName);
         if (rule is not IPhRegularRule regular || regular.RightHandSidesOS.Count != 1)
@@ -82,7 +89,26 @@ public static class EditPhonologicalRuleFeaturesComposer
 
         var builder = new SoundSystemAuthoring.Builder(mintId, Rationale);
         new RuleOutcomeFeatures(cache, builder).Apply(rhsId, required, excluded, rhs);
+        if (intent.InputCategories is not null)
+            ApplyCategories(cache, builder, rhs, rhsId, intent.InputCategories);
         return builder.Operations;
+    }
+
+    private static void ApplyCategories(LcmCache cache, SoundSystemAuthoring.Builder builder, IPhSegRuleRHS rhs,
+        CanonicalId rhsId, IReadOnlyList<CanonicalId> ids)
+    {
+        var wanted = ids.Select(LexicalFormAuthoring.Normalize).ToArray();
+        if (wanted.Select(id => id.ToGuid()).Distinct().Count() != wanted.Length)
+            throw new InvalidOperationException($"'{ConstructName}': 'inputCategories' must not repeat an identity.");
+        foreach (var id in wanted)
+            _ = ReferenceFieldLowering.Resolve<IPartOfSpeech>(cache, id, ConstructName);
+        var wantedGuids = wanted.Select(id => id.ToGuid()).ToHashSet();
+        var have = rhs.InputPOSesRC.ToArray();
+        foreach (var pos in have.Where(p => !wantedGuids.Contains(p.Guid)).OrderBy(p => p.Guid))
+            builder.Add(PhSegRuleRHSInputPOSesOperationKinds.RemoveRefInputPOSes, rhsId, new { member = CanonicalId.FromGuid(pos.Guid).Value });
+        var haveGuids = have.Select(p => p.Guid).ToHashSet();
+        foreach (var id in wanted.Where(id => !haveGuids.Contains(id.ToGuid())).OrderBy(id => id.Value, StringComparer.Ordinal))
+            builder.Add(PhSegRuleRHSInputPOSesOperationKinds.AddRefInputPOSes, rhsId, new { member = id.Value });
     }
 
     internal static IReadOnlyList<ICmObject>? Items(LcmCache cache, IReadOnlyList<CanonicalId>? ids, string field)

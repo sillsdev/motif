@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-show-shortcuts",
+  "slug": "shortcut-show-shortcuts",
+  "title": "Show Keyboard Shortcuts",
+  "description": "Open the keyboard shortcut list.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-show-shortcuts/"
+}

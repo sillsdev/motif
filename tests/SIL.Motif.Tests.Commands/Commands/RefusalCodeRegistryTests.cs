@@ -82,6 +82,28 @@ public sealed class RefusalCodeRegistryTests
         Assert.All(RefusalCatalog.Specs, pair => Assert.Equal(pair.Key, pair.Value.Code));
     }
 
+    [Fact]
+    public void EveryAreaMethodIsFoundAndTheWindowCodesAreThePinnedSet()
+    {
+        var methods = typeof(RefusalCatalog).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .Where(method => method.Name.StartsWith("Specs", StringComparison.Ordinal) || method.Name.StartsWith("WindowCodes", StringComparison.Ordinal))
+            .Where(method => !method.IsSpecialName)
+            .ToList();
+        var specAreas = methods.Where(method => method.Name.StartsWith("Specs", StringComparison.Ordinal)).Select(method => method.Name["Specs".Length..]).ToList();
+        var windowAreas = methods.Where(method => method.Name.StartsWith("WindowCodes", StringComparison.Ordinal)).ToList();
+
+        Assert.Empty(methods.Where(method => !method.IsPrivate || !method.IsStatic || method.GetParameters().Length != 0 ||
+            method.ReturnType != (method.Name.StartsWith("Specs", StringComparison.Ordinal) ? typeof(IEnumerable<RefusalSpec>) : typeof(IEnumerable<string>)))
+            .Select(method => method.Name));
+        Assert.All(windowAreas, method => Assert.Contains(method.Name["WindowCodes".Length..], specAreas));
+
+        var window = windowAreas.SelectMany(method => (IEnumerable<string>)method.Invoke(null, null)!).ToList();
+        Assert.All(window, code => Assert.Contains(code, RefusalCatalog.Specs.Keys));
+        Assert.Equal(window.Count, window.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(208, window.Count);
+        Assert.Equal(window.Order(StringComparer.Ordinal), RefusalCatalog.Specs.Values.Where(spec => spec.ShownInWindow).Select(spec => spec.Code).Order(StringComparer.Ordinal));
+    }
+
     // Dotted lower-case literals in every product project's source, minus those that end in a file extension.
     private static HashSet<string> CodeLiteralsInSource()
     {

@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-group-word-list",
+  "slug": "shortcut-group-word-list",
+  "title": "Words",
+  "description": "Keyboard shortcuts for the Words page.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-word-list/"
+}

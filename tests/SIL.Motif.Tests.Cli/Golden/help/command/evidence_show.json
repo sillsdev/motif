@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "evidence show",
+  "slug": "evidence-show",
+  "title": "Read decision evidence",
+  "description": "Reads why a program, not a person, decided about one wordform or analysis: its tier, the cited sources, the named non-human agent and the Proposal that staged it. It never shows a person\u0027s decision as source-validated.",
+  "helpPage": "# Read decision evidence\n\n\u0060evidence show\u0060 reads the evidence Motif kept for one wordform or analysis whose decision a program staged from cited sources. Give the identity of the wordform or analysis after the command name.\n\nEach record names its tier (for example \u0060source-approved\u0060, \u0060misspelled-typo\u0060 or \u0060ill-formed\u0060), the sources it cites, the facts that tier requires, and the Proposal that staged it. When the record supports an approval or disapproval, it also names the non-human agent that decided and the source release it stands for. Every record is labelled source-validated and is never a person\u0027s decision: people\u0027s approvals, disapprovals and spelling marks stay as FieldWorks holds them.\n\nThe records come from Applied Proposals, as they were staged. If a person later changed the decision in FieldWorks, the record still shows what was staged.\n\n\u0060\u0060\u0060powershell\nmotif evidence show \u003CwordformOrAnalysisId\u003E --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n",
+  "usage": [
+    "Usage: motif evidence show \u003Csubject\u003E --project \u003Cfwdata\u003E [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/evidence-show/"
+}

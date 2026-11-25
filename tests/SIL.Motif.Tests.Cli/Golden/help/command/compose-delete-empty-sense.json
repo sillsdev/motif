@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-delete-empty-sense",
+  "slug": "compose-delete-empty-sense",
+  "title": "Delete an empty sense",
+  "description": "Deletes an empty sense and its unused analysis. An analysis containing only a part of speech is allowed when the entry has a linked variant reference; Motif stages a Draft for a person to review and Apply.",
+  "helpPage": "# Delete an empty sense\n\nDelete one wholly empty sense of an entry, together with the stem analysis that only that sense uses. A variant entry that keeps one empty sense blocks its main entry\u0027s path; this removes the sense so the variant takes it.\n\n\u0060\u0060\u0060sh\nmotif compose-delete-empty-sense --project language.fwdata --draft ceb-d001 \\\n  --intent \u0027{\u0022target\u0022:\u0022\u003Csense-id\u003E\u0022,\u0022entry\u0022:\u0022\u003Cowning-entry-id\u003E\u0022}\u0027\n\u0060\u0060\u0060\n\nBoth fields are required and the intent is closed. The command refuses, and changes nothing, when:\n\n- the sense has any content, such as a gloss, definition, example, note or sub-sense; there is no flag that overrides this, because deleting a sense with content loses a person\u0027s work;\n- \u0060entry\u0060 is not the entry that owns the sense;\n- anything else refers to the sense.\n\nAn analysis containing only a part of speech is allowed only when the entry has a variant reference with a component target. The Dry Run records the removed part of speech. The sense\u0027s analysis is deleted with it only when no other sense of the entry uses it and nothing else, such as a parser analysis, refers to it. If another sense uses it, the analysis stays. If something else refers to it, the command refuses.\n\nRun many at once with \u0060compose-batch\u0060, one entry per sense, so a whole clean-up becomes one Proposal. Each operation carries a rationale; the Draft still needs its own Rationale (\u0060proposal rationale\u0060) before Finalize.\n\nUse this editor through the CLI or MCP. Add \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.\n",
+  "usage": [
+    "Usage: motif compose-delete-empty-sense --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-empty-sense/"
+}

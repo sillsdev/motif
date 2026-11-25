@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-stage-approve",
+  "slug": "shortcut-stage-approve",
+  "title": "Stage Approve",
+  "description": "Stage the focused analysis as Approved as a pending change.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-stage-approve/"
+}

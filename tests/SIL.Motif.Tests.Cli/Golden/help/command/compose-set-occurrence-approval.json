@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-set-occurrence-approval",
+  "slug": "compose-set-occurrence-approval",
+  "title": "Approve or clear an Occurrence of a Source",
+  "description": "Stages the approval of one word of a Paratext Source with an analysis, or clears it back to a guess. Approving also approves the analysis when its Opinion is Unknown, and adds the analysis first when only a parser reading exists.",
+  "helpPage": "# Approve or clear an Occurrence of a Source\n\nStage the approval of one word of a Paratext Source with an analysis, or clear it back to a guess. Approving also approves the analysis when its Opinion is Unknown. A Disapproved Opinion is left as it is. When only a parser reading exists, give the stored wordform and the reading, and the analysis is added in the same Draft.\n\n\u0060\u0060\u0060sh\nmotif compose-set-occurrence-approval --project language.fwdata --draft pending --intent \u0027{\u0022source\u0022:\u0022WEB\u0022,\u0022anchor\u0022:\u0022MAT 5:3#2\u0022,\u0022action\u0022:\u0022Approve\u0022,\u0022analysis\u0022:\u0022\u003Canalysis id\u003E\u0022}\u0027\n\u0060\u0060\u0060\n",
+  "usage": [
+    "Usage: motif compose-set-occurrence-approval --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-set-occurrence-approval/"
+}
