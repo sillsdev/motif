@@ -338,11 +338,38 @@ public sealed record LexiconFilter(string? Query = null, IReadOnlyList<string>? 
         return _templatesBySlot = index;
     }
 
+    private static bool IdMatches(string wanted, ICmObject target) =>
+        string.Equals(wanted, LexiconReader.Id(target), StringComparison.Ordinal) ||
+        Guid.TryParse(wanted, out var guid) && guid == target.Guid;
+
     private bool UsedByMatches(LcmCache cache, ILexEntry entry, string wanted)
     {
         var uses = UsesOf(cache, entry, name => LexiconReader.Text(cache, name));
         return uses["slots"]!.AsArray().Concat(uses["templates"]!.AsArray()).Any(item =>
-            Same(wanted, item!["name"]?.GetValue<string>()) || string.Equals(wanted, item["id"]!.GetValue<string>(), StringComparison.Ordinal));
+            Same(wanted, item!["name"]?.GetValue<string>()) || string.Equals(wanted, item["id"]!.GetValue<string>(), StringComparison.Ordinal) ||
+            Guid.TryParse(wanted, out var guid) && CanonicalId.TryParse(item["id"]!.GetValue<string>(), out var id) && id.ToGuid() == guid);
+    }
+
+    /// <summary>
+    /// The slots and templates <see cref="UsedBy"/> names when it is a name shared by more than one, each as a line
+    /// with its id and kind; empty when the value is an id, names one object or names none.
+    /// </summary>
+    public IReadOnlyList<string> AmbiguousUsedBy(LcmCache cache)
+    {
+        if (UsedBy is not { } wanted) return [];
+        var slots = cache.ServiceLocator.GetInstance<IMoInflAffixSlotRepository>().AllInstances().ToList();
+        var templates = cache.ServiceLocator.GetInstance<IMoInflAffixTemplateRepository>().AllInstances().ToList();
+        if (slots.Any(slot => IdMatches(wanted, slot)) || templates.Any(template => IdMatches(wanted, template))) return [];
+        var byName = TemplatesBySlot(cache);
+        var lines = slots.Where(slot => Same(wanted, LexiconReader.Text(cache, slot.Name)))
+            .Select(slot => $"{LexiconReader.Id(slot)} slot '{LexiconReader.Text(cache, slot.Name)}'" +
+                (byName.GetValueOrDefault(slot.Guid) is { Count: > 0 } owners
+                    ? $" in template {string.Join(", ", owners.Select(t => $"'{LexiconReader.Text(cache, t.Name)}' ({LexiconReader.Id(t)})"))}"
+                    : " in no template"))
+            .Concat(templates.Where(template => Same(wanted, LexiconReader.Text(cache, template.Name)))
+                .Select(template => $"{LexiconReader.Id(template)} template '{LexiconReader.Text(cache, template.Name)}'"))
+            .ToList();
+        return lines.Count > 1 ? lines : [];
     }
 
     /// <summary>The affix slots the inflectional analyses of <paramref name="entry"/> fill, and the templates that list those slots.</summary>

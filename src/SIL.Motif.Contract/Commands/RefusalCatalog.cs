@@ -741,6 +741,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.LexiconFindBaselineMissing, FailureReason.NotFound),
         Spec(RefusalCodes.LexiconFindBaselineUnavailable, FailureReason.StoreInconsistent),
         Spec(RefusalCodes.LexiconFindInvalidRequest, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.LexiconUsedByAmbiguous, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GrammarCheckNotRun, FailureReason.Refused),
         Spec(RefusalCodes.HandoffTraceBaselineUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.HandoffTraceUnavailable, FailureReason.Refused),

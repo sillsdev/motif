@@ -4,6 +4,7 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Mcp;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -451,6 +452,82 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
         var affix = LexiconReader.Read(_cache, new LexiconFilter(UsedBy: "Case"), 10, 0, detailed: false, withForms: true, withAllomorphs: true)["entries"]![0]!["usedBy"]!;
         Assert.Equal("Case", affix["slots"]![0]!["name"]!.GetValue<string>());
         Assert.Equal("Noun template", affix["templates"]![0]!["name"]!.GetValue<string>());
+    }
+
+    private (IMoInflAffixSlot Prefix, IMoInflAffixSlot Middle, IMoInflAffixTemplate Template) FillSlots(string prefixName = "Pre", string middleName = "Mid")
+    {
+        Fill();
+        var services = _cache.ServiceLocator;
+        var anal = _cache.DefaultAnalWs;
+        IMoInflAffixSlot prefix = null!, middle = null!;
+        IMoInflAffixTemplate template = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var noun = services.GetInstance<IPartOfSpeechRepository>().GetObject(_categories["Noun"]);
+            var verb = services.GetInstance<IPartOfSpeechRepository>().GetObject(_categories["Verb"]);
+            prefix = services.GetInstance<IMoInflAffixSlotFactory>().Create();
+            noun.AffixSlotsOC.Add(prefix);
+            prefix.Name.set_String(anal, prefixName);
+            middle = services.GetInstance<IMoInflAffixSlotFactory>().Create();
+            verb.AffixSlotsOC.Add(middle);
+            middle.Name.set_String(anal, middleName);
+            template = services.GetInstance<IMoInflAffixTemplateFactory>().Create();
+            noun.AffixTemplatesOS.Add(template);
+            template.Name.set_String(anal, "Tpl");
+            template.PrefixSlotsRS.Add(prefix);
+            template.SlotsRS.Add(middle);
+            foreach (var entry in services.GetInstance<ILexEntryRepository>().AllInstances())
+            {
+                var head = entry.HeadWord.Text.Trim('-');
+                if (head == "mag") ((IMoInflAffMsa)entry.MorphoSyntaxAnalysesOC.Single()).SlotsRC.Add(prefix);
+                if (head == "um") ((IMoInflAffMsa)entry.MorphoSyntaxAnalysesOC.Single()).SlotsRC.Add(middle);
+                if (head == "balay") entry.MorphoSyntaxAnalysesOC.Add(services.GetInstance<IMoDerivAffMsaFactory>().Create());
+            }
+        });
+        return (prefix, middle, template);
+    }
+
+    [Fact]
+    public void UsedByReachesPrefixAndSlotsRsTemplatesAndIgnoresDerivationalAnalyses()
+    {
+        FillSlots();
+        Assert.Equal(["mag", "um"], Headwords(Read(new LexiconFilter(UsedBy: "tpl"))));
+        Assert.Equal(["mag"], Headwords(Read(new LexiconFilter(UsedBy: "Pre"))));
+        Assert.Equal(["um"], Headwords(Read(new LexiconFilter(UsedBy: "Mid"))));
+        var all = LexiconReader.Read(_cache, new LexiconFilter(Exact: "um"), 10, 0, detailed: false, withForms: true, withAllomorphs: true);
+        Assert.Equal("Tpl", all["entries"]![0]!["usedBy"]!["templates"]![0]!["name"]!.GetValue<string>());
+        var derived = LexiconReader.Read(_cache, new LexiconFilter(Exact: "balay"), 10, 0, detailed: false, withForms: true, withAllomorphs: true);
+        Assert.Empty(derived["entries"]![0]!["usedBy"]!["slots"]!.AsArray());
+        Assert.Empty(derived["entries"]![0]!["usedBy"]!["templates"]!.AsArray());
+    }
+
+    [Fact]
+    public void UsedByMatchesACanonicalIdOrAGuidAndGuidFormatOutputRoundTrips()
+    {
+        var (prefix, _, template) = FillSlots();
+        Assert.Equal(["mag"], Headwords(Read(new LexiconFilter(UsedBy: SIL.Motif.Mcp.GrammarReader.Id(prefix)))));
+        Assert.Equal(["mag"], Headwords(Read(new LexiconFilter(UsedBy: prefix.Guid.ToString("D")))));
+        Assert.Equal(["mag", "um"], Headwords(Read(new LexiconFilter(UsedBy: template.Guid.ToString("D")))));
+        var outcome = LexiconFindCommand.ReadPage(_cache, new LexiconFilter(UsedBy: "Pre"), 10, 0, detailed: false, withForms: true,
+            LexiconIdFormat.Guid, withAllomorphs: true);
+        var slotId = outcome.Value!["entries"]![0]!["usedBy"]!["slots"]![0]!["id"]!.GetValue<string>();
+        Assert.Equal(prefix.Guid.ToString("D"), slotId);
+        Assert.Equal(["mag"], Headwords(Read(new LexiconFilter(UsedBy: slotId))));
+    }
+
+    [Fact]
+    public void UsedByWithANameSharedByMoreThanOneSlotIsRefusedListingTheIdsAndAnIdStillWorks()
+    {
+        var (prefix, middle, _) = FillSlots(prefixName: "Case", middleName: "Case");
+        var outcome = LexiconFindCommand.ReadPage(_cache, new LexiconFilter(UsedBy: "case"), 10, 0, detailed: false);
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("lexicon.used-by-ambiguous", outcome.Refusal!.Code);
+        Assert.Contains(SIL.Motif.Mcp.GrammarReader.Id(prefix), outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(SIL.Motif.Mcp.GrammarReader.Id(middle), outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("slot", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("'Tpl'", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("Pass the id", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.True(LexiconFindCommand.ReadPage(_cache, new LexiconFilter(UsedBy: SIL.Motif.Mcp.GrammarReader.Id(prefix)), 10, 0, detailed: false).Succeeded);
     }
 
     [Fact]

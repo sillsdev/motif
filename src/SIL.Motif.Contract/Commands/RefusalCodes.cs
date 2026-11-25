@@ -906,6 +906,8 @@ public static class RefusalCodes
     public const string LexiconFindBaselineUnavailable = "lexicon-find.baseline-unavailable";
     /// <summary>A lexicon find request is not valid: a bad page, regular expression or filter.</summary>
     public const string LexiconFindInvalidRequest = "lexicon-find.invalid-request";
+    /// <summary>A lexicon find --used-by name matches more than one affix slot or template, so an id is needed.</summary>
+    public const string LexiconUsedByAmbiguous = "lexicon.used-by-ambiguous";
 
     /// <summary>No grammar check could run, so there are no findings to report.</summary>
     public const string GrammarCheckNotRun = "grammarcheck.not-run";

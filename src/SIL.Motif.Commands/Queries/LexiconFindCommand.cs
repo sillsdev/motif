@@ -118,6 +118,9 @@ public static class LexiconFindCommand
             return Invalid(RefusalCodes.GrammarReadInvalidRequest,
                 $"Unknown morph type {string.Join(", ", unknown.Select(name => $"'{name}'"))}. " +
                 $"Morph types are: {string.Join(", ", GrammarReadProjectionBuilder.MorphTypeNames(cache))}.");
+        if (filter.AmbiguousUsedBy(cache) is { Count: > 0 } candidates)
+            return Invalid(RefusalCodes.LexiconUsedByAmbiguous,
+                $"--used-by '{filter.UsedBy}' names more than one slot or template: {string.Join("; ", candidates)}. Pass the id of one of them.");
         JsonObject page;
         try { page = LexiconReader.Read(cache, filter, limit, offset, detailed, withForms, withAllomorphs); }
         catch (RegexMatchTimeoutException)
