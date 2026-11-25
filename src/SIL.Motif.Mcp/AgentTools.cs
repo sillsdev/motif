@@ -1328,7 +1328,6 @@ internal static class AgentTools
             ("middleWith", Schema.String("Whether the middle belongs to the left or right switch; defaults to left.", "left", "right"), false),
             ("rightSwitch", Switch("The phoneme or natural class that moves to the left switch position."), true),
             ("right", contexts.DeepClone().AsObject(), false),
-            ("inputCategories", Schema.Array("Single-outcome shorthand only: part-of-speech ids (with their subcategories) the rule applies to, Black 6.1.2.2.1; FieldWorks stores required categories only. Use inputCategories inside rightHandSides for several outcomes.", Schema.String("Category id.")), false),
             ("placement", placement, false));
     }
 
@@ -1374,6 +1373,7 @@ internal static class AgentTools
             ("rightHandSides", outcomes, false),
             ("left", contexts.DeepClone().AsObject(), false),
             ("right", contexts.DeepClone().AsObject(), false),
+            ("inputCategories", Schema.Array("Single-outcome shorthand only: part-of-speech ids (with their subcategories) the rule applies to, Black 6.1.2.2.1; FieldWorks stores required categories only. Use inputCategories inside rightHandSides for several outcomes.", Schema.String("Category id.")), false),
             ("placement", Schema.Object(("after", Schema.String("Adjacent existing rule before the insertion gap."), false),
                 ("before", Schema.String("Adjacent existing rule after the insertion gap."), false)), false));
         schema["oneOf"] = new JsonArray(

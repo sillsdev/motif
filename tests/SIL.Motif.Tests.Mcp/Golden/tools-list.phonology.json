@@ -1263,6 +1263,14 @@
           "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
           "maxItems": 8
         },
+        "inputCategories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Category id."
+          },
+          "description": "Single-outcome shorthand only: part-of-speech ids (with their subcategories) the rule applies to, Black 6.1.2.2.1; FieldWorks stores required categories only. Use inputCategories inside rightHandSides for several outcomes."
+        },
         "placement": {
           "type": "object",
           "properties": {

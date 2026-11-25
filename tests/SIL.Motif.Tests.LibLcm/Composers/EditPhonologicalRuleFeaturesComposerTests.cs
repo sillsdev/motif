@@ -2,6 +2,7 @@ using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.Parser;
@@ -129,8 +130,40 @@ public sealed class EditPhonologicalRuleFeaturesComposerTests(PristineProjectFix
         var parsed = AuthorPhonologicalRuleIntentParser.Parse(JsonDocument.Parse(
             $"{{\"name\":\"r\",\"direction\":\"simultaneous\",\"input\":[],\"output\":[],\"inputCategories\":[\"{verb.Value}\"]}}").RootElement);
         Assert.Equal([verb], parsed.Outcomes.Single().InputCategories!);
-        Assert.ThrowsAny<Exception>(() => AuthorPhonologicalRuleIntentParser.Parse(JsonDocument.Parse(
+        Assert.Throws<ContractParseException>(() => AuthorPhonologicalRuleIntentParser.Parse(JsonDocument.Parse(
             $"{{\"name\":\"r\",\"direction\":\"simultaneous\",\"input\":[],\"rightHandSides\":[{{\"output\":[]}}],\"inputCategories\":[\"{verb.Value}\"]}}").RootElement));
+    }
+
+    [Fact]
+    public void TheShorthandAndTheFullRightHandSideFormStoreTheSameCategoryAndReadBackTheSame()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "u", "i", "a", "n");
+        var verb = NewCategory(cache, "Verb");
+        var (u, i, a, n) = (Phoneme(cache, "u"), Phoneme(cache, "i"), Phoneme(cache, "a"), Phoneme(cache, "n"));
+        string Item(CanonicalId id) => $"{{\"phoneme\":\"{id.Value}\"}}";
+        string Common(string name) =>
+            $"\"name\":\"{name}\",\"direction\":\"simultaneous\",\"input\":[{Item(u)}]";
+        string Parts() => $"\"output\":[{Item(i)}],\"left\":[{Item(a)}],\"right\":[{Item(n)}]";
+        var shorthand = $"{{{Common("same")},{Parts()},\"inputCategories\":[\"{verb.Value}\"]}}";
+        var full = $"{{{Common("same")},\"rightHandSides\":[{{{Parts()},\"inputCategories\":[\"{verb.Value}\"]}}]}}";
+        var made = new List<CanonicalId>();
+        foreach (var json in new[] { shorthand, full })
+        {
+            var placed = made.Count == 0 ? json : json[..^1] + $",\"placement\":{{\"after\":\"{made[0].Value}\"}}}}";
+            made.Add(Created(ApplyOps(cache, AuthorPhonologicalRuleComposer.Build(cache,
+                AuthorPhonologicalRuleIntentParser.Parse(JsonDocument.Parse(placed).RootElement))), PhPhonDataPhonRulesOperationKinds.Create));
+        }
+
+        // FieldWorks data: the right-hand side's InputPOSes is what the HC loader reads for the rule's category.
+        var categories = made.Select(rule => ((IPhRegularRule)Get<IPhSegmentRule>(cache, rule)).RightHandSidesOS.Single()
+            .InputPOSesRC.Select(p => p.Guid).ToArray()).ToArray();
+        Assert.Equal([verb.ToGuid()], categories[0]);
+        Assert.Equal(categories[0], categories[1]);
+        // Everything Motif reads back about the single outcome (output, contexts, features, categories) is identical.
+        var read = made.Select(rule => JsonSerializer.Serialize(
+            PhonologicalRuleReader.Read(Get<IPhSegmentRule>(cache, rule))!)).ToArray();
+        Assert.Equal(read[0], read[1]);
     }
 
     private static readonly string Rule = CanonicalId.FromGuid(Guid.NewGuid()).Value;
