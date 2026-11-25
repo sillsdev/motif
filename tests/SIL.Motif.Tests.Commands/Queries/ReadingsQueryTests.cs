@@ -350,7 +350,7 @@ public sealed class ReadingsQueryTests(PristineProjectFixture pristine) : IDispo
         // An inflectional suffix is not derivation once the project names the classes.
         var cause = Go(null, group: "cause").Value!.Causes!;
         var only = Assert.Single(cause.Groups);
-        Assert.Equal("other", only.Cause);
+        Assert.Equal("clitic-or-stem-split", only.Cause);
         Assert.Equal(["stem", "inflectional"], only.Example.Readings[0].Morphs.Select(morph => morph.Kind));
         Assert.Equal(stemEntry.Guid.ToString("D"), only.Example.Readings[0].Morphs[0].Entry);
     }

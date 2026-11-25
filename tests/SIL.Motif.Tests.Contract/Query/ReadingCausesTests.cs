@@ -134,6 +134,56 @@ public sealed class ReadingCausesTests
     }
 
     [Fact]
+    public void TheSameMorphsAtDifferentSpansAreABoundaryShiftNotIdenticalReadings()
+    {
+        var first = R(M("mag", "mag", 0, MorphKinds.Inflectional), M("kama", "kama", 3, MorphKinds.Stem));
+        var shifted = R(M("mag", "ma", 0, MorphKinds.Inflectional), M("kama", "gkama", 2, MorphKinds.Stem));
+        Assert.Equal(ReadingCause.BoundaryShift, ReadingCause.Of([first, shifted]));
+        Assert.NotEqual(ReadingCause.HomophonousAffix, ReadingCause.Of([first, shifted]));
+    }
+
+    [Fact]
+    public void ReadingsWithNoPlacedSpansAreNeverSameSegmentationOrBoundaryShift()
+    {
+        var first = R(M("x", "pend", -1, MorphKinds.Stem, msa: "s1"));
+        var second = R(M("x", "pend", -1, MorphKinds.Stem, msa: "s2"));
+        Assert.Equal(ReadingCause.Other, ReadingCause.Of([first, second]));
+        var cut = R(M("a", "pe", -1, MorphKinds.Stem), M("b", "nd", -1, MorphKinds.Stem));
+        Assert.Equal(ReadingCause.Other, ReadingCause.Of([first, cut]));
+        var placed = R(M("a", "pe", 0, MorphKinds.Stem), M("b", "nd", 2, MorphKinds.Stem));
+        var other = R(M("c", "p", 0, MorphKinds.Stem), M("d", "end", 1, MorphKinds.Stem));
+        Assert.Equal(ReadingCause.BoundaryShift, ReadingCause.Of([placed, other]));
+        Assert.Equal(ReadingCause.Other, ReadingCause.Of([placed, cut]));
+    }
+
+    [Fact]
+    public void StemAndAffixDifferencesAcrossDifferentPairsGiveTheMixedLabel()
+    {
+        var one = R(M("r", "kul", 0, MorphKinds.Stem, msa: "s1"), M("a", "ish", 3, MorphKinds.Derivational, msa: "d1"));
+        var stems = R(M("r", "kul", 0, MorphKinds.Stem, msa: "s2"), M("a", "ish", 3, MorphKinds.Derivational, msa: "d1"));
+        var affixes = R(M("r", "kul", 0, MorphKinds.Stem, msa: "s1"), M("a", "ish", 3, MorphKinds.Derivational, msa: "d2"));
+        Assert.Equal((ReadingCause.SameSegmentation, ReadingCause.Stems), ReadingCause.Classify([one, stems]));
+        Assert.Equal((ReadingCause.SameSegmentation, ReadingCause.Affixes), ReadingCause.Classify([one, affixes]));
+        Assert.Equal((ReadingCause.SameSegmentation, ReadingCause.Mixed), ReadingCause.Classify([one, stems, affixes]));
+    }
+
+    [Fact]
+    public void GroupsKeepTheirSubLabelsApartInPriorityOrderAndWriteDetailOnlyWhenPresent()
+    {
+        var stems = new WordReadings(ReadingStates.Parsed, [R(M("x", "lubas", 0, MorphKinds.Stem, msa: "s1")), R(M("x", "lubas", 0, MorphKinds.Stem, msa: "s2"))]);
+        var mixed = new WordReadings(ReadingStates.Parsed, [R(M("x", "pend", 0, msa: "a")), R(M("x", "pend", 0, msa: "b"))]);
+        var builder = new CauseGroupBuilder();
+        builder.Add("mixedword", 1, mixed);
+        builder.Add("lubas", 5, stems);
+        var groups = builder.Build();
+        Assert.Equal([ReadingCause.Mixed, ReadingCause.Stems], groups.Select(group => group.Detail));
+        var json = System.Text.Json.JsonSerializer.Serialize(groups[1], new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+        Assert.Contains("\"detail\":\"stems\"", json);
+        var plain = new CauseGroup(ReadingCause.Other, false, 1, 1, groups[0].Example);
+        Assert.DoesNotContain("detail", System.Text.Json.JsonSerializer.Serialize(plain, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
+    }
+
+    [Fact]
     public void ADifferentStemWithTheSameSpellingIsNotHomophonousAffix()
     {
         var first = R(M("x", "pend", 0, MorphKinds.Stem, msa: "s1"));

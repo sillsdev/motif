@@ -13,7 +13,7 @@ public static class ReadingCause
     public const string HomophonousAffix = "homophonous-affix";
     /// <summary>The readings segment the word identically (same morph texts at the same spans) and differ only in which entry or analysis carries a morph.</summary>
     public const string SameSegmentation = "same-segmentation";
-    /// <summary>One reading has a single stem over a span that another splits into several morphs, none of them derivational (a clitic, an inflectional affix or a short stem).</summary>
+    /// <summary>One reading has a single stem over a span that another splits into several morphs (a clitic, an inflectional affix or a short stem), when the pair is not lexicalised-vs-derived.</summary>
     public const string CliticOrStemSplit = "clitic-or-stem-split";
     /// <summary>The readings have the same number of morphs but cut the word at different places.</summary>
     public const string BoundaryShift = "boundary-shift";
@@ -110,28 +110,31 @@ public static class ReadingCause
         for (var j = count; j < readings.Count; j++) yield return (readings[0], readings[j]);
     }
 
+    /// <summary>The same morph (form, analysis) at the same span.</summary>
+    private static bool SameAt(ReadingMorph x, ReadingMorph y) => x.Key == y.Key && x.Start == y.Start && x.End == y.End;
+
     private static bool SameMorphs(WordReading a, WordReading b) =>
-        a.Morphs.Count == b.Morphs.Count && a.Morphs.Zip(b.Morphs).All(pair => pair.First.Key == pair.Second.Key);
+        a.Morphs.Count == b.Morphs.Count && a.Morphs.Zip(b.Morphs).All(pair => SameAt(pair.First, pair.Second));
 
     /// <summary>The same morphs (form and analysis) in a different order.</summary>
     internal static bool IsReordered(WordReading a, WordReading b)
     {
-        if (a.Morphs.Count != b.Morphs.Count || SameMorphs(a, b)) return false;
+        if (a.Morphs.Count != b.Morphs.Count || a.Morphs.Zip(b.Morphs).All(pair => pair.First.Key == pair.Second.Key)) return false;
         var left = a.Morphs.Select(morph => morph.Key).Order().ToList();
         var right = b.Morphs.Select(morph => morph.Key).Order().ToList();
         return left.SequenceEqual(right);
     }
 
     /// <summary>
-/// Same length, and every position is the same morph or one with the same text and a different analysis, both inflectional affixes
-/// (agreement markers that spell alike). A stem, a derivational affix or a morph of unknown class never counts as benign.
-/// </summary>
+    /// Same length, and every position is the same morph or one with the same text and a different analysis, both inflectional affixes
+    /// (agreement markers that spell alike). A stem, a derivational affix or a morph of unknown class never counts as benign.
+    /// </summary>
     internal static bool IsHomophonous(WordReading a, WordReading b)
     {
         if (a.Morphs.Count != b.Morphs.Count || SameMorphs(a, b)) return false;
         foreach (var (x, y) in a.Morphs.Zip(b.Morphs))
         {
-            if (x.Key == y.Key) continue;
+            if (x.Key == y.Key) { if (x.Start != y.Start || x.End != y.End) return false; continue; }
             if (x.Msa == y.Msa || x.Text.Length == 0 || x.Start < 0 || x.Start != y.Start || !string.Equals(x.Text, y.Text, StringComparison.Ordinal)) return false;
             if (x.Kind != MorphKinds.Inflectional || y.Kind != MorphKinds.Inflectional) return false;
         }
@@ -161,9 +164,9 @@ public static class ReadingCause
         var x = a.Morphs;
         var y = b.Morphs;
         var head = 0;
-        while (head < x.Count && head < y.Count && x[head].Key == y[head].Key) head++;
+        while (head < x.Count && head < y.Count && SameAt(x[head], y[head])) head++;
         var tail = 0;
-        while (tail < x.Count - head && tail < y.Count - head && x[^(tail + 1)].Key == y[^(tail + 1)].Key) tail++;
+        while (tail < x.Count - head && tail < y.Count - head && SameAt(x[^(tail + 1)], y[^(tail + 1)])) tail++;
         return ([.. x.Skip(head).Take(x.Count - head - tail)], [.. y.Skip(head).Take(y.Count - head - tail)]);
     }
 }
@@ -202,6 +205,8 @@ public sealed class CauseGroupBuilder
     /// <summary>The most readings an example shows.</summary>
     public const int ExampleReadings = 6;
 
+    private static readonly string[] Order = [.. ReadingCause.All];
+
     private readonly Dictionary<(string Cause, string Detail), (int Words, long Tokens, string Word, long Best, WordReadings Readings)> _groups = [];
 
     /// <summary>Adds a word with more than one reading.</summary>
@@ -217,7 +222,7 @@ public sealed class CauseGroupBuilder
     /// <summary>The groups in cause priority order, a cause's sub-labels together.</summary>
     public IReadOnlyList<CauseGroup> Build() =>
     [
-        .. _groups.Keys.OrderBy(key => ReadingCause.All.ToList().IndexOf(key.Cause)).ThenBy(key => key.Detail, StringComparer.Ordinal).Select(key =>
+        .. _groups.Keys.OrderBy(key => Array.IndexOf(Order, key.Cause)).ThenBy(key => key.Detail, StringComparer.Ordinal).Select(key =>
         {
             var group = _groups[key];
             return new CauseGroup(key.Cause, ReadingCause.Benign(key.Cause), group.Words, group.Tokens, new CauseExample(group.Word,
