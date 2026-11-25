@@ -101,6 +101,34 @@ public sealed class TrialReadingDeltaTests
         Assert.Equal(ReadingExpectationStates.DoubledOverCap, capped.State);
     }
 
+    [Fact]
+    public void ALostSiblingNotDeclaredRetiredWritesNoReceiptAndRemovesAnEarlierOne()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var forms = new[] { Form("gold", [1], [1]), Form("kuish", [2], []), Form("kuishi", [5], [5]) };
+        var proposal = "";
+        var stored = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, located) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, located, forms, siblings: ["kuish", "kuishi"]);
+            ProposalCompareExports.RecordCurrentBaseline(database, located);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+        var directory = Path.Combine(fixture.Root, "manifests");
+        TrialReadingDelta.ReadAndWrite(request, directory);
+        var path = Path.Combine(fixture.Root, "receipt.json");
+        var declared = Declared(directory);
+        Assert.NotNull(TrialReadingDelta.Check(request, declared, receiptPath: path).Value!.Receipt);
+
+        var undeclared = new TrialExpectations([.. declared.RetiredRows!.Where(line => !line.Contains("\"kuish\""))], declared.AddedRows);
+        var result = TrialReadingDelta.Check(request, undeclared, receiptPath: path);
+
+        Assert.Equal(ReadingExpectationStates.Mismatch, result.Value!.Expectations!.State);
+        Assert.Null(result.Value.Receipt);
+        Assert.False(File.Exists(path));
+    }
+
     private static string TrialWithSiblings(ReviewAcceptanceFixture fixture, string[] sampled, bool purgeList = false)
     {
         var proposal = "";
