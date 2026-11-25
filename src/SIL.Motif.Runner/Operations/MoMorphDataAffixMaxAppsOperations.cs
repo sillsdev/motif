@@ -97,12 +97,13 @@ public static class AffixMaxApps
     /// <summary>
     /// The analysis FieldWorks builds the affix rule from when <paramref name="msa"/> is one of several equal analyses on
     /// its entry, and every other analysis equal to it. The choice is HCLoader's <c>RepresentativeMSA</c>: the first analysis of
-    /// the entry with the same class that <c>EqualsMsa</c> and that a sense uses, else the analysis itself. A count keyed on
+    /// the entry with the same class that <c>EqualsMsa</c> and that a sense uses, else the analysis itself; with <c>HC/MergeMSAs</c> false it is the analysis itself with no equals. A count keyed on
     /// any other analysis is dropped by the loaders.
     /// </summary>
     public static (ICmObject Representative, IReadOnlyList<ICmObject> Equal) Representative(ICmObject msa)
     {
-        if (msa is not IMoMorphSynAnalysis analysis || analysis.OwnerOfClass<ILexEntry>() is not { } entry)
+        if (msa is not IMoMorphSynAnalysis analysis || analysis.OwnerOfClass<ILexEntry>() is not { } entry
+            || !MergesAnalyses(msa.Cache))
             return (msa, []);
         IMoMorphSynAnalysis representative = analysis;
         var equal = new List<IMoMorphSynAnalysis>();
@@ -118,6 +119,25 @@ public static class AffixMaxApps
                 break;
             }
         return (representative, equal.Where(other => other.Guid != representative.Guid).ToArray());
+    }
+
+    /// <summary>
+    /// Whether the parser merges equal analyses: <c>HC/MergeMSAs</c> in ParserParameters, true when absent (HCParser's default).
+    /// Unreadable settings count as the default.
+    /// </summary>
+    public static bool MergesAnalyses(LcmCache cache)
+    {
+        var text = cache.LangProject.MorphologicalDataOA?.ParserParameters;
+        if (string.IsNullOrWhiteSpace(text)) return true;
+        try
+        {
+            var value = XElement.Parse(text).Elements("HC").Elements("MergeMSAs").FirstOrDefault();
+            return value is null || (bool)value;
+        }
+        catch (Exception exception) when (exception is FormatException or System.Xml.XmlException)
+        {
+            return true;
+        }
     }
 
     /// <summary>The count the project holds for the affix MSA <paramref name="msa"/>, or <see cref="Default"/> when none is set.</summary>

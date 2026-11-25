@@ -225,6 +225,91 @@ public sealed class SetAffixMaxAppsComposerTests : IDisposable
         Assert.NotEqual(unused, other);
     }
 
+    private (CanonicalId First, CanonicalId Second) DerivationalPairOnOneEntry(bool senseUsesSecond, bool mixClasses = false)
+    {
+        IMoMorphSynAnalysis first = null!, second = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var entry = _cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+            var pos = _cache.ServiceLocator.GetObject(_category.ToGuid()) as IPartOfSpeech;
+            var firstDeriv = _cache.ServiceLocator.GetInstance<IMoDerivAffMsaFactory>().Create();
+            entry.MorphoSyntaxAnalysesOC.Add(firstDeriv);
+            firstDeriv.FromPartOfSpeechRA = pos;
+            firstDeriv.ToPartOfSpeechRA = pos;
+            first = firstDeriv;
+            if (mixClasses)
+            {
+                var infl = _cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create();
+                entry.MorphoSyntaxAnalysesOC.Add(infl);
+                infl.PartOfSpeechRA = pos;
+                second = infl;
+            }
+            else
+            {
+                var secondDeriv = _cache.ServiceLocator.GetInstance<IMoDerivAffMsaFactory>().Create();
+                entry.MorphoSyntaxAnalysesOC.Add(secondDeriv);
+                secondDeriv.FromPartOfSpeechRA = pos;
+                secondDeriv.ToPartOfSpeechRA = pos;
+                second = secondDeriv;
+            }
+            var sense = _cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(sense);
+            sense.MorphoSyntaxAnalysisRA = senseUsesSecond ? second : first;
+        });
+        return (CanonicalId.FromGuid(first.Guid), CanonicalId.FromGuid(second.Guid));
+    }
+
+    [Fact]
+    public void EqualDerivationalAnalysesShareTheRepresentativeTheSenseUses()
+    {
+        var (unused, used) = DerivationalPairOnOneEntry(senseUsesSecond: true);
+
+        var operation = Assert.Single(SetAffixMaxAppsComposer.Build(_cache, new(unused, 1, 3)));
+
+        Assert.Equal(used.Value, operation.After!.Value.GetProperty("msa").GetString());
+    }
+
+    [Fact]
+    public void AnalysesOfDifferentClassesAreNotMerged()
+    {
+        var (deriv, infl) = DerivationalPairOnOneEntry(senseUsesSecond: true, mixClasses: true);
+        var intent = new SetAffixMaxAppsIntent(deriv, 1, 2);
+
+        var operation = Assert.Single(SetAffixMaxAppsComposer.Build(_cache, intent));
+
+        Assert.Equal(deriv.Value, operation.After!.Value.GetProperty("msa").GetString());
+        Assert.Empty(SetAffixMaxAppsReport.Related(_cache, intent));
+        Assert.NotEqual(deriv, infl);
+    }
+
+    [Fact]
+    public void WhenTheFirstEqualAnalysisIsUnusedTheSecondUsedOneIsTheRepresentative()
+    {
+        var (first, second) = TwoEqualAnalysesOnOneEntry(senseUsesSecond: true);
+
+        var operation = Assert.Single(SetAffixMaxAppsComposer.Build(_cache, new(first, 1, 2)));
+
+        Assert.Equal(second.Value, operation.After!.Value.GetProperty("msa").GetString());
+    }
+
+    [Theory]
+    [InlineData("<ParserParameters><HC><MergeMSAs>false</MergeMSAs></HC></ParserParameters>", false)]
+    [InlineData("<ParserParameters><HC><MergeMSAs>true</MergeMSAs></HC></ParserParameters>", true)]
+    [InlineData("<ParserParameters><HC><Strata>a</Strata></HC></ParserParameters>", true)]
+    public void MergeMsasInTheProjectDecidesWhetherEqualAnalysesAreMerged(string xml, bool merged)
+    {
+        SetParameters(xml);
+        var (unused, used) = TwoEqualAnalysesOnOneEntry(senseUsesSecond: true);
+        var intent = new SetAffixMaxAppsIntent(unused, 1, 2);
+
+        var operation = Assert.Single(SetAffixMaxAppsComposer.Build(_cache, intent));
+
+        Assert.Equal((merged ? used : unused).Value, operation.After!.Value.GetProperty("msa").GetString());
+        Assert.Equal(merged, SetAffixMaxAppsReport.Related(_cache, intent).Count > 0);
+        ApplyOps(_cache, [operation]);
+        Assert.Equal(2, AffixMaxApps.ReadFor(Get<ICmObject>(_cache, unused)));
+    }
+
     [Fact]
     public void TheHandlerRefusesAnInvalidCountAtApplyToo()
     {
