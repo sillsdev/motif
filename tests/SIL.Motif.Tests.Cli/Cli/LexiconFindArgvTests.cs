@@ -60,10 +60,10 @@ public sealed class LexiconFindArgvTests(PristineProjectFixture pristine) : IDis
     {
         using var project = new WalkthroughProject(pristine, _root);
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), _root).Succeeded);
-        var slow = "z";
+        var slow = @"(.)\1\1\1\1\1\1";
         for (var depth = 0; depth < 14; depth++) slow = ".*(?=" + slow + ")";
         var file = Path.Combine(_root, "mixed.jsonl");
-        File.WriteAllText(file, "not json\n{\"form_regex\":\"a\"}\n{\"form-regex\":\"" + slow + "\"}\n[1]\n{\"exact\":\"" + SeededProject.FirstForm + "\"}\n");
+        File.WriteAllText(file, "not json\n{\"form_regex\":\"a\"}\n{\"form-regex\":" + JsonSerializer.Serialize(slow) + "}\n[1]\n{\"exact\":\"" + SeededProject.FirstForm + "\"}\n");
         var result = CliInProcess.Run(_root, null, developerCommands: true,
             "lexicon", "find", "--project", project.FwDataPath, "--batch", file);
         Assert.True(result.ExitCode == 0, result.Output + result.Error);
