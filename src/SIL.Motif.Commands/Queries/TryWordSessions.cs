@@ -48,13 +48,14 @@ public static class TryWordSessions
             if (target is null)
                 return new WarmSessionState(WarmSessionPhase.Failed, "wordtrace.no-baseline",
                     "The project has no Baseline yet.");
-            return await PoolFor(parserPath).Prewarm(projectPath, target.Value.Token, target.Value.GrammarPath).ConfigureAwait(false);
+            return await PoolFor(parserPath).Prewarm(projectPath, target.Value.Token, target.Value.GrammarPath,
+                ProjectWorkLimit.ForProject(projectPath)).ConfigureAwait(false);
         });
     }
 
     /// <summary>The state of a project's session: Idle, Loading, Ready or Failed.</summary>
     public static WarmSessionState GetState(string projectPath, string? parserPath = null) =>
-        PoolFor(parserPath).GetState(projectPath);
+        PoolFor(parserPath).GetState(projectPath, ProjectWorkLimit.ForProject(projectPath));
 
     /// <summary>
     /// Kills and drops every resident session for the project, whichever parser it runs; idempotent. Call before a
