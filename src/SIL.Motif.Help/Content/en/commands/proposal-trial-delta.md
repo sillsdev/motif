@@ -8,7 +8,7 @@ The counts cover every measured form. Each class shows a page of rows ordered by
 - `gained`: had no Reading before and has one after.
 - `changed`: parsed on both sides and the two sides share no Reading.
 - `doubled`: keeps every old Reading and has more copies after.
-- `rejected`: a known non-word that parsed before and no longer does. It is an improvement, never lost. Ask for it with `--classes`.
+- `stopped-negative`: a known non-word that parsed before and no longer does. It is an improvement, never lost. Ask for it with `--classes`.
 
 Each row keeps `caseKey`, the id the report and regression rows use, and lists the retired and added Readings by signature id with a copy count and the signature as a manifest row writes it. Only lexicon-backed Readings count; guessed Readings do not.
 

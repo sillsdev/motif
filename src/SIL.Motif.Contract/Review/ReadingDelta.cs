@@ -20,7 +20,7 @@ public static class ReadingDeltaClasses
     public const string Doubled = "doubled";
 
     /// <summary>A known non-word that parsed before the change and no longer parses.</summary>
-    public const string Rejected = "rejected";
+    public const string Rejected = "stopped-negative";
 
     /// <summary>The classes a read shows by default.</summary>
     public static readonly IReadOnlyList<string> Default = [Lost, Gained, Changed, Doubled];

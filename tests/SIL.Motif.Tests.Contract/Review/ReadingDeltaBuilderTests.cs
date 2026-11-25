@@ -35,7 +35,7 @@ public sealed class ReadingDeltaBuilderTests
     {
         var form = Assert.Single(ReadingDeltaBuilder.Compute([Word("x", [1], [], negative: true)]));
 
-        Assert.Equal(["rejected"], form.Classes);
+        Assert.Equal(["stopped-negative"], form.Classes);
     }
 
     [Fact]
