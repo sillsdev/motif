@@ -495,7 +495,7 @@ public sealed class ToolSurfaceTests
         var alternateBranch = branches.Single(branch =>
             branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>() == "compose-author-alternate-form")!;
         var alternateBranchProperties = alternateBranch["properties"]!.AsObject();
-        Assert.Equal(new[] { "verb", "intent", "citation" }, alternateBranchProperties.Select(property => property.Key));
+        Assert.Equal(new[] { "verb", "intent", "citation", "forEach" }, alternateBranchProperties.Select(property => property.Key));
         Assert.False(alternateBranch["additionalProperties"]!.GetValue<bool>());
         var alternateIntent = alternateBranchProperties["intent"]!;
         var alternateIntentProperties = alternateIntent["properties"]!.AsObject();
