@@ -26,16 +26,19 @@ namespace SIL.Motif.Commands;
 /// <c>--force</c> overrides), then, under the store's exclusive lease, stages every file beside its target and checks
 /// the staged copy's sha256. Nothing is deleted: the store, its <c>-wal</c>, <c>-shm</c> and <c>-journal</c> and every
 /// other owned file the restore replaces or the backup lacks (a trial export, a config, an upgrade report) are
-/// moved into <c>&lt;stem&gt;.motif-backups/pre-restore-&lt;time&gt;/moved</c>, and the response lists each one. Every
+/// moved into <c>&lt;stem&gt;.motif-backups/pre-restore-&lt;time&gt;/moved</c>, and the response lists each one. That
+/// move is the one copy of the old store: the raw files, which together reproduce it exactly, so no online backup
+/// doubles the bytes. Every
 /// refusal leaves the store as it was, pinned by `AFileThatDoesNotMatchItsShaIsRefusedAndTheStoreIsLeftAsItWas`.
 /// </para>
 /// <para>
 /// Crash states, in order. (1) Before any move: the old project is untouched; leftover <c>*.restore-*</c> staged files
 /// are deleted by the next restore. (2) Other owned files moved and swapped, store not yet moved: the old store is live
-/// beside the new config and trial files, a mixed state a rerun of the same restore repairs. (3) The old store and its
-/// sidecars moved as one set, the staged store not yet renamed: no store is at the path, the complete old store is in
-/// <c>moved</c> and the complete new one is staged; Motif sees no store, never a half or mixed one, and a rerun
-/// completes the restore. (4) The staged store renamed: the new store is live, complete. A failure the process
+/// beside the new config and trial files, a mixed state a rerun of the same restore repairs. (3) The sidecars moved first, the
+/// store not yet: the old store is live without its WAL (the WAL is in <c>moved</c>) and no orphan <c>-wal</c> is at the
+/// path; a rerun completes the restore. (3b) The store moved too, the staged store not yet renamed: no store and no
+/// sidecar are at the path, the old files are all in <c>moved</c> and the new store is staged; Motif sees no store,
+/// never a half or mixed one, and a rerun completes the restore. (4) The staged store renamed: the new store is live, complete. A failure the process
 /// survives (an <see cref="IOException"/>) moves everything back instead, and names the pre-restore folder.
 /// </para>
 /// </remarks>
@@ -190,27 +193,7 @@ public static partial class StoreBackupCommand
         for (var n = 2; Directory.Exists(preRestore) || File.Exists(preRestore); n++)
             preRestore = Path.Combine(Path.GetDirectoryName(preRestore)!, "pre-restore-" + Stamp(now) + "-" + n);
         var movedRoot = Path.Combine(preRestore, "moved");
-        var sidecars = new[] { "", "-wal", "-shm", "-journal" };
-
-        // A corrupt store is not a reason to refuse: its raw files are moved aside below.
-        StoreBackupResponse? previous = null;
-        if (File.Exists(storePath))
-        {
-            progress.Directory = preRestore;
-            try
-            {
-                previous = WriteBackup(project, storePath, preRestore, now,
-                    file => MotifDatabase.BackUpHeldExclusively(storePath, file));
-            }
-            catch (InvalidDataException)
-            {
-                previous = null;
-                // The raw files are moved aside below; the half-made copy is not a backup.
-                try { Directory.Delete(preRestore, recursive: true); }
-                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
-            }
-        }
-        Step("pre-restore-saved");
+        var sidecars = new[] { "-wal", "-shm", "-journal" };
 
         var moved = new List<ProjectQuarantinedFile>();
         var swapped = new List<StagedFile>();
@@ -241,10 +224,13 @@ public static partial class StoreBackupCommand
             }
             Step("owned-swapped");
 
-            // 2. The old store and every sidecar move as one set, then the staged store renames into the empty place.
+            // 2. Sidecars move before the store, so no orphan WAL is ever left at the live path.
             foreach (var suffix in sidecars)
                 if (File.Exists(storePath + suffix))
                     MoveAside(storePath + suffix, Path.Combine(movedRoot, StoreName + suffix), "replaced", moved, progress, preRestore);
+            Step("sidecars-moved");
+            if (File.Exists(storePath))
+                MoveAside(storePath, Path.Combine(movedRoot, StoreName), "replaced", moved, progress, preRestore);
             Step("old-store-moved");
 
             stagedStore.SwapIn();
@@ -260,8 +246,8 @@ public static partial class StoreBackupCommand
         var restored = targets.Select(target => new StoreBackupFile(target.Entry.Role, target.Entry.Name,
             target.Destination, target.Entry.Bytes, target.Entry.Sha256)).ToList();
         return CommandOutcome<StoreRestoreResponse>.Success(new StoreRestoreResponse(
-            storePath, directory, facts.SchemaVersion, now, restored, previous,
-            moved.Count > 0 || previous is not null ? preRestore : null, moved));
+            storePath, directory, facts.SchemaVersion, now, restored,
+            moved.Count > 0 ? preRestore : null, moved));
     }
 
     private static void MoveAside(string original, string destination, string reason, List<ProjectQuarantinedFile> moved,
@@ -288,9 +274,48 @@ public static partial class StoreBackupCommand
     {
         var windows = OperatingSystem.IsWindows();
         var parent = Path.GetDirectoryName(storePath)!;
+        var real = ResolveRealPath(destination, windows);
         foreach (var owned in OwnedPaths(storePath, parent, Path.GetFileNameWithoutExtension(project.FullFwDataPath)))
-            if (IsInside(destination, owned, windows)) return owned;
+            if (IsInside(destination, owned, windows) || IsInside(real, ResolveRealPath(owned, windows), windows)) return owned;
         return null;
+    }
+
+    /// <summary>
+    /// The path with every link on it followed (symlinks and junctions to their final target) and, on Windows, 8.3 short
+    /// names replaced by long ones. The part of the path that does not exist yet is kept as written, after the real
+    /// path of its deepest existing ancestor.
+    /// </summary>
+    internal static string ResolveRealPath(string path, bool windows = false, int depth = 0)
+    {
+        var full = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(full) ?? "";
+        var current = root;
+        var segments = full[root.Length..].Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries);
+        for (var index = 0; index < segments.Length; index++)
+        {
+            var next = Path.Combine(current, segments[index]);
+            FileSystemInfo info = Directory.Exists(next) ? new DirectoryInfo(next) : new FileInfo(next);
+            if (info.LinkTarget is not null && depth < 32)
+            {
+                string? target = null;
+                try { target = info.ResolveLinkTarget(returnFinalTarget: true)?.FullName; }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+                // A dangling or looping link keeps its own name; its target is then resolved from the link's folder.
+                target ??= Path.GetFullPath(info.LinkTarget, current);
+                next = ResolveRealPath(target, windows, depth + 1);
+            }
+            else if (windows && info.Exists && new DirectoryInfo(current).EnumerateFileSystemInfos(segments[index]).FirstOrDefault()
+                is { } named)
+                next = Path.Combine(current, named.Name);
+            current = next;
+            if (!info.Exists && info.LinkTarget is null)
+            {
+                for (var rest = index + 1; rest < segments.Length; rest++) current = Path.Combine(current, segments[rest]);
+                break;
+            }
+        }
+        return current;
     }
 
     /// <summary>The store file, the folders Motif owns beside it, and the folder pre-restore copies go in.</summary>

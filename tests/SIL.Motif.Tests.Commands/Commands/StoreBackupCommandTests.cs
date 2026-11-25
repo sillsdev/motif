@@ -35,6 +35,8 @@ public sealed class StoreBackupCommandTests : IDisposable
 
     private string Folder(string name) => Path.Combine(_root, name);
 
+    private string Made(string name) => Directory.CreateDirectory(Folder(name)).FullName;
+
     [Fact]
     public void ABackupWritesTheStoreAndAReceiptWithSizesShasAndTheSchema()
     {
@@ -119,9 +121,13 @@ public sealed class StoreBackupCommandTests : IDisposable
         Assert.Equal(["kept"], Markers(Store));
         Assert.Equal("collect = [\"A\"]", File.ReadAllText(Path.Combine(_root, "Koro.motif.toml")));
         Assert.Equal(MotifSchema.CurrentSchema, result.Value!.SchemaVersion);
-        var saved = result.Value.PreRestoreBackup!;
-        Assert.StartsWith(Path.Combine(_root, "Koro.motif-backups", "pre-restore-"), saved.BackupDirectory, StringComparison.Ordinal);
-        Assert.Equal(["kept", "added-later"], Markers(Path.Combine(saved.BackupDirectory, "store.sqlite")));
+        var saved = result.Value.PreRestoreDirectory!;
+        Assert.StartsWith(Path.Combine(_root, "Koro.motif-backups", "pre-restore-"), saved, StringComparison.Ordinal);
+        Assert.Equal(["kept", "added-later"], Markers(Path.Combine(saved, "moved", "store.sqlite")));
+        // The old store is kept once: no online backup and no receipt beside the moved files.
+        Assert.False(File.Exists(Path.Combine(saved, "store.sqlite")));
+        Assert.False(File.Exists(Path.Combine(saved, StoreBackupCommand.ReceiptName)));
+        Assert.Single(Directory.GetFiles(saved, "store.sqlite", SearchOption.AllDirectories));
         Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
         var reopened = ProjectStoreCommand.Run(Project, MotifProductVersion.CurrentText,
             (_, _) => CommandOutcome<string>.Success("opened"));
@@ -302,9 +308,48 @@ public sealed class StoreBackupCommandTests : IDisposable
         var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
-        Assert.Null(result.Value!.PreRestoreBackup);
-        Assert.Equal("this is not a database", File.ReadAllText(Backed(result.Value, "store.sqlite")));
+        Assert.Equal("this is not a database", File.ReadAllText(Backed(result.Value!, "store.sqlite")));
         Assert.Equal(["kept"], Markers(Store));
+    }
+
+    [Fact]
+    public void ABackupToAFolderReachedThroughASymlinkIntoAnOwnedFolderIsRefusedAndWritesNothing()
+    {
+        Directory.CreateDirectory(TrialRoot);
+        var backups = Path.Combine(_root, "Koro.motif-backups");
+        Directory.CreateDirectory(backups);
+        var toTrial = Path.Combine(Made("links"), "to-trial");
+        var toBackups = Path.Combine(Made("links"), "to-backups");
+        var toStoreFolder = Path.Combine(Made("links"), "to-root");
+        Directory.CreateSymbolicLink(toTrial, TrialRoot);
+        Directory.CreateSymbolicLink(toBackups, backups);
+        Directory.CreateSymbolicLink(toStoreFolder, _root);
+        // A link to a link, and a link at the end of a --to that does not exist yet.
+        var chained = Path.Combine(Made("links"), "chained");
+        Directory.CreateSymbolicLink(chained, toTrial);
+
+        foreach (var destination in new[]
+            { Path.Combine(toTrial, "x"), toTrial, Path.Combine(toBackups, "mine"), Path.Combine(chained, "deep", "y"),
+              Path.Combine(toStoreFolder, "Koro.motif.db.trial-exports", "z") })
+        {
+            var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project, destination));
+            Assert.Equal(RefusalCodes.StoreBackupDestinationOwned, result.Refusal?.Code);
+        }
+        Assert.Empty(Directory.GetFileSystemEntries(TrialRoot));
+        Assert.Empty(Directory.GetFileSystemEntries(backups));
+    }
+
+    [Fact]
+    public void ABackupToAFolderBesideTheOwnedOnesThroughASymlinkIsStillAllowed()
+    {
+        var outside = Made("outside");
+        var link = Path.Combine(Made("links"), "to-outside");
+        Directory.CreateSymbolicLink(link, outside);
+
+        var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Path.Combine(link, "b")));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.True(File.Exists(Path.Combine(outside, "b", "store.sqlite")));
     }
 
     [Theory]
@@ -467,7 +512,7 @@ public sealed class StoreBackupCommandTests : IDisposable
     private sealed class SimulatedCrash : Exception;
 
     private static readonly string[] RestoreSteps =
-        ["staged", "pre-restore-saved", "owned-quarantined", "owned-swapped", "old-store-moved", "store-swapped"];
+        ["staged", "owned-quarantined", "owned-swapped", "sidecars-moved", "old-store-moved", "store-swapped"];
 
     public static TheoryData<string> Steps() => new(RestoreSteps);
 
@@ -482,6 +527,7 @@ public sealed class StoreBackupCommandTests : IDisposable
         WriteTrial("a.json", "A2");
         WriteTrial("c.json", "C");
         File.WriteAllText(Store + "-wal", "");
+        File.WriteAllText(Store + "-shm", "");
         return backup;
     }
 
@@ -505,8 +551,17 @@ public sealed class StoreBackupCommandTests : IDisposable
 
         var backups = Path.Combine(_root, "Koro.motif-backups");
         var moved = Directory.Exists(backups) ? Directory.GetDirectories(backups, "pre-restore-*") : [];
+        // At no step is a sidecar left at the live path without a store beside it.
+        if (!File.Exists(Store))
+            Assert.All(new[] { "-wal", "-shm", "-journal" }, suffix => Assert.False(File.Exists(Store + suffix), suffix));
         switch (step)
         {
+            case "sidecars-moved":
+                // The old store is live without its WAL, which is already in the pre-restore folder.
+                Assert.False(File.Exists(Store + "-wal"));
+                Assert.True(File.Exists(Path.Combine(moved.Single(), "moved", "store.sqlite-wal")));
+                Assert.Equal(["ok"], Scalars(Store, "PRAGMA integrity_check;"));
+                break;
             case "old-store-moved":
                 // Between the two renames there is no store at the path: neither a half nor a mixed one.
                 Assert.False(File.Exists(Store));

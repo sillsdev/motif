@@ -32,13 +32,6 @@ public sealed partial class MotifDatabase
         return CopyOnline(fullPath, destination);
     }
 
-    /// <summary>
-    /// Copies a store the caller already holds exclusively, as <see cref="BackUpExisting"/> copies one it shares,
-    /// without taking a lease the caller's own exclusive lease would refuse.
-    /// </summary>
-    public static StoreFileFacts BackUpHeldExclusively(string path, string destination) =>
-        CopyOnline(Path.GetFullPath(path), destination);
-
     /// <summary>Reads a store file's application id and schema, refusing a file that is not a Motif store.</summary>
     /// <exception cref="InvalidDataException">The file is not a Motif store, or is corrupt.</exception>
     public static StoreFileFacts ReadStoreFileFacts(string path)
