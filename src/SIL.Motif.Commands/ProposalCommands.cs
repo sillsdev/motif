@@ -2085,6 +2085,9 @@ public static partial class ProposalCommands
                 if (attribution.Mode == ApplyModes.Autonomous &&
                     AutonomousTrialGate.Check(database, project, record, cache) is { } liveGateRefusal)
                     return CommandOutcome<ApplyProjection>.Refused(liveGateRefusal);
+                if (attribution.ReceiptPath is not null &&
+                    SIL.Motif.Commands.Review.TrialReceiptFile.VerifyLive(database, project, record, cache) is { } liveReceiptRefusal)
+                    return CommandOutcome<ApplyProjection>.Refused(liveReceiptRefusal);
                 if (loadedSidecars?.Current(project.FullFwDataPath) != true) loadedSidecars = null;
                 var loadedSource = originalIdentity is null ? null : ProgressSourceIdentity.Capture(project.FullFwDataPath);
                 if (record.Status != ManifestStatus.Applied)

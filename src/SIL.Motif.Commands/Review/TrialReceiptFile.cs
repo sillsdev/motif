@@ -114,6 +114,21 @@ internal static class TrialReceiptFile
         }
     }
 
+    /// <summary>
+    /// The refusal when the loaded live project differs from the Baseline the receipt names, as when FieldWorks saved an
+    /// edit after the Baseline; null when it still matches. Run after <see cref="Verify"/> has accepted the receipt.
+    /// </summary>
+    internal static Refusal? VerifyLive(MotifDatabase database, ProjectLocator project, ProposalRecord record,
+        SIL.LCModel.LcmCache live)
+    {
+        var token = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project))?.Token;
+        if (token is not null && AutonomousTrialGate.LiveMatchesBaseline(live, token)) return null;
+        return new Refusal(RefusalCodes.ApplyReceiptStale, FailureReason.Refused,
+            "The Trial receipt no longer binds this Apply: the FieldWorks data changed since the Baseline the Trial measured. " +
+            "Capture a new Baseline, run a new Trial and write a new receipt.",
+            new Dictionary<string, string> { ["proposalId"] = record.ProposalId.Value });
+    }
+
     private static readonly JsonSerializerOptions Options = MotifJson.CreateOptions();
 
     /// <summary>The receipt with its digest recomputed over every other member.</summary>

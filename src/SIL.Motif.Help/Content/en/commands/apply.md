@@ -41,4 +41,4 @@ The summary shows at most ten warnings, each limited to 240 characters, with tot
 
 ## Require a Trial receipt
 
-`--receipt <file>` makes Apply stop unless the file is a green receipt written by `proposal trial delta --write-receipt` for this Proposal's current revision, the current Baseline and this build of the gate rules: `apply.receipt-invalid` for a missing, edited or non-green file, `apply.receipt-stale` for a changed revision, Baseline, Trial or gate build. It is checked before the project is loaded and also with `--force`.
+`--receipt <file>` makes Apply stop unless the file is a green receipt written by `proposal trial delta --write-receipt` for this Proposal's current revision, the current Baseline and this build of the gate rules: `apply.receipt-invalid` for a missing, edited or non-green file, `apply.receipt-stale` for a changed revision, Baseline, Trial or gate build. It is checked before the project is loaded, again against the loaded FieldWorks data (a save made after the Baseline is `apply.receipt-stale`), and also with `--force`.

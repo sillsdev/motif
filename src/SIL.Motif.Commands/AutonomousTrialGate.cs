@@ -37,6 +37,12 @@ internal static class AutonomousTrialGate
         return GuideNotesOnlyProposal.ExemptionFor(operations, sections) is not null;
     }
 
+    /// <summary>Whether the loaded live project still has the semantic state a Baseline recorded.</summary>
+    internal static bool LiveMatchesBaseline(LcmCache live, SIL.Motif.Contract.Baselines.BaselineToken baseline) =>
+        baseline.ProjectionVersion == BaselineSemanticDigest.ProjectionVersion &&
+        baseline.ProjectIdentity == live.LangProject.Guid.ToString("D") &&
+        baseline.SemanticSnapshotDigest == BaselineSemanticDigest.Compute(live);
+
     internal static Refusal? Check(MotifDatabase database, ProjectLocator project, ProposalRecord proposal, LcmCache? live = null)
     {
         var key = ProjectWorkspaceKey.Compute(project);
@@ -83,9 +89,7 @@ internal static class AutonomousTrialGate
                     var baseline = available.Report.Pins.BaselineToken;
                     var input = TrialJobInput.Parse(job.InputJson);
                     var captured = input.ReviewInputs is { } reference ? ReviewInputArtifacts.Read(database, reference) : null;
-                    if (baseline.ProjectionVersion != BaselineSemanticDigest.ProjectionVersion ||
-                        baseline.ProjectIdentity != live.LangProject.Guid.ToString("D") ||
-                        baseline.SemanticSnapshotDigest != BaselineSemanticDigest.Compute(live) ||
+                    if (!LiveMatchesBaseline(live, baseline) ||
                         captured?.Baseline != baseline || captured.BaselineSidecarDigest is not { } measuredSidecars ||
                         ProgressSourceIdentity.CaptureSidecars(project.FullFwDataPath) is not { } liveSidecars ||
                         measuredSidecars != liveSidecars.Digest)
