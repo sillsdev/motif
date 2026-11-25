@@ -245,17 +245,78 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     private static string PendingJson(string path) => ProjectStoreCommand.Run(path, MotifProductVersion.CurrentText,
         (database, _) => CommandOutcome<string>.Success(new ProposalRepository(database).FindPendingChangesDraft()?.ProposalJson ?? "")).Value!;
 
+    private static string[] StagedTexts(string path, string id, GdrEditResponse edited) =>
+        GdrQuery.Show(new GdrShowRequest(path, id, AsOf: edited.DraftName)).Value!.Discussion
+            .Select(paragraph => string.Concat(paragraph.Runs.Select(run => run.Text))).ToArray();
+
     [Fact]
-    public void AFencedMotifBlockIsRefusedWithNothingStagedBecauseTheReaderTakesNoCodeBlock()
+    public void AStoredBlockIsShownAsARealFenceAndShowEditShowIsLossless()
+    {
+        var path = ProjectWithGdrs(cache => { HeadingStyles(cache); SeedStoredBlock(cache); });
+        var markdown = Markdown(path, "GDR-2");
+
+        Assert.Contains("\n```motif-query\nid: forms\ntitle: Forms\nrun: motif query forms\n```\n", markdown, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\`", markdown, StringComparison.Ordinal);
+        var same = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", markdown));
+        Assert.True(same.Succeeded, same.Refusal?.Message);
+        Assert.Empty(same.Value!.Fields);
+        Assert.Equal(0, same.Value.OperationCount);
+    }
+
+    [Fact]
+    public void FencedBlocksNextToProseAndHeadingsAreStoredAsOneParagraphPerLineAndTheAppParserReadsThem()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        var blocks = "# Evidence\n\nBefore.\n\n```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms --project p\n```\n\n" +
+            "Between.\n\n```motif-show\nquery: forms\nshow: table\n```\n\n## After\n\nEnd.";
+
+        var staged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", blocks));
+
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Empty(staged.Value!.Warnings);
+        var texts = StagedTexts(path, "GDR-2", staged.Value);
+        Assert.Equal(["Evidence", "Before.", "```motif-query", "id: forms", "title: Forms", "", "", "run: motif query forms --project p", "```",
+            "Between.", "```motif-show", "query: forms", "show: table", "```", "After", "End."], texts);
+        var found = SIL.Motif.Contract.Gdr.GuideQueryBlocks.Parse(string.Join("\n", texts));
+        Assert.Equal("forms", Assert.Single(found.Queries).Id);
+        Assert.Equal("forms", Assert.Single(found.Shows).Query);
+        Assert.Empty(found.Diagnostics);
+        var again = new GdrMarkdownView(GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: staged.Value.DraftName)).Value!, "p")
+            .Fields.Single(field => field.Name == "discussion").Body;
+        Assert.Contains("```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms --project p\n```", again, StringComparison.Ordinal);
+        var restaged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", again, staged.Value.DraftName));
+        Assert.True(restaged.Succeeded, restaged.Refusal?.Message);
+        Assert.Equal(0, restaged.Value!.OperationCount);
+    }
+
+    [Fact]
+    public void AMalformedBlockIsKeptAsPlainTextWithAWarningAndTamilProseAroundABlockSurvives()
     {
         var path = ProjectWithGdrs();
-        var blocks = "Before.\n\n```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms --project p\n```\n\n```motif-show\nquery: forms\nshow: table\n```";
+        var tamil = "தமிழ் உரை முன்பு.\n\n```motif-query\nid: forms\nrun: motif query forms\n```\n\nஉரை பின்பு.\n\n```motif-show\nshow: table\n```";
 
-        var refused = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", blocks));
+        var staged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", tamil));
+
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Contains(staged.Value!.Warnings, warning => warning.Contains("kept as plain text", StringComparison.Ordinal));
+        Assert.Equal(["தமிழ் உரை முன்பு.", "```motif-query", "id: forms", "run: motif query forms", "```", "உரை பின்பு.",
+            "```motif-show", "show: table", "```"], StagedTexts(path, "GDR-2", staged.Value));
+
+        var unclosed = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-1", "Text.\n\n```motif-show\nquery: forms"));
+        Assert.True(unclosed.Succeeded, unclosed.Refusal?.Message);
+        Assert.NotEmpty(unclosed.Value!.Warnings);
+        Assert.Equal(["Text.", "```motif-show", "query: forms"], StagedTexts(path, "GDR-1", unclosed.Value));
+    }
+
+    [Fact]
+    public void AnOtherCodeBlockIsStillRefusedWithNothingStaged()
+    {
+        var path = ProjectWithGdrs();
+
+        var refused = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", "Before.\n\n```python\nprint(1)\n```"));
 
         Assert.Equal(RefusalCodes.GdrMarkdownInvalid, refused.Refusal!.Code);
         Assert.Contains("nothing was staged", refused.Refusal.Message, StringComparison.Ordinal);
-        Assert.Contains("added in FieldWorks", refused.Refusal.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("setParagraphs", PendingJson(path), StringComparison.Ordinal);
     }
 

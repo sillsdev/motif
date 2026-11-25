@@ -125,7 +125,7 @@ public static class GdrEditCommands
             return CommandOutcome<GdrEditResponse>.Refused(new Refusal(RefusalCodes.GdrMarkdownInvalid, FailureReason.InvalidArgument,
                 "The Markdown cannot be read, so nothing was staged: " + string.Join(" ", read.Errors) +
                 (read.Errors.Any(error => error.Contains("code block", StringComparison.OrdinalIgnoreCase))
-                    ? " Query blocks (motif-query and motif-show) are added in FieldWorks; a block the section already holds can stay as it is, but guide edit cannot add one."
+                    ? " Only motif-query and motif-show blocks may be fenced; other code blocks are not kept in a Guide."
                     : "")));
         var draftName = string.IsNullOrWhiteSpace(draft) ? null : draft.Trim();
         var result = ProposalCommands.StageGdrMarkdown(projectPath, read.Edits!, draftName);

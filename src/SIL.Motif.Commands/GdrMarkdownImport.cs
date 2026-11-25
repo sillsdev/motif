@@ -64,18 +64,22 @@ public static class GdrMarkdownImport
             }
             if (value == field.Body) continue;
             var form = new FieldWorksMarkdownSourceForm(GdrMarkdownOptions.For(field.Response, projectName));
-            var read = form.Read(value, field.Inline);
+            var lifted = field.Inline ? ((string Markdown, IReadOnlyList<GdrQueryBlockMarkdown.Lifted> Blocks, IReadOnlyList<string> Warnings))
+                (value, [], []) : GdrQueryBlockMarkdown.LiftMarkdown(value);
+            var read = form.Read(lifted.Markdown, field.Inline);
+            warnings.AddRange(lifted.Warnings.Select(item => $"{field.Name}: {item}"));
             errors.AddRange(read.Diagnostics.Where(item => item.Severity == DiagnosticSeverity.Error)
                 .Select(item => $"{field.Name}: {item.Message}"));
             warnings.AddRange(read.Diagnostics.Where(item => item.Severity == DiagnosticSeverity.Warning)
                 .Select(item => $"{field.Name}: {item.Message}"));
             if (read.HasErrors) continue;
             var original = GdrMarkdownView.ProjectParagraphs(field.Response);
+            var readParagraphs = field.Inline ? read.Paragraphs : GdrQueryBlockMarkdown.RestoreParagraphs(read.Paragraphs, lifted.Blocks);
             if (field.Inline)
             {
-                if (original.Length == read.Paragraphs.Count && original.Zip(read.Paragraphs).All(pair => form.AreEquivalent(pair.First, pair.Second)))
+                if (original.Length == readParagraphs.Count && original.Zip(readParagraphs).All(pair => form.AreEquivalent(pair.First, pair.Second)))
                     continue;
-                var runs = Runs(read.Paragraphs[0]);
+                var runs = Runs(readParagraphs[0]);
                 if (field.Name == "title" && runs.Any(run => run.CharacterStyle is not null || run.ObjData is not null ||
                         !string.Equals(run.Ws, field.AlternativeWritingSystem, StringComparison.OrdinalIgnoreCase) ||
                         run.Props is { } props && (props.Ints.Count != 0 || props.Strings.Count != 0)))
@@ -90,7 +94,7 @@ public static class GdrMarkdownImport
                 changed.Add(field.WritingSystem is null ? field.Name : $"{field.Name} ({field.WritingSystem})");
                 continue;
             }
-            var edit = Paragraphs(shown, form, original, read.Paragraphs);
+            var edit = Paragraphs(shown, form, original, readParagraphs);
             if (edit is null) continue;
             paragraphs = edit;
             changed.Add(field.Name);

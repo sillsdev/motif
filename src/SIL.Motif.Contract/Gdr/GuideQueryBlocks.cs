@@ -115,6 +115,36 @@ public static class GuideQueryBlocks
         return new GuideBlocks(queries, shows, [.. diagnostics.OrderBy(d => d.Line)]);
     }
 
+    /// <summary>
+    /// The span of every <c>motif-query</c> and <c>motif-show</c> fence in the Markdown, in order, including those too
+    /// malformed for <see cref="Parse"/> to return as a query or show.
+    /// </summary>
+    public static IReadOnlyList<GuideBlockSpan> Spans(string? markdown)
+    {
+        markdown ??= "";
+        var spans = new List<GuideBlockSpan>();
+        var lines = Lines(markdown);
+        for (var i = 0; i < lines.Count; i++)
+        {
+            if (!TryFence(markdown, lines[i], out var fenceChar, out var fenceLength, out var info)) continue;
+            var close = -1;
+            for (var j = i + 1; j < lines.Count; j++)
+                if (IsClosing(markdown, lines[j], fenceChar, fenceLength)) { close = j; break; }
+            var tag = info.Split([' ', '\t'], 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            var last = close < 0 ? lines.Count - 1 : close;
+            if (tag is GdrTemplate.QueryBlockTag or GdrTemplate.ShowBlockTag)
+            {
+                var bodyEnd = close < 0 ? lines.Count : close;
+                var hasBody = bodyEnd > i + 1;
+                spans.Add(new GuideBlockSpan(lines[i].Start, lines[last].End, i + 1, last + 1,
+                    hasBody ? lines[i + 1].Start : lines[i].End, hasBody ? lines[bodyEnd - 1].End : lines[i].End));
+            }
+            if (close < 0) break;
+            i = close;
+        }
+        return spans;
+    }
+
     /// <summary>Replaces one block's text; every char outside the span is kept as it was. A span is valid only for the text it came from, so parse again after each replacement.</summary>
     public static string Replace(string markdown, GuideBlockSpan span, string replacement)
     {

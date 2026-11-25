@@ -58,7 +58,9 @@ public sealed class GdrMarkdownView
         {
             var form = new FieldWorksMarkdownSourceForm(GdrMarkdownOptions.For(response, projectName));
             var copy = paragraphs.Select(paragraph => paragraph.Clone()).ToArray();
-            var body = form.Write(copy, inline) ?? throw new InvalidOperationException($"The {name} cannot be shown as Markdown.");
+            var (standIns, blocks) = inline ? (copy, []) : GdrQueryBlockMarkdown.LiftParagraphs(copy);
+            var body = form.Write(standIns, inline) ?? throw new InvalidOperationException($"The {name} cannot be shown as Markdown.");
+            body = GdrQueryBlockMarkdown.RestoreFences(body, blocks);
             fields.Add(new(name, ws, alternativeWs, inline, response, body));
         }
     }
