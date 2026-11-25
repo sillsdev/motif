@@ -287,7 +287,7 @@
       "phonological-rules",
       "feature-rules"
     ],
-    "redirect": "Use only if the project parses with HermitCrab and a regular sound change holds across many morphemes in a context you can state; otherwise use an alternate form for one irregular word. A rule can be limited by category with inputCategories (guide phonological-rules)."
+    "redirect": "Use only if the project parses with HermitCrab and a regular sound change holds across many morphemes in a context you can state; otherwise use an alternate form for one irregular word. A rule can be limited by category with inputCategories, in the single-outcome shorthand or in each right-hand side (guide phonological-rules)."
   },
   "compose-author-metathesis-rule": {
     "title": "Author a metathesis rule",
@@ -1470,22 +1470,24 @@
   },
   "compose-edit-phonological-rule-features": {
     "title": "Set rule features",
-    "description": "Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes. An empty list clears a set. Motif stages a Draft for a person to review and Apply.",
+    "description": "Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes, and the categories it is limited to. An empty list clears a set. Motif stages a Draft for a person to review and Apply.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
       "rule": "Id of an existing regular rule with one right-hand side; for several, use compose-edit-phonological-rule with rightHandSides.",
       "requiredFeatures": "Exact set of exception feature or inflection class ids a stem must all carry; an empty list clears it.",
-      "excludedFeatures": "Exact set of ids a stem must carry none of; an empty list clears it."
+      "excludedFeatures": "Exact set of ids a stem must carry none of; an empty list clears it.",
+      "inputCategories": "Exact set of part-of-speech ids (with their subcategories) the rule is limited to; an empty list admits every category. FieldWorks stores required categories only."
     },
     "goals": [
       "Keep a sound rule off the stems that must stay unchanged",
-      "Make a sound rule apply only to a tagged class of stems"
+      "Make a sound rule apply only to a tagged class of stems",
+      "Limit a sound rule to verbs or to another category"
     ],
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "Use only if a rule applies to some stems only, by exception feature or inflection class; otherwise narrow its context, or limit it by category with inputCategories in compose-edit-phonological-rule. Tag stems with compose-tag-stems-by-query (guide suffix-prefix-slots)."
+    "redirect": "Use only if a rule applies to some stems only, by exception feature, inflection class or category (inputCategories); otherwise narrow its context. Tag stems with compose-tag-stems-by-query (guide suffix-prefix-slots)."
   },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",

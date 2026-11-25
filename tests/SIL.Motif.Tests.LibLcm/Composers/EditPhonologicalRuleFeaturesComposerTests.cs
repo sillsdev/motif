@@ -81,6 +81,58 @@ public sealed class EditPhonologicalRuleFeaturesComposerTests(PristineProjectFix
         Assert.Contains("requiredFeatures", empty.Message);
     }
 
+    private static CanonicalId NewCategory(LcmCache cache, string name) =>
+        Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
+            new AuthorPartOfSpeechIntent(name, Anal(cache), name[..1]))), CmPossibilityListPossibilitiesOperationKinds.Create);
+
+    [Fact]
+    public void ACategoryLimitsTheRuleAndAnEmptyListClearsIt()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "u", "i", "a", "n");
+        var rule = NewRule(cache);
+        var verb = NewCategory(cache, "Verb");
+        var noun = NewCategory(cache, "Noun");
+
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, InputCategories: [verb])));
+        var rhs = ((IPhRegularRule)Get<IPhSegmentRule>(cache, rule)).RightHandSidesOS.Single();
+        Assert.Equal([verb.ToGuid()], rhs.InputPOSesRC.Select(p => p.Guid));
+
+        Assert.Empty(EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, InputCategories: [verb])));
+
+        var swap = EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, InputCategories: [noun]));
+        Assert.Equal([PhSegRuleRHSInputPOSesOperationKinds.RemoveRefInputPOSes, PhSegRuleRHSInputPOSesOperationKinds.AddRefInputPOSes],
+            swap.Select(op => op.Kind));
+        ApplyOps(cache, swap);
+        Assert.Equal([noun.ToGuid()], rhs.InputPOSesRC.Select(p => p.Guid));
+
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, InputCategories: [])));
+        Assert.Empty(rhs.InputPOSesRC);
+
+        Assert.Throws<InvalidOperationException>(() => EditPhonologicalRuleFeaturesComposer.Build(cache,
+            new(rule, InputCategories: [Phoneme(cache, "u")])));
+    }
+
+    [Fact]
+    public void TheSingleOutcomeShorthandCanCarryACategory()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "u", "i", "a", "n");
+        var verb = NewCategory(cache, "Verb");
+        var rule = Created(ApplyOps(cache, AuthorPhonologicalRuleComposer.Build(cache, new("u becomes i on verbs",
+            PhonologicalRuleDirection.Simultaneous, [new(Phoneme: Phoneme(cache, "u"))],
+            [new(Phoneme: Phoneme(cache, "i"))], [new(Phoneme: Phoneme(cache, "a"))], [new(Phoneme: Phoneme(cache, "n"))],
+            InputCategories: [verb]))), PhPhonDataPhonRulesOperationKinds.Create);
+        var rhs = ((IPhRegularRule)Get<IPhSegmentRule>(cache, rule)).RightHandSidesOS.Single();
+        Assert.Equal([verb.ToGuid()], rhs.InputPOSesRC.Select(p => p.Guid));
+
+        var parsed = AuthorPhonologicalRuleIntentParser.Parse(JsonDocument.Parse(
+            $"{{\"name\":\"r\",\"direction\":\"simultaneous\",\"input\":[],\"output\":[],\"inputCategories\":[\"{verb.Value}\"]}}").RootElement);
+        Assert.Equal([verb], parsed.Outcomes.Single().InputCategories!);
+        Assert.ThrowsAny<Exception>(() => AuthorPhonologicalRuleIntentParser.Parse(JsonDocument.Parse(
+            $"{{\"name\":\"r\",\"direction\":\"simultaneous\",\"input\":[],\"rightHandSides\":[{{\"output\":[]}}],\"inputCategories\":[\"{verb.Value}\"]}}").RootElement));
+    }
+
     private static readonly string Rule = CanonicalId.FromGuid(Guid.NewGuid()).Value;
 
     [Fact]

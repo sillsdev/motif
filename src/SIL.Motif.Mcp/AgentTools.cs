@@ -451,7 +451,7 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorPhonologicalRule(
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "direction", "input",
-                    "output", "left", "right", "placement", "rightHandSides"))),
+                    "output", "left", "right", "placement", "rightHandSides", "inputCategories"))),
                 r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and motif_trial, revise, then Finalize."))) { Requests = [typeof(ComposeAuthorPhonologicalRuleRequest)] },
 
         new("motif_add_metathesis_rule",
@@ -1328,6 +1328,7 @@ internal static class AgentTools
             ("middleWith", Schema.String("Whether the middle belongs to the left or right switch; defaults to left.", "left", "right"), false),
             ("rightSwitch", Switch("The phoneme or natural class that moves to the left switch position."), true),
             ("right", contexts.DeepClone().AsObject(), false),
+            ("inputCategories", Schema.Array("Single-outcome shorthand only: part-of-speech ids (with their subcategories) the rule applies to, Black 6.1.2.2.1; FieldWorks stores required categories only. Use inputCategories inside rightHandSides for several outcomes.", Schema.String("Category id.")), false),
             ("placement", placement, false));
     }
 
@@ -1379,7 +1380,7 @@ internal static class AgentTools
             new JsonObject { ["required"] = new JsonArray("output"), ["not"] = new JsonObject { ["required"] = new JsonArray("rightHandSides") } },
             new JsonObject { ["required"] = new JsonArray("rightHandSides"), ["not"] = new JsonObject
                 { ["anyOf"] = new JsonArray(new JsonObject { ["required"] = new JsonArray("output") },
-                    new JsonObject { ["required"] = new JsonArray("left") }, new JsonObject { ["required"] = new JsonArray("right") }) } });
+                    new JsonObject { ["required"] = new JsonArray("left") }, new JsonObject { ["required"] = new JsonArray("right") }, new JsonObject { ["required"] = new JsonArray("inputCategories") }) } });
         return schema;
     }
 
