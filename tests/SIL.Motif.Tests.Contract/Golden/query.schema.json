@@ -217,7 +217,7 @@
   },
   "$defs": {
     "expr": {
-      "description": "One of: and, or, not, a field predicate, phon, env, realizes, or a reserved kind (parsed, refused as not yet available).",
+      "description": "One of: and, or, not, a field predicate, phon, env, realizes, only-via, or a reserved kind (parsed, refused as not yet available).",
       "oneOf": [
         {
           "type": "object",
@@ -321,6 +321,32 @@
                     "generated"
                   ]
                 }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "only-via"
+          ],
+          "properties": {
+            "only-via": {
+              "description": "Words whose every reading uses the morpheme: exactly one of entry, msa or form, a guid. entry needs --project (an analysis belongs to one entry); msa and form read the batch ids. Runs over a corpus with --grammar; an estimate to confirm with a Trial.",
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 1,
+              "propertyNames": {
+                "enum": [
+                  "entry",
+                  "msa",
+                  "form"
+                ]
+              },
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
               }
             }
           }

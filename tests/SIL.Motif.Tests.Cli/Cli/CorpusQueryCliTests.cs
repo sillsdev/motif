@@ -99,4 +99,24 @@ public sealed class CorpusQueryCliTests : IDisposable
         Assert.Contains("query.corpus-invalid", pattern.Error);
         Assert.Contains("query.corpus-invalid", Run("query", "--corpus", Words(), "pairs", "--differ", "infix", "--json").Error);
     }
+
+    [Fact]
+    public void GroupByCauseAndWhatIfRetireNeedAGrammarAndSayWhichFlag()
+    {
+        var (code, _, error) = Run("query", "--corpus", Words(), "forms", "--group-by", "cause", "--json");
+        Assert.NotEqual(0, code);
+        Assert.Contains("query.readings-needs-grammar", error);
+        var (retireCode, retireOutput, retireError) = Run("query", "--corpus", Words(), "forms", "--what-if-retire", "msa:00000000-0000-0000-0000-000000000001,form:00000000-0000-0000-0000-000000000002", "--json");
+        Assert.NotEqual(0, retireCode);
+        Assert.Contains("--grammar", retireOutput + retireError);
+    }
+
+    [Fact]
+    public void AReadingsQueryWithNeitherWhereNorFlagIsStillUsageAndAnUnknownGroupIsRefused()
+    {
+        Assert.Equal(1, Run("query", "--corpus", Words(), "forms").Code);
+        var (code, output, error) = Run("query", "--corpus", Words(), "forms", "--group-by", "word", "--grammar", Write("g.json", "g"), "--json");
+        Assert.NotEqual(0, code);
+        Assert.Contains("cause", output + error);
+    }
 }

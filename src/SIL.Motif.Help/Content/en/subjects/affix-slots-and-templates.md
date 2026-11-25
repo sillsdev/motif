@@ -19,6 +19,7 @@ Inflectional affixes occupy ordered positions on a word. A slot is one such posi
 6. `compose-change-affix-kind` changes an affix between inflectional, derivational and unclassified when the first call was wrong.
 7. `retire-redundant-zero-affix` removes an empty affix that nothing uses.
 8. `compose-retire-affix-slot` deletes a slot that no affix and no template uses; it refuses a slot still in use and names the users.
+9. `compose-set-affix-max-apps` lets one affix apply more than once in a word (a doubled extension, a repeated suffix). Use it instead of repeating a slot in a template, which stays refused. PanGloss honours the count; FieldWorks's own parser does not read it yet.
 
 ## Pitfalls
 

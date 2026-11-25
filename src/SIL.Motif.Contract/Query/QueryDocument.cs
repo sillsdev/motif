@@ -336,6 +336,8 @@ internal static class QueryDocumentJson
                 return new QueryNot(ReadExpr(inner, path + ".not"));
             case "realizes":
                 return ReadRealizes(inner, path + ".realizes");
+            case "only-via":
+                return ReadOnlyVia(inner, path + ".only-via");
             case "env":
                 if (inner is not JsonValue || inner.GetValueKind() != JsonValueKind.String)
                     throw QueryRefusalException.DocumentInvalid("env is an environment string, <target> / <left> _ <right>.", path + ".env");
@@ -346,6 +348,16 @@ internal static class QueryDocumentJson
                 if (QueryOps.Reserved.Contains(key)) return new QueryReserved(key, inner?.ToJsonString() ?? "null");
                 throw QueryRefusalException.DocumentInvalid($"'{key}' is not an expression kind.", path);
         }
+    }
+
+    private static QueryOnlyVia ReadOnlyVia(JsonNode? node, string path)
+    {
+        const string shape = "only-via is {entry: <guid>}, {msa: <guid>} or {form: <guid>}: the words whose every reading uses that morpheme.";
+        if (node is not JsonObject body || body.Count != 1) throw QueryRefusalException.DocumentInvalid(shape, path);
+        var kind = body.First().Key;
+        var id = Text(body, kind, path);
+        if (!Readings.ReadingTarget.TryParse(kind + ":" + id, out var target)) throw QueryRefusalException.DocumentInvalid(shape, path + "." + kind);
+        return new QueryOnlyVia(target.Kind, target.Id);
     }
 
     private static QueryRealizes ReadRealizes(JsonNode? node, string path)
@@ -392,6 +404,7 @@ internal static class QueryDocumentJson
         QueryNot not => new JsonObject { ["not"] = WriteExpr(not.Item) },
         QueryReserved reserved => new JsonObject { [reserved.Kind] = JsonNode.Parse(reserved.Body) },
         QueryRealizes realizes => new JsonObject { ["realizes"] = new JsonObject { ["morpheme"] = realizes.Morpheme, ["tier"] = realizes.Tier } },
+        QueryOnlyVia via => new JsonObject { ["only-via"] = new JsonObject { [via.Kind] = via.Id } },
         QueryPhon phon => new JsonObject { ["phon"] = phon.Pattern },
         QueryEnv env => new JsonObject { ["env"] = env.Environment },
         QueryField field => WriteField(field),

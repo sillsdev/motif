@@ -34,13 +34,13 @@ public sealed record RealizesPattern(string Kind, string Text, string Anchor, st
 /// <param name="Capped">Words whose parse stopped at the attempt or work limit.</param>
 /// <param name="TimedOut">Words whose parse stopped at the word timeout.</param>
 /// <param name="Failed">Words the resident parser did not answer.</param>
-/// <param name="Sample">The cap on traced matches asked for; null when every match was traced.</param>
-/// <param name="Seconds">Wall-clock seconds the index and the traces took.</param>
-/// <param name="Traced">Matching words traced for the morpheme's surface piece.</param>
+/// <param name="Seconds">Wall-clock seconds the index took to build or load, and the search over it.</param>
+/// <param name="Placed">Matching words whose morpheme piece PanGloss's spans gave.</param>
+/// <param name="WholeWord">Matching words that stand in as their whole word, for a typed null span or spans that do not add up.</param>
 /// <param name="IndexBuilt">Whether this query built the parse index; false when a cached one was reused.</param>
 /// <param name="IndexSeconds">Seconds to build or load the parse index.</param>
 public sealed record RealizesParseReport(int Types, int Parsed, int WithMorpheme, int NoAnalysis, int Unsegmentable, int Capped, int TimedOut,
-    int Failed, int? Sample, double Seconds, int Traced = 0, bool IndexBuilt = false, double IndexSeconds = 0);
+    int Failed, double Seconds, int Placed = 0, int WholeWord = 0, bool IndexBuilt = false, double IndexSeconds = 0);
 
 /// <summary>A morpheme's variant set at one tier, versioned <see cref="SchemaName"/>.</summary>
 /// <param name="Schema">The schema name.</param>

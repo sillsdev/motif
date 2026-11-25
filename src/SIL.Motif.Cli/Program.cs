@@ -176,6 +176,8 @@ string? namedProject = null;
 try
 {
     var (flags, parsedPositionals, forwardedArguments) = ParseArgs(rest);
+    // Pinned by `ASuccessfulJsonVerbPrintsExactlyOneDocumentAndPickKeepsTheNamedFields`.
+    var pickSpec = flags.Remove("pick", out var pickValue) ? pickValue : null;
     var positionals = CliCommandNames.NormalizeQueryWords(verb, flags, parsedPositionals);
     var waitForTerminal = flags.ContainsKey("wait-terminal");
     if (waitForTerminal && !(verb is "dry-run" or "trial" && flags.ContainsKey("wait")) &&
@@ -236,6 +238,24 @@ try
     {
         alreadyRendered = true;
         return CommandTextRenderer.Render(outcome, asJson, successAsJson, includeEffects);
+    }
+
+    // Pinned by `ASuccessfulJsonVerbPrintsExactlyOneDocumentAndPickKeepsTheNamedFields`.
+    var pickRefused = false;
+    CommandResult Picked(CommandResult printed)
+    {
+        // A failing command keeps its own failure; projecting its text would replace the real error.
+        if (pickSpec is null || !asJson || printed.ExitCode != 0) return printed;
+        var picked = PickProjection.Apply(printed, pickSpec);
+        if (picked.ExitCode == 0) return picked;
+        pickRefused = true;
+        error.Write(picked.Output);
+        return picked with { Output = "" };
+    }
+    if (pickSpec is not null && !asJson)
+    {
+        error.Write(PickProjection.NeedsJson().Output);
+        return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
     }
 
     CommandOutcome<ApplyPendingResult> WriteApplyEffectsArtifact(
@@ -1239,8 +1259,9 @@ try
             });
             if (trialResultExit != 0)
             {
-                output.Write(result.Output);
-                return trialResultExit;
+                var pickedTrial = Picked(result);
+                output.Write(pickedTrial.Output);
+                return pickRefused ? pickedTrial.ExitCode : trialResultExit;
             }
             break;
 
@@ -3568,11 +3589,13 @@ try
             return Usage($"Unknown command '{verb}'.", asJson, withUsageBanner: true);
     }
 
+    result = Picked(result);
     if (result.ExitCode == 0)
     {
         output.Write(result.Output);
         return result.ExitCode;
     }
+    if (pickRefused) return result.ExitCode;
     // A caller that asked for JSON gets JSON when it goes wrong too; a Proposal verb already did this itself.
     error.Write(!alreadyRendered && asJson && result.Reason is { } reason
         ? ProjectionJson.Serialize(new FailureEnvelope(reason, result.Output.Trim())) + Environment.NewLine
@@ -3610,6 +3633,17 @@ catch (OutOfMemoryException ex)
     else
         error.WriteLine($"{HostRefusalCodes.CliOutOfMemory}: {message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
+}
+catch (Exception ex) when (SqliteConnections.IsBusyInChain(ex))
+{
+    // Another process held a store lock past the busy timeout. Nothing is damaged; the same call can be repeated.
+    const string message = "Motif's store is locked by another process. Wait a few seconds and repeat the same call.";
+    if (asJson)
+        error.WriteLine(ProjectionJson.Serialize(
+            new FailureEnvelope(FailureReason.Busy, message, code: HostRefusalCodes.CliStoreBusy)));
+    else
+        error.WriteLine($"{HostRefusalCodes.CliStoreBusy}: {message}");
+    return FailureEnvelope.ExitCodeFor(FailureReason.Busy);
 }
 catch (Exception ex)
 {

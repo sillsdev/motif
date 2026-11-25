@@ -73,6 +73,10 @@ internal static class EvidenceExportCli
     {
         var counts = new SortedDictionary<string, int>(StringComparer.Ordinal);
         var total = 0;
+        // Read the first page before writing, so a refusal leaves stdout empty.
+        var firstPage = readPage(null);
+        if (!firstPage.Succeeded)
+            return CommandOutcome<DecisionEvidenceExportSummary>.Refused(firstPage.Refusal!);
         using var json = new Utf8JsonWriter(sink, new JsonWriterOptions { Indented = true, NewLine = "\n" });
         json.WriteStartObject();
         json.WriteString("format", DecisionEvidenceExport.Format);
@@ -80,7 +84,7 @@ internal static class EvidenceExportCli
         string? after = null;
         do
         {
-            var page = readPage(after);
+            var page = after is null ? firstPage : readPage(after);
             if (!page.Succeeded)
                 return CommandOutcome<DecisionEvidenceExportSummary>.Refused(page.Refusal!);
             foreach (var row in page.Value!.Rows)

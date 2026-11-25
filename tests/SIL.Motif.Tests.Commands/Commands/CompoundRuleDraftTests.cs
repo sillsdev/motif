@@ -84,6 +84,48 @@ public sealed class CompoundRuleDraftTests(PristineProjectFixture pristine)
         Assert.Contains(MoMorphDataNotOnCliticsOperationKinds.Set, DraftBytes(path), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheAffixMaxAppsComposerStagesOneWriteAndRefusesWithRegisteredCodes()
+    {
+        string path, affix, stem;
+        using (var cache = pristine.NewScratch())
+        {
+            IMoInflAffMsa inflectional = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                inflectional = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create();
+                entry.MorphoSyntaxAnalysesOC.Add(inflectional);
+            });
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+            affix = CanonicalId.FromGuid(inflectional.Guid).Value;
+            stem = CanonicalId.FromGuid(cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.FirstEntryId)
+                .MorphoSyntaxAnalysesOC.First().Guid).Value;
+        }
+        Assert.True(ProposalCommands.New(new(path, Version, DraftName, "Repeat an affix")).Succeeded);
+        CommandOutcome<ComposedOperationsResponse> Intent(object body) => ProposalCommands.ComposeIntent(new(path, Version,
+            DraftName, "compose-set-affix-max-apps", JsonSerializer.Serialize(body)));
+
+        var notAffix = Intent(new { msa = stem, expectedMaxApps = 1, maxApps = 2 });
+        Assert.False(notAffix.Succeeded);
+        Assert.Equal(RefusalCodes.AffixMaxAppsNotAffixMsa, notAffix.Refusal!.Code);
+
+        var tooMany = Intent(new { msa = affix, expectedMaxApps = 1, maxApps = 99 });
+        Assert.False(tooMany.Succeeded);
+        Assert.Equal(RefusalCodes.AffixMaxAppsInvalidCount, tooMany.Refusal!.Code);
+
+        var stale = Intent(new { msa = affix, expectedMaxApps = 2, maxApps = 3 });
+        Assert.False(stale.Succeeded);
+        Assert.Equal(RefusalCodes.AffixMaxAppsStale, stale.Refusal!.Code);
+
+        var staged = Intent(new { msa = affix, expectedMaxApps = 1, maxApps = 2 });
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var operation = Assert.Single(staged.Value!.Operations);
+        Assert.Equal(MoMorphDataAffixMaxAppsOperationKinds.Set, operation.Kind);
+        Assert.Contains(MoMorphDataAffixMaxAppsOperationKinds.Set, DraftBytes(path), StringComparison.Ordinal);
+    }
+
     private static CommandOutcome<ComposedOperationsResponse> Compose(string path, object intent) =>
         ProposalCommands.ComposeIntent(new(path, Version, DraftName, "compose-edit-compound-rule",
             JsonSerializer.Serialize(intent)));

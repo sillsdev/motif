@@ -3,6 +3,7 @@ using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Projection;
 using SIL.Motif.Projection.Grammar;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Runner.Retirement;
 
 namespace SIL.Motif.Mcp;
@@ -143,9 +144,16 @@ internal static class LexiconReader
             ["semantics-note"] = Alternatives(cache, sense.SemanticsNote),
             ["sociolinguistics-note"] = Alternatives(cache, sense.SocioLinguisticsNote),
         },
-        ["grammaticalInfo"] = sense.MorphoSyntaxAnalysisRA is { } msa
-            ? new JsonObject { ["id"] = GrammarReader.Id(msa), ["kind"] = msa.ClassName } : null,
+        ["grammaticalInfo"] = sense.MorphoSyntaxAnalysisRA is { } msa ? GrammaticalInfo(msa) : null,
     };
+
+    /// <summary>An analysis's id and kind, plus <c>maxApps</c> when set.</summary>
+    private static JsonObject GrammaticalInfo(IMoMorphSynAnalysis msa)
+    {
+        var info = new JsonObject { ["id"] = GrammarReader.Id(msa), ["kind"] = msa.ClassName };
+        if (AffixMaxApps.ReadFor(msa) is var maxApps && maxApps > AffixMaxApps.Default) info["maxApps"] = maxApps;
+        return info;
+    }
 
     private static JsonObject Alternatives(LcmCache cache, IMultiAccessorBase accessor)
     {

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using SIL.Motif.Contract.Query;
 
 namespace SIL.Motif.Commands.Queries;
@@ -7,22 +8,16 @@ namespace SIL.Motif.Commands.Queries;
 /// <summary>A morpheme as PanGloss names it in a parse: by entry and analysis, or by one id that is either.</summary>
 internal sealed record RealizesTarget(string? EntryId, string? MsaId, string? AnyId, bool? IsRoot = null)
 {
-    /// <summary>Whether a morph of a trace names the morpheme.</summary>
-    public bool Matches(ParsedMorph morph) => AnyId is { } any
-        ? string.Equals(morph.EntryId, any, StringComparison.OrdinalIgnoreCase) || string.Equals(morph.MsaId, any, StringComparison.OrdinalIgnoreCase)
-        : string.Equals(morph.EntryId, EntryId, StringComparison.OrdinalIgnoreCase) &&
-          (MsaId is null || string.Equals(morph.MsaId, MsaId, StringComparison.OrdinalIgnoreCase));
-
-    /// <summary>Whether a morph of the batch index names the morpheme; the batch gives a form and an analysis id, not the entry.</summary>
+    /// <summary>Whether a morph of the index names the morpheme; the batch gives a form and an analysis id, not the entry.</summary>
     public bool Matches(IndexedMorph morph) => AnyId is { } any
         ? string.Equals(morph.Form, any, StringComparison.OrdinalIgnoreCase) || string.Equals(morph.Msa, any, StringComparison.OrdinalIgnoreCase)
         : string.Equals(morph.Msa, MsaId, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>
-/// The corpus source of the <c>attested</c> tier, in two stages. The parse index says which word types the grammar analyses with the
-/// morpheme; then only those words (up to the sample size, most frequent first by weighted choice) are traced to read the morpheme's
-/// surface piece from the shape PanGloss reports. A matching word that is not traced, or whose trace shows no piece, stands in whole.
+/// The corpus source of the <c>attested</c> tier. The parse index (one <c>pangloss batch --analyses --morph-spans</c> over the corpus) says which
+/// word types the grammar analyses with the morpheme and where on the surface it sits; each matching word gives its piece directly. A
+/// morph PanGloss could not place (a typed null) or whose spans do not tile the surface stands in as its whole word, with the set incomplete.
 /// </summary>
 internal static class RealizesCorpusSource
 {
@@ -30,14 +25,25 @@ internal static class RealizesCorpusSource
     public const string WholeWordSource = "corpus-parse-whole-word";
 
     public static (RealizesVariants Variants, RealizesParseReport Report) Collect(RealizesParseIndex index, (bool Built, double Seconds) built,
-        Func<IRealizesParser> tracer, RealizesTarget target, IReadOnlyList<(string Form, long Tokens)> corpus, int sample,
-        CancellationToken cancellationToken)
+        RealizesTarget target, IReadOnlyList<(string Form, long Tokens)> corpus, CancellationToken cancellationToken)
     {
         var clock = Stopwatch.StartNew();
-        int noAnalysis = 0, unsegmentable = 0, capped = 0, timedOut = 0, failed = 0, unknownPiece = 0, traceFailed = 0;
-        var matches = new List<(string Form, long Tokens)>();
+        int noAnalysis = 0, unsegmentable = 0, capped = 0, timedOut = 0, failed = 0, matched = 0, placed = 0, wholeWord = 0, inconsistent = 0;
+        var unplacedReasons = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        var unplacedWords = 0;
+        var forms = new Dictionary<(string Form, string Source), SortedSet<string>>();
+        int atStart = 0, atEnd = 0, inside = 0;
+        var terms = new HashSet<string>(StringComparer.Ordinal);
+        void Add(string form, string source, string word, string term)
+        {
+            if (form.Length == 0) return;
+            terms.Add(term);
+            if (!forms.TryGetValue((form, source), out var words)) forms[(form, source)] = words = new SortedSet<string>(StringComparer.Ordinal);
+            words.Add(word);
+        }
         foreach (var word in corpus)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var entry = index.Words.GetValueOrDefault(word.Form) ?? new IndexedWord(IndexedStatus.Failed, []);
             switch (entry.Status)
             {
@@ -47,63 +53,56 @@ internal static class RealizesCorpusSource
                 case IndexedStatus.TimedOut: timedOut++; break;
             }
             if (entry.Analyses.Count == 0) { noAnalysis++; continue; }
-            if (entry.Analyses.Any(analysis => analysis.Any(target.Matches))) matches.Add(word);
-        }
-        var chosen = RealizesSample.Choose(matches, sample);
-        var traced = chosen.Select(word => word.Form).ToHashSet(StringComparer.Ordinal);
-        var forms = new Dictionary<(string Form, string Source), SortedSet<string>>();
-        int atStart = 0, atEnd = 0, inside = 0;
-        var terms = new HashSet<string>(StringComparer.Ordinal);
-        void Add(string form, string source, string word, int start = -1)
-        {
-            if (form.Length == 0) return;
-            terms.Add(Term(word, form, start, target));
-            if (!forms.TryGetValue((form, source), out var words)) forms[(form, source)] = words = new SortedSet<string>(StringComparer.Ordinal);
-            words.Add(word);
-        }
-        IRealizesParser? parser = null;
-        foreach (var word in chosen)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            parser ??= tracer();
-            var parse = parser.Parse(word.Form, cancellationToken);
+            var carriers = entry.Analyses.Where(analysis => analysis.Morphs.Any(target.Matches)).ToList();
+            if (carriers.Count == 0) continue;
+            matched++;
             var found = false;
-            foreach (var analysis in parse.Analyses)
-            {
-                var pieces = SurfaceShape.Pieces(word.Form, analysis.Surface, analysis.Morphs.Count);
-                for (var i = 0; i < analysis.Morphs.Count; i++)
+            var standIn = false;
+            var reasons = new HashSet<string>(StringComparer.Ordinal);
+            var original = word.Form.Normalize(NormalizationForm.FormD);
+            foreach (var analysis in carriers)
+                foreach (var morph in analysis.Morphs.Where(target.Matches))
                 {
-                    if (!target.Matches(analysis.Morphs[i]) || pieces is null) continue;
-                    var (form, start) = pieces[i];
-                    found = true;
-                    if (start == 0 && form.Length < word.Form.Length) atStart++;
-                    else if (start + form.Length == word.Form.Length && start > 0) atEnd++;
-                    else inside++;
-                    Add(form, ParseSource, word.Form, start);
+                    if (analysis.Problem is not null) { standIn = true; reasons.Add(RealizesReasons.Inconsistent); continue; }
+                    if (morph.Runs is null) { standIn = true; reasons.Add(morph.Reason ?? RealizesReasons.SpansNull); continue; }
+                    if (morph.Runs.Count == 0 || morph.Runs.All(run => run.Text.Length == 0)) { standIn = true; reasons.Add(RealizesReasons.NoSegmentLeft); continue; }
+                    // The word's own case is kept when its NFD spelling lines up with the surface.
+                    var text = original.Length == analysis.Surface.Length ? original : analysis.Surface;
+                    foreach (var run in morph.Runs)
+                    {
+                        if (run.Text.Length == 0 || run.Start < 0 || run.Start + run.Text.Length > text.Length) { standIn = true; reasons.Add(RealizesReasons.Inconsistent); continue; }
+                        var piece = text.Substring(run.Start, run.Text.Length).Normalize(NormalizationForm.FormC);
+                        found = true;
+                        if (run.Start == 0 && run.Text.Length < text.Length) atStart++;
+                        else if (run.Start + run.Text.Length == text.Length && run.Start > 0) atEnd++;
+                        else inside++;
+                        Add(piece, ParseSource, word.Form, Term(text, run.Text, run.Start, target));
+                    }
                 }
+            if (found) placed++;
+            if (standIn || !found)
+            {
+                wholeWord++;
+                if (reasons.Contains(RealizesReasons.Inconsistent) && reasons.Count == 1) inconsistent++;
+                else { unplacedWords++; foreach (var reason in reasons.Where(reason => reason != RealizesReasons.Inconsistent)) unplacedReasons[reason] = unplacedReasons.GetValueOrDefault(reason) + 1; }
+                Add(word.Form, WholeWordSource, word.Form, Term(word.Form, word.Form, -1, target));
             }
-            if (found) continue;
-            if (parse.Analyses.Count == 0) traceFailed++;
-            unknownPiece++;
-            Add(word.Form, WholeWordSource, word.Form);
         }
-        foreach (var word in matches.Where(word => !traced.Contains(word.Form))) Add(word.Form, WholeWordSource, word.Form);
-        var reasons = new List<RealizesReason>();
-        var untraced = matches.Count - chosen.Count;
-        if (untraced > 0)
-            reasons.Add(new RealizesReason("trace_capped", Format($"{chosen.Count} of {matches.Count} matching word types were traced for the morpheme's surface piece, chosen by frequency; the other {untraced} stand in whole, and a form only they carry is not in the set. Raise --sample, or pass 0 to trace every match.")));
+        var list = new List<RealizesReason>();
         if (capped + timedOut > 0)
-            reasons.Add(new RealizesReason("parse_stopped", Format($"{capped} words stopped at the parser's work limit and {timedOut} at its word timeout, so analyses may be missing.")));
+            list.Add(new RealizesReason(RealizesReasons.ParseStopped, Format($"{capped} words stopped at the parser's work limit and {timedOut} at its word timeout, so analyses may be missing.")));
         if (unsegmentable > 0)
-            reasons.Add(new RealizesReason("unsegmentable", Format($"{unsegmentable} words could not be segmented with the grammar's characters, so they were not parsed.")));
+            list.Add(new RealizesReason(RealizesReasons.Unsegmentable, Format($"{unsegmentable} words could not be segmented with the grammar's characters, so they were not parsed.")));
         if (failed > 0)
-            reasons.Add(new RealizesReason("parse_failed", Format($"{failed} words got no answer from the batch parse.")));
-        if (unknownPiece > 0)
-            reasons.Add(new RealizesReason("piece_unaligned", Format($"{unknownPiece} traced words have no analysis whose morph pieces add up to the word, so the morpheme's own piece is not proven ({traceFailed} had no analysis in the trace), so the whole word stands in and the search finds only that word.")));
+            list.Add(new RealizesReason(RealizesReasons.ParseFailed, Format($"{failed} words got no answer from the batch parse.")));
+        if (unplacedWords > 0)
+            list.Add(new RealizesReason(RealizesReasons.PieceUnplaced, Format($"{unplacedWords} matching words have a reading where PanGloss placed no surface span for the morpheme ({string.Join(", ", unplacedReasons.Select(pair => $"{pair.Key} {pair.Value}"))}), so the whole word stands in and the search finds only that word.")));
+        if (inconsistent > 0)
+            list.Add(new RealizesReason(RealizesReasons.PieceInconsistent, Format($"{inconsistent} matching words have spans that do not add up to the word's surface, so the morpheme's piece is not trusted and the whole word stands in.")));
         var anchor = atStart > 0 && atEnd == 0 && inside == 0 ? "start" : atEnd > 0 && atStart == 0 && inside == 0 ? "end" : "none";
-        var report = new RealizesParseReport(corpus.Count, corpus.Count - failed, matches.Count, noAnalysis, unsegmentable, capped, timedOut, failed,
-            untraced > 0 ? sample : null, Math.Round(clock.Elapsed.TotalSeconds + built.Seconds, 1), chosen.Count, built.Built, built.Seconds);
-        return (new RealizesVariants(Merge(forms), anchor, reasons, Terms: [.. terms.Order(StringComparer.Ordinal)]), report);
+        var report = new RealizesParseReport(corpus.Count, corpus.Count - failed, matched, noAnalysis, unsegmentable, capped, timedOut, failed,
+            Math.Round(clock.Elapsed.TotalSeconds + built.Seconds, 1), placed, wholeWord, built.Built, built.Seconds);
+        return (new RealizesVariants(Merge(forms), anchor, list, Terms: [.. terms.Order(StringComparer.Ordinal)]), report);
     }
 
     /// <summary>
@@ -113,11 +112,13 @@ internal static class RealizesCorpusSource
     /// </summary>
     internal static string Term(string word, string piece, int start, RealizesTarget target)
     {
-        if (start < 0) return RealizesPatternCompiler.Mark(word, "start") + RealizesPatternCompiler.EndMarker;
-        if (target.IsRoot == true && piece.Length > 2) return piece;
-        return start == 0 ? RealizesPatternCompiler.Mark(word[..(start + piece.Length)], "start")
-            : RealizesPatternCompiler.Mark(word[start..], "end");
+        if (start < 0) return RealizesPatternCompiler.Mark(Nfc(word), "start") + RealizesPatternCompiler.EndMarker;
+        if (target.IsRoot == true && piece.Length > 2) return Nfc(piece);
+        return start == 0 ? RealizesPatternCompiler.Mark(Nfc(word[..(start + piece.Length)]), "start")
+            : RealizesPatternCompiler.Mark(Nfc(word[start..]), "end");
     }
+
+    private static string Nfc(string text) => text.Normalize(NormalizationForm.FormC);
 
     private static string Format(FormattableString text) => text.ToString(CultureInfo.InvariantCulture);
 

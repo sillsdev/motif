@@ -414,6 +414,12 @@ public static class RefusalCodes
     public const string QueryRealizesIndexFailed = "query.realizes-index-failed";
     /// <summary><c>realizes</c> ran with no project to resolve the morpheme in; corpus mode names one with <c>--grammar</c>.</summary>
     public const string QueryRealizesNeedsProject = "query.realizes-needs-project";
+    /// <summary>A readings query (<c>readings</c>, <c>only-via</c>, <c>--group-by cause</c>, <c>--what-if-retire</c>) ran with no grammar to parse the corpus with.</summary>
+    public const string QueryReadingsNeedsGrammar = "query.readings-needs-grammar";
+    /// <summary>A readings query named an entry, and only a project's lexicon says which entry owns a morph's analysis.</summary>
+    public const string QueryReadingsNeedsProject = "query.readings-needs-project";
+    /// <summary><c>only-via</c> or <c>--what-if-retire</c> named an id that no morph of the corpus parse and no entry of the project carries, so it would silently match nothing.</summary>
+    public const string QueryRetireIdUnknown = "query.retire-id-unknown";
     /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>
     public const string QueryDocumentInvalid = "query.document-invalid";
     public const string QueryNoTrialRows = "query.no-trial-rows";
@@ -758,6 +764,13 @@ public static class RefusalCodes
     public const string CompoundRuleDuplicate = "compound-rule.duplicate";
     /// <summary>The project has no morphology data to own the compound rule.</summary>
     public const string CompoundRuleNoMorphologyData = "compound-rule.no-morphology-data";
+
+    /// <summary>An affix repeat count is not a whole number from 1 to the cap.</summary>
+    public const string AffixMaxAppsInvalidCount = "affix-max-apps.invalid-count";
+    /// <summary>The id given for an affix repeat count is not an affix's morphosyntactic analysis.</summary>
+    public const string AffixMaxAppsNotAffixMsa = "affix-max-apps.not-affix-msa";
+    /// <summary>The project's repeat count for the affix is not the one the intent expected.</summary>
+    public const string AffixMaxAppsStale = "affix-max-apps.stale";
 
     /// <summary>The variant reference changed after the link was composed.</summary>
     public const string VariantStaleReference = "variant.stale-reference";

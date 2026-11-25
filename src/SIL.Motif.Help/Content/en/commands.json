@@ -755,6 +755,27 @@
     ],
     "redirect": "Only turns the parser's built-in default compounding off or on; it authors no compound rule. Trial known compounds first and ask the linguist (guide workflow)."
   },
+  "compose-set-affix-max-apps": {
+    "title": "Set an affix's repeat count",
+    "description": "Stages one explicit change to how many times one affix may apply to a word, for an affix the language stacks (a verb extension said twice, a repeated converb suffix). The parser applies each affix once unless the project says otherwise; the expected value guards against stale evidence, and only a person can Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "msa": "The id of the affix's morphosyntactic analysis (inflectional, derivational or unclassified affix).",
+      "expectedMaxApps": "The affix's repeat count now: 1 when the project sets none.",
+      "maxApps": "The repeat count to set, a whole number from 1 to 3; 1 is the default and removes the setting."
+    },
+    "goals": [
+      "Let an affix apply twice in one word",
+      "Allow a stacked verb extension such as a doubled causative",
+      "Stop an affix repeating by setting its count back to 1"
+    ],
+    "guides": [
+      "workflow",
+      "ask-the-linguist"
+    ],
+    "redirect": "Only sets one existing affix's repeat count; it repeats no template slot. Trial repeated forms first and ask the linguist (guide workflow)."
+  },
   "compose-set-not-on-clitics": {
     "title": "Set rules on clitics",
     "description": "Stages one explicit change to whether the parser's phonological rules also run on a word with its clitic attached. By default the rules run on the word before a clitic attaches; the expected value guards against stale evidence, and only a person can Apply.",

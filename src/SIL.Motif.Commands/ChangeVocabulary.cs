@@ -180,6 +180,7 @@ public static class ChangeVocabulary
             ["EditAdhocProhibition"] = ("Change restriction", "Change a co-occurrence restriction"),
             ["EditCompoundRule"] = ("Change compound rule", "Turn a compound rule off or on"),
             ["SetNoDefaultCompounding"] = ("Change default compounding", "Turn default compounding off or on"),
+            ["SetAffixMaxApps"] = ("Change affix repeat count", "Let one affix apply more than once in a word"),
             ["SetNotOnClitics"] = ("Change rules on clitics", "Choose whether sound rules also apply to a word with its clitic"),
             ["SetCharacterClass"] = ("Change character class", "Make characters of a writing system word-forming or punctuation"),
             ["RewriteLexemeForm"] = ("Change lexeme form", "Rewrite the lexeme form of existing entries"),

@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection.Usage;
@@ -11,6 +12,77 @@ public sealed class MachineStoreTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-machine-" + Guid.NewGuid().ToString("N"));
 
     public MachineStoreTests() => Directory.CreateDirectory(_root);
+
+    [Fact]
+    public void EveryMachineStoreConnectionHasTheBoundedBusyTimeout()
+    {
+        using var database = MachineDatabase.Open(_root);
+        using var writer = database.OpenConnection();
+        using var reader = database.OpenConnection();
+        Assert.Equal(SqliteConnections.BusyTimeoutMilliseconds, BusyTimeout(writer));
+        Assert.Equal(SqliteConnections.BusyTimeoutMilliseconds, BusyTimeout(reader));
+        Assert.InRange(SqliteConnections.BusyTimeoutMilliseconds, 1, 60000);
+    }
+
+    [Fact]
+    public void ALockHeldPastTheTimeoutIsBusyAndNeverCorruption()
+    {
+        using var database = MachineDatabase.Open(_root);
+        var registry = new KnownProjectRegistry(database);
+        using var holder = new SqliteConnection($"Data Source={database.FullPath};Pooling=False");
+        holder.Open();
+        Execute(holder, "BEGIN IMMEDIATE;");
+        const string variable = "MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR";
+        var previous = Environment.GetEnvironmentVariable(variable);
+        Exception? failure = null;
+        try
+        {
+            Environment.SetEnvironmentVariable(variable, database.FullPath);
+            try { registry.Record("w", Path.Combine(_root, "p.fwdata"), DateTimeOffset.UtcNow); }
+            catch (Exception exception) { failure = exception; }
+        }
+        finally { Environment.SetEnvironmentVariable(variable, previous); }
+        Execute(holder, "ROLLBACK;");
+
+        Assert.NotNull(failure);
+        Assert.True(SqliteConnections.IsBusyInChain(failure), failure.ToString());
+        Assert.False(failure is InvalidDataException);
+    }
+
+    [Fact]
+    public void AShortLockReleasedWithinTheTimeoutSucceeds()
+    {
+        using var database = MachineDatabase.Open(_root);
+        var registry = new KnownProjectRegistry(database);
+        using var holder = new SqliteConnection($"Data Source={database.FullPath};Pooling=False");
+        holder.Open();
+        Execute(holder, "BEGIN IMMEDIATE;");
+        var release = new Thread(() =>
+        {
+            Thread.Sleep(700);
+            Execute(holder, "ROLLBACK;");
+        });
+        release.Start();
+
+        registry.Record("w", Path.Combine(_root, "p.fwdata"), DateTimeOffset.UtcNow);
+
+        release.Join();
+        Assert.Single(registry.List());
+    }
+
+    private static void Execute(SqliteConnection connection, string sql)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
+
+    private static long BusyTimeout(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA busy_timeout;";
+        return (long)command.ExecuteScalar()!;
+    }
 
     [Fact]
     public void RecordingTheSameProjectTwiceUpdatesLastSeenRatherThanDuplicating()

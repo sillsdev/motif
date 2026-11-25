@@ -35,6 +35,33 @@ public sealed class ProgramUnexpectedFailureTests(PristineProjectFixture pristin
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public void ALockedStoreIsARetryableBusyRefusalAndNeverStoreInconsistent(bool asJson)
+    {
+        var (path, proposalId) = CreateProposal();
+        var failure = new IOException("The Motif machine database is unavailable.",
+            new Microsoft.Data.Sqlite.SqliteException("database is locked", 5));
+
+        var result = Run(path, proposalId, asJson, failure);
+
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Busy), result.ExitCode);
+        Assert.NotEqual(FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent), result.ExitCode);
+        Assert.Empty(result.Output);
+        if (asJson)
+        {
+            var envelope = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
+            Assert.Equal("cli.store-busy", envelope.Code);
+            Assert.Equal(FailureReason.Busy, envelope.Reason);
+            Assert.Contains("repeat", envelope.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        else
+        {
+            Assert.StartsWith("cli.store-busy: ", result.Error, StringComparison.Ordinal);
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public void OutOfMemoryIsARefusalAndNeverStoreInconsistent(bool asJson)
     {
         var (path, proposalId) = CreateProposal();

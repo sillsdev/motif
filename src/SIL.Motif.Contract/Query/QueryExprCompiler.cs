@@ -24,6 +24,8 @@ internal static class QueryExprCompiler
                 throw QueryRefusalException.NotYetAvailable(reserved.Kind);
             case QueryRealizes:
                 throw QueryRefusalException.NotYetAvailable("realizes on this source; it runs over a corpus with --grammar");
+            case QueryOnlyVia:
+                throw QueryRefusalException.NotYetAvailable("only-via on this source; it runs over a corpus with --grammar");
             case QueryPhon or QueryEnv:
                 throw QueryRefusalException.NotYetAvailable(expr is QueryPhon ? "phon" : "env");
             case QueryField field:
@@ -78,6 +80,8 @@ internal static class QueryExprCompiler
                 throw QueryRefusalException.NotYetAvailable(reserved.Kind);
             case QueryRealizes:
                 throw QueryRefusalException.NotYetAvailable("realizes on this source; it runs over a corpus with --grammar");
+            case QueryOnlyVia:
+                throw QueryRefusalException.NotYetAvailable("only-via on this source; it runs over a corpus with --grammar");
             case QueryField field:
                 var test2 = CompileField(field, spec);
                 return row => test2(row) ? Tri.True : Tri.False;

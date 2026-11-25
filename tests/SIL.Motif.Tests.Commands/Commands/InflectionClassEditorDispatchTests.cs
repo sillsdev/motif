@@ -13,6 +13,7 @@ public sealed class InflectionClassEditorDispatchTests
     [InlineData("compose-edit-stem-inflection-class")]
     [InlineData("compose-edit-compound-rule")]
     [InlineData("compose-set-no-default-compounding")]
+    [InlineData("compose-set-affix-max-apps")]
     [InlineData("compose-set-not-on-clitics")]
     [InlineData("compose-set-character-class")]
     [InlineData("compose-rewrite-lexeme-form")]

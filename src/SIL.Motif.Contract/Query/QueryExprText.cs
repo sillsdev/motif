@@ -88,6 +88,8 @@ public static class QueryExprText
                 throw QueryRefusalException.NotYetAvailable(reserved.Kind);
             case QueryRealizes realizes:
                 return "realizes(" + Quote(realizes.Morpheme, forList: true) + ", " + realizes.Tier + ")";
+            case QueryOnlyVia via:
+                return "only-via(" + via.Kind + ":" + via.Id + ")";
             case QueryPhon phon:
                 return "phon(" + phon.Pattern + ")";
             case QueryEnv env:
@@ -184,12 +186,28 @@ public static class QueryExprText
             if (field is "and" or "or" or "not") throw Error($"'{field}' is a keyword, not a column name.");
             if (_at < text.Length && text[_at] == '(' && field is "phon" or "env") return ParsePattern(field);
             if (_at < text.Length && text[_at] == '(' && field == "realizes") return ParseRealizes();
+            if (_at < text.Length && text[_at] == '(' && field == "only-via") return ParseOnlyVia();
             if (_at < text.Length && text[_at] == '(' && QueryOps.Reserved.Contains(field))
                 throw QueryRefusalException.NotYetAvailable(field);
             SkipSpace();
             var op = ReadOp();
             if (op.Op == QueryOps.Exists) return new QueryField(field, QueryOps.Exists, op.Text != "missing");
             return new QueryField(field, op.Op, ReadValue(op.Op));
+        }
+
+        // only-via(entry:<guid>), or msa: or form: in place of entry:.
+        private QueryExpr ParseOnlyVia()
+        {
+            _at++;
+            SkipSpace();
+            var start = _at;
+            while (_at < text.Length && text[_at] != ')') _at++;
+            if (_at >= text.Length) throw Error("Expected ')' to close only-via(...).");
+            var body = text[start.._at].Trim();
+            _at++;
+            if (!Readings.ReadingTarget.TryParse(body, out var target))
+                throw Error("Expected only-via(entry:<guid>); the kind is entry, msa or form, and the id a guid.");
+            return new QueryOnlyVia(target.Kind, target.Id);
         }
 
         // realizes(<morpheme>, <tier>): a word or a quoted string, then attested, possible or generated.

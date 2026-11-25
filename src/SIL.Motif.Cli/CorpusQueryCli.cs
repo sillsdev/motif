@@ -14,7 +14,7 @@ internal static class CorpusQueryCli
     /// <summary>True for <c>query --corpus ...</c>, which never reads a project.</summary>
     public static bool Handles(IReadOnlyDictionary<string, string> flags) => flags.ContainsKey("corpus");
 
-    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "sample", "segment-test", "json"];
+    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "segment-test", "group-by", "what-if-retire", "json"];
 
     /// <summary>True for <c>query --corpus &lt;words&gt; forms ...</c>.</summary>
     public static bool IsForms(IReadOnlyList<string> positionals) => positionals.FirstOrDefault() == "forms";
@@ -32,27 +32,26 @@ internal static class CorpusQueryCli
         string? where = flags.GetValueOrDefault("where");
         if (positionals is ["forms", "where", var text]) where = where is null ? text : null;
         else if (positionals is not ["forms"]) return false;
+        var groupBy = flags.GetValueOrDefault("group-by");
+        var retire = flags.TryGetValue("what-if-retire", out var retireText)
+            ? retireText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) : null;
+        if (retire is { Length: 0 }) return false;
         string? document = null;
         if (flags.TryGetValue("query-json", out var source))
         {
             document = readJson(source);
             if (document is null) return false;
         }
-        if (!flags.TryGetValue("corpus", out var corpus) || (where is null) == (document is null)) return false;
+        var readingsOnly = groupBy is not null || retire is not null;
+        if (!flags.TryGetValue("corpus", out var corpus) || ((where is null) == (document is null) && !(readingsOnly && where is null && document is null))) return false;
         int? limit = null;
         if (flags.TryGetValue("limit", out var raw))
         {
             if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)) return false;
             limit = parsed;
         }
-        int? sample = null;
-        if (flags.TryGetValue("sample", out var rawSample))
-        {
-            if (!int.TryParse(rawSample, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedSample)) return false;
-            sample = parsedSample;
-        }
         request = new CorpusFormsRequest(corpus, where, document, flags.GetValueOrDefault("grammar"), flags.GetValueOrDefault("segments"),
-            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"), flags.GetValueOrDefault("project"), sample);
+            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"), flags.GetValueOrDefault("project"), groupBy, retire);
         return true;
     }
 

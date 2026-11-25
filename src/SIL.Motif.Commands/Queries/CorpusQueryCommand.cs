@@ -3,6 +3,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Query.Corpus;
 using SIL.Motif.Contract.Query.Phon;
+using SIL.Motif.Contract.Query.Readings;
 
 namespace SIL.Motif.Commands.Queries;
 
@@ -47,24 +48,36 @@ public static class CorpusQueryCommand
     /// </summary>
     public static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath = null,
         CancellationToken cancellationToken = default, Action<string>? notice = null) =>
-        Forms(request, parserPath, cancellationToken, null, notice: notice);
+        Forms(request, parserPath, cancellationToken, indexBuilder: null, notice: notice);
 
     // A test passes the parser that replays recorded replies in place of the resident one.
     internal static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath,
-        CancellationToken cancellationToken, IRealizesParser? realizesParser,
-        IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null)
+        CancellationToken cancellationToken,
+        IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null, MorphCatalog? catalog = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         QueryExpr? where;
         var limit = request.Limit ?? DefaultLimit;
         string segmentTest;
-        if ((request.Where is null) == (request.QueryJson is null))
+        var wantsCauses = request.GroupBy is not null;
+        var retire = new List<ReadingTarget>();
+        if (request.GroupBy is not null && !string.Equals(request.GroupBy, "cause", StringComparison.Ordinal))
+            return Invalid("group-by is 'cause': the words with more than one reading, grouped by why.");
+        foreach (var text in request.WhatIfRetire ?? [])
+        {
+            if (ReadingTarget.TryParse(text, out var target)) retire.Add(target);
+            else if (FormsMorphemeResolver.TryGuid(text, out var guid)) retire.Add(new ReadingTarget("id", guid));
+            else return Invalid($"what-if-retire takes entry:<id>, msa:<id> or form:<id>, or a bare id, not '{text}'.");
+        }
+        var readingsOnly = wantsCauses || request.WhatIfRetire is { Count: > 0 };
+        if (request.WhatIfRetire is { Count: 0 }) return Invalid("what-if-retire needs at least one id.");
+        if ((request.Where is null) == (request.QueryJson is null) && !(readingsOnly && request.Where is null && request.QueryJson is null))
             return Invalid("Give the query as --where <expression> or as --query-json, one of the two.");
         if (limit < 1) return Invalid("limit is a positive whole number.");
-        if (request.Sample is < 0) return Invalid("sample is zero for every word type, or a positive whole number.");
         try
         {
-            if (request.QueryJson is { } json)
+            if (request.Where is null && request.QueryJson is null) { where = null; segmentTest = PhonSegmentTest.Normalize(request.SegmentTest, "segment-test"); }
+            else if (request.QueryJson is { } json)
             {
                 if (!QueryDocument.TryParse(json, out var document, out var documentRefusal))
                     return CommandOutcome<CorpusFormsResponse>.Refused(documentRefusal);
@@ -84,6 +97,9 @@ public static class CorpusQueryCommand
                 return CommandOutcome<CorpusFormsResponse>.Refused(QueryRefusalException.PhonNeedsGrammar().Refusal);
             if (RealizesLowering.Has(where) && string.IsNullOrWhiteSpace(request.GrammarPath) && string.IsNullOrWhiteSpace(request.ProjectPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(RealizesRefusals.NeedsProject().Refusal);
+            if ((readingsOnly || OnlyViaLowering.UsesReadings(where)) && string.IsNullOrWhiteSpace(request.GrammarPath))
+                return CommandOutcome<CorpusFormsResponse>.Refused(ReadingsRefusals.NeedsGrammar(
+                    wantsCauses ? "--group-by cause" : readingsOnly ? "--what-if-retire" : "readings and only-via").Refusal);
         }
         catch (QueryRefusalException refused)
         {
@@ -104,11 +120,54 @@ public static class CorpusQueryCommand
         if (RealizesLowering.Has(where))
         {
             var context = new RealizesContext(corpus, string.IsNullOrWhiteSpace(request.GrammarPath) ? null : request.GrammarPath,
-                string.IsNullOrWhiteSpace(request.ProjectPath) ? null : request.ProjectPath, request.FoldCase, request.Sample ?? RealizesSample.Default,
-                () => realizesParser ?? RealizesQuery.ResidentParser(request.GrammarPath!, parserPath),
+                string.IsNullOrWhiteSpace(request.ProjectPath) ? null : request.ProjectPath, request.FoldCase,
                 () => indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), cacheRoot ?? RealizesParseIndexCache.DefaultRoot,
                 notice ?? (_ => { }));
             try { realizes = RealizesQuery.Prepare(where!, context, cancellationToken); }
+            catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
+        }
+        ParsedReadings? readings = null;
+        ReadingsReport? readingsReport = null;
+        var liveState = !string.IsNullOrWhiteSpace(request.GrammarPath) && QueryExprTools.Leaves(where).Any(leaf => leaf.Field == CorpusFormsQuery.ParseStateColumn);
+        var usesReadings = readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState;
+        if (usesReadings)
+        {
+            try
+            {
+                var needsEntries = OnlyViaLowering.Find(where).Select(via => new ReadingTarget(via.Kind, via.Id)).Concat(retire).Where(target => target.Kind == "entry").ToList();
+                var needsClasses = wantsCauses || retire.Count > 0 || OnlyViaLowering.Find(where).Count > 0;
+                string? catalogFailure = null;
+                var loaded = catalog;
+                if (needsClasses && loaded is null) loaded = MorphCatalog.TryLoad(request.ProjectPath, request.GrammarPath, out catalogFailure);
+                if (wantsCauses && loaded is null) throw ReadingsIdRefusals.CausesNeedProject(catalogFailure);
+                if (needsEntries.Count > 0 && loaded is null) throw ReadingsRefusals.NeedsProject(needsEntries[0], catalogFailure);
+                var catalogUsed = loaded;
+                // A bare id is an entry when the project says so, else an analysis or a form id: both are exact.
+                for (var at = 0; at < retire.Count; at++)
+                    if (retire[at].Kind == "id" && catalogUsed is not null && catalogUsed.HasEntry(retire[at].Id)) retire[at] = retire[at] with { Kind = "entry" };
+                var words = corpus.Words.Select(word => word.Form).ToList();
+                (RealizesParseIndex Index, bool Built, double Seconds) built;
+                try
+                {
+                    built = RealizesParseIndexCache.GetOrBuild(cacheRoot ?? RealizesParseIndexCache.DefaultRoot, request.GrammarPath!, words,
+                        indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), notice ?? (_ => { }), cancellationToken);
+                }
+                catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
+                readings = new ParsedReadings(built.Index, catalogUsed);
+                readingsReport = readings.Report(words, needsClasses);
+                var asked = OnlyViaLowering.Find(where).Select(via => new ReadingTarget(via.Kind, via.Id)).Concat(retire);
+                foreach (var target in asked)
+                {
+                    var known = target.Kind switch
+                    {
+                        "entry" => catalogUsed!.HasEntry(target.Id),
+                        "msa" => readings.Mentions(target.Id) || catalogUsed?.Of(target.Id) is not null,
+                        "form" => readings.Mentions(target.Id),
+                        _ => readings.Mentions(target.Id),
+                    };
+                    if (!known) throw ReadingsIdRefusals.Unknown(target, catalogUsed is not null);
+                }
+            }
             catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
         }
         PhonSession? phon = null;
@@ -120,12 +179,27 @@ public static class CorpusQueryCommand
         }
         try
         {
-            var rows = CorpusFormsQuery.Run(corpus, realizes is null ? where : realizes.Lowered, phon);
+            var lowered = OnlyViaLowering.Lower(realizes is null ? where : realizes.Lowered);
+            var rows = CorpusFormsQuery.Run(corpus, lowered, phon, readings);
             if (realizes is not null) rows = [.. rows.Select(row => row with { Realizes = realizes.HitsFor(row.Form) })];
             var summary = new CorpusSummary(request.CorpusPath, corpus.TypeCount, corpus.TokenCount,
                 phon is { Ran: true } ? "grammar" : corpus.SegmentationLabel, request.FoldCase);
+            CauseReport? causes = null;
+            WhatIfReport? whatIf = null;
+            if (readings is not null && wantsCauses)
+            {
+                var builder = new CauseGroupBuilder();
+                var tokens = 0L;
+                var count = 0;
+                foreach (var row in rows)
+                    if (readings.Get(row.Form) is { Readings.Count: > 1 } word) { builder.Add(row.Form, row.Tokens, word); count++; tokens += row.Tokens; }
+                causes = new CauseReport(readingsReport!.Complete, count, tokens, builder.Build());
+            }
+            if (readings is not null && retire.Count > 0)
+                whatIf = Retirement.Estimate(readings, [.. rows.Select(row => (row.Form, row.Tokens))], retire, readingsReport!.Complete, limit);
             return CommandOutcome<CorpusFormsResponse>.Success(new CorpusFormsResponse(CorpusFormsResponse.SchemaName, summary,
-                where is null ? null : QueryExprText.Print(where), rows.Count, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null, realizes?.Sets));
+                where is null ? null : QueryExprText.Print(where), rows.Count, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
+                realizes?.Sets, readingsReport, causes, whatIf));
         }
         catch (QueryRefusalException refused)
         {
@@ -136,6 +210,9 @@ public static class CorpusQueryCommand
             return Invalid(exception.Message);
         }
     }
+
+    /// <summary>The estimator behind <c>--what-if-retire</c>; PanGloss's exact retire pass replaces it.</summary>
+    private static readonly IRetireEstimator Retirement = new ReadingSetRetire();
 
     private static CommandOutcome<CorpusFormsResponse> Invalid(string message) =>
         CommandOutcome<CorpusFormsResponse>.Refused(new Refusal(RefusalCodes.QueryCorpusInvalid, FailureReason.InvalidArgument, message));
