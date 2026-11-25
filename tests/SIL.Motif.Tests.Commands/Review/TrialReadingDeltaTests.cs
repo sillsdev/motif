@@ -117,6 +117,85 @@ public sealed class TrialReadingDeltaTests
         return new StreamReader(stream).ReadToEnd();
     }
 
+    // Ids a run mints differ every time; the salt stands in for a second run's fresh GUIDs.
+    private static string Salted(int number, int salt) =>
+        CanonicalId.FromGuid(Guid.Parse($"{number:x8}-{salt:x4}-0000-0102-030405060708")).Value;
+
+    private static string ManifestsOfOneRun(string root, string name, int salt, bool aliasCreated = true)
+    {
+        string G(int number) => number >= 500 ? Salted(number, salt) : Salted(number, 0);
+        ReadingMorpheme Morph(int entry, int sense, int msa, int allomorph, int[]? candidates = null,
+            ReadingFeatureValue[]? features = null) =>
+            new(G(entry), candidates is null ? G(sense) : null, candidates is null ? [] : [.. candidates.Select(G)],
+                candidates is null ? ReadingSenseStatus.Resolved : ReadingSenseStatus.Ambiguous, G(msa), G(allomorph),
+                null, true, null, [.. features ?? []]);
+        // Ids 1 to 3 belong to the project; 501 and up are what the Proposal creates.
+        var withNewSense = new ReadingSignature([Morph(501, 504, 503, 502,
+            features: [new(ReadingFeatureRole.Inflection, [G(508)], [G(509), G(1)])])]);
+        var withAlternate = new ReadingSignature([Morph(501, 504, 503, 506)]);
+        var onOldEntry = new ReadingSignature([Morph(1, 505, 2, 507)]);
+        var ambiguous = new ReadingSignature([Morph(1, 0, 2, 3, candidates: [505, 1])]);
+        (string, int)[] created =
+        [
+            ("lexical/lexDb/createEntries", 501), ("lexical/lexEntry/createLexemeForm", 502),
+            ("lexical/lexEntry/createMorphoSyntaxAnalyses", 503), ("lexical/lexEntry/createSenses", 504),
+            ("lexical/lexEntry/createSenses", 505), ("lexical/lexEntry/createAlternateForms", 506),
+            ("lexical/lexEntry/createAlternateForms", 507), ("lists/cmPossibilityList/createPossibilities", 508),
+            ("lists/cmPossibilityList/createPossibilities", 509),
+        ];
+        // A run may emit its operations in any spelling and with its own operation ids; only the entity ids matter.
+        var operations = created.Select(item => (object)new
+        {
+            operationId = CanonicalId.Mint("operation/").Value, kind = item.Item1, entityId = G(item.Item2), after = new { },
+        }).ToArray();
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = "";
+        var published = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, located) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, located,
+            [
+                new("kata", [], []) { BeforeSignatures = [], AfterSignatures = [withNewSense, withAlternate] },
+                new("pata", [], []) { BeforeSignatures = [onOldEntry], AfterSignatures = [ambiguous] },
+            ], operations: operations);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(published.Succeeded, published.Refusal?.Message);
+        var directory = Path.Combine(root, name);
+        var result = TrialReadingDelta.ReadAndWrite(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal), directory,
+            new ManifestOptions(AliasCreated: aliasCreated));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        return File.ReadAllText(Path.Combine(directory, "expect-retired.jsonl")) + "\n" +
+            File.ReadAllText(Path.Combine(directory, "expect-added.jsonl"));
+    }
+
+    [Fact]
+    public void TheSameProposalRunTwiceWithFreshIdsWritesByteIdenticalManifests()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "manifest-runs-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var first = ManifestsOfOneRun(root, "one", salt: 0x1111);
+            var second = ManifestsOfOneRun(root, "two", salt: 0x2222);
+
+            Assert.Equal(first, second);
+            // Every object the Proposal creates, in every field a row names it, is a label and never a minted id.
+            foreach (var label in new[] { "created:0", "created:1", "created:2", "created:3", "created:4", "created:5",
+                "created:6", "created:7", "created:8" })
+                Assert.Contains(label, first);
+            Assert.All(first.Split('\n', StringSplitOptions.RemoveEmptyEntries), line =>
+                Assert.DoesNotContain(Salted(504, 0x1111), line));
+
+            var rawOne = ManifestsOfOneRun(root, "rawone", salt: 0x1111, aliasCreated: false);
+            var rawTwo = ManifestsOfOneRun(root, "rawtwo", salt: 0x2222, aliasCreated: false);
+            Assert.NotEqual(rawOne, rawTwo);
+            Assert.DoesNotContain("created:", rawOne);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
     // The fixtures come from the lane gate's local_ids and draft_manifests run on the same data.
     [Fact]
     public void ManifestsAreByteForByteWhatTheLaneGateWritesWhenTheProposalCreatesIds()

@@ -33,6 +33,10 @@ public static class ReadingManifestFormat
     /// <summary>
     /// The aliases the lane gate gives ids a Proposal creates: each operation whose kind contains "create" names one
     /// entity, numbered <c>created:N</c> in first-appearance order, under its canonical, lower-case GUID and upper-case GUID spellings.
+    /// Every kind of object the Proposal creates is named this way, so a sense or an alternate form's allomorph is
+    /// <c>created:N</c> as an entry and an MSA are, and the same Proposal written twice with different minted ids gives
+    /// byte-identical rows. This is deliberately a superset of the rig's manifest writer, which in the Tamil q29 run left
+    /// senses and the allomorphs of new alternate forms as minted ids; the parity fixture still pins entries and MSAs.
     /// </summary>
     /// <param name="operations">The Proposal's operations, in order.</param>
     /// <returns>Each created id mapped to its alias.</returns>
@@ -45,8 +49,9 @@ public static class ReadingManifestFormat
                 aliases[entity.Value] = "created:" + aliases.Count;
         foreach (var (id, label) in aliases.ToArray())
         {
-            var guid = CanonicalId.Parse(id).ToGuid().ToString("D", CultureInfo.InvariantCulture);
-            aliases[guid] = aliases[guid.ToUpperInvariant()] = label;
+            var identity = CanonicalId.Parse(id).ToGuid();
+            var guid = identity.ToString("D", CultureInfo.InvariantCulture);
+            aliases[guid] = aliases[guid.ToUpperInvariant()] = aliases[CanonicalId.FromGuid(identity).Value] = label;
         }
         return aliases;
     }

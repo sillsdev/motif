@@ -1,8 +1,10 @@
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Contract.HandAnalysis;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Runner.Apply;
@@ -23,9 +25,11 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
 {
     private readonly LcmCache _cache;
     private readonly CanonicalId _category;
+    private readonly PristineProjectFixture _pristine;
 
     public AuthorAlternateFormComposerTests(PristineProjectFixture pristine)
     {
+        _pristine = pristine;
         _cache = pristine.NewScratch();
         _category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
     }
@@ -39,6 +43,47 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
         IReadOnlyList<CanonicalId>? environments = null, IReadOnlyList<CanonicalId>? classes = null,
         Placement? placement = null) => new(entry, form, Vern(_cache), MorphType(MoMorphTypeTags.kguidMorphPrefix),
         environments, classes, placement);
+
+    // Two runs of one authoring session mint different ids; the manifest names what they create the same way.
+    private string CreatedRowOf(LcmCache cache, byte salt)
+    {
+        var next = 0;
+        CanonicalId Mint() => CanonicalId.FromGuid(new Guid(++next, salt, salt, [1, 2, 3, 4, 5, 6, 7, 8]));
+        var category = CanonicalId.FromGuid(_pristine.Seed.PartOfSpeechId);
+        var entryOperations = AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent(
+            "m", Vern(cache), MorphType(MoMorphTypeTags.kguidMorphStem), "gloss", Anal(cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Stem, category), null, null, null), Mint);
+        var entryProposal = ApplyOps(cache, entryOperations);
+        var entry = Created(entryProposal, LexDbEntriesOperationKinds.Create);
+        var alternate = AuthorAlternateFormComposer.Build(cache, new AuthorAlternateFormIntent(entry, "mw", Vern(cache),
+            MorphType(MoMorphTypeTags.kguidMorphStem), null, null, null), Mint);
+        var operations = entryOperations.Concat(alternate).ToArray();
+        var aliases = ReadingManifestFormat.CreatedAliases(operations);
+        var sense = Created(entryProposal, LexEntrySensesOperationKinds.Create);
+        var msa = Created(entryProposal, LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+        var lexemeForm = Created(entryProposal, LexEntryLexemeFormOperationKinds.CreateLexemeForm);
+        var alternateForm = Created(Proposal(alternate.ToArray()), LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms);
+        var signature = new ReadingSignature([
+            new ReadingMorpheme(entry.Value, sense.Value, [], ReadingSenseStatus.Resolved, msa.Value, lexemeForm.Value,
+                null, true, null, []),
+            new ReadingMorpheme(entry.Value, null, [sense.Value, entry.Value], ReadingSenseStatus.Ambiguous, msa.Value,
+                alternateForm.Value, null, true, null, [])]);
+        var row = ReadingManifestFormat.Row("w", signature, 1, aliases);
+        foreach (var id in new[] { entry, sense, msa, lexemeForm, alternateForm })
+            Assert.DoesNotContain(id.Value, row);
+        return row;
+    }
+
+    [Fact]
+    public void EveryObjectAnAuthoringSessionCreatesIsNamedTheSameWayWhateverIdsItMinted()
+    {
+        using var second = _pristine.NewScratch();
+
+        var first = CreatedRowOf(_cache, 1);
+        Assert.Equal(first, CreatedRowOf(second, 2));
+        foreach (var label in new[] { "created:0", "created:1", "created:2", "created:3", "created:4" })
+            Assert.Contains(label, first);
+    }
 
     [Fact]
     public void ARestrictedAffixAlternate_LeavesTheLexemeFormAloneAndCopiesNothingFromIt()
