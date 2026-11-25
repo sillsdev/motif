@@ -283,4 +283,82 @@ public sealed class PhonologicalRuleFormulaImportTests(PristineProjectFixture pr
         Assert.Empty(lowering.Operations);
         Assert.Equal(RefusalCodes.RuleNotationSharedClass, lowering.Refusals.Single().Code);
     }
+
+    private static IPhSequenceContext RightSequence(LcmCache cache, Guid ruleId) =>
+        (IPhSequenceContext)((IPhRegularRule)cache.ServiceLocator.GetObject(ruleId)).RightHandSidesOS.Single().RightContextOA!;
+
+    private string StartWithSequence(out Guid ruleId, out Guid member, Action<LcmCache, IPhPhonContext> alter)
+    {
+        var path = Start(out ruleId, out _);
+        ImportRight(path, "sequence", ruleId, "[V] a i");
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        var last = RightSequence(cache, ruleId).MembersRS[2];
+        member = last.Guid;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => alter(cache, last));
+        new FwDataProjectLoader().Save(cache);
+        return path;
+    }
+
+    private static void AlsoUsedBy(LcmCache cache, IPhPhonContext member)
+    {
+        var other = cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create();
+        cache.LangProject.PhonologicalDataOA.ContextsOS.Add(other);
+        other.MembersRS.Add(member);
+    }
+
+    private static void Named(LcmCache cache, IPhPhonContext member) =>
+        member.Name.set_String(cache.DefaultAnalWs, TsStringUtils.MakeString("kept", cache.DefaultAnalWs));
+
+    [Theory]
+    [InlineData(true, "a", RefusalCodes.RuleNotationSharedClass)]
+    [InlineData(true, "[V] a", RefusalCodes.RuleNotationSharedClass)]
+    [InlineData(false, "a", RefusalCodes.RuleNotationContextHasData)]
+    [InlineData(false, "[V] a", RefusalCodes.RuleNotationContextHasData)]
+    public void ASharedOrNamedPooledMemberIsSparedWhenAShapeChangeOrADroppedMemberWouldDeleteIt(bool shared, string edited, string code)
+    {
+        var path = StartWithSequence(out var ruleId, out var member, shared ? AlsoUsedBy : Named);
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        var lowering = PhonologicalRuleRecordImportTests.Lower(cache, ruleId, document => Rhs(document).Set("right-context", new RecordScalar(edited)));
+        Assert.Empty(lowering.Operations);
+        Assert.Equal(code, lowering.Refusals.First().Code);
+        var survivor = cache.ServiceLocator.GetObject(member);
+        Assert.IsAssignableFrom<IPhSimpleContextSeg>(survivor);
+        Assert.Equal(member, RightSequence(cache, ruleId).MembersRS[2].Guid);
+    }
+
+    [Fact]
+    public void AMemberThatBecomesSharedAfterLoweringIsNotDeletedWhenTheOperationApplies()
+    {
+        var path = Start(out var ruleId, out _);
+        ImportRight(path, "sequence", ruleId, "[V] a");
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        var lowering = PhonologicalRuleRecordImportTests.Lower(cache, ruleId, document => Rhs(document).Set("right-context", new RecordScalar("a")));
+        Assert.Empty(lowering.Refusals);
+        var delete = lowering.Operations.Single(operation => operation.Kind == PhonologicalRuleDeleteOperationKinds.DeleteContexts);
+        var member = RightSequence(cache, ruleId).MembersRS[1];
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => AlsoUsedBy(cache, member));
+        var refused = Assert.ThrowsAny<Exception>(() => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            OperationHandlerRegistry.Resolve(delete.Kind, "apply-time guard test").ApplyAndCaptureEffect(cache, delete, [])));
+        Assert.Contains("still used", refused.Message);
+        Assert.NotNull(cache.ServiceLocator.GetObject(member.Guid));
+        Assert.Equal(2, RightSequence(cache, ruleId).MembersRS.Count);
+    }
+
+    [Fact]
+    public void ALeftContextAddedWhereThereWasNoneIsCreatedAsAFreshContext()
+    {
+        var path = Start(out var ruleId, out _);
+        PhonologicalRuleRecordImportTests.Import(path, "clear-left", ruleId, document => Rhs(document)["left-context"] = null);
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            Assert.Null(((IPhRegularRule)cache.ServiceLocator.GetObject(ruleId)).RightHandSidesOS.Single().LeftContextOA);
+            var lowering = PhonologicalRuleRecordImportTests.Lower(cache, ruleId, document => Rhs(document).Set("left-context", new RecordScalar("[C] a")));
+            Assert.Empty(lowering.Refusals);
+            Assert.Contains("grammar/phSegRuleRHS/createLeftContext", Kinds(lowering));
+        }
+        PhonologicalRuleRecordImportTests.Import(path, "add-left", ruleId, document => Rhs(document).Set("left-context", new RecordScalar("[C] a")));
+        using var after = new FwDataProjectLoader().LoadCache(path);
+        Assert.Equal("[C] a", Text(after, ruleId, RuleField.LeftContext));
+        AssertNothingLeftToChange(path, ruleId);
+    }
 }
