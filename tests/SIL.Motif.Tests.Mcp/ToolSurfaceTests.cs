@@ -200,8 +200,8 @@ public sealed class ToolSurfaceTests
             "hypothesis report",
             "lexicon find",
             "list hypotheses",
-            "project backup",
-            "project restore",
+            "store backup",
+            "store restore",
             "project tag",
             "query corpus forms",
             "query pairs",
@@ -247,7 +247,7 @@ public sealed class ToolSurfaceTests
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
             command.Name != "activity" && command.Name != "hand-analysis check" && command.Name != "query pairs" && command.Name != "query corpus forms" && command.Name != "query values" &&
-            command.Name is not ("project backup" or "project restore") &&
+            command.Name is not ("store backup" or "store restore") &&
             command.Name != "project tag" && command.Name != "proposal trial" && command.Name != "generate" &&
             command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
             command.Name is not ("wordform dispose" or "wordform dispose --from-file" or "wordform undispose" or "worker stop") &&

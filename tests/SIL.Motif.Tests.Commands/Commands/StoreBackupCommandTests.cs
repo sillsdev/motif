@@ -13,14 +13,14 @@ using Xunit;
 namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
-/// <c>project backup</c> copies the store consistently while it is in use, and <c>project restore</c> puts it back
+/// <c>store backup</c> copies the store consistently while it is in use, and <c>store restore</c> puts it back
 /// only when the store is free, the backup is intact and no newer than this build, saving what it replaces.
 /// </summary>
-public sealed class ProjectBackupCommandTests : IDisposable
+public sealed class StoreBackupCommandTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-backup-" + Guid.NewGuid().ToString("N"));
 
-    public ProjectBackupCommandTests()
+    public StoreBackupCommandTests()
     {
         Directory.CreateDirectory(_root);
         File.WriteAllText(Project, "<languageproject />");
@@ -41,7 +41,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
         AddMarker(Store, "first");
         File.WriteAllText(Path.Combine(_root, "Koro.motif.toml"), "collect = []");
 
-        var result = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1")));
+        var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1")));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         var receipt = result.Value!;
@@ -66,11 +66,11 @@ public sealed class ProjectBackupCommandTests : IDisposable
     {
         var at = new DateTimeOffset(2026, 11, 25, 8, 30, 15, 123, TimeSpan.Zero);
 
-        var result = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project), new FixedClock(at));
+        var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project), new FixedClock(at));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         Assert.Equal(Path.Combine(_root, "Koro.motif-backup-20261125T083015123Z"), result.Value!.BackupDirectory);
-        Assert.True(File.Exists(Path.Combine(result.Value.BackupDirectory, ProjectBackupCommand.ReceiptName)));
+        Assert.True(File.Exists(Path.Combine(result.Value.BackupDirectory, StoreBackupCommand.ReceiptName)));
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
             command.ExecuteNonQuery();
         }
 
-        var result = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("live")));
+        var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("live")));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         var copy = Path.Combine(Folder("live"), "store.sqlite");
@@ -109,11 +109,11 @@ public sealed class ProjectBackupCommandTests : IDisposable
     {
         AddMarker(Store, "kept");
         File.WriteAllText(Path.Combine(_root, "Koro.motif.toml"), "collect = [\"A\"]");
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         AddMarker(Store, "added-later");
         File.WriteAllText(Path.Combine(_root, "Koro.motif.toml"), "collect = [\"B\"]");
 
-        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         Assert.Equal(["kept"], Markers(Store));
@@ -131,13 +131,13 @@ public sealed class ProjectBackupCommandTests : IDisposable
     [Fact]
     public void ARestoreWhileTheStoreIsOpenIsRefusedAndTheStoreIsLeftAsItWas()
     {
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         AddMarker(Store, "later");
         var before = File.ReadAllBytes(Store);
         using var lease = new FileStream(Store + ".use.lock", FileMode.OpenOrCreate, FileAccess.Read,
             FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.None);
 
-        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.False(result.Succeeded);
         Assert.Equal(RefusalCodes.ProjectBusy, result.Refusal!.Code);
@@ -149,18 +149,18 @@ public sealed class ProjectBackupCommandTests : IDisposable
     [Fact]
     public void ABackupWhoseSchemaIsNewerThanThisBuildIsRefusedAndTheStoreIsLeftAsItWas()
     {
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         SetSchema(Path.Combine(backup.BackupDirectory, "store.sqlite"), MotifSchema.CurrentSchema + 1);
         RewriteReceipt(backup, schema: MotifSchema.CurrentSchema);
         AddMarker(Store, "later");
         var before = File.ReadAllBytes(Store);
 
-        var byFile = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var byFile = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
-        Assert.Equal(RefusalCodes.ProjectBackupNewerSchema, byFile.Refusal?.Code);
+        Assert.Equal(RefusalCodes.StoreRestoreNewerSchema, byFile.Refusal?.Code);
         RewriteReceipt(backup, schema: MotifSchema.CurrentSchema + 1);
-        var byReceipt = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
-        Assert.Equal(RefusalCodes.ProjectBackupNewerSchema, byReceipt.Refusal?.Code);
+        var byReceipt = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
+        Assert.Equal(RefusalCodes.StoreRestoreNewerSchema, byReceipt.Refusal?.Code);
         Assert.Equal(before, File.ReadAllBytes(Store));
         Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
     }
@@ -168,7 +168,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
     [Fact]
     public void AFileThatDoesNotMatchItsShaIsRefusedAndTheStoreIsLeftAsItWas()
     {
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         var copy = Path.Combine(backup.BackupDirectory, "store.sqlite");
         var bytes = File.ReadAllBytes(copy);
         bytes[^1] ^= 0xff;
@@ -176,9 +176,9 @@ public sealed class ProjectBackupCommandTests : IDisposable
         AddMarker(Store, "later");
         var before = File.ReadAllBytes(Store);
 
-        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
-        Assert.Equal(RefusalCodes.ProjectBackupChecksumMismatch, result.Refusal?.Code);
+        Assert.Equal(RefusalCodes.StoreRestoreChecksumMismatch, result.Refusal?.Code);
         Assert.Equal("store.sqlite", result.Refusal!.Facts["file"]);
         Assert.Equal(before, File.ReadAllBytes(Store));
         Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
@@ -189,13 +189,13 @@ public sealed class ProjectBackupCommandTests : IDisposable
     public void AFolderWithoutAReceiptAndABackupOfAnotherProjectAreRefused()
     {
         Directory.CreateDirectory(Folder("empty"));
-        var none = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, Folder("empty")));
-        Assert.Equal(RefusalCodes.ProjectBackupInvalid, none.Refusal?.Code);
+        var none = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, Folder("empty")));
+        Assert.Equal(RefusalCodes.StoreRestoreInvalid, none.Refusal?.Code);
 
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         File.WriteAllText(backup.ReceiptPath, JsonSerializer.Serialize(backup with { ProjectIdentity = "Other" }, ReceiptOptions));
-        var other = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
-        Assert.Equal(RefusalCodes.ProjectBackupOtherProject, other.Refusal?.Code);
+        var other = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
+        Assert.Equal(RefusalCodes.StoreRestoreOtherProject, other.Refusal?.Code);
     }
 
     [Fact]
@@ -203,13 +203,13 @@ public sealed class ProjectBackupCommandTests : IDisposable
     {
         Directory.CreateDirectory(Folder("full"));
         File.WriteAllText(Path.Combine(Folder("full"), "x.txt"), "x");
-        var full = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("full")));
-        Assert.Equal(RefusalCodes.ProjectBackupDestinationExists, full.Refusal?.Code);
+        var full = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("full")));
+        Assert.Equal(RefusalCodes.StoreBackupDestinationExists, full.Refusal?.Code);
 
         var lonely = Path.Combine(_root, "Lonely.fwdata");
         File.WriteAllText(lonely, "<languageproject />");
-        var none = ProjectBackupCommand.Backup(new ProjectBackupRequest(lonely));
-        Assert.Equal(RefusalCodes.ProjectBackupNoStore, none.Refusal?.Code);
+        var none = StoreBackupCommand.Backup(new StoreBackupRequest(lonely));
+        Assert.Equal(RefusalCodes.StoreBackupNoStore, none.Refusal?.Code);
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
         using var exclusive = new FileStream(Store + ".use.lock", FileMode.OpenOrCreate, FileAccess.Read,
             FileShare.None, 1, FileOptions.None);
 
-        var result = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1")));
+        var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1")));
 
         Assert.Equal(RefusalCodes.ProjectBusy, result.Refusal?.Code);
         Assert.False(Directory.Exists(Folder("b1")));
@@ -238,7 +238,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
         File.WriteAllText(path, text);
     }
 
-    private static string Backed(ProjectRestoreResponse response, string relative) =>
+    private static string Backed(StoreRestoreResponse response, string relative) =>
         Path.Combine(response.PreRestoreDirectory!, "moved", relative.Replace('/', Path.DirectorySeparatorChar));
 
     [Fact]
@@ -246,14 +246,14 @@ public sealed class ProjectBackupCommandTests : IDisposable
     {
         AddMarker(Store, "kept");
         WriteTrial("a.json", "A1");
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         Assert.Contains(backup.Files, file => file.Role == "trial-export" && file.Name == "trial-exports/a.json");
         WriteTrial("a.json", "A2");
         WriteTrial("sub/c.json", "C");
         File.WriteAllText(Config, "collect = []");
         File.WriteAllText(Store + ".upgrade.json", "{}");
 
-        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         var response = result.Value!;
@@ -277,12 +277,12 @@ public sealed class ProjectBackupCommandTests : IDisposable
     public void ARestoreMovesTheOldStoreItsWalAndShmTogetherAndNeverDeletesThem()
     {
         AddMarker(Store, "kept");
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         AddMarker(Store, "later");
         File.WriteAllText(Store + "-wal", "wal-bytes");
         File.WriteAllText(Store + "-shm", "shm-bytes");
 
-        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-wal")));
@@ -296,10 +296,10 @@ public sealed class ProjectBackupCommandTests : IDisposable
     public void AStoreTooDamagedToBackUpIsMovedAsideAndAGoodBackupReplacesIt()
     {
         AddMarker(Store, "kept");
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         File.WriteAllText(Store, "this is not a database");
 
-        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         Assert.Null(result.Value!.PreRestoreBackup);
@@ -320,9 +320,9 @@ public sealed class ProjectBackupCommandTests : IDisposable
             _ => Path.Combine(TrialRoot, "deep", "x"),
         };
 
-        var result = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, destination));
+        var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project, destination));
 
-        Assert.Equal(RefusalCodes.ProjectBackupDestinationOwned, result.Refusal?.Code);
+        Assert.Equal(RefusalCodes.StoreBackupDestinationOwned, result.Refusal?.Code);
         Assert.False(Directory.Exists(destination));
     }
 
@@ -330,8 +330,8 @@ public sealed class ProjectBackupCommandTests : IDisposable
     public void ABackupBesideTheOwnedFoldersAndALaterBackupNeverContainAnEarlierOne()
     {
         WriteTrial("a.json", "A");
-        var first = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1")));
-        var second = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b2")));
+        var first = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1")));
+        var second = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b2")));
 
         Assert.True(first.Succeeded && second.Succeeded);
         Assert.Equal(first.Value!.Files.Select(file => file.Name), second.Value!.Files.Select(file => file.Name));
@@ -345,7 +345,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
     [InlineData("/p/Koro.motif.db.trial-exports", "/p/koro.motif.db.trial-exports/x", false, false)]
     [InlineData("/p/Koro.motif.db.trial-exports", "/p/Koro.motif.db.trial-exports/x", false, true)]
     public void TheOwnedFolderCheckIsBySegmentAndFollowsTheFileSystemCaseRule(string owned, string path, bool windows, bool inside) =>
-        Assert.Equal(inside, ProjectBackupCommand.IsInside(path, owned, windows));
+        Assert.Equal(inside, StoreBackupCommand.IsInside(path, owned, windows));
 
     [Theory]
     [InlineData("store.sqlite", true)]
@@ -362,7 +362,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
     [InlineData("name.", false)]
     [InlineData("a|b", false)]
     public void AReceiptNameIsAPlainRelativeNameOnEveryOs(string name, bool plain) =>
-        Assert.Equal(plain, ProjectBackupCommand.IsPlainRelativeName(name));
+        Assert.Equal(plain, StoreBackupCommand.IsPlainRelativeName(name));
 
     [Theory]
     [InlineData("../evil")]
@@ -371,27 +371,27 @@ public sealed class ProjectBackupCommandTests : IDisposable
     [InlineData("trial-exports/a/../../../x")]
     public void AReceiptNamingAFileOutsideTheBackupIsInvalid(string name)
     {
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
-        var tampered = backup with { Files = [.. backup.Files, new ProjectBackupFile("trial-export", name, "", 1, "00")] };
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
+        var tampered = backup with { Files = [.. backup.Files, new StoreBackupFile("trial-export", name, "", 1, "00")] };
         File.WriteAllText(backup.ReceiptPath, JsonSerializer.Serialize(tampered, ReceiptOptions));
 
-        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
-        Assert.Equal(RefusalCodes.ProjectBackupInvalid, result.Refusal?.Code);
+        Assert.Equal(RefusalCodes.StoreRestoreInvalid, result.Refusal?.Code);
     }
 
     [Fact]
     public void ADuplicatedOrRenamedOrMissingOrGarbledReceiptIsInvalidAndTheStoreIsLeftAsItWas()
     {
         AddMarker(Store, "kept");
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         var receiptText = File.ReadAllText(backup.ReceiptPath);
         AddMarker(Store, "later");
 
         void Refused(string why)
         {
-            var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
-            Assert.True(RefusalCodes.ProjectBackupInvalid == result.Refusal?.Code, why + ": " + result.Refusal?.Code);
+            var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
+            Assert.True(RefusalCodes.StoreRestoreInvalid == result.Refusal?.Code, why + ": " + result.Refusal?.Code);
             Assert.Equal(["kept", "later"], Markers(Store));
             Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
         }
@@ -410,8 +410,8 @@ public sealed class ProjectBackupCommandTests : IDisposable
         var renamedReceipt = Path.Combine(backup.BackupDirectory, "renamed.json");
         File.Move(backup.ReceiptPath, renamedReceipt);
         Refused("receipt renamed");
-        var byRenamed = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, renamedReceipt));
-        Assert.Equal(RefusalCodes.ProjectBackupInvalid, byRenamed.Refusal?.Code);
+        var byRenamed = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, renamedReceipt));
+        Assert.Equal(RefusalCodes.StoreRestoreInvalid, byRenamed.Refusal?.Code);
         File.Move(renamedReceipt, backup.ReceiptPath);
 
         var store = Path.Combine(backup.BackupDirectory, "store.sqlite");
@@ -419,7 +419,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
         Refused("store renamed");
         File.Move(store + ".old", store);
 
-        Assert.True(ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory)).Succeeded);
+        Assert.True(StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory)).Succeeded);
     }
 
     [Fact]
@@ -427,26 +427,26 @@ public sealed class ProjectBackupCommandTests : IDisposable
     {
         File.WriteAllText(Project, $"<languageproject>\n<rt class=\"LangProject\" guid=\"{GuidA}\">\n</languageproject>");
         AddMarker(Store, "kept");
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         Assert.Equal(GuidA, backup.ProjectGuid);
         Assert.Equal("Koro", backup.ProjectIdentity);
         AddMarker(Store, "later");
 
         // Same project, different recorded path: the path is only secondary.
         RewriteReceipt(backup, backup.SchemaVersion, projectPath: Path.Combine(_root, "Elsewhere", "Koro.fwdata"));
-        var moved = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var moved = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
         Assert.True(moved.Succeeded, moved.Refusal?.Message);
         Assert.Equal(["kept"], Markers(Store));
 
         // A different project: refused and untouched, then restored with force.
         AddMarker(Store, "again");
         File.WriteAllText(Project, $"<languageproject>\n<rt class=\"LangProject\" guid=\"{GuidB}\">\n</languageproject>");
-        var refused = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
-        Assert.Equal(RefusalCodes.ProjectBackupOtherProject, refused.Refusal?.Code);
+        var refused = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
+        Assert.Equal(RefusalCodes.StoreRestoreOtherProject, refused.Refusal?.Code);
         Assert.Contains(GuidA, refused.Refusal!.Message, StringComparison.Ordinal);
         Assert.Equal(["kept", "again"], Markers(Store));
 
-        var forced = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory, Force: true));
+        var forced = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory, Force: true));
         Assert.True(forced.Succeeded, forced.Refusal?.Message);
         Assert.Equal(["kept"], Markers(Store));
     }
@@ -455,13 +455,13 @@ public sealed class ProjectBackupCommandTests : IDisposable
     public void WithoutAGuidTheProjectIdentityDecidesAndForceOverridesIt()
     {
         AddMarker(Store, "kept");
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         Assert.Null(backup.ProjectGuid);
         File.WriteAllText(backup.ReceiptPath, JsonSerializer.Serialize(backup with { ProjectIdentity = "Other" }, ReceiptOptions));
 
-        var refused = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
-        Assert.Equal(RefusalCodes.ProjectBackupOtherProject, refused.Refusal?.Code);
-        Assert.True(ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory, true)).Succeeded);
+        var refused = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
+        Assert.Equal(RefusalCodes.StoreRestoreOtherProject, refused.Refusal?.Code);
+        Assert.True(StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory, true)).Succeeded);
     }
 
     private sealed class SimulatedCrash : Exception;
@@ -471,12 +471,12 @@ public sealed class ProjectBackupCommandTests : IDisposable
 
     public static TheoryData<string> Steps() => new(RestoreSteps);
 
-    private ProjectBackupResponse BackupThenDiverge()
+    private StoreBackupResponse BackupThenDiverge()
     {
         AddMarker(Store, "kept");
         File.WriteAllText(Config, "old-config");
         WriteTrial("a.json", "A1");
-        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
         AddMarker(Store, "later");
         File.WriteAllText(Config, "new-config");
         WriteTrial("a.json", "A2");
@@ -485,11 +485,11 @@ public sealed class ProjectBackupCommandTests : IDisposable
         return backup;
     }
 
-    private static CommandOutcome<ProjectRestoreResponse> RestoreStoppingAt(string step, Func<Exception> fail, ProjectLocatorArgs args)
+    private static CommandOutcome<StoreRestoreResponse> RestoreStoppingAt(string step, Func<Exception> fail, ProjectLocatorArgs args)
     {
-        ProjectBackupCommand.StepHook = reached => { if (reached == step) throw fail(); };
-        try { return ProjectBackupCommand.Restore(new ProjectRestoreRequest(args.Project, args.Backup)); }
-        finally { ProjectBackupCommand.StepHook = null; }
+        StoreBackupCommand.StepHook = reached => { if (reached == step) throw fail(); };
+        try { return StoreBackupCommand.Restore(new StoreRestoreRequest(args.Project, args.Backup)); }
+        finally { StoreBackupCommand.StepHook = null; }
     }
 
     private sealed record ProjectLocatorArgs(string Project, string Backup);
@@ -522,7 +522,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
                 break;
         }
 
-        var rerun = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        var rerun = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(rerun.Succeeded, rerun.Refusal?.Message);
         Assert.Equal(["kept"], Markers(Store));
@@ -559,7 +559,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
 
     private static readonly JsonSerializerOptions ReceiptOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    private static void RewriteReceipt(ProjectBackupResponse backup, int schema, string? projectPath = null)
+    private static void RewriteReceipt(StoreBackupResponse backup, int schema, string? projectPath = null)
     {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
         var files = backup.Files.Select(file => file with

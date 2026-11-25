@@ -466,20 +466,20 @@ public static class RefusalCodes
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
 
-    /// <summary><c>project backup</c> found no Motif store beside the project.</summary>
-    public const string ProjectBackupNoStore = "project.backup-no-store";
-    /// <summary><c>project backup</c> was given a destination folder that already holds files; nothing was written.</summary>
-    public const string ProjectBackupDestinationExists = "project.backup-destination-exists";
-    /// <summary><c>project restore</c> was given a folder with no readable backup receipt, or a receipt that names a file the folder lacks.</summary>
-    public const string ProjectBackupInvalid = "project.backup-invalid";
-    /// <summary><c>project restore</c> was given a backup whose store schema is newer than this build understands.</summary>
-    public const string ProjectBackupNewerSchema = "project.backup-newer-schema";
-    /// <summary><c>project restore</c> found a backed-up file whose sha256 differs from its receipt; nothing was changed.</summary>
-    public const string ProjectBackupChecksumMismatch = "project.backup-checksum-mismatch";
-    /// <summary><c>project restore</c> was given the backup of a different project's store; nothing was changed.</summary>
-    public const string ProjectBackupOtherProject = "project.backup-other-project";
-    /// <summary><c>project backup</c> was given a destination inside the store's own files or a folder Motif owns, such as its trial exports; nothing was written.</summary>
-    public const string ProjectBackupDestinationOwned = "project.backup-destination-owned";
+    /// <summary><c>store backup</c> found no Motif store beside the project.</summary>
+    public const string StoreBackupNoStore = "store.backup-no-store";
+    /// <summary><c>store backup</c> was given a destination folder that already holds files; nothing was written.</summary>
+    public const string StoreBackupDestinationExists = "store.backup-destination-exists";
+    /// <summary><c>store restore</c> was given a folder with no readable backup receipt, or a receipt that names a file the folder lacks.</summary>
+    public const string StoreRestoreInvalid = "store.restore-invalid";
+    /// <summary><c>store restore</c> was given a backup whose store schema is newer than this build understands.</summary>
+    public const string StoreRestoreNewerSchema = "store.restore-newer-schema";
+    /// <summary><c>store restore</c> found a backed-up file whose sha256 differs from its receipt; nothing was changed.</summary>
+    public const string StoreRestoreChecksumMismatch = "store.restore-checksum-mismatch";
+    /// <summary><c>store restore</c> was given the backup of a different project's store; nothing was changed.</summary>
+    public const string StoreRestoreOtherProject = "store.restore-other-project";
+    /// <summary><c>store backup</c> was given a destination inside the store's own files or a folder Motif owns, such as its trial exports; nothing was written.</summary>
+    public const string StoreBackupDestinationOwned = "store.backup-destination-owned";
     public const string ProjectBusy = "project.busy";
     /// <summary>A runner that <c>worker stop</c> ended did not exit within the wait.</summary>
     public const string WorkerStopFailed = "worker.stop-failed";

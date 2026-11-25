@@ -14,14 +14,14 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-/// <summary><c>project backup</c> and <c>project restore</c> through the CLI: JSON receipt, round trip and usage lines.</summary>
-public sealed class ProjectBackupArgvTests : IDisposable
+/// <summary><c>store backup</c> and <c>store restore</c> through the CLI: JSON receipt, round trip and usage lines.</summary>
+public sealed class StoreBackupArgvTests : IDisposable
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-project-backup-" + Guid.NewGuid().ToString("N"));
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-store-backup-" + Guid.NewGuid().ToString("N"));
     private readonly string _workerRoot =
-        Path.Combine(Path.GetTempPath(), "motif-project-backup-worker-" + Guid.NewGuid().ToString("N"));
+        Path.Combine(Path.GetTempPath(), "motif-store-backup-worker-" + Guid.NewGuid().ToString("N"));
 
-    public ProjectBackupArgvTests()
+    public StoreBackupArgvTests()
     {
         Directory.CreateDirectory(_root);
         Directory.CreateDirectory(_workerRoot);
@@ -37,7 +37,7 @@ public sealed class ProjectBackupArgvTests : IDisposable
     public void TheBackupPrintsOneJsonReceiptAndTheRestoreReadsItBack()
     {
         var folder = Path.Combine(_root, "backup");
-        var backup = Run($"project backup --project \"{Project}\" --to \"{folder}\" --json");
+        var backup = Run($"store backup --project \"{Project}\" --to \"{folder}\" --json");
 
         Assert.True(backup.ExitCode == 0, backup.Error);
         using (var document = JsonDocument.Parse(backup.Output))
@@ -51,7 +51,7 @@ public sealed class ProjectBackupArgvTests : IDisposable
             Assert.True(store.GetProperty("bytes").GetInt64() > 0);
         }
 
-        var restore = Run($"project restore \"{folder}\" --project \"{Project}\" --json");
+        var restore = Run($"store restore \"{folder}\" --project \"{Project}\" --json");
 
         Assert.True(restore.ExitCode == 0, restore.Error);
         using var restored = JsonDocument.Parse(restore.Output);
@@ -90,7 +90,7 @@ public sealed class ProjectBackupArgvTests : IDisposable
         SpinWait.SpinUntil(() => Volatile.Read(ref written) > 20, TimeSpan.FromSeconds(30));
 
         var folder = Path.Combine(_root, "live-backup");
-        var backup = Run($"project backup --project \"{Project}\" --to \"{folder}\" --json");
+        var backup = Run($"store backup --project \"{Project}\" --to \"{folder}\" --json");
         stop.Cancel();
         await writer;
 
@@ -110,24 +110,24 @@ public sealed class ProjectBackupArgvTests : IDisposable
     [Fact]
     public void ARestoreOfAFolderWithNoReceiptRefusesWithItsCode()
     {
-        var result = Run($"project restore \"{_root}\" --project \"{Project}\" --json");
+        var result = Run($"store restore \"{_root}\" --project \"{Project}\" --json");
 
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), result.ExitCode);
-        Assert.Contains(RefusalCodes.ProjectBackupInvalid, result.Error, StringComparison.Ordinal);
+        Assert.Contains(RefusalCodes.StoreRestoreInvalid, result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
     public void MissingArgumentsPrintTheUsageLines()
     {
-        var backup = Run("project backup");
+        var backup = Run("store backup");
         Assert.Equal(1, backup.ExitCode);
-        Assert.Contains("project backup --project <fwdata> [--to <dir>]", backup.Error, StringComparison.Ordinal);
+        Assert.Contains("store backup --project <fwdata> [--to <dir>]", backup.Error, StringComparison.Ordinal);
 
-        var restore = Run($"project restore --project \"{Project}\"");
+        var restore = Run($"store restore --project \"{Project}\"");
         Assert.Equal(1, restore.ExitCode);
-        Assert.Contains("project restore <backup-dir> --project <fwdata> [--force]", restore.Error, StringComparison.Ordinal);
-        Assert.Contains(CommandCatalog.All, command => command.Name == "project backup");
-        Assert.Contains(CommandCatalog.All, command => command.Name == "project restore");
+        Assert.Contains("store restore <backup-dir> --project <fwdata> [--force]", restore.Error, StringComparison.Ordinal);
+        Assert.Contains(CommandCatalog.All, command => command.Name == "store backup");
+        Assert.Contains(CommandCatalog.All, command => command.Name == "store restore");
     }
 
     private CliRun Run(string arguments)

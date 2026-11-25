@@ -39,7 +39,7 @@ namespace SIL.Motif.Commands;
 /// survives (an <see cref="IOException"/>) moves everything back instead, and names the pre-restore folder.
 /// </para>
 /// </remarks>
-public static partial class ProjectBackupCommand
+public static partial class StoreBackupCommand
 {
     /// <summary>The receipt's file name inside a backup folder.</summary>
     public const string ReceiptName = "motif-backup.json";
@@ -49,22 +49,22 @@ public static partial class ProjectBackupCommand
     private const string UpgradeReportName = "store.upgrade.json";
     private const string TrialExportsPrefix = "trial-exports/";
     private const string FwDataNote =
-        "The FieldWorks project file (.fwdata) is not part of this backup. Back it up with FieldWorks' own project backup.";
+        "The FieldWorks project file (.fwdata) is not part of this backup. Back it up with FieldWorks' own store backup.";
 
     private static readonly JsonSerializerOptions ReceiptJson = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     /// <summary>Writes a consistent copy of the project's store and owned files into a new folder.</summary>
-    public static CommandOutcome<ProjectBackupResponse> Backup(ProjectBackupRequest request) => Backup(request, null);
+    public static CommandOutcome<StoreBackupResponse> Backup(StoreBackupRequest request) => Backup(request, null);
 
-    internal static CommandOutcome<ProjectBackupResponse> Backup(ProjectBackupRequest request, TimeProvider? clock)
+    internal static CommandOutcome<StoreBackupResponse> Backup(StoreBackupRequest request, TimeProvider? clock)
     {
         ArgumentNullException.ThrowIfNull(request);
         var located = ProjectStoreCommand.LocateProject(request.ProjectPath);
-        if (!located.Succeeded) return CommandOutcome<ProjectBackupResponse>.Refused(located.Refusal!);
+        if (!located.Succeeded) return CommandOutcome<StoreBackupResponse>.Refused(located.Refusal!);
         var project = located.Value!;
         var storePath = ProjectDatabaseCatalog.DatabasePathFor(project);
         if (!File.Exists(storePath))
-            return Refuse<ProjectBackupResponse>(RefusalCodes.ProjectBackupNoStore, FailureReason.NotFound,
+            return Refuse<StoreBackupResponse>(RefusalCodes.StoreBackupNoStore, FailureReason.NotFound,
                 $"There is no Motif store, '{Path.GetFileName(storePath)}', beside this project to back up.", project, storePath);
 
         var now = clock?.GetUtcNow() ?? DateTimeOffset.UtcNow;
@@ -73,12 +73,12 @@ public static partial class ProjectBackupCommand
                 Path.GetFileNameWithoutExtension(project.FullFwDataPath) + ".motif-backup-" + Stamp(now))
             : Path.GetFullPath(request.To);
         if (File.Exists(destination) || Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
-            return Refuse<ProjectBackupResponse>(RefusalCodes.ProjectBackupDestinationExists, FailureReason.InvalidArgument,
+            return Refuse<StoreBackupResponse>(RefusalCodes.StoreBackupDestinationExists, FailureReason.InvalidArgument,
                 $"'{destination}' already exists and is not empty. Name a new folder with --to, or leave it off for a timestamped one.",
                 project, storePath, ("destination", destination));
 
         if (OwnedFolderHolding(destination, storePath, project) is { } owned)
-            return Refuse<ProjectBackupResponse>(RefusalCodes.ProjectBackupDestinationOwned, FailureReason.InvalidArgument,
+            return Refuse<StoreBackupResponse>(RefusalCodes.StoreBackupDestinationOwned, FailureReason.InvalidArgument,
                 $"'{destination}' is inside '{owned}', which Motif owns, so a backup written there would be backed up into itself. " +
                 "Name a folder outside the store's own files with --to, or leave it off for a timestamped one.",
                 project, storePath, ("destination", destination), ("ownedPath", owned));
@@ -86,39 +86,39 @@ public static partial class ProjectBackupCommand
         var created = !Directory.Exists(destination);
         try
         {
-            return CommandOutcome<ProjectBackupResponse>.Success(
+            return CommandOutcome<StoreBackupResponse>.Success(
                 WriteBackup(project, storePath, destination, now, file => MotifDatabase.BackUpExisting(storePath, file)));
         }
         catch (Exception exception) when (exception is MotifStoreLockException or InvalidDataException or IOException
             or UnauthorizedAccessException)
         {
             Discard(destination, created);
-            return Failed<ProjectBackupResponse>(exception, project, storePath, "back up");
+            return Failed<StoreBackupResponse>(exception, project, storePath, "back up");
         }
     }
 
     /// <summary>Puts a backup's store and owned files back, after saving the store they replace.</summary>
-    public static CommandOutcome<ProjectRestoreResponse> Restore(ProjectRestoreRequest request) => Restore(request, null);
+    public static CommandOutcome<StoreRestoreResponse> Restore(StoreRestoreRequest request) => Restore(request, null);
 
-    internal static CommandOutcome<ProjectRestoreResponse> Restore(ProjectRestoreRequest request, TimeProvider? clock)
+    internal static CommandOutcome<StoreRestoreResponse> Restore(StoreRestoreRequest request, TimeProvider? clock)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.BackupPath))
-            return CommandOutcome<ProjectRestoreResponse>.Refused(new Refusal(RefusalCodes.ProjectBackupInvalid,
+            return CommandOutcome<StoreRestoreResponse>.Refused(new Refusal(RefusalCodes.StoreRestoreInvalid,
                 FailureReason.InvalidArgument, "A backup folder is required.", new Dictionary<string, string>()));
         var located = ProjectStoreCommand.LocateProject(request.ProjectPath);
-        if (!located.Succeeded) return CommandOutcome<ProjectRestoreResponse>.Refused(located.Refusal!);
+        if (!located.Succeeded) return CommandOutcome<StoreRestoreResponse>.Refused(located.Refusal!);
         var project = located.Value!;
         var storePath = ProjectDatabaseCatalog.DatabasePathFor(project);
 
         var read = ReadReceipt(request.BackupPath, project, storePath);
-        if (read.Refusal is { } refusal) return CommandOutcome<ProjectRestoreResponse>.Refused(refusal);
+        if (read.Refusal is { } refusal) return CommandOutcome<StoreRestoreResponse>.Refused(refusal);
         var (directory, receipt, targets) = read.Value;
 
         if (receipt.SchemaVersion > MotifSchema.CurrentSchema)
             return NewerSchema(receipt.SchemaVersion, project, storePath);
         if (!request.Force && !SameProject(receipt, project))
-            return Refuse<ProjectRestoreResponse>(RefusalCodes.ProjectBackupOtherProject, FailureReason.Refused,
+            return Refuse<StoreRestoreResponse>(RefusalCodes.StoreRestoreOtherProject, FailureReason.Refused,
                 $"This backup is of project '{receipt.ProjectIdentity}'" +
                 (receipt.ProjectGuid is null ? "" : $" ({receipt.ProjectGuid})") +
                 $" (store of '{receipt.ProjectPath}'), not of '{project.FullFwDataPath}'. " +
@@ -139,12 +139,12 @@ public static partial class ProjectBackupCommand
             or UnauthorizedAccessException)
         {
             foreach (var file in staged) file.Discard();
-            return Failed<ProjectRestoreResponse>(exception, project, storePath, "restore", progress.Directory);
+            return Failed<StoreRestoreResponse>(exception, project, storePath, "restore", progress.Directory);
         }
     }
 
-    private static CommandOutcome<ProjectRestoreResponse> RestoreLocked(ProjectLocator project, string storePath,
-        string directory, ProjectBackupResponse receipt, List<Target> targets, string staging, List<StagedFile> staged,
+    private static CommandOutcome<StoreRestoreResponse> RestoreLocked(ProjectLocator project, string storePath,
+        string directory, StoreBackupResponse receipt, List<Target> targets, string staging, List<StagedFile> staged,
         DateTimeOffset now, RestoreProgress progress)
     {
         RemoveLeftoverStagedFiles(project, storePath);
@@ -159,7 +159,7 @@ public static partial class ProjectBackupCommand
             if (bytes != target.Entry.Bytes || !string.Equals(sha, target.Entry.Sha256, StringComparison.OrdinalIgnoreCase))
             {
                 foreach (var each in staged) each.Discard();
-                return Refuse<ProjectRestoreResponse>(RefusalCodes.ProjectBackupChecksumMismatch, FailureReason.Refused,
+                return Refuse<StoreRestoreResponse>(RefusalCodes.StoreRestoreChecksumMismatch, FailureReason.Refused,
                     $"'{target.Entry.Name}' in the backup does not match its receipt (expected sha256 " +
                     $"{target.Entry.Sha256}, found {sha}). The backup is damaged or was edited; nothing was changed.",
                     project, storePath, ("file", target.Entry.Name), ("expectedSha256", target.Entry.Sha256), ("actualSha256", sha));
@@ -176,7 +176,7 @@ public static partial class ProjectBackupCommand
         catch (InvalidDataException exception)
         {
             foreach (var each in staged) each.Discard();
-            return Refuse<ProjectRestoreResponse>(RefusalCodes.ProjectBackupInvalid, FailureReason.InvalidArgument,
+            return Refuse<StoreRestoreResponse>(RefusalCodes.StoreRestoreInvalid, FailureReason.InvalidArgument,
                 "The backup's store is not a readable Motif store: " + exception.Message, project, storePath);
         }
         if (facts.SchemaVersion > MotifSchema.CurrentSchema)
@@ -193,7 +193,7 @@ public static partial class ProjectBackupCommand
         var sidecars = new[] { "", "-wal", "-shm", "-journal" };
 
         // A corrupt store is not a reason to refuse: its raw files are moved aside below.
-        ProjectBackupResponse? previous = null;
+        StoreBackupResponse? previous = null;
         if (File.Exists(storePath))
         {
             progress.Directory = preRestore;
@@ -257,9 +257,9 @@ public static partial class ProjectBackupCommand
             throw;
         }
 
-        var restored = targets.Select(target => new ProjectBackupFile(target.Entry.Role, target.Entry.Name,
+        var restored = targets.Select(target => new StoreBackupFile(target.Entry.Role, target.Entry.Name,
             target.Destination, target.Entry.Bytes, target.Entry.Sha256)).ToList();
-        return CommandOutcome<ProjectRestoreResponse>.Success(new ProjectRestoreResponse(
+        return CommandOutcome<StoreRestoreResponse>.Success(new StoreRestoreResponse(
             storePath, directory, facts.SchemaVersion, now, restored, previous,
             moved.Count > 0 || previous is not null ? preRestore : null, moved));
     }
@@ -337,7 +337,7 @@ public static partial class ProjectBackupCommand
     }
 
     /// <summary>Whether the backup is of this project: by LibLCM project GUID, else by identity.</summary>
-    private static bool SameProject(ProjectBackupResponse receipt, ProjectLocator project)
+    private static bool SameProject(StoreBackupResponse receipt, ProjectLocator project)
     {
         var current = FwDataProjectGuid.TryRead(project.FullFwDataPath);
         if (receipt.ProjectGuid is not null && current is not null)
@@ -356,11 +356,11 @@ public static partial class ProjectBackupCommand
         public string? Directory { get; set; }
     }
 
-    private static ProjectBackupResponse WriteBackup(ProjectLocator project, string storePath, string destination,
+    private static StoreBackupResponse WriteBackup(ProjectLocator project, string storePath, string destination,
         DateTimeOffset now, Func<string, StoreFileFacts> copyStore)
     {
         Directory.CreateDirectory(destination);
-        var files = new List<ProjectBackupFile>();
+        var files = new List<StoreBackupFile>();
         var storeCopy = Path.Combine(destination, StoreName);
         var facts = copyStore(storeCopy);
         files.Add(Describe("store", StoreName, storeCopy));
@@ -382,7 +382,7 @@ public static partial class ProjectBackupCommand
                 CopyOwned("trial-export", TrialExportsPrefix + Path.GetRelativePath(trialRoot, source).Replace('\\', '/'), source);
 
         var receiptPath = Path.Combine(destination, ReceiptName);
-        var receipt = new ProjectBackupResponse(destination, receiptPath, project.FullFwDataPath,
+        var receipt = new StoreBackupResponse(destination, receiptPath, project.FullFwDataPath,
             FwDataProjectGuid.TryRead(project.FullFwDataPath), project.FieldWorksProjectIdentity, facts.SchemaVersion,
             MotifProductVersion.CurrentText, now, files, false, FwDataNote);
         // Written beside, then renamed in, so a half-written receipt is never mistaken for a finished backup.
@@ -392,22 +392,22 @@ public static partial class ProjectBackupCommand
         return receipt;
     }
 
-    private sealed record Read((string Directory, ProjectBackupResponse Receipt, List<Target> Targets) Value, Refusal? Refusal);
+    private sealed record Read((string Directory, StoreBackupResponse Receipt, List<Target> Targets) Value, Refusal? Refusal);
 
     private static Read ReadReceipt(string backupPath, ProjectLocator project, string storePath)
     {
-        Read Invalid(string why) => new(default, new Refusal(RefusalCodes.ProjectBackupInvalid, FailureReason.InvalidArgument,
-            why + " Name a folder made by 'motif project backup'.",
+        Read Invalid(string why) => new(default, new Refusal(RefusalCodes.StoreRestoreInvalid, FailureReason.InvalidArgument,
+            why + " Name a folder made by 'motif store backup'.",
             new Dictionary<string, string>(StringComparer.Ordinal) { ["backupPath"] = backupPath }));
 
         var full = Path.GetFullPath(backupPath);
         var directory = File.Exists(full) && Path.GetFileName(full) == ReceiptName ? Path.GetDirectoryName(full)! : full;
         var receiptPath = Path.Combine(directory, ReceiptName);
         if (!File.Exists(receiptPath)) return Invalid($"'{directory}' has no {ReceiptName}.");
-        ProjectBackupResponse? receipt;
+        StoreBackupResponse? receipt;
         try
         {
-            receipt = JsonSerializer.Deserialize<ProjectBackupResponse>(File.ReadAllText(receiptPath), ReceiptJson);
+            receipt = JsonSerializer.Deserialize<StoreBackupResponse>(File.ReadAllText(receiptPath), ReceiptJson);
         }
         catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -456,7 +456,7 @@ public static partial class ProjectBackupCommand
             && !segment.EndsWith('.'));
     }
 
-    private sealed record Target(ProjectBackupFile Entry, string Destination);
+    private sealed record Target(StoreBackupFile Entry, string Destination);
 
     private sealed class StagedFile(Target target, string stagedPath)
     {
@@ -477,14 +477,14 @@ public static partial class ProjectBackupCommand
     }
 
     private static CommandOutcome<T> NewerSchema<T>(int schema, ProjectLocator project, string storePath) where T : class =>
-        Refuse<T>(RefusalCodes.ProjectBackupNewerSchema, FailureReason.Refused,
+        Refuse<T>(RefusalCodes.StoreRestoreNewerSchema, FailureReason.Refused,
             $"This backup's store is at schema {schema} and this build of Motif understands {MotifSchema.CurrentSchema}. " +
             "Update Motif and restore it again; nothing was changed.", project, storePath,
             ("backupSchema", schema.ToString(CultureInfo.InvariantCulture)),
             ("supportedSchema", MotifSchema.CurrentSchema.ToString(CultureInfo.InvariantCulture)));
 
-    private static CommandOutcome<ProjectRestoreResponse> NewerSchema(int schema, ProjectLocator project, string storePath) =>
-        NewerSchema<ProjectRestoreResponse>(schema, project, storePath);
+    private static CommandOutcome<StoreRestoreResponse> NewerSchema(int schema, ProjectLocator project, string storePath) =>
+        NewerSchema<StoreRestoreResponse>(schema, project, storePath);
 
     private static CommandOutcome<T> Failed<T>(Exception exception, ProjectLocator project, string storePath, string action,
         string? savedIn = null) where T : class
@@ -516,10 +516,10 @@ public static partial class ProjectBackupCommand
         return CommandOutcome<T>.Refused(new Refusal(code, reason, message, all));
     }
 
-    private static ProjectBackupFile Describe(string role, string name, string path)
+    private static StoreBackupFile Describe(string role, string name, string path)
     {
         var (bytes, sha) = Measure(path);
-        return new ProjectBackupFile(role, name, path, bytes, sha);
+        return new StoreBackupFile(role, name, path, bytes, sha);
     }
 
     private static (long Bytes, string Sha256) Measure(string path)

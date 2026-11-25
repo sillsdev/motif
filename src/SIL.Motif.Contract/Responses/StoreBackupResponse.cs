@@ -6,7 +6,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <param name="Path">The file's full path.</param>
 /// <param name="Bytes">The file's size in bytes.</param>
 /// <param name="Sha256">The file's lowercase hexadecimal SHA-256.</param>
-public sealed record ProjectBackupFile(string Role, string Name, string Path, long Bytes, string Sha256);
+public sealed record StoreBackupFile(string Role, string Name, string Path, long Bytes, string Sha256);
 
 /// <summary>
 /// The receipt for a Motif backup. It is also the backup's <c>motif-backup.json</c>, which a restore checks every
@@ -23,8 +23,8 @@ public sealed record ProjectBackupFile(string Role, string Name, string Path, lo
 /// <param name="Files">Each backed-up file with its size and sha256.</param>
 /// <param name="FwDataIncluded">Always false: the FieldWorks project file is not part of a Motif backup.</param>
 /// <param name="FwDataNote">What to use to back up the FieldWorks project file itself.</param>
-public sealed record ProjectBackupResponse(string BackupDirectory, string ReceiptPath, string ProjectPath,
-    string? ProjectGuid, string ProjectIdentity, int SchemaVersion, string ProductVersion, DateTimeOffset CreatedUtc, IReadOnlyList<ProjectBackupFile> Files,
+public sealed record StoreBackupResponse(string BackupDirectory, string ReceiptPath, string ProjectPath,
+    string? ProjectGuid, string ProjectIdentity, int SchemaVersion, string ProductVersion, DateTimeOffset CreatedUtc, IReadOnlyList<StoreBackupFile> Files,
     bool FwDataIncluded, string FwDataNote);
 
 /// <summary>What a restore put back, and where the store it replaced was saved.</summary>
@@ -36,8 +36,8 @@ public sealed record ProjectBackupResponse(string BackupDirectory, string Receip
 /// <param name="PreRestoreBackup">The online backup of the store the restore replaced; null when there was none, or the store was too damaged to back up.</param>
 /// <param name="PreRestoreDirectory">The folder holding that backup and the files moved aside; null when nothing was moved.</param>
 /// <param name="Quarantined">Every file the restore moved out of the project, each with where it went and why.</param>
-public sealed record ProjectRestoreResponse(string StorePath, string BackupDirectory, int SchemaVersion,
-    DateTimeOffset RestoredUtc, IReadOnlyList<ProjectBackupFile> Restored, ProjectBackupResponse? PreRestoreBackup,
+public sealed record StoreRestoreResponse(string StorePath, string BackupDirectory, int SchemaVersion,
+    DateTimeOffset RestoredUtc, IReadOnlyList<StoreBackupFile> Restored, StoreBackupResponse? PreRestoreBackup,
     string? PreRestoreDirectory, IReadOnlyList<ProjectQuarantinedFile> Quarantined);
 
 /// <summary>A file a restore moved out of the project into the pre-restore folder instead of deleting or overwriting it.</summary>
