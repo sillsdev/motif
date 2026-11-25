@@ -384,6 +384,12 @@ public static class RefusalCodes
     public const string RuleNotationUnrenderable = "rule-notation.unrenderable";
     /// <summary>The page asked for is not a page number from 1.</summary>
     public const string RecordImportInvalidPage = "record-import.invalid-page";
+    /// <summary>The request names neither one record nor all records of a kind, or both, or an unusable value.</summary>
+    public const string RecordExportInvalidRequest = "record-export.invalid-request";
+    /// <summary>The project has no such record, or no record kind of that name.</summary>
+    public const string RecordExportNotFound = "record-export.not-found";
+    /// <summary>The record file cannot be written at the path given, or a file is already there.</summary>
+    public const string RecordExportOutputUnwritable = "record-export.output-unwritable";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";
     public const string ProposalRationaleFindings = "proposal.rationale-findings";
     public const string ProposalRationaleUnchecked = "proposal.rationale-unchecked";

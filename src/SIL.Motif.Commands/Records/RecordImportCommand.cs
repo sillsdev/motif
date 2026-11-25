@@ -22,7 +22,7 @@ public static partial class RecordImportCommand
     private const string DraftMode = "draft";
 
     /// <summary>The shipped overlays in the order a file's kind is looked for; each yields its own schema.</summary>
-    private static readonly Func<string>[] Overlays =
+    internal static readonly Func<string>[] Overlays =
     [
         () => ProjectRecordSchema.LexiconEntryOverlay,
         () => ProjectRecordSchema.NotebookRecordOverlay,
@@ -232,7 +232,7 @@ public static partial class RecordImportCommand
 
     /// <summary>Returns a refusal for an agent path that leaves the allowed roots.</summary>
     /// <returns>The refusal, or <see langword="null"/> when the path may be read.</returns>
-    public static Refusal? RefuseOutsideAgentRoots(string projectPath, string filePath, string workingDirectory)
+    public static Refusal? RefuseOutsideAgentRoots(string projectPath, string filePath, string workingDirectory, bool forWrite = false)
     {
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         string real;
@@ -245,19 +245,20 @@ public static partial class RecordImportCommand
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException
             or NotSupportedException)
         {
-            return Unreadable(filePath);
+            return Unreadable(filePath, forWrite);
         }
         foreach (var root in roots)
         {
             var prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
             if (real.StartsWith(prefix, comparison)) return null;
         }
-        return Unreadable(filePath);
+        return Unreadable(filePath, forWrite);
     }
 
-    private static Refusal Unreadable(string filePath) => new(RefusalCodes.RecordImportFileUnreadable,
+    private static Refusal Unreadable(string filePath, bool forWrite) => new(
+        forWrite ? RefusalCodes.RecordExportOutputUnwritable : RefusalCodes.RecordImportFileUnreadable,
         FailureReason.InvalidArgument,
-        "An agent may read a record file only under the project's folder or the working directory.",
+        "An agent may " + (forWrite ? "write" : "read") + " a record file only under the project's folder or the working directory.",
         new Dictionary<string, string> { ["file"] = Path.GetFileName(filePath) });
 
     /// <summary>The full path with every link followed, so a link in an allowed folder cannot lead out.</summary>

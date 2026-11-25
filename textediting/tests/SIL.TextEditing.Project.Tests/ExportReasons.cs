@@ -10,6 +10,7 @@ namespace SIL.TextEditing.Project.Tests
     /// <summary>Every reason the exporter gives for leaving a value out of a record file, as the text a test asserts on.</summary>
     internal static class ExportReasons
     {
+        public const string RecordNotExported = "The record could not be exported";
         public const string RecordNotWritten = "The record file could not be written";
         public const string ValueNotConverted = "The value could not be converted";
         public const string PlainFieldFormatting = "plain text; the string's formatting is not exported";
@@ -92,8 +93,8 @@ namespace SIL.TextEditing.Project.Tests
             // Each place that reports a value names its reason once; a new place needs a new entry in ExportReasons.
             int sites = 0;
             for (int at = source.IndexOf("new UnexportedValue(", StringComparison.Ordinal); at >= 0; at = source.IndexOf("new UnexportedValue(", at + 1, StringComparison.Ordinal)) sites++;
-            Assert.True(sites == 8, "a new UnexportedValue site needs a reason in ExportReasons and a test or NotProduced entry; found " + sites);
-            Assert.True(ExportReasons.All().Count == 14, "ExportReasons changed; update this count with the reason that moved");
+            Assert.True(sites == 9, "a new UnexportedValue site needs a reason in ExportReasons and a test or NotProduced entry; found " + sites);
+            Assert.True(ExportReasons.All().Count == 15, "ExportReasons changed; update this count with the reason that moved");
         }
     }
 }
