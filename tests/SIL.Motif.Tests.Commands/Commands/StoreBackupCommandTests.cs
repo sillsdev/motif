@@ -290,8 +290,11 @@ public sealed class StoreBackupCommandTests : IDisposable
         var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
-        Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-wal")));
-        Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-shm")));
+        if (SidecarsSurviveTheHolder)
+        {
+            Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-wal")));
+            Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-shm")));
+        }
         Assert.Equal(["kept", "later"], Markers(Backed(result.Value!, "store.sqlite")));
         Assert.False(File.Exists(Store + "-wal"));
         Assert.Equal(["kept"], Markers(Store));
@@ -532,7 +535,19 @@ public sealed class StoreBackupCommandTests : IDisposable
         command.Parameters.AddWithValue("$marker", marker);
         command.ExecuteNonQuery();
         Assert.True(new FileInfo(Store + "-wal").Length > 0, "the committed row must be only in the WAL");
+        // Windows cannot rename a file another handle holds open, so a restore refuses (and puts everything
+        // back) while the holder lives. Close it there: the row is then folded into the store, and no sidecar
+        // is left to move.
+        if (OperatingSystem.IsWindows())
+        {
+            _walHolder.Dispose();
+            _walHolder = null;
+            SqliteConnection.ClearAllPools();
+        }
     }
+
+    /// <summary>True where a connection can stay open across the restore's renames, so the WAL and shm remain to be moved.</summary>
+    private static bool SidecarsSurviveTheHolder => !OperatingSystem.IsWindows();
 
     private StoreBackupResponse BackupThenDiverge()
     {
@@ -575,7 +590,8 @@ public sealed class StoreBackupCommandTests : IDisposable
             case "sidecars-moved":
                 // The WAL is aside and its committed row is in the live store: the checkpoint ran first.
                 Assert.False(File.Exists(Store + "-wal"));
-                Assert.True(File.Exists(Path.Combine(moved.Single(), "moved", "store.sqlite-wal")));
+                if (SidecarsSurviveTheHolder)
+                    Assert.True(File.Exists(Path.Combine(moved.Single(), "moved", "store.sqlite-wal")));
                 Assert.Equal(["kept", "later"], Markers(Store));
                 Assert.Equal(["ok"], Scalars(Store, "PRAGMA integrity_check;"));
                 break;
