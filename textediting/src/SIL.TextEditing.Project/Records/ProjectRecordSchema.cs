@@ -26,6 +26,9 @@ namespace SIL.TextEditing.Project
         /// <summary>The shipped XML overlay for possibility-list items.</summary>
         public static string ListItemOverlay => Overlay("ListItem");
 
+        /// <summary>The shipped XML overlay for phonological rules.</summary>
+        public static string PhonologicalRuleOverlay => Overlay("PhonologicalRule");
+
         static string Overlay(string name)
         {
             using var stream = typeof(ProjectRecordSchema).Assembly.GetManifestResourceStream("SIL.TextEditing.Project.Records." + name + ".xml")
@@ -247,7 +250,7 @@ namespace SIL.TextEditing.Project
             bool isRich = t == CellarPropertyType.String || t == CellarPropertyType.MultiString;
             bool paragraph = t == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "StText";
             bool featureStructure = t == CellarPropertyType.OwningAtomic && m.GetDstClsName(field) == "FsFeatStruc" && notation == FeatureStructureNotation.Name;
-            bool ruleFormula = t == CellarPropertyType.OwningSequence && notation == RuleNotation.Name
+            bool ruleFormula = (t == CellarPropertyType.OwningSequence || t == CellarPropertyType.OwningAtomic) && notation == RuleNotation.Name
                 && RuleNotation.TryFieldOf(m.GetOwnClsName(field), m.GetFieldName(field), out _);
             if (notation != null && !isText && !isRich && !featureStructure && !ruleFormula)
                 throw new ArgumentException("Notation requires a string field or an owned feature structure: " + key);

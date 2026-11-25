@@ -32,7 +32,7 @@ namespace SIL.TextEditing.Project
     /// has the <c>/objects</c> path, so a link to it is never taken for a missing one. It only reads.</summary>
     public sealed class ProjectPathResolver : IProjectPathResolver
     {
-        const string Lexicon = "lexicon", Lists = "lists";
+        const string Lexicon = "lexicon", Lists = "lists", Grammar = "grammar", PhonologicalRules = "phonological-rules";
         readonly LcmCache _cache;
 
         public ProjectPathResolver(LcmCache cache) => _cache = cache ?? throw new ArgumentNullException(nameof(cache));
@@ -57,6 +57,10 @@ namespace SIL.TextEditing.Project
                     var name = EntryName(entry);
                     return name.Length == 0 ? ProjectPath.ForObject(guid)
                         : new ProjectPath(new[] { new ProjectPathSegment(Lexicon), new ProjectPathSegment(name, entry.HomographNumber > 0 ? entry.HomographNumber : (int?)null) });
+                case IPhSegmentRule rule:
+                    var ruleName = RuleName(rule);
+                    return ruleName.Length == 0 ? ProjectPath.ForObject(guid)
+                        : new ProjectPath(new[] { new ProjectPathSegment(Grammar), new ProjectPathSegment(PhonologicalRules), new ProjectPathSegment(ruleName) });
                 case ICmPossibilityList list:
                     return Text(list.Name).Length == 0 ? ProjectPath.ForObject(guid) : new ProjectPath(Lists, Text(list.Name));
                 case ICmPossibility possibility:
@@ -109,6 +113,12 @@ namespace SIL.TextEditing.Project
                 foreach (var entry in _cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances())
                     if (Fits(segments[1], EntryName(entry), entry.HomographNumber > 0 ? entry.HomographNumber : (int?)null, entry.Guid)) found.Add(entry.Guid);
             }
+            else if (segments.Count == 3 && segments[0].Name == Grammar && segments[1].Name == PhonologicalRules)
+            {
+                var rules = _cache.LangProject.PhonologicalDataOA?.PhonRulesOS ?? Enumerable.Empty<IPhSegmentRule>();
+                foreach (var rule in rules)
+                    if (Fits(segments[2], RuleName(rule), null, rule.Guid)) found.Add(rule.Guid);
+            }
             else if (segments.Count >= 2 && segments[0].Name == Lists)
             {
                 foreach (var list in _cache.ServiceLocator.GetInstance<ICmPossibilityListRepository>().AllInstances())
@@ -131,6 +141,16 @@ namespace SIL.TextEditing.Project
         static bool Fits(ProjectPathSegment segment, string name, int? homograph, Guid guid) =>
             new ProjectPathSegment(segment.Name, segment.Homograph).Equals(new ProjectPathSegment(name, homograph))
             && (segment.GuidSuffix == null || guid.ToString("N").StartsWith(segment.GuidSuffix, StringComparison.OrdinalIgnoreCase));
+
+        string RuleName(IPhSegmentRule rule)
+        {
+            foreach (var ws in new[] { _cache.DefaultAnalWs }.Concat(rule.Name.AvailableWritingSystemIds))
+            {
+                var value = rule.Name.get_String(ws).Text;
+                if (!string.IsNullOrEmpty(value)) return value!;
+            }
+            return string.Empty;
+        }
 
         string EntryName(ILexEntry entry)
         {

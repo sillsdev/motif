@@ -381,7 +381,7 @@ text is the one key that does it. Clearing `input` or `output` is not offered ei
   takes alpha pairs only (`[Obs voi:α]`); a deliberate extension, as FieldWorks does not show a named class's constraints.
 - **Canonical form.** `render(parse(x))` is the canonical text of `x`: single spaces, features sorted, letters in constraint order, `∞`, `(x)`. The one
   non-injective case is a one-member group or sequence, which reads as its bare member. A context that is absent is the empty text and has no key.
-- **Not written.** A field that cannot be shown is unexported with `rule-notation.unrenderable` and the others still write: a metathesis rule's description, a
+- **Not written.** A field that cannot be shown is unexported with `rule-notation.unrenderable` and the others still write: a metathesis rule's structural description, a
   context that is not in the project's context list in a form the notation has, a sequence with no member, two constraints on one feature, more than 24 letters, a
   copy whose content is not in the process's input, a class with a constraint in an affix field.
 - **Codes.** `rule-notation.syntax`, `rule-notation.bad-repeat`, `rule-notation.unknown-phoneme`, `rule-notation.unknown-natural-class`,
@@ -390,6 +390,58 @@ text is the one key that does it. Clearing `input` or `output` is not offered ei
 - **Examples.** An affix process `m a $1` (prefix `ma-`), input `[C] *` with output `$1 u m $2` (infix), input `<[C] [V]> *` with output `$1 $1 $2`
   (reduplication), output `$1~[voi:+] $2` (voice the first consonant); a rule context `# [C]{1,3} (a) [V]`, a change `[voi:α]` with a right context
   `[cons:+ voi:α]` (assimilation), and `[cons:+ voi:-α]` (dissimilation).
+
+## Phonological rule files
+
+The kind `grammar/phonological-rule` (`ProjectRecordSchema.PhonologicalRuleOverlay`) has one file for each rule in the project's rule list. Its root is
+`PhSegmentRule` with its concrete subclasses, so `record-data` names `class:` as `PhRegularRule` or `PhMetathesisRule`. A rule's path is
+`/grammar/phonological-rules/<name>`, the rule's best analysis name; two rules with one name, and a rule with no name, take the GUID suffix as other kinds do
+(`/grammar/phonological-rules/Dup(1c7b3a5f)`, `/grammar/phonological-rules/<guid>`). A path is not the identity of the rule: `guid:` is. Rule order is the
+meaning of the list, so `ProjectRecordExporter.ExportAll` returns these files in the order of the project's rule list and not in path order, and no file holds
+the order: a reorder is the typed command, and a typed-in `order` key is refused as an unknown field.
+
+```markdown
+---
+fwmd: 1
+record: "grammar/phonological-rule"
+schema: "https://software.sil.org/textediting/schemas/phonological-rule-v1.json"
+analysis: "en"
+vernacular: "xyz"
+record-data:
+  guid: "0b6a2f4e-1c3d-4e5f-8a9b-0c1d2e3f4a5b"
+  class: "PhRegularRule"
+  name:
+    en: "Intervocalic voicing"
+  description:
+    en: |-
+      Voiceless stops voice between vowels.
+  direction: 1
+  disabled: false
+  struc-desc: "[cons:+ son:- voi:-]"
+  right-hand-sides:
+    - guid: "1c7b3a5f-2d4e-4f6a-9b0c-1d2e3f4a5b6c"
+      struc-change: "[voi:+]"
+      left-context: "[V]"
+      right-context: "[V]"
+---
+```
+
+- **What an import writes.** `name`, `description`, `direction` (a whole number) and `disabled` (true when the rule is switched off), and on each right-hand side
+  `input-poses`, `req-rule-feats` and `excl-rule-feats` (links to the categories and rule properties the right-hand side requires or excludes). Each is a typed
+  operation, as a lexicon scalar is. The same holds for a metathesis rule's `name` and `description`.
+  Each is a shape FieldWorks's own rule editor makes (Motif ADR 0003), in `MorphologyParts.xml` of the FieldWorks Configuration folder: `name` and `description` are the
+  `PhSegmentRule-Detail-NameAllA` and `PhSegmentRule-Detail-DescriptionAllA` multistring slices, `disabled` is the "Active" checkbox
+  (`PhSegmentRule-Detail-Active`, toggled), `direction` is the `PhSegmentRule-Detail-Direction` combo box over `LeftToRightIterative`, `RightToLeftIterative` and `Simultaneous`,
+  and `input-poses`, `req-rule-feats` and `excl-rule-feats` are the `PhSegRuleRHS-Detail-RequiredPOSes`, `-RequiredRuleFeats` and `-ExcludedRuleFeats` vector reference slices
+  (`defaultVectorReference`, as `VectorReferenceLauncher` adds and removes a link). A metathesis rule takes the same `PhSegmentRule` parts.
+- **What an import refuses.** `struc-desc`, `struc-change`, `left-context` and `right-context` are shown in [rule-formula notation](#rule-formula-notation) and a
+  change to one is refused with `rule-notation.read-only`, and its siblings in the same file with it. A rule with several right-hand sides shows each of them,
+  and adding or removing one in the file is refused (`CreateNotWritable`, `DeleteNotWritable`): they are made by the typed composers.
+- **Not in the file.** A rule's strata, its feature constraints (the alpha letters of the formula stand for them), its order and the name and description of
+  its member contexts. A metathesis rule's structural description and change are not text: they are reported unexported with `rule-notation.unrenderable`
+  and are written by the typed `compose-author-metathesis-rule`.
+- **A new rule** is not a file: rules are created and deleted by `compose-author-phonological-rule` and `compose-delete-phonological-rule`, and a file whose
+  `guid:` is not a rule of the project is refused whole (`UnknownRecord`).
 
 ## Block features
 

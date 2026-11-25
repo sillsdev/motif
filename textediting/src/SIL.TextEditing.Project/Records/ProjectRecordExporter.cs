@@ -93,6 +93,7 @@ namespace SIL.TextEditing.Project
     /// the project. The caller owns the cache and serializes access to it.</summary>
     public sealed class ProjectRecordExporter
     {
+        const string RuleKind = "grammar/phonological-rule";
         const string Plumbing = "|Self|Owner|OwningFlid|OwnOrd|Guid|ClassID|ShortNameTSS|";
 
         readonly LcmCache _cache;
@@ -149,8 +150,8 @@ namespace SIL.TextEditing.Project
         }
 
         /// <summary>Exports every root object of the kind, ordered by project path and then GUID. A list item is a root when it is a top-level item of its list:
-        /// its sub-items are inside its record. A notebook record is a root when it is not a sub-record.</summary>
-        /// <exception cref="NotSupportedException">The kind is not one of <c>lexicon/entry</c>, <c>notebook/record</c> and <c>lists/item</c>.</exception>
+        /// its sub-items are inside its record. A notebook record is a root when it is not a sub-record. The files of <c>grammar/phonological-rule</c> are in the order of the project's rule list, not path order.</summary>
+        /// <exception cref="NotSupportedException">The kind is not one of <c>lexicon/entry</c>, <c>notebook/record</c>, <c>lists/item</c> and <c>grammar/phonological-rule</c>.</exception>
         public IReadOnlyList<ProjectRecordExport> ExportAll(string kind)
         {
             var found = Schema.Kind(kind ?? throw new ArgumentNullException(nameof(kind))) ?? throw new ArgumentException("The schema has no record kind " + kind + ".", nameof(kind));
@@ -168,6 +169,10 @@ namespace SIL.TextEditing.Project
                     foreach (var list in _cache.ServiceLocator.GetInstance<ICmPossibilityListRepository>().AllInstances())
                         roots.AddRange(list.PossibilitiesOS.Cast<ICmObject>());
                     break;
+                case RuleKind:
+                    var phonology = _cache.LangProject.PhonologicalDataOA;
+                    if (phonology != null) roots.AddRange(phonology.PhonRulesOS.Cast<ICmObject>());
+                    break;
                 default:
                     throw new NotSupportedException("Exporting every root of " + found.Name + " is not supported; export objects by GUID.");
             }
@@ -178,6 +183,8 @@ namespace SIL.TextEditing.Project
             var shared = new HashSet<string>(exports.GroupBy(e => e.Path, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key), StringComparer.Ordinal);
             if (shared.Count > 0)
                 exports = exports.Select(e => shared.Contains(e.Path) ? e.WithPath(WithGuidSuffix(e.Path, e.Guid)) : e).ToList();
+            // Rule order is the meaning of the list, so the rule files stay in the order the project holds them.
+            if (found.Name == RuleKind) return exports;
             return exports.OrderBy(e => e.Path, StringComparer.Ordinal).ThenBy(e => e.Guid).ToList();
         }
 
@@ -271,6 +278,9 @@ namespace SIL.TextEditing.Project
                         ? listPath.Segments[1].Name : owner?.Guid.ToString("D") ?? "unowned";
                     return new ProjectPath("lists", list, root.Guid.ToString("D")).ToString();
                 }
+                case RuleKind:
+                    return _paths.PathOf(root.Guid) is { } rulePath && rulePath.Segments.Count == 3 && rulePath.Segments[0].Name == "grammar"
+                        ? rulePath.ToString() : new ProjectPath(new[] { new ProjectPathSegment("grammar"), new ProjectPathSegment("phonological-rules"), new ProjectPathSegment(root.Guid.ToString("D")) }).ToString();
                 default:
                     throw new NotSupportedException("No path convention for " + kind.Name + ".");
             }
@@ -319,12 +329,12 @@ namespace SIL.TextEditing.Project
             {
                 case RecordFieldKind.Text:
                 case RecordFieldKind.Notation:
-                    if (type == CellarPropertyType.OwningAtomic)
+                    if (type == CellarPropertyType.OwningAtomic && field.Notation == FeatureStructureNotation.Name)
                     {
                         int held = _data.get_ObjectProp(hvo, flid);
                         return held == 0 ? null : new RecordScalar(FeatureStructureNotation.Render((IFsFeatStruc)Hvo(held), _cache));
                     }
-                    if (type == CellarPropertyType.OwningSequence)
+                    if (type == CellarPropertyType.OwningSequence || type == CellarPropertyType.OwningAtomic)
                     {
                         if (!RuleNotation.TryFieldOf(_metadata.GetOwnClsName(flid), _metadata.GetFieldName(flid), out var ruleField))
                             throw new NotSupportedException("No rule-formula field is bound to " + _metadata.GetFieldName(flid) + ".");

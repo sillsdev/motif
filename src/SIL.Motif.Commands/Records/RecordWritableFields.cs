@@ -48,9 +48,9 @@ public sealed class RecordWritableFields : IWritableFields
                     var structure = IsFeatureStructure(field) || IsRuleFormula(field);
                     var handlerVerb = structure ? (verb == RecordWriteVerb.Set ? RecordWriteVerb.AddObject : RecordWriteVerb.RemoveObject)
                         : verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb;
-                    var candidates = (binding.IsCustom
+                    var candidates = (IsTypedOnlyMembership(binding.DeclaringClass, binding.Field) ? Array.Empty<Candidate>() : (binding.IsCustom
                         ? catalog[(CustomFieldOperationKinds.DeclaringClass, CustomFieldCatalog.TypeOf(field) ?? "", handlerVerb)]
-                        : parts || (IsRuleFormula(field) && verb == RecordWriteVerb.Clear) ? [] : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)]).ToArray();
+                        : parts || (IsRuleFormula(field) && verb == RecordWriteVerb.Clear) ? [] : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)])).ToArray();
                     var formula = owned && verb is RecordWriteVerb.Set or RecordWriteVerb.AddReference or RecordWriteVerb.RemoveReference or RecordWriteVerb.InsertReference
                         ? catalog[(binding.DeclaringClass, binding.Field, handlerVerb)].ToArray() : [];
                     entries.Add((type.Name, field.Name, verb), new FieldEntry(type.Name, field, structure ? handlerVerb : verb, candidates, refusal,
@@ -86,6 +86,9 @@ public sealed class RecordWritableFields : IWritableFields
     /// <summary>Whether the field is rule-formula text; its set and clear are the creates and deletes of the owned objects it describes.</summary>
     internal static bool IsRuleFormula(RecordField field) =>
         field is { Kind: RecordFieldKind.Notation, Notation: SIL.TextEditing.Project.RuleNotation.Name };
+
+    /// <summary>A list of owned objects the file shows but never adds to or removes from; the typed composers do (a rule's right-hand sides).</summary>
+    internal static bool IsTypedOnlyMembership(string declaringClass, string field) => (declaringClass, field) is ("PhRegularRule", "RightHandSides");
 
     // The parts key reaches only a member's own fields.
     internal static bool IsRuleParts(RecordObjectType type, RecordField field, ProjectRecordSchemaResult schema) =>
