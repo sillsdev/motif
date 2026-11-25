@@ -325,6 +325,12 @@ public abstract record PanGlossRequest
 
         public override string Subcommand => "parse";
 
+        /// <summary>
+        /// A parse that stops at the work limit exits 1 ("parse incomplete: capped") yet still writes the trace that names
+        /// the stop. Accepting the exit lets <see cref="Finish"/> read it; with no trace file the run is still refused.
+        /// </summary>
+        internal override bool AcceptsNonzeroExit(string standardOutput) => WorkLimit is not null;
+
         internal override void Validate()
         {
             if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));

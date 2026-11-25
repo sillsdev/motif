@@ -58,4 +58,11 @@ public sealed class ProjectWorkLimitTests
 
         Assert.DoesNotContain("--work-cap", start.ArgumentList);
     }
+
+    [Fact]
+    public void ACappedParseExitIsReadWhenALimitWasPassedAndRefusedWhenNoneWas()
+    {
+        Assert.True(new PanGlossRequest.RejectionTrace("g.fwdata", "word", 3) { WorkLimit = Project }.AcceptsNonzeroExit(""));
+        Assert.False(new PanGlossRequest.RejectionTrace("g.fwdata", "word", 3).AcceptsNonzeroExit(""));
+    }
 }
