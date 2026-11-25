@@ -360,6 +360,8 @@ public static class RefusalCodes
     public const string RecordImportCreateShape = "record-import.create-shape";
     /// <summary>A new record's file sets a field FieldWorks computes for it.</summary>
     public const string RecordImportCreateComputedField = "record-import.create-computed-field";
+    /// <summary>A new notebook record's file sets a field only Motif's judgment commands write.</summary>
+    public const string RecordImportCreateReservedField = "record-import.create-reserved-field";
     /// <summary>The feature-structure text is not a bracketed list of feature:value pairs.</summary>
     public const string FsNotationSyntax = "fs-notation.syntax";
     /// <summary>The feature-structure text names a feature the project's feature system does not have.</summary>

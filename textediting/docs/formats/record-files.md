@@ -699,6 +699,7 @@ Refusals the importer adds to the differ's (`RecordRefusalKind`):
 | `DeleteHasIncomingReferences` | An object left out of a whole file, or one it owns, is referred to by an object outside it. | The change |
 | `FieldNotWritable`, `CreateNotWritable`, `DeleteNotWritable` | The host's `WritableFields` says no. Skipped when none is given. | The change |
 | `CreateComputedField` | A create sets a field FieldWorks computes for a new record. | Whole file |
+| `CreateReservedField` | A new notebook record sets `MotifJudgmentId` or `MotifJudgmentData`, which only the judgment commands write. | Whole file |
 | `GuidInUse` | A new object's GUID is already an object of the project. | The change |
 | `DependsOnRefusedChange` | A change is placed after an added object whose change was refused. | The change |
 | `ExportFailed` | The project's record could not be written as a file to compare with. | Whole file |
