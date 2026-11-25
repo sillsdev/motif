@@ -342,7 +342,7 @@ public static class RefusalCodes
 
     /// <summary>Staging was asked for, but the file lowers to no operation, so no Draft was made.</summary>
     public const string RecordImportNothingToStage = "record-import.nothing-to-stage";
-    /// <summary>The file would create a record, and a record file cannot create this kind (a list item, a phonological rule), or it can plan the create but cannot yet lower it to operations.</summary>
+    /// <summary>The file would create a record, and a record file cannot create this kind (a list item, a phonological rule), or it plans the create but no operation makes it (a complex form, a notebook record).</summary>
     public const string RecordImportCreateKindNotCreatable = "record-import.create-kind-not-creatable";
     /// <summary>A new record must be a whole file, but the file's root: names part of a record.</summary>
     public const string RecordImportCreatePartial = "record-import.create-partial";

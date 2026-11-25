@@ -28,13 +28,13 @@ public sealed class RecordCreateEntryTests(PristineProjectFixture pristine) : ID
         catch (IOException) { }
     }
 
-    private sealed record Seed(string Project, Guid Main, Guid Variant, Guid VariantType);
+    private sealed record Seed(string Project, Guid Main, Guid Variant, Guid VariantType, Guid Complex);
 
     private Seed Seeded()
     {
         Directory.CreateDirectory(_folder);
         using var cache = pristine.NewScratch();
-        Guid main = default, variant = default, type = default;
+        Guid main = default, variant = default, type = default, complex = default;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             var services = cache.ServiceLocator;
@@ -63,9 +63,33 @@ public sealed class RecordCreateEntryTests(PristineProjectFixture pristine) : ID
             type = kind.Guid;
             variant = entry.CreateVariantEntryAndBackRef(kind, TsStringUtils.MakeString("zzvar", cache.DefaultVernWs))
                 .OwnerOfClass<ILexEntry>().Guid;
+            lexDb.ComplexEntryTypesOA ??= services.GetInstance<ICmPossibilityListFactory>().Create();
+            var compound = services.GetInstance<ILexEntryTypeFactory>().Create();
+            lexDb.ComplexEntryTypesOA.PossibilitiesOS.Add(compound);
+            compound.Name.set_String(cache.DefaultAnalWs, "zzcompound");
+            compound.Abbreviation.set_String(cache.DefaultAnalWs, "zzc");
+            var other = services.GetInstance<ILexEntryFactory>().Create();
+            complex = other.Guid;
+            var otherForm = services.GetInstance<IMoStemAllomorphFactory>().Create();
+            other.LexemeFormOA = otherForm;
+            otherForm.MorphTypeRA = form.MorphTypeRA;
+            otherForm.Form.set_String(cache.DefaultVernWs, "zzcomp");
+            var otherMsa = services.GetInstance<IMoStemMsaFactory>().Create();
+            other.MorphoSyntaxAnalysesOC.Add(otherMsa);
+            otherMsa.PartOfSpeechRA = pos;
+            var otherSense = services.GetInstance<ILexSenseFactory>().Create();
+            other.SensesOS.Add(otherSense);
+            otherSense.MorphoSyntaxAnalysisRA = otherMsa;
+            otherSense.Gloss.set_String(cache.DefaultAnalWs, "zzcompgloss");
+            var link = services.GetInstance<ILexEntryRefFactory>().Create();
+            other.EntryRefsOS.Add(link);
+            link.RefType = LexEntryRefTags.krtComplexForm;
+            link.ComplexEntryTypesRS.Add(compound);
+            link.ComponentLexemesRS.Add(entry);
+            link.PrimaryLexemesRS.Add(entry);
         });
         new FwDataProjectLoader().Save(cache);
-        return new(cache.ProjectId.Path, main, variant, type);
+        return new(cache.ProjectId.Path, main, variant, type, complex);
     }
 
     private static (ProjectRecordSchemaResult Schema, RecordDocument Document) Exported(LcmCache cache, Guid entry)
@@ -134,4 +158,125 @@ public sealed class RecordCreateEntryTests(PristineProjectFixture pristine) : ID
 
     [Fact]
     public void AVariantEntryIsStagedAppliedAndReadsBackAsTheFile() => RoundTrips(seed => seed.Variant);
+
+    private static RecordObject Form(RecordDocument d) => (RecordObject)d.Data["lexeme-form"]!;
+
+    private static RecordObject Sense(RecordDocument d) => (RecordObject)((RecordList)d.Data["senses"]!).Items[0];
+
+    private static RecordObject Msa(RecordDocument d) => (RecordObject)((RecordList)d.Data["morpho-syntax-analyses"]!).Items[0];
+
+    private static RecordObject Ref(RecordDocument d) => (RecordObject)((RecordList)d.Data["entry-refs"]!).Items[0];
+
+    public static TheoryData<string> Shapes() => new()
+    {
+        "no-form", "no-morph-type", "no-form-text", "no-sense", "no-gloss", "no-sense-msa", "no-msa-category",
+        "variant-with-sense", "variant-no-type", "variant-no-component", "variant-two-components"
+    };
+
+    private static Action<RecordDocument> Break(string shape) => shape switch
+    {
+        "no-form" => d => d.Data["lexeme-form"] = null,
+        "no-morph-type" => d => Form(d)["morph-type"] = null,
+        "no-form-text" => d => Form(d)["form"] = null,
+        "no-sense" => d => d.Data["senses"] = null,
+        "no-gloss" => d => Sense(d)["gloss"] = null,
+        "no-sense-msa" => d => Sense(d)["morpho-syntax-analysis"] = null,
+        "no-msa-category" => d => Msa(d)["part-of-speech"] = null,
+        "variant-with-sense" => d =>
+        {
+            var sense = new RecordObject { Guid = Guid.NewGuid() };
+            sense["gloss"] = new RecordAlternatives().Add("en", new RecordScalar("zzextra"));
+            d.Data["senses"] = new RecordList().Add(sense);
+        },
+        "variant-no-type" => d => Ref(d)["variant-entry-types"] = null,
+        "variant-no-component" => d => Ref(d)["component-lexemes"] = null,
+        "variant-two-components" => d =>
+        {
+            var components = (RecordList)Ref(d)["component-lexemes"]!;
+            components.Add(components.Items[0]);
+        },
+        _ => _ => { },
+    };
+
+    [Theory]
+    [MemberData(nameof(Shapes))]
+    public void ACreateThatIsNotTheShapeFieldWorksMakesIsRefusedWholeAndMakesNoDraft(string shape)
+    {
+        var seed = Seeded();
+        var variant = shape.StartsWith("variant", StringComparison.Ordinal);
+        var file = NewFile(seed, variant ? seed.Variant : seed.Main, Break(shape));
+
+        var outcome = RecordImportCommand.Run(new(seed.Project, file, DraftName));
+
+        Assert.False(outcome.Succeeded, shape);
+        Assert.Equal(RefusalCodes.RecordImportCreateShape, outcome.Refusal!.Code);
+        Assert.Contains("FieldWorks", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(0, ProposalCommands.List(new(seed.Project, Version)).Value?.Proposals.Count ?? 0);
+        Assert.Equal(RefusalCodes.RecordImportCreateShape, RecordImportCommand.Run(new(seed.Project, file)).Refusal!.Code);
+    }
+
+    [Fact]
+    public void AComplexFormIsRefusedWholeBecauseNoOperationCreatesItsLink()
+    {
+        var seed = Seeded();
+        var file = NewFile(seed, seed.Complex);
+
+        var outcome = RecordImportCommand.Run(new(seed.Project, file, DraftName));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(RefusalCodes.RecordImportCreateKindNotCreatable, outcome.Refusal!.Code);
+        Assert.Equal(0, ProposalCommands.List(new(seed.Project, Version)).Value?.Proposals.Count ?? 0);
+    }
+
+    [Fact]
+    public void ADryRunReportsTheHomographNumbersTheNewEntryChanges()
+    {
+        var seed = Seeded();
+        var file = NewFile(seed, seed.Main);
+        Assert.True(RecordImportCommand.Run(new(seed.Project, file, DraftName)).Succeeded);
+        DraftRationale.Author(seed.Project, DraftName, "Create an entry", "The record file describes a new entry.");
+        var finalized = ProposalCommands.Finalize(new(seed.Project, Version, DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+
+        var dryRun = DryRunJobRunner.Run(seed.Project, Version, finalized.Value!.ProposalId);
+
+        Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
+        var previews = dryRun.Value!.Effects.Where(effect => effect.Preview is not null).Select(effect => effect.Preview!.Value.GetRawText()).ToList();
+        var numbers = Assert.Single(previews, text => text.Contains("homographNumbers", StringComparison.Ordinal));
+        Assert.Contains("\"isThisEntry\":true", numbers, StringComparison.Ordinal);
+        Assert.Contains("\"isThisEntry\":false", numbers, StringComparison.Ordinal);
+        Assert.Contains("existing entry", numbers, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnOwnedObjectWhoseGuidTheProjectHasRefusesTheWholeCreate()
+    {
+        var seed = Seeded();
+        Guid taken;
+        using (var cache = new FwDataProjectLoader().LoadCache(seed.Project))
+            taken = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(seed.Main).SensesOS[0].Guid;
+        var file = NewFile(seed, seed.Main);
+        var text = File.ReadAllText(file);
+        var schema = Exported(new FwDataProjectLoader().LoadCache(seed.Project), seed.Main);
+        var read = RecordFileReader.Read(text, schema.Schema.Schema, default);
+        File.WriteAllText(file, text.Replace(Sense(read.Document!).Guid!.Value.ToString("D"), taken.ToString("D"), StringComparison.OrdinalIgnoreCase));
+
+        var outcome = RecordImportCommand.Run(new(seed.Project, file, DraftName));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(RefusalCodes.RecordImportCreateShape, outcome.Refusal!.Code);
+        Assert.Contains("GuidInUse", outcome.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AComputedFieldOnACreateIsRefusedWholeAsComputed()
+    {
+        var seed = Seeded();
+        var file = NewFile(seed, seed.Main, document => document.Data["head-word"] = new RecordScalar("zzword"));
+
+        var outcome = RecordImportCommand.Run(new(seed.Project, file, DraftName));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(RefusalCodes.RecordImportCreateComputedField, outcome.Refusal!.Code);
+    }
 }
