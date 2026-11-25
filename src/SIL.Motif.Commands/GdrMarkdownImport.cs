@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using SIL.Motif.Contract.Gdr;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.RichText;
@@ -64,8 +65,9 @@ public static class GdrMarkdownImport
             }
             if (value == field.Body) continue;
             var form = new FieldWorksMarkdownSourceForm(GdrMarkdownOptions.For(field.Response, projectName));
+            var expanded = GuideInterlinear.Expand(value);
             var lifted = field.Inline ? ((string Markdown, IReadOnlyList<GdrQueryBlockMarkdown.Lifted> Blocks, IReadOnlyList<string> Warnings))
-                (value, [], []) : GdrQueryBlockMarkdown.LiftMarkdown(value);
+                (expanded, [], []) : GdrQueryBlockMarkdown.LiftMarkdown(expanded);
             var read = form.Read(lifted.Markdown, field.Inline);
             warnings.AddRange(lifted.Warnings.Select(item => $"{field.Name}: {item}"));
             errors.AddRange(read.Diagnostics.Where(item => item.Severity == DiagnosticSeverity.Error)
