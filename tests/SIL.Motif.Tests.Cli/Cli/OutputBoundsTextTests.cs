@@ -84,7 +84,7 @@ public sealed class OutputBoundsTextTests
     }
 
     [Fact]
-    public void ABatchReportIsBoundedInTextAndJsonAndNamesTheNextStep()
+    public void ABatchReportIsBoundedInTextAndCompleteInJson()
     {
         var batch = new ComposedBatchResponse("d",
             Enumerable.Range(0, 2093).Select(i => new ComposedIntentResult(i, "compose-author-phoneme", "composer",
@@ -94,11 +94,11 @@ public sealed class OutputBoundsTextTests
         var json = ProposalCommandRenderer.Render(CommandOutcome<ComposedBatchResponse>.Success(batch), asJson: true).Output;
 
         Assert.Contains("Composed 2093 intent(s) against draft 'd': 2093 operation(s) added.", text, StringComparison.Ordinal);
-        Assert.Contains("motif show d --project <fwdata> --offset 0", text, StringComparison.Ordinal);
+        Assert.Contains("motif show d --project <fwdata> --all", text, StringComparison.Ordinal);
         Assert.Contains("Draft now has 2093 operation(s).", text, StringComparison.Ordinal);
         Assert.True(text.Length < 2 * TwoKilobytes, text.Length.ToString());
-        Assert.True(json.Length < 8 * TwoKilobytes, json.Length.ToString());
-        Assert.Contains("\"intentTotal\":2093", json.Replace(" ", ""), StringComparison.Ordinal);
+        Assert.Equal(2093, System.Text.Json.Nodes.JsonNode.Parse(json)!["intents"]!.AsArray().Count);
+        Assert.DoesNotContain("intentTotal", json, StringComparison.Ordinal);
     }
 
     [Fact]

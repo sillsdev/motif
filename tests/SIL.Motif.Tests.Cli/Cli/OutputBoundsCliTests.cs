@@ -132,16 +132,23 @@ public sealed class OutputBoundsCliTests : IDisposable
 
         Assert.True(batch.ExitCode == 0, batch.Error + batch.Output);
         var report = JsonNode.Parse(batch.Output)!;
-        var added = report["operationsAdded"]!.GetValue<int>();
+        var added = report["operationCount"]!.GetValue<int>();
         Assert.True(added > 25);
-        Assert.Equal(40, report["intentTotal"]!.GetValue<int>());
-        Assert.Equal(25, report["intents"]!.AsArray().Sum(intent => intent!["operations"]!.AsArray().Count));
-        Assert.Contains("motif show d", report["nextStep"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Equal(40, report["intents"]!.AsArray().Count);
+        Assert.Equal(added, report["intents"]!.AsArray().Sum(intent => intent!["operations"]!.AsArray().Count));
+        Assert.Null(report["nextStep"]);
         Assert.Equal(added, report["operationCount"]!.GetValue<int>());
 
-        var first = JsonNode.Parse(Run("show", "d", "--project", _project, "--json").Output)!;
+        var whole = JsonNode.Parse(Run("show", "d", "--project", _project, "--json").Output)!;
+        Assert.Equal(added, whole["operations"]!.AsArray().Count);
+        Assert.Equal(added, whole["operationTotal"]!.GetValue<int>());
+        Assert.Null(whole["operationsTruncated"]);
+        Assert.Null(whole["nextOffset"]);
+
+        var first = JsonNode.Parse(Run("show", "d", "--project", _project, "--limit", "10", "--json").Output)!;
         Assert.Equal(10, first["operations"]!.AsArray().Count);
         Assert.Equal(added, first["operationTotal"]!.GetValue<int>());
+        Assert.True(first["operationsTruncated"]!.GetValue<bool>());
         Assert.Equal(10, first["nextOffset"]!.GetValue<int>());
 
         var seen = new List<string>();
@@ -153,13 +160,14 @@ public sealed class OutputBoundsCliTests : IDisposable
         }
 
         var every = JsonNode.Parse(Run("show", "d", "--project", _project, "--all", "--json").Output)!;
-        Assert.Null(every["operationTotal"]);
+        Assert.Equal(added, every["operationTotal"]!.GetValue<int>());
         Assert.Null(every["nextOffset"]);
         Assert.Equal(every["operations"]!.AsArray().Select(op => op!["operationId"]!.GetValue<string>()), seen);
+        Assert.Equal(whole["operations"]!.AsArray().Select(op => op!["operationId"]!.GetValue<string>()), seen);
 
         var text = Run("show", "d", "--project", _project);
         Assert.Contains($"operations (showing 1-10 of {added})", text.Output, StringComparison.Ordinal);
-        Assert.Contains("more operations: motif show d --project " + _project + " --offset 10 --limit 10, or --all for every operation",
+        Assert.Contains("more operations: motif show d --project " + _project + " --offset 10 --limit 10, or --all or --json for every operation",
             text.Output, StringComparison.Ordinal);
     }
 

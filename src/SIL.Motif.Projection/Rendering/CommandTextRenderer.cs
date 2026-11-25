@@ -109,7 +109,7 @@ public static class CommandTextRenderer
         }
         if (projection.NextOffset is { } nextOperation)
             sb.AppendLine("  more operations: " + (projection.NextStep ?? $"--offset {nextOperation} --limit {projection.Operations.Count}") +
-                ", or --all for every operation");
+                ", or --all or --json for every operation");
         if (projection.CurrentUnavailable is not null)
             sb.AppendLine($"  currentUnavailable:  {projection.CurrentUnavailable}");
         if (projection.AppliedRecord is { } applied)

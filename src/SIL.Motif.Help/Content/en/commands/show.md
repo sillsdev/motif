@@ -10,4 +10,6 @@ An Applied Proposal also carries `appliedRecord`, read from what Apply saved and
 
 ## Output size
 
-`show` returns the first 10 operations. The report names `operationTotal`, `operationOffset` and, when more remain, `nextOffset`; the text ends with the `--offset` that reads the next page. `--limit <1-200>` sets the page size, `--offset <n>` or `--page <N>` picks the page, and `--all` returns every operation (MCP `all: true`). An offset past the last operation gives an empty page that still names the total. An offset or limit outside that range is refused with `paging.invalid`.
+In JSON (`--json`, and every MCP `motif_proposals` read) `show` returns every operation, so a reader never gets a silent cut; `operationTotal` is the number of operations the Proposal holds, to check the list against. In text, `show` prints the first 10 operations and ends with the `--offset` that reads the next page, or `--all` or `--json` for every operation. `--limit <1-200>` sets the page size, `--offset <n>` or `--page <N>` picks the page (MCP `offset` and `limit`); in JSON a page like that carries `operationsTruncated: true` when it cuts, with `operationTotal`, `operationOffset` and, when more remain, `nextOffset`. An offset past the last operation gives an empty page that still names the total. An offset or limit outside that range is refused with `paging.invalid`.
+
+`compose-batch --json` and the MCP `motif_compose_batch` and compose-steps tools likewise list every operation of every intent; the text report lists the first 25 and says how to read the rest.

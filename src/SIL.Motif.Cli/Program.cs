@@ -920,7 +920,9 @@ try
             result = RenderProposal(
                 ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0],
                     flags.ContainsKey("current"))).Map(detail => showWindow.All
-                    ? detail : detail.Window(showWindow.Offset, showWindow.Limit).WithNextStep(
+                    ? (asJson ? detail.WithTotal() : detail)
+                    : asJson && !flags.ContainsKey("offset") && !flags.ContainsKey("limit") && !flags.ContainsKey("page")
+                    ? detail.WithTotal() : detail.Window(showWindow.Offset, showWindow.Limit).WithNextStep(
                         next => PagingFlags.NextCommand("show", positionals, flags, next, showWindow.Limit))));
             break;
 

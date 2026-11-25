@@ -1199,8 +1199,14 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             }).ToArray()));
         Assert.True(batched.GetProperty("ok").GetBoolean(), batched.ToString());
 
-        var first = (await session.CallAsync("motif_proposals", ("proposal", proposalId))).GetProperty("result");
+        var whole = (await session.CallAsync("motif_proposals", ("proposal", proposalId))).GetProperty("result");
+        Assert.Equal(whole.GetProperty("operationTotal").GetInt32(), whole.GetProperty("operations").GetArrayLength());
+        Assert.True(whole.GetProperty("operations").GetArrayLength() >= 14);
+        Assert.False(whole.TryGetProperty("operationsTruncated", out _));
+
+        var first = (await session.CallAsync("motif_proposals", ("proposal", proposalId), ("limit", 10))).GetProperty("result");
         Assert.Equal(10, first.GetProperty("operations").GetArrayLength());
+        Assert.True(first.GetProperty("operationsTruncated").GetBoolean());
         Assert.True(first.GetProperty("operationTotal").GetInt32() >= 14);
         Assert.Equal(10, first.GetProperty("nextOffset").GetInt32());
 
@@ -1239,7 +1245,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public async Task ComposingManyIntentsReturnsOneBoundedSummary()
+    public async Task ComposingManyIntentsReturnsEveryIntent()
     {
         using var project = new WalkthroughProject(pristine);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
@@ -1251,8 +1257,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
                 verb = "compose-author-phoneme", intent = new { name = "Bk" + i, representations = new[] { "bk" + i } },
             }).ToArray()))).GetProperty("result");
 
-        Assert.True(batched.GetProperty("intents").GetArrayLength() <= 25);
-        Assert.Equal(40, batched.GetProperty("intentTotal").GetInt32());
+        Assert.Equal(40, batched.GetProperty("intents").GetArrayLength());
+        Assert.False(batched.TryGetProperty("intentTotal", out _));
         Assert.True(batched.GetProperty("operationCount").GetInt32() >= 40);
     }
 

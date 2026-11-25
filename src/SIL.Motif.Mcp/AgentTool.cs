@@ -123,6 +123,9 @@ internal sealed class ToolArgs
         throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be an integer.");
     }
 
+    /// <summary>Whether the caller named a page (<c>offset</c> or <c>limit</c>) and has not asked for <c>all</c>.</summary>
+    public bool HasPaging => !Flag("all") && (_arguments.ContainsKey("offset") || _arguments.ContainsKey("limit"));
+
     /// <summary>
     /// <paramref name="whole"/> when <c>all</c> is set, otherwise the page <paramref name="window"/> cuts from the
     /// <c>offset</c> and <c>limit</c> arguments, refusing a window outside the range every paged read accepts.

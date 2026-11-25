@@ -112,7 +112,7 @@ public sealed record ComposedBatchResponse(
             Intents = kept, IntentTotal = Intents.Count, OperationsAdded = added,
             NextStep = $"Listed {kept.Sum(intent => intent.Operations.Count)} of {added} operations in {kept.Count} of " +
                 $"{Intents.Count} intents. Read the rest with: " +
-                $"motif show {DraftName} --project <fwdata> --offset 0 --limit {ResultPaging.HeavyRowLimit}",
+                $"motif show {DraftName} --project <fwdata> --all, or repeat this command with --json for every operation.",
         };
     }
 }

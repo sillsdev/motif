@@ -164,6 +164,10 @@ public sealed record ProposalDetailProjection(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? OperationTotal { get; init; }
 
+    /// <summary>True when <see cref="Operations"/> is a cut of a longer list (an explicit page was asked for); null when it lists every operation.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? OperationsTruncated { get; init; }
+
     /// <summary>How many operations precede this page; null when <see cref="Operations"/> is not a page.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? OperationOffset { get; init; }
@@ -180,6 +184,9 @@ public sealed record ProposalDetailProjection(
     public ProposalDetailProjection WithNextStep(System.Func<int, string> step) =>
         NextOffset is { } next ? this with { NextStep = step(next) } : this;
 
+    /// <summary>Every operation, with <see cref="OperationTotal"/> set so a reader can check the list against the count.</summary>
+    public ProposalDetailProjection WithTotal() => this with { OperationTotal = Operations.Count };
+
     /// <summary>One page of the operations, with the total and the offset that starts the next page.</summary>
     public ProposalDetailProjection Window(int offset, int limit)
     {
@@ -187,6 +194,7 @@ public sealed record ProposalDetailProjection(
         return this with
         {
             Operations = page, OperationTotal = Operations.Count, OperationOffset = offset,
+            OperationsTruncated = page.Count < Operations.Count ? true : null,
             NextOffset = ResultPaging.NextOffset(offset, page.Count, Operations.Count),
         };
     }

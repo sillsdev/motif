@@ -34,7 +34,7 @@ public static class ProposalCommandRenderer
 
     private static CommandResult RenderSuccess<T>(T value, bool asJson, bool includeEffects) where T : class
     {
-        if (value is ComposedBatchResponse batch) value = (T)(object)batch.Bounded();
+        if (!asJson && value is ComposedBatchResponse batch) value = (T)(object)batch.Bounded();
         if (asJson)
             return new CommandResult(0, ProjectionJson.Serialize(value) + Environment.NewLine);
 

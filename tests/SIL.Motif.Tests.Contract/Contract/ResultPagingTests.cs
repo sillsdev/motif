@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -68,6 +69,23 @@ public sealed class ResultPagingTests
         Assert.Null(detail.Window(20, 10).NextOffset);
         Assert.Equal(3, detail.Window(20, 10).Operations.Count);
         Assert.Null(detail.OperationTotal);
+    }
+
+    [Fact]
+    public void AProposalOfMoreThanTenOperationsIsCompleteInJsonAndCutOnlyWhenAPageIsAsked()
+    {
+        var operations = Enumerable.Range(0, 23).Select(i =>
+            new ProposalOperationView("op" + i, "lexical/lexSense/setGloss", null, null, [], null)).ToArray();
+        var detail = new ProposalDetailProjection("proposal/one", "draft", "label", null, null, operations);
+
+        var whole = JsonNode.Parse(ProjectionJson.Serialize(detail.WithTotal()))!;
+        Assert.Equal(23, whole["operations"]!.AsArray().Count);
+        Assert.Equal(23, whole["operationTotal"]!.GetValue<int>());
+        Assert.Null(whole["operationsTruncated"]);
+
+        var cut = JsonNode.Parse(ProjectionJson.Serialize(detail.Window(0, 10)))!;
+        Assert.Equal(10, cut["operations"]!.AsArray().Count);
+        Assert.True(cut["operationsTruncated"]!.GetValue<bool>());
     }
 
     [Fact]
@@ -205,7 +223,7 @@ public sealed class ResultPagingTests
         Assert.Equal(400, bounded.IntentTotal);
         Assert.Equal(2000, bounded.OperationsAdded);
         Assert.Equal(2000, bounded.OperationCount);
-        Assert.Contains("motif show d --project <fwdata> --offset 0", bounded.NextStep, StringComparison.Ordinal);
+        Assert.Contains("motif show d --project <fwdata> --all", bounded.NextStep, StringComparison.Ordinal);
         Assert.All(bounded.Intents.Where(intent => intent.Operations.Count < 5), intent => Assert.Equal(5, intent.OperationTotal));
         Assert.Equal(400, batch.Intents.Count);
     }
