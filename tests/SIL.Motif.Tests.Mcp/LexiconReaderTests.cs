@@ -383,6 +383,24 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
     }
 
     [Fact]
+    public void APatternThatBacktracksPastTheTimeoutIsRefusedNotHung()
+    {
+        Fill();
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var entry = _cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+            var lexeme = _cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = lexeme;
+            lexeme.Form.set_String(_cache.DefaultVernWs, new string('a', 40) + "b");
+        });
+        var outcome = SIL.Motif.Commands.Queries.LexiconFindCommand.ReadPage(_cache,
+            new LexiconFilter(FormRegex: "^(a+)+$"), 10, 0, detailed: false);
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("lexicon-find.invalid-request", outcome.Refusal!.Code);
+        Assert.Contains("seconds", outcome.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AMalformedPatternIsRefusedBeforeAnyReadHappens()
     {
         Assert.NotNull(LexiconFilter.RegexProblem("("));
