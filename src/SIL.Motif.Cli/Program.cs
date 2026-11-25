@@ -563,7 +563,8 @@ try
             if (!File.Exists(batchFile))
                 return Usage($"The --intents file '{batchFile}' does not exist.", asJson);
             result = RenderProposal(ProposalCommands.ComposeBatch(new ComposeBatchRequest(
-                batchProject, CliProductVersion(), batchDraft, File.ReadAllText(batchFile))));
+                batchProject, CliProductVersion(), batchDraft, File.ReadAllText(batchFile),
+                Path.GetDirectoryName(Path.GetFullPath(batchFile)))));
             break;
 
         case "compose":
@@ -4193,7 +4194,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
             else
             {
                 var value = tokens[++i];
-                var joins = name is "assessment" or "expect" or "job" or "with" || (name == "corpus" && joinRepeatedCorpus);
+                var joins = name is "assessment" or "expect" or "job" or "with" or "twin" || (name == "corpus" && joinRepeatedCorpus);
                 flags[name] = joins && flags.TryGetValue(name, out var previous)
                     ? previous + "\n" + value
                     : value;

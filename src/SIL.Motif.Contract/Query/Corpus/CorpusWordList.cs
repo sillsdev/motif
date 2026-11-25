@@ -228,7 +228,8 @@ public sealed class CorpusWordList
     private static bool IsWordRune(Rune rune) => Rune.IsLetter(rune) || Rune.GetUnicodeCategory(rune) is
         UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark;
 
-    private static string Normalize(string form, bool foldCase)
+    /// <summary>A form as the corpus holds it: NFC, and lower-cased with <paramref name="foldCase"/>.</summary>
+    public static string Normalize(string form, bool foldCase)
     {
         var nfc = form.Normalize(NormalizationForm.FormC);
         return foldCase ? nfc.ToLowerInvariant().Normalize(NormalizationForm.FormC) : nfc;

@@ -94,11 +94,28 @@ public sealed class QueryTextRoundTripTests
     }
 
     [Theory]
-    [InlineData("morph(sfx:-an)")]
-    public void ReservedKindsInTextAreRefusedAsNotYetAvailable(string text)
+    [InlineData("morph(sfx:-an)", "morph(sfx:-an)")]
+    [InlineData("seq(root:fanya, CAUS, RECP)", "seq(root:fanya, CAUS, RECP)")]
+    [InlineData("seq(a, b, adjacent=true)", "seq(a, b, adjacent=true)")]
+    [InlineData("not seq(a, \"b c\") and form ~ x", "not seq(a, \"b c\") and form ~ x")]
+    public void MorphAndSeqTextParsesAndPrintsCanonically(string text, string printed)
+    {
+        var expr = QueryExprText.Parse(text);
+        Assert.Equal(printed, QueryExprText.Print(expr));
+        Assert.Equal(printed, QueryExprText.Print(QueryExprText.Parse(QueryExprText.Print(expr))));
+    }
+
+    [Theory]
+    [InlineData("seq(a)")]
+    [InlineData("seq()")]
+    [InlineData("seq(a, b, adjacent=true, c)")]
+    [InlineData("morph(a, b)")]
+    [InlineData("morph()")]
+    [InlineData("seq(a b)")]
+    public void MalformedMorphAndSeqTextIsInvalid(string text)
     {
         Assert.False(QueryExprText.TryParse(text, out _, out var refusal));
-        Assert.Equal(RefusalCodes.QueryNotYetAvailable, refusal.Code);
+        Assert.Equal(RefusalCodes.QueryDocumentInvalid, refusal.Code);
     }
 
     [Theory]
@@ -252,9 +269,8 @@ public sealed class QueryTextRoundTripTests
     }
 
     [Fact]
-    public void AReservedKindInASelectorIsRefusedAsNotYetAvailable()
+    public void AMorphInASelectorParsesAndIsRefusedOnlyWhereItRuns()
     {
-        Assert.False(QueryRunLine.TryParse("motif query forms --where \"morph(sfx:-an)\"", out _, out var refusal));
-        Assert.Equal(RefusalCodes.QueryNotYetAvailable, refusal.Code);
+        Assert.True(QueryRunLine.TryParse("motif query forms --where \"morph(sfx:-an)\"", out _, out var refusal), refusal?.Message);
     }
 }

@@ -338,6 +338,12 @@ internal static class QueryDocumentJson
                 return ReadRealizes(inner, path + ".realizes");
             case "only-via":
                 return ReadOnlyVia(inner, path + ".only-via");
+            case "morph":
+                if (inner is not JsonValue || inner.GetValueKind() != JsonValueKind.String || string.IsNullOrWhiteSpace(inner.GetValue<string>()))
+                    throw QueryRefusalException.DocumentInvalid("morph is an item string such as entry:<guid>, root:<form> or CAUS.", path + ".morph");
+                return new QueryMorphIs(inner.GetValue<string>().Trim());
+            case "seq":
+                return ReadSeq(inner, path + ".seq");
             case "env":
                 if (inner is not JsonValue || inner.GetValueKind() != JsonValueKind.String)
                     throw QueryRefusalException.DocumentInvalid("env is an environment string, <target> / <left> _ <right>.", path + ".env");
@@ -348,6 +354,23 @@ internal static class QueryDocumentJson
                 if (QueryOps.Reserved.Contains(key)) return new QueryReserved(key, inner?.ToJsonString() ?? "null");
                 throw QueryRefusalException.DocumentInvalid($"'{key}' is not an expression kind.", path);
         }
+    }
+
+    private static QueryMorphSeq ReadSeq(JsonNode? node, string path)
+    {
+        const string shape = "seq is {items: [<item>, <item>, ...], adjacent?: bool}: at least two items, each a string as for morph.";
+        if (node is not JsonObject body) throw QueryRefusalException.DocumentInvalid(shape, path);
+        Known(body, ["items", "adjacent"], path);
+        if (body["items"] is not JsonArray array || array.Count < 2 ||
+            array.Any(item => item is null || item.GetValueKind() != JsonValueKind.String || string.IsNullOrWhiteSpace(item.GetValue<string>())))
+            throw QueryRefusalException.DocumentInvalid(shape, path + ".items");
+        var adjacent = false;
+        if (body["adjacent"] is { } flag)
+        {
+            if (flag.GetValueKind() is not (JsonValueKind.True or JsonValueKind.False)) throw QueryRefusalException.DocumentInvalid("adjacent is true or false.", path + ".adjacent");
+            adjacent = flag.GetValue<bool>();
+        }
+        return new QueryMorphSeq([.. array.Select(item => item!.GetValue<string>().Trim())], adjacent);
     }
 
     private static QueryOnlyVia ReadOnlyVia(JsonNode? node, string path)
@@ -405,6 +428,13 @@ internal static class QueryDocumentJson
         QueryReserved reserved => new JsonObject { [reserved.Kind] = JsonNode.Parse(reserved.Body) },
         QueryRealizes realizes => new JsonObject { ["realizes"] = new JsonObject { ["morpheme"] = realizes.Morpheme, ["tier"] = realizes.Tier } },
         QueryOnlyVia via => new JsonObject { ["only-via"] = new JsonObject { [via.Kind] = via.Id } },
+        QueryMorphIs morph => new JsonObject { ["morph"] = morph.Item },
+        QueryMorphSeq seq => new JsonObject
+        {
+            ["seq"] = seq.Adjacent
+                ? new JsonObject { ["items"] = new JsonArray([.. seq.Items.Select(item => (JsonNode?)JsonValue.Create(item))]), ["adjacent"] = true }
+                : new JsonObject { ["items"] = new JsonArray([.. seq.Items.Select(item => (JsonNode?)JsonValue.Create(item))]) },
+        },
         QueryPhon phon => new JsonObject { ["phon"] = phon.Pattern },
         QueryEnv env => new JsonObject { ["env"] = env.Environment },
         QueryField field => WriteField(field),

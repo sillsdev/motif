@@ -87,17 +87,32 @@ public sealed class QueryDocumentTests
     }
 
     [Theory]
-    [InlineData("morph", "{\"and\":[]}")]
-    [InlineData("seq", "[]")]
-    public void ReservedKindsParseAndRefuseWhenRun(string kind, string body)
+    [InlineData("{\"morph\":\"CAUS\"}", "morph(CAUS)")]
+    [InlineData("{\"seq\":{\"items\":[\"root:fanya\",\"CAUS\"]}}", "seq(root:fanya, CAUS)")]
+    [InlineData("{\"seq\":{\"items\":[\"a\",\"b\",\"c\"],\"adjacent\":true}}", "seq(a, b, c, adjacent=true)")]
+    public void MorphAndSeqDocumentsRoundTripAndPrintAsTextAndAreRefusedOnASourceWithNoParse(string body, string text)
     {
-        var json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"and\":[" + Field("kind", "eq", "\"variant\"") +
-                   ",{\"" + kind + "\":" + body + "}]}}";
+        var json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"and\":[" + Field("kind", "eq", "\"variant\"") + "," + body + "]}}";
         var document = Parse(json);
         Assert.Equal(json, document.ToJson());
-        var error = Assert.Throws<QueryRefusalException>(() => document.ToRecord());
+        Assert.Equal("kind is variant and " + text, QueryExprText.Print(document.ToRecord().Filter!));
+        var error = Assert.Throws<QueryRefusalException>(() => FormQuery.Run(document.ToRecord(), Rows, []));
         Assert.Equal(RefusalCodes.QueryNotYetAvailable, error.Refusal.Code);
-        Assert.Equal(kind, error.Refusal.Facts["kind"]);
+    }
+
+    [Theory]
+    [InlineData("{\"morph\":\"\"}")]
+    [InlineData("{\"morph\":3}")]
+    [InlineData("{\"seq\":{\"items\":[\"a\"]}}")]
+    [InlineData("{\"seq\":{\"items\":[\"a\",\"\"]}}")]
+    [InlineData("{\"seq\":{\"items\":[\"a\",\"b\"],\"adjacent\":\"yes\"}}")]
+    [InlineData("{\"seq\":{\"items\":[\"a\",\"b\"],\"extra\":1}}")]
+    [InlineData("{\"seq\":[\"a\",\"b\"]}")]
+    public void MalformedMorphAndSeqDocumentsAreInvalid(string body)
+    {
+        var json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":" + body + "}";
+        Assert.False(QueryDocument.TryParse(json, out _, out var refusal));
+        Assert.Equal(RefusalCodes.QueryDocumentInvalid, refusal!.Code);
     }
 
     [Fact]

@@ -30,6 +30,11 @@ internal sealed class MorphCatalog
     /// <summary>Whether the project has an entry with this id.</summary>
     public bool HasEntry(string entry) => _entries.Contains(entry);
 
+    /// <summary>Every analysis of an entry; null when the project has no such entry.</summary>
+    public IReadOnlyList<string>? MsasOf(string entry) => HasEntry(entry)
+        ? [.. _byMsa.Where(pair => string.Equals(pair.Value.Entry, entry, StringComparison.OrdinalIgnoreCase)).Select(pair => pair.Key).Order(StringComparer.Ordinal)]
+        : null;
+
     /// <summary>Builds a catalog from a catalog of analyses; a test supplies its own.</summary>
     internal static MorphCatalog From(IEnumerable<(string Msa, string Entry, string Kind)> rows) =>
         From(rows.Select(row => (row.Msa, row.Entry, row.Kind, (string?)null)));
@@ -69,7 +74,7 @@ internal sealed class MorphCatalog
     /// Opens the project and reads its catalog. The project is the one named, else the grammar when it is a FieldWorks project file;
     /// null when neither is, or the project cannot be opened.
     /// </summary>
-    public static MorphCatalog? TryLoad(string? projectPath, string? grammarPath, out string? failure)
+    public static MorphCatalog? TryLoad(string? projectPath, string? grammarPath, out string? failure, Action<LcmCache>? alsoRead = null)
     {
         failure = null;
         var path = !string.IsNullOrWhiteSpace(projectPath) ? projectPath
@@ -78,9 +83,10 @@ internal sealed class MorphCatalog
         try
         {
             using var read = BaselineReadCache.Open(path);
+            alsoRead?.Invoke(read.Cache);
             return FromProject(read.Cache);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not (OperationCanceledException or QueryRefusalException))
         {
             failure = $"The project '{path}' could not be opened to name the morphs' entries: {exception.Message}";
             return null;
@@ -116,7 +122,10 @@ internal sealed class ParsedReadings(RealizesParseIndex index, MorphCatalog? cat
     /// <summary>Whether morphs carry entry ids and classes.</summary>
     public bool HasCatalog => catalog is not null;
 
-    public WordReadings? Get(string word) => _cache.GetOrAdd(word, key => Index.Get(key) is { } indexed ? Convert(indexed) : null);
+    /// <summary>The parse of the twin forms the corpus lacks, which answers for them; null when there are none.</summary>
+    public ParsedReadings? Extra { get; set; }
+
+    public WordReadings? Get(string word) => _cache.GetOrAdd(word, key => Index.Get(key) is { } indexed ? Convert(indexed) : null) ?? Extra?.Get(word);
 
     private WordReadings Convert(IndexedWord indexed)
     {

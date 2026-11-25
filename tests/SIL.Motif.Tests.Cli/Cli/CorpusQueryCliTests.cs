@@ -162,6 +162,33 @@ public sealed class CorpusQueryCliTests : IDisposable
     }
 
     [Fact]
+    public void MorphSeqCountByAdjacentAndByMorphAreAcceptedAndNeedAGrammarOrARealizes()
+    {
+        var seq = Run("query", "--corpus", Words(), "forms", "where", "seq(a, b)", "--adjacent");
+        Assert.NotEqual(0, seq.Code);
+        Assert.Contains("Pass --grammar", seq.Output + seq.Error);
+        var count = Run("query", "--corpus", Words(), "forms", "--count-by", "morph-seq", "--json");
+        Assert.Contains("query.readings-needs-grammar", count.Output + count.Error);
+        var byMorph = Run("query", "--corpus", Words(), "forms", "where", "form ~ a", "--by-morph", "--json");
+        Assert.Contains("query.corpus-invalid", byMorph.Output + byMorph.Error);
+        var other = Run("query", "--corpus", Words(), "forms", "--count-by", "other", "--json");
+        Assert.Contains("query.corpus-invalid", other.Output + other.Error);
+    }
+
+    [Fact]
+    public void RepeatedTwinTemplatesRewriteTheMatchesAndAMissingGroupIsRefused()
+    {
+        var twin = Run("query", "--corpus", Words(), "forms", "where", "form ~ \"^(ba)h\"", "--twin", "${1}X", "--twin", "$1Y", "--json");
+        Assert.Equal(0, twin.Code);
+        Assert.Contains("baX", twin.Output, StringComparison.Ordinal);
+        Assert.Contains("baY", twin.Output, StringComparison.Ordinal);
+        Assert.Contains("twin2", twin.Output, StringComparison.Ordinal);
+        var missing = Run("query", "--corpus", Words(), "forms", "where", "form ~ \"^(ba)h\"", "--twin", "$2", "--json");
+        Assert.NotEqual(0, missing.Code);
+        Assert.Contains("query.twin-group-unknown", missing.Output + missing.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ForceIsASwitchSoItMayComeBeforeWhereOrLast()
     {
         var file = Path.Combine(_folder, "force.txt");

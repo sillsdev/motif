@@ -1414,7 +1414,10 @@ internal static class AgentTools
         var itemBranches = new JsonArray(supportedIntents.Select(pair => (JsonNode)Schema.Object(
             ("verb", Schema.String("Composing verb for this intent.", pair.Verb), true),
             ("intent", pair.Schema.DeepClone().AsObject(), true),
-            ("citation", citation.DeepClone().AsObject(), false))).ToArray());
+            ("citation", citation.DeepClone().AsObject(), false),
+            ("forEach", Schema.Object(("targets", Schema.Array("Ids or forms; the entry becomes one intent per target, " +
+                "with {target}, {target.id} and {target.form} replaced in its strings.", Schema.String("An id or a form.")), true)),
+                false))).ToArray());
         var item = new JsonObject
         {
             ["type"] = "object",
