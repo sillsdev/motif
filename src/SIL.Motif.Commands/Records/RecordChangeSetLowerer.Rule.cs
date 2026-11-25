@@ -207,7 +207,7 @@ public sealed partial class RecordChangeSetLowerer
             _ => "PhSequenceContext",
         };
 
-        /// <summary>Refuses a context that an object outside the rule refers to, and a deleted one that holds a name or description.</summary>
+        /// <summary>Stops on a shared context, or a deleted one that holds a name or description.</summary>
         private void Guard((int Index, RecordChange Change) item, IPhPhonContext context, HashSet<Guid> tree, bool deleting)
         {
             foreach (var part in Descendants(context))
@@ -231,7 +231,7 @@ public sealed partial class RecordChangeSetLowerer
                 owned ? PhonologicalRuleDeleteOperationKinds.DeleteContexts : AffixProcessMemberDeleteOperationKinds.DeleteContext,
                 CanonicalId.FromGuid(context.Guid), new { }), item.Index);
 
-        /// <summary>Deletes a pooled context once nothing else refers to it; LCM deletes what a context owns or repeats along with it.</summary>
+        /// <summary>Deletes a pooled context nothing else refers to; its repeated context goes with it.</summary>
         private void DeletePooled((int Index, RecordChange Change) item, string role, IPhPhonContext context, ICmObject referrer)
         {
             if (context.Owner != cache.LangProject.PhonologicalDataOA || context.ReferringObjects.Any(user => user != referrer))
@@ -340,7 +340,7 @@ public sealed partial class RecordChangeSetLowerer
             Add(Operation(Id($"{role}:bounds"), PhIterationContextBoundsOperationKinds.SetBounds, iteration,
                 new { minimum = repeat.Minimum, maximum = repeat.Maximum }), item.Index);
 
-        /// <summary>A pooled member of a sequence: a simple context, or a repeat with its own pooled simple context.</summary>
+        /// <summary>A pooled sequence member: a simple context or a repeat.</summary>
         private CanonicalId CreatePooled((int Index, RecordChange Change) item, string role, int k, RuleNode node, ClassResolver classes)
         {
             if (node is not RuleRepeat repeat)
@@ -376,7 +376,7 @@ public sealed partial class RecordChangeSetLowerer
                 DeletePooled(item, role, held, iteration);
         }
 
-        /// <summary>Aligns a sequence's members by position, deleting only the pooled contexts a dropped member leaves unused.</summary>
+        /// <summary>Aligns a sequence's members by position and drops only unused pooled contexts.</summary>
         private void Members((int Index, RecordChange Change) item, string role, IPhSequenceContext sequence, IReadOnlyList<RuleNode> nodes,
             HashSet<Guid> tree, ClassResolver classes)
         {
