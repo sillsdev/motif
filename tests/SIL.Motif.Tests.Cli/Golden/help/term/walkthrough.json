@@ -1,0 +1,9 @@
+{
+  "kind": "term",
+  "code": "walkthrough",
+  "slug": "walkthrough",
+  "title": "A tested window guide",
+  "description": "A Walkthrough is a script that tests the real Motif window using fixed data and produces screenshots at marked steps. It can also render a short, silent clip.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/terms/walkthrough/"
+}

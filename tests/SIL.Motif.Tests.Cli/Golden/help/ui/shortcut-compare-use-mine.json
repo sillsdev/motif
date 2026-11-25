@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-compare-use-mine",
+  "slug": "shortcut-compare-use-mine",
+  "title": "Use Mine",
+  "description": "Use your version of the focused change.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-compare-use-mine/"
+}

@@ -32,13 +32,6 @@ public sealed partial class MotifDatabase
         return CopyOnline(fullPath, destination);
     }
 
-    /// <summary>
-    /// Copies a store the caller already holds exclusively, as <see cref="BackUpExisting"/> copies one it shares,
-    /// without taking a lease the caller's own exclusive lease would refuse.
-    /// </summary>
-    public static StoreFileFacts BackUpHeldExclusively(string path, string destination) =>
-        CopyOnline(Path.GetFullPath(path), destination);
-
     /// <summary>Reads a store file's application id and schema, refusing a file that is not a Motif store.</summary>
     /// <exception cref="InvalidDataException">The file is not a Motif store, or is corrupt.</exception>
     public static StoreFileFacts ReadStoreFileFacts(string path)
@@ -77,6 +70,40 @@ public sealed partial class MotifDatabase
                 command.ExecuteNonQuery();
             }
             return facts;
+        }
+        catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
+        {
+            throw new InvalidDataException("The Motif database is corrupt or is not a database.", exception);
+        }
+        catch (SqliteException exception)
+        {
+            throw new IOException("The Motif database is unavailable.", exception);
+        }
+    }
+
+    /// <summary>
+    /// Folds the store's WAL into the main file and empties it, for a caller that holds the store exclusively, so the main
+    /// file alone holds every committed transaction. A hot rollback journal is recovered by opening the store.
+    /// </summary>
+    /// <exception cref="IOException">The checkpoint could not finish (the store stayed busy, or log frames were left).</exception>
+    /// <exception cref="InvalidDataException">The file is not a readable Motif store.</exception>
+    public static void CheckpointHeldExclusively(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        try
+        {
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = fullPath, Mode = SqliteOpenMode.ReadWrite, Pooling = false, DefaultTimeout = 30,
+            }.ToString());
+            connection.Open();
+            Inspect(connection);
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+            using var reader = command.ExecuteReader();
+            // Columns: busy, log frames, checkpointed frames; the last two are -1 outside WAL mode.
+            if (reader.Read() && (reader.GetInt64(0) != 0 || reader.GetInt64(1) > 0))
+                throw new IOException("The store's write-ahead log could not be fully checkpointed.");
         }
         catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
         {

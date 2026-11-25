@@ -33,11 +33,10 @@ public sealed record StoreBackupResponse(string BackupDirectory, string ReceiptP
 /// <param name="SchemaVersion">The restored store's schema version.</param>
 /// <param name="RestoredUtc">When the swap completed.</param>
 /// <param name="Restored">The files put in place, each verified against the backup's receipt.</param>
-/// <param name="PreRestoreBackup">The online backup of the store the restore replaced; null when there was none, or the store was too damaged to back up.</param>
-/// <param name="PreRestoreDirectory">The folder holding that backup and the files moved aside; null when nothing was moved.</param>
+/// <param name="PreRestoreDirectory">The folder whose <c>moved</c> subfolder holds the store the restore replaced (with its sidecars) and every other file moved aside; null when nothing was moved.</param>
 /// <param name="Quarantined">Every file the restore moved out of the project, each with where it went and why.</param>
 public sealed record StoreRestoreResponse(string StorePath, string BackupDirectory, int SchemaVersion,
-    DateTimeOffset RestoredUtc, IReadOnlyList<StoreBackupFile> Restored, StoreBackupResponse? PreRestoreBackup,
+    DateTimeOffset RestoredUtc, IReadOnlyList<StoreBackupFile> Restored,
     string? PreRestoreDirectory, IReadOnlyList<ProjectQuarantinedFile> Quarantined);
 
 /// <summary>A file a restore moved out of the project into the pre-restore folder instead of deleting or overwriting it.</summary>

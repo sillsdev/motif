@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-keep-all-like-this",
+  "slug": "shortcut-keep-all-like-this",
+  "title": "Keep This Analysis at Every Eligible Place",
+  "description": "Keep the same analysis at every eligible place with this reading.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-keep-all-like-this/"
+}

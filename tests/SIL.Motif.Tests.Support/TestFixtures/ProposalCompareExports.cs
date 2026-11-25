@@ -26,6 +26,16 @@ public static class ProposalCompareExports
         public IReadOnlyList<ReadingSignature>? AfterSignatures { get; init; }
     }
 
+    /// <summary>Records the project's current Baseline as the one <see cref="AddTrial"/> measures with the same fill.</summary>
+    public static void RecordCurrentBaseline(MotifDatabase database, ProjectLocator project, char fill = 'a')
+    {
+        var digest = BaselineDigest(fill);
+        new SIL.Motif.Worker.Baselines.BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
+            new SIL.Motif.Worker.Baselines.BaselinePublication(Path.GetTempPath(), Path.Combine(Path.GetTempPath(), "baseline.zip"),
+                new SIL.Motif.Contract.Baselines.BaselineToken("project", digest, "test", "2026-01-01T00:00:00Z", digest)),
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, TestTextWords.Empty);
+    }
+
     public static string BaselineDigest(char fill) => "sha256:" + new string(fill, 64);
 
     public static string ReadingId(int number) => Signature(number).Id;

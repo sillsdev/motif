@@ -1,0 +1,9 @@
+{
+  "kind": "guide",
+  "code": "learn/allomorphs-and-environments",
+  "slug": "learn/allomorphs-and-environments",
+  "title": "Allomorphs and environments",
+  "description": "One meaningful piece can have more than one form. Those forms are allomorphs. The conditions that choose between them are their environments: the sounds or features around a form that make it fit.",
+  "helpPage": "# Allomorphs and environments\n\nOne meaningful piece can have more than one form. Those forms are **allomorphs**. The conditions that choose between them are their **environments**: the sounds or features around a form that make it fit.\n\nTurkish vowel harmony is a useful real-language example. The plural suffix has the forms *-lar* and *-ler*. In the standard pattern, *-lar* follows a stem with a back last vowel, as in *okullar* (\u201Cschools\u201D), and *-ler* follows a stem with a front last vowel, as in *evler* (\u201Chouses\u201D). The forms belong to the same plural pattern; the stem\u2019s vowel helps select which one fits.\n\nA **natural class** groups sounds by a shared property, such as \u201Cfront vowels\u201D or \u201Cvoiceless consonants.\u201D Instead of writing a separate environment for every vowel, a grammar can use a natural class when the same condition applies to that group. This can make a rule clearer and easier to check.\n\nWhen the parser builds the stem but cannot use the expected affix form, compare the allomorphs and their environments. Does the needed form exist? Does its environment mention the right sounds or features? Is the environment too narrow, so it misses a valid word, or too broad, so it allows the form where it does not belong?\n\nThe Turkish forms illustrate a common pattern; they are not a full account of Turkish. Real patterns may depend on additional features and exceptions.\n",
+  "url": "https://motif-docs.pages.dev/learn/allomorphs-and-environments/"
+}

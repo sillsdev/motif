@@ -1,0 +1,9 @@
+{
+  "kind": "term",
+  "code": "trial",
+  "slug": "trial",
+  "title": "A Proposal tried on a copy",
+  "description": "A Trial applies a Proposal to a throwaway copy of the project and parses words again, so its numbers can sit beside today\u0027s. A Trial is out of date once the project or the Proposal changes; the window then says it needs another try.",
+  "helpPage": "# Trial\n\nA Trial applies a [Proposal](term:proposal) to a throwaway copy of the project and parses words again, so its numbers can be read beside today\u0027s. It never changes the real project.\n\nA Trial goes out of date when the project is refreshed or the Proposal changes. The window then says the Proposal needs another try; nothing re-runs until you ask.\n",
+  "url": "https://motif-docs.pages.dev/reference/terms/trial/"
+}

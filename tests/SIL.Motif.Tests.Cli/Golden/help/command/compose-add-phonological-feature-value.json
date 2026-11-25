@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-add-phonological-feature-value",
+  "slug": "compose-add-phonological-feature-value",
+  "title": "Add a phonological feature value",
+  "description": "Stages one more value for an existing closed phonological feature. The feature must belong to the phonological feature system, and the value name and abbreviation must be new to it. Only a person can Apply.",
+  "helpPage": "# Add a phonological feature value\n\nStages one more value for a closed phonological feature that exists, such as \u0060velar\u0060 for \u0060place\u0060. Use the closed input \u0060{ \u0022feature\u0022: \u0022\u003Ccanonical ID\u003E\u0022, \u0022name\u0022: \u0022velar\u0022, \u0022abbreviation\u0022: \u0022vel\u0022 }\u0060; \u0060abbreviation\u0060 is optional. The feature must belong to the phonological feature system, not the morphosyntactic one. A value name or abbreviation the feature already has is refused. Only a person can Apply.\n\nTo create the feature in the first place use [Author a phonological feature](cmd:compose-author-phonological-feature). Phonemes and natural classes take the new value through [Set a phoneme\u0027s features](cmd:compose-edit-phoneme-features) and [Edit a natural class\u0027s features](cmd:compose-edit-natural-class-features).\n\nThe feature may have been created earlier in this Draft. In one [batch](cmd:compose-batch), use \u0060\u0022feature\u0022: \u0022@identity\u0022\u0060; a later feature specification can use this add-value entry\u0027s own \u0060as\u0060 label for its one created value. Across calls, use \u0060\u0022feature\u0022: \u0022lookup:phonological-feature:identity\u0022\u0060, and bind the new value with \u0060lookup:phonological-feature-value:identity|slash\u0060. A name or abbreviation that matches several objects is refused.\n",
+  "usage": [
+    "Usage: motif compose-add-phonological-feature-value --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-add-phonological-feature-value/"
+}

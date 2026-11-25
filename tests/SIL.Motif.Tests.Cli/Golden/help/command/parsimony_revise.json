@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "parsimony revise",
+  "slug": "parsimony-revise",
+  "title": "Revise a ruling",
+  "description": "Stages a revision to a saved Parsimony ruling using its exact current Notebook heads and digests. The revision keeps the same finding subject and evidence, and only a person can Apply it.",
+  "helpPage": "# Revise a ruling\n\n\u0060\u0060\u0060sh\nmotif parsimony revise \u003CrecordId\u003E --project language.fwdata --draft \u003Cname\u003E \\\n  --expected-heads \u0027[{\u0022revisionId\u0022:\u0022\u003CportableId\u003E\u0022,\u0022contentDigest\u0022:\u0022sha256:\u003C64 lowercase hex\u003E\u0022}]\u0027 \\\n  --disposition keep|fix|ask|defer [--reason \u003Ctext\u003E | --clear-reason] [--question \u003Ctext\u003E] [--json]\n\u0060\u0060\u0060\n\nUse the \u0060recordId\u0060 of a current ruling record. \u0060--expected-heads\u0060 must name every current head and its exact digest; include both heads to resolve a conflict. Motif refuses a stale digest, a superseded record, or a record from another project.\n\nThe revision appends a Notebook record and preserves the finding\u0027s subject and evidence binding. Supply a reason to replace it, use \u0060--clear-reason\u0060 to remove it, or omit both to preserve it. \u0060ask\u0060 requires \u0060--question\u0060; other choices must omit it. This command stages an agent-attributed Draft Proposal. Review it with Dry Run and Preflight; only a person can Apply it.\n",
+  "usage": [
+    "Usage: motif parsimony revise \u003CrecordId\u003E --project \u003Cfwdata\u003E --draft \u003Cname\u003E --expected-heads \u0027\u003CrevisionId and contentDigest JSON array\u003E\u0027 --disposition keep|fix|ask|defer [--reason \u003Ctext\u003E | --clear-reason] [--question \u003Ctext\u003E] [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/parsimony-revise/"
+}

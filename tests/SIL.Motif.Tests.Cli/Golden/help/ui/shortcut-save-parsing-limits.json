@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-save-parsing-limits",
+  "slug": "shortcut-save-parsing-limits",
+  "title": "Save Parsing Limits",
+  "description": "Apply the parsing limits you entered.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-save-parsing-limits/"
+}
