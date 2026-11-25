@@ -10,6 +10,8 @@ namespace SIL.Motif.Host.Gdr;
 /// </summary>
 public static class GdrQueryBlockMarkdown
 {
+    private const int WsProperty = 1;
+
     private const string TokenPrefix = "MOTIFBLOCKPLACEHOLDER";
 
     /// <summary>One block lifted out of text: the stand-in paragraph's text and the block's lines.</summary>
@@ -54,7 +56,7 @@ public static class GdrQueryBlockMarkdown
         paragraph.Props.IntProps.Count == 0 && paragraph.Props.StrProps.Count == 0 &&
         paragraph.Runs.All(run => run.ObjData is null && !run.Text.Contains('\n', StringComparison.Ordinal) &&
             analysisWs is not null && string.Equals(run.Ws, analysisWs, StringComparison.OrdinalIgnoreCase) &&
-            run.Props.IntProps.Count == 0 && run.Props.StrProps.Count == 0);
+            run.Props.IntProps.Keys.All(key => key == WsProperty) && run.Props.StrProps.Count == 0);
 
     /// <summary>The written Markdown with each stand-in replaced by its block as a real fence.</summary>
     public static string RestoreFences(string markdown, IReadOnlyList<Lifted> blocks)
