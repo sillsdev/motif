@@ -386,7 +386,7 @@ text is the one key that does it. Clearing `input` or `output` is not offered ei
   copy whose content is not in the process's input, a class with a constraint in an affix field.
 - **Codes.** `rule-notation.syntax`, `rule-notation.bad-repeat`, `rule-notation.unknown-phoneme`, `rule-notation.unknown-natural-class`,
   `rule-notation.ambiguous-label`, `rule-notation.alpha-mismatch`, `rule-notation.index-out-of-range`, `rule-notation.dangling-index`, `rule-notation.context-not-allowed`,
-  `rule-notation.limit-exceeded`, `rule-notation.unsupported-class`, `rule-notation.unrenderable`, `rule-notation.shared-class` and `rule-notation.context-has-data` (a phonological rule's contexts) and, for an import of a field it does not write, `rule-notation.read-only`; a feature label that does not resolve reports its `fs-notation.*` code.
+  `rule-notation.limit-exceeded`, `rule-notation.unsupported-class`, `rule-notation.unrenderable`, `rule-notation.shared-class` and `rule-notation.context-has-data` (a phonological rule's contexts), `rule-notation.context-in-use` (at apply time) and, for an import of a field it does not write, `rule-notation.read-only`; a feature label that does not resolve reports its `fs-notation.*` code.
 - **Examples.** An affix process `m a $1` (prefix `ma-`), input `[C] *` with output `$1 u m $2` (infix), input `<[C] [V]> *` with output `$1 $1 $2`
   (reduplication), output `$1~[voi:+] $2` (voice the first consonant); a rule context `# [C]{1,3} (a) [V]`, a change `[voi:α]` with a right context
   `[cons:+ voi:α]` (assimilation), and `[cons:+ voi:-α]` (dissimilation).
@@ -450,11 +450,22 @@ record-data:
   each time its features change; the earlier class stays. A context to be deleted that has a name or description is refused with `rule-notation.context-has-data`,
   because the file cannot show what would be lost; a context that an object outside the rule also refers to is refused with `rule-notation.shared-class`.
   Also refused with `rule-notation.context-not-allowed`: `#` in `struc-desc` or `struc-change`, and a repeat of any boundary marker (`+{0,1}`, `(+)`);
-  with `rule-notation.limit-exceeded`: more than eight members in a left or right context; with `rule-notation.read-only`: any alpha variable, written or held by
-  the field (alpha constraints are written in the project), and every formula field of a metathesis rule.
+  with `rule-notation.limit-exceeded`: more than eight members in a left or right context; with `rule-notation.read-only`: every formula field of a metathesis rule.
+- **Writing alpha variables.** The alpha variables of a rule's four fields are its feature constraints (`PhRegularRule.FeatureConstraints`), and they are lowered with
+  the rest of the group. The letters of every field of the rule as it will stand (the changed fields from the file, the others as the project shows them) are
+  checked together: one letter names one feature and one feature has one letter, else `rule-notation.alpha-mismatch`. A constraint is found by its feature among
+  the constraints the rule already uses, or made once in the project's constraint list (`PhonologicalFeatureChooserDlg.UpdateFeatureConstraints`), so one `voi:α`
+  in two fields is one constraint. `voi:α` adds it to the class context's plus constraints and `voi:-α` to its minus constraints, never both; changing one to the
+  other moves the reference on the kept context. A constraint is never changed, so a rule that shares one (a duplicated rule does; LT-22575) cannot alter the
+  other's. A constraint the group stopped using, by an edited reference or a deleted context, is offered to `collectUnusedFeatConstraints`, which deletes it only
+  when nothing at all refers to it when it applies, so a shared one stays; a constraint the group never used is never offered. A bracket of alpha pairs alone
+  (`[voi:α]`) is a feature class with no value, as the chooser makes it, and a named class takes alpha pairs. A letter the file uses need not be the project's own:
+  `[V voi:β]` alone is accepted and the next export shows `α`.
+- **When the change applies.** A context the operations delete is checked again when they apply: if an object outside what is deleted refers to it by then, the
+  operation is refused with `rule-notation.context-in-use` and nothing is deleted.
 - **What an import refuses.** Adding or removing a right-hand side in the file is refused (`CreateNotWritable`, `DeleteNotWritable`): a rule with several
   right-hand sides shows each of them, and they are made by the typed composers.
-- **Not in the file.** A rule's strata, its feature constraints (the alpha letters of the formula stand for them), its order and the name and description of
+- **Not in the file.** A rule's strata, its feature constraints as objects (the alpha letters of the formula write them), its order and the name and description of
   its member contexts. A metathesis rule's structural description and change are not text: they are reported unexported with `rule-notation.unrenderable`
   and are written by the typed `compose-author-metathesis-rule`.
 - **A new rule** is not a file: rules are created and deleted by `compose-author-phonological-rule` and `compose-delete-phonological-rule`, and a file whose
