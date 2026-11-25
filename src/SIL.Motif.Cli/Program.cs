@@ -2101,7 +2101,9 @@ try
                 // A delta that is not green still prints its result on stdout; only its exit code fails the command.
                 if (delta.ExitCode != 0 && delta.Reason is null)
                 {
-                    output.Write(delta.Output);
+                    var projected = Picked(delta with { ExitCode = 0 });
+                    if (pickRefused) return projected.ExitCode;
+                    output.Write(projected.Output);
                     return delta.ExitCode;
                 }
                 break;

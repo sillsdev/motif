@@ -12,7 +12,7 @@ public static class ReadingExpectationStates
     /// <summary>The words that kept every old Reading and gained more exceed a cap.</summary>
     public const string DoubledOverCap = "doubled-over-cap";
 
-    /// <summary>Some forms were not measured on both sides, so the delta cannot be held to the expectations.</summary>
+    /// <summary>The Trial cannot be held to the expectations: a form was not measured, none was, or it predates the current Proposal revision or Baseline.</summary>
     public const string Unmeasured = "unmeasured";
 }
 

@@ -55,7 +55,8 @@ internal static class TrialExpectationCheck
     /// <summary>Evaluates the delta; the manifests are already parsed with <see cref="Parse"/>.</summary>
     internal static ReadingExpectationResult Evaluate(IReadOnlyList<ReadingDeltaForm> forms, ReadingDeltaCounts counts,
         TrialExpectations expectations, Dictionary<string, Dictionary<string, long>>? retiredRows,
-        Dictionary<string, Dictionary<string, long>>? addedRows, IReadOnlyDictionary<string, string>? aliases, bool keepCase)
+        Dictionary<string, Dictionary<string, long>>? addedRows, IReadOnlyDictionary<string, string>? aliases, bool keepCase,
+        string? notCurrent = null)
     {
         // A known non-word that stopped parsing needs no manifest row.
         var judged = forms.Where(form => !form.Classes.Contains(ReadingDeltaClasses.Rejected))
@@ -109,7 +110,9 @@ internal static class TrialExpectationCheck
 
         string state;
         string? reason;
-        if (counts.Unmeasured > 0)
+        if (notCurrent is not null)
+            (state, reason) = (ReadingExpectationStates.Unmeasured, notCurrent);
+        else if (counts.Unmeasured > 0)
         {
             state = ReadingExpectationStates.Unmeasured;
             reason = string.Create(CultureInfo.InvariantCulture,

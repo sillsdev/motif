@@ -57,6 +57,7 @@ public sealed class TrialDeltaArgvTests
                 new("lost", [], []) { BeforeSignatures = [Sig(1)], AfterSignatures = [] },
                 new("doubled", [], []) { BeforeSignatures = [Sig(2)], AfterSignatures = [Sig(2), Sig(3)] },
             ]);
+            ProposalCompareExports.RecordCurrentBaseline(database, project);
             return CommandOutcome<string>.Success("");
         });
         Assert.True(published.Succeeded, published.Refusal?.Message);
@@ -85,6 +86,46 @@ public sealed class TrialDeltaArgvTests
         Assert.Equal(6, mismatch.ExitCode);
         using (var json = JsonDocument.Parse(mismatch.Output))
             Assert.Equal("mismatch", json.RootElement.GetProperty("expectations").GetProperty("state").GetString());
+    }
+
+    [Fact]
+    public async Task ATrialOnAMovedBaselineExitsSixUnmeasuredAndPickStillProjectsTheResult()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = "";
+        var published = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, project,
+                [new("same", [], []) { BeforeSignatures = [Sig(1)], AfterSignatures = [Sig(1)] }]);
+            ProposalCompareExports.RecordCurrentBaseline(database, project, 'b');
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(published.Succeeded, published.Refusal?.Message);
+        var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
+        var empty = Path.Combine(fixture.Root, "empty.jsonl");
+        File.WriteAllText(empty, "");
+
+        var result = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--expect-retired", empty, "--pick", "expectations.state,expectations.reason", "--json");
+
+        Assert.Equal(6, result.ExitCode);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.Equal("unmeasured", json.RootElement.GetProperty("expectations.state").GetString());
+        Assert.Contains("Baseline", json.RootElement.GetProperty("expectations.reason").GetString());
+        Assert.False(json.RootElement.TryGetProperty("counts", out _));
+    }
+
+    [Fact]
+    public async Task ExpectationsCannotBeCombinedWithWriteManifests()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
+
+        var result = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--job", "job/x", "--max-doubled", "1", "--write-manifests", Path.Combine(fixture.Root, "out"));
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.False(Directory.Exists(Path.Combine(fixture.Root, "out")));
     }
 
     [Fact]

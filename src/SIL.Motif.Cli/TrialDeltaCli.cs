@@ -37,8 +37,7 @@ internal static class TrialDeltaCli
             var printed = CommandTextRenderer.Render(checkedDelta, asJson);
             // A gate that is not green fails the command, so a script reads the exit code; the state is in the result.
             return printed.ExitCode == 0 && checkedDelta.Value?.Expectations is { State: not ReadingExpectationStates.Green } gate
-                ? printed with { ExitCode = gate.State == ReadingExpectationStates.Unmeasured
-                    ? FailureEnvelope.ExitCodeFor(FailureReason.Refused) : FailureEnvelope.TrialLossExitCode }
+                ? printed with { ExitCode = FailureEnvelope.TrialLossExitCode }
                 : printed;
         }
         if (flags.TryGetValue("write-manifests", out var directory))

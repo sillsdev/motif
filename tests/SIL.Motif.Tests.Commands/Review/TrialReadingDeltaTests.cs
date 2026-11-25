@@ -29,6 +29,7 @@ public sealed class TrialReadingDeltaTests
         var result = ProjectStoreCommand.Run<string>(project, MotifProductVersion.CurrentText, (database, located) =>
         {
             id = ProposalCompareExports.AddTrial(database, located, forms);
+            ProposalCompareExports.RecordCurrentBaseline(database, located);
             return CommandOutcome<string>.Success("");
         });
         Assert.True(result.Succeeded, result.Refusal?.Message);
@@ -212,6 +213,66 @@ public sealed class TrialReadingDeltaTests
         foreach (var bad in new[] { new TrialExpectations(["not json"]), new TrialExpectations([row, row]),
                      new TrialExpectations(MaxDoubled: -1), new TrialExpectations(MaxDoubledFrac: 1.5) })
             Assert.Equal(RefusalCodes.TrialDeltaRequestInvalid, TrialReadingDelta.Check(request, bad).Refusal?.Code);
+    }
+
+    private static void Change(string project, Action<SIL.Motif.Host.Store.MotifDatabase, SIL.Motif.Contract.Projects.ProjectLocator> action)
+    {
+        var result = ProjectStoreCommand.Run<string>(project, MotifProductVersion.CurrentText, (database, located) =>
+        {
+            action(database, located);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+    }
+
+    private static ReadingExpectationResult Held(string project, string proposal) =>
+        TrialReadingDelta.Check(new ReadTrialDeltaRequest(project, ProposalId: proposal), new TrialExpectations([], [])).Value!.Expectations!;
+
+    [Fact]
+    public void ATrialOfAnOlderProposalRevisionNeverReadsGreen()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("same", [8], [8]));
+        Assert.Equal(ReadingExpectationStates.Green, Held(fixture.Project, proposal).State);
+
+        Change(fixture.Project, (database, _) => ProposalCompareExports.SaveProposal(database, proposal,
+            ProposalCompareExports.OtherProposalJson(proposal)));
+
+        var gate = Held(fixture.Project, proposal);
+        Assert.Equal(ReadingExpectationStates.Unmeasured, gate.State);
+        Assert.Contains("measured Proposal revision", gate.Reason);
+        Assert.Contains("the Proposal is now", gate.Reason);
+    }
+
+    [Fact]
+    public void ATrialOnAnOlderBaselineOrWithNoCurrentBaselineNeverReadsGreen()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("same", [8], [8]));
+
+        Change(fixture.Project, (database, located) => ProposalCompareExports.RecordCurrentBaseline(database, located, 'b'));
+
+        var gate = Held(fixture.Project, proposal);
+        Assert.Equal(ReadingExpectationStates.Unmeasured, gate.State);
+        Assert.Contains(ProposalCompareExports.BaselineDigest('a'), gate.Reason);
+        Assert.Contains(ProposalCompareExports.BaselineDigest('b'), gate.Reason);
+
+        using var bare = new ReviewAcceptanceFixture();
+        var id = "";
+        Change(bare.Project, (database, located) => id = ProposalCompareExports.AddTrial(database, located, [Form("same", [8], [8])]));
+        Assert.Equal(ReadingExpectationStates.Unmeasured, Held(bare.Project, id).State);
+    }
+
+    [Fact]
+    public void ATrialThatMeasuredNoFormReadsUnmeasuredNotGreen()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project);
+
+        var gate = Held(fixture.Project, proposal);
+
+        Assert.Equal(ReadingExpectationStates.Unmeasured, gate.State);
+        Assert.Contains("no form", gate.Reason);
     }
 
     [Fact]

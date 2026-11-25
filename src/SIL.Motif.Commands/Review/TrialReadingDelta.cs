@@ -1,9 +1,11 @@
 using System.Text;
 using System.Text.Json;
+using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.HandAnalysis;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
@@ -143,10 +145,44 @@ public static class TrialReadingDelta
             }
             var (expectedAliases, expectedRefusal) = Aliases(database, receipt, request, options);
             if (expectedRefusal is not null) return expectedRefusal;
-            held = TrialExpectationCheck.Evaluate(forms, counts, expectations, retired, added, expectedAliases, options.KeepCase);
+            held = TrialExpectationCheck.Evaluate(forms, counts, expectations, retired, added, expectedAliases, options.KeepCase,
+                NotCurrent(database, receipt, request, counts));
         }
         return CommandOutcome<ReadingDelta>.Success(new ReadingDelta(ReadingDelta.Version, receipt.JobId,
             receipt.ProposalRevision, counts, shown, manifests, [.. limitations], held));
+    }
+
+    // Why this Trial cannot speak for the Proposal and Baseline as they stand now, or null when it can.
+    private static string? NotCurrent(MotifDatabase database, TrialExportReceipt receipt, ReadTrialDeltaRequest request,
+        ReadingDeltaCounts counts)
+    {
+        if (counts.Measured == 0 && counts.Unmeasured == 0) return "The Trial measured no form, so it holds nothing to the expectations.";
+        try
+        {
+            var job = new JobRepository(database).Get(receipt.JobId);
+            if (job is null) return "The Trial job is gone, so its Proposal revision and Baseline cannot be compared with the current ones.";
+            var proposalId = Trials.ProposalOf(job);
+            if (request.ProposalId is not null && proposalId != request.ProposalId)
+                return $"The Trial belongs to Proposal {proposalId}, not {request.ProposalId}.";
+            var used = IntentDigest.Compute(ProposalJsonParser.Parse(TrialJobInput.Parse(job.InputJson).ProposalJson));
+            var record = new SIL.Motif.Worker.Store.ProposalRepository(database).Get(CanonicalId.Parse(proposalId));
+            var current = Trials.ReadCurrentIntentDigest(record);
+            if (current is null) return "The Proposal's current revision cannot be read, so the Trial cannot be compared with it.";
+            if (!string.Equals(used, current, StringComparison.Ordinal))
+                return $"The Trial measured Proposal revision {used} but the Proposal is now {current}; run a new Trial.";
+            var measured = TrialExportArtifact.ReadBaselineSemantic(database, receipt.JobId);
+            var baseline = new SIL.Motif.Worker.Baselines.BaselineRepository(database).GetCurrent(job.ProjectKey)?.Token;
+            if (baseline is null || measured is null)
+                return "The current Baseline or the Trial's Baseline cannot be read, so the two cannot be compared.";
+            if (!string.Equals(measured, baseline.SemanticSnapshotDigest, StringComparison.Ordinal))
+                return $"The Trial measured Baseline {measured} but the current Baseline is {baseline.SemanticSnapshotDigest}; run a new Trial.";
+            return null;
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException or KeyNotFoundException or
+            ArgumentException or ContractParseException or InvalidOperationException)
+        {
+            return "The Trial's Proposal revision or Baseline could not be read: " + exception.Message;
+        }
     }
 
     // The ids the Proposal creates, named created:N as the lane gate names them; null when real ids are asked for.
