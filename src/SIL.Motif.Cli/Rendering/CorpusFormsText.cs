@@ -20,7 +20,7 @@ internal static class CorpusFormsText
                 causes.Words, causes.Tokens, causes.Complete ? "" : " (INCOMPLETE: capped or failed words may have more readings)"));
             foreach (var group in causes.Groups)
             {
-                text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  {0}{1}: {2} words, {3} tokens; e.g. {4}", group.Cause,
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  {0}{1}: {2} words, {3} tokens; e.g. {4}", group.Cause + (group.Detail is null ? "" : " [" + group.Detail + "]"),
                     group.Benign ? " (benign)" : "", group.Words, group.Tokens, group.Example.Word));
                 foreach (var reading in group.Example.Readings)
                     text.AppendLine("      " + string.Join(" + ", reading.Morphs.Select(morph => morph.Text.Length > 0 ? morph.Text : "?")) + "   [" +

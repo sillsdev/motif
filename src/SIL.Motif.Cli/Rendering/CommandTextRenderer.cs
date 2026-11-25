@@ -104,6 +104,7 @@ public static class CommandTextRenderer
             FindComposerResponse r => RenderFindComposer(r),
             GroupResponse r => RenderGroup(r),
             ProposalComparison r => RenderProposalComparison(r),
+            ReadingDelta r => ReadingDeltaText.Render(r),
             TrialExportReceipt r => RenderTrialExport(r),
             TrialRecord r => RenderTrial(r),
             TrialReviewResult r => TrialReviewTextRenderer.Render(r),
@@ -197,6 +198,7 @@ public static class CommandTextRenderer
             ListDispositionsResponse r => DispositionRenderer.RenderListed(r),
             RequestCreatedResponse r => $"Request {r.Request.RequestId} is open: {r.Request.TargetLabel}.{Environment.NewLine}",
             RequestWithdrawnResponse r => $"Request {r.RequestId} withdrawn.{Environment.NewLine}",
+            System.Text.Json.Nodes.JsonObject page => LexiconFindCli.RenderPage(page),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);

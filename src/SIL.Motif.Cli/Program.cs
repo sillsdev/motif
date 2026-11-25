@@ -2089,6 +2089,14 @@ try
                     flags.GetValueOrDefault("snapshot"), ReadRepeatedFlagValues(flags, "job"))));
                 break;
             }
+            if (positionals is ["trial", "delta"])
+            {
+                var delta = TrialDeltaCli.Run(flags, asJson, out var deltaUsage);
+                if (delta is null) return Usage(UsageLineFor("proposal trial delta"), asJson);
+                result = delta;
+                alreadyRendered = true;
+                break;
+            }
             if (positionals is ["trial", "export", ..])
             {
                 if (positionals.Count != 3 || !flags.TryGetValue("project", out var exportProject) ||
@@ -2931,6 +2939,13 @@ try
                 break;
             }
             return Usage(UsageLineFor("difference"), asJson);
+
+        case "lexicon":
+            var lexiconFound = LexiconFindCli.Run(positionals, flags, asJson);
+            if (lexiconFound is null) return Usage(UsageLineFor("lexicon find"), asJson);
+            result = lexiconFound;
+            alreadyRendered = true;
+            break;
 
         case "grammar":
             if (positionals.Count == 1 && positionals[0] == "read")

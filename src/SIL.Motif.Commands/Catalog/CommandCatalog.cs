@@ -300,12 +300,15 @@ public static class CommandCatalog
         new CommandDescriptor("group", typeof(GroupRequest), typeof(GroupResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("proposal compare", typeof(CompareProposalsRequest), typeof(ProposalComparison),
             CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("proposal trial delta", typeof(ReadTrialDeltaRequest), typeof(ReadingDelta), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("proposal trial export", typeof(ReadTrialExportRequest), typeof(TrialExportReceipt),
             CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("proposal trial", typeof(ReviewReadRequest), typeof(TrialReviewResult), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("grammar check", typeof(GrammarCheckRequest), typeof(GrammarCheckResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("grammar read", typeof(GrammarReadRequest), typeof(GrammarReadResponse), CommandSurface.AdvancedAi, AgentClass.Read),
+        new CommandDescriptor("lexicon find", typeof(LexiconFindRequest), typeof(System.Text.Json.Nodes.JsonObject), CommandSurface.AdvancedAi, AgentClass.Read)
+            { ExposeAsAgentTool = false },
         new CommandDescriptor("timing", typeof(TimingRequest), typeof(TimingResponse), CommandSurface.Released, AgentClass.Read),
         // motif_activity is the MCP rendering of this summary, with Proposals and jobs the file cannot hold.
         new CommandDescriptor("activity", typeof(ActivityRequest), typeof(ActivitySummary), CommandSurface.Released, AgentClass.Read)

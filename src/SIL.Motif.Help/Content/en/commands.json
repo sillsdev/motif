@@ -1965,6 +1965,11 @@
     "description": "Compares two to eight Proposals side by side from each one's Trial before and after and by the approved analyses each keeps and loses. It reads retained Trial evidence and the project's approved analyses and measures nothing.",
     "source": "Authored from the typed command contract."
   },
+  "proposal trial delta": {
+    "title": "Read a Trial's Reading changes",
+    "description": "Lists the words a Trial lost, gained, changed or doubled by Reading signature, from the evidence the Trial already retained, and writes the expected-retired and expected-added manifests. It measures nothing.",
+    "source": "Authored from the typed command contract."
+  },
   "proposal trial export": {
     "title": "Read a Trial export",
     "description": "Finds the retained evidence file for an exact Trial job. The file contains the observed forms and Readings on both sides, the completion counts and the provenance used to measure the Trial.",
@@ -1989,6 +1994,11 @@
     "title": "Read grammar objects",
     "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features, lexical entries or phonological rules from the current Baseline, or with --at <proposalId> from the grammar that Proposal's latest Trial ran against. Use an exact canonical id, an exact form or a name query, and page through larger lists. A bare exact form such as zi also matches the affix headword zi-, and the result says so; write the marker to match only the marked form.",
     "source": "Authored from the typed grammar read contract."
+  },
+  "lexicon find": {
+    "title": "Find lexical entries",
+    "description": "Lists lexical entries from the current Baseline by form regular expression, form suffix, inflection class, category, morph type, gloss or text, with canonical or guid ids, paging past 100 and a batch mode that opens the Baseline once for many questions. It reads the saved copy and never opens or changes the live FieldWorks project.",
+    "source": "Authored from the lexicon find contract."
   },
   "difference produce": {
     "title": "Compare a Trial with decisions",

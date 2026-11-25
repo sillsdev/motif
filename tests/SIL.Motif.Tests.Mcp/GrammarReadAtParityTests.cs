@@ -2,6 +2,7 @@ using SIL.LCModel;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Mcp;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;

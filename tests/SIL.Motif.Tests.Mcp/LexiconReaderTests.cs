@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using SIL.LCModel;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Mcp;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -348,6 +349,62 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
         Assert.Equal(6, Read(new LexiconFilter(), limit: 3, offset: 3)["nextOffset"]!.GetValue<int>());
         Assert.False(Read(new LexiconFilter(), limit: 3, offset: 6).ContainsKey("nextOffset"));
         Assert.False(Read(new LexiconFilter(), offset: 100).ContainsKey("nextOffset"));
+    }
+
+    [Fact]
+    public void FormRegexAndSuffixMatchAnyFormAndInflectionClassMatchesThroughItsParent()
+    {
+        Fill();
+        Assert.Equal(["balay", "kaon"], Headwords(Read(new LexiconFilter(FormRegex: "^(ba|ka)[a-z]+$"))));
+        Assert.Equal(["mása"], Headwords(Read(new LexiconFilter(FormRegex: "^m\\u00e1sa$"))));
+        Assert.Equal(["an", "kaon"], Headwords(Read(new LexiconFilter(Suffix: "N"))));
+        var services = _cache.ServiceLocator;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var pos = services.GetInstance<IPartOfSpeechRepository>().GetObject(_categories["Noun"]);
+            var parent = services.GetInstance<IMoInflClassFactory>().Create();
+            pos.InflectionClassesOC.Add(parent);
+            parent.Name.set_String(_cache.DefaultAnalWs, "Class A");
+            var child = services.GetInstance<IMoInflClassFactory>().Create();
+            parent.SubclassesOC.Add(child);
+            child.Name.set_String(_cache.DefaultAnalWs, "Class A1");
+            foreach (var entry in services.GetInstance<ILexEntryRepository>().AllInstances()
+                         .Where(entry => entry.HeadWord.Text == "balay"))
+                ((IMoStemMsa)entry.MorphoSyntaxAnalysesOC.Single()).InflectionClassRA = child;
+        });
+        Assert.Equal(["balay"], Headwords(Read(new LexiconFilter(InflectionClass: "class a"))));
+        Assert.Equal(["balay"], Headwords(Read(new LexiconFilter(InflectionClass: "Class A1"))));
+        Assert.Empty(Headwords(Read(new LexiconFilter(InflectionClass: "Class B"))));
+        var page = SIL.Motif.Commands.Queries.LexiconFindCommand.ReadPage(_cache, new LexiconFilter(Exact: "balay"), 10, 0,
+            detailed: false, withForms: true, SIL.Motif.Contract.Requests.LexiconIdFormat.Guid).Value!;
+        var line = page["entries"]!.AsArray().Single()!;
+        Assert.True(Guid.TryParse(line["id"]!.GetValue<string>(), out _));
+        Assert.Equal("Class A1", line["inflectionClasses"]![0]!["name"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void APatternThatBacktracksPastTheTimeoutIsRefusedNotHung()
+    {
+        Fill();
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var entry = _cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+            var lexeme = _cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = lexeme;
+            lexeme.Form.set_String(_cache.DefaultVernWs, new string('a', 40) + "b");
+        });
+        var outcome = SIL.Motif.Commands.Queries.LexiconFindCommand.ReadPage(_cache,
+            new LexiconFilter(FormRegex: "^(a+)+$"), 10, 0, detailed: false);
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("lexicon-find.invalid-request", outcome.Refusal!.Code);
+        Assert.Contains("seconds", outcome.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AMalformedPatternIsRefusedBeforeAnyReadHappens()
+    {
+        Assert.NotNull(LexiconFilter.RegexProblem("("));
+        Assert.Null(LexiconFilter.RegexProblem("^a+$"));
     }
 
     private string CanonicalIdOf(string name)

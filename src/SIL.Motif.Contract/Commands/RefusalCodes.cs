@@ -547,6 +547,12 @@ public static class RefusalCodes
     public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";
     /// <summary>The exact Trial has no readable retained evidence export.</summary>
     public const string TrialExportUnavailable = "trial.export-unavailable";
+    /// <summary>A Reading delta request names no Trial, two Trials, an unknown class or a bad page.</summary>
+    public const string TrialDeltaRequestInvalid = "trial.delta-request-invalid";
+    /// <summary>Some forms were not measured on both sides or have no complete Reading identity, so no manifest is exact.</summary>
+    public const string TrialDeltaIncomplete = "trial.delta-incomplete";
+    /// <summary>A manifest file could not be written to the requested directory.</summary>
+    public const string TrialDeltaManifestUnwritable = "trial.delta-manifest-unwritable";
     /// <summary>A comparison needs two to eight distinct Proposals.</summary>
     public const string ProposalCompareProposalsInvalid = "proposal.compare-proposals-invalid";
     /// <summary>A Proposal has no completed Trial with a retained evidence export to compare.</summary>
@@ -831,6 +837,13 @@ public static class RefusalCodes
     public const string GrammarReadBaselineUnavailable = "grammar-read.baseline-unavailable";
     /// <summary>A grammar read request is not valid.</summary>
     public const string GrammarReadInvalidRequest = "grammar-read.invalid-request";
+
+    /// <summary>Reading the lexicon needs a Baseline and the project has none.</summary>
+    public const string LexiconFindBaselineMissing = "lexicon-find.baseline-missing";
+    /// <summary>The current Baseline file is missing, so the lexicon cannot be read.</summary>
+    public const string LexiconFindBaselineUnavailable = "lexicon-find.baseline-unavailable";
+    /// <summary>A lexicon find request is not valid: a bad page, regular expression or filter.</summary>
+    public const string LexiconFindInvalidRequest = "lexicon-find.invalid-request";
 
     /// <summary>No grammar check could run, so there are no findings to report.</summary>
     public const string GrammarCheckNotRun = "grammarcheck.not-run";
