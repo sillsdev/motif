@@ -31,7 +31,8 @@
       "status": "created",
       "baseVerdict": "new",
       "changes": 2,
-      "operations": 6
+      "operations": 6,
+      "refused": 0
     },
     {
       "path": "b.fw.md",
@@ -40,7 +41,8 @@
       "status": "updated",
       "baseVerdict": "fresh",
       "changes": 1,
-      "operations": 3
+      "operations": 3,
+      "refused": 0
     }
   ]
 }

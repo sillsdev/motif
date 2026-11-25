@@ -242,9 +242,8 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         var again = RecordImportCommand.Run(Dry(seed));
 
         Assert.True(again.Succeeded, again.Refusal?.Message);
-        Assert.Equal((3, 0, 0, 3, 0), (again.Value!.Dir!.Files, again.Value.Dir.Created, again.Value.Dir.Updated, again.Value.Dir.Unchanged, again.Value.Dir.Refused));
-        var nothing = RecordImportCommand.Run(Dry(seed, "again"));
-        Assert.Equal(RefusalCodes.RecordImportNothingToStage, nothing.Refusal!.Code);
+        Assert.Equal((3, 0, 0, 2, 1), (again.Value!.Dir!.Files, again.Value.Dir.Created, again.Value.Dir.Updated, again.Value.Dir.Unchanged, again.Value.Dir.Refused));
+        Assert.Equal("stale", AllRows(seed, Dry(seed))["update.fw.md"].BaseVerdict);
     }
 
     [Fact]

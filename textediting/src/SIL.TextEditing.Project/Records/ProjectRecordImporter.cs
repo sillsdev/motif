@@ -142,8 +142,8 @@ namespace SIL.TextEditing.Project
             if (export.Text == null)
                 return Whole(file, ProjectRecordBaseVerdict.NotChecked, record, export, read, new[] { Refusal(RecordRefusalKind.ExportFailed, "The project's record could not be written as a file, so the file cannot be compared with it.", record) });
 
-            // A file that already says what the project holds is unchanged whatever its base says: its edits were applied, or it was never an edit.
-            if ((file.Base == null || !string.Equals(file.Base, export.Base, StringComparison.Ordinal)) && IsUnchanged(file, export, read))
+            // A file with no base that already says what the project holds is unchanged: it was never an edit.
+            if (file.Base == null && IsUnchanged(file, export, read))
                 return new ProjectRecordPlan(new RecordChangeSet(new List<RecordChange>().AsReadOnly(), new List<RecordRefusal>().AsReadOnly(), file.Root != null), ProjectRecordBaseVerdict.Unchanged, kind.Name, record, export, read.Diagnostics);
             if (file.Base == null)
                 return Whole(file, ProjectRecordBaseVerdict.Missing, record, export, read,
@@ -223,7 +223,7 @@ namespace SIL.TextEditing.Project
             return null;
         }
 
-        /// <summary>True when the file says exactly what the project's record already holds.</summary>
+        /// <summary>True when a file with no <c>base:</c> says exactly what the project's record already holds.</summary>
         bool IsUnchanged(RecordDocument file, ProjectRecordExport export, RecordReadResult read)
         {
             if (read.HasErrors) return false;
