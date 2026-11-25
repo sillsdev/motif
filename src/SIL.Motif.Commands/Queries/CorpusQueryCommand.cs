@@ -360,7 +360,8 @@ public static class CorpusQueryCommand
         var temp = full + ".tmp-" + Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture);
         try
         {
-            File.WriteAllLines(temp, rows.Select(row => withCounts ? row.Form + "\t" + row.Tokens.ToString(System.Globalization.CultureInfo.InvariantCulture) : row.Form),
+            // LF on every platform: WriteAllLines would use CRLF on Windows.
+            File.WriteAllText(temp, string.Concat(rows.Select(row => (withCounts ? row.Form + "\t" + row.Tokens.ToString(System.Globalization.CultureInfo.InvariantCulture) : row.Form) + "\n")),
                 new System.Text.UTF8Encoding(false));
             File.Move(temp, full, overwrite: true);
         }
