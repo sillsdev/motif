@@ -414,6 +414,10 @@ public static class RefusalCodes
     public const string QueryRealizesIndexFailed = "query.realizes-index-failed";
     /// <summary><c>realizes</c> ran with no project to resolve the morpheme in; corpus mode names one with <c>--grammar</c>.</summary>
     public const string QueryRealizesNeedsProject = "query.realizes-needs-project";
+    /// <summary>A readings query (<c>readings</c>, <c>only-via</c>, <c>--group-by cause</c>, <c>--what-if-retire</c>) ran with no grammar to parse the corpus with.</summary>
+    public const string QueryReadingsNeedsGrammar = "query.readings-needs-grammar";
+    /// <summary>A readings query named an entry, and only a project's lexicon says which entry owns a morph's analysis.</summary>
+    public const string QueryReadingsNeedsProject = "query.readings-needs-project";
     /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>
     public const string QueryDocumentInvalid = "query.document-invalid";
     public const string QueryNoTrialRows = "query.no-trial-rows";

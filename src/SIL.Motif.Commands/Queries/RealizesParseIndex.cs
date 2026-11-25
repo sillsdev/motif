@@ -53,14 +53,17 @@ internal readonly record struct IndexedRun(int Start, string Text);
 /// <summary>
 /// One morph of an indexed analysis, named by its form and analysis (MSA) ids as <c>pangloss batch</c> reports them, and where it sits on the
 /// surface. <paramref name="Runs"/> is null when PanGloss could place no sound span, and <paramref name="Reason"/> then names why.
+/// <paramref name="Entry"/> and <paramref name="Signature"/> are the seam for a PanGloss batch that names the entry and the signature itself; the
+/// reader does not fill them today and the cache does not keep them, and readings queries prefer them over the project lexicon when set.
 /// </summary>
-internal sealed record IndexedMorph(string Form, string Msa, IReadOnlyList<IndexedRun>? Runs = null, string? Reason = null, string? InflType = null);
+internal sealed record IndexedMorph(string Form, string Msa, IReadOnlyList<IndexedRun>? Runs = null, string? Reason = null, string? InflType = null,
+    string? Entry = null, string? Signature = null);
 
 /// <summary>
 /// One reading of a word. <paramref name="Surface"/> is the NFD lower-case surface its spans index; <paramref name="Problem"/> is null when
 /// the morph and unattributed runs tile that surface and the surface is the word, else the typed reason the spans cannot be trusted.
 /// </summary>
-internal sealed record IndexedAnalysis(IReadOnlyList<IndexedMorph> Morphs, string Surface = "", string? Problem = null);
+internal sealed record IndexedAnalysis(IReadOnlyList<IndexedMorph> Morphs, string Surface = "", string? Problem = null, string? Signature = null);
 
 /// <summary>One word's answer in the index.</summary>
 internal sealed record IndexedWord(IndexedStatus Status, IReadOnlyList<IndexedAnalysis> Analyses);

@@ -193,7 +193,7 @@ public static class QuerySchema
         };
         var expr = new JsonObject
         {
-            ["description"] = "One of: and, or, not, a field predicate, phon, env, realizes, or a reserved kind (parsed, refused as not yet available).",
+            ["description"] = "One of: and, or, not, a field predicate, phon, env, realizes, only-via, or a reserved kind (parsed, refused as not yet available).",
             ["oneOf"] = new JsonArray(
                 Wrapper("and", new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = "#/$defs/expr" }, ["minItems"] = 1 }),
                 Wrapper("or", new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = "#/$defs/expr" }, ["minItems"] = 1 }),
@@ -212,6 +212,15 @@ public static class QuerySchema
                         ["morpheme"] = new JsonObject { ["type"] = "string", ["minLength"] = 1, ["description"] = "entry:msa, an entry or analysis id, or a form in the lexicon, optionally led by root:, pfx: or sfx:." },
                         ["tier"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray([.. RealizesTiers.All.Select(t => (JsonNode?)t)]) },
                     },
+                }),
+                Wrapper("only-via", new JsonObject
+                {
+                    ["description"] = "Words whose every reading uses the morpheme: exactly one of entry, msa or form, a guid. entry needs --project (an analysis belongs to one entry); msa and form read the batch ids. Runs over a corpus with --grammar; an estimate to confirm with a Trial.",
+                    ["type"] = "object",
+                    ["minProperties"] = 1,
+                    ["maxProperties"] = 1,
+                    ["propertyNames"] = new JsonObject { ["enum"] = new JsonArray("entry", "msa", "form") },
+                    ["additionalProperties"] = new JsonObject { ["type"] = "string", ["minLength"] = 1 },
                 }),
                 new JsonObject
                 {
