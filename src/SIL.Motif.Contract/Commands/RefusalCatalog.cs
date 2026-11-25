@@ -864,6 +864,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.RecordImportFileOrDir, FailureReason.InvalidArgument),
         Spec(RefusalCodes.RecordImportDirEmpty, FailureReason.InvalidArgument),
         Spec(RefusalCodes.RecordImportDirUnreadable, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.RecordImportOptionInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.RecordImportBatchTooLarge, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportRecordTwice, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportGuidDuplicateInBatch, FailureReason.Refused),

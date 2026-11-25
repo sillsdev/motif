@@ -52,13 +52,16 @@
           "minLength": 1
         },
         "source": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 200
         },
         "revision": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 200
         },
         "licence": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 200
         }
       },
       "oneOf": [

@@ -175,6 +175,8 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         var rows = await Call(("dir", inside), ("page", 1));
         Assert.False(rows.Error, rows.Text);
         Assert.Contains("entry.fw.md", rows.Text, StringComparison.Ordinal);
+        var root = await Call(("dir", projectFolder));
+        Assert.False(root.Error, root.Text);
         Assert.True((await Call(("dir", outside))).Error);
         Assert.True((await Call(("dir", Path.Combine(inside, "..", "..", Path.GetFileName(_folder), "outside")))).Error);
         Assert.True((await Call(("dir", inside), ("file", file))).Error);

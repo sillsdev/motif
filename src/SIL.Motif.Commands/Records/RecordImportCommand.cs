@@ -341,7 +341,7 @@ public static partial class RecordImportCommand
         foreach (var root in roots)
         {
             var prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
-            if (real.StartsWith(prefix, comparison)) return null;
+            if (string.Equals(real, root, comparison) || real.StartsWith(prefix, comparison)) return null;
         }
         return Unreadable(filePath, forWrite);
     }

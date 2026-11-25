@@ -366,6 +366,7 @@ public static class RefusalCodes
     public const string RecordImportDirEmpty = "record-import.dir-empty";
     /// <summary>The folder does not exist or could not be listed.</summary>
     public const string RecordImportDirUnreadable = "record-import.dir-unreadable";
+    public const string RecordImportOptionInvalid = "record-import.option-invalid";
     /// <summary>The folder has more files or operations than one Proposal takes.</summary>
     public const string RecordImportBatchTooLarge = "record-import.batch-too-large";
     /// <summary>More than one file of the folder is about the same record.</summary>

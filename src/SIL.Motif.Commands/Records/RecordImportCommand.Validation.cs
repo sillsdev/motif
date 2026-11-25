@@ -23,8 +23,19 @@ internal sealed class RecordImportChangedException() : ProposalRefusalException(
     new Dictionary<string, string>());
 
 /// <summary>The scratch pass failed in a way no single change explains, so the import cannot be previewed.</summary>
-internal sealed class RecordImportScratchException(Exception inner)
-    : Exception("The operations could not be tried on a scratch copy: " + inner.GetType().Name + ".", inner);
+internal sealed class RecordImportScratchException(Exception inner, int unit = -1)
+    : Exception("The operations could not be tried on a scratch copy: " + inner.GetType().Name + ".", inner)
+{
+    /// <summary>The file, by its place in the pass, whose operations failed; -1 when no one file is to blame.</summary>
+    public int Unit { get; } = unit;
+}
+
+/// <summary>The scratch pass failed on one file of a folder, named by its path.</summary>
+internal sealed class RecordImportScratchFileException(string path, RecordImportScratchException inner)
+    : Exception(inner.Message, inner)
+{
+    public string Path { get; } = path;
+}
 
 public static partial class RecordImportCommand
 {
@@ -35,6 +46,9 @@ public static partial class RecordImportCommand
 
     /// <summary>Tests change the project between the preview and the stage by setting this.</summary>
     internal static Action? BeforeStage { get; set; }
+
+    /// <summary>Tests make one file's operation fail unexpectedly by throwing from this.</summary>
+    internal static Action<OperationEnvelope>? ScratchProbe { get; set; }
 
     /// <summary>Identifies the lowering's operations, so a stage can check what was previewed.</summary>
     private static string Digest(IReadOnlyList<OperationEnvelope> operations)
@@ -82,9 +96,14 @@ public static partial class RecordImportCommand
         IReadOnlyList<OperationEnvelope> order;
         try
         {
+            for (var unit = 0; unit < units.Count; unit++)
+            {
+                try { OperationExecutionOrder.Sort(contained.Where(operation => owner[operation.OperationId].Unit == unit).ToArray()); }
+                catch (Exception exception) when (IsRefusalOfOneChange(exception)) { throw new RecordImportScratchException(exception, unit); }
+            }
             order = OperationExecutionOrder.Sort(contained);
         }
-        catch (Exception exception) when (IsRefusalOfOneChange(exception))
+        catch (Exception exception) when (exception is not RecordImportScratchException && IsRefusalOfOneChange(exception))
         {
             throw new RecordImportScratchException(exception);
         }
@@ -100,6 +119,7 @@ public static partial class RecordImportCommand
             }
             try
             {
+                ScratchProbe?.Invoke(byId[id]);
                 OperationHandlerRegistry.Resolve(byId[id].Kind, "Draft composer preparation")
                     .ApplyAndCaptureEffect(cache, byId[id], new List<CanonicalId>());
             }
@@ -112,7 +132,7 @@ public static partial class RecordImportCommand
             }
             catch (Exception exception) when (exception is not (ProjectWritingSystemsUnavailableException or OutOfMemoryException))
             {
-                throw new RecordImportScratchException(exception);
+                throw new RecordImportScratchException(exception, change.Unit);
             }
         }
         try

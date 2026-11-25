@@ -26,6 +26,7 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     public void Dispose()
     {
         RecordImportCommand.FileReaderOverride = null;
+        RecordImportCommand.ScratchProbe = null;
         try { Directory.Delete(_root, recursive: true); }
         catch (IOException) { }
     }
@@ -209,6 +210,54 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         Assert.Single(ProposalCommands.List(new(seed.Project, Version)).Value!.Proposals);
     }
 
+    private static Action<RecordDocument> Gloss(string text) => document =>
+    {
+        var sense = (RecordObject)((RecordList)document.Data["senses"]!).Items[0];
+        ((RecordAlternatives)sense["gloss"]!).Add("en", new RecordScalar(text));
+    };
+
+    [Fact]
+    public void AFileWhoseOperationFailsUnexpectedlyIsRefusedAndTheRestOfTheFolderStages()
+    {
+        var seed = Seeded(3);
+        WriteFile(seed, seed.Entries[0], "a.fw.md", Gloss("zzfirst"));
+        WriteFile(seed, seed.Entries[1], "b.fw.md", Gloss("zzboom"));
+        WriteFile(seed, seed.Entries[2], "c.fw.md", Gloss("zzthird"));
+        RecordImportCommand.ScratchProbe = operation =>
+        {
+            if (operation.After?.GetRawText().Contains("zzboom", StringComparison.Ordinal) == true) throw new NotSupportedException("boom");
+        };
+
+        var rows = AllRows(seed, Dry(seed));
+
+        Assert.Equal(("refused", RefusalCodes.RecordImportPlanRefused), (rows["b.fw.md"].Status, rows["b.fw.md"].Code));
+        Assert.Equal("updated", rows["a.fw.md"].Status);
+        Assert.Equal("updated", rows["c.fw.md"].Status);
+        var staged = RecordImportCommand.Run(Dry(seed, "isolated"));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal((2, 1), (staged.Value!.Dir!.Updated, staged.Value.Dir.Refused));
+    }
+
+    [Theory]
+    [InlineData("source")]
+    [InlineData("revision")]
+    [InlineData("licence")]
+    public void AnOptionOverTwoHundredCharactersOrWithControlCharactersIsRefused(string option)
+    {
+        var seed = Seeded(1);
+        WriteFile(seed, seed.Entries[0], "a.fw.md", Regloss);
+        foreach (var value in new[] { new string('x', RecordImportPaging.MaxOptionLength + 1), "a\u001b[31mb" })
+        {
+            var request = Dry(seed) with
+            {
+                Source = option == "source" ? value : null,
+                Revision = option == "revision" ? value : null,
+                Licence = option == "licence" ? value : null,
+            };
+            Assert.Equal(RefusalCodes.RecordImportOptionInvalid, RecordImportCommand.Run(request).Refusal!.Code);
+        }
+    }
+
     [Fact]
     public void StrictDoesNotCountUnchangedFilesAsRefusals()
     {
@@ -223,7 +272,7 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
-    public void ImportingTheFolderAgainAfterApplyingItIsAllUnchanged()
+    public void ImportingTheFolderAgainAfterApplyingItReadsCreatesAsUnchangedAndTheUpdateAsStale()
     {
         var seed = Seeded(3);
         for (var index = 0; index < 2; index++) WriteFile(seed, seed.Entries[0], $"create{index}.fw.md", asNew: true);

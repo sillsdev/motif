@@ -41,6 +41,9 @@ public static class RecordImportPaging
     /// <summary>The most files one folder import takes.</summary>
     public const int MaxFiles = 10_000;
 
+    /// <summary>The longest <c>--source</c>, <c>--revision</c> or <c>--licence</c> text.</summary>
+    public const int MaxOptionLength = 200;
+
     /// <summary>The most operations one folder import takes.</summary>
     public const int MaxOperations = 250_000;
 }
