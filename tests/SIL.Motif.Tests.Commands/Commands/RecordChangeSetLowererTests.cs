@@ -70,6 +70,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         ("ZedMultiString", CellarPropertyType.MultiString), ("ZedString", CellarPropertyType.String),
         ("ZedReference", CellarPropertyType.ReferenceAtomic), ("ZedReferences", CellarPropertyType.ReferenceCollection),
         ("ZedBoolean", CellarPropertyType.Boolean), ("ZedDate", CellarPropertyType.GenDate),
+        ("ZedText", CellarPropertyType.OwningAtomic),
     ];
 
     private static void AddCustomFields(LcmCache cache)
@@ -82,7 +83,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
         {
             var reference = type is CellarPropertyType.ReferenceAtomic or CellarPropertyType.ReferenceCollection;
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-                metadata.AddCustomField("LexEntry", name, type, reference ? possibility : 0, string.Empty,
+                metadata.AddCustomField("LexEntry", name, type, reference ? possibility : type == CellarPropertyType.OwningAtomic ? metadata.GetClassId("StText") : 0, string.Empty,
                     name == "ZedString" ? WritingSystemServices.kwsAnal : 0, reference ? list : Guid.Empty));
         }
     }
@@ -127,6 +128,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
                 _cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true)) switch
             {
                 CellarPropertyType.ReferenceAtomic => "ReferenceAtomic",
+                CellarPropertyType.OwningAtomic => "StText",
                 var other => other.ToString(),
             });
 
@@ -997,22 +999,84 @@ public sealed class RecordChangeSetLowererTests : IDisposable
     }
 
     [Fact]
-    public void AnOwnedStTextCustomFieldIsRefusedWithItsOwnReasonAndAGenDateOneIsReportedOmitted()
+    public void AnOwnedStTextCustomFieldIsWrittenAsParagraphsAndAGenDateOneIsReportedOmitted()
     {
-        var metadata = (IFwMetaDataCacheManaged)_cache.MetaDataCacheAccessor;
-        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
-            metadata.AddCustomField("LexEntry", "ZedText", CellarPropertyType.OwningAtomic, metadata.GetClassId("StText")));
-        var schema = ProjectRecordSchema.Generate(_cache, ProjectRecordSchema.LexiconEntryOverlay);
-        var fields = new RecordWritableFields(schema);
-        Assert.Equal(new WritableFieldResolution.Uncovered(UncoveredFieldReason.CustomStText),
-            fields.Resolve("LexEntry", Custom("ZedText"), RecordWriteVerb.SetRich));
-        Assert.Equal(new WritableFieldResolution.Uncovered(UncoveredFieldReason.CustomStText),
-            fields.Resolve("LexEntry", Custom("ZedText"), RecordWriteVerb.ClearRich));
-        Assert.False(new CatalogWritableFields(schema).CanWrite("LexEntry", "ZedText"));
-        var omitted = Assert.Single(schema.OmittedCustomFields, item => item.Field == "ZedDate");
+        var fields = new RecordWritableFields(_schema);
+        Assert.Equal(new WritableFieldResolution.Covered("text/setParagraphs"), fields.Resolve("LexEntry", Custom("ZedText"), RecordWriteVerb.SetRich));
+        Assert.Equal(new WritableFieldResolution.Covered("text/setParagraphs"), fields.Resolve("LexEntry", Custom("ZedText"), RecordWriteVerb.ClearRich));
+        Assert.True(new CatalogWritableFields(_schema).CanWrite("LexEntry", "ZedText"));
+        var omitted = Assert.Single(_schema.OmittedCustomFields, item => item.Field == "ZedDate");
         Assert.Contains("GenDate", omitted.Reason);
-        Assert.Null(schema.FieldBinding("LexEntry", Custom("ZedDate")));
+        Assert.Null(_schema.FieldBinding("LexEntry", Custom("ZedDate")));
     }
+
+    [Fact]
+    public void AnOwnedStTextCustomFieldEditsLowerToOneParagraphsOperationAndApplyReadsBackWithUnchangedParagraphsKept()
+    {
+        var flid = _cache.MetaDataCacheAccessor.GetFieldId("LexEntry", "ZedText", true);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var text = (IStText)_cache.ServiceLocator.GetObject(_cache.DomainDataByFlid.MakeNewObject(StTextTags.kClassId, _entry.Hvo, flid, -2));
+            foreach (var line in new[] { "zzfirst", "zzsecond" })
+            {
+                var paragraph = _cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+                text.ParagraphsOS.Add(paragraph);
+                paragraph.Contents = TsStringUtils.MakeString(line, _cache.DefaultAnalWs);
+            }
+        });
+        var export = _exporter.Export(_entry.Guid);
+        Assert.Contains("zzsecond", export.Text);
+
+        var lowering = Lower(PlanEdit(d =>
+        {
+            var held = ((RecordScalar)d.Data[Custom("ZedText")]!).Text;
+            d.Data[Custom("ZedText")] = new RecordScalar(held.Replace("zzsecond", "zzchanged") + "\n\nzzthird");
+        }));
+        var operation = Assert.Single(lowering.Operations);
+        Assert.Equal("text/setParagraphs", operation.Kind);
+        Assert.Equal("custom:LexEntry.ZedText", operation.After!.Value.GetProperty("field").GetString());
+        var effect = Assert.Single(DryRun(lowering).ExpectedEffects);
+        Assert.Equal("text/custom:LexEntry.ZedText", effect.Field);
+        Assert.Contains("zzchanged", effect.After.Values);
+        Assert.Contains("zzthird", effect.After.Values);
+
+        var kept = ((IStText)_cache.ServiceLocator.GetObject(_cache.DomainDataByFlid.get_ObjectProp(_entry.Hvo, flid))).ParagraphsOS[0].Guid;
+        Execute(operation);
+        var after = (IStText)_cache.ServiceLocator.GetObject(_cache.DomainDataByFlid.get_ObjectProp(_entry.Hvo, flid));
+        Assert.Equal(["zzfirst", "zzchanged", "zzthird"], after.ParagraphsOS.Cast<IStTxtPara>().Select(p => p.Contents.Text));
+        Assert.Equal(kept, after.ParagraphsOS[0].Guid);
+
+        var cleared = Lower(PlanEdit(d => d.Data[Custom("ZedText")] = null));
+        Assert.Equal("text/setParagraphs", Assert.Single(cleared.Operations).Kind);
+    }
+
+    [Fact]
+    public void AnOwnedStTextCustomFieldThatHoldsNothingIsCreatedByAnEdit()
+    {
+        var lowering = Lower(PlanEdit(d => d.Data[Custom("ZedText")] = new RecordScalar("zznew")));
+        var operation = Assert.Single(lowering.Operations);
+        Execute(operation);
+        var flid = _cache.MetaDataCacheAccessor.GetFieldId("LexEntry", "ZedText", true);
+        var made = (IStText)_cache.ServiceLocator.GetObject(_cache.DomainDataByFlid.get_ObjectProp(_entry.Hvo, flid));
+        Assert.Equal("zznew", Assert.Single(made.ParagraphsOS.Cast<IStTxtPara>()).Contents.Text);
+    }
+
+    [Fact]
+    public void AFileThatEditsAGenDateCustomFieldIsRefusedWholeNamingTheFieldAndNoOperationIsMade()
+    {
+        var text = _exporter.Export(_entry.Guid).Text!;
+        var edited = text.Replace("record-data:\n", "record-data:\n  " + Custom("ZedDate") + ": \"AD 2030-1-1 Exact\"\n");
+        Assert.NotEqual(text, edited);
+        var lowering = Lower(new ProjectRecordImporter(_exporter).Plan(edited, new CatalogWritableFields(_schema)));
+        var refusal = Assert.Single(lowering.Refusals);
+        Assert.Equal(RefusalCodes.RecordImportPlanRefused, refusal.Code);
+        Assert.Contains("custom field LexEntry.ZedDate", refusal.Reason);
+        Assert.Contains("GenDate", refusal.Reason);
+        Assert.Empty(lowering.Operations);
+    }
+
+    private void Execute(OperationEnvelope operation) => NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        OperationHandlerRegistry.Resolve(operation.Kind, "fixture").ApplyAndCaptureEffect(_cache, operation, []));
 
     [Fact]
     public void AddingASecondDialectLabelAfterTheHeldOneAppendsAndAnInsertBeforeItIsRefused()

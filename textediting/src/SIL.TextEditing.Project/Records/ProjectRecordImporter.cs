@@ -196,11 +196,17 @@ namespace SIL.TextEditing.Project
                     case RecordDiagnosticIds.UnknownField: kind = RecordRefusalKind.UnknownField; break;
                     default: kind = RecordRefusalKind.UnreadableFile; break;
                 }
-                result.Add(new RecordRefusal(kind, d.Id + " at line " + d.Line + ": " + d.Message) { Field = read.Document == null ? string.Empty : PathAt(read.Document.Data, d.Start) ?? string.Empty, New = d.Observed });
+                result.Add(new RecordRefusal(kind, d.Id + " at line " + d.Line + ": " + d.Message + OmissionOf(d)) { Field = read.Document == null ? string.Empty : PathAt(read.Document.Data, d.Start) ?? string.Empty, New = d.Observed });
             }
             if (result.Count == 0 && fallback != null) result.Add(Refusal(fallback.Value, fallbackReason!));
             return result;
         }
+
+        /// <summary>Names why a key the schema lacks is a project's custom field, which record files leave out (a date), so the refusal is not a typo's.</summary>
+        string OmissionOf(MarkdownDiagnostic d) => d.Id == RecordDiagnosticIds.UnknownField &&
+            _exporter.Result.OmittedCustomFields.FirstOrDefault(o => d.Message.Contains("'" + ProjectRecordSchema.CustomKey(o.Class, o.Field) + "'", StringComparison.Ordinal)) is { } omitted
+            ? " That is the project's custom field " + omitted.Class + "." + omitted.Field + ", which record files leave out: " + omitted.Reason + " Edit it in FieldWorks."
+            : "";
 
         /// <summary>The field path of the innermost value whose source range holds the offset.</summary>
         static string? PathAt(RecordValue value, int offset)

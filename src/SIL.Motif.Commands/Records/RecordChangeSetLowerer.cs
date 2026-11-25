@@ -698,7 +698,7 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
                 if (wanted.Contains(KeyOf(i)))
                     expected[KeyOf(i)] = new TextParagraphExpected(held[i].Contents?.Text ?? "", held[i].StyleName ?? "",
                         held[i].Contents is { Length: > 0 } contents ? Digest(contents) : TextRunsDigest.Of([]));
-            var payload = new TextParagraphsPayload(binding.DeclaringClass + "." + binding.Field, order, changed, removed, expected);
+            var payload = new TextParagraphsPayload((binding.IsCustom ? TextParagraphFields.CustomPrefix : "") + binding.DeclaringClass + "." + binding.Field, order, changed, removed, expected);
             _pending.Add(Operation(Id(role + ":" + kind), kind, target, payload.ToJson()));
         }
 

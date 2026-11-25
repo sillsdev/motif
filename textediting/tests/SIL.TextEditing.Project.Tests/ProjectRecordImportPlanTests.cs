@@ -501,6 +501,24 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void AnEditToAGeneralDateCustomFieldIsRefusedWholeAndNamesTheOmittedField()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            AddCustom(fixture.Cache, "LexEntry", "Seen", CellarPropertyType.GenDate);
+            var exporter = LexiconExporter(fixture);
+            var export = exporter.Export(w.Entry.Guid);
+            var text = export.Text!.Replace("record-data:\n", "record-data:\n  custom-LexEntry-Seen: \"AD 2030-1-1 Exact\"\n");
+            Assert.NotEqual(export.Text, text);
+            var plan = Plan(exporter, text);
+            var refusal = Single(plan, RecordRefusalKind.UnknownField);
+            Assert.True(refusal.WholeFile);
+            Assert.Contains("custom field LexEntry.Seen", refusal.Reason);
+            Assert.Contains("GenDate", refusal.Reason);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
         public void AFieldWhoseFormattingTheExportCouldNotHoldIsLockedAgainstEdits()
         {
             using var fixture = new ProjectFixture();

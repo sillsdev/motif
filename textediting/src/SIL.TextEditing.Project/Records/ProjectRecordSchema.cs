@@ -211,7 +211,7 @@ namespace SIL.TextEditing.Project
                 if (!reachableClasses.Contains(name)) throw new ArgumentException("Unreachable overlay class " + name + ".");
         }
 
-        static string CustomKey(string owner, string name)
+        internal static string CustomKey(string owner, string name)
         {
             var key = new StringBuilder("custom-").Append(owner).Append('-');
             for (int i = 0; i < name.Length; i++)
