@@ -263,8 +263,10 @@ public static class HelpCommand
         output.WriteLine("Grammar Guide: 'guide show <GDR-n> --format fw-md', edit the file, then 'guide edit <GDR-n> --from-file <file>'");
         output.WriteLine("stages it (add --draft <name> to ship it with a rule's Draft; check it with 'guide show <GDR-n> --as-of <name>').");
         output.WriteLine("Record a judgement call, \"A or B, I am choosing A, because ...\", with 'guide decide <GDR-n> --choosing A --over B --because <reason>'.");
-        output.WriteLine("Only existing sections can be edited; a new section is added in FieldWorks.");
-        output.WriteLine("'guide show' and 'guide edit' need Advanced AI mode ('motif settings advanced-ai on'); 'guide decide' needs --autonomous.");
+        output.WriteLine("Only existing sections can be edited; 'guide add --title <text> [--parent <GDR-n>] [--after <GDR-n>] [--from-file <body.md>]' stages a new one.");
+        output.WriteLine("'guide edit' and 'guide add' need Advanced AI mode ('motif settings advanced-ai on'); 'guide show' is a read and needs none; 'guide decide' needs --autonomous.");
+        output.WriteLine("First time on a project: 'guide add --title <text>' (creates the list), apply the pending changes, 'baseline capture --project <fwdata>',");
+        output.WriteLine("then 'guide check'. Guide reads show nothing until a Baseline is captured. The id of each new section is in the 'guide add --json' answer.");
         output.WriteLine("When the Draft already holds an edit of a section, start from 'guide show <GDR-n> --as-of <name> --format fw-md'.");
         output.WriteLine();
         output.WriteLine("Gate rule: Autonomous Apply needs a green Trial gate, except for a Proposal whose every operation edits a Grammar Guide");

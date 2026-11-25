@@ -43,6 +43,8 @@ public static class CliVerbCatalog
             new[] { "guide show --project <fwdata> <GDR-n> [--as-of <draft-or-proposal>] [--json | --format fw-md]" }),
         new CliVerbDescriptor("Project", "guide", "guide edit",
             new[] { "guide edit --project <fwdata> <GDR-n> --from-file <file.md | -> [--draft <name>] [--json]" }),
+        new CliVerbDescriptor("Project", "guide", "guide add",
+            new[] { "guide add --project <fwdata> --title <text> [--parent <GDR-n>] [--after <GDR-n>] [--from-file <file.md | ->] [--ws <tag>] [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide decide",
             new[] { "guide decide --project <fwdata> <GDR-n> --choosing <A> --over <B> --because <reason> [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide check",

@@ -34,6 +34,9 @@ internal static class AutonomousTrialGate
         var sections = ProjectReadCache.ReadSaved(project, (_, cache) => GdrReader.List(cache)
             .Select(item => SIL.Motif.Runner.Operations.OperationSlotRegistry.ByGuid(SIL.Motif.Contract.Ids.CanonicalId.Parse(item.Id)).Value)
             .ToHashSet(StringComparer.Ordinal));
+        // A section the Proposal creates is a Guide section for its own later edits.
+        foreach (var created in operations.Where(operation => operation.Kind == GdrSectionOperationKinds.Create && operation.EntityId is not null))
+            sections.Add(SIL.Motif.Runner.Operations.OperationSlotRegistry.ByGuid(created.EntityId!.Value).Value);
         return GuideNotesOnlyProposal.ExemptionFor(operations, sections) is not null;
     }
 

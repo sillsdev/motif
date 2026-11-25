@@ -101,7 +101,7 @@ public static class GdrSyncChecker
         }
         if (anyUncovered && records.Count == 0)
             findings.Insert(0, new GdrSyncFinding(GdrSyncCodes.NoRecords,
-                "The project has no Grammar Guide list, so no rule has a section. Create the first records (ADR 0005).",
+                "The project has no Grammar Guide list, so no rule has a section. Create the first with 'guide add --title <text>', apply it, then capture a Baseline (ADR 0005).",
                 null, null, null, 0, []));
 
         // (c) examples against the stored rows.
