@@ -46,6 +46,61 @@ public sealed class TrialDeltaArgvTests
     }
 
     [Fact]
+    public async Task ExpectationsExitZeroWhenGreenAndSixWhenAManifestOrACapFails()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = "";
+        var published = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, project,
+            [
+                new("lost", [], []) { BeforeSignatures = [Sig(1)], AfterSignatures = [] },
+                new("doubled", [], []) { BeforeSignatures = [Sig(2)], AfterSignatures = [Sig(2), Sig(3)] },
+            ]);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(published.Succeeded, published.Refusal?.Message);
+        var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
+        var directory = Path.Combine(fixture.Root, "manifests");
+        var written = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--write-manifests", directory, "--json");
+        Assert.True(written.ExitCode == 0, written.Error);
+        var retired = Path.Combine(directory, "expect-retired.jsonl");
+        var added = Path.Combine(directory, "expect-added.jsonl");
+
+        var green = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--expect-retired", retired, "--expect-added", added, "--max-doubled", "1", "--json");
+        var capped = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--expect-retired", retired, "--expect-added", added, "--max-doubled", "0", "--json");
+        File.WriteAllText(retired, "");
+        var mismatch = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--expect-retired", retired, "--json");
+
+        Assert.True(green.ExitCode == 0, green.Error);
+        using (var json = JsonDocument.Parse(green.Output))
+            Assert.Equal("green", json.RootElement.GetProperty("expectations").GetProperty("state").GetString());
+        Assert.Equal(6, capped.ExitCode);
+        using (var json = JsonDocument.Parse(capped.Output))
+            Assert.Equal("doubled-over-cap", json.RootElement.GetProperty("expectations").GetProperty("state").GetString());
+        Assert.Equal(6, mismatch.ExitCode);
+        using (var json = JsonDocument.Parse(mismatch.Output))
+            Assert.Equal("mismatch", json.RootElement.GetProperty("expectations").GetProperty("state").GetString());
+    }
+
+    [Fact]
+    public async Task AnExpectationManifestThatDoesNotExistIsRefused()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
+
+        var result = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--job", "job/x", "--expect-added", Path.Combine(fixture.Root, "missing.jsonl"));
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("--expect-added", result.Output + result.Error);
+    }
+
+    [Fact]
     public async Task DeltaWithoutAProjectIsAUsageError()
     {
         using var fixture = new ReviewAcceptanceFixture();

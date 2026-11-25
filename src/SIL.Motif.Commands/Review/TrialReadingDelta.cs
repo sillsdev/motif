@@ -21,13 +21,25 @@ public static class TrialReadingDelta
     /// <summary>The delta of the requested Trial, with a page of rows for each requested class.</summary>
     public static CommandOutcome<ReadingDelta> Read(ReadTrialDeltaRequest request) => Run(request, null);
 
+    /// <summary>
+    /// Reads the delta and holds it to <paramref name="expectations"/>, as the lane gate does: the delta's
+    /// <see cref="ReadingDelta.Expectations"/> says green, mismatch, doubled-over-cap or unmeasured.
+    /// </summary>
+    public static CommandOutcome<ReadingDelta> Check(ReadTrialDeltaRequest request, TrialExpectations expectations,
+        ManifestOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(expectations);
+        if (TrialExpectationCheck.Invalid(expectations) is { } invalid) return Invalid(invalid);
+        return Run(request, null, options ?? new ManifestOptions(), expectations.Any ? expectations : null);
+    }
+
     /// <summary>Reads the delta and writes the two manifests into <paramref name="manifestDirectory"/>.</summary>
     /// <remarks>A manifest must enumerate the whole delta, so any unmeasured form is a refusal.</remarks>
     public static CommandOutcome<ReadingDelta> ReadAndWrite(ReadTrialDeltaRequest request, string manifestDirectory,
         ManifestOptions? options = null) => Run(request, manifestDirectory, options ?? new ManifestOptions());
 
     private static CommandOutcome<ReadingDelta> Run(ReadTrialDeltaRequest request, string? manifestDirectory,
-        ManifestOptions? options = null)
+        ManifestOptions? options = null, TrialExpectations? expectations = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var classes = request.Classes is { Count: > 0 } ? request.Classes : ReadingDeltaClasses.Default;
@@ -47,7 +59,7 @@ public static class TrialReadingDelta
             {
                 var receipt = Locate(database, project, request);
                 if (receipt is null) return Unavailable("No retained evidence export matches this Trial.");
-                return Build(database, receipt, request, classes, manifestDirectory, options ?? new ManifestOptions());
+                return Build(database, receipt, request, classes, manifestDirectory, options ?? new ManifestOptions(), expectations);
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or
                 UnauthorizedAccessException or JsonException)
@@ -68,7 +80,8 @@ public static class TrialReadingDelta
     }
 
     private static CommandOutcome<ReadingDelta> Build(MotifDatabase database, TrialExportReceipt receipt,
-        ReadTrialDeltaRequest request, IReadOnlyList<string> classes, string? manifestDirectory, ManifestOptions options)
+        ReadTrialDeltaRequest request, IReadOnlyList<string> classes, string? manifestDirectory, ManifestOptions options,
+        TrialExpectations? expectations)
     {
         var inputs = new List<ReadingDeltaInput>();
         var unmeasured = new HashSet<string>(StringComparer.Ordinal);
@@ -102,22 +115,8 @@ public static class TrialReadingDelta
                 return CommandOutcome<ReadingDelta>.Refused(new Refusal(RefusalCodes.TrialDeltaIncomplete, FailureReason.Refused,
                     $"{unmeasured.Count} forms were not measured on both sides or have no complete Reading identity " +
                     "(" + string.Join(", ", limitations) + "), so a manifest would not enumerate the whole delta."));
-            IReadOnlyDictionary<string, string>? aliases = null;
-            if (options.AliasCreated)
-            {
-                try
-                {
-                    var proposalId = request.ProposalId ?? Trials.ProposalOf(
-                        new JobRepository(database).Get(receipt.JobId) ?? throw new InvalidDataException("The Trial job is gone."));
-                    aliases = ReadingManifestFormat.CreatedAliases(TrialTouchedWords.LoadProposal(database, proposalId).Operations);
-                }
-                catch (Exception exception)
-                {
-                    return CommandOutcome<ReadingDelta>.Refused(new Refusal(RefusalCodes.TrialDeltaIncomplete, FailureReason.Refused,
-                        "The Proposal's operations could not be read to alias the ids it creates; " +
-                        "pass --alias-created false to write real ids. " + exception.Message));
-                }
-            }
+            var (aliases, aliasRefusal) = Aliases(database, receipt, request, options);
+            if (aliasRefusal is not null) return aliasRefusal;
             try { manifests = ManifestWriter.Write(manifestDirectory, forms, aliases, options.KeepCase); }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
                 ArgumentException or NotSupportedException)
@@ -126,8 +125,47 @@ public static class TrialReadingDelta
                     FailureReason.InvalidArgument, $"The manifests could not be written to '{manifestDirectory}': {exception.Message}"));
             }
         }
+        ReadingExpectationResult? held = null;
+        if (expectations is not null)
+        {
+            Dictionary<string, Dictionary<string, long>>? retired = null, added = null;
+            if (expectations.RetiredRows is not null)
+            {
+                var parsed = TrialExpectationCheck.Parse(ReadingExpectationKinds.Retired, expectations.RetiredRows, options.KeepCase);
+                if (parsed.Error is not null) return Invalid(parsed.Error);
+                retired = parsed.Rows;
+            }
+            if (expectations.AddedRows is not null)
+            {
+                var parsed = TrialExpectationCheck.Parse(ReadingExpectationKinds.Added, expectations.AddedRows, options.KeepCase);
+                if (parsed.Error is not null) return Invalid(parsed.Error);
+                added = parsed.Rows;
+            }
+            var (expectedAliases, expectedRefusal) = Aliases(database, receipt, request, options);
+            if (expectedRefusal is not null) return expectedRefusal;
+            held = TrialExpectationCheck.Evaluate(forms, counts, expectations, retired, added, expectedAliases, options.KeepCase);
+        }
         return CommandOutcome<ReadingDelta>.Success(new ReadingDelta(ReadingDelta.Version, receipt.JobId,
-            receipt.ProposalRevision, counts, shown, manifests, [.. limitations]));
+            receipt.ProposalRevision, counts, shown, manifests, [.. limitations], held));
+    }
+
+    // The ids the Proposal creates, named created:N as the lane gate names them; null when real ids are asked for.
+    private static (IReadOnlyDictionary<string, string>? Aliases, CommandOutcome<ReadingDelta>? Refusal) Aliases(
+        MotifDatabase database, TrialExportReceipt receipt, ReadTrialDeltaRequest request, ManifestOptions options)
+    {
+        if (!options.AliasCreated) return (null, null);
+        try
+        {
+            var proposalId = request.ProposalId ?? Trials.ProposalOf(
+                new JobRepository(database).Get(receipt.JobId) ?? throw new InvalidDataException("The Trial job is gone."));
+            return (ReadingManifestFormat.CreatedAliases(TrialTouchedWords.LoadProposal(database, proposalId).Operations), null);
+        }
+        catch (Exception exception)
+        {
+            return (null, CommandOutcome<ReadingDelta>.Refused(new Refusal(RefusalCodes.TrialDeltaIncomplete, FailureReason.Refused,
+                "The Proposal's operations could not be read to alias the ids it creates; " +
+                "pass --alias-created false to write real ids. " + exception.Message)));
+        }
     }
 
     private static long Count(IEnumerable<ReadingDeltaForm> forms, string name) => forms.Count(form => form.Classes.Contains(name));
