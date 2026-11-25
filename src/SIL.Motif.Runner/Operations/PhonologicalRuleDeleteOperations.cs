@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using SIL.LCModel;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Model.Effects;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Model.Snapshot;
 
 namespace SIL.Motif.Runner.Operations;
@@ -25,6 +28,9 @@ public static class PhonologicalRuleDeleteOperationKinds
 
     /// <summary>Deletes one context a rule owns directly, so the rule's side can be written again.</summary>
     public const string DeleteContexts = "grammar/phSegmentRule/deleteContexts";
+
+    /// <summary>Deletes the listed alpha constraints, and only those nothing refers to when it applies.</summary>
+    public const string CollectUnusedFeatConstraints = "grammar/phRegularRule/collectUnusedFeatConstraints";
 
 #pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
@@ -101,8 +107,9 @@ internal sealed class PhonologicalRuleDeleteHandler(string kind) : IOperationHan
             {
                 var user = part.ReferringObjects.FirstOrDefault(candidate => !subtree.Contains(candidate.Guid));
                 if (user is not null)
-                    throw new InvalidOperationException(
-                        $"'{kind}': '{part.Guid:D}' inside '{contextId.Value}' is still used by a {user.ClassName} ({user.Guid:D}); remove that use first.");
+                    throw new PhonologicalRuleContextInUseRefusal(
+                        $"'{kind}': '{part.Guid:D}' inside '{contextId.Value}' is still used by a {user.ClassName} ({user.Guid:D}); remove that use first.",
+                        contextId.Value, part.Guid, user.Guid);
             }
         }
         return (contextId, context);
@@ -127,4 +134,12 @@ internal sealed class PhonologicalRuleDeleteHandler(string kind) : IOperationHan
             if (current.Guid == owner.Guid) return true;
         return false;
     }
+}
+
+/// <summary>A context the operation would delete is referred to by an object outside what it deletes.</summary>
+internal sealed class PhonologicalRuleContextInUseRefusal : ProposalRefusalException
+{
+    internal PhonologicalRuleContextInUseRefusal(string message, string target, Guid context, Guid user)
+        : base(RefusalCodes.RuleNotationContextInUse, FailureReason.Refused, message,
+            new Dictionary<string, string> { ["target"] = target, ["context"] = context.ToString("D"), ["user"] = user.ToString("D") }) { }
 }
