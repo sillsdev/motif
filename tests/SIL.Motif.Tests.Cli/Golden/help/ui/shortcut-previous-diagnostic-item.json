@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-previous-diagnostic-item",
+  "slug": "shortcut-previous-diagnostic-item",
+  "title": "Move to the Previous Diagnostic Item",
+  "description": "Focus the preceding item in the diagnostic tree.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-previous-diagnostic-item/"
+}

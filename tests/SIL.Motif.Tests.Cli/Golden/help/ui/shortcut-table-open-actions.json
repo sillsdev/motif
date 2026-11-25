@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-table-open-actions",
+  "slug": "shortcut-table-open-actions",
+  "title": "Open Row Actions",
+  "description": "Open the actions menu for the selected row.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-table-open-actions/"
+}

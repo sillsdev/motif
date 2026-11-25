@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-group-settings",
+  "slug": "shortcut-group-settings",
+  "title": "Settings",
+  "description": "Keyboard shortcuts available in Settings.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-settings/"
+}

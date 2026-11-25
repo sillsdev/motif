@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "project tag",
+  "slug": "project-tag",
+  "title": "Read a project tag",
+  "description": "Reads the tag Motif stores for this project on this machine. When its vernacular language code is already used, Motif tries the exact folder name and refuses if that choice is invalid or taken.",
+  "helpPage": "# Read a project tag\n\nRead the tag Motif stores for this project on this machine. For a project without a tag, Motif uses its vernacular language code when that code is available. If the code is already used, Motif tries the exact folder name and refuses if that name is invalid or taken.\n\n\u0060\u0060\u0060text\nmotif project tag --project \u003Cfwdata\u003E\n\u0060\u0060\u0060\n\nUse \u0060--json\u0060 to receive the tag as structured output. If Motif cannot choose a valid, unused tag, choose one with \u0060project tag --set\u0060.\n",
+  "usage": [
+    "Usage: motif project tag --project \u003Cfwdata\u003E [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/project-tag/"
+}

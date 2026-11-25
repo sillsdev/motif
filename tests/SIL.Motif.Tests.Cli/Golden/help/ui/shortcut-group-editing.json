@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-group-editing",
+  "slug": "shortcut-group-editing",
+  "title": "Editing",
+  "description": "Copy words and selected text, and undo or redo staging actions.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-editing/"
+}

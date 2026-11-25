@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "new",
+  "slug": "new",
+  "title": "Start a Proposal",
+  "description": "Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.",
+  "helpPage": "# Start a Proposal\n\nStarts a named Draft holding one related set of semantic changes. Measure it and revise it before Finalize. Only a person can Apply.\n\nBefore Finalize, give the Draft both a short label and a Rationale. Use \u0060--label\u0060 here or \u0060motif label\u0060 to set the label, then [\u0060proposal rationale\u0060](cmd:proposal%20rationale) with the Draft\u0027s Proposal id to say what changes and why.\n\nA name that is already taken is refused with \u0060draft.name-collision\u0060. When the existing Draft holds no changes, as after a compose into it failed, the refusal says so: compose into it again with \u0060--draft \u003Cname\u003E\u0060, remove it with \u0060discard-draft --project \u003Cfwdata\u003E --draft \u003Cname\u003E\u0060, or use another name. \u0060discard-empty-drafts --project \u003Cfwdata\u003E\u0060 removes such empty Drafts at once, keeping any that carry a Rationale or Comments and listing why they stayed.\n\n## Output size\n\n\u0060new --json\u0060 returns the same few fields as the text: \u0060draftName\u0060, \u0060proposalId\u0060 and \u0060label\u0060.\n",
+  "usage": [
+    "Usage: motif new --project \u003Cfwdata\u003E --draft \u003Cname\u003E [--label \u003Ctext\u003E] [--request \u003CrequestId\u003E] [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/new/"
+}

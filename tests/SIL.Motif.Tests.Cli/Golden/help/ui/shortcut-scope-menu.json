@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-scope-menu",
+  "slug": "shortcut-scope-menu",
+  "title": "Menus",
+  "description": "Available when a menu item has keyboard focus.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-menu/"
+}

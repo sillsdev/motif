@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "jobs list",
+  "slug": "jobs-list",
+  "title": "List queued jobs",
+  "description": "Lists jobs across Known projects in queue order. Use it to see which work will run next or find a job id for inspection.",
+  "helpPage": "# List queued jobs\n\n\u0060jobs list\u0060 lists queued work across the Known projects on this installation, in the order the Motif job runner will claim it.\n\n## When to use it\n\nUse this to find work that is waiting or running, or to get a job id for inspection. The queue spans every Known project, so no project path is given; \u0060--all\u0060 says the same thing and may be left out.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif jobs list --json\n\u0060\u0060\u0060\n\n## What it prints\n\nHuman output shows jobs and their queue positions. JSON returns the queue as structured data, including each job\u0027s project and status.\n\n## Related commands\n\n- [Inspect a job](cmd:jobs%20show) reads one job\u0027s detail.\n- [Reorder queued work](cmd:jobs%20move) changes which eligible job runs next.\n",
+  "usage": [
+    "Usage: motif jobs list [--all] [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/jobs-list/"
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "list",
+  "slug": "list",
+  "title": "List Proposals",
+  "description": "Lists open Proposals and Drafts, including each identity, label and status. Add --all to include closed ones, or --status to list one status. It returns the first 25 and names the next offset; --limit, --offset and --page read the rest.",
+  "helpPage": "# List Proposals\n\nLists open Proposals and Drafts, including each identity, label and status. Add --all to include closed ones, or --status to list one status.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif list --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022\nmotif list --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --all\nmotif list --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --status rejected --json\n\u0060\u0060\u0060\n\n## What it prints\n\nOne line per Proposal: its id, its status and its label. The statuses are \u0060draft\u0060, \u0060proposed\u0060, \u0060deferred\u0060, \u0060applied\u0060, \u0060rejected\u0060, \u0060superseded\u0060 and \u0060withdrawn\u0060; the last four are closed and are listed only with \u0060--all\u0060 or \u0060--status\u0060.\n\n## Output size\n\n\u0060list\u0060 returns the first 25 Proposals. The report names \u0060total\u0060, \u0060offset\u0060 and, when more remain, \u0060nextOffset\u0060; the text ends with the \u0060--offset\u0060 that reads the next page. \u0060--limit \u003C1-200\u003E\u0060 sets the page size and \u0060--offset \u003Cn\u003E\u0060 or \u0060--page \u003CN\u003E\u0060 picks the page. An offset past the last Proposal gives an empty page that still names the total. An offset or limit outside that range is refused with \u0060paging.invalid\u0060.\n",
+  "usage": [
+    "Usage: motif list --project \u003Cfwdata\u003E [--all | --status \u003Cstatus\u003E] [--limit \u003C1-200\u003E] [--offset \u003Cn\u003E | --page \u003CN\u003E] [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/list/"
+}

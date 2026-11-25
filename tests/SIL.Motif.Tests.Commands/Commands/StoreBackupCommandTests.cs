@@ -9,6 +9,7 @@ using SIL.Motif.Host;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.Commands;
 
@@ -34,6 +35,8 @@ public sealed class StoreBackupCommandTests : IDisposable
     private string Store => Path.Combine(_root, "Koro.motif.db");
 
     private string Folder(string name) => Path.Combine(_root, name);
+
+    private string Made(string name) => Directory.CreateDirectory(Folder(name)).FullName;
 
     [Fact]
     public void ABackupWritesTheStoreAndAReceiptWithSizesShasAndTheSchema()
@@ -119,9 +122,13 @@ public sealed class StoreBackupCommandTests : IDisposable
         Assert.Equal(["kept"], Markers(Store));
         Assert.Equal("collect = [\"A\"]", File.ReadAllText(Path.Combine(_root, "Koro.motif.toml")));
         Assert.Equal(MotifSchema.CurrentSchema, result.Value!.SchemaVersion);
-        var saved = result.Value.PreRestoreBackup!;
-        Assert.StartsWith(Path.Combine(_root, "Koro.motif-backups", "pre-restore-"), saved.BackupDirectory, StringComparison.Ordinal);
-        Assert.Equal(["kept", "added-later"], Markers(Path.Combine(saved.BackupDirectory, "store.sqlite")));
+        var saved = result.Value.PreRestoreDirectory!;
+        Assert.StartsWith(Path.Combine(_root, "Koro.motif-backups", "pre-restore-"), saved, StringComparison.Ordinal);
+        Assert.Equal(["kept", "added-later"], Markers(Path.Combine(saved, "moved", "store.sqlite")));
+        // The old store is kept once: no online backup and no receipt beside the moved files.
+        Assert.False(File.Exists(Path.Combine(saved, "store.sqlite")));
+        Assert.False(File.Exists(Path.Combine(saved, StoreBackupCommand.ReceiptName)));
+        Assert.Single(Directory.GetFiles(saved, "store.sqlite", SearchOption.AllDirectories));
         Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
         var reopened = ProjectStoreCommand.Run(Project, MotifProductVersion.CurrentText,
             (_, _) => CommandOutcome<string>.Success("opened"));
@@ -278,15 +285,16 @@ public sealed class StoreBackupCommandTests : IDisposable
     {
         AddMarker(Store, "kept");
         var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
-        AddMarker(Store, "later");
-        File.WriteAllText(Store + "-wal", "wal-bytes");
-        File.WriteAllText(Store + "-shm", "shm-bytes");
+        CommitOnlyToTheWal("later");
 
         var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
-        Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-wal")));
-        Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-shm")));
+        if (SidecarsSurviveTheHolder)
+        {
+            Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-wal")));
+            Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-shm")));
+        }
         Assert.Equal(["kept", "later"], Markers(Backed(result.Value!, "store.sqlite")));
         Assert.False(File.Exists(Store + "-wal"));
         Assert.Equal(["kept"], Markers(Store));
@@ -302,9 +310,48 @@ public sealed class StoreBackupCommandTests : IDisposable
         var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
-        Assert.Null(result.Value!.PreRestoreBackup);
-        Assert.Equal("this is not a database", File.ReadAllText(Backed(result.Value, "store.sqlite")));
+        Assert.Equal("this is not a database", File.ReadAllText(Backed(result.Value!, "store.sqlite")));
         Assert.Equal(["kept"], Markers(Store));
+    }
+
+    [RequiresSymbolicLinkFact]
+    public void ABackupToAFolderReachedThroughASymlinkIntoAnOwnedFolderIsRefusedAndWritesNothing()
+    {
+        Directory.CreateDirectory(TrialRoot);
+        var backups = Path.Combine(_root, "Koro.motif-backups");
+        Directory.CreateDirectory(backups);
+        var toTrial = Path.Combine(Made("links"), "to-trial");
+        var toBackups = Path.Combine(Made("links"), "to-backups");
+        var toStoreFolder = Path.Combine(Made("links"), "to-root");
+        Directory.CreateSymbolicLink(toTrial, TrialRoot);
+        Directory.CreateSymbolicLink(toBackups, backups);
+        Directory.CreateSymbolicLink(toStoreFolder, _root);
+        // A link to a link, and a link at the end of a --to that does not exist yet.
+        var chained = Path.Combine(Made("links"), "chained");
+        Directory.CreateSymbolicLink(chained, toTrial);
+
+        foreach (var destination in new[]
+            { Path.Combine(toTrial, "x"), toTrial, Path.Combine(toBackups, "mine"), Path.Combine(chained, "deep", "y"),
+              Path.Combine(toStoreFolder, "Koro.motif.db.trial-exports", "z") })
+        {
+            var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project, destination));
+            Assert.Equal(RefusalCodes.StoreBackupDestinationOwned, result.Refusal?.Code);
+        }
+        Assert.Empty(Directory.GetFileSystemEntries(TrialRoot));
+        Assert.Empty(Directory.GetFileSystemEntries(backups));
+    }
+
+    [RequiresSymbolicLinkFact]
+    public void ABackupToAFolderBesideTheOwnedOnesThroughASymlinkIsStillAllowed()
+    {
+        var outside = Made("outside");
+        var link = Path.Combine(Made("links"), "to-outside");
+        Directory.CreateSymbolicLink(link, outside);
+
+        var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Path.Combine(link, "b")));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.True(File.Exists(Path.Combine(outside, "b", "store.sqlite")));
     }
 
     [Theory]
@@ -467,9 +514,38 @@ public sealed class StoreBackupCommandTests : IDisposable
     private sealed class SimulatedCrash : Exception;
 
     private static readonly string[] RestoreSteps =
-        ["staged", "pre-restore-saved", "owned-quarantined", "owned-swapped", "old-store-moved", "store-swapped"];
+        ["staged", "checkpointed", "owned-quarantined", "owned-swapped", "sidecars-moved", "old-store-moved", "store-swapped"];
 
     public static TheoryData<string> Steps() => new(RestoreSteps);
+
+    private SqliteConnection? _walHolder;
+
+    /// <summary>Commits a row held only in the WAL: auto-checkpoint off, connection kept open.</summary>
+    private void CommitOnlyToTheWal(string marker)
+    {
+        _walHolder = Open(Store, SqliteOpenMode.ReadWrite);
+        using (var pragma = _walHolder.CreateCommand())
+        {
+            pragma.CommandText = "PRAGMA journal_mode = WAL; PRAGMA wal_autocheckpoint = 0;";
+            pragma.ExecuteNonQuery();
+        }
+        using var command = _walHolder.CreateCommand();
+        command.CommandText = "INSERT INTO StoreRelocations (OldFwDataPath, NewFwDataPath, RelocatedUtc, Basis) " +
+            "VALUES ($marker, 'x', 't', 'name');";
+        command.Parameters.AddWithValue("$marker", marker);
+        command.ExecuteNonQuery();
+        Assert.True(new FileInfo(Store + "-wal").Length > 0, "the committed row must be only in the WAL");
+        // Windows cannot rename a file a handle holds open, so close the holder there.
+        if (OperatingSystem.IsWindows())
+        {
+            _walHolder.Dispose();
+            _walHolder = null;
+            SqliteConnection.ClearAllPools();
+        }
+    }
+
+    /// <summary>True where the holder stays open, so the WAL and shm remain to be moved.</summary>
+    private static bool SidecarsSurviveTheHolder => !OperatingSystem.IsWindows();
 
     private StoreBackupResponse BackupThenDiverge()
     {
@@ -477,11 +553,10 @@ public sealed class StoreBackupCommandTests : IDisposable
         File.WriteAllText(Config, "old-config");
         WriteTrial("a.json", "A1");
         var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
-        AddMarker(Store, "later");
         File.WriteAllText(Config, "new-config");
         WriteTrial("a.json", "A2");
         WriteTrial("c.json", "C");
-        File.WriteAllText(Store + "-wal", "");
+        CommitOnlyToTheWal("later");
         return backup;
     }
 
@@ -505,8 +580,19 @@ public sealed class StoreBackupCommandTests : IDisposable
 
         var backups = Path.Combine(_root, "Koro.motif-backups");
         var moved = Directory.Exists(backups) ? Directory.GetDirectories(backups, "pre-restore-*") : [];
+        // At no step is a sidecar left at the live path without a store beside it.
+        if (!File.Exists(Store))
+            Assert.All(new[] { "-wal", "-shm", "-journal" }, suffix => Assert.False(File.Exists(Store + suffix), suffix));
         switch (step)
         {
+            case "sidecars-moved":
+                // The WAL is aside and its committed row is in the live store: the checkpoint ran first.
+                Assert.False(File.Exists(Store + "-wal"));
+                if (SidecarsSurviveTheHolder)
+                    Assert.True(File.Exists(Path.Combine(moved.Single(), "moved", "store.sqlite-wal")));
+                Assert.Equal(["kept", "later"], Markers(Store));
+                Assert.Equal(["ok"], Scalars(Store, "PRAGMA integrity_check;"));
+                break;
             case "old-store-moved":
                 // Between the two renames there is no store at the path: neither a half nor a mixed one.
                 Assert.False(File.Exists(Store));
@@ -525,6 +611,11 @@ public sealed class StoreBackupCommandTests : IDisposable
         var rerun = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(rerun.Succeeded, rerun.Refusal?.Message);
+        // One pre-restore folder holds the whole old set, and nothing marks it unfinished.
+        var folders = Directory.GetDirectories(backups, "pre-restore-*");
+        Assert.Single(folders);
+        Assert.False(File.Exists(Path.Combine(folders[0], "restore-incomplete")));
+        Assert.Equal(folders[0], rerun.Value!.PreRestoreDirectory);
         Assert.Equal(["kept"], Markers(Store));
         Assert.Equal("old-config", File.ReadAllText(Config));
         Assert.Equal("A1", File.ReadAllText(Path.Combine(TrialRoot, "a.json")));
@@ -552,7 +643,7 @@ public sealed class StoreBackupCommandTests : IDisposable
         Assert.Equal("C", File.ReadAllText(Path.Combine(TrialRoot, "c.json")));
         Assert.True(File.Exists(Store + "-wal"));
         Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
-        if (step != "staged") Assert.Contains("pre-restore-", result.Refusal!.Message, StringComparison.Ordinal);
+        if (step is not ("staged" or "checkpointed")) Assert.Contains("pre-restore-", result.Refusal!.Message, StringComparison.Ordinal);
         Assert.True(ProjectStoreCommand.Run(Project, MotifProductVersion.CurrentText,
             (_, _) => CommandOutcome<string>.Success("opened")).Succeeded);
     }
@@ -617,6 +708,7 @@ public sealed class StoreBackupCommandTests : IDisposable
 
     public void Dispose()
     {
+        _walHolder?.Dispose();
         SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
     }

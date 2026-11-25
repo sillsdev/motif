@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-stage-disapprove",
+  "slug": "shortcut-stage-disapprove",
+  "title": "Stage Disapprove",
+  "description": "Stage the focused analysis as Disapproved as a pending change.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-stage-disapprove/"
+}

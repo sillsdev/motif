@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "record export",
+  "slug": "record-export",
+  "title": "Export a record file",
+  "description": "Writes one record, or every record of a kind, from the saved project as the record file that import reads, and counts every value the file leaves out. It never changes the project. If the project changes after an export, export the record again and redo the edits; there is no merge.",
+  "helpPage": "# Export a record file\n\n\u0060motif record export --project \u003Cfwdata\u003E --out \u003Cpath\u003E (--record \u003Cguid\u003E | --all) [--kind \u003Ckind\u003E] [--json]\u0060 writes the saved project\u0027s records as the files \u0060motif import\u0060 reads. The MCP tool \u0060motif_record_export\u0060 takes \u0060out\u0060, \u0060recordId\u0060, \u0060kind\u0060 and \u0060all\u0060, and writes only under the project\u0027s folder or the working directory.\n\n\u0060--record \u003Cguid\u003E\u0060 writes one record to the file \u0060--out\u0060. \u0060--all\u0060 writes every root record of the kind into the folder \u0060--out\u0060, one file each, named by the record\u0027s GUID. The kind is \u0060lexicon/entry\u0060 (the default), \u0060notebook/record\u0060 or \u0060lists/item\u0060. Nothing is replaced: an existing file at a target refuses the whole call with \u0060record-export.output-unwritable\u0060 before anything is written.\n\nThe file holds what the record file format can hold. Every other value of the record\u0027s objects is counted in the response by class, field and reason (\u0060unexported\u0060, with \u0060unexportedCount\u0060), so a person editing the file knows what it does not carry; the values themselves are not printed. A record that cannot be written as a file is counted in \u0060notWrittenCount\u0060 and listed under \u0060(record)\u0060, and the other records are still written.\n\nEdit the file, then run \u0060motif import --file\u0060 to plan it. The file carries a digest of the record as exported: if the project changes first, import refuses the file whole (\u0060record-import.plan-refused\u0060). Export again and redo the edits; there is no merge. Exporting twice from an unchanged project writes byte-identical files, and importing an unedited export plans no change.\n",
+  "usage": [
+    "Usage: motif record export --project \u003Cfwdata\u003E --out \u003Cpath\u003E (--record \u003Cguid\u003E | --all) [--kind \u003Ckind\u003E] [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/record-export/"
+}
