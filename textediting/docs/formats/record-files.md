@@ -335,8 +335,11 @@ constraint on a class); a field the text already says (a copy's, modify's or ins
 a group's members) is shown there and an import refuses a change to it. Adding, removing or moving a member under those keys is not offered, because the
 text is the one key that does it. Clearing `input` or `output` is not offered either: an affix process needs at least one column and one step. The fields of a phonological rule are shown and an import refuses a change to one with `rule-notation.read-only`.
 
-- **Writing an affix process.** An import reads the new text, checks it, and diffs it against the project by longest common subsequence of the canonical text of
-  each element (Input columns, Output steps), leftmost on a tie. A kept element keeps its object; a changed or moved element is deleted and created, and a copy or
+- **Writing an affix process.** An import reads the new text, checks it, and aligns it with the project position by position, separately for Input columns and Output steps,
+  with no move detection. At a position whose kind is unchanged (a copy, a modify, an insertion of units, an insertion of a class, a segment, class or boundary
+  context, a group, the gap) the object and its GUID are kept and only the changed fields are set (content, modification class, phoneme, boundary, class, the units of
+  an insertion, the members of a group); `A B C D` becoming `A B D C` is two in-place edits. A position whose kind differs, or that exists on one side only, deletes
+  the old object and creates the new one. A copy or
   modify has its content set explicitly from its `$n` against the Input as it will stand, so a change to Input and Output in one file is checked together. An
   Input-only change that would leave a kept Output step pointing at a column it removes is refused (`rule-notation.dangling-index`). A column that was a group
   also drops the member contexts only it used, as FieldWorks's editor does. An anonymous class written in a bracket is created as a new natural class named
