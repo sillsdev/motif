@@ -2001,7 +2001,7 @@
   },
   {
     "name": "motif_compose_batch",
-    "description": "Compose many intents. Research first: motif_guide topic workflow; check best practice. Prefer the specific typed composer; batch only stages several in one Draft. One small Proposal per grammar question (guide workflow). Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and a Rationale are still required before Finalize. Only a person can Apply. The report lists the first 25 operations and says how to read the rest with show.\nCommand: compose-batch. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentsJson: {\u0022intents\u0022:[{\u0022verb\u0022:\u0022compose-author-phoneme\u0022,\u0022intent\u0022:{...},\u0022citation\u0022:{\u0022source\u0022:\u0022Grammar\u0022,\u0022locator\u0022:\u0022\u00A7 3\u0022}}, ...]}: each entry names a composing verb, carries exactly the closed intent that verb\u0027s --intent takes, and may include one citation beside that intent.\nBaseDirectory: The folder a forEachtargetsFile path is read from, normally the folder of the batch file; the current directory when absent.",
+    "description": "Compose many intents. Research first: motif_guide topic workflow; check best practice. Prefer the specific typed composer; batch only stages several in one Draft. One small Proposal per grammar question (guide workflow). Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and a Rationale are still required before Finalize. Only a person can Apply. The report lists the first 25 operations and says how to read the rest with show.\nCommand: compose-batch. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentsJson: {\u0022intents\u0022:[{\u0022verb\u0022:\u0022compose-author-phoneme\u0022,\u0022intent\u0022:{...},\u0022citation\u0022:{\u0022source\u0022:\u0022Grammar\u0022,\u0022locator\u0022:\u0022\u00A7 3\u0022}}, ...]}: each entry names a composing verb, carries exactly the closed intent that verb\u0027s --intent takes, and may include one citation beside that intent.\nBaseDirectory: The folder a forEachtargetsFile path is read from, normally the folder of the batch file; the a targetsFile is refused when absent, as over MCP, where callers pass targets inline.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2093,6 +2093,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -2143,6 +2160,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -2221,6 +2255,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -2305,6 +2356,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -2367,6 +2435,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -2515,6 +2600,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -2623,6 +2725,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -3271,6 +3390,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -3460,6 +3596,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -3519,6 +3672,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -3600,6 +3770,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -3664,6 +3851,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -3753,6 +3957,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -3888,6 +4109,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -3979,6 +4217,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -4047,6 +4302,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -4128,6 +4400,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -4184,6 +4473,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -4252,6 +4558,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -4334,6 +4657,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -4396,6 +4736,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -4471,6 +4828,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -4533,6 +4907,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -4649,6 +5040,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -4759,6 +5167,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -4918,6 +5343,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5041,6 +5483,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5098,6 +5557,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5144,6 +5620,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -5199,6 +5692,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5250,6 +5760,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -5318,6 +5845,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5371,6 +5915,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5422,6 +5983,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -5480,6 +6058,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -5542,6 +6137,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -5617,6 +6229,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5678,6 +6307,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -5757,6 +6403,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -5851,6 +6514,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5927,6 +6607,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -6071,6 +6768,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -6166,6 +6880,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -6223,6 +6954,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -6274,6 +7022,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -6345,6 +7110,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -6407,6 +7189,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -6493,6 +7292,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -6565,6 +7381,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -6620,6 +7453,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -6697,6 +7547,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -6772,6 +7639,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -6823,6 +7707,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -6881,6 +7782,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -6988,6 +7906,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -7045,6 +7980,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -7099,6 +8051,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -7161,6 +8130,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -8143,6 +9129,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -8203,6 +9206,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -8261,6 +9281,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -8312,6 +9349,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -8372,6 +9426,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -8423,6 +9494,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -8483,6 +9571,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -8534,6 +9639,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -8596,6 +9718,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -8723,6 +9862,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -8836,6 +9992,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -8892,6 +10065,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -8966,6 +10156,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -9016,6 +10223,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -9097,6 +10321,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -9165,6 +10406,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -9226,6 +10484,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -9301,6 +10576,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -9372,6 +10664,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -9462,6 +10771,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -9533,6 +10859,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -9584,6 +10927,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -9639,6 +10999,23 @@
                       "source"
                     ],
                     "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -9690,6 +11067,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -9747,6 +11141,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
@@ -9867,6 +11278,23 @@
                     },
                     "required": [
                       "source"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "forEach": {
+                    "type": "object",
+                    "properties": {
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "An id or a form."
+                        },
+                        "description": "Ids or forms; the entry becomes one intent per target, with {target}, {target.id} and {target.form} replaced in its strings."
+                      }
+                    },
+                    "required": [
+                      "targets"
                     ],
                     "additionalProperties": false
                   }
