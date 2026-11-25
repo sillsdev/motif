@@ -56,6 +56,39 @@ Intents run in file order, and each one sees the changes of the intents before i
 
 There is no limit by intent or operation count.
 
+## One intent over many targets (`forEach`)
+
+An entry may carry `"forEach": {"targets": [...]}` or `"forEach": {"targetsFile": "<path>"}` instead of being copied N times. Each target is an id or a form. The file has one target per line (blank lines are skipped; a line that starts with `"` is read as a JSON string), and a relative path is read from the folder of the batch file. Beside it the entry keeps its `verb`, its `intent` and an optional `citation`; it cannot carry `as`.
+
+In any string of `intent` or `citation`, `{target}` is the target as written. `{target.id}` is the object's canonical id: the target itself when it is an id found in the project, or the one entry whose lexeme form is the target. `{target.form}` is the lexeme form of the entry or allomorph that an id names, or the target itself when it is a form. These three are the only placeholders.
+
+The entry becomes one intent per target, in target order, in the same Draft. `proposal show` lists each one with `expandedFrom` (the entry's position in your file) and `target`. Positions in refusals count the expanded intents. A target that does not resolve, or whose intent a composer refuses, gets its own row (`Intent 3 (verb, target 'x' of forEach intent 1): ...`) and the other targets are still checked; as everywhere in a batch, one refusal still adds nothing. Refused with their own codes: an empty target list (`draft.foreach-empty`), a placeholder `forEach` does not define (`draft.foreach-unknown-placeholder`), `{target}` in an entry with no `forEach` (`draft.foreach-placeholder-without-foreach`), a `forEach` inside a `forEach` entry (`draft.foreach-nested`) and a target that names no object (`draft.foreach-target-unresolved`).
+
+Add a Verb analysis to many entries (a new category, then the same intent per entry; the glosses name each form):
+
+```json
+{"intents": [
+  {"verb": "compose-author-part-of-speech", "as": "verb", "intent": {"name": "Verb", "abbreviation": "v", "ws": "en"}},
+  {"verb": "compose-add-morphosyntax-analysis",
+   "forEach": {"targets": ["<entry id>", "<entry id>", "<entry form>"]},
+   "intent": {"entry": "{target.id}", "msa": {"kind": "stem", "category": "@verb"},
+              "gloss": "verb use of {target.form}", "analysisWs": "en"},
+   "citation": {"source": "Grammar 2026", "locator": "{target}"}}
+]}
+```
+
+Put the same environment on many allomorphs (one environment, then one alternate form per entry from `entries.txt`):
+
+```json
+{"intents": [
+  {"verb": "compose-author-environment", "as": "env",
+   "intent": {"name": "after t", "left": [{"phoneme": "<phoneme id>"}], "right": []}},
+  {"verb": "compose-author-alternate-form", "forEach": {"targetsFile": "entries.txt"},
+   "intent": {"entry": "{target}", "form": "ai", "formWs": "ta", "morphType": "<suffix morph type id>",
+              "environments": ["@env"]}}
+]}
+```
+
 ## Changing many stems at once
 
 The per-stem composers take one target each, and a batch is how a whole clean-up becomes one Proposal. Put one intent per stem in the file, for example `compose-set-stem-part-of-speech` to retype hundreds of stems (each with its own `expectedPartOfSpeech`) and, to stop stems parsing, retype or delete them (the do-not-parse flag changes no parse). Mix verbs freely; `compose-edit-derivational-affix-restriction` takes `alsoMsas` and `compose-add-exception-features` takes `msas`, so those two need only one intent for a list. Give the Draft its own Rationale before Finalize.

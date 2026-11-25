@@ -71,7 +71,28 @@ public static partial class ProposalCommands
             try
             {
                 var problems = new List<BatchProblem>();
-                steps = ParseBatch(request.IntentsJson, problems, out var entries);
+                var intentsJson = request.IntentsJson;
+                var expanded = new List<ExpandedEntry>();
+                if (intentsJson.Contains("forEach", StringComparison.Ordinal) ||
+                    intentsJson.Contains("{target", StringComparison.Ordinal))
+                {
+                    using var expandScope = ComposeProjectScope.Ensure(database, project);
+                    (intentsJson, expanded) = ProjectReadCache.ReadSaved(project, (_, cache) =>
+                    {
+                        var text = ExpandForEach(request.IntentsJson, request.BaseDirectory, cache, out var found);
+                        return (text, found);
+                    });
+                }
+                steps = ParseBatch(intentsJson, problems, out var entries);
+                foreach (var (item, position) in expanded.Select((item, position) => (item, position)))
+                    if (item.Code is not null && position < entries.Count)
+                        problems.Add(new(position, entries[position].Verb, item.Field!, item.Message!, item.Code));
+                if (problems.Count == 0 && steps.Count == expanded.Count && expanded.Any(item => item.From is not null))
+                    steps = steps.Select((step, position) => step with
+                    {
+                        ExpandedFrom = expanded[position].From,
+                        Target = expanded[position].Target,
+                    }).ToList();
                 PreflightBatch(project, database, request.DraftName, steps, entries, problems);
                 if (problems.Count > 0) throw new BatchPreflightException(problems);
             }
@@ -149,7 +170,7 @@ public static partial class ProposalCommands
     private const int MaximumLabelLength = 21;
     private const string MetathesisRuleComposerVerb = "compose-author-metathesis-rule";
 
-    private sealed record BatchProblem(int Index, string Verb, string Field, string Message);
+    private sealed record BatchProblem(int Index, string Verb, string Field, string Message, string? Code = null);
 
     private sealed record BatchEntry(int Index, string Verb, string? Label, JsonElement? Intent);
 
@@ -285,11 +306,12 @@ public static partial class ProposalCommands
     private static Refusal PreflightRefusal(BatchPreflightException exception, string draftName)
     {
         var first = exception.Problems.OrderBy(problem => problem.Index).First();
-        return DraftInvalid(exception.Message, ("draftName", draftName),
+        var refusal = DraftInvalid(exception.Message, ("draftName", draftName),
             ("intentIndex", first.Index.ToString(CultureInfo.InvariantCulture)),
             ("verb", first.Verb), ("field", first.Field),
             ("problemCount", exception.Problems.Count.ToString(CultureInfo.InvariantCulture)),
             ("problemIntents", string.Join(",", exception.Problems.Select(problem => problem.Index).Distinct().Order())));
+        return first.Code is null ? refusal : new Refusal(first.Code, refusal.Reason, refusal.Message, refusal.Facts);
     }
 
     // Read-only: collects every static and placement problem so one refusal lists them all before any stage runs.

@@ -563,7 +563,8 @@ try
             if (!File.Exists(batchFile))
                 return Usage($"The --intents file '{batchFile}' does not exist.", asJson);
             result = RenderProposal(ProposalCommands.ComposeBatch(new ComposeBatchRequest(
-                batchProject, CliProductVersion(), batchDraft, File.ReadAllText(batchFile))));
+                batchProject, CliProductVersion(), batchDraft, File.ReadAllText(batchFile),
+                Path.GetDirectoryName(Path.GetFullPath(batchFile)))));
             break;
 
         case "compose":

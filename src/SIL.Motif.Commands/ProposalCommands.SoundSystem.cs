@@ -425,7 +425,9 @@ public static partial class ProposalCommands
         IComposerDefinition? Definition = null,
         bool ResolvePlacementLabels = false,
         bool Independent = false,
-        PendingRowSpec? PendingRow = null)
+        PendingRowSpec? PendingRow = null,
+        int? ExpandedFrom = null,
+        string? Target = null)
     {
         internal static ComposeStep From(IComposerDefinition composer, JsonElement authored,
             OperationCitation? citation = null, string? label = null, bool resolvePlacementLabels = false) =>
@@ -435,10 +437,22 @@ public static partial class ProposalCommands
                 composer.RelatedObjects, authored, citation, label, composer, resolvePlacementLabels);
     }
 
-    private sealed class ComposeStepException(int index, Exception inner) : Exception(inner.Message, inner)
+    private class ComposeStepException(int index, Exception inner) : Exception(inner.Message, inner)
     {
         public int Index { get; } = index;
     }
+
+    // Every failed forEach step, so one bad target does not hide the others.
+    private sealed class ComposeStepFailures(IReadOnlyList<ComposeStepException> failures)
+        : ComposeStepException(failures[0].Index, failures[0].InnerException!)
+    {
+        public IReadOnlyList<ComposeStepException> Failures { get; } = failures;
+    }
+
+    private static string DescribeStepFailure(IReadOnlyList<ComposeStep> steps, ComposeStepException failure) =>
+        steps[failure.Index] is { ExpandedFrom: { } origin, Target: { } target } step
+            ? $"Intent {failure.Index} ({step.Verb}, target '{target}' of forEach intent {origin}): {failure.Message}"
+            : $"Intent {failure.Index} ({steps[failure.Index].Verb}): {failure.Message}";
 
     /// <summary>Composes every step from one copy and one cache load; saves all of them or none.</summary>
     private static CommandOutcome<ComposedOperationsResponse[]> ComposeStepsIntoDraft(
@@ -534,6 +548,7 @@ public static partial class ProposalCommands
                 var labelRoles = new Dictionary<string, IReadOnlyList<(string Role, string Id)>>(StringComparer.Ordinal);
                 var results = new List<(JsonElement Input, OperationEnvelope[] Added,
                     IReadOnlyList<ComposedRelatedObject>? Related)>();
+                var expansionFailures = new List<ComposeStepException>();
                 for (var index = 0; index < steps.Count; index++)
                 {
                     var step = steps[index];
@@ -664,9 +679,12 @@ public static partial class ProposalCommands
                     }
                     catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
                     {
-                        throw new ComposeStepException(index, exception);
+                        // A forEach target's refusal is reported with its siblings' rather than hiding them.
+                        if (step.ExpandedFrom is null) throw new ComposeStepException(index, exception);
+                        expansionFailures.Add(new ComposeStepException(index, exception));
                     }
                 }
+                if (expansionFailures.Count > 0) throw new ComposeStepFailures(expansionFailures);
                 writes.Complete();
                 return results;
             });
@@ -716,6 +734,8 @@ public static partial class ProposalCommands
                             kind = step.PendingRow?.Kind,
                             word = step.PendingRow?.Subject,
                             displayReading = step.PendingRow?.Summary,
+                            expandedFrom = step.ExpandedFrom,
+                            target = step.Target,
                         }, ComposerProvenanceOptions));
                 }
             }
@@ -747,6 +767,19 @@ public static partial class ProposalCommands
                     CreatedObjects = CreatedObjectsForOperations(operations),
                 };
             }).ToArray());
+        }
+        catch (ComposeStepFailures exception) when (describeBatchFailure)
+        {
+            var lines = exception.Failures.Select(failure => DescribeStepFailure(steps, failure)).ToArray();
+            var failure = DraftInvalidFrom(exception,
+                ("draftName", draftName), ("intentIndex", exception.Index.ToString(CultureInfo.InvariantCulture)),
+                ("verb", steps[exception.Index].Verb),
+                ("problemCount", lines.Length.ToString(CultureInfo.InvariantCulture)),
+                ("problemIntents", string.Join(",", exception.Failures.Select(item => item.Index))));
+            return CommandOutcome<ComposedOperationsResponse[]>.Refused(new Refusal(failure.Code, failure.Reason,
+                (lines.Length == 1 ? lines[0] : $"{lines.Length} forEach targets were refused:" +
+                    string.Concat(lines.Select(line => Environment.NewLine + "  " + line))) +
+                " Nothing in this batch was added.", failure.Facts));
         }
         catch (ComposeStepException exception) when (describeBatchFailure)
         {

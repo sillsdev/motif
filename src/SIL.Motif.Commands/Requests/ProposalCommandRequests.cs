@@ -248,8 +248,12 @@ public sealed record ComposeEditAnalysisDecisionRequest(
 /// each entry names a composing verb, carries exactly the closed intent that verb's <c>--intent</c> takes, and may
 /// include one citation beside that intent.
 /// </param>
+/// <param name="BaseDirectory">
+/// The folder a <c>forEach</c> <c>targetsFile</c> path is read from, normally the folder of the batch file; the
+/// current directory when absent.
+/// </param>
 public sealed record ComposeBatchRequest(
-    string FwDataPath, string ProductVersion, string DraftName, string IntentsJson);
+    string FwDataPath, string ProductVersion, string DraftName, string IntentsJson, string? BaseDirectory = null);
 
 /// <param name="Verb">The composing verb whose closed intent this step carries, such as <c>compose-author-phoneme</c>.</param>
 /// <param name="Intent">The closed intent JSON that verb takes.</param>

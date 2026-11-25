@@ -750,6 +750,17 @@ public static class RefusalCodes
     /// <summary>A Draft request or its content is not valid.</summary>
     public const string DraftInvalid = "draft.invalid";
 
+    /// <summary>A compose-batch <c>forEach</c> names no targets, so it would compose nothing.</summary>
+    public const string DraftForEachEmpty = "draft.foreach-empty";
+    /// <summary>A compose-batch intent uses a <c>{...}</c> placeholder that <c>forEach</c> does not define.</summary>
+    public const string DraftForEachUnknownPlaceholder = "draft.foreach-unknown-placeholder";
+    /// <summary>A compose-batch intent uses a <c>{target}</c> placeholder but carries no <c>forEach</c>.</summary>
+    public const string DraftForEachPlaceholderWithoutForEach = "draft.foreach-placeholder-without-foreach";
+    /// <summary>A compose-batch <c>forEach</c> sits inside another <c>forEach</c> entry.</summary>
+    public const string DraftForEachNested = "draft.foreach-nested";
+    /// <summary>A compose-batch <c>forEach</c> target names no object, or no unique object, in the project.</summary>
+    public const string DraftForEachTargetUnresolved = "draft.foreach-target-unresolved";
+
     /// <summary>A part-of-speech-only sense analysis needs a linked variant.</summary>
     public const string VariantComponentRequired = "draft.variant-component-required";
 
