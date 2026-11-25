@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-author-inflection-class",
+  "slug": "compose-author-inflection-class",
+  "title": "Author inflection class",
+  "description": "Adds an inflection class or subclass, such as a noun class, to a Draft. Its owner is explicit and the category\u0027s default is unchanged; use the created id when authoring a stem.",
+  "helpPage": "# Author an inflection class\n\nAdd a named inflection class, such as a noun class or conjugation, to a category. A class can be nested under an existing class in that same category.\n\n\u0060\u0060\u0060sh\nmotif compose-author-inflection-class --project language.fwdata --draft noun-classes \\\n  --intent \u0027{\u0022category\u0022:\u0022\u003Cnoun-id\u003E\u0022,\u0022name\u0022:\u0022Class Seven\u0022,\u0022ws\u0022:\u0022en\u0022,\u0022abbreviation\u0022:\u0022seven\u0022}\u0027\n\u0060\u0060\u0060\n\n\u0060category\u0060 is the existing part-of-speech id. Optional \u0060parent\u0060 names an existing inflection class whose owning category must match it. \u0060name\u0060 must be new within that category\u0027s class tree in \u0060ws\u0060; the writing system must be known. An optional \u0060abbreviation\u0060 supplies a short label.\n\nThe command preserves the category\u0027s default inflection class. Use the create operation\u0027s \u0060entityId\u0060 as \u0060msa.inflectionClass\u0060 when authoring a stem. References may name something an earlier call added to the same Draft.\n\nAdd \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 (at most 300 characters) to record the source on every operation this command produces.\n\nDry Run and Trial the Draft on affected words, revise it, then Finalize for a person to review and Apply.\n\n## When not to use this\n\n- Use a class only for arbitrary lexical grouping; a value that must agree with an affix is a feature ([guide](guide:encoding/feature-conditioned-slots)).\n- For a sound-conditioned form, use an environment rather than a class.\n",
+  "usage": [
+    "Usage: motif compose-author-inflection-class --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-author-inflection-class/"
+}

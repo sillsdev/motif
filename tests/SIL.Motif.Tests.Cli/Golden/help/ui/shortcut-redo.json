@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-redo",
+  "slug": "shortcut-redo",
+  "title": "Redo",
+  "description": "Redo the last staging action you undid.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-redo/"
+}

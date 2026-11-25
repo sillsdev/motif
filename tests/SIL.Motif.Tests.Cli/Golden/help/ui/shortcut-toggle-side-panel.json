@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-toggle-side-panel",
+  "slug": "shortcut-toggle-side-panel",
+  "title": "Show or Hide the Side Panel",
+  "description": "Show or hide the current page\u0027s side panel while keeping that page open.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-toggle-side-panel/"
+}

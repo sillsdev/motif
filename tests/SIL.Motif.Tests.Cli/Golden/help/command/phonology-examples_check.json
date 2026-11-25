@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "phonology-examples check",
+  "slug": "phonology-examples-check",
+  "title": "Check phonology examples",
+  "description": "Queues an advisory check of one saved Example Set revision against the current Baseline\u0027s grammar and records the result as an Assessment. It never changes the FieldWorks project, Readiness or Apply.",
+  "helpPage": "# Check phonology examples\n\n\u0060phonology-examples check\u0060 queues an advisory check of one saved Example Set revision against the grammar in the project\u0027s current [Baseline](term:baseline). For each example it asks PanGloss to generate surface forms from the underlying form in the example\u0027s declared context and reports whether the expected form was observed. A check never changes the FieldWorks project, never changes Readiness, and Apply ignores it.\n\n## When to use it\n\nUse this after saving examples with a cited source, to see whether the grammar as captured produces the forms you expect, and which rules applied. A result is \u0060agree\u0060 when an expected form was observed, \u0060disagree\u0060 when the search completed without it, and \u0060unavailable\u0060 when nothing usable was measured (for example no parser, an empty lexicon, or a context that names no entry). Unavailable is never a pass.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif phonology-examples check --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 \u003CrevisionId\u003E --wait --json\nmotif jobs assessments --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 \u003CjobId\u003E --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe id of the queued job. With \u0060--wait\u0060 it waits for the job to finish and prints the job\u0027s status. The job records one Assessment of kind \u0060PhonologyExamples\u0060; \u0060jobs assessments\u0060 gives its id, and [phonology-examples results](cmd:phonology-examples%20results) reads it. \u0060--work-cap\u0060 and \u0060--timeout-ms\u0060 bound the whole check. If no Baseline has been captured the command is refused; if the Baseline changes before the job runs, the job fails and the check must be requested again.\n\n## Related commands\n\n- [Save phonology examples](cmd:phonology-examples%20save) records the revision this command checks.\n- [Read phonology check results](cmd:phonology-examples%20results) reads the stored result.\n",
+  "usage": [
+    "Usage: motif phonology-examples check --project \u003Cfwdata\u003E \u003CrevisionId\u003E [--work-cap \u003Cn\u003E] [--timeout-ms \u003Cms\u003E] [--wait] [--wait-timeout-ms \u003Cms\u003E] [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/phonology-examples-check/"
+}

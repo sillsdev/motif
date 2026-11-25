@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "writing-systems",
+  "slug": "writing-systems",
+  "title": "Show writing systems",
+  "description": "Reads fonts, features, direction and style sizes from the current Baseline, in FieldWorks writing-system order. Change these settings in FieldWorks, then capture a new Baseline to read them here.",
+  "helpPage": "# Show writing systems\n\n\u0060motif writing-systems --project \u003Cfwdata\u003E [--json]\u0060 reads the current [Baseline](term:baseline)\u0027s writing systems without opening the FieldWorks project. Before the first capture, it reports that no Baseline exists.\n\nEach current vernacular and analysis list keeps FieldWorks\u0027 order and default. The response includes the id, name, abbreviation, requested default font family, verbatim feature string, direction, and each style\u0027s effective font, features and point size. A writing system in both lists appears once per membership; positions in JSON count from zero.\n\nThe command includes every project style; a missing style uses that writing system\u0027s effective Normal settings. Normal without a size uses FieldWorks\u0027 10-point default. Sizes contain no window units or zoom.\n\nFor which FieldWorks style each part of the window uses and where to change its writing-system settings, see [Writing systems in the window](guide:writing-systems).\n\nThe font name is the project\u0027s request. The command reports saved settings and does not inspect installed fonts.\n",
+  "usage": [
+    "Usage: motif writing-systems --project \u003Cfwdata\u003E [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/writing-systems/"
+}

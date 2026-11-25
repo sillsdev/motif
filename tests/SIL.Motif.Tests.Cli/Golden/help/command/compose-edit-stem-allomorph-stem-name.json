@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-edit-stem-allomorph-stem-name",
+  "slug": "compose-edit-stem-allomorph-stem-name",
+  "title": "Set a stem allomorph\u0027s name",
+  "description": "Sets or clears the stem name of one stem allomorph after checking the expected current stem name. The name must belong to a stem category of the entry or an ancestor; Motif stages a Draft for a person to review and Apply.",
+  "helpPage": "# Set a stem allomorph\u0027s name\n\nChange the stem name of an existing stem allomorph, so that the allomorph is used only for the inflectional features its stem name selects. The expected value is the stored stem name, or \u0060null\u0060 when the allomorph has none.\n\n\u0060\u0060\u0060sh\nmotif compose-edit-stem-allomorph-stem-name --project language.fwdata --draft plural-stems \\\n  --intent \u0027{\u0022target\u0022:\u0022\u003Cstem-allomorph-id\u003E\u0022,\u0022expectedStemName\u0022:null,\u0022stemName\u0022:\u0022\u003Cstem-name-id\u003E\u0022}\u0027\n\u0060\u0060\u0060\n\nAll three intent fields are required. \u0060expectedStemName\u0060 and \u0060stemName\u0060 are each either a canonical id or \u0060null\u0060. The target must be a stem allomorph, either the lexeme form or an alternate form of its entry. The desired stem name must belong to the part of speech of one of the entry\u0027s stem analyses, or to an ancestor of it; an entry with no stem analysis that has a part of speech is refused. Setting \u0060stemName\u0060 to \u0060null\u0060 clears the stem name. When the expected and desired values are the same, the command adds no operations.\n\nUse this editor through the CLI; it is not exposed as an MCP tool.\n\nUse a stem name id returned by an earlier composition in the same Draft directly in \u0060stemName\u0060. The Draft composer declares the dependency from that reference. This edit creates no stem name.\n\nAdd \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects and run a Trial on affected words before Finalize; only a person can Apply the Proposal.\n",
+  "usage": [
+    "Usage: motif compose-edit-stem-allomorph-stem-name --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-stem-allomorph-stem-name/"
+}

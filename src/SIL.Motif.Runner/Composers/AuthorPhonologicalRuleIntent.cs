@@ -40,6 +40,7 @@ public sealed record PhonologicalRuleVariable(string Variable, CanonicalId Featu
 /// <param name="Right">Contexts in order; an item may be optional or repeated.</param>
 /// <param name="Placement">The neighboring rule identities that define the insertion gap.</param>
 /// <param name="RightHandSides">One or more complete ordered cases, instead of the single-outcome shorthand.</param>
+/// <param name="InputCategories">Part-of-speech identities the single-outcome shorthand is limited to (Black 6.1.2.2.1); empty admits every category.</param>
 public sealed record AuthorPhonologicalRuleIntent(
     string Name,
     PhonologicalRuleDirection Direction,
@@ -48,10 +49,11 @@ public sealed record AuthorPhonologicalRuleIntent(
     IReadOnlyList<EnvironmentContext> Left,
     IReadOnlyList<EnvironmentContext> Right,
     Placement? Placement = null,
-    IReadOnlyList<PhonologicalRuleOutcome>? RightHandSides = null)
+    IReadOnlyList<PhonologicalRuleOutcome>? RightHandSides = null,
+    IReadOnlyList<CanonicalId>? InputCategories = null)
 {
     /// <summary>The ordered outcomes, including the single-outcome shorthand when no sequence is supplied.</summary>
-    public IReadOnlyList<PhonologicalRuleOutcome> Outcomes => RightHandSides ?? [new(Output, Left, Right)];
+    public IReadOnlyList<PhonologicalRuleOutcome> Outcomes => RightHandSides ?? [new(Output, Left, Right, InputCategories: InputCategories)];
 }
 
 /// <summary>One right-hand side with its own Output, environments and lexical applicability sets.</summary>
@@ -74,12 +76,12 @@ public static class AuthorPhonologicalRuleIntentParser
     public static AuthorPhonologicalRuleIntent Parse(JsonElement authored)
     {
         SoundSystemIntentParsing.Object(authored, "AuthorPhonologicalRule", "name", "direction", "input",
-            "output", "left", "right", "placement", "rightHandSides");
+            "output", "left", "right", "placement", "rightHandSides", "inputCategories");
         var input = Items(authored, "input");
         if (authored.TryGetProperty("rightHandSides", out _))
         {
-            if (new[] { "output", "left", "right" }.Any(p => authored.TryGetProperty(p, out _)))
-                throw new ContractParseException("Use rightHandSides or the single-outcome output/left/right shorthand, not both.");
+            if (new[] { "output", "left", "right", "inputCategories" }.Any(p => authored.TryGetProperty(p, out _)))
+                throw new ContractParseException("Use rightHandSides or the single-outcome output/left/right/inputCategories shorthand, not both.");
             return new(SoundSystemIntentParsing.Text(authored, "name"), Direction(authored), input, [], [], [],
                 Placement(authored), ParseOutcomes(authored));
         }
@@ -89,7 +91,9 @@ public static class AuthorPhonologicalRuleIntentParser
         RequireContextLength(left, "left");
         RequireContextLength(right, "right");
         return new(SoundSystemIntentParsing.Text(authored, "name"), Direction(authored), input, output,
-            left, right, Placement(authored));
+            left, right, Placement(authored),
+            InputCategories: authored.TryGetProperty("inputCategories", out _)
+                ? SoundSystemIntentParsing.Ids(authored, "inputCategories", ordered: false) : null);
     }
 
     internal static PhonologicalRuleOutcome[] ParseOutcomes(JsonElement authored)

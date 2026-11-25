@@ -467,19 +467,37 @@ public sealed class HelpCommandTests
     {
         var result = Run("help", "--all", "--json");
         var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        var goldenPath = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.Cli", "Golden",
-            "help-all-current.json");
-        var expected = File.ReadAllText(goldenPath);
+        var goldenRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.Cli", "Golden", "help");
+        var expected = Directory.EnumerateFiles(goldenRoot, "*", SearchOption.AllDirectories).ToDictionary(
+            file => Path.GetRelativePath(goldenRoot, file).Replace('\\', '/'),
+            file => NormalizeNewlines(File.ReadAllText(file)),
+            StringComparer.Ordinal);
+        var actual = SplitHelpExport(NormalizeNewlines(result.Output));
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal(NormalizeNewlines(expected), NormalizeNewlines(result.Output));
-        using var golden = JsonDocument.Parse(expected);
-        var releasedNames = golden.RootElement.GetProperty("entries").EnumerateArray()
-            .Where(entry => entry.GetProperty("kind").GetString() == "command")
-            .Select(entry => entry.GetProperty("code").GetString()!)
+        Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), actual.Keys.Order(StringComparer.Ordinal));
+        Assert.Empty(actual.Where(file => expected[file.Key] != file.Value).Select(file => file.Key).Order(StringComparer.Ordinal));
+        var releasedNames = actual.Keys.Where(path => path.StartsWith("command/", StringComparison.Ordinal))
+            .Select(path => JsonDocument.Parse(actual[path]).RootElement.GetProperty("code").GetString()!)
             .Order(StringComparer.Ordinal);
         Assert.Equal(releasedNames, CommandCatalog.All.Where(command => command.Surface is CommandSurface.Released or CommandSurface.AdvancedAi)
             .Select(command => command.Name).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void HelpAllListsEntriesByKindThenOrdinalCode()
+    {
+        var result = Run("help", "--all", "--json");
+        using var document = JsonDocument.Parse(result.Output);
+        var entries = document.RootElement.GetProperty("entries").EnumerateArray()
+            .Select(entry => (Kind: entry.GetProperty("kind").GetString()!, Code: entry.GetProperty("code").GetString()!)).ToList();
+        string[] kinds = ["command", "ui", "term", "guide"];
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(
+            entries.OrderBy(entry => Array.IndexOf(kinds, entry.Kind)).ThenBy(entry => entry.Code, StringComparer.Ordinal),
+            entries);
+        Assert.DoesNotContain(entries, entry => Array.IndexOf(kinds, entry.Kind) < 0);
     }
 
     [Fact]
@@ -651,6 +669,25 @@ public sealed class HelpCommandTests
         .ToArray();
 
     private sealed record CliRun(int ExitCode, string Output, string Error);
+
+    /// <summary>Splits the Help export into the golden folder's files, as tools/MotifHelpGolden.psm1 does.</summary>
+    private static Dictionary<string, string> SplitHelpExport(string json)
+    {
+        var files = new Dictionary<string, string>(StringComparer.Ordinal);
+        using var document = JsonDocument.Parse(json);
+        var envelope = document.RootElement.EnumerateObject().Where(property => property.Name != "entries")
+            .Select(property => "  " + JsonSerializer.Serialize(property.Name) + ": " + property.Value.GetRawText());
+        files["_envelope.json"] = "{\n" + string.Join(",\n", envelope) + "\n}\n";
+        foreach (var entry in document.RootElement.GetProperty("entries").EnumerateArray())
+        {
+            var path = entry.GetProperty("kind").GetString() + "/" +
+                entry.GetProperty("code").GetString()!.Replace(' ', '_').Replace('/', '~') + ".json";
+            Assert.True(files.Keys.All(existing => !string.Equals(existing, path, StringComparison.OrdinalIgnoreCase)),
+                "Two Help entries share the golden file " + path + ", ignoring case.");
+            files[path] = Regex.Replace(entry.GetRawText(), "^    ", "", RegexOptions.Multiline) + "\n";
+        }
+        return files;
+    }
 
     private static string NormalizeNewlines(string value) => value.Replace("\r\n", "\n", StringComparison.Ordinal);
 }

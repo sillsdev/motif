@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-edit-stem-inflection-class",
+  "slug": "compose-edit-stem-inflection-class",
+  "title": "Set a stem\u0027s class",
+  "description": "Sets or clears the inflection class of one stem analysis after checking the expected current class. The class must belong to the stem\u0027s part of speech or an ancestor; Motif stages a Draft for a person to review and Apply.",
+  "helpPage": "# Set a stem\u0027s class\n\nChange the inflection class of an existing stem analysis. The expected value is the stored class, or \u0060null\u0060 when the analysis has none.\n\n\u0060\u0060\u0060sh\nmotif compose-edit-stem-inflection-class --project language.fwdata --draft numerals \\\n  --intent \u0027{\u0022target\u0022:\u0022\u003Cstem-analysis-id\u003E\u0022,\u0022expectedInflectionClass\u0022:null,\u0022inflectionClass\u0022:\u0022\u003Cclass-id\u003E\u0022}\u0027\n\u0060\u0060\u0060\n\nAll three intent fields are required. \u0060expectedInflectionClass\u0060 and \u0060inflectionClass\u0060 are each either a canonical id or \u0060null\u0060. The target must be a stem analysis with a part of speech. The desired class must belong to that part of speech or one of its ancestors. Setting \u0060inflectionClass\u0060 to \u0060null\u0060 clears the class. When the expected and desired values are the same, the command adds no operations.\n\nUse this editor through the CLI; it is not exposed as an MCP tool.\n\nUse a class id returned by an earlier composition in the same Draft directly in \u0060inflectionClass\u0060. The Draft composer declares the dependency from that reference. This edit creates no class.\n\nAdd \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects and run a Trial on affected words before Finalize; only a person can Apply the Proposal.\n",
+  "usage": [
+    "Usage: motif compose-edit-stem-inflection-class --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-stem-inflection-class/"
+}

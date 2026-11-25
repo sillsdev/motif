@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-open-settings",
+  "slug": "shortcut-open-settings",
+  "title": "Open Settings",
+  "description": "Open Settings at its last group.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-open-settings/"
+}

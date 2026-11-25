@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-compare-use-both",
+  "slug": "shortcut-compare-use-both",
+  "title": "Use Both",
+  "description": "Use both versions of the focused change, yours first, where both added words at the same place.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-compare-use-both/"
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-delete-environment",
+  "slug": "compose-delete-environment",
+  "title": "Delete a phonological environment",
+  "description": "Deletes a phonological environment that no allomorph, rule or other object uses. It refuses an environment still in use and names each user. Motif stages a Draft for a person to review and Apply.",
+  "helpPage": "# Delete a phonological environment\n\nDeletes a phonological environment that no allomorph, rule or other object uses. It refuses an environment still in use and names each user.\n\n\u0060\u0060\u0060sh\nmotif compose-delete-environment --project language.fwdata --draft cleanup \\\n  --intent \u0027{\u0022environment\u0022: \u0022\u003Cenvironment-id\u003E\u0022, \u0022expectedText\u0022: \u0022/ _ [C]\u0022}\u0027\n\u0060\u0060\u0060\n\n\u0060environment\u0060 and \u0060expectedText\u0060 are required and the intent is closed. \u0060expectedText\u0060 must match the current value, so a wrong or stale target is refused and nothing is staged. The command refuses, changing nothing, while any allomorph, rule or other object refers to the environment, and names each with its class, id and entry.\n\nIn FieldWorks: Grammar, Phonology, Environments, select the environment, Delete.\n\nUse this editor through the CLI. Add \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 (at most 300 characters) to cite the operation. Only a person can Apply the Proposal.\n",
+  "usage": [
+    "Usage: motif compose-delete-environment --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-environment/"
+}

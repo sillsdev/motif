@@ -23,6 +23,10 @@ public enum LexiconIdFormat
 /// <param name="FormRegex">A regular expression some form of the entry matches, searched in NFC text.</param>
 /// <param name="Suffix">Text some form of the entry ends with, ignoring case and Unicode normalization form.</param>
 /// <param name="InflectionClass">An inflection class name, abbreviation or id; a class also matches by its ancestors.</param>
+/// <param name="Environment">Text the string form of an environment of some allomorph contains.</param>
+/// <param name="StemName">A stem name or id some allomorph carries.</param>
+/// <param name="UsedBy">An affix slot or template, by name or id, that an inflectional analysis of the entry reaches.</param>
+/// <param name="Detail">True adds every allomorph (forms in each writing system, stem name, environments) and the slots and templates using the entry.</param>
 /// <param name="Offset">The number of matches to skip.</param>
 /// <param name="Limit">The most entries one page returns.</param>
 /// <param name="IdFormat">How ids are spelled in the result.</param>
@@ -43,4 +47,8 @@ public sealed record LexiconFindRequest(
     int Offset = 0,
     int Limit = 25,
     LexiconIdFormat IdFormat = LexiconIdFormat.Canonical,
-    string? At = null);
+    string? At = null,
+    string? Environment = null,
+    string? StemName = null,
+    string? UsedBy = null,
+    bool Detail = false);

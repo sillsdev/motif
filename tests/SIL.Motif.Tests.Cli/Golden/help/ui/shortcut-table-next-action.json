@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-table-next-action",
+  "slug": "shortcut-table-next-action",
+  "title": "Next Table Action",
+  "description": "Focus the next row or group action.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-table-next-action/"
+}

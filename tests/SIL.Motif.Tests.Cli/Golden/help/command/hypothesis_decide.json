@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "hypothesis decide",
+  "slug": "hypothesis-decide",
+  "title": "Decide a hypothesis",
+  "description": "Marks a hypothesis passed, failed or superseded with its decision. A pass needs a PASS test, a Guide link and no passed neighbour with another mechanism.",
+  "helpPage": "# Decide a hypothesis\n\n\u0060hypothesis decide\u0060 marks a hypothesis passed, failed or superseded with its decision. A pass needs a PASS test, a Guide link and no passed neighbour with another mechanism.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis decide H-12 --project \u003Cfwdata\u003E --status passed --decision \u0022Rule stands as the default; 3 stems tagged.\u0022\n\u0060\u0060\u0060\n\n\u0060--status\u0060 is \u0060passed\u0060, \u0060failed\u0060 or \u0060superseded\u0060, and \u0060--decision\u0060 is required. A pass needs the latest test to be PASS and a Guide link or a stated reason for none (see [link](cmd:hypothesis%20link)). If another hypothesis already passed on the same shape with a different mechanism, the pass is refused unless \u0060--supersedes\u0060 names it; the shape is compared whole, a blank part matching only a blank one. A hypothesis cannot supersede itself. A decided hypothesis changes only by being superseded.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+  "usage": [
+    "Usage: motif hypothesis decide \u003CH-n\u003E --project \u003Cfwdata\u003E --status passed|failed|superseded --decision \u003Ctext\u003E [--superseded-by \u003CH-n\u003E] [--supersedes \u003CH-n,...\u003E] [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-decide/"
+}

@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-move-between-words",
+  "slug": "shortcut-move-between-words",
+  "title": "Move Between Words",
+  "description": "Focus the previous or next word in the Text.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-move-between-words/"
+}

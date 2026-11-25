@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "trace --load",
+  "slug": "trace-load",
+  "title": "Load a saved trace",
+  "description": "Reads a saved diagnostic without opening a project or starting PanGloss. Use it to inspect earlier trace evidence with the same reader as a live trace.",
+  "helpPage": "# Load a saved trace\n\n\u0060trace --load\u0060 reads a saved PanGloss diagnostic without opening a project or starting the parser. It uses the same reader as a live trace.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif trace --load \u0022C:\\Temp\\mirusi.trace.json\u0022\n\u0060\u0060\u0060\n\nAdd \u0060--json\u0060 to get the typed response, including its shared \u0060reading\u0060 and recorded provenance. Motif keeps the producer diagnostic unchanged; a clean process exit does not establish whether a trace reached its search limit, so completion can remain unknown.\n\n## Related commands\n\n- [Trace a word](cmd:trace) runs PanGloss against a project\u0027s current Baseline.\n- [Prepare an AI Handoff](cmd:handoff) includes a selected word\u0027s trace with its summary.\n",
+  "usage": [
+    "Usage: motif trace --load \u003Cfile\u003E [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/trace-load/"
+}

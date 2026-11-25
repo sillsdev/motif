@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "query values",
+  "slug": "query-values",
+  "title": "List pattern class names",
+  "description": "Lists the natural-class and phonological-feature names of a project\u0027s Baseline (--project) or of a grammar file (--grammar), for writing phon and env patterns; read from the grammar, because PanGloss does not list them.",
+  "helpPage": "# Query values\n\n\u0060motif query --values classes --project \u003Cfwdata\u003E\u0060 (or \u0060--grammar \u003Cpath\u003E\u0060) lists the natural classes and phonological features of the project\u0027s Baseline or of a grammar file: the names a \u0060phon\u0060 or \u0060env\u0060 pattern can use. The MCP tool \u0060motif_query_schema\u0060 returns the same list with \u0060values: \u0022classes\u0022\u0060.\n\nEach class line leads with the token to type in a pattern (in brackets when it has spaces), then PanGloss\u0027s label for the class and its kind: \u0060segment\u0060 (an explicit segment list) or \u0060feature\u0060 (a feature structure). The kind matters for matching: PanGloss tests literals and segment-list classes by identity (see \u0060query forms\u0060). PanGloss keeps one label per class (a FieldWorks project\u0027s Abbreviation; the Name FieldWorks shows is not kept), so a class is written by that label, case-sensitively, or by its id; a class whose label cannot be written in brackets shows \u0060(none)\u0060. Features list their values.\n\nThe list comes from PanGloss\u0027s \u0060inventory\u0060 op, so it needs a PanGloss that declares \u0060interfaces.serveOps.inventory\u0060 (release v0.30.0), starts the grammar once (a few seconds, where reading it with LibLCM took about three and a half minutes on a 170 MB project) and reads it as the parser loads it. When PanGloss refuses a name as \u0060unknown_natural_class\u0060, Motif reads the list, resolves a different case or an id to the class\u0027s token and tries again, or refuses with the closest (at most five) labels; if the list cannot be read or is empty the refusal says so. Text between \u0060/.../\u0060 is never rewritten. \u0060--verbose\u0060 prints the stage timing to standard error. The JSON gives each class a \u0060token\u0060 and \u0060kind\u0060 and each feature its \u0060values\u0060. \u0060--json\u0060 writes \u0060motif.query.values.v1\u0060. See \u0060query forms\u0060 for the pattern language.\n",
+  "usage": [
+    "Usage: motif query values --values classes (--project \u003Cfwdata\u003E | --grammar \u003Cpath\u003E) [--verbose] [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/query-values/"
+}

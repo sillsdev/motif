@@ -1,0 +1,9 @@
+{
+  "kind": "term",
+  "code": "drift",
+  "slug": "drift",
+  "title": "Evidence no longer matches",
+  "description": "Drift means a Dry Run or an individual change no longer matches the project state it was made against. In the window, a change with missing or changed inputs is shown as \u2018no longer fits\u2019.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/terms/drift/"
+}

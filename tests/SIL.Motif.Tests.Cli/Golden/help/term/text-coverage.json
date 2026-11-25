@@ -1,0 +1,9 @@
+{
+  "kind": "term",
+  "code": "text-coverage",
+  "slug": "text-coverage",
+  "title": "Share of your text that parses",
+  "description": "Text Coverage is the share of the Default Selection\u0027s words, and of their occurrences in the chosen Texts, that parse. The same share measured over a Corpus is called grammar coverage.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/terms/text-coverage/"
+}
