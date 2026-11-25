@@ -1,5 +1,7 @@
 using System.Text.Json;
+using SIL.LCModel;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Commands.Catalog;
 
@@ -30,6 +32,10 @@ internal sealed class SetAffixMaxAppsDefinition : ComposerDefinition<SetAffixMax
     /// <inheritdoc />
     public override SetAffixMaxAppsIntent Parse(JsonElement authored) =>
         SetAffixMaxAppsIntentParser.Parse(authored);
+
+    /// <inheritdoc />
+    public override IReadOnlyList<ComposedRelatedObject>? RelatedObjects(LcmCache cache, SetAffixMaxAppsIntent intent) =>
+        SetAffixMaxAppsReport.Related(cache, intent) is { Count: > 0 } related ? related : null;
 
     /// <inheritdoc />
     public override IReadOnlyList<OperationEnvelope> Lower(ComposeContext context, SetAffixMaxAppsIntent intent) =>

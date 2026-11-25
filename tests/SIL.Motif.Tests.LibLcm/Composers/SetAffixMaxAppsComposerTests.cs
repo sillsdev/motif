@@ -175,6 +175,56 @@ public sealed class SetAffixMaxAppsComposerTests : IDisposable
         Assert.Equal("<Other><HC/></Other>", Parameters);
     }
 
+    private (CanonicalId Unused, CanonicalId Used) TwoEqualAnalysesOnOneEntry(bool senseUsesSecond)
+    {
+        IMoInflAffMsa first = null!, second = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var entry = _cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+            first = _cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create();
+            second = _cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create();
+            entry.MorphoSyntaxAnalysesOC.Add(first);
+            entry.MorphoSyntaxAnalysesOC.Add(second);
+            var pos = _cache.ServiceLocator.GetObject(_category.ToGuid()) as IPartOfSpeech;
+            first.PartOfSpeechRA = pos;
+            second.PartOfSpeechRA = pos;
+            if (!senseUsesSecond) return;
+            var sense = _cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(sense);
+            sense.MorphoSyntaxAnalysisRA = second;
+        });
+        return (CanonicalId.FromGuid(first.Guid), CanonicalId.FromGuid(second.Guid));
+    }
+
+    [Fact]
+    public void ACountOnAnEqualNonRepresentativeAnalysisIsWrittenOnTheRepresentativeAndReported()
+    {
+        var (unused, used) = TwoEqualAnalysesOnOneEntry(senseUsesSecond: true);
+        var intent = new SetAffixMaxAppsIntent(unused, 1, 2);
+
+        var operation = Assert.Single(SetAffixMaxAppsComposer.Build(_cache, intent));
+
+        Assert.Equal(used.Value, operation.After!.Value.GetProperty("msa").GetString());
+        var related = SetAffixMaxAppsReport.Related(_cache, intent);
+        Assert.Contains(related, item => item.Kind == "representative-affix-analysis" && item.Id == used.Value);
+        Assert.Contains(related, item => item.Kind == "equal-affix-analysis" && item.Id == unused.Value);
+        ApplyOps(_cache, [operation]);
+        Assert.Equal(2, AffixMaxApps.Read(Parameters, used.ToGuid()));
+        Assert.Equal(1, AffixMaxApps.Read(Parameters, unused.ToGuid()));
+        Assert.Equal(2, AffixMaxApps.ReadFor(Get<ICmObject>(_cache, unused)));
+    }
+
+    [Fact]
+    public void WhenNoSenseUsesEitherEqualAnalysisTheRequestedOneIsItsOwnRepresentative()
+    {
+        var (unused, other) = TwoEqualAnalysesOnOneEntry(senseUsesSecond: false);
+
+        var operation = Assert.Single(SetAffixMaxAppsComposer.Build(_cache, new(unused, 1, 2)));
+
+        Assert.Equal(unused.Value, operation.After!.Value.GetProperty("msa").GetString());
+        Assert.NotEqual(unused, other);
+    }
+
     [Fact]
     public void TheHandlerRefusesAnInvalidCountAtApplyToo()
     {

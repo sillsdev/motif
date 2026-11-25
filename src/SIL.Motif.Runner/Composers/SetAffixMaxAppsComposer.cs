@@ -6,6 +6,8 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Responses;
+using System.Linq;
 using SIL.Motif.Runner.Operations;
 
 namespace SIL.Motif.Runner.Composers;
@@ -40,6 +42,28 @@ public static class SetAffixMaxAppsIntentParser
     }
 }
 
+/// <summary>
+/// Names the analysis a count is written on when the requested one is not FieldWorks's representative of several equal analyses.
+/// </summary>
+public static class SetAffixMaxAppsReport
+{
+    /// <summary>The representative and the equal analyses, empty when the requested analysis is the representative and has no equals.</summary>
+    public static IReadOnlyList<ComposedRelatedObject> Related(LcmCache cache, SetAffixMaxAppsIntent intent)
+    {
+        var (representative, equal) = AffixMaxApps.Representative(AffixMaxApps.ResolveAffixMsa(cache, intent.Msa));
+        var requested = intent.Msa.ToGuid();
+        if (equal.Count == 0 && representative.Guid == requested) return [];
+        var related = new List<ComposedRelatedObject>
+        {
+            new("representative-affix-analysis", CanonicalId.FromGuid(representative.Guid).Value,
+                representative.Guid == requested ? "written here" : "written on representative (the requested analysis is equal to it)"),
+        };
+        related.AddRange(equal.Select(other => new ComposedRelatedObject("equal-affix-analysis",
+            CanonicalId.FromGuid(other.Guid).Value, "equal analysis; its own count is ignored by the parser")));
+        return related;
+    }
+}
+
 /// <summary>Builds one operation that sets an affix repeat count in the project's ParserParameters without changing the cache.</summary>
 public static class SetAffixMaxAppsComposer
 {
@@ -55,7 +79,7 @@ public static class SetAffixMaxAppsComposer
         ArgumentNullException.ThrowIfNull(intent);
 
         AffixMaxApps.RequireCount(intent.MaxApps);
-        var msa = AffixMaxApps.ResolveAffixMsa(cache, intent.Msa);
+        var msa = AffixMaxApps.Representative(AffixMaxApps.ResolveAffixMsa(cache, intent.Msa)).Representative;
         var morphData = cache.LangProject.MorphologicalDataOA;
         int current;
         try
@@ -75,13 +99,13 @@ public static class SetAffixMaxAppsComposer
         }
         if (current != intent.ExpectedMaxApps)
             throw new AffixMaxAppsRefusal(RefusalCodes.AffixMaxAppsStale,
-                $"'{ConstructName}': the project has maxApps={current} for '{intent.Msa.Value}'; the intent expected maxApps={intent.ExpectedMaxApps}.");
+                $"'{ConstructName}': the project has maxApps={current} for '{CanonicalId.FromGuid(msa.Guid).Value}'; the intent expected maxApps={intent.ExpectedMaxApps}.");
 
         return [new OperationEnvelope(
             operationId: CanonicalId.Mint(),
             kind: MoMorphDataAffixMaxAppsOperationKinds.Set,
             target: CanonicalId.FromGuid(morphData.Guid),
-            after: JsonSerializer.SerializeToElement(new { msa = intent.Msa.Value, maxApps = intent.MaxApps }),
+            after: JsonSerializer.SerializeToElement(new { msa = CanonicalId.FromGuid(msa.Guid).Value, maxApps = intent.MaxApps }),
             rationale: Rationale)];
     }
 }

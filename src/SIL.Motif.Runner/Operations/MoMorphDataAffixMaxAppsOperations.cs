@@ -94,6 +94,32 @@ public static class AffixMaxApps
         };
     }
 
+    /// <summary>
+    /// The analysis FieldWorks builds the affix rule from when <paramref name="msa"/> is one of several equal analyses on
+    /// its entry, and every other analysis equal to it. The choice is HCLoader's <c>RepresentativeMSA</c>: the first analysis of
+    /// the entry with the same class that <c>EqualsMsa</c> and that a sense uses, else the analysis itself. A count keyed on
+    /// any other analysis is dropped by the loaders.
+    /// </summary>
+    public static (ICmObject Representative, IReadOnlyList<ICmObject> Equal) Representative(ICmObject msa)
+    {
+        if (msa is not IMoMorphSynAnalysis analysis || analysis.OwnerOfClass<ILexEntry>() is not { } entry)
+            return (msa, []);
+        IMoMorphSynAnalysis representative = analysis;
+        var equal = new List<IMoMorphSynAnalysis>();
+        foreach (var other in entry.MorphoSyntaxAnalysesOC)
+        {
+            if (other.ClassID != analysis.ClassID || !other.EqualsMsa(analysis)) continue;
+            equal.Add(other);
+        }
+        foreach (var other in entry.MorphoSyntaxAnalysesOC)
+            if (other.ClassID == analysis.ClassID && other.EqualsMsa(analysis) && entry.SenseWithMsa(other) is not null)
+            {
+                representative = other;
+                break;
+            }
+        return (representative, equal.Where(other => other.Guid != representative.Guid).ToArray());
+    }
+
     /// <summary>The count the project holds for the affix MSA <paramref name="msa"/>, or <see cref="Default"/> when none is set.</summary>
     public static int Read(string? parserParameters, Guid msa) =>
         AffixMaxAppsParserParameters.Read(parserParameters, msa);
@@ -102,7 +128,7 @@ public static class AffixMaxApps
     public static int ReadFor(ICmObject msa) =>
         msa is IMoInflAffMsa or IMoDerivAffMsa or IMoUnclassifiedAffixMsa
             && msa.Cache.LangProject.MorphologicalDataOA is { } data
-            ? TryRead(data.ParserParameters, msa.Guid) : Default;
+            ? TryRead(data.ParserParameters, Representative(msa).Representative.Guid) : Default;
 
     private static int TryRead(string? parserParameters, Guid msa)
     {
