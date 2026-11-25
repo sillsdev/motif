@@ -22,10 +22,8 @@ public sealed record ProjectStoreResetResponse(string StorePath, bool Deleted);
 /// <summary>
 /// Deletes a project's Motif store that this version cannot upgrade, so the next open recreates it. An older
 /// store is upgraded on open, not reset, and a newer store is never reset: it is refused with the
-/// <c>storeNewer</c> fact, pointing to installing the newer Motif or restoring a pre-upgrade backup, pinned by
-/// `ANewerStoreIsNeverResetAndIsLeftByteForByte`. The backup-first reset arrives in a later slice of #466.
-/// A store no upgrade step reaches is how a person gets past it, pinned by
-/// `ARefusedStoreIsDeletedAloneAndTheNextOpenRecreatesIt`.
+/// <c>storeNewer</c> fact, pinned by `ANewerStoreIsNeverResetAndIsLeftByteForByte`, and the person is pointed to
+/// installing the newer Motif or restoring a pre-upgrade backup.
 /// </summary>
 /// <remarks>
 /// <para>
