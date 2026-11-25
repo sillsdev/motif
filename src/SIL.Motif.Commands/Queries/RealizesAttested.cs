@@ -13,8 +13,12 @@ namespace SIL.Motif.Commands.Queries;
 /// <param name="StopReason">Why an enumerating tier stopped early; null otherwise.</param>
 /// <param name="Terms">Search terms that each carry their own anchor and attested context, as <see cref="SIL.Motif.Contract.Query.RealizesPatternCompiler"/> marks them; null when the forms and one anchor say it all.</param>
 /// <param name="ProjectHasAnalyses">Whether the project holds any stored analysis, so a refusal can say which of the two is missing.</param>
+/// <param name="Rules">The rules that may change the morpheme, for a <c>possible</c> or <c>generated</c> set.</param>
+/// <param name="Phon">Searches over the rules' match patterns that join the form search.</param>
+/// <param name="Effects">The effects scan's counts.</param>
 internal sealed record RealizesVariants(IReadOnlyList<RealizesForm> Forms, string Anchor, IReadOnlyList<RealizesReason> Reasons,
-    string? StopReason = null, bool ProjectHasAnalyses = true, IReadOnlyList<string>? Terms = null)
+    string? StopReason = null, bool ProjectHasAnalyses = true, IReadOnlyList<string>? Terms = null,
+    IReadOnlyList<RealizesRule>? Rules = null, IReadOnlyList<RealizesPhonClause>? Phon = null, RealizesEffectsSummary? Effects = null)
 {
     internal bool Complete => Reasons.Count == 0 && StopReason is null;
 }
@@ -60,7 +64,7 @@ internal static class RealizesAttested
                 [.. pair.Value.Take(ExamplesPerForm)])).ToList();
         List<RealizesReason> reasons = [];
         if (unwritten > 0)
-            reasons.Add(new RealizesReason("unwritten_variant",
+            reasons.Add(new RealizesReason(RealizesReasons.UnwrittenVariant,
                 $"{unwritten} analyses use the morpheme with no written form, so a word carrying it cannot be found by its text."));
         return new RealizesVariants(forms, AnchorOf(lexeme?.MorphTypeRA?.Guid), reasons, ProjectHasAnalyses: anyAnalysis);
     }

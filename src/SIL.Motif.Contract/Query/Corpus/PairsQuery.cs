@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace SIL.Motif.Contract.Query.Corpus;
 
 /// <summary>Asks for the affix pairs of a plain corpus, with no project (<c>motif query --corpus &lt;words&gt; pairs</c>).</summary>
-/// <param name="CorpusPath">A TSV word list (form, count, optional parse state) or a folder of .txt files.</param>
+/// <param name="CorpusPath">A TSV word list (form, count, optional parse state), a weights .json file or a folder of .txt files; several joined with commas or newlines are one corpus.</param>
 /// <param name="Differ"><c>suffix</c> or <c>prefix</c>.</param>
 /// <param name="X">A regular expression the whole differing part must match.</param>
 /// <param name="Having">Literal Xs a base must all take.</param>
@@ -17,8 +17,22 @@ namespace SIL.Motif.Contract.Query.Corpus;
 public sealed record PairsQueryRequest(string CorpusPath, string Differ, string? X = null, IReadOnlyList<string>? Having = null,
     string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? MaxXLength = null, int? MaxResults = null, int? Examples = null);
 
+/// <summary>One source file or folder of a corpus.</summary>
+/// <param name="Path">The path as given.</param>
+/// <param name="Kind"><c>weights.json</c> (a JSON object of form to count), <c>tsv</c> (a word list) or <c>texts</c> (a folder of .txt files).</param>
+/// <param name="Types">Its word types on their own, after normalisation.</param>
+/// <param name="Tokens">Its tokens on their own.</param>
+public sealed record CorpusSourceInfo(string Path, string Kind, int Types, long Tokens);
+
 /// <summary>The corpus a corpus query ran over.</summary>
-public sealed record CorpusSummary(string Source, int Types, long Tokens, string Segmentation, bool FoldCase);
+/// <param name="Source">The corpus path; several sources are joined with commas.</param>
+/// <param name="Types">Word types of the whole corpus, equal forms of different sources counted once.</param>
+/// <param name="Tokens">Tokens of the whole corpus, the sum over the sources.</param>
+/// <param name="Segmentation">How forms were segmented.</param>
+/// <param name="FoldCase">Whether forms were lower-cased.</param>
+/// <param name="Sources">Each source with its own type and token counts when there is more than one; null for a single source.</param>
+public sealed record CorpusSummary(string Source, int Types, long Tokens, string Segmentation, bool FoldCase,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<CorpusSourceInfo>? Sources = null);
 
 /// <summary>The pairs of a corpus, versioned <see cref="SchemaName"/>.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]

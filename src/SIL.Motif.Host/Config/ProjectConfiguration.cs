@@ -42,6 +42,7 @@ public sealed record AssessmentScopeConfiguration
         if (perWordLimit <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(perWordLimit), "A per-word limit must be positive.");
         PerWordLimit = perWordLimit;
+        DeclaresParserWorkLimit = perWordParserWorkLimit is not null;
         PerWordParserWorkLimit = perWordParserWorkLimit ?? DefaultPerWordParserWorkLimit;
         if (timingDetailWords is < 0 or > MaximumTimingDetailWords)
             throw new ArgumentOutOfRangeException(nameof(timingDetailWords));
@@ -65,6 +66,13 @@ public sealed record AssessmentScopeConfiguration
 
     /// <summary>The per-word parser work limit, or an explicit request for none.</summary>
     public ParserWorkLimit PerWordParserWorkLimit { get; }
+
+    /// <summary>Whether the limit was written down, by the scope or by the project, rather than left to the default.</summary>
+    public bool DeclaresParserWorkLimit { get; private init; }
+
+    /// <summary>This scope with <paramref name="limit"/> as its declared parser work limit.</summary>
+    public AssessmentScopeConfiguration WithParserWorkLimit(ParserWorkLimit limit) =>
+        new(Name, Query, Assessor, Collect, PerWordLimit, limit, TimingDetailWords);
 
     /// <summary>Maximum slowest words with per-object timing detail in an ordinary Assessment.</summary>
     public int TimingDetailWords { get; }
@@ -126,6 +134,12 @@ public sealed record ProjectConfiguration
 
     /// <summary>Every declared Assessment scope, at least one.</summary>
     public IReadOnlyList<AssessmentScopeConfiguration> Scopes { get; }
+
+    /// <summary>
+    /// The parser work limit the project declares under <c>[parser] work-limit</c>, or null when it declares none.
+    /// A scope without a limit of its own takes it, and it outranks the saved Default Selection's limit.
+    /// </summary>
+    public ParserWorkLimit? ParserWorkLimit { get; init; }
 
     /// <summary>Whether a regression blocks <c>apply</c> (ADR 0020 decision 5). Off by default.</summary>
     public bool GateOnRegression { get; }

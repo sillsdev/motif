@@ -221,7 +221,19 @@ public static class AffixMaxAppsParserParameters
                 new XAttribute("guid", msa.ToString()),
                 new XAttribute("maxApps", maxApps.ToString(CultureInfo.InvariantCulture))));
         }
-        return root.ToString(SaveOptions.DisableFormatting);
+        return Serialize(root, parserParameters?.Contains("\r\n", StringComparison.Ordinal) == true ? "\r\n" : "\n");
+    }
+
+    /// <summary>Serialises with the input's own line ending, not the platform's.</summary>
+    private static string Serialize(XElement root, string newLine)
+    {
+        var text = new System.IO.StringWriter();
+        var settings = new System.Xml.XmlWriterSettings
+        {
+            OmitXmlDeclaration = true, Indent = false, NewLineHandling = System.Xml.NewLineHandling.Replace, NewLineChars = newLine,
+        };
+        using (var writer = System.Xml.XmlWriter.Create(text, settings)) root.Save(writer);
+        return text.ToString();
     }
 
     private static XElement? Find(XElement? hc, Guid msa) =>

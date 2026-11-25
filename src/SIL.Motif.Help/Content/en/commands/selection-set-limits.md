@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Use this from Settings or **Analysis options** when you want later Default Selection parses to use a different parser work limit or time policy. Running and saved results keep their own resolved limits.
+Use this from Settings or **Analysis options** when you want later Default Selection parses to use a different parser work limit or time policy. Running and saved results keep their own resolved limits. A limit of exactly 20,000,000 (the default) counts as unset, so the project's `[parser] work-limit` applies; any other value beats the project setting.
 
 ## Example
 

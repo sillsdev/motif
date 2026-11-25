@@ -30,6 +30,9 @@ public abstract record PanGlossRequest
     /// <summary>Whether a nonzero exit that wrote <paramref name="standardOutput"/> still produced a usable result.</summary>
     internal virtual bool AcceptsNonzeroExit(string standardOutput) => false;
 
+    /// <summary>The same question for a request that must look at what it wrote into <paramref name="scratch"/>.</summary>
+    internal virtual bool AcceptsNonzeroExit(string standardOutput, string scratch) => AcceptsNonzeroExit(standardOutput);
+
     /// <summary>Throws for a request a caller has built wrongly; this is programmer error, not an outcome.</summary>
     internal abstract void Validate();
 
@@ -320,7 +323,45 @@ public abstract record PanGlossRequest
         /// <summary>The rejection reasons the parser's description lists; set by the invoker, never by a caller.</summary>
         internal IReadOnlyList<string>? DescribedRejectReasons { get; init; }
 
+        /// <summary>The per-word work limit to pass; null leaves the parser's own default.</summary>
+        public ParserWorkLimit? WorkLimit { get; init; }
+
         public override string Subcommand => "parse";
+
+        /// <summary>The stop reasons that make PanGloss exit 1 after it writes the trace.</summary>
+        private static readonly string[] AcceptedStopReasons = ["work_limit", "timed_out", "invalid_shape"];
+
+        /// <summary>
+        /// PanGloss exits 1 for a parse that stopped at the work limit, timed out or hit an invalid shape, yet writes a
+        /// trace that names the stop. Only such a trace is read; a compile or load failure, or a missing trace, keeps the
+        /// typed refusal.
+        /// </summary>
+        internal override bool AcceptsNonzeroExit(string standardOutput, string scratch) =>
+            RecordsAcceptedStop(Path.Combine(scratch, ArtifactName));
+
+        internal static bool RecordsAcceptedStop(string tracePath)
+        {
+            try
+            {
+                var info = new FileInfo(tracePath);
+                if (!info.Exists || info.Length > MaxCaptureBytes + 4096 + 3072) return false;
+                foreach (var line in File.ReadLines(tracePath))
+                {
+                    if (!line.Contains("\"word_end\"", StringComparison.Ordinal)) continue;
+                    using var json = JsonDocument.Parse(line);
+                    if (!json.RootElement.TryGetProperty("search", out var search) ||
+                        !search.TryGetProperty("stopReasons", out var reasons) || reasons.ValueKind != JsonValueKind.Array)
+                        continue;
+                    if (reasons.EnumerateArray().Any(r => r.ValueKind == JsonValueKind.String &&
+                        AcceptedStopReasons.Contains(r.GetString(), StringComparer.Ordinal))) return true;
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+            {
+                return false;
+            }
+            return false;
+        }
 
         internal override void Validate()
         {
@@ -340,6 +381,9 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(Path.Combine(scratch, ArtifactName));
             startInfo.ArgumentList.Add("--trace-max-paths");
             startInfo.ArgumentList.Add(MaxPaths.ToString(CultureInfo.InvariantCulture));
+            if (WorkLimit is null) return;
+            startInfo.ArgumentList.Add("--work-cap");
+            startInfo.ArgumentList.Add(WorkLimit.ToWorkCapArgument());
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,

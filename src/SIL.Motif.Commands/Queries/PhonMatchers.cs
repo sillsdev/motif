@@ -137,7 +137,11 @@ internal sealed class ResidentPhonMatcher(WarmPanGlossPool pool, string key, str
                     {
                         var segments = match.GetProperty("segments");
                         var offsets = match.GetProperty("offsets");
-                        spans.Add(new PhonRawSpan(segments[0].GetInt32(), segments[1].GetInt32(), offsets[0].GetInt32(), offsets[1].GetInt32()));
+                        int? reachStart = null, reachEnd = null;
+                        if (match.TryGetProperty("left", out var left) && left.ValueKind == JsonValueKind.Array && left.GetArrayLength() == 2 &&
+                            match.TryGetProperty("right", out var right) && right.ValueKind == JsonValueKind.Array && right.GetArrayLength() == 2)
+                            (reachStart, reachEnd) = (Math.Min(left[0].GetInt32(), segments[0].GetInt32()), Math.Max(right[1].GetInt32(), segments[1].GetInt32()));
+                        spans.Add(new PhonRawSpan(segments[0].GetInt32(), segments[1].GetInt32(), offsets[0].GetInt32(), offsets[1].GetInt32(), reachStart, reachEnd));
                     }
                 string? Text(string name) => word.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
                 int? charIndex = word.TryGetProperty("at", out var at) && at.TryGetProperty("charIndex", out var index) ? index.GetInt32() : null;

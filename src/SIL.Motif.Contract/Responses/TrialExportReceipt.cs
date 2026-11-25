@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Assess;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -23,6 +24,10 @@ public sealed record TrialExportReceipt(
 {
     /// <summary>The requested words, present only when the caller selects a page.</summary>
     public TrialExportPage? Page { get; init; }
+
+    /// <summary>The per-word parser work limit the Trial ran under; absent for a Trial that froze none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ParserWorkLimit? PerWordParserWorkLimit { get; init; }
 }
 
 /// <summary>A page in the retained export's frozen word order.</summary>

@@ -1,18 +1,19 @@
-using SIL.Motif.Host;
-using SIL.Motif.Contract.Responses;
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using SIL.Motif.Contract.Commands;
-using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
+using SIL.Motif.Host.Config;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading;
 
 namespace SIL.Motif.Commands.Queries;
 
@@ -74,12 +75,27 @@ public static class WordTraceQuery
         WordTraceRequest request, CancellationToken cancellationToken = default, string? parserPath = null)
     {
         var parser = parserPath ?? PanGlossExecutable.TryLocate();
+        ResolvedWorkLimit limit;
+        try
+        {
+            limit = ProjectWorkLimit.ForProject(request.ProjectPath, request.ProposalId);
+        }
+        catch (ProjectConfigurationException exception)
+        {
+            return CommandOutcome<WordTraceResponse>.Refused(ProjectWorkLimit.InvalidConfiguration(request.ProjectPath, exception));
+        }
         using var invoker = new PanGlossInvoker(parser);
         if (!TryWordSessions.Enabled)
-            return Query(request, new PanGlossTracer(invoker), cancellationToken, hostEvidence: false);
-        using var tracer = TryWordSessions.TracerFor(parser, invoker);
-        return Query(request, tracer, cancellationToken, hostEvidence: false);
+            return Said(Query(request, new PanGlossTracer(invoker, limit.Limit), cancellationToken, hostEvidence: false), limit);
+        using var tracer = TryWordSessions.TracerFor(parser, invoker, limit.Limit);
+        return Said(Query(request, tracer, cancellationToken, hostEvidence: false), limit);
     }
+
+    /// <summary>The response with the work limit the parser ran under, so a stop at it is explained.</summary>
+    private static CommandOutcome<WordTraceResponse> Said(CommandOutcome<WordTraceResponse> outcome, ResolvedWorkLimit limit) =>
+        outcome.Succeeded
+            ? CommandOutcome<WordTraceResponse>.Success(outcome.Value! with { WorkLimitUsed = limit.Describe() })
+            : outcome;
 
     /// <summary>Traces a word with an explicitly selected parser.</summary>
     /// <param name="request">The project and word to trace.</param>
@@ -97,10 +113,19 @@ public static class WordTraceQuery
         WordTraceRequest request, string? parserPath, CancellationToken cancellationToken,
         Action<AssessmentProgress>? onProgress, bool warm)
     {
+        ResolvedWorkLimit limit;
+        try
+        {
+            limit = ProjectWorkLimit.ForProject(request.ProjectPath, request.ProposalId);
+        }
+        catch (ProjectConfigurationException exception)
+        {
+            return CommandOutcome<WordTraceResponse>.Refused(ProjectWorkLimit.InvalidConfiguration(request.ProjectPath, exception));
+        }
         using var invoker = new PanGlossInvoker(parserPath);
-        if (!warm) return Query(request, new PanGlossTracer(invoker), cancellationToken, onProgress);
-        using var tracer = TryWordSessions.TracerFor(parserPath, invoker);
-        return Query(request, tracer, cancellationToken, onProgress);
+        if (!warm) return Said(Query(request, new PanGlossTracer(invoker, limit.Limit), cancellationToken, onProgress), limit);
+        using var tracer = TryWordSessions.TracerFor(parserPath, invoker, limit.Limit);
+        return Said(Query(request, tracer, cancellationToken, onProgress), limit);
     }
 
     internal static CommandOutcome<WordTraceResponse> Query(

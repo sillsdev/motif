@@ -8,8 +8,9 @@ using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Baselines;
-using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Config;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection;
 using SIL.Motif.Worker.Jobs;
@@ -62,11 +63,21 @@ public static class WhyLostQuery
             var trialGrammar = TracedGrammar.Resolve(database, project, request.ProposalId);
             if (!trialGrammar.Succeeded) return CommandOutcome<WhyLostResponse>.Refused(trialGrammar.Refusal!);
 
+            ResolvedWorkLimit limit;
+            try
+            {
+                limit = ProjectWorkLimit.ForTrace(database, project, trialGrammar.Value!.TrialJobId);
+            }
+            catch (ProjectConfigurationException exception)
+            {
+                return CommandOutcome<WhyLostResponse>.Refused(ProjectWorkLimit.InvalidConfiguration(project, exception));
+            }
+            var workLimit = limit.Limit;
             var baseline = RejectionTraceQuery.RunDescribed(invoker, baselineGrammar.Value!.FwDataPath, request.ProjectPath,
-                request.Word, maxPaths, baselineGrammar.Value.TracedAgainst, cancellationToken);
+                request.Word, maxPaths, baselineGrammar.Value.TracedAgainst, cancellationToken, workLimit);
             if (!baseline.Result.Succeeded) return CommandOutcome<WhyLostResponse>.Refused(baseline.Result.Refusal!);
             var trial = RejectionTraceQuery.RunDescribed(invoker, trialGrammar.Value!.FwDataPath, request.ProjectPath,
-                request.Word, maxPaths, trialGrammar.Value.TracedAgainst, cancellationToken);
+                request.Word, maxPaths, trialGrammar.Value.TracedAgainst, cancellationToken, workLimit);
             if (!trial.Result.Succeeded) return CommandOutcome<WhyLostResponse>.Refused(trial.Result.Refusal!);
 
             Proposal proposal;
@@ -82,8 +93,16 @@ public static class WhyLostQuery
             }
             using (context)
             using (var forms = TrialForms.Open(trialGrammar.Value.FwDataPath))
-                return Shape(request, baseline.Result.Value!, baseline.DescribedRejectReasons, trial.Result.Value!,
+            {
+                var shaped = Shape(request, baseline.Result.Value!, baseline.DescribedRejectReasons, trial.Result.Value!,
                     trial.DescribedRejectReasons, trialGrammar.Value.TrialJobId, proposal, context, forms);
+                return shaped.Succeeded
+                    ? CommandOutcome<WhyLostResponse>.Success(shaped.Value! with
+                    {
+                        Notes = [.. shaped.Value.Notes, "Both sides were traced under " + limit.Describe() + "."],
+                    })
+                    : shaped;
+            }
         });
     }
 

@@ -1,6 +1,6 @@
 # Explain a word's parse
 
-`parse <word> --trace` asks the PanGloss that parses the word where each candidate path stopped. It reads the project's current Baseline, or a Proposal's Trial copy with `--at <proposal-id>`, and changes nothing. Motif runs no tracing parser of its own: every stop is something PanGloss recorded.
+`parse <word> --trace` asks the PanGloss that parses the word where each candidate path stopped. It reads the project's current Baseline, or a Proposal's Trial copy with `--at <proposal-id>`, and changes nothing. It runs under the frozen work limit of the Trial copy it reads, or the current limit for the Baseline, and its notes say which; a word that reaches the limit says "work limit reached" with its work count. A trace stops a word at the parser work limit, so a word that once traced to completion can now say "work limit reached" with its work count. To trace it further, raise the limit with `[parser] work-limit` in the project's `motif.toml` (see [Show the project configuration](cmd:config%20show)). Motif runs no tracing parser of its own: every stop is something PanGloss recorded.
 
 ```powershell
 motif parse mirusi --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --trace --json

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using SIL.LCModel;
 using SIL.Motif.Commands.Assess;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
@@ -13,6 +14,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.WritingSystems;
 using SIL.Motif.Worker;
@@ -408,7 +410,17 @@ public static class HandoffCommand
                 if (request.Assess && request.InvocationId is null && request.Selection.Words.Count == 1)
                 {
                     var word = request.Selection.Words[0];
-                    var traceOutcome = new PanGlossTracer(invoker)
+                    ParserWorkLimit traceLimit;
+                    try
+                    {
+                        traceLimit = ProjectWorkLimit.Effective(database, project);
+                    }
+                    catch (ProjectConfigurationException exception)
+                    {
+                        return CommandOutcome<HandoffCommandResponse>.Refused(
+                            ProjectWorkLimit.InvalidConfiguration(project, exception));
+                    }
+                    var traceOutcome = new PanGlossTracer(invoker, traceLimit)
                         .TraceAsync(grammarPath, word, cancellationToken).GetAwaiter().GetResult();
                     if (traceOutcome is PanGlossTraceOutcome.Cancelled)
                         return CommandOutcome<HandoffCommandResponse>.Refused(Cancelled(request.ProjectPath));

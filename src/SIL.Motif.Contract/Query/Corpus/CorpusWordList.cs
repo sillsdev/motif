@@ -78,12 +78,74 @@ public sealed class CorpusWordList
         return new CorpusWordList(list, options);
     }
 
-    /// <summary>Reads a TSV file or a folder of <c>.txt</c> files.</summary>
+    /// <summary>Reads a TSV file, a weights <c>.json</c> file or a folder of <c>.txt</c> files.</summary>
     public static CorpusWordList Load(string path, CorpusOptions? options = null)
     {
         if (Directory.Exists(path)) return LoadFolder(path, options);
-        if (File.Exists(path)) return LoadTsv(path, options);
+        if (File.Exists(path)) return IsWeightsFile(path) ? LoadWeights(path, options) : LoadTsv(path, options);
         throw new FileNotFoundException("The corpus path is neither a file nor a folder.", path);
+    }
+
+    /// <summary>Whether a file is a weights file: a JSON object of form to count, named <c>*.json</c>.</summary>
+    public static bool IsWeightsFile(string path) => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The kind label of a source path: <c>weights.json</c>, <c>tsv</c> or <c>texts</c>.</summary>
+    public static string KindOf(string path) => Directory.Exists(path) ? "texts" : IsWeightsFile(path) ? "weights.json" : "tsv";
+
+    /// <summary>Splits a corpus argument into source paths: one existing path is kept whole, else commas and newlines separate paths.</summary>
+    public static IReadOnlyList<string> SplitSources(string corpusPath)
+    {
+        if (File.Exists(corpusPath) || Directory.Exists(corpusPath)) return [corpusPath];
+        var parts = corpusPath.Split([',', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length == 0 ? [corpusPath] : parts;
+    }
+
+    /// <summary>
+    /// Reads several sources as one corpus: the counts of a form are summed across sources. <paramref name="sources"/> names each
+    /// source with its own type and token counts.
+    /// </summary>
+    public static CorpusWordList LoadMany(IReadOnlyList<string> paths, CorpusOptions? options, out IReadOnlyList<CorpusSourceInfo> sources)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        var infos = new List<CorpusSourceInfo>();
+        var all = new List<CorpusEntry>();
+        CorpusWordList? only = null;
+        foreach (var path in paths)
+        {
+            var list = Load(path, options);
+            infos.Add(new CorpusSourceInfo(path, KindOf(path), list.TypeCount, list.TokenCount));
+            all.AddRange(list.Words);
+            only = list;
+        }
+        sources = infos;
+        return paths.Count == 1 ? only! : FromCounts(all, options);
+    }
+
+    /// <summary>Reads a weights file: one JSON object whose names are forms and whose values are whole-number counts.</summary>
+    public static CorpusWordList LoadWeights(string path, CorpusOptions? options = null) =>
+        ParseWeights(File.ReadAllText(path, Encoding.UTF8), options, path);
+
+    /// <summary>Parses weights JSON text; <paramref name="source"/> names the file in errors.</summary>
+    public static CorpusWordList ParseWeights(string text, CorpusOptions? options = null, string source = "corpus")
+    {
+        var words = new List<CorpusEntry>();
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(text);
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                throw new CorpusFormatException($"{source}: a weights file is one JSON object of form to count.");
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                if (property.Value.ValueKind != System.Text.Json.JsonValueKind.Number || !property.Value.TryGetInt64(out var count) || count < 0)
+                    throw new CorpusFormatException($"{source}: the count of '{property.Name}' is not a whole number.");
+                words.Add(new CorpusEntry(property.Name.Trim(), count));
+            }
+        }
+        catch (System.Text.Json.JsonException exception)
+        {
+            throw new CorpusFormatException($"{source}: not valid JSON ({exception.Message}).");
+        }
+        return FromCounts(words, options);
     }
 
     /// <summary>

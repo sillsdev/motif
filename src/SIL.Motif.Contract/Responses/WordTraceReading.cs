@@ -194,6 +194,9 @@ public sealed record WordTraceResponse(
     public long? ParserWork { get; init; }
     public double? ParserElapsedMs { get; init; }
 
+    /// <summary>The parser work limit this trace ran under and where it came from, so a stop at it is explained.</summary>
+    public string? WorkLimitUsed { get; init; }
+
     /// <summary>
     /// The trace of this word's lowercase form, present when that form differs from <see cref="Word"/> and its
     /// trace could be read. It is a wordform of its own: the readings above stay those of <see cref="Word"/> as written.

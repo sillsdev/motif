@@ -205,6 +205,10 @@ internal static class ReviewTrialCapture
                     ReviewBeforeExpansions = expansions,
                 });
             }
+            catch (ProjectConfigurationException exception)
+            {
+                return CommandOutcome<EnqueueTrialRequest>.Refused(Queries.ProjectWorkLimit.InvalidConfiguration(project, exception));
+            }
             catch (Exception exception) when (exception is not (OperationCanceledException or
                 SIL.Motif.Projection.ProjectWritingSystemsUnavailableException))
             {

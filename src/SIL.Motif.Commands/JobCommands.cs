@@ -414,21 +414,19 @@ public static class JobCommands
             : ParseRunLimits.Resolve(limits, ParseRunLimits.ReadRate(new AssessmentRepository(database)));
     }
 
-    private static SelectionParsingLimits? ReadTrialLimitPolicy(MotifDatabase database, ProjectLocator project, string? scopeName)
+    /// <summary>
+    /// The limit policy a Trial or Assessment runs under. A saved Selection's own limit wins, except a limit equal to the
+    /// built-in default, which every Selection saved without a limit carries and which therefore counts as unset: the
+    /// scope's limit (which takes the project's <c>[parser] work-limit</c>) applies instead, keeping the Selection's time
+    /// mode and budget. Throws <see cref="ProjectConfigurationException"/> for an invalid configuration file.
+    /// </summary>
+    internal static SelectionParsingLimits? ReadTrialLimitPolicy(MotifDatabase database, ProjectLocator project, string? scopeName)
     {
         var limits = new NamedSelectionRepository(database).GetDefault()?.Limits;
-        if (limits is not null) return limits;
-        try
-        {
-            var scopes = new ProjectConfigurationReader().Read(project).Scopes;
-            var scope = scopes.FirstOrDefault(declared => declared.Name == (scopeName ?? AssessmentScopeConfiguration.DefaultName))
-                ?? scopes[0];
-            return SelectionLimitPolicy.Estimated(scope.PerWordParserWorkLimit);
-        }
-        catch (ProjectConfigurationException)
-        {
-            return null;
-        }
+        var scopes = new ProjectConfigurationReader().Read(project).Scopes;
+        var scope = scopes.FirstOrDefault(declared => declared.Name == (scopeName ?? AssessmentScopeConfiguration.DefaultName))
+            ?? scopes[0];
+        return SelectionLimitPolicy.FollowingProject(limits, scope.PerWordParserWorkLimit);
     }
 
     /// <summary>

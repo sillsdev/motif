@@ -15,7 +15,10 @@ public static class TrialWorkComparison
 
     internal static TrialWork Compare(AssessmentRecord? baseline, AssessmentRecord trial, bool sameBaseline)
     {
-        return Compare(AreCompatible(baseline, trial, sameBaseline) ? baseline!.Words ?? [] : [], trial.Words ?? []);
+        return Compare(AreCompatible(baseline, trial, sameBaseline) ? baseline!.Words ?? [] : [], trial.Words ?? []) with
+        {
+            PerWordParserWorkLimit = trial.Invocation?.PerWordParserWorkLimit,
+        };
     }
 
     /// <summary>Whether two recorded Assessments identify the same parser and comparison settings.</summary>

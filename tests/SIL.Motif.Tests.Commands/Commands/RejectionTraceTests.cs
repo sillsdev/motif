@@ -36,6 +36,8 @@ public sealed class RejectionTraceTests
         public readonly List<JsonObject> Records = [];
         public string Status = "complete";
         public string SearchStatus = "complete";
+        public string[] StopReasons = [];
+        public JsonObject? WorkCap;
 
         public Trace Add(JsonObject record) { Records.Add(record); return this; }
 
@@ -111,13 +113,15 @@ public sealed class RejectionTraceTests
                 ["parserVersion"] = "0.27.0", ["parserBuild"] = Build,
                 ["grammar"] = new JsonObject { ["hash"] = Hash, ["semantics"] = "snapshot-semantic-sha256-v1" },
             };
+            if (WorkCap is not null) header["searchOptions"] = new JsonObject { ["workCap"] = WorkCap };
             var wordEnd = new JsonObject
             {
                 ["type"] = "word_end", ["row"] = 0,
                 ["search"] = new JsonObject
                 {
                     ["status"] = SearchStatus, ["outputCensus"] = "complete", ["outputCount"] = outputs,
-                    ["workUnits"] = 10, ["stopReasons"] = new JsonArray(), ["error"] = null,
+                    ["workUnits"] = 10, ["stopReasons"] = new JsonArray(StopReasons.Select(r => (JsonNode)r).ToArray()),
+                    ["error"] = null,
                 },
                 ["capture"] = new JsonObject
                 {
@@ -337,6 +341,52 @@ public sealed class RejectionTraceTests
 
         Assert.Equal("stopped", response.Search.Status);
         Assert.Contains(response.Notes, n => n.Contains("not a proven dead end"));
+    }
+
+    [Fact]
+    public void AWordStoppedAtTheWorkLimitSaysSoWithTheWorkAndTheRecordedLimit()
+    {
+        var trace = new Trace
+        {
+            SearchStatus = "stopped", StopReasons = ["work_limit"],
+            WorkCap = new JsonObject { ["state"] = "bounded", ["value"] = 2000 },
+        }.Path(0, "intermediate", parent: null).Path(1, "unresolved");
+
+        var response = Project(trace.Completed());
+
+        Assert.True(response.Search.WorkLimitReached);
+        Assert.Equal("work limit reached (10 work units against a limit of 2,000)", response.Search.Description);
+        Assert.Equal(new RejectionTraceWorkCap("bounded", 2000), response.Search.WorkCap);
+        Assert.Contains(response.Notes, n => n.Contains("stopped this word at its work limit"));
+    }
+
+    [Fact]
+    public void AWorkLimitStopWithNoRecordedLimitSaysItWasNotRecordedNeverAGuess()
+    {
+        var trace = new Trace { SearchStatus = "stopped", StopReasons = ["work_limit"] }.Path(1, "unresolved");
+
+        var response = Project(trace.Completed());
+
+        Assert.Null(response.Search.WorkCap);
+        Assert.Equal("work limit reached (10 work units against a limit the parser did not record)", response.Search.Description);
+    }
+
+    [Fact]
+    public void ASearchStoppedForAnotherReasonIsNotCalledAWorkLimit()
+    {
+        var response = Project(new Trace { SearchStatus = "stopped", StopReasons = ["time_limit"] }
+            .Path(1, "unresolved").Completed());
+
+        Assert.False(response.Search.WorkLimitReached);
+        Assert.Equal("search stopped (time_limit)", response.Search.Description);
+    }
+
+    [Fact]
+    public void ACompleteSearchStillSaysSearchComplete()
+    {
+        var response = Project(new Trace().Path(1, "unresolved").Completed());
+
+        Assert.Equal("search complete", response.Search.Description);
     }
 
     [Theory]

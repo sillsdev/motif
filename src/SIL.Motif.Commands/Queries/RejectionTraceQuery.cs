@@ -1,16 +1,18 @@
-using System.Globalization;
-using System.Text.Json;
 using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
-using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Config;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
+using System.Globalization;
+using System.Text.Json;
 
 namespace SIL.Motif.Commands.Queries;
 
@@ -52,17 +54,31 @@ public static class RejectionTraceQuery
                 return CommandOutcome<RejectionTraceResponse>.Refused(ProjectParseLease.BusyRefusal());
             var resolved = TracedGrammar.Resolve(database, project, proposalId);
             if (!resolved.Succeeded) return CommandOutcome<RejectionTraceResponse>.Refused(resolved.Refusal!);
-            return Run(invoker, resolved.Value!.FwDataPath, request.ProjectPath, request.Word, maxPaths,
-                resolved.Value.TracedAgainst, cancellationToken);
+            ResolvedWorkLimit workLimit;
+            try
+            {
+                workLimit = ProjectWorkLimit.ForTrace(database, project, resolved.Value!.TrialJobId);
+            }
+            catch (ProjectConfigurationException exception)
+            {
+                return CommandOutcome<RejectionTraceResponse>.Refused(ProjectWorkLimit.InvalidConfiguration(project, exception));
+            }
+            var traced = Run(invoker, resolved.Value!.FwDataPath, request.ProjectPath, request.Word, maxPaths,
+                resolved.Value.TracedAgainst, cancellationToken, workLimit.Limit);
+            return traced.Succeeded ? CommandOutcome<RejectionTraceResponse>.Success(WithLimitNote(traced.Value!, workLimit)) : traced;
         });
     }
+
+    /// <summary>The response with a note saying which work limit the parser ran under.</summary>
+    internal static RejectionTraceResponse WithLimitNote(RejectionTraceResponse response, ResolvedWorkLimit workLimit) =>
+        response with { Notes = [.. response.Notes, "Traced under " + workLimit.Describe() + "."] };
 
     /// <summary>Runs the capture on an exact grammar and projects it; the seam the tests drive without a project.</summary>
     internal static CommandOutcome<RejectionTraceResponse> Run(
         IPanGlossInvoker invoker, string grammarPath, string projectPath, string word, int maxPaths,
-        string tracedAgainst, CancellationToken cancellationToken)
+        string tracedAgainst, CancellationToken cancellationToken, ParserWorkLimit? workLimit = null)
     {
-        return RunDescribed(invoker, grammarPath, projectPath, word, maxPaths, tracedAgainst, cancellationToken).Result;
+        return RunDescribed(invoker, grammarPath, projectPath, word, maxPaths, tracedAgainst, cancellationToken, workLimit).Result;
     }
 
     /// <summary>
@@ -71,9 +87,9 @@ public static class RejectionTraceQuery
     /// </summary>
     internal static (CommandOutcome<RejectionTraceResponse> Result, IReadOnlyList<string>? DescribedRejectReasons) RunDescribed(
         IPanGlossInvoker invoker, string grammarPath, string projectPath, string word, int maxPaths,
-        string tracedAgainst, CancellationToken cancellationToken)
+        string tracedAgainst, CancellationToken cancellationToken, ParserWorkLimit? workLimit = null)
     {
-        var outcome = invoker.RunAsync(new PanGlossRequest.RejectionTrace(grammarPath, word, maxPaths),
+        var outcome = invoker.RunAsync(new PanGlossRequest.RejectionTrace(grammarPath, word, maxPaths) { WorkLimit = workLimit },
             "rejection-trace:" + word, cancellationToken).GetAwaiter().GetResult();
         return (Shape(outcome, projectPath, word, maxPaths, tracedAgainst),
             (outcome as PanGlossOutcome.Completed)?.DescribedRejectReasons);

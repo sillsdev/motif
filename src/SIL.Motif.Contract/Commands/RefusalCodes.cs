@@ -424,6 +424,10 @@ public static class RefusalCodes
     public const string QueryReadingsNeedsProject = "query.readings-needs-project";
     /// <summary><c>only-via</c> or <c>--what-if-retire</c> named an id that no morph of the corpus parse and no entry of the project carries, so it would silently match nothing.</summary>
     public const string QueryRetireIdUnknown = "query.retire-id-unknown";
+    /// <summary><c>realizes(M, possible)</c> or <c>generated</c> needs PanGloss to answer the effects or generate call and it could not.</summary>
+    public const string QueryRealizesGrammarUnavailable = "query.realizes-grammar-unavailable";
+    /// <summary><c>realizes(M, possible)</c> or <c>generated</c> asks PanGloss about one morpheme, so it needs the entry and analysis ids, not one id or a bare form.</summary>
+    public const string QueryRealizesNeedsIdentity = "query.realizes-needs-identity";
     /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>
     public const string QueryDocumentInvalid = "query.document-invalid";
     public const string QueryNoTrialRows = "query.no-trial-rows";
@@ -437,6 +441,8 @@ public static class RefusalCodes
     public const string QueryCorpusUnreadable = "query.corpus-unreadable";
     /// <summary>A corpus query option is out of range or its pattern is not a valid regular expression.</summary>
     public const string QueryCorpusInvalid = "query.corpus-invalid";
+    /// <summary><c>--write-words</c> names a file that exists and <c>--force</c> was not given; nothing was written.</summary>
+    public const string QueryWriteWordsExists = "query.write-words-exists";
     /// <summary>A <c>phon</c> or <c>env</c> predicate ran with no grammar to segment words and name natural classes; corpus mode needs <c>--grammar</c>.</summary>
     public const string QueryPhonNeedsGrammar = "query.phon-needs-grammar";
     /// <summary>The installed PanGloss does not declare the <c>match</c> serve op, so <c>phon</c> and <c>env</c> cannot run.</summary>

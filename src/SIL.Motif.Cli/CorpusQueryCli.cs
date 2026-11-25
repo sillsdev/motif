@@ -14,7 +14,7 @@ internal static class CorpusQueryCli
     /// <summary>True for <c>query --corpus ...</c>, which never reads a project.</summary>
     public static bool Handles(IReadOnlyDictionary<string, string> flags) => flags.ContainsKey("corpus");
 
-    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "segment-test", "group-by", "what-if-retire", "json"];
+    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "thorough", "segment-test", "group-by", "what-if-retire", "sum", "sample", "seed", "write-words", "with-counts", "force", "json"];
 
     /// <summary>True for <c>query --corpus &lt;words&gt; forms ...</c>.</summary>
     public static bool IsForms(IReadOnlyList<string> positionals) => positionals.FirstOrDefault() == "forms";
@@ -28,7 +28,7 @@ internal static class CorpusQueryCli
     {
         request = null!;
         if (flags.Keys.Any(key => !FormsFlags.Contains(key)) ||
-            flags.Any(pair => pair.Value == "true" && pair.Key is not ("json" or "fold-case" or "split-hyphens"))) return false;
+            flags.Any(pair => pair.Value == "true" && pair.Key is not ("json" or "fold-case" or "split-hyphens" or "thorough" or "with-counts" or "force"))) return false;
         string? where = flags.GetValueOrDefault("where");
         if (positionals is ["forms", "where", var text]) where = where is null ? text : null;
         else if (positionals is not ["forms"]) return false;
@@ -42,7 +42,7 @@ internal static class CorpusQueryCli
             document = readJson(source);
             if (document is null) return false;
         }
-        var readingsOnly = groupBy is not null || retire is not null;
+        var readingsOnly = groupBy is not null || retire is not null || flags.ContainsKey("sum") || flags.ContainsKey("sample") || flags.ContainsKey("write-words");
         if (!flags.TryGetValue("corpus", out var corpus) || ((where is null) == (document is null) && !(readingsOnly && where is null && document is null))) return false;
         int? limit = null;
         if (flags.TryGetValue("limit", out var raw))
@@ -50,8 +50,21 @@ internal static class CorpusQueryCli
             if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)) return false;
             limit = parsed;
         }
+        int? sample = null;
+        if (flags.TryGetValue("sample", out var rawSample))
+        {
+            if (!int.TryParse(rawSample, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedSample)) return false;
+            sample = parsedSample;
+        }
+        long? seed = null;
+        if (flags.TryGetValue("seed", out var rawSeed))
+        {
+            if (!long.TryParse(rawSeed, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var parsedSeed)) return false;
+            seed = parsedSeed;
+        }
         request = new CorpusFormsRequest(corpus, where, document, flags.GetValueOrDefault("grammar"), flags.GetValueOrDefault("segments"),
-            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"), flags.GetValueOrDefault("project"), groupBy, retire);
+            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"), flags.GetValueOrDefault("project"), groupBy, retire, flags.ContainsKey("thorough"),
+            flags.GetValueOrDefault("sum"), sample, seed, flags.GetValueOrDefault("write-words"), flags.ContainsKey("with-counts"), flags.TryGetValue("force", out var force) && force != "false");
         return true;
     }
 

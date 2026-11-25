@@ -22,7 +22,8 @@ public static class TrialExportReads
             try
             {
                 var receipt = TrialExportArtifact.Read(database, request.JobId, request.At, request.Page);
-                return receipt is null ? absent : CommandOutcome<TrialExportReceipt>.Success(receipt);
+                return receipt is null ? absent : CommandOutcome<TrialExportReceipt>.Success(
+                    receipt with { PerWordParserWorkLimit = FrozenWorkLimit(database, request.JobId) });
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
             {
@@ -30,5 +31,11 @@ public static class TrialExportReads
                     FailureReason.Refused, "The retained Trial evidence export could not be read."));
             }
         });
+    }
+
+    internal static SIL.Motif.Contract.Assess.ParserWorkLimit? FrozenWorkLimit(SIL.Motif.Host.Store.MotifDatabase database, string jobId)
+    {
+        var job = new JobRepository(database).Get(jobId);
+        return job is null ? null : TrialJobInput.Parse(job.InputJson).Limits?.PerWordParserWorkLimit;
     }
 }

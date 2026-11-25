@@ -90,10 +90,10 @@ public sealed class RealizesQueryTests(PristineProjectFixture pristine) : IDispo
     [Theory]
     [InlineData("possible")]
     [InlineData("generated")]
-    public void TiersThatAreNotBuiltYetAreRefusedAsNotYetAvailable(string tier)
+    public void TiersThatNeedTheGrammarAreRefusedWithoutOne(string tier)
     {
         var outcome = Run(RealizesCorpusFixture.Create(pristine), $"realizes(sfx:-an, {tier})");
-        Assert.Equal(RefusalCodes.QueryNotYetAvailable, outcome.Refusal!.Code);
+        Assert.Equal(RefusalCodes.QueryPhonNeedsGrammar, outcome.Refusal!.Code);
     }
 
     [Fact]

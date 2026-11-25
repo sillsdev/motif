@@ -20,6 +20,9 @@ public sealed record ProjectConfigurationProjection(
 
     /// <summary>Orthographic fold rules for near-duplicate lexemes (<c>[parsimony] fold</c>), each <c>from&gt;to</c>.</summary>
     public IReadOnlyList<string> ParsimonyFold { get; init; } = [];
+
+    /// <summary>The project-wide parser work limit (<c>[parser] work-limit</c>); null when the project declares none.</summary>
+    public ParserWorkLimit? ParserWorkLimit { get; init; }
 }
 
 /// <summary>One declared Assessment scope, as reported by <c>config show</c>.</summary>
