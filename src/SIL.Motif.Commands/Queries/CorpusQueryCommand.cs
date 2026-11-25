@@ -53,7 +53,8 @@ public static class CorpusQueryCommand
     // A test passes the parser that replays recorded replies in place of the resident one.
     internal static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath,
         CancellationToken cancellationToken,
-        IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null, MorphCatalog? catalog = null)
+        IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null, MorphCatalog? catalog = null,
+        IRealizesGrammar? realizesGrammar = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         QueryExpr? where;
@@ -122,7 +123,9 @@ public static class CorpusQueryCommand
             var context = new RealizesContext(corpus, string.IsNullOrWhiteSpace(request.GrammarPath) ? null : request.GrammarPath,
                 string.IsNullOrWhiteSpace(request.ProjectPath) ? null : request.ProjectPath, request.FoldCase,
                 () => indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), cacheRoot ?? RealizesParseIndexCache.DefaultRoot,
-                notice ?? (_ => { }));
+                notice ?? (_ => { }),
+                string.IsNullOrWhiteSpace(request.GrammarPath) && realizesGrammar is null ? null
+                    : () => realizesGrammar ?? new ResidentRealizesGrammar(request.GrammarPath!, parserPath), request.Thorough);
             try { realizes = RealizesQuery.Prepare(where!, context, cancellationToken); }
             catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
         }
@@ -171,7 +174,7 @@ public static class CorpusQueryCommand
             catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
         }
         PhonSession? phon = null;
-        if (QueryExprTools.HasPatterns(where))
+        if (QueryExprTools.HasPatterns(realizes is null ? where : realizes.Lowered))
         {
             var matcher = PhonMatchers.ForGrammar(request.GrammarPath!, parserPath);
             if (!matcher.Succeeded) return CommandOutcome<CorpusFormsResponse>.Refused(matcher.Refusal!);

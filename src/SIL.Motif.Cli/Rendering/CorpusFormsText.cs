@@ -65,6 +65,14 @@ internal static class CorpusFormsText
                 set.Morpheme, set.Tier, set.Complete ? "complete" : "NOT complete", set.Forms.Count, set.Pattern.Anchor == "none" ? "anywhere in" : "at",
                 set.Pattern.Anchor switch { "start" => "start", "end" => "end", _ => "text" },
                 string.Join(" | ", set.Forms.Select(form => form.Form)), "segmentation " + set.Pattern.Segmentation + "; surface text only, so it can over-match"));
+            if (set.Effects is { } effects)
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  These {0} rules can change {1} ({2} more are blocked by the form, {3} could not be modelled; effects read in {4:0.0} s).",
+                    effects.Rules, set.Morpheme, effects.NotOnForm, effects.Unmodelled, effects.Seconds)
+                    + (effects.UnmodelledBy is { Count: > 0 } by ? " Not modelled, by reason: " + string.Join(", ", by.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => pair.Key + " " + pair.Value)) + "." : ""));
+            foreach (var rule in set.Rules ?? [])
+                text.AppendLine("  rule " + rule.Name + (rule.Environment is null ? "" : " in " + rule.Environment) + (rule.Rhs is null ? "" : " -> " + rule.Rhs) + " (" + rule.Verdict + ")");
+            foreach (var form in set.Forms.Where(form => form.TestRoot is not null))
+                text.AppendLine("  " + form.Form + " [" + form.Cell + "] on " + form.TestRoot + (form.PieceSource is { } source && source != "morphSpans" ? " (" + source + ")" : "") + (form.Rules is { Count: > 0 } rules ? " by " + string.Join(", ", rules) : ""));
             if (set.Pattern.OverBroad)
                 text.AppendLine("  overBroad: the broadest term is " + set.Pattern.Broadest + "; the search finds more than this morpheme.");
             if (set.Parse is { } parse)

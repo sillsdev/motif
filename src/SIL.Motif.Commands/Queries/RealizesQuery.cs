@@ -42,8 +42,11 @@ internal sealed class RealizesRun(QueryExpr? lowered, IReadOnlyList<RealizesResu
 /// <param name="IndexBuilder">Makes the builder of the batch parse index; a test replays a recording here.</param>
 /// <param name="CacheRoot">The folder the parse index is kept in.</param>
 /// <param name="Notice">Hears that the one-off index build is starting; the command line writes it to standard error.</param>
+/// <param name="Grammar">Makes the resident grammar the <c>possible</c> and <c>generated</c> tiers ask; a test replays recordings here.</param>
+/// <param name="Thorough">Whether the planner takes three test roots per environment instead of two.</param>
 internal sealed record RealizesContext(CorpusWordList Corpus, string? GrammarPath, string? ProjectPath, bool FoldCase,
-    Func<IRealizesIndexBuilder> IndexBuilder, string CacheRoot, Action<string> Notice);
+    Func<IRealizesIndexBuilder> IndexBuilder, string CacheRoot, Action<string> Notice,
+    Func<IRealizesGrammar>? Grammar = null, bool Thorough = false);
 
 /// <summary>
 /// Resolves each <c>realizes</c> predicate of a query and compiles its variant set to a corpus search. The tier sources are the
@@ -53,7 +56,7 @@ internal sealed record RealizesContext(CorpusWordList Corpus, string? GrammarPat
 internal static class RealizesQuery
 {
     /// <summary>The tiers that have a source today.</summary>
-    internal static IReadOnlyCollection<string> Tiers { get; } = [RealizesTiers.Attested];
+    internal static IReadOnlyCollection<string> Tiers { get; } = [RealizesTiers.Attested, RealizesTiers.Possible, RealizesTiers.Generated];
 
     /// <summary>The builder of the batch parse index for the grammar, or a refusal when PanGloss is missing.</summary>
     internal static IRealizesIndexBuilder BatchBuilder(string? parserPath)
@@ -74,7 +77,9 @@ internal static class RealizesQuery
         BaselineReadCache? read = null;
         try
         {
-            if (context.ProjectPath is { } project) read = OpenProject(project);
+            // Ids name a morpheme with no project; opening one costs minutes of LibLCM, so possible and generated skip it.
+            var needsProject = found.Any(item => item.Node.Tier == RealizesTiers.Attested || !StripHintAndIds(item.Node.Morpheme));
+            if (context.ProjectPath is { } project && needsProject) read = OpenProject(project);
             (RealizesParseIndex Index, bool Built, double Seconds)? index = null;
             var sets = new List<RealizesResult>();
             var seen = new Dictionary<QueryRealizes, (RealizesResult, IReadOnlyList<string>)>();
@@ -94,6 +99,12 @@ internal static class RealizesQuery
                 }
                 if (resolved is null && read is not null && TryResolveIds(read.Cache, text, asRoot) is { } byId) resolved = byId;
                 if (resolved is not null) target = target with { IsRoot = resolved.MsaClass == ResolvedMorpheme.StemClass };
+                if (node.Tier is RealizesTiers.Possible or RealizesTiers.Generated)
+                {
+                    var possible = GrammarSet(node, resolved, target, text, context, cancellationToken);
+                    sets.Add(possible.Item1);
+                    return seen[node] = possible;
+                }
                 var parts = new List<RealizesVariants>();
                 var finding = new List<string>();
                 RealizesParseReport? report = null;
@@ -135,6 +146,66 @@ internal static class RealizesQuery
         {
             read?.Dispose();
         }
+    }
+
+    // The possible tier: the rules that may change the morpheme, the forms they compute, and patterns for the rest.
+    private static bool StripHintAndIds(string morpheme)
+    {
+        var (text, _) = StripHint(morpheme);
+        return FormsMorphemeResolver.TryPair(text, out _, out _) || FormsMorphemeResolver.TryGuid(text, out _);
+    }
+
+    private static (RealizesResult, IReadOnlyList<string>) GrammarSet(QueryRealizes node, ResolvedMorpheme? resolved, RealizesTarget target,
+        string text, RealizesContext context, CancellationToken cancellationToken)
+    {
+        if (context.Grammar is null) throw QueryRefusalException.PhonNeedsGrammar();
+        var grammar = context.Grammar();
+        RealizesVariants variants;
+        if (node.Tier == RealizesTiers.Possible) variants = RealizesPossible.Collect(grammar, target, cancellationToken, context.GrammarPath is { } known ? RealizesLexicon.Processes(known) : null);
+        else
+        {
+            var lexicon = RealizesLexicon.Weighted(context.GrammarPath is { } path ? RealizesLexicon.Read(path) : [],
+                context.Corpus.Words.Select(word => (word.Form, word.Tokens)));
+            variants = RealizesGenerated.Collect(grammar, target, lexicon, AttestedNeighbours(context, target, lexicon), context.Thorough, cancellationToken, context.GrammarPath is { } known ? RealizesLexicon.Processes(known) : null);
+        }
+        return Seal(node, Describe(resolved, target, text), variants, context);
+    }
+
+    // The other morphs of the indexed words that carry the morpheme, by frequency; none when no index is cached.
+    private static IReadOnlyList<PlannerCandidate> AttestedNeighbours(RealizesContext context, RealizesTarget target, IReadOnlyList<PlannerCandidate> lexicon)
+    {
+        if (context.GrammarPath is null || context.IndexBuilder is null) return [];
+        RealizesParseIndex? index;
+        try { index = RealizesParseIndexCache.TryLoad(context.CacheRoot, context.GrammarPath, context.Corpus.Words.Select(word => word.Form).ToList(), context.IndexBuilder().Identity); }
+        catch (QueryRefusalException) { return []; }
+        if (index is null) return [];
+        var weight = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        foreach (var word in context.Corpus.Words)
+        {
+            if (!index.Words.TryGetValue(word.Form, out var entry) || entry.Status is not (IndexedStatus.Ok)) continue;
+            foreach (var analysis in entry.Analyses.Where(analysis => analysis.Morphs.Any(target.Matches)))
+                foreach (var morph in analysis.Morphs.Where(morph => !target.Matches(morph)))
+                    weight[morph.Msa] = weight.GetValueOrDefault(morph.Msa) + word.Tokens;
+        }
+        var byMsa = lexicon.GroupBy(candidate => candidate.MsaGuid, StringComparer.OrdinalIgnoreCase).ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        return [.. weight.OrderByDescending(pair => pair.Value).Select(pair => byMsa.GetValueOrDefault(pair.Key)).OfType<PlannerCandidate>().Take(6)];
+    }
+
+    private static (RealizesResult, IReadOnlyList<string>) Seal(QueryRealizes node, string morpheme, RealizesVariants variants, RealizesContext context)
+    {
+        var searchable = variants.Forms.Where(form => form.Form != RealizesPossible.Unrealised).ToList();
+        var forms = RealizesPatternCompiler.Normalize(searchable.Select(form => form.Form), context.FoldCase);
+        var counted = variants.Forms.Select(form =>
+        {
+            if (form.Form == RealizesPossible.Unrealised) return form;
+            var carried = context.Corpus.Words.Where(word => RealizesPatternCompiler.Carries(word.Form, form.Form, variants.Anchor)).Select(word => word.Form).ToList();
+            return form with { Words = carried.Count, Examples = [.. carried.Take(3)] };
+        }).ToList();
+        var pattern = RealizesPatternCompiler.Pattern(forms, variants.Anchor);
+        pattern = Broadness(pattern, forms, variants.Anchor, context.Corpus);
+        var result = new RealizesResult(RealizesResult.SchemaName, morpheme, node.Tier, variants.Complete, variants.Reasons, variants.StopReason,
+            counted, pattern, null, variants.Rules, variants.Phon, variants.Effects);
+        return (result, forms);
     }
 
     private static BaselineReadCache OpenProject(string projectPath)

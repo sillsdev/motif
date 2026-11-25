@@ -112,7 +112,13 @@ public sealed record PhonWordResult(string Word, string Status, IReadOnlyList<Ph
     int? CharIndex = null, string? Normalized = null);
 
 /// <summary>A span as PanGloss reports it.</summary>
-public sealed record PhonRawSpan(int Start, int End, int ByteStart, int ByteEnd);
+/// <param name="Start">The first segment of the target.</param>
+/// <param name="End">The segment after the target's last.</param>
+/// <param name="ByteStart">The first byte of the target in the NFD form.</param>
+/// <param name="ByteEnd">The byte after the target's last.</param>
+/// <param name="ReachStart">The first segment of the whole match: the left environment and the target; null when the reply had no environment spans.</param>
+/// <param name="ReachEnd">The segment after the whole match's last, the right environment included; null as above.</param>
+public sealed record PhonRawSpan(int Start, int End, int ByteStart, int ByteEnd, int? ReachStart = null, int? ReachEnd = null);
 
 /// <summary>PanGloss's answer to one <c>match</c> request.</summary>
 public sealed record PhonBatchResult(IReadOnlyList<PhonWordResult> Words, bool Complete, string? StopReason);

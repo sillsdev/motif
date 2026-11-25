@@ -4171,7 +4171,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens" or "thorough")
             {
                 flags[name] = "true";
                 continue;

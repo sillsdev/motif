@@ -420,6 +420,10 @@ public static class RefusalCodes
     public const string QueryReadingsNeedsProject = "query.readings-needs-project";
     /// <summary><c>only-via</c> or <c>--what-if-retire</c> named an id that no morph of the corpus parse and no entry of the project carries, so it would silently match nothing.</summary>
     public const string QueryRetireIdUnknown = "query.retire-id-unknown";
+    /// <summary><c>realizes(M, possible)</c> or <c>generated</c> needs PanGloss to answer the effects or generate call and it could not.</summary>
+    public const string QueryRealizesGrammarUnavailable = "query.realizes-grammar-unavailable";
+    /// <summary><c>realizes(M, possible)</c> or <c>generated</c> asks PanGloss about one morpheme, so it needs the entry and analysis ids, not one id or a bare form.</summary>
+    public const string QueryRealizesNeedsIdentity = "query.realizes-needs-identity";
     /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>
     public const string QueryDocumentInvalid = "query.document-invalid";
     public const string QueryNoTrialRows = "query.no-trial-rows";

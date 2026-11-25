@@ -19,6 +19,22 @@ public sealed record EffectsAllomorph(int AllomorphId, string Form, IReadOnlyLis
 /// <param name="Status"><c>compiled</c>, <c>not_compiled</c> or <c>disabled</c>.</param>
 public sealed record EffectsRule(string Kind, string Id, string Guid, string Name, string? Stratum, int? Ordinal, string Status);
 
+/// <summary>The rule row of an effect as text, printed exactly or null with a typed reason, as PanGloss v0.33.0 writes it.</summary>
+/// <param name="Lhs">The target as pattern text; empty for an insertion; null when it cannot be printed.</param>
+/// <param name="Environment"><c>left _ right</c>, as <c>match</c> takes after the slash; null for a metathesis rule or when it cannot be printed.</param>
+/// <param name="MatchPattern"><c>lhs / environment</c>, ready to send as the <c>match</c> pattern; null when a part is unprintable.</param>
+/// <param name="Rhs">The replacement, one subrule's alternative; empty for a deletion; null for a metathesis rule or when unprintable. A class or bundle is a feature change unified into the matched segment, not any member.</param>
+/// <param name="BoundaryMarker">The boundary character a <c>+</c> stands for, to send as <c>match</c>'s <c>boundaryMarker</c>; null when none.</param>
+/// <param name="Unprintable">The parts that could not be printed, each <c>part:reason</c>.</param>
+/// <param name="NonLocal">True when the rule may be non-local; null for a rule that is not compiled.</param>
+/// <param name="NonLocalReasons">The criteria the rule meets: <c>unboundedQuantifier</c>, <c>alphaAgreement</c>, <c>iterativeSpreading</c>, <c>iterativeLengthChange</c>.</param>
+/// <param name="OutputMatchPattern">The environment with the target replaced by what the rule writes, ready for <c>match</c> over words the rule has already changed; null on a reply that has none (before PanGloss added it).</param>
+/// <param name="OutputUnprintable">PanGloss could not print the output pattern.</param>
+/// <param name="OutputMayBeAltered">Another rule may change what this rule wrote, so the output pattern may not survive to the surface.</param>
+public sealed record EffectRuleText(string? Lhs, string? Environment, string? MatchPattern, string? Rhs, string? BoundaryMarker,
+    IReadOnlyList<string> Unprintable, bool? NonLocal, IReadOnlyList<string> NonLocalReasons, string? OutputMatchPattern = null,
+    bool OutputUnprintable = false, bool OutputMayBeAltered = false);
+
 /// <summary>One allomorph, rule, subrule and edge, with what PanGloss could prove about it.</summary>
 /// <param name="Rule">The rule.</param>
 /// <param name="Subrule">The subrule's index, or null for a metathesis rule.</param>
@@ -27,8 +43,9 @@ public sealed record EffectsRule(string Kind, string Id, string Guid, string Nam
 /// <param name="MayApply"><c>unknown</c> or <c>notOnForm</c>; PanGloss never says a rule cannot change a form, only that its target is not on it.</param>
 /// <param name="Reason">Why: <c>no_lhs_match</c> for <c>notOnForm</c>, else <c>environment_unchecked</c>, <c>lhs_may_straddle_edge</c>, <c>may_be_fed</c> or an unmodelled reason.</param>
 /// <param name="LhsSpans">The <c>[start, end)</c> segment spans of the form the rule's target matches; empty when there are none.</param>
+/// <param name="Text">The rule as pattern text <c>match</c> reads; null on a reply that has none.</param>
 public sealed record EffectRow(EffectsRule Rule, int? Subrule, int AllomorphId, string Edge, string MayApply, string? Reason,
-    IReadOnlyList<(int Start, int End)> LhsSpans)
+    IReadOnlyList<(int Start, int End)> LhsSpans, EffectRuleText? Text = null)
 {
     /// <summary>The rule's target has no match on the form, across either edge, and nothing earlier can feed it.</summary>
     public bool NotOnForm => MayApply == "notOnForm";
@@ -43,6 +60,9 @@ public sealed record EffectRow(EffectsRule Rule, int? Subrule, int AllomorphId, 
 public sealed record EffectsResult(bool Complete, string? StopReason, bool Partial, IReadOnlyList<EffectsAllomorph> Allomorphs,
     IReadOnlyList<EffectRow> Effects)
 {
+    /// <summary>The LibLCM class of the morpheme's analysis as PanGloss names it, such as <c>MoStemMsa</c>; null on a reply without it.</summary>
+    public string? MsaClass { get; init; }
+
     /// <summary>The rows that may change a form: everything PanGloss could not prove the rule's target absent from.</summary>
     public IEnumerable<EffectRow> Survivors => Effects.Where(row => !row.NotOnForm);
 
@@ -61,7 +81,10 @@ public sealed record EffectsResult(bool Complete, string? StopReason, bool Parti
                 item.GetProperty("formPartial").GetBoolean())).ToList();
             var effects = root.GetProperty("effects").EnumerateArray().Select(ReadRow).ToList();
             return new EffectsResult(root.GetProperty("complete").GetBoolean(), Text(root, "stopReason"),
-                root.GetProperty("partial").GetBoolean(), allomorphs, effects);
+                root.GetProperty("partial").GetBoolean(), allomorphs, effects)
+            {
+                MsaClass = root.TryGetProperty("morpheme", out var morpheme) && morpheme.ValueKind == JsonValueKind.Object ? Text(morpheme, "msaClass") : null,
+            };
         }
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
         {
@@ -81,7 +104,23 @@ public sealed record EffectsResult(bool Complete, string? StopReason, bool Parti
                 rule.GetProperty("status").GetString() ?? ""),
             item.TryGetProperty("subrule", out var subrule) && subrule.ValueKind == JsonValueKind.Number ? subrule.GetInt32() : null,
             item.GetProperty("allomorphId").GetInt32(), item.GetProperty("edge").GetString() ?? "",
-            item.GetProperty("mayApply").GetString() ?? "", Text(item, "reason"), spans);
+            item.GetProperty("mayApply").GetString() ?? "", Text(item, "reason"), spans, ReadText(item));
+    }
+
+    private static EffectRuleText? ReadText(JsonElement item)
+    {
+        if (!item.TryGetProperty("matchPattern", out _) && !item.TryGetProperty("lhs", out _) && !item.TryGetProperty("nonLocal", out _)) return null;
+        var unprintable = item.TryGetProperty("unprintable", out var list) && list.ValueKind == JsonValueKind.Array
+            ? list.EnumerateArray().Select(entry => (Text(entry, "part") ?? "?") + ":" + (Text(entry, "reason") ?? "?")).ToList() : [];
+        var reasons = item.TryGetProperty("nonLocalReasons", out var why) && why.ValueKind == JsonValueKind.Array
+            ? why.EnumerateArray().Select(entry => entry.GetString() ?? "").ToList() : [];
+        bool? nonLocal = item.TryGetProperty("nonLocal", out var flag) && flag.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? flag.GetBoolean() : null;
+        var outputUnprintable = item.TryGetProperty("outputUnprintable", out var bad) &&
+            (bad.ValueKind == JsonValueKind.True || bad.ValueKind == JsonValueKind.Array && bad.GetArrayLength() > 0);
+        var altered = item.TryGetProperty("outputMayBeAltered", out var changed) && changed.ValueKind == JsonValueKind.True;
+        return new EffectRuleText(Text(item, "lhs"), Text(item, "environment"), Text(item, "matchPattern"), Text(item, "rhs"),
+            Text(item, "boundaryMarker"), unprintable, nonLocal, reasons, Text(item, "outputMatchPattern"), outputUnprintable, altered);
     }
 
     private static string? Text(JsonElement element, string name) =>

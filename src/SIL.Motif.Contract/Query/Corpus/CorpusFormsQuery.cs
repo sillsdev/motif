@@ -15,12 +15,13 @@ namespace SIL.Motif.Contract.Query.Corpus;
 /// <param name="Limit">The most rows returned; default 100.</param>
 /// <param name="SegmentTest"><c>engine</c> (the default) or <c>identity</c>, how <c>phon</c> and <c>env</c> test a segment; overrides the document's <c>segmentTest</c>.</param>
 /// <param name="ProjectPath">A FieldWorks project whose lexicon and stored analyses <c>realizes</c> reads, and whose entries name the morphs of a reading; with <paramref name="GrammarPath"/> both sources are used.</param>
+/// <param name="Thorough">Whether <c>realizes</c> at the <c>generated</c> tier takes three test roots per rule environment instead of two.</param>
 /// <param name="GroupBy">Only <c>cause</c>: group the words with more than one reading by why they have several.</param>
 /// <param name="WhatIfRetire">Entry, analysis (<c>msa:</c>) or form (<c>form:</c>) ids to retire; the answer lists the words that would lose or lose some readings. An estimate.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null, string? QueryJson = null, string? GrammarPath = null,
     string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null, string? SegmentTest = null,
-    string? ProjectPath = null, string? GroupBy = null, IReadOnlyList<string>? WhatIfRetire = null);
+    string? ProjectPath = null, string? GroupBy = null, IReadOnlyList<string>? WhatIfRetire = null, bool Thorough = false);
 
 /// <summary>One word of a corpus that satisfied the query.</summary>
 /// <param name="Form">The word.</param>

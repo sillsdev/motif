@@ -41,6 +41,12 @@ public static class RealizesRefusals
         $"'{morpheme}' names a morpheme by its form, and only a project's lexicon can say which entry that is. Pass --project <fwdata>, or name it as entry:msa.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["flag"] = "--project", ["morpheme"] = morpheme }));
 
+    /// <summary>PanGloss answers about one morpheme named by its entry and analysis ids.</summary>
+    public static QueryRefusalException NeedsIdentity(string morpheme) => new(new Refusal(
+        RefusalCodes.QueryRealizesNeedsIdentity, FailureReason.InvalidArgument,
+        $"realizes tier possible and generated ask PanGloss about {morpheme} by its entry and analysis ids. Name it as entry:msa, or give a form and --project so the lexicon can name it.",
+        new Dictionary<string, string>(StringComparer.Ordinal) { ["morpheme"] = morpheme }));
+
     /// <summary>The tier is named in the schema but its variant source is not built yet.</summary>
     public static QueryRefusalException TierNotYetAvailable(string tier) => QueryRefusalException.NotYetAvailable("realizes tier " + tier);
 }
@@ -89,10 +95,15 @@ public static class RealizesLowering
         {
             case QueryRealizes realizes:
                 var (set, forms) = resolve(realizes);
-                if (forms.Count == 0) throw RealizesRefusals.NoParses(set.Morpheme, "no form was found");
+                if (forms.Count == 0 && (set.Phon?.Count ?? 0) == 0) throw RealizesRefusals.NoParses(set.Morpheme, "no form was found");
                 if (negated && !set.Complete) throw RealizesRefusals.NegationIncomplete(set);
-                var fields = RealizesPatternCompiler.Chunks(forms, set.Pattern.Anchor, ChunkLimit)
-                    .Select(chunk => (QueryExpr)new QueryField("form", QueryOps.Contains, chunk)).ToList();
+                IReadOnlyList<string> chunks = forms.Count == 0 ? [] : RealizesPatternCompiler.Chunks(forms, set.Pattern.Anchor, ChunkLimit);
+                var fields = chunks.Select(chunk => (QueryExpr)new QueryField("form", QueryOps.Contains, chunk)).ToList();
+                foreach (var clause in set.Phon ?? [])
+                {
+                    QueryExpr search = clause.Pattern.Contains(" / ", StringComparison.Ordinal) ? new QueryEnv(clause.Pattern) : new QueryPhon(clause.Pattern);
+                    fields.Add(clause.Context is null ? search : new QueryAnd([search, new QueryField("form", QueryOps.Contains, clause.Context)]));
+                }
                 return fields.Count == 1 ? fields[0] : new QueryOr(fields);
             case QueryAnd and: return new QueryAnd([.. and.Items.Select(item => Visit(item, negated, resolve))]);
             case QueryOr or: return new QueryOr([.. or.Items.Select(item => Visit(item, negated, resolve))]);
