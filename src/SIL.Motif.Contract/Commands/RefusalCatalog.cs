@@ -480,6 +480,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.QueryRealizesNegationIncomplete, FailureReason.Refused),
         Spec(RefusalCodes.QueryRealizesNoParses, FailureReason.Refused),
         Spec(RefusalCodes.QueryRealizesIdUnknown, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.QueryBaselineSameGrammar, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryTwinNeedsRegex, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryTwinGroupUnknown, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryTwinRegexAmbiguous, FailureReason.InvalidArgument),

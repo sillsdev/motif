@@ -414,6 +414,8 @@ public static class RefusalCodes
     public const string QueryRealizesNegationIncomplete = "query.realizes-negation-incomplete";
     /// <summary><c>realizes(M, attested)</c> found no stored analysis that uses the morpheme to read its forms from.</summary>
     public const string QueryRealizesNoParses = "query.realizes-no-parses";
+    /// <summary><c>--baseline-grammar</c> names the same file as <c>--grammar</c>, so nothing could change.</summary>
+    public const string QueryBaselineSameGrammar = "query.baseline-same-grammar";
     /// <summary><c>--twin</c> was given with no <c>form ~</c> or <c>form matches</c> regex to rewrite the matches of.</summary>
     public const string QueryTwinNeedsRegex = "query.twin-needs-regex";
     /// <summary><c>--twin</c> was given with several distinct <c>form ~</c> patterns, or one under <c>or</c>, so the rewrite has no single regex.</summary>

@@ -84,3 +84,25 @@ The columns of a lone `--twin` are `twin.form`, `twin.tokens` (0 when the corpus
 # which -ிலிருந்து words are stem gaps and which only lack the -ில் suffix form
 motif query --corpus a.weights.json,b.weights.json forms where 'form ~ "(.*)ிலிருந்து$"' --twin '$1ில்' --group-by parse.state,twin.parse.state --grammar tam.fwdata
 ```
+
+## Comparing two grammars: `--baseline-grammar`
+
+`--baseline-grammar <path>` parses the corpus with a second grammar (the baseline, usually the original of a scratch copy) and compares it, word by word, with `--grammar` (the target, the copy you changed). It needs `--grammar`, and naming the same file for both is refused as `query.baseline-same-grammar`. Each grammar has its own cached parse index, keyed by the grammar, so a baseline is parsed once however many variants are compared with it. To compare several variants with one baseline, run the query once per variant with a different `--grammar` and the same `--baseline-grammar`: one table per variant, and every run after the first reads the baseline from its cache.
+
+The columns are `base.parse.state` and `base.readings` (the baseline's values; the plain `parse.state` and `readings` are the target's) and `change`:
+
+- `gained`: no reading in the baseline, at least one now.
+- `lost`: at least one reading in the baseline, none now.
+- `more-readings` and `fewer-readings`: both parse, with more or fewer readings now.
+- `readings-changed`: both parse with the same number of readings, but the analyses differ (by PanGloss's signature of each reading, else by its morphs' form and analysis ids, in any order).
+- `same`: nothing differs.
+- `unknown`: a word that either grammar's parse stopped at the work limit, stopped at the word timeout or got no answer for. It is never `gained` or `lost`, and it makes the header say `Readings: INCOMPLETE` and `readingsInfo.complete` false, with the number of such words in the note. `baselineInfo` is the baseline parse's own report.
+
+The columns work in `where` (`change = lost`, `change = more-readings`), in `--group-by` (`--group-by change --sum tokens`, or `change,base.parse.state`) and in the JSON rows as `baseline:{parseState, readings, change}`; the columns without `--baseline-grammar` are refused as `query.corpus-invalid`. A comparison may omit the `where`: `--group-by change --sum tokens` alone counts every word.
+
+```powershell
+# what the variant gained and lost against the original, in types and tokens
+motif query --corpus swh.weights.json forms --grammar variant-b/swh.fwdata --baseline-grammar base/swh.fwdata --group-by change --sum tokens
+# the words it lost, most frequent first
+motif query --corpus swh.weights.json forms where 'change = lost' --grammar variant-b/swh.fwdata --baseline-grammar base/swh.fwdata --limit 50
+```
