@@ -479,6 +479,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.QueryNotYetAvailable, FailureReason.Refused),
         Spec(RefusalCodes.QueryRealizesNegationIncomplete, FailureReason.Refused),
         Spec(RefusalCodes.QueryRealizesNoParses, FailureReason.Refused),
+        Spec(RefusalCodes.QueryRealizesIdUnknown, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryRealizesIndexFailed, FailureReason.Refused),
         Spec(RefusalCodes.QueryRealizesNeedsProject, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryReadingsNeedsGrammar, FailureReason.InvalidArgument),

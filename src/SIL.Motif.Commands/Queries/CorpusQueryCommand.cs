@@ -63,7 +63,7 @@ public static class CorpusQueryCommand
         var groupColumns = request.GroupBy is null ? null : request.GroupBy.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var wantsCauses = groupColumns is ["cause"];
         var retire = new List<ReadingTarget>();
-        var listed = new HashSet<QueryRealizes>();
+        var listed = new RealizesListed();
         QueryExpr? printed = null;
         if (request.CountBy is not null && !string.Equals(request.CountBy, "morph-seq", StringComparison.Ordinal)) return Invalid("count-by is 'morph-seq'.");
         var wantsMorphSeqs = request.CountBy is not null;
@@ -149,7 +149,7 @@ public static class CorpusQueryCommand
                 () => indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), cacheRoot ?? RealizesParseIndexCache.DefaultRoot,
                 notice ?? (_ => { }),
                 string.IsNullOrWhiteSpace(request.GrammarPath) && realizesGrammar is null ? null
-                    : () => realizesGrammar ?? new ResidentRealizesGrammar(request.GrammarPath!, parserPath), request.Thorough);
+                    : () => realizesGrammar ?? new ResidentRealizesGrammar(request.GrammarPath!, parserPath), request.Thorough, catalog is null ? null : catalog.MsasOf);
             try { realizes = RealizesQuery.Prepare(where!, context, cancellationToken, listed); }
             catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
         }

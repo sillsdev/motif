@@ -1,3 +1,4 @@
+using System.Globalization;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -125,7 +126,7 @@ internal static class MorphSeqRefusals
 internal static class RealizesFiles
 {
     /// <summary>The expression with each <c>@file</c> morpheme replaced by the realizes predicates of its lines; the new nodes are returned in <paramref name="listed"/>.</summary>
-    public static QueryExpr? Expand(QueryExpr? expr, HashSet<QueryRealizes> listed) => expr switch
+    public static QueryExpr? Expand(QueryExpr? expr, RealizesListed listed) => expr switch
     {
         null => null,
         QueryRealizes realizes when realizes.Morpheme.StartsWith('@') => ExpandOne(realizes, listed),
@@ -138,7 +139,7 @@ internal static class RealizesFiles
     /// <summary>Whether the expression has a stems file.</summary>
     public static bool Has(QueryExpr? expr) => RealizesLowering.Find(expr).Any(found => found.Node.Morpheme.StartsWith('@'));
 
-    private static QueryExpr ExpandOne(QueryRealizes node, HashSet<QueryRealizes> listed)
+    private static QueryExpr ExpandOne(QueryRealizes node, RealizesListed listed)
     {
         var path = node.Morpheme[1..].Trim();
         string[] lines;
@@ -148,13 +149,23 @@ internal static class RealizesFiles
             throw new QueryRefusalException(new Refusal(RefusalCodes.QueryCorpusUnreadable, FailureReason.InvalidArgument,
                 $"The stems file '{path}' cannot be read: {exception.Message}"));
         }
-        var specs = lines.Select(line => line.Trim().TrimStart('﻿')).Where(line => line.Length > 0 && !line.StartsWith('#'))
-            .Distinct(StringComparer.Ordinal).ToList();
+        var specs = lines.Select((line, index) => (Spec: line.Trim(), Line: index + 1)).Where(line => line.Spec.Length > 0 && !line.Spec.StartsWith('#'))
+            .DistinctBy(line => line.Spec, StringComparer.Ordinal).ToList();
         if (specs.Count == 0)
             throw new QueryRefusalException(new Refusal(RefusalCodes.QueryCorpusInvalid, FailureReason.InvalidArgument,
                 $"The stems file '{path}' has no morpheme spec; give one per line (blank lines and lines starting # are skipped)."));
-        var nodes = specs.Select(spec => new QueryRealizes(spec, node.Tier)).ToList();
-        foreach (var item in nodes) listed.Add(item);
+        var nodes = specs.Select(line => new QueryRealizes(line.Spec, node.Tier)).ToList();
+        for (var at = 0; at < nodes.Count; at++)
+        {
+            listed.Add(nodes[at]);
+            listed.Origins.TryAdd(nodes[at], $"stems file '{path}' line {specs[at].Line.ToString(CultureInfo.InvariantCulture)}");
+        }
         return nodes.Count == 1 ? nodes[0] : new QueryOr([.. nodes]);
     }
+}
+
+/// <summary>The realizes predicates that came from a stems file, with the file line each came from, for refusals that name the line.</summary>
+internal sealed class RealizesListed : HashSet<QueryRealizes>
+{
+    public Dictionary<QueryRealizes, string> Origins { get; } = [];
 }

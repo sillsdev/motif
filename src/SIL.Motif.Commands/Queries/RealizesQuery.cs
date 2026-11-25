@@ -1,3 +1,4 @@
+using System.Globalization;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -44,9 +45,10 @@ internal sealed class RealizesRun(QueryExpr? lowered, IReadOnlyList<RealizesResu
 /// <param name="Notice">Hears that the one-off index build is starting; the command line writes it to standard error.</param>
 /// <param name="Grammar">Makes the resident grammar the <c>possible</c> and <c>generated</c> tiers ask; a test replays recordings here.</param>
 /// <param name="Thorough">Whether the planner takes three test roots per environment instead of two.</param>
+/// <param name="EntryMsas">The analyses of an entry id, when the caller already holds the project catalog; null reads them from the project.</param>
 internal sealed record RealizesContext(CorpusWordList Corpus, string? GrammarPath, string? ProjectPath, bool FoldCase,
     Func<IRealizesIndexBuilder> IndexBuilder, string CacheRoot, Action<string> Notice,
-    Func<IRealizesGrammar>? Grammar = null, bool Thorough = false);
+    Func<IRealizesGrammar>? Grammar = null, bool Thorough = false, Func<string, IReadOnlyList<string>?>? EntryMsas = null);
 
 /// <summary>
 /// Resolves each <c>realizes</c> predicate of a query and compiles its variant set to a corpus search. The tier sources are the
@@ -69,7 +71,7 @@ internal static class RealizesQuery
     }
 
     /// <summary>Lowers the expression; a refusal comes back as a <see cref="QueryRefusalException"/>.</summary>
-    public static RealizesRun Prepare(QueryExpr where, RealizesContext context, CancellationToken cancellationToken, ISet<QueryRealizes>? listed = null)
+    public static RealizesRun Prepare(QueryExpr where, RealizesContext context, CancellationToken cancellationToken, RealizesListed? listed = null)
     {
         var found = RealizesLowering.Find(where);
         foreach (var tier in found.Select(item => item.Node.Tier).Distinct())
@@ -83,14 +85,22 @@ internal static class RealizesQuery
             (RealizesParseIndex Index, bool Built, double Seconds)? index = null;
             var sets = new List<RealizesResult>();
             var seen = new Dictionary<QueryRealizes, (RealizesResult, IReadOnlyList<string>)>();
-            var lowered = RealizesLowering.Lower(where, node =>
+            Func<QueryRealizes, (RealizesResult, IReadOnlyList<string>)> resolveNode = node =>
             {
                 if (seen.TryGetValue(node, out var done)) return done;
                 var (text, asRoot) = StripHint(node.Morpheme);
                 ResolvedMorpheme? resolved = null;
                 RealizesTarget target;
                 if (FormsMorphemeResolver.TryPair(text, out var entry, out var msa)) target = new RealizesTarget(entry, msa, null);
-                else if (FormsMorphemeResolver.TryGuid(text, out var guid)) target = new RealizesTarget(null, null, guid);
+                else if (FormsMorphemeResolver.TryGuid(text, out var guid))
+                {
+                    // An entry id means any analysis of the entry, as morph(entry:) does; the parse names analyses, never entries.
+                    var msas = context.EntryMsas?.Invoke(guid) ?? (read is null ? null : EntryMsas(read.Cache, guid));
+                    target = msas is { Count: > 0 }
+                        ? msas.Count == 1 ? new RealizesTarget(guid, msas[0], null)
+                            : new RealizesTarget(guid, null, null, MsaIds: new HashSet<string>(msas, StringComparer.OrdinalIgnoreCase))
+                        : new RealizesTarget(null, null, guid);
+                }
                 else
                 {
                     if (read is null) throw RealizesRefusals.NeedsLexicon(node.Morpheme);
@@ -130,6 +140,8 @@ internal static class RealizesQuery
                     finding.Add($"none of the {parse.Parsed} parsed word types has an analysis that contains it");
                 }
                 var merged = Merge(parts, resolved is not null);
+                if (merged.Forms.Count == 0 && target.AnyId is { } anyId && resolved is null && !IndexCarries(index?.Index, anyId))
+                    throw RealizesRefusals.IdUnknown(node.Morpheme, anyId, read is not null || context.EntryMsas is not null);
                 if (merged.Forms.Count == 0 && listed?.Contains(node) == true)
                 {
                     var absent = new RealizesResult(RealizesResult.SchemaName, Describe(resolved, target, text), node.Tier, false,
@@ -146,6 +158,17 @@ internal static class RealizesQuery
                     merged.Reasons, merged.StopReason, merged.Forms, pattern, report);
                 sets.Add(result);
                 return seen[node] = (result, forms);
+            };
+            var lowered = RealizesLowering.Lower(where, node =>
+            {
+                try { return resolveNode(node); }
+                catch (QueryRefusalException refused) when (listed?.Origins.TryGetValue(node, out _) == true)
+                {
+                    var origin = listed.Origins[node];
+                    throw new QueryRefusalException(new Refusal(refused.Refusal.Code, refused.Refusal.Reason, origin + ": " + refused.Refusal.Message,
+                        refused.Refusal.Facts.Concat([new KeyValuePair<string, string>("stemsLine", origin)]).GroupBy(pair => pair.Key).ToDictionary(group => group.Key, group => group.Last().Value),
+                        refused.Refusal.ParserDiagnostic));
+                }
             });
             var positive = RealizesLowering.Find(where).Where(item => !item.Negated).Select(item => seen[item.Node]).Distinct().ToList();
             return new RealizesRun(lowered, sets, positive);
@@ -264,6 +287,17 @@ internal static class RealizesQuery
         return new RealizesVariants(forms, anchor, reasons, parts.Select(part => part.StopReason).FirstOrDefault(reason => reason is not null), Terms: terms);
     }
 
+    // The analyses of an entry in the project; null when the guid is no entry.
+    private static IReadOnlyList<string>? EntryMsas(LcmCache cache, string guid) =>
+        Guid.TryParse(guid, out var id) && cache.ServiceLocator.ObjectRepository.TryGetObject(id, out var found) && found is ILexEntry entry
+            ? [.. entry.MorphoSyntaxAnalysesOC.Select(msa => msa.Guid.ToString("D", CultureInfo.InvariantCulture)).Order(StringComparer.Ordinal)]
+            : null;
+
+    // Whether any morph of the parse names the id as its form or analysis.
+    private static bool IndexCarries(RealizesParseIndex? index, string id) =>
+        index is not null && index.Words.Values.Any(word => word.Analyses.Any(analysis => analysis.Morphs.Any(morph =>
+            string.Equals(morph.Form, id, StringComparison.OrdinalIgnoreCase) || string.Equals(morph.Msa, id, StringComparison.OrdinalIgnoreCase))));
+
     private static string Describe(ResolvedMorpheme? resolved, RealizesTarget target, string text)
     {
         var id = resolved is not null ? resolved.EntryGuid + ":" + resolved.MsaGuid
@@ -275,7 +309,7 @@ internal static class RealizesQuery
     private static (string Text, bool? AsRoot) StripHint(string spec)
     {
         var text = spec.Trim();
-        foreach (var (prefix, root) in new[] { ("root:", true), ("stem:", true), ("pfx:", false), ("sfx:", false), ("afx:", false) })
+        foreach (var (prefix, root) in new (string, bool?)[] { ("entry:", null), ("root:", true), ("stem:", true), ("pfx:", false), ("sfx:", false), ("afx:", false) })
             if (text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && !FormsMorphemeResolver.TryPair(text, out _, out _))
                 return (text[prefix.Length..], root);
         return (text, null);

@@ -30,6 +30,11 @@ internal sealed class MorphCatalog
     /// <summary>Whether the project has an entry with this id.</summary>
     public bool HasEntry(string entry) => _entries.Contains(entry);
 
+    /// <summary>Every analysis of an entry; null when the project has no such entry.</summary>
+    public IReadOnlyList<string>? MsasOf(string entry) => HasEntry(entry)
+        ? [.. _byMsa.Where(pair => string.Equals(pair.Value.Entry, entry, StringComparison.OrdinalIgnoreCase)).Select(pair => pair.Key).Order(StringComparer.Ordinal)]
+        : null;
+
     /// <summary>Builds a catalog from a catalog of analyses; a test supplies its own.</summary>
     internal static MorphCatalog From(IEnumerable<(string Msa, string Entry, string Kind)> rows) =>
         From(rows.Select(row => (row.Msa, row.Entry, row.Kind, (string?)null)));

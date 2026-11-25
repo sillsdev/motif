@@ -22,6 +22,13 @@ public static class RealizesRefusals
         $"realizes({morpheme}, attested) found no analysis that uses {morpheme}: {finding}. Name a project with stored analyses (--project), or ask for tier possible or generated.",
         new Dictionary<string, string>(StringComparer.Ordinal) { ["morpheme"] = morpheme, ["tier"] = RealizesTiers.Attested }));
 
+    /// <summary>An id no morph of the parse and no entry of the project carries; a zero here would be a false absence.</summary>
+    public static QueryRefusalException IdUnknown(string morpheme, string id, bool hasProject) => new(new Refusal(
+        RefusalCodes.QueryRealizesIdUnknown, FailureReason.InvalidArgument,
+        $"realizes({morpheme}, attested): no morph of the parse and no {(hasProject ? "entry of the project" : "entry (no --project to look in)")} has the id {id}. " +
+        (hasProject ? "Check the id." : "An entry id needs --project to be mapped to its analyses; without one name an analysis or form id.") ,
+        new Dictionary<string, string>(StringComparer.Ordinal) { ["morpheme"] = morpheme, ["id"] = id }));
+
     /// <summary>The parse index of the corpus could not be built; <paramref name="detail"/> carries the stderr tail or the line number.</summary>
     public static QueryRefusalException IndexFailed(string detail) => new(new Refusal(
         RefusalCodes.QueryRealizesIndexFailed, FailureReason.Refused,

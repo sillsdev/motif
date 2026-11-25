@@ -104,13 +104,16 @@ public sealed class MorphSeqQueryTests : IDisposable
     });
 
     private CommandOutcome<CorpusFormsResponse> Run(string? where, bool capped = false, string? countBy = null, bool adjacent = false, bool byMorph = false,
-        bool withCatalog = true, string? project = "p.fwdata", string? json = null, int? limit = null, bool grammar = true)
+        bool withCatalog = true, string? project = "p.fwdata", string? json = null, int? limit = null, bool grammar = true, MorphCatalog? catalog = null,
+        string? recording = null, string[]? words = null)
     {
+        if (words is not null) File.WriteAllText(Path.Combine(_folder, "words.tsv"), string.Concat(words.Select(word => word + "\t1\n")));
         var grammarPath = Path.Combine(_folder, "grammar.json");
         File.WriteAllText(grammarPath, "grammar");
-        return CorpusQueryCommand.Forms(new CorpusFormsRequest(Corpus(), where, json, grammar ? grammarPath : null, ProjectPath: project, Limit: limit, CountBy: countBy,
+        var corpusPath = words is null ? Corpus() : Path.Combine(_folder, "words.tsv");
+        return CorpusQueryCommand.Forms(new CorpusFormsRequest(corpusPath, where, json, grammar ? grammarPath : null, ProjectPath: project, Limit: limit, CountBy: countBy,
                 Adjacent: adjacent, ByMorph: byMorph),
-            null, default, new Recorded(Recording(capped), capped), Path.Combine(_folder, "cache"), catalog: withCatalog ? Catalog() : null,
+            null, default, new Recorded(recording ?? Recording(capped), capped || recording is not null), Path.Combine(_folder, "cache" + (recording is null ? "" : "-own")), catalog: withCatalog ? catalog ?? Catalog() : null,
             entryOfForm: item => item.Value == "fany" ? Entries[0] : item.Value == "ish" ? Entries[1] : null);
     }
 
@@ -257,7 +260,7 @@ public sealed class MorphSeqQueryTests : IDisposable
     [Fact]
     public void ARealizesStemsFileMeansAnyOfItsLinesAndByMorphGroupsPerMorph()
     {
-        var stems = Stems("# the stems", Root, "", Caus, Absent);
+        var stems = Stems("# the stems", Root, "", Caus, $"{Entries[0]}:{Absent}");
         var outcome = Run($"realizes(@{stems}, attested)", byMorph: true, project: null, withCatalog: false);
         Assert.Equal(["cappedw", "fanyaana", "fanyisha", "fanyishana", "ishfany", "other", "plain"], Matched(outcome));
         var groups = outcome.Value!.ByMorph!;
@@ -289,13 +292,86 @@ public sealed class MorphSeqQueryTests : IDisposable
         Assert.Equal(RefusalCodes.QueryCorpusUnreadable, Run($"realizes(@{Path.Combine(_folder, "missing.txt")}, attested)", project: null, withCatalog: false).Refusal!.Code);
         Assert.Equal(RefusalCodes.QueryCorpusInvalid, Run($"realizes(@{Stems("# nothing", "")}, attested)", project: null, withCatalog: false).Refusal!.Code);
         Assert.Equal(RefusalCodes.QueryCorpusInvalid, Run($"morph(msa:{Root})", byMorph: true).Refusal!.Code);
-        Assert.Equal(RefusalCodes.QueryRealizesNoParses, Run($"realizes({Absent}, attested)", project: null, withCatalog: false).Refusal!.Code);
+        Assert.Equal(RefusalCodes.QueryRealizesNoParses, Run($"realizes({Entries[0]}:{Absent}, attested)", project: null, withCatalog: false).Refusal!.Code);
     }
 
     [Fact]
     public void NegatedStemsFileWithAnAbsentMorphIsRefusedAsIncomplete()
     {
-        var refused = Run($"not realizes(@{Stems(Root, Absent)}, attested)", project: null, withCatalog: false);
+        var refused = Run($"not realizes(@{Stems(Root, $"{Entries[0]}:{Absent}")}, attested)", project: null, withCatalog: false);
         Assert.Equal(RefusalCodes.QueryRealizesNegationIncomplete, refused.Refusal!.Code);
+    }
+
+    private static string[] Realized(CommandOutcome<CorpusFormsResponse> outcome) => Matched(outcome);
+
+    [Fact]
+    public void AnEntryIdMeansEveryAnalysisOfTheEntryLikeMorphEntry()
+    {
+        var one = Run($"realizes({Entries[1]}, attested)", project: null);
+        Assert.Equal(["fanyisha", "fanyishana", "ishfany"], Realized(one));
+        Assert.Equal(Matched(Run($"morph(entry:{Entries[1]})")), Realized(one));
+        Assert.Equal(Realized(one), Realized(Run($"realizes(entry:{Entries[1]}, attested)", project: null)));
+        var two = MorphCatalog.From(new (string, string, string, string?)[]
+        {
+            (Root, Entries[0], MorphKinds.Stem, "do"), (Sm, Entries[0], MorphKinds.Inflectional, "SM"),
+            (Caus, Entries[1], MorphKinds.Derivational, "CAUS"), (Recp, Entries[2], MorphKinds.Derivational, "RECP"),
+        });
+        var both = Run($"realizes({Entries[0]}, attested)", project: null, catalog: two);
+        Assert.Equal(["cappedw", "fanyaana", "fanyisha", "fanyishana", "ishfany", "other", "plain"], Realized(both));
+        Assert.Equal(Realized(both), Matched(Run($"morph(entry:{Entries[0]})", catalog: two)));
+        Assert.Equal(["fanyaana", "fanyishana"], Realized(Run($"realizes({Recp}, attested)", project: null)));
+    }
+
+    [Fact]
+    public void AnIdNoMorphAndNoEntryCarriesIsRefusedNotAnsweredAsNoParses()
+    {
+        var noProject = Run($"realizes({Entries[1]}, attested)", project: null, withCatalog: false);
+        Assert.Equal(RefusalCodes.QueryRealizesIdUnknown, noProject.Refusal!.Code);
+        Assert.Contains("--project", noProject.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(RefusalCodes.QueryRealizesIdUnknown, Run($"realizes({Id(8)}, attested)", project: null).Refusal!.Code);
+        Assert.Equal(RefusalCodes.QueryRealizesIdUnknown, Run($"realizes({Absent}, attested)", project: null, withCatalog: false).Refusal!.Code);
+    }
+
+    [Fact]
+    public void AStemsFileLineThatIsRefusedNamesItsLineNumberEvenAfterBlankCommentAndDuplicateLines()
+    {
+        var stems = Stems("# the stems", Root, "", Root, Id(8));
+        var refused = Run($"realizes(@{stems}, attested)", project: null).Refusal!;
+        Assert.Equal(RefusalCodes.QueryRealizesIdUnknown, refused.Code);
+        Assert.Contains("line 5", refused.Message, StringComparison.Ordinal);
+        Assert.Contains(stems, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AStemsFileWithAByteOrderMarkReadsItsFirstLine()
+    {
+        var path = Path.Combine(_folder, "bom.txt");
+        File.WriteAllText(path, Root + "\n" + Caus + "\n", new System.Text.UTF8Encoding(true));
+        Assert.Equal(["cappedw", "fanyaana", "fanyisha", "fanyishana", "ishfany", "other", "plain"], Matched(Run($"realizes(@{path}, attested)", project: null, withCatalog: false)));
+    }
+
+    [Fact]
+    public void OrderIsNeverCheckedAcrossReadingsAndARepeatedItemNeedsTwoMorphsInOneReading()
+    {
+        var recording = string.Join("\n", new[]
+        {
+            Line("crossw", false, [M(Root, "cro"), M(Sm, "ssw")], [M(Caus, "cro"), M(Recp, "ssw")]),
+            Line("doublew", false, [M(Root, "dou"), M(Caus, "bl"), M(Caus, "e"), M(Sm, "w")]),
+            Line("gapw", false, [M(Caus, "ga"), M(Root, "p"), M(Caus, "w")]),
+            Line("onew", false, [M(Root, "on"), M(Caus, "ew")]),
+        }) + "\n";
+        string[] words = ["crossw", "doublew", "gapw", "onew"];
+        Assert.Empty(Matched(Run($"seq(msa:{Sm}, msa:{Recp})", recording: recording, words: words)));
+        Assert.Empty(Matched(Run($"seq(msa:{Root}, msa:{Recp})", recording: recording, words: words)));
+        Assert.Equal(["doublew", "gapw"], Matched(Run("seq(CAUS, CAUS)", recording: recording, words: words)));
+        Assert.Equal(["doublew"], Matched(Run("seq(CAUS, CAUS)", adjacent: true, recording: recording, words: words)));
+        Assert.Equal(["crossw", "doublew", "gapw", "onew"], Matched(Run("morph(CAUS) or morph(do)", recording: recording, words: words)));
+    }
+
+    [Fact]
+    public void AClassTokenIsNeverASubstring()
+    {
+        Assert.Equal(RefusalCodes.QuerySeqItemUnknown, Run("seq(CAU, RECP)").Refusal!.Code);
+        Assert.Equal(RefusalCodes.QuerySeqItemUnknown, Run("morph(deriv)").Refusal!.Code);
     }
 }
