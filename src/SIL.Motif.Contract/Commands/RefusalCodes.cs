@@ -352,6 +352,8 @@ public static class RefusalCodes
     public const string RecordImportGuidInvalid = "record-import.guid-invalid";
     /// <summary>Another open Draft or Proposal already creates the new record's GUID.</summary>
     public const string RecordImportGuidPending = "record-import.guid-pending";
+    /// <summary>The Drafts and Proposals could not be read, so whether one already creates the new record's GUID is unknown.</summary>
+    public const string RecordImportGuidPendingUnchecked = "record-import.guid-pending-unchecked";
     /// <summary>The new record's GUID belonged to an object the project's home has deleted.</summary>
     public const string RecordImportGuidRetired = "record-import.guid-retired";
     /// <summary>The feature-structure text is not a bracketed list of feature:value pairs.</summary>

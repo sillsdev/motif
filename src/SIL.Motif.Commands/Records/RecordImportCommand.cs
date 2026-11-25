@@ -175,8 +175,12 @@ public static partial class RecordImportCommand
     private static CommandOutcome<RecordImportResponse>? StageCreate(RecordImportRequest request, Planned found)
     {
         var guid = found.Plan.RecordGuid!.Value;
-        var pending = PendingCreate(request.ProjectPath, guid);
-        if (pending is not null)
+        var scan = ScanPending(request.ProjectPath, guid);
+        if (!scan.Succeeded)
+            return Refused(RefusalCodes.RecordImportGuidPendingUnchecked, FailureReason.Refused,
+                "Other Drafts and Proposals could not be read to see whether one already creates " + guid.ToString("D") + ", so nothing was staged. Try again.",
+                ("guid", CanonicalId.FromGuid(guid).Value), ("storeRefusal", scan.Refusal!.Code));
+        if (scan.Value!.Name is { } pending)
             return Refused(RefusalCodes.RecordImportGuidPending, FailureReason.Refused,
                 "Proposal " + pending + " already creates " + guid.ToString("D") + ". Apply or discard it first, or use another GUID.",
                 ("guid", CanonicalId.FromGuid(guid).Value), ("proposal", pending));
@@ -188,23 +192,28 @@ public static partial class RecordImportCommand
     internal const string CreateNotLowered =
         "The file plans a new record, but creating a record from a file is not yet lowered to operations, so nothing was staged. Use the dry run to check the file.";
 
-    /// <summary>The name or id of an open Draft or Proposal whose content names the entity id, or null.</summary>
-    private static string? PendingCreate(string projectPath, Guid guid)
+    /// <summary>Tests replace the pending scan to make the store unreadable.</summary>
+    internal static Func<string, Guid, CommandOutcome<PendingScan>>? PendingScanOverride { get; set; }
+
+    /// <summary>The first open Draft or Proposal that names the entity id.</summary>
+    private static CommandOutcome<PendingScan> ScanPending(string projectPath, Guid guid)
     {
+        if (PendingScanOverride is { } replaced) return replaced(projectPath, guid);
         var id = CanonicalId.FromGuid(guid).Value;
-        var scan = ProjectStoreCommand.ReadExisting(projectPath, CommandOutcome<PendingScan>.Success(new(null)), (database, _) =>
+        return ProjectStoreCommand.ReadExisting(projectPath, CommandOutcome<PendingScan>.Success(new(null)), (database, _) =>
         {
             var repository = new SIL.Motif.Worker.Store.ProposalRepository(database);
-            var open = repository.ListDrafts().Concat(repository.List(new(null, false)));
-            foreach (var record in open)
+            foreach (var record in repository.ListDrafts())
                 if (record.ProposalJson?.Contains(id, StringComparison.Ordinal) == true)
                     return CommandOutcome<PendingScan>.Success(new(record.DraftName ?? record.ProposalId.Value));
+            foreach (var record in repository.List(new(null, false)).Where(record => record.DraftName is null))
+                if (record.ProposalJson?.Contains(id, StringComparison.Ordinal) == true)
+                    return CommandOutcome<PendingScan>.Success(new(record.ProposalId.Value));
             return CommandOutcome<PendingScan>.Success(new(null));
         });
-        return scan.Succeeded ? scan.Value!.Name : null;
     }
 
-    private sealed record PendingScan(string? Name);
+    internal sealed record PendingScan(string? Name);
 
     private static string? CodeFor(RecordRefusalKind kind) => kind switch
     {

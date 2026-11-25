@@ -842,6 +842,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.RecordImportRecordGone, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportGuidInvalid, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportGuidPending, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportGuidPendingUnchecked, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportGuidRetired, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportChangedSincePreview, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportStrictRefused, FailureReason.Refused),

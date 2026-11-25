@@ -5,6 +5,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Records;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
@@ -137,6 +138,27 @@ public sealed class RecordCreatePlanCommandTests(PristineProjectFixture pristine
         Assert.Equal("earlier", outcome.Refusal.Facts["proposal"]);
         // The dry run does not look at pending work: only a stage can collide with it.
         Assert.True(RecordImportCommand.Run(new(project, file)).Succeeded);
+    }
+
+    [Fact]
+    public void WhenTheOtherDraftsCannotBeReadTheStageIsRefusedAsUncheckedNotSkipped()
+    {
+        var (project, file, _) = Fixture();
+        RecordImportCommand.PendingScanOverride = (_, _) => CommandOutcome<RecordImportCommand.PendingScan>.Refused(
+            new Refusal("store.busy", FailureReason.Refused, "busy", new Dictionary<string, string>()));
+        try
+        {
+            var outcome = RecordImportCommand.Run(new(project, file, "later"));
+
+            Assert.False(outcome.Succeeded);
+            Assert.Equal(RefusalCodes.RecordImportGuidPendingUnchecked, outcome.Refusal!.Code);
+            Assert.Equal("store.busy", outcome.Refusal.Facts["storeRefusal"]);
+            Assert.Equal(0, DraftCount(project));
+        }
+        finally
+        {
+            RecordImportCommand.PendingScanOverride = null;
+        }
     }
 
     [Fact]
