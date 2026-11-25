@@ -2610,6 +2610,19 @@
     },
     {
       "kind": "command",
+      "code": "project backup",
+      "slug": "project-backup",
+      "title": "Back up a Motif store",
+      "description": "Writes a consistent copy of the project\u0027s Motif store and the files Motif owns for it into a new folder, while other Motif processes keep reading and writing. The receipt lists each file\u0027s size and sha256 and the store\u0027s schema version. It does not include the FieldWorks project file.",
+      "helpPage": "# Back up a Motif store\n\n\u0060project backup\u0060 writes a consistent copy of a project\u0027s Motif store, and the files Motif owns for the project, into a new folder. Use it before switching to a new Motif build or doing anything else you may want to undo.\n\n\u0060\u0060\u0060powershell\nmotif project backup --project \u0022D:\\Projects\\Koro\\Koro.fwdata\u0022\nmotif project backup --project \u0022D:\\Projects\\Koro\\Koro.fwdata\u0022 --to \u0022D:\\Backups\\koro-before-switch\u0022 --json\n\u0060\u0060\u0060\n\nWithout \u0060--to\u0060 the backup goes into a timestamped folder beside the store, named \u0060\u003Cproject\u003E.motif-backup-\u003Ctime\u003E\u0060. A folder named with \u0060--to\u0060 must be missing or empty.\n\nThe store is copied with SQLite\u0027s online backup, so the copy is one consistent snapshot even while a runner or another command is reading or writing the store. The command takes the same shared lease every reader takes, so it refuses only when another Motif process is resetting or restoring the store (\u0060project.busy\u0060). If the store stays locked past the busy timeout it refuses with \u0060cli.store-busy\u0060; repeat the call.\n\nThe folder holds \u0060store.sqlite\u0060, plus \u0060Config.motif.toml\u0060 (the project\u0027s \u0060.motif.toml\u0060), \u0060store.upgrade.json\u0060 and the \u0060trial-exports\u0060 folder when they exist, and \u0060motif-backup.json\u0060, the receipt. The receipt, which is also the command\u0027s JSON, lists each file\u0027s path, size and sha256, the store\u0027s schema version and the project it belongs to.\n\nThe FieldWorks project file is not included: \u0060fwDataIncluded\u0060 is \u0060false\u0060. Back that up with FieldWorks\u0027 own project backup.\n\nA project with no Motif store refuses with \u0060project.backup-no-store\u0060; a destination that already holds files refuses with \u0060project.backup-destination-exists\u0060. Restore a backup with [\u0060project restore\u0060](cmd:project%20restore).\n",
+      "usage": [
+        "Usage: motif project backup --project \u003Cfwdata\u003E [--to \u003Cdir\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/project-backup/"
+    },
+    {
+      "kind": "command",
       "code": "project initialize",
       "slug": "project-initialize",
       "title": "Prepare a project for Motif",
@@ -2620,6 +2633,19 @@
       ],
       "surface": "AdvancedAi",
       "url": "https://motif-docs.pages.dev/reference/commands/project-initialize/"
+    },
+    {
+      "kind": "command",
+      "code": "project restore",
+      "slug": "project-restore",
+      "title": "Restore a Motif store",
+      "description": "Puts a Motif backup back beside the project after checking every file against its receipt. It refuses while the store is open or busy, when the backup is of a newer schema, and when a file does not match its sha256. It saves the store it replaces first and swaps the restored one in by rename.",
+      "helpPage": "# Restore a Motif store\n\n\u0060project restore\u0060 puts a backup made by [\u0060project backup\u0060](cmd:project%20backup) back beside the project.\n\n\u0060\u0060\u0060powershell\nmotif project restore \u0022D:\\Backups\\koro-before-switch\u0022 --project \u0022D:\\Projects\\Koro\\Koro.fwdata\u0022\n\u0060\u0060\u0060\n\nPass the backup folder (or its \u0060motif-backup.json\u0060). Before it changes anything the command refuses when:\n\n- the store is open or busy in another Motif process (\u0060project.busy\u0060); close the runner with \u0060motif worker stop\u0060 and repeat;\n- the backup\u0027s store schema is newer than this build understands (\u0060project.backup-newer-schema\u0060); update Motif first;\n- a file\u0027s sha256 or size differs from the receipt (\u0060project.backup-checksum-mismatch\u0060), checked on the copy staged beside the target;\n- the folder has no readable receipt (\u0060project.backup-invalid\u0060), or the backup is of another project\u0027s store (\u0060project.backup-other-project\u0060).\n\nOtherwise it takes the store\u0027s exclusive lease, saves the store it replaces as a backup in \u0060\u003Cproject\u003E.motif-backups/pre-restore-\u003Ctime\u003E\u0060, and swaps each staged file in by rename, so the store is never half written. An older backup is restored as it is; Motif upgrades it the next time it opens it. Files in the project\u0027s \u0060trial-exports\u0060 folder that the backup does not hold are left in place, and the replaced store\u0027s copy has them. The result lists each restored file and the pre-restore backup\u0027s receipt.\n\nThe FieldWorks project file is never touched.\n",
+      "usage": [
+        "Usage: motif project restore \u003Cbackup-dir\u003E --project \u003Cfwdata\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/project-restore/"
     },
     {
       "kind": "command",
