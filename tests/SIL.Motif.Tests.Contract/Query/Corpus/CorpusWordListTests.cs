@@ -99,4 +99,37 @@ public sealed class CorpusWordListTests
         Assert.Equal(["ngg", "a", "n", "a"], corpus.Row(corpus.Words[1]).Segments.ToArray());
         Assert.Equal(["ngg"], corpus.Row(corpus.Words[1]).Get("initial:1"));
     }
+
+    [Fact]
+    public void AWeightsFileIsOneObjectOfFormToCountAndNormalisesLikeAnyList()
+    {
+        var corpus = CorpusWordList.ParseWeights("{\"Kaon\":5,\"kaon\":2,\"baha\":0,\"lis\":3}", new CorpusOptions(FoldCase: true));
+        Assert.Equal(["kaon", "lis"], corpus.Words.Select(word => word.Form).ToArray());
+        Assert.Equal((2, 10L), (corpus.TypeCount, corpus.TokenCount));
+        Assert.True(CorpusWordList.IsWeightsFile("x.WEIGHTS.JSON"));
+        Assert.Throws<CorpusFormatException>(() => CorpusWordList.ParseWeights("[\"kaon\"]"));
+        Assert.Throws<CorpusFormatException>(() => CorpusWordList.ParseWeights("{\"kaon\":1.5}"));
+        Assert.Throws<CorpusFormatException>(() => CorpusWordList.ParseWeights("{\"kaon\":"));
+    }
+
+    [Fact]
+    public void LoadManySumsFormsAcrossSourcesAndReportsEachOnItsOwn()
+    {
+        var folder = Directory.CreateTempSubdirectory("sources").FullName;
+        try
+        {
+            var a = Path.Combine(folder, "a.json");
+            var b = Path.Combine(folder, "b.tsv");
+            File.WriteAllText(a, "{\"kaon\":4,\"baha\":1}");
+            File.WriteAllText(b, "kaon\t3\nlis\t2\n");
+            var corpus = CorpusWordList.LoadMany(CorpusWordList.SplitSources(a + "," + b), null, out var sources);
+            Assert.Equal((3, 10L), (corpus.TypeCount, corpus.TokenCount));
+            Assert.True(corpus.TryGet("kaon", out var kaon));
+            Assert.Equal(7, kaon.Tokens);
+            Assert.Equal([(a, "weights.json", 2, 5L), (b, "tsv", 2, 5L)], sources.Select(source => (source.Path, source.Kind, source.Types, source.Tokens)));
+            Assert.Equal([a], CorpusWordList.SplitSources(a));
+            Assert.Equal([a, b], CorpusWordList.SplitSources(a + "\n" + b));
+        }
+        finally { Directory.Delete(folder, true); }
+    }
 }

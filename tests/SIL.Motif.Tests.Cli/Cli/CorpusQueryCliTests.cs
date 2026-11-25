@@ -119,4 +119,45 @@ public sealed class CorpusQueryCliTests : IDisposable
         Assert.NotEqual(0, code);
         Assert.Contains("cause", output + error);
     }
+
+    [Fact]
+    public void GroupByAColumnPrintsTheGroupsAndTotalsAndRepeatedCorpusFlagsAreOneCorpus()
+    {
+        var other = Write("more.weights.json", "{\"kaon\":10,\"zed\":2}");
+        var (code, output, error) = Run("query", "--corpus", Words(), "--corpus", other, "forms", "--group-by", "syllables", "--sum", "tokens");
+        Assert.Equal(0, code);
+        Assert.Equal("", error);
+        Assert.Contains("source " + other + " (weights.json): 2 types, 12 tokens", output);
+        Assert.Contains("Totals: 8 types, 32 tokens", output);
+        Assert.Contains("Groups by syllables", output);
+        var (_, json, _) = Run("query", "--corpus", Words() + "," + other, "forms", "--group-by", "syllables", "--json");
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        Assert.Equal(2, root.GetProperty("corpus").GetProperty("sources").GetArrayLength());
+        Assert.Equal(8, root.GetProperty("totals").GetProperty("types").GetInt32());
+        Assert.Equal(32, root.GetProperty("totals").GetProperty("tokens").GetInt64());
+        var first = root.GetProperty("groups").GetProperty("groups")[0];
+        Assert.True(first.TryGetProperty("key", out _) && first.TryGetProperty("types", out _) && first.TryGetProperty("tokens", out _));
+    }
+
+    [Fact]
+    public void SampleSeedAndWriteWordsWorkFromTheCommandLineAndWriteWordsNeedsForce()
+    {
+        var file = Path.Combine(_folder, "set.txt");
+        var (code, output, _) = Run("query", "--corpus", Words(), "forms", "--sample", "3", "--seed", "5", "--write-words", file, "--with-counts");
+        Assert.Equal(0, code);
+        Assert.Contains("Sample: 3 of 7 matching words, seed 5", output);
+        Assert.Contains("Wrote 3 words to " + file + " (form, count)", output);
+        Assert.DoesNotContain("TRUNCATED", output);
+        Assert.All(File.ReadAllLines(file), line => Assert.Equal(2, line.Split('\t').Length));
+        var again = Run("query", "--corpus", Words(), "forms", "--sample", "3", "--write-words", file);
+        Assert.NotEqual(0, again.Code);
+        Assert.Contains("nothing was written", again.Output + again.Error);
+        var asJson = Run("query", "--corpus", Words(), "forms", "--sample", "3", "--write-words", file, "--json");
+        Assert.Contains("query.write-words-exists", asJson.Output + asJson.Error);
+        Assert.Equal(0, Run("query", "--corpus", Words(), "forms", "--sample", "3", "--write-words", file, "--force").Code);
+        Assert.Equal(3, File.ReadAllLines(file).Length);
+        Assert.Equal(1, Run("query", "--corpus", Words(), "forms", "--sample", "many").Code);
+        Assert.Equal(1, Run("query", "--corpus", Words(), "forms", "--seed", "x", "--sample", "2").Code);
+    }
 }

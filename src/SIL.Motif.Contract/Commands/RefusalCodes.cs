@@ -437,6 +437,8 @@ public static class RefusalCodes
     public const string QueryCorpusUnreadable = "query.corpus-unreadable";
     /// <summary>A corpus query option is out of range or its pattern is not a valid regular expression.</summary>
     public const string QueryCorpusInvalid = "query.corpus-invalid";
+    /// <summary><c>--write-words</c> names a file that exists and <c>--force</c> was not given; nothing was written.</summary>
+    public const string QueryWriteWordsExists = "query.write-words-exists";
     /// <summary>A <c>phon</c> or <c>env</c> predicate ran with no grammar to segment words and name natural classes; corpus mode needs <c>--grammar</c>.</summary>
     public const string QueryPhonNeedsGrammar = "query.phon-needs-grammar";
     /// <summary>The installed PanGloss does not declare the <c>match</c> serve op, so <c>phon</c> and <c>env</c> cannot run.</summary>

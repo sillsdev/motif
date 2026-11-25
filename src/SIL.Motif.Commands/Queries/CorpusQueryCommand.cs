@@ -20,7 +20,7 @@ public static class CorpusQueryCommand
         try
         {
             var segments = request.SegmentsPath is { Length: > 0 } path ? CorpusSegments.Load(path) : CorpusSegments.None;
-            corpus = CorpusWordList.Load(request.CorpusPath, new CorpusOptions(request.FoldCase, segments, request.SplitHyphens));
+            corpus = CorpusWordList.LoadMany(CorpusWordList.SplitSources(request.CorpusPath), new CorpusOptions(request.FoldCase, segments, request.SplitHyphens), out _);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or CorpusFormatException or ArgumentException)
         {
@@ -60,10 +60,22 @@ public static class CorpusQueryCommand
         QueryExpr? where;
         var limit = request.Limit ?? DefaultLimit;
         string segmentTest;
-        var wantsCauses = request.GroupBy is not null;
+        var groupColumns = request.GroupBy is null ? null : request.GroupBy.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var wantsCauses = groupColumns is ["cause"];
         var retire = new List<ReadingTarget>();
-        if (request.GroupBy is not null && !string.Equals(request.GroupBy, "cause", StringComparison.Ordinal))
-            return Invalid("group-by is 'cause': the words with more than one reading, grouped by why.");
+        if (request.GroupBy is not null)
+        {
+            if (groupColumns is not { Length: 1 or 2 } || groupColumns.Distinct(StringComparer.Ordinal).Count() != groupColumns.Length)
+                return Invalid("group-by is 'cause' or one or two different columns, such as parse.state or parse.state,shape.");
+            if (!wantsCauses && groupColumns.FirstOrDefault(column => !CorpusFormsQuery.IsGroupColumn(column)) is { } unknown)
+                return Invalid($"group-by is 'cause' or a column of the words (form, tokens, parse.state, readings, shape, syllables, fold, initial:n, final:n), not '{unknown}'.");
+        }
+        if (request.Sum is not null && !string.Equals(request.Sum, "tokens", StringComparison.Ordinal)) return Invalid("sum is 'tokens'.");
+        if (request.Sample is < 1) return Invalid("sample is a positive whole number.");
+        if (request.Seed is not null && request.Sample is null) return Invalid("seed goes with sample.");
+        if (request.WithCounts && request.WriteWords is null) return Invalid("with-counts goes with write-words.");
+        if (request.WriteWords is { } target0 && string.IsNullOrWhiteSpace(target0)) return Invalid("write-words names a file.");
+        var groupsColumns = wantsCauses ? null : groupColumns;
         foreach (var text in request.WhatIfRetire ?? [])
         {
             if (ReadingTarget.TryParse(text, out var target)) retire.Add(target);
@@ -72,7 +84,7 @@ public static class CorpusQueryCommand
         }
         var readingsOnly = wantsCauses || request.WhatIfRetire is { Count: > 0 };
         if (request.WhatIfRetire is { Count: 0 }) return Invalid("what-if-retire needs at least one id.");
-        if ((request.Where is null) == (request.QueryJson is null) && !(readingsOnly && request.Where is null && request.QueryJson is null))
+        if ((request.Where is null) == (request.QueryJson is null) && !((readingsOnly || groupsColumns is not null || request.Sum is not null || request.Sample is not null || request.WriteWords is not null) && request.Where is null && request.QueryJson is null))
             return Invalid("Give the query as --where <expression> or as --query-json, one of the two.");
         if (limit < 1) return Invalid("limit is a positive whole number.");
         try
@@ -98,6 +110,8 @@ public static class CorpusQueryCommand
                 return CommandOutcome<CorpusFormsResponse>.Refused(QueryRefusalException.PhonNeedsGrammar().Refusal);
             if (RealizesLowering.Has(where) && string.IsNullOrWhiteSpace(request.GrammarPath) && string.IsNullOrWhiteSpace(request.ProjectPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(RealizesRefusals.NeedsProject().Refusal);
+            if (groupsColumns?.Contains("readings") == true && string.IsNullOrWhiteSpace(request.GrammarPath))
+                return CommandOutcome<CorpusFormsResponse>.Refused(ReadingsRefusals.NeedsGrammar("--group-by readings").Refusal);
             if ((readingsOnly || OnlyViaLowering.UsesReadings(where)) && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(ReadingsRefusals.NeedsGrammar(
                     wantsCauses ? "--group-by cause" : readingsOnly ? "--what-if-retire" : "readings and only-via").Refusal);
@@ -107,10 +121,11 @@ public static class CorpusQueryCommand
             return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal);
         }
         CorpusWordList corpus;
+        IReadOnlyList<CorpusSourceInfo> sources;
         try
         {
             var segments = request.SegmentsPath is { Length: > 0 } path ? CorpusSegments.Load(path) : CorpusSegments.None;
-            corpus = CorpusWordList.Load(request.CorpusPath, new CorpusOptions(request.FoldCase, segments, request.SplitHyphens));
+            corpus = CorpusWordList.LoadMany(CorpusWordList.SplitSources(request.CorpusPath), new CorpusOptions(request.FoldCase, segments, request.SplitHyphens), out sources);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or CorpusFormatException or ArgumentException)
         {
@@ -132,7 +147,8 @@ public static class CorpusQueryCommand
         ParsedReadings? readings = null;
         ReadingsReport? readingsReport = null;
         var liveState = !string.IsNullOrWhiteSpace(request.GrammarPath) && QueryExprTools.Leaves(where).Any(leaf => leaf.Field == CorpusFormsQuery.ParseStateColumn);
-        var usesReadings = readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState;
+        var groupsRead = !string.IsNullOrWhiteSpace(request.GrammarPath) && groupsColumns?.Any(column => column is "readings" or CorpusFormsQuery.ParseStateColumn) == true;
+        var usesReadings = readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState || groupsRead;
         if (usesReadings)
         {
             try
@@ -185,8 +201,33 @@ public static class CorpusQueryCommand
             var lowered = OnlyViaLowering.Lower(realizes is null ? where : realizes.Lowered);
             var rows = CorpusFormsQuery.Run(corpus, lowered, phon, readings);
             if (realizes is not null) rows = [.. rows.Select(row => row with { Realizes = realizes.HitsFor(row.Form) })];
-            var summary = new CorpusSummary(request.CorpusPath, corpus.TypeCount, corpus.TokenCount,
-                phon is { Ran: true } ? "grammar" : corpus.SegmentationLabel, request.FoldCase);
+            var summary = new CorpusSummary(sources.Count > 1 ? string.Join(",", sources.Select(source => source.Path)) : request.CorpusPath, corpus.TypeCount, corpus.TokenCount,
+                phon is { Ran: true } ? "grammar" : corpus.SegmentationLabel, request.FoldCase, sources.Count > 1 ? sources : null);
+            var matched = rows.Count;
+            var matchedRows = rows;
+            ValueGroups? groups = groupsColumns is null ? null : CorpusFormsQuery.Group(corpus, rows, groupsColumns, readings);
+            TypesTokens? totals = groups is not null || request.Sum is not null ? new TypesTokens(rows.Count, rows.Sum(row => row.Tokens)) : null;
+            SampleInfo? sample = null;
+            if (request.Sample is { } sampleSize)
+            {
+                var seed = request.Seed ?? 0;
+                rows = CorpusFormsQuery.Sample(rows, sampleSize, seed);
+                sample = new SampleInfo(rows.Count, seed, matched);
+                if (request.Limit is null) limit = Math.Max(limit, sampleSize);
+            }
+            // A grouping is a summary: it lists no rows unless --limit asks for some.
+            if (groups is not null && request.Sample is null && request.Limit is null && request.QueryJson is null) limit = 0;
+            WordsWritten? written = null;
+            if (request.WriteWords is { } writePath)
+            {
+                if (File.Exists(writePath) && !request.Force)
+                    return CommandOutcome<CorpusFormsResponse>.Refused(new Refusal(RefusalCodes.QueryWriteWordsExists, FailureReason.InvalidArgument,
+                        $"write-words: '{writePath}' exists; nothing was written. Give --force to overwrite it or name another file."));
+                try { WriteWords(writePath, rows, request.WithCounts); }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                { return Invalid($"write-words: '{writePath}' cannot be written: {exception.Message}"); }
+                written = new WordsWritten(writePath, rows.Count, request.WithCounts);
+            }
             CauseReport? causes = null;
             WhatIfReport? whatIf = null;
             if (readings is not null && wantsCauses)
@@ -194,15 +235,15 @@ public static class CorpusQueryCommand
                 var builder = new CauseGroupBuilder();
                 var tokens = 0L;
                 var count = 0;
-                foreach (var row in rows)
+                foreach (var row in matchedRows)
                     if (readings.Get(row.Form) is { Readings.Count: > 1 } word) { builder.Add(row.Form, row.Tokens, word); count++; tokens += row.Tokens; }
                 causes = new CauseReport(readingsReport!.Complete, count, tokens, builder.Build());
             }
             if (readings is not null && retire.Count > 0)
-                whatIf = Retirement.Estimate(readings, [.. rows.Select(row => (row.Form, row.Tokens))], retire, readingsReport!.Complete, limit);
+                whatIf = Retirement.Estimate(readings, [.. matchedRows.Select(row => (row.Form, row.Tokens))], retire, readingsReport!.Complete, limit);
             return CommandOutcome<CorpusFormsResponse>.Success(new CorpusFormsResponse(CorpusFormsResponse.SchemaName, summary,
-                where is null ? null : QueryExprText.Print(where), rows.Count, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
-                realizes?.Sets, readingsReport, causes, whatIf));
+                where is null ? null : QueryExprText.Print(where), matched, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
+                realizes?.Sets, readingsReport, causes, whatIf, groups, totals, sample, written));
         }
         catch (QueryRefusalException refused)
         {
@@ -212,6 +253,21 @@ public static class CorpusQueryCommand
         {
             return Invalid(exception.Message);
         }
+    }
+
+    // Written beside the target and moved into place, so a failed write never leaves half a word list.
+    private static void WriteWords(string path, IReadOnlyList<CorpusFormRow> rows, bool withCounts)
+    {
+        var full = Path.GetFullPath(path);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        var temp = full + ".tmp-" + Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        try
+        {
+            File.WriteAllLines(temp, rows.Select(row => withCounts ? row.Form + "\t" + row.Tokens.ToString(System.Globalization.CultureInfo.InvariantCulture) : row.Form),
+                new System.Text.UTF8Encoding(false));
+            File.Move(temp, full, overwrite: true);
+        }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
     /// <summary>The estimator behind <c>--what-if-retire</c>; PanGloss's exact retire pass replaces it.</summary>

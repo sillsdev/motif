@@ -16,12 +16,19 @@ namespace SIL.Motif.Contract.Query.Corpus;
 /// <param name="SegmentTest"><c>engine</c> (the default) or <c>identity</c>, how <c>phon</c> and <c>env</c> test a segment; overrides the document's <c>segmentTest</c>.</param>
 /// <param name="ProjectPath">A FieldWorks project whose lexicon and stored analyses <c>realizes</c> reads, and whose entries name the morphs of a reading; with <paramref name="GrammarPath"/> both sources are used.</param>
 /// <param name="Thorough">Whether <c>realizes</c> at the <c>generated</c> tier takes three test roots per rule environment instead of two.</param>
-/// <param name="GroupBy">Only <c>cause</c>: group the words with more than one reading by why they have several.</param>
+/// <param name="GroupBy"><c>cause</c> (the words with more than one reading, by why), or one or two comma-separated columns (<c>parse.state</c>, <c>readings</c>, <c>shape</c>, <c>syllables</c>, <c>fold</c>, <c>initial:n</c>, <c>final:n</c>, <c>tokens</c>, <c>form</c>): types and tokens per distinct value.</param>
 /// <param name="WhatIfRetire">Entry, analysis (<c>msa:</c>) or form (<c>form:</c>) ids to retire; the answer lists the words that would lose or lose some readings. An estimate.</param>
+/// <param name="Sum"><c>tokens</c>: give <c>totals</c> (types and tokens of every match) even without a grouping; a grouping always carries tokens.</param>
+/// <param name="Sample">Keep only this many of the matching words, chosen by <paramref name="Seed"/> and not by frequency; groups and totals still cover every match.</param>
+/// <param name="Seed">The seed of the sample; default 0. The same seed over the same matches gives the same words.</param>
+/// <param name="WriteWords">A file to write the matching (or sampled) forms to, one per line; every match, not just the first <paramref name="Limit"/>.</param>
+/// <param name="WithCounts">Write <c>form&lt;TAB&gt;count</c> lines instead of the form alone.</param>
+/// <param name="Force">Overwrite <paramref name="WriteWords"/> when it exists; otherwise that is refused and nothing is written.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null, string? QueryJson = null, string? GrammarPath = null,
     string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null, string? SegmentTest = null,
-    string? ProjectPath = null, string? GroupBy = null, IReadOnlyList<string>? WhatIfRetire = null, bool Thorough = false);
+    string? ProjectPath = null, string? GroupBy = null, IReadOnlyList<string>? WhatIfRetire = null, bool Thorough = false, string? Sum = null, int? Sample = null,
+    long? Seed = null, string? WriteWords = null, bool WithCounts = false, bool Force = false);
 
 /// <summary>One word of a corpus that satisfied the query.</summary>
 /// <param name="Form">The word.</param>
@@ -87,6 +94,30 @@ public sealed record TypesTokens(int Types, long Tokens);
 public sealed record WhatIfReport(bool Estimate, bool Exact, string Method, string Note, IReadOnlyList<string> Retire, bool Complete,
     TypesTokens Affected, TypesTokens Lost, TypesTokens Reduced, TypesTokens Capped, TypesTokens Failed, IReadOnlyList<WhatIfWord> Words);
 
+/// <summary>One value (or pair of values) of the grouped columns with the matching words that carry it.</summary>
+/// <param name="Key">The values joined by <c> | </c>; <c>(none)</c> for a word with no value.</param>
+/// <param name="Values">One value per grouped column, in order.</param>
+/// <param name="Types">Matching word types.</param>
+/// <param name="Tokens">Their tokens.</param>
+public sealed record ValueGroup(string Key, IReadOnlyList<string> Values, int Types, long Tokens);
+
+/// <summary>The matching words grouped by columns (<c>--group-by parse.state</c>).</summary>
+/// <param name="Columns">The grouped columns.</param>
+/// <param name="Groups">One group per distinct value, by tokens then key.</param>
+public sealed record ValueGroups(IReadOnlyList<string> Columns, IReadOnlyList<ValueGroup> Groups);
+
+/// <summary>The sample <c>--sample</c> kept.</summary>
+/// <param name="Count">Words kept.</param>
+/// <param name="Seed">The seed.</param>
+/// <param name="Of">How many words matched.</param>
+public sealed record SampleInfo(int Count, long Seed, int Of);
+
+/// <summary>The file <c>--write-words</c> wrote.</summary>
+/// <param name="Path">The file.</param>
+/// <param name="Words">Lines written.</param>
+/// <param name="WithCounts">Whether each line carries the count.</param>
+public sealed record WordsWritten(string Path, int Words, bool WithCounts);
+
 /// <summary>The words of a corpus that satisfy a query, versioned <see cref="SchemaName"/>.</summary>
 /// <param name="Schema">The schema name.</param>
 /// <param name="Corpus">The corpus and how its forms were segmented; <c>grammar</c> when PanGloss segmented them.</param>
@@ -98,13 +129,21 @@ public sealed record WhatIfReport(bool Estimate, bool Exact, string Method, stri
 /// <param name="ReadingsInfo">The corpus parse a readings query read and whether it is complete; null when the query reads no readings.</param>
 /// <param name="Causes">The <c>--group-by cause</c> groups; null when not asked.</param>
 /// <param name="WhatIf">The <c>--what-if-retire</c> estimate; null when not asked.</param>
+/// <param name="Groups">The <c>--group-by &lt;column&gt;</c> groups over every match; null when not asked.</param>
+/// <param name="Totals">Types and tokens of every match; present with <c>--group-by &lt;column&gt;</c> or <c>--sum tokens</c>.</param>
+/// <param name="Sample">The <c>--sample</c> that was drawn; null when not asked.</param>
+/// <param name="Written">The <c>--write-words</c> file; null when not asked.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsResponse(string Schema, CorpusSummary Corpus, string? Where, int Matched,
     IReadOnlyList<CorpusFormRow> Rows, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PhonReport? Phon,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RealizesResult>? Realizes = null,
     [property: JsonPropertyName("readingsInfo"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReadingsReport? ReadingsInfo = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] CauseReport? Causes = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] WhatIfReport? WhatIf = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] WhatIfReport? WhatIf = null,
+    [property: JsonPropertyName("groups"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ValueGroups? Groups = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TypesTokens? Totals = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SampleInfo? Sample = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] WordsWritten? Written = null)
 {
     /// <summary>The schema name of the JSON form.</summary>
     public const string SchemaName = "motif.query.corpus-forms.v1";
@@ -119,6 +158,52 @@ public static class CorpusFormsQuery
     private static readonly QuerySpec Spec = new(
         column => column is "form" or "tokens" or ParseStateColumn or "readings" || OnlyViaLowering.IsColumn(column) || QuerySources.IsTextColumn(column),
         _ => false, column => column is "tokens" or "syllables" or "readings");
+
+    /// <summary>Whether a name is a column a corpus word has, so it can be grouped by.</summary>
+    public static bool IsGroupColumn(string column) =>
+        column is "form" or "tokens" or ParseStateColumn or "readings" || QuerySources.IsTextColumn(column);
+
+    /// <summary>The value a group key shows for a word with no value in the column.</summary>
+    public const string NoValue = "(none)";
+
+    /// <summary>Counts the types and tokens of the rows per distinct value of the columns; groups run by tokens then key.</summary>
+    public static ValueGroups Group(CorpusWordList corpus, IReadOnlyList<CorpusFormRow> rows, IReadOnlyList<string> columns, IReadingSource? readings = null)
+    {
+        var counts = new Dictionary<string, (string[] Values, int Types, long Tokens)>(StringComparer.Ordinal);
+        foreach (var row in rows)
+        {
+            if (!corpus.TryGet(row.Form, out var word)) continue;
+            var view = corpus.Row(word);
+            var values = columns.Select(column => Values(view, readings, column) is { Count: > 0 } found ? string.Join(",", found) : NoValue).ToArray();
+            var key = string.Join(" | ", values);
+            counts[key] = counts.TryGetValue(key, out var seen) ? (seen.Values, seen.Types + 1, seen.Tokens + row.Tokens) : (values, 1, row.Tokens);
+        }
+        return new ValueGroups(columns, [.. counts.OrderByDescending(pair => pair.Value.Tokens).ThenBy(pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair => new ValueGroup(pair.Key, pair.Value.Values, pair.Value.Types, pair.Value.Tokens))]);
+    }
+
+    /// <summary>Keeps <paramref name="count"/> of the rows, the ones whose hash with the seed is smallest, so the choice ignores frequency and order; returned by tokens then form.</summary>
+    public static IReadOnlyList<CorpusFormRow> Sample(IReadOnlyList<CorpusFormRow> rows, int count, long seed)
+    {
+        var chosen = rows.Select(row => (Row: row, Hash: SampleHash(seed, row.Form))).OrderBy(pair => pair.Hash).ThenBy(pair => pair.Row.Form, StringComparer.Ordinal)
+            .Take(count).Select(pair => pair.Row);
+        return [.. chosen.OrderByDescending(row => row.Tokens).ThenBy(row => row.Form, StringComparer.Ordinal)];
+    }
+
+    private static ulong SampleHash(long seed, string form)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(seed.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\0" + form));
+        return System.Buffers.Binary.BinaryPrimitives.ReadUInt64BigEndian(bytes);
+    }
+
+    private static IReadOnlyList<string> Values(CorpusRow row, IReadingSource? readings, string column)
+    {
+        if (readings is null) return row.Get(column);
+        var word = readings.Get(row.Word.Form);
+        if (column == "readings") return word is null ? [] : [word.Readings.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)];
+        if (column == ParseStateColumn) return word is null ? row.Get(column) : [word.State];
+        return row.Get(column);
+    }
 
     /// <summary>Runs the expression; the matches and the undecided words come back from <paramref name="phon"/>.</summary>
     /// <returns>Every matching word, by token count then form.</returns>

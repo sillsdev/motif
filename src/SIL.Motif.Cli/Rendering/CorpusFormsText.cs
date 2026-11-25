@@ -49,6 +49,8 @@ internal static class CorpusFormsText
         var corpus = response.Corpus;
         text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Corpus {0}: {1} types, {2} tokens, segmentation {3}{4}",
             corpus.Source, corpus.Types, corpus.Tokens, corpus.Segmentation, corpus.FoldCase ? ", case folded" : ""));
+        foreach (var source in corpus.Sources ?? [])
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  source {0} ({1}): {2} types, {3} tokens", source.Path, source.Kind, source.Types, source.Tokens));
         if (response.Where is not null) text.AppendLine("Where " + response.Where);
         foreach (var set in response.Realizes ?? [])
         {
@@ -83,6 +85,18 @@ internal static class CorpusFormsText
             foreach (var reason in set.Reasons) text.AppendLine("  " + reason.Code + (reason.Detail is null ? "" : ": " + reason.Detail));
         }
         AppendReadings(text, response);
+        if (response.Totals is { } totals)
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Totals: {0} types, {1} tokens", totals.Types, totals.Tokens));
+        if (response.Groups is { } groups)
+        {
+            text.AppendLine("Groups by " + string.Join(", ", groups.Columns) + ": types, tokens");
+            foreach (var group in groups.Groups)
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  {0}\t{1}\t{2}", group.Key, group.Types, group.Tokens));
+        }
+        if (response.Sample is { } sample)
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Sample: {0} of {1} matching words, seed {2}", sample.Count, sample.Of, sample.Seed));
+        if (response.Written is { } written)
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Wrote {0} words to {1}{2}", written.Words, written.Path, written.WithCounts ? " (form, count)" : ""));
         if (response.Phon is { } phon) PhonText.Append(text, phon);
         text.AppendLine(string.Format(CultureInfo.InvariantCulture, "{0} words match, showing {1}", response.Matched, response.Rows.Count));
         foreach (var row in response.Rows)
@@ -94,8 +108,9 @@ internal static class CorpusFormsText
             if (row.Realizes is { Count: > 0 }) line += "\t" + string.Join("; ", row.Realizes.Select(hit => "realizes " + string.Join("|", hit.Forms)));
             text.AppendLine(line);
         }
-        if (response.Matched > response.Rows.Count)
-            text.AppendLine(string.Format(CultureInfo.InvariantCulture, "TRUNCATED: showing {0} of {1} words.", response.Rows.Count, response.Matched));
+        var available = response.Sample?.Count ?? response.Matched;
+        if (available > response.Rows.Count && !(response.Groups is not null && response.Rows.Count == 0))
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture, "TRUNCATED: showing {0} of {1} words.", response.Rows.Count, available));
         return text.ToString();
     }
 }
