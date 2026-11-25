@@ -4194,7 +4194,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
             else
             {
                 var value = tokens[++i];
-                var joins = name is "assessment" or "expect" or "job" or "with" || (name == "corpus" && joinRepeatedCorpus);
+                var joins = name is "assessment" or "expect" or "job" or "with" or "twin" || (name == "corpus" && joinRepeatedCorpus);
                 flags[name] = joins && flags.TryGetValue(name, out var previous)
                     ? previous + "\n" + value
                     : value;

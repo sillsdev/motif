@@ -82,6 +82,7 @@ public sealed class QueryUsageLinesTests : IDisposable
             "<expression>" => "form ~ \"k.*\"",
             "<path>" or "<fwdata>" => grammar,
             "<regex>" => "an",
+            "<template>" => "$0",
             "<x1,x2>" => "an,in",
             "<file>" => Path_("seg.txt", "ng"),
             "<ids>" => "msa:01a144f0-c9da-135e-d13a-f4d784e0d9f6",

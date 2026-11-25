@@ -414,6 +414,10 @@ public static class RefusalCodes
     public const string QueryRealizesNegationIncomplete = "query.realizes-negation-incomplete";
     /// <summary><c>realizes(M, attested)</c> found no stored analysis that uses the morpheme to read its forms from.</summary>
     public const string QueryRealizesNoParses = "query.realizes-no-parses";
+    /// <summary><c>--twin</c> was given with no <c>form ~</c> or <c>form matches</c> regex to rewrite the matches of.</summary>
+    public const string QueryTwinNeedsRegex = "query.twin-needs-regex";
+    /// <summary>A <c>--twin</c> template names a group its regex does not have, or is malformed.</summary>
+    public const string QueryTwinGroupUnknown = "query.twin-group-unknown";
     /// <summary><c>realizes(M, attested)</c> was given an id that no morph of the parse and no entry of the project carries.</summary>
     public const string QueryRealizesIdUnknown = "query.realizes-id-unknown";
     /// <summary><c>realizes(M, attested)</c> could not build the parse index of the corpus: <c>pangloss batch</c> failed or its analyses file is malformed.</summary>

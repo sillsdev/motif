@@ -73,3 +73,14 @@ motif query --corpus swh.weights.json forms where 'seq(root:fanya, CAUS, RECP, a
 # the corpus forms of eleven Tamil stems, per stem
 motif query --corpus tam.weights.json forms where 'realizes(@stems.txt, attested)' --by-morph --grammar tam.fwdata --project tam.fwdata --json
 ```
+
+## A paradigm twin: `--twin`
+
+`--twin <template>` rewrites each word the where's `form ~ "regex"` (or `form matches`) predicate matches, from the regex's capture groups, and describes the rewritten form, its twin. The template writes `$1` or `${name}` for a group, `$0` for the whole match and `$$` for a dollar sign (use `${1}2` before a digit). The first match is replaced where it stands and the rest of the word stays, as a substitution does, so `~` rewrites the matched span and `matches` the whole word. The regex is the first one not under `not`, with the same engine as the query: non-backtracking, which supports groups and named groups but not lookarounds or back-references. A template that names a group the regex lacks is refused as `query.twin-group-unknown`, and `--twin` with no such regex as `query.twin-needs-regex`.
+
+The columns of a lone `--twin` are `twin.form`, `twin.tokens` (0 when the corpus lacks the form), `twin.inCorpus` (`true` or `false`), `twin.parse.state` and `twin.readings`. With several `--twin` the templates are `twin1`, `twin2` in the order given (`twin1.form`, `twin2.parse.state`). A word the regex does not match has no twin values. The columns work in `where` (`twin.inCorpus is false`, `twin.tokens > 10`), in `--group-by` (`parse.state,twin.parse.state`) and in the JSON rows as `twins:[{label, form, tokens, inCorpus, parseState, readings}]`. The parse columns need `--grammar`: the parse state of a twin that is a corpus word comes from the corpus parse index, and the forms the corpus lacks are parsed by one more batch over just those forms, cached like the corpus (more than 100,000 such forms is refused). Without `--grammar` the rows carry the form, tokens and `inCorpus` only.
+
+```powershell
+# which -ிலிருந்து words are stem gaps and which only lack the -ில் suffix form
+motif query --corpus a.weights.json,b.weights.json forms where 'form ~ "(.*)ிலிருந்து$"' --twin '$1ில்' --group-by parse.state,twin.parse.state --grammar tam.fwdata
+```

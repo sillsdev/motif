@@ -65,6 +65,7 @@ public static class CorpusQueryCommand
         var retire = new List<ReadingTarget>();
         var listed = new RealizesListed();
         QueryExpr? printed = null;
+        TwinSet? twins = null;
         if (request.CountBy is not null && !string.Equals(request.CountBy, "morph-seq", StringComparison.Ordinal)) return Invalid("count-by is 'morph-seq'.");
         var wantsMorphSeqs = request.CountBy is not null;
         if (request.GroupBy is not null)
@@ -114,6 +115,18 @@ public static class CorpusQueryCommand
             }
             printed = where;
             if (RealizesFiles.Has(where)) where = RealizesFiles.Expand(where, listed);
+            if (request.Twin is { Count: 0 }) return Invalid("twin takes a template such as '$1ில்'.");
+            if (request.Twin is { Count: > 0 } templates)
+            {
+                try { twins = TwinSet.Compile(where, templates); }
+                catch (ArgumentException exception) when (exception is not QueryRefusalException) { return Invalid(exception.Message); }
+            }
+            var twinColumns = QueryExprTools.Leaves(where).Select(leaf => leaf.Field).Concat(groupsColumns ?? []).Where(TwinSet.IsColumn).ToList();
+            if (twinColumns.Count > 0 && twins is null) return Invalid($"{twinColumns[0]} is a column of --twin; give a template, such as --twin '$1ில்'.");
+            if (twins is not null && twinColumns.FirstOrDefault(column => TwinSet.Template(column) > twins.Count) is { } beyond)
+                return Invalid($"{beyond} names template {TwinSet.Template(beyond)}, and --twin was given {twins.Count}.");
+            if (twinColumns.FirstOrDefault(TwinSet.NeedsParse) is { } needsParse && string.IsNullOrWhiteSpace(request.GrammarPath))
+                return CommandOutcome<CorpusFormsResponse>.Refused(ReadingsRefusals.NeedsGrammar(needsParse).Refusal);
             if (request.ByMorph && !RealizesLowering.Has(where)) return Invalid("by-morph groups the rows of a realizes(...) query; the query has none.");
             if (QueryExprTools.HasPatterns(where) && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(QueryRefusalException.PhonNeedsGrammar().Refusal);
@@ -158,7 +171,8 @@ public static class CorpusQueryCommand
         var liveState = !string.IsNullOrWhiteSpace(request.GrammarPath) && QueryExprTools.Leaves(where).Any(leaf => leaf.Field == CorpusFormsQuery.ParseStateColumn);
         var groupsRead = !string.IsNullOrWhiteSpace(request.GrammarPath) && groupsColumns?.Any(column => column is "readings" or CorpusFormsQuery.ParseStateColumn) == true;
         var seqItems = MorphSeqSupport.ItemsOf(where);
-        var usesReadings = readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState || groupsRead || seqItems.Count > 0;
+        var twinParse = twins is not null && !string.IsNullOrWhiteSpace(request.GrammarPath);
+        var usesReadings = readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState || groupsRead || seqItems.Count > 0 || twinParse;
         MorphSeqPlan? seqPlan = null;
         if (usesReadings)
         {
@@ -192,6 +206,7 @@ public static class CorpusQueryCommand
                 catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
                 readings = new ParsedReadings(built.Index, catalogUsed);
                 readingsReport = readings.Report(words, needsClasses);
+                if (twins is not null) BindTwins(twins, corpus, readings, catalogUsed, request.GrammarPath!, cacheRoot, indexBuilder, parserPath, notice, cancellationToken);
                 if (seqItems.Count > 0)
                 {
                     seqPlan = MorphSeqSupport.Compile(realizes is null ? where! : realizes.Lowered!, request.Adjacent, item =>
@@ -216,6 +231,7 @@ public static class CorpusQueryCommand
             }
             catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
         }
+        if (twins is not null && !twinParse) twins.Bind(corpus, null);
         PhonSession? phon = null;
         if (QueryExprTools.HasPatterns(realizes is null ? where : realizes.Lowered))
         {
@@ -227,13 +243,13 @@ public static class CorpusQueryCommand
         {
             var lowered = OnlyViaLowering.Lower(realizes is null ? where : realizes.Lowered);
             if (seqPlan is not null) lowered = OnlyViaLowering.Lower(seqPlan.Lowered);
-            var rows = CorpusFormsQuery.Run(corpus, lowered, phon, readings, seqPlan?.Tests);
+            var rows = CorpusFormsQuery.Run(corpus, lowered, phon, readings, seqPlan?.Tests, twins);
             if (realizes is not null) rows = [.. rows.Select(row => row with { Realizes = realizes.HitsFor(row.Form) })];
             var summary = new CorpusSummary(sources.Count > 1 ? string.Join(",", sources.Select(source => source.Path)) : request.CorpusPath, corpus.TypeCount, corpus.TokenCount,
                 phon is { Ran: true } ? "grammar" : corpus.SegmentationLabel, request.FoldCase, sources.Count > 1 ? sources : null);
             var matched = rows.Count;
             var matchedRows = rows;
-            ValueGroups? groups = groupsColumns is null ? null : CorpusFormsQuery.Group(corpus, rows, groupsColumns, readings);
+            ValueGroups? groups = groupsColumns is null ? null : CorpusFormsQuery.Group(corpus, rows, groupsColumns, readings, twins);
             TypesTokens? totals = groups is not null || request.Sum is not null ? new TypesTokens(rows.Count, rows.Sum(row => row.Tokens)) : null;
             SampleInfo? sample = null;
             if (request.Sample is { } sampleSize)
@@ -287,6 +303,31 @@ public static class CorpusQueryCommand
         {
             return Invalid(exception.Message);
         }
+    }
+
+    /// <summary>The most word types the twins may add to the corpus parse: one batch parses the ones the corpus lacks.</summary>
+    internal const int MaxAbsentTwins = 100_000;
+
+    // A twin of a corpus word reads the corpus index; one the corpus lacks is parsed by a cached batch of its own.
+    private static void BindTwins(TwinSet twins, CorpusWordList corpus, ParsedReadings readings, MorphCatalog? catalog, string grammarPath, string? cacheRoot,
+        IRealizesIndexBuilder? indexBuilder, string? parserPath, Action<string>? notice, CancellationToken cancellationToken)
+    {
+        var absent = twins.AbsentForms(corpus);
+        if (absent.Count > MaxAbsentTwins)
+            throw new QueryRefusalException(new Refusal(RefusalCodes.QueryCorpusInvalid, FailureReason.InvalidArgument,
+                $"--twin makes {absent.Count} forms the corpus lacks; parsing more than {MaxAbsentTwins} of them is refused. Narrow the where."));
+        ParsedReadings? extra = null;
+        if (absent.Count > 0)
+        {
+            try
+            {
+                var built = RealizesParseIndexCache.GetOrBuild(cacheRoot ?? RealizesParseIndexCache.DefaultRoot, grammarPath, absent,
+                    indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), notice ?? (_ => { }), cancellationToken);
+                extra = new ParsedReadings(built.Index, catalog);
+            }
+            catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
+        }
+        twins.Bind(corpus, form => readings.Get(form) ?? extra?.Get(form));
     }
 
     // One group per morpheme set, including the ones no word carries, so a stem list shows its zeros.

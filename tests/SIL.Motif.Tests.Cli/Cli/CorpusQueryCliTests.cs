@@ -176,6 +176,19 @@ public sealed class CorpusQueryCliTests : IDisposable
     }
 
     [Fact]
+    public void RepeatedTwinTemplatesRewriteTheMatchesAndAMissingGroupIsRefused()
+    {
+        var twin = Run("query", "--corpus", Words(), "forms", "where", "form ~ \"^(ba)h\"", "--twin", "${1}X", "--twin", "$1Y", "--json");
+        Assert.Equal(0, twin.Code);
+        Assert.Contains("baX", twin.Output, StringComparison.Ordinal);
+        Assert.Contains("baY", twin.Output, StringComparison.Ordinal);
+        Assert.Contains("twin2", twin.Output, StringComparison.Ordinal);
+        var missing = Run("query", "--corpus", Words(), "forms", "where", "form ~ \"^(ba)h\"", "--twin", "$2", "--json");
+        Assert.NotEqual(0, missing.Code);
+        Assert.Contains("query.twin-group-unknown", missing.Output + missing.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ForceIsASwitchSoItMayComeBeforeWhereOrLast()
     {
         var file = Path.Combine(_folder, "force.txt");

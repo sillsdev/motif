@@ -27,11 +27,13 @@ namespace SIL.Motif.Contract.Query.Corpus;
 /// <param name="CountBy"><c>morph-seq</c>: count the distinct morph sequences of the matching readings.</param>
 /// <param name="Adjacent">Every <c>seq(...)</c> needs its morphs next to each other, as if each said <c>adjacent=true</c>.</param>
 /// <param name="ByMorph">Group the rows of a <c>realizes</c> query per morpheme.</param>
+/// <param name="Twin">Templates that rewrite each match of the where's <c>form ~</c> regex from its groups; the twin columns describe the results.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null, string? QueryJson = null, string? GrammarPath = null,
     string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null, string? SegmentTest = null,
     string? ProjectPath = null, string? GroupBy = null, IReadOnlyList<string>? WhatIfRetire = null, bool Thorough = false, string? Sum = null, int? Sample = null,
-    long? Seed = null, string? WriteWords = null, bool WithCounts = false, bool Force = false, string? CountBy = null, bool Adjacent = false, bool ByMorph = false);
+    long? Seed = null, string? WriteWords = null, bool WithCounts = false, bool Force = false, string? CountBy = null, bool Adjacent = false, bool ByMorph = false,
+    IReadOnlyList<string>? Twin = null);
 
 /// <summary>One word of a corpus that satisfied the query.</summary>
 /// <param name="Form">The word.</param>
@@ -40,9 +42,11 @@ public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null,
 /// <param name="Matches">Where each <c>phon</c> or <c>env</c> predicate matched it; null when the query has none.</param>
 /// <param name="Realizes">For each <c>realizes</c> predicate the word satisfies, the forms of its variant set the word carries; null when the query has none.</param>
 /// <param name="Readings">How many readings the grammar gives the word; null when the query does not read the corpus parse.</param>
+/// <param name="Twins">The word rewritten by each <c>--twin</c> template; null when not asked or the regex does not match the word.</param>
 public sealed record CorpusFormRow(string Form, long Tokens, string? ParseState = null, IReadOnlyList<QueryMatch>? Matches = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RealizesHit>? Realizes = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? Readings = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? Readings = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<TwinCell>? Twins = null);
 
 /// <summary>What the corpus parse behind a readings query covers, and whether its counts can be trusted.</summary>
 /// <param name="Complete">False when a word's parse was capped, timed out or got no answer, or a morph is unknown to the project, so its readings may be fewer than the grammar's.</param>
@@ -185,25 +189,25 @@ public static class CorpusFormsQuery
     public const string ParseStateColumn = "parse.state";
 
     private static readonly QuerySpec Spec = new(
-        column => column is "form" or "tokens" or ParseStateColumn or "readings" || OnlyViaLowering.IsColumn(column) || MorphSeqLowering.IsColumn(column) || QuerySources.IsTextColumn(column),
-        _ => false, column => column is "tokens" or "syllables" or "readings");
+        column => column is "form" or "tokens" or ParseStateColumn or "readings" || TwinSet.IsColumn(column) || OnlyViaLowering.IsColumn(column) || MorphSeqLowering.IsColumn(column) || QuerySources.IsTextColumn(column),
+        _ => false, column => column is "tokens" or "syllables" or "readings" || TwinSet.IsNumeric(column));
 
     /// <summary>Whether a name is a column a corpus word has, so it can be grouped by.</summary>
     public static bool IsGroupColumn(string column) =>
-        column is "form" or "tokens" or ParseStateColumn or "readings" || QuerySources.IsTextColumn(column);
+        column is "form" or "tokens" or ParseStateColumn or "readings" || TwinSet.IsColumn(column) || QuerySources.IsTextColumn(column);
 
     /// <summary>The value a group key shows for a word with no value in the column.</summary>
     public const string NoValue = "(none)";
 
     /// <summary>Counts the types and tokens of the rows per distinct value of the columns; groups run by tokens then key.</summary>
-    public static ValueGroups Group(CorpusWordList corpus, IReadOnlyList<CorpusFormRow> rows, IReadOnlyList<string> columns, IReadingSource? readings = null)
+    public static ValueGroups Group(CorpusWordList corpus, IReadOnlyList<CorpusFormRow> rows, IReadOnlyList<string> columns, IReadingSource? readings = null, TwinSet? twins = null)
     {
         var counts = new Dictionary<string, (string[] Values, int Types, long Tokens)>(StringComparer.Ordinal);
         foreach (var row in rows)
         {
             if (!corpus.TryGet(row.Form, out var word)) continue;
             var view = corpus.Row(word);
-            var values = columns.Select(column => Values(view, readings, column) is { Count: > 0 } found ? string.Join(",", found) : NoValue).ToArray();
+            var values = columns.Select(column => Values(view, readings, column, twins) is { Count: > 0 } found ? string.Join(",", found) : NoValue).ToArray();
             var key = string.Join(" | ", values);
             counts[key] = counts.TryGetValue(key, out var seen) ? (seen.Values, seen.Types + 1, seen.Tokens + row.Tokens) : (values, 1, row.Tokens);
         }
@@ -225,8 +229,9 @@ public static class CorpusFormsQuery
         return System.Buffers.Binary.BinaryPrimitives.ReadUInt64BigEndian(bytes);
     }
 
-    private static IReadOnlyList<string> Values(CorpusRow row, IReadingSource? readings, string column)
+    private static IReadOnlyList<string> Values(CorpusRow row, IReadingSource? readings, string column, TwinSet? twins)
     {
+        if (twins is not null && TwinSet.IsColumn(column)) return twins.Value(row.Word.Form, column);
         if (readings is null) return row.Get(column);
         var word = readings.Get(row.Word.Form);
         if (column == "readings") return word is null ? [] : [word.Readings.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)];
@@ -237,19 +242,19 @@ public static class CorpusFormsQuery
 
     /// <summary>Runs the expression; the matches and the undecided words come back from <paramref name="phon"/>.</summary>
     /// <returns>Every matching word, by token count then form.</returns>
-    public static IReadOnlyList<CorpusFormRow> Run(CorpusWordList corpus, QueryExpr? where, PhonSession? phon, IReadingSource? readings = null, ReadingTests? tests = null)
+    public static IReadOnlyList<CorpusFormRow> Run(CorpusWordList corpus, QueryExpr? where, PhonSession? phon, IReadingSource? readings = null, ReadingTests? tests = null, TwinSet? twins = null)
     {
         ArgumentNullException.ThrowIfNull(corpus);
         var record = new QueryRecord(QuerySources.Forms, [], [], Examples: 0, Filter: where);
-        var rows = corpus.Words.Select(word => (IQueryRowView)new CorpusView(corpus.Row(word), readings, tests));
+        var rows = corpus.Words.Select(word => (IQueryRowView)new CorpusView(corpus.Row(word), readings, tests, twins));
         var outcome = QueryEngine.Execute(record, rows, Spec, phon: phon);
         return [.. outcome.Selected.Cast<CorpusView>().Select(view => view.Row.Word)
             .OrderByDescending(word => word.Tokens).ThenBy(word => word.Form, StringComparer.Ordinal)
             .Select(word => new CorpusFormRow(word.Form, word.Tokens, readings?.Get(word.Form)?.State ?? word.ParseState,
-                phon is { Ran: true } ? phon.MatchesFor(word.Form) : null, Readings: readings?.Get(word.Form)?.Readings.Count))];
+                phon is { Ran: true } ? phon.MatchesFor(word.Form) : null, Readings: readings?.Get(word.Form)?.Readings.Count, Twins: twins?.Cells(word.Form)))];
     }
 
-    private sealed class CorpusView(CorpusRow row, IReadingSource? readings, ReadingTests? tests) : IQueryRowView
+    private sealed class CorpusView(CorpusRow row, IReadingSource? readings, ReadingTests? tests, TwinSet? twins) : IQueryRowView
     {
         public CorpusRow Row { get; } = row;
         public string Id => Row.Word.Form;
@@ -257,6 +262,7 @@ public static class CorpusFormsQuery
         public long? Tokens => Row.Word.Tokens;
         public IReadOnlyList<string> Get(string column)
         {
+            if (twins is not null && TwinSet.IsColumn(column)) return twins.Value(Row.Word.Form, column);
             if (readings is null) return Row.Get(column);
             var word = readings.Get(Row.Word.Form);
             if (column == "readings") return word is null ? [] : [word.Readings.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)];

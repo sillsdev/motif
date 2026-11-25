@@ -121,6 +121,9 @@ internal static class CorpusFormsText
             if (row.Readings is { } readings) line += "\t" + readings.ToString(CultureInfo.InvariantCulture) + " readings";
             if (row.Matches is { Count: > 0 }) line += "\t" + PhonText.Spans(row.Matches);
             if (row.Realizes is { Count: > 0 }) line += "\t" + string.Join("; ", row.Realizes.Select(hit => "realizes " + string.Join("|", hit.Forms)));
+            foreach (var twin in row.Twins ?? [])
+                line += "\t" + twin.Label + " " + twin.Form + " (" + twin.Tokens.ToString(CultureInfo.InvariantCulture) + " tokens" + (twin.InCorpus ? "" : ", not in corpus")
+                    + (twin.ParseState is null ? "" : ", " + twin.ParseState + ", " + twin.Readings?.ToString(CultureInfo.InvariantCulture) + " readings") + ")";
             text.AppendLine(line);
         }
         var available = response.Sample?.Count ?? response.Matched;

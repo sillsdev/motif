@@ -14,7 +14,7 @@ internal static class CorpusQueryCli
     /// <summary>True for <c>query --corpus ...</c>, which never reads a project.</summary>
     public static bool Handles(IReadOnlyDictionary<string, string> flags) => flags.ContainsKey("corpus");
 
-    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "thorough", "segment-test", "group-by", "what-if-retire", "sum", "sample", "seed", "write-words", "with-counts", "force", "count-by", "adjacent", "by-morph", "json"];
+    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "thorough", "segment-test", "group-by", "what-if-retire", "sum", "sample", "seed", "write-words", "with-counts", "force", "count-by", "adjacent", "by-morph", "twin", "json"];
 
     /// <summary>True for <c>query --corpus &lt;words&gt; forms ...</c>.</summary>
     public static bool IsForms(IReadOnlyList<string> positionals) => positionals.FirstOrDefault() == "forms";
@@ -65,7 +65,8 @@ internal static class CorpusQueryCli
         request = new CorpusFormsRequest(corpus, where, document, flags.GetValueOrDefault("grammar"), flags.GetValueOrDefault("segments"),
             flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"), flags.GetValueOrDefault("project"), groupBy, retire, flags.ContainsKey("thorough"),
             flags.GetValueOrDefault("sum"), sample, seed, flags.GetValueOrDefault("write-words"), flags.ContainsKey("with-counts"), flags.TryGetValue("force", out var force) && force != "false",
-            flags.GetValueOrDefault("count-by"), flags.TryGetValue("adjacent", out var adjacent) && adjacent != "false", flags.TryGetValue("by-morph", out var byMorph) && byMorph != "false");
+            flags.GetValueOrDefault("count-by"), flags.TryGetValue("adjacent", out var adjacent) && adjacent != "false", flags.TryGetValue("by-morph", out var byMorph) && byMorph != "false",
+            flags.TryGetValue("twin", out var twin) ? twin.Split('\n', StringSplitOptions.RemoveEmptyEntries) : null);
         return true;
     }
 
