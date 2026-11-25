@@ -139,7 +139,7 @@ public sealed partial class DeletionSafetyTests
     [InlineData("state", "UPDATE RecordStoreState SET SnapshotDigest = 'damaged'", "RecordStoreState")]
     [InlineData("certificate", "UPDATE RecordStoreCertificate SET SnapshotDigest = 'damaged'", "RecordStoreCertificate")]
     [InlineData("change", "UPDATE ChangeEntities SET EntityId = randomblob(16) WHERE rowid = (SELECT min(rowid) FROM ChangeEntities)", "ChangeEntities")]
-    [InlineData("content", "UPDATE RecordContent SET Data = substr(Data, 1, length(Data) - 1) || x'01' WHERE Id = (SELECT Id FROM RecordContent WHERE substr(Data, 1, 1) = x'00' AND length(Data) > 4 LIMIT 1)", "RecordContent")]
+    [InlineData("content", "UPDATE RecordContent SET Data = substr(Data, 1, length(Data) - 1) || CASE WHEN substr(Data, length(Data), 1) = x'01' THEN x'02' ELSE x'01' END WHERE Id = (SELECT Id FROM RecordContent WHERE substr(Data, 1, 1) = x'00' AND length(Data) > 4 LIMIT 1)", "RecordContent")]
     public async Task DamageToAnyOneTableRefusesAndVerifyNamesIt(string kind, string damage, string table)
     {
         await Import();
