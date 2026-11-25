@@ -305,6 +305,64 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         Assert.Equal(["Text.", "```motif-show", "query: forms"], StagedTexts(path, "GDR-1", unclosed.Value));
     }
 
+    private static void SeedLines(LcmCache cache, string abbreviation, params (string Text, int Ws, string? Style)[] lines) =>
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var record = SeededGdrs.Records(cache).PossibilitiesOS.Single(item => item.Abbreviation.get_String(cache.DefaultAnalWs).Text == abbreviation);
+            record.DiscussionOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
+            foreach (var (text, ws, style) in lines)
+            {
+                var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+                record.DiscussionOA.ParagraphsOS.Add(paragraph);
+                var builder = TsStringUtils.MakeStrBldr();
+                var props = TsStringUtils.MakePropsBldr();
+                props.SetIntPropValues((int)FwTextPropType.ktptWs, 0, ws);
+                if (style is not null) props.SetStrPropValue((int)FwTextPropType.ktptNamedStyle, style);
+                builder.Replace(0, 0, text, props.GetTextProps());
+                paragraph.Contents = builder.GetString();
+            }
+        });
+
+    [Fact]
+    public void AStoredBlockLineWithACharacterStyleOrAnotherWritingSystemIsNotLiftedAndRoundTripsUnchanged()
+    {
+        foreach (var odd in new[] { "style", "ws" })
+        {
+            var path = ProjectWithGdrs(cache =>
+            {
+                var analysis = cache.DefaultAnalWs;
+                var other = odd == "ws" ? cache.DefaultVernWs : analysis;
+                SeedLines(cache, "GDR-2", ("```motif-query", analysis, null), ("id: forms", analysis, null),
+                    ("title: Forms", other, odd == "style" ? SeededGdrs.StrongStyle : null), ("run: motif query forms", analysis, null), ("```", analysis, null));
+            });
+            var markdown = Markdown(path, "GDR-2");
+
+            Assert.DoesNotContain("\n```motif-query\n", markdown, StringComparison.Ordinal);
+            Assert.Contains("motif-query", markdown, StringComparison.Ordinal);
+            var same = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", markdown));
+            Assert.True(same.Succeeded, odd + ": " + same.Refusal?.Message);
+            Assert.Equal(0, same.Value!.OperationCount);
+        }
+    }
+
+    [Fact]
+    public void BlocksAtTheStartAndEndAdjacentWithTrailingSpacesAndATildeFenceRoundTripUnchanged()
+    {
+        string[] lines = ["```motif-query", "id: forms", "title: Forms  ", "run: motif query forms", "```", "~~~motif-show", "query: forms", "show: table", "~~~"];
+        var path = ProjectWithGdrs(cache => SeedLines(cache, "GDR-2", lines.Select(line => (line, cache.DefaultAnalWs, (string?)null)).ToArray()));
+        var markdown = Markdown(path, "GDR-2");
+
+        Assert.Contains("\n::: {field=discussion}\n" + string.Join("\n", lines[..5]) + "\n\n" + string.Join("\n", lines[5..]) + "\n:::\n", markdown, StringComparison.Ordinal);
+        var same = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", markdown));
+        Assert.True(same.Succeeded, same.Refusal?.Message);
+        Assert.Equal(0, same.Value!.OperationCount);
+
+        var other = ProjectWithGdrs();
+        var staged = GdrEditCommands.Edit(new GdrEditRequest(other, "GDR-2", string.Join("\n", lines[..5]) + "\n" + string.Join("\n", lines[5..])));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal(lines, StagedTexts(other, "GDR-2", staged.Value!));
+    }
+
     [Fact]
     public void AnOtherCodeBlockIsStillRefusedWithNothingStaged()
     {

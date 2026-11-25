@@ -21,7 +21,7 @@ public static class GdrQueryBlockMarkdown
     /// Replaces each block in <paramref name="paragraphs"/> that sits whole in plain paragraphs with one stand-in paragraph.
     /// The block's lines come back through <see cref="Restore"/> after the writer ran.
     /// </summary>
-    public static (IReadOnlyList<Paragraph> Paragraphs, IReadOnlyList<Lifted> Blocks) LiftParagraphs(IReadOnlyList<Paragraph> paragraphs)
+    public static (IReadOnlyList<Paragraph> Paragraphs, IReadOnlyList<Lifted> Blocks) LiftParagraphs(IReadOnlyList<Paragraph> paragraphs, string? analysisWs)
     {
         var texts = paragraphs.Select(p => string.Concat(p.Runs.Select(run => run.Text))).ToArray();
         var starts = new int[texts.Length];
@@ -35,7 +35,7 @@ public static class GdrQueryBlockMarkdown
         {
             var first = Array.FindIndex(starts, start => start == span.Start);
             var last = first < 0 ? -1 : Array.FindIndex(starts, first, start => start + texts[Array.IndexOf(starts, start)].Length == span.End);
-            if (first < next || last < first || !Enumerable.Range(first, last - first + 1).All(i => IsPlain(paragraphs[i]))) continue;
+            if (first < next || last < first || !Enumerable.Range(first, last - first + 1).All(i => IsPlain(paragraphs[i], analysisWs))) continue;
             result.AddRange(paragraphs.Skip(next).Take(first - next));
             var token = Token(blocks.Count);
             blocks.Add(new Lifted(token, texts[first..(last + 1)]));
@@ -48,9 +48,14 @@ public static class GdrQueryBlockMarkdown
         return (result, blocks);
     }
 
-    private static bool IsPlain(Paragraph paragraph) =>
+    // Only a line the stored form reproduces exactly is lifted: Normal, one run in the analysis writing system, no character
+    // style and no other properties. Any other line stays prose, written as before, so its formatting is never lost.
+    private static bool IsPlain(Paragraph paragraph, string? analysisWs) =>
         (paragraph.Style.Length == 0 || paragraph.Style == "Normal") && paragraph.Runs.Count <= 1 && !paragraph.Rtl &&
-        paragraph.Runs.All(run => run.ObjData is null && !run.Text.Contains('\n', StringComparison.Ordinal));
+        paragraph.Props.IntProps.Count == 0 && paragraph.Props.StrProps.Count == 0 &&
+        paragraph.Runs.All(run => run.ObjData is null && !run.Text.Contains('\n', StringComparison.Ordinal) &&
+            analysisWs is not null && string.Equals(run.Ws, analysisWs, StringComparison.OrdinalIgnoreCase) &&
+            run.Props.IntProps.Count == 0 && run.Props.StrProps.Count == 0);
 
     /// <summary>The written Markdown with each stand-in replaced by its block as a real fence.</summary>
     public static string RestoreFences(string markdown, IReadOnlyList<Lifted> blocks)
