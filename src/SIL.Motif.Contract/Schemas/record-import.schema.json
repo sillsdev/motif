@@ -137,7 +137,9 @@
             "rule-notation.context-not-allowed",
             "rule-notation.limit-exceeded",
             "rule-notation.unsupported-class",
-            "rule-notation.unrenderable"
+            "rule-notation.unrenderable",
+            "rule-notation.shared-class",
+            "rule-notation.context-has-data"
           ]
         },
         "class": {

@@ -13,14 +13,14 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>A phonological rule is a record file: its text and typed fields import, its formula fields are shown read-only, and its right-hand sides are not added or removed in the file.</summary>
+/// <summary>A phonological rule is a record file: its text and typed fields import, its formula fields are shown, and its right-hand sides are not added or removed in the file.</summary>
 [Collection(LcmCacheParallelCollections.Group3)]
 public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pristine)
 {
     private const string Version = "0.1.0";
     private const string Kind = "grammar/phonological-rule";
 
-    private static void Build(LcmCache cache)
+    internal static void Build(LcmCache cache)
     {
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
@@ -118,13 +118,13 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
         });
     }
 
-    private static ProjectRecordSchemaResult SchemaOf(LcmCache cache) =>
+    internal static ProjectRecordSchemaResult SchemaOf(LcmCache cache) =>
         ProjectRecordSchema.Generate(cache, ProjectRecordSchema.PhonologicalRuleOverlay);
 
-    private static RecordObject Rhs(RecordDocument document) =>
+    internal static RecordObject Rhs(RecordDocument document) =>
         ((RecordList)document.Data["right-hand-sides"]!).Items.OfType<RecordObject>().Single();
 
-    private static ProjectRecordPlan PlanEdit(LcmCache cache, Guid rule, Action<RecordDocument> edit, out ProjectRecordSchemaResult schema)
+    internal static ProjectRecordPlan PlanEdit(LcmCache cache, Guid rule, Action<RecordDocument> edit, out ProjectRecordSchemaResult schema)
     {
         schema = SchemaOf(cache);
         var exporter = new ProjectRecordExporter(cache, schema);
@@ -134,13 +134,13 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
         return new ProjectRecordImporter(exporter).Plan(RecordFileWriter.Write(read.Document!, schema.Schema), new CatalogWritableFields(schema));
     }
 
-    private static RecordLowering Lower(LcmCache cache, Guid rule, Action<RecordDocument> edit)
+    internal static RecordLowering Lower(LcmCache cache, Guid rule, Action<RecordDocument> edit)
     {
         var plan = PlanEdit(cache, rule, edit, out var schema);
         return new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
     }
 
-    private static void Import(string path, string draft, Guid rule, Action<RecordDocument> edit)
+    internal static void Import(string path, string draft, Guid rule, Action<RecordDocument> edit)
     {
         using (var cache = new FwDataProjectLoader().LoadCache(path))
         {
@@ -337,7 +337,7 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
     }
 
     [Fact]
-    public void TheFormulaFieldsAreShownAndRefusedAsReadOnlyOnImport()
+    public void TheFormulaFieldsAreShownAndLowerWithoutRefusal()
     {
         var path = Start(out var ruleId, out _);
         using var cache = new FwDataProjectLoader().LoadCache(path);
@@ -353,9 +353,8 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
             Rhs(document).Set("left-context", new RecordScalar("[C]"));
             Rhs(document).Set("right-context", new RecordScalar("[V]"));
         });
-        Assert.Empty(lowering.Operations);
-        Assert.Equal(4, lowering.Refusals.Count);
-        Assert.All(lowering.Refusals, refusal => Assert.Equal(RefusalCodes.RuleNotationReadOnly, refusal.Code));
+        Assert.Empty(lowering.Refusals);
+        Assert.NotEmpty(lowering.Operations);
     }
 
     [Fact]
