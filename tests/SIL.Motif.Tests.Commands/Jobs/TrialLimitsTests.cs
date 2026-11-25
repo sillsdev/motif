@@ -111,6 +111,53 @@ public sealed class TrialLimitsTests
         Assert.Equal(earlier, limits);
     }
 
+    [Fact]
+    public void ASavedSelectionAtTheDefaultLimitFollowsTheProjectWorkLimit()
+    {
+        SaveDefault(new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null));
+        WriteProjectConfig("[parser]\nwork-limit = 50000000\n");
+
+        // The Trial freeze, and the trace, why-lost and Handoff reads that share the resolver.
+        Assert.Equal(50_000_000, QueuedLimits("project-limit").PerWordParserWorkLimit.Work);
+        Assert.Equal(new ParserWorkLimit(50_000_000), ProjectWorkLimit.ForProject(_fwDataPath).Limit);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        Assert.Equal(new ParserWorkLimit(50_000_000),
+            ProjectWorkLimit.Effective(database, ProjectStoreCommand.Locate(_fwDataPath)));
+    }
+
+    [Fact]
+    public void ASavedSelectionAboveOrBelowTheDefaultBeatsTheProjectWorkLimit()
+    {
+        SaveDefault(new SelectionParsingLimits(new ParserWorkLimit(5000), SelectionTimeLimitMode.Estimated, null));
+        WriteProjectConfig("[parser]\nwork-limit = 50000000\n");
+
+        Assert.Equal(5000, QueuedLimits("selection-beats-project").PerWordParserWorkLimit.Work);
+        Assert.Equal(new ParserWorkLimit(5000), ProjectWorkLimit.ForProject(_fwDataPath).Limit);
+    }
+
+    [Fact]
+    public void AnInvalidProjectConfigurationRefusesTheTrialAndTheAssessmentReuseFreeze()
+    {
+        SaveDefault(new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null));
+        WriteProjectConfig("[parser]\nwork-limit = \"lots\"\n");
+        var created = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, "bad-config", null));
+        Assert.True(created.Succeeded, created.Refusal?.Message);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion, "bad-config",
+            CanonicalId.Mint().Value, "en", "a gloss")).Succeeded);
+        var request = new EnqueueTrialRequest(_fwDataPath, ProductVersion, created.Value!.ProposalId, Words: ["word"]);
+
+        var queued = JobCommands.EnqueueTrial(request);
+        var frozen = JobCommands.FreezeTrialLimitsForReuse(request, null);
+
+        Assert.False(queued.Succeeded);
+        Assert.Equal("config.invalid", queued.Refusal!.Code);
+        Assert.False(frozen.Succeeded);
+        Assert.Equal("config.invalid", frozen.Refusal!.Code);
+    }
+
+    private void WriteProjectConfig(string text) => File.WriteAllText(
+        Path.Combine(Path.GetDirectoryName(_fwDataPath)!, Path.GetFileNameWithoutExtension(_fwDataPath) + ".motif.toml"), text);
+
     private void SaveDefault(SelectionParsingLimits limits)
     {
         using var database = ProjectMotifDatabase.Open(_fwDataPath);

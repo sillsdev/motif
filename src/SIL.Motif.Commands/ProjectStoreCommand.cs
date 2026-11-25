@@ -1,5 +1,6 @@
 using SIL.Motif.Projection;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Config;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -226,6 +227,10 @@ public static class ProjectStoreCommand
         {
             return CommandOutcome<T>.Refused(new Refusal(RefusalCodes.AssessmentExpired,
                 FailureReason.NotFound, exception.Message, Fact(fwDataPath)));
+        }
+        catch (ProjectConfigurationException exception)
+        {
+            return CommandOutcome<T>.Refused(Queries.ProjectWorkLimit.InvalidConfiguration(fwDataPath, exception));
         }
         catch (ProjectBaselineBusyException)
         {

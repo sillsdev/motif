@@ -43,6 +43,16 @@ public static class SelectionLimitPolicy
             ? new SelectionParsingLimits(parserWorkLimit, SelectionTimeLimitMode.Estimated, null, limits.AssessBudgetSeconds)
             : limits with { PerWordParserWorkLimit = parserWorkLimit };
 
+    /// <summary>
+    /// The policy a run uses given the project's limit. No Selection gives estimated policy at the project limit. A
+    /// Selection limit equal to <see cref="ParserWorkLimit.Default"/> counts as unset (a Selection saved without a limit
+    /// stores the default), so the project limit applies and the time mode and budget are kept; any other Selection limit wins.
+    /// </summary>
+    public static SelectionParsingLimits FollowingProject(SelectionParsingLimits? saved, ParserWorkLimit projectLimit) =>
+        saved is null ? Estimated(projectLimit)
+        : saved.PerWordParserWorkLimit == ParserWorkLimit.Default ? WithWorkLimit(saved, projectLimit)
+        : saved;
+
     /// <summary>Returns an explicit policy with a validated positive millisecond cap.</summary>
     public static SelectionParsingLimits Explicit(ParserWorkLimit parserWorkLimit, int milliseconds)
     {

@@ -211,7 +211,8 @@ public static class AssessCommand
             var assessments = new AssessmentRepository(database);
             var retainedInvocations = new RetainedInvocationRepository(database);
             var namedSelections = new NamedSelectionRepository(database);
-            var defaultLimits = namedSelections.GetDefault()?.Limits;
+            var defaultLimits = namedSelections.GetDefault()?.Limits is { } savedDefault
+                ? SelectionLimitPolicy.FollowingProject(savedDefault, configured.PerWordParserWorkLimit) : null;
             var seconds = request.BudgetSeconds ?? defaultLimits?.AssessBudgetSeconds ?? SelectionParsingLimits.DefaultAssessBudgetSeconds;
             if (seconds is < 60 or > 4294967)
                 return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
@@ -274,9 +275,10 @@ public static class AssessCommand
                         "selection.default-missing", FailureReason.Refused,
                         "No default Selection is saved for this project. Save one with `motif selection set-default` first."));
                 namedSelection = saved.Name;
-                defaultLimits = saved.Limits;
+                // A saved limit equal to the default counts as unset, so the project's [parser] work-limit applies.
+                defaultLimits = SelectionLimitPolicy.FollowingProject(saved.Limits, configured.PerWordParserWorkLimit);
                 selectionRequest = new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null,
-                    PerWordParserWorkLimit: saved.Limits.PerWordParserWorkLimit);
+                    PerWordParserWorkLimit: defaultLimits.PerWordParserWorkLimit);
             }
             else
             {
