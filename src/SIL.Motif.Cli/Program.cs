@@ -2098,6 +2098,12 @@ try
                 if (delta is null) return Usage(UsageLineFor("proposal trial delta"), asJson);
                 result = delta;
                 alreadyRendered = true;
+                // A delta that is not green still prints its result on stdout; only its exit code fails the command.
+                if (delta.ExitCode != 0 && delta.Reason is null)
+                {
+                    output.Write(delta.Output);
+                    return delta.ExitCode;
+                }
                 break;
             }
             if (positionals is ["trial", "export", ..])

@@ -126,7 +126,7 @@ public sealed class TrialReadingDeltaTests
         TrialReadingDelta.ReadAndWrite(request, directory);
         // Drop one retirement, declare one never made, and miscount an addition.
         var retired = Rows(directory, "expect-retired.jsonl").Where(line => !line.Contains("\"lost\"")).Append(
-            ReadingManifestFormat.Row("same", ProposalCompareExports.Signature(8), 1)).ToArray();
+            ReadingManifestFormat.Row("same", Sig(8), 1)).ToArray();
         var added = Rows(directory, "expect-added.jsonl").Select(line => line.Replace("\"count\": 1}", "\"count\": 2}")).ToArray();
 
         var gate = TrialReadingDelta.Check(request, new TrialExpectations(retired, added)).Value!.Expectations!;
