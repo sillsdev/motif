@@ -48,8 +48,7 @@ public static class GdrQueryBlockMarkdown
         return (result, blocks);
     }
 
-    // Only a line the stored form reproduces exactly is lifted: Normal, one run in the analysis writing system, no character
-    // style and no other properties. Any other line stays prose, written as before, so its formatting is never lost.
+    // Lifted only when the stored form reproduces the line exactly; any other line stays prose.
     private static bool IsPlain(Paragraph paragraph, string? analysisWs) =>
         (paragraph.Style.Length == 0 || paragraph.Style == "Normal") && paragraph.Runs.Count <= 1 && !paragraph.Rtl &&
         paragraph.Props.IntProps.Count == 0 && paragraph.Props.StrProps.Count == 0 &&
