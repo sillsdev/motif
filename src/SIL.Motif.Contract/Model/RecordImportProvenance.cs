@@ -12,9 +12,13 @@ public static class RecordImportProvenance
     /// <summary>The composer name the import records its operations under.</summary>
     public const string ComposerName = "RecordImport";
 
+    /// <summary>The record kind of a lexicon entry file; only an import of these files counts as a lexicon import.</summary>
+    public const string LexiconKind = "lexicon/entry";
+
     /// <summary>
-    /// Whether the Proposal has operations and every one of them is listed by a record-import entry; an operation the
-    /// import did not write, whatever its source, makes the Proposal mixed and so not wholly an import.
+    /// Whether the Proposal has operations and every one of them is listed by a lexicon record-import entry; an
+    /// operation the import did not write, or one an import of other record kinds wrote, makes the Proposal not wholly a
+    /// lexicon import.
     /// </summary>
     public static bool WritesEveryOperation(Proposal proposal)
     {
@@ -29,7 +33,9 @@ public static class RecordImportProvenance
             if (entry.ValueKind != JsonValueKind.Object ||
                 !entry.TryGetProperty("composer", out var name) || name.ValueKind != JsonValueKind.String ||
                 name.GetString() != ComposerName ||
-                !entry.TryGetProperty("operationIds", out var ids) || ids.ValueKind != JsonValueKind.Array)
+                !entry.TryGetProperty("operationIds", out var ids) || ids.ValueKind != JsonValueKind.Array ||
+                !entry.TryGetProperty("input", out var input) || input.ValueKind != JsonValueKind.Object ||
+                !input.TryGetProperty("lexicon", out var lexicon) || lexicon.ValueKind != JsonValueKind.True)
                 continue;
             foreach (var id in ids.EnumerateArray())
                 if (id.ValueKind == JsonValueKind.String) written.Add(id.GetString()!);

@@ -212,7 +212,8 @@ report their host count beside, not in, the total. Object counting needs no pars
 
 Freeze `[gain-gate]` mode and `min-attested-per-object` from `<project>.motif.toml`. Modes are off, advisory
 (default) and hold; default threshold is 1.5 attested types per added object. Below it is under-threshold;
-hold also sets the report's hold field. Added phonological rules or affix processes are exempt as rule-added, and a Proposal wholly written by a record import as record-import.
+hold also sets the report's hold field. Added phonological rules or affix processes are exempt as rule-added,
+and a Proposal wholly written by a lexicon record import as record-import.
 Incomplete cases, no objects or off never produce under-threshold. This is report-only: Apply and Readiness
 do not read the hold; an autonomous Apply reads it only through a declared gate (D16). Older reports lacking
 `gains` remain readable. A lexicon import is exempt from this gate but never from the no-loss checks

@@ -386,6 +386,7 @@ public static partial class ProposalCommands
                 {
                     previous.After = authored.After;
                     previous.DependsOn = authored.DependsOn;
+                    DropRecordImportMark(draft, previous.OperationId);
                 }
                 (previous ?? authored).Cite(citation);
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
@@ -1546,6 +1547,8 @@ public static partial class ProposalCommands
                         Requires = envelope.Requires.Select(r => r.Value).ToList(),
                         Label = manifest.Label is null ? null : $"{manifest.Label} (split: {group.DraftName})",
                         Operations = groupOperations,
+                        ComposerProvenance = CarryRecordImportMarks(envelope.Extensions,
+                            groupOperations.Select(o => o.OperationId).ToHashSet(StringComparer.Ordinal)),
                     };
                     repository.CreateDraft(group.DraftName, newProposalId, SerializeDraft(draft));
                     if (manifest.Rationale is not null) repository.SetRationale(newProposalId, manifest.Rationale);

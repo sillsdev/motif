@@ -126,4 +126,54 @@ public sealed class RecordImportGainExemptionTests(PristineProjectFixture pristi
         Assert.True(authored.Succeeded, authored.Refusal?.Message);
         Assert.False(CapturedAsImport(project, "authored"));
     }
+
+    [Fact]
+    public void AnEditThatRewritesAnImportedOperationInPlaceMakesTheProposalMixed()
+    {
+        var project = SeededProject(out var entry);
+        Assert.True(RecordImportCommand.Run(new RecordImportRequest(project, EditedFile(project, entry), "imported")).Succeeded);
+        var locator = new ProjectLocator(project, Path.GetFileNameWithoutExtension(project));
+        string sense;
+        using (var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(locator), locator,
+            MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            var draft = System.Text.Json.Nodes.JsonNode.Parse(new ProposalRepository(database).GetDraft("imported").ProposalJson!)!;
+            sense = draft["operations"]!.AsArray()
+                .First(operation => operation!["kind"]!.GetValue<string>() == "lexical/lexSense/setGloss")!["target"]!.GetValue<string>();
+        }
+        Assert.True(CapturedAsImport(project, "imported"));
+
+        var edited = ProposalCommands.AddSetGloss(new(project, Version, "imported", sense, "en", "hand written"));
+
+        Assert.True(edited.Succeeded, edited.Refusal?.Message);
+        Assert.True(edited.Value!.ReplacedPriorValue);
+        Assert.False(CapturedAsImport(project, "imported"));
+    }
+
+    [Fact]
+    public void ASplitImportKeepsTheExemptionInItsParts()
+    {
+        var project = SeededProject(out var entry);
+        Assert.True(RecordImportCommand.Run(new RecordImportRequest(project, EditedFile(project, entry), "imported")).Succeeded);
+        var locator = new ProjectLocator(project, Path.GetFileNameWithoutExtension(project));
+        string id;
+        string[] operations;
+        using (var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(locator), locator,
+            MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            var repository = new ProposalRepository(database);
+            var record = repository.GetDraft("imported");
+            id = record.ProposalId.Value;
+            operations = System.Text.Json.Nodes.JsonNode.Parse(record.ProposalJson!)!["operations"]!.AsArray()
+                .Select(operation => operation!["operationId"]!.GetValue<string>()).ToArray();
+            Assert.True(repository.SetRationale(record.ProposalId, "Updates one imported gloss."));
+        }
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(project, Version, "imported"));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+
+        var split = ProposalCommands.Split(new SplitRequest(project, Version, id, [new SplitGroup("part", operations)], Force: false));
+
+        Assert.True(split.Succeeded, split.Refusal?.Message);
+        Assert.True(CapturedAsImport(project, "part"));
+    }
 }

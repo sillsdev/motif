@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -122,7 +123,7 @@ public static partial class RecordImportCommand
                 if (Plan(cache, text, validate: false) is not { } again || again.Digest != found.Digest)
                     throw new RecordImportChangedException();
                 return found.Lowering;
-            });
+            }, found.Plan.Kind == RecordImportProvenance.LexiconKind);
         if (!staged.Succeeded)
         {
             // A Draft this command made and could not fill is not left behind.

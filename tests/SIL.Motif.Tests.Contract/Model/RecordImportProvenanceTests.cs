@@ -27,11 +27,13 @@ public sealed class RecordImportProvenanceTests
         return ProposalJsonParser.Parse(node.ToJsonString());
     }
 
-    private static JsonNode Composers(string composer, params string[] ids) => new JsonObject
+    private static JsonNode Composers(string composer, params string[] ids) => Composers(composer, true, ids);
+
+    private static JsonNode Composers(string composer, bool lexicon, params string[] ids) => new JsonObject
     {
         ["composers"] = new JsonArray(new JsonObject
         {
-            ["composer"] = composer, ["input"] = new JsonObject(),
+            ["composer"] = composer, ["input"] = new JsonObject { ["lexicon"] = lexicon },
             ["operationIds"] = new JsonArray(ids.Select(id => (JsonNode)id).ToArray()),
         }),
     };
@@ -41,6 +43,21 @@ public sealed class RecordImportProvenanceTests
     {
         string[] ids = [CanonicalId.Mint("x/").Value, CanonicalId.Mint("x/").Value];
         Assert.True(RecordImportProvenance.WritesEveryOperation(Build(ids, Composers(RecordImportProvenance.ComposerName, ids))));
+    }
+
+    [Fact]
+    public void AnImportOfRecordsThatAreNotLexiconEntriesIsNotALexiconImport()
+    {
+        string[] ids = [CanonicalId.Mint("x/").Value];
+        Assert.False(RecordImportProvenance.WritesEveryOperation(Build(ids, Composers(RecordImportProvenance.ComposerName, false, ids))));
+        Assert.False(RecordImportProvenance.WritesEveryOperation(Build(ids, new JsonObject
+        {
+            ["composers"] = new JsonArray(new JsonObject
+            {
+                ["composer"] = RecordImportProvenance.ComposerName, ["input"] = new JsonObject(),
+                ["operationIds"] = new JsonArray((JsonNode)ids[0]),
+            }),
+        })));
     }
 
     [Fact]
