@@ -89,6 +89,12 @@ public static partial class RecordImportCommand
         if (request.DraftName is null)
             return CommandOutcome<RecordImportResponse>.Success(Summarize(found, found.Lowering, DryRun, request.Page, null, null));
 
+        if (found.Plan.BaseVerdict == ProjectRecordBaseVerdict.New)
+        {
+            var creating = StageCreate(request, found);
+            if (creating is not null) return creating;
+        }
+
         if (request.Strict && Refusals(found, found.Lowering).Count > 0)
             return Refused(RefusalCodes.RecordImportStrictRefused, FailureReason.Refused,
                 "Strict mode: the file has changes that were refused, so no Draft was made. Run it without a Draft name to list them.",
@@ -166,6 +172,50 @@ public static partial class RecordImportCommand
         return null;
     }
 
+    private static CommandOutcome<RecordImportResponse>? StageCreate(RecordImportRequest request, Planned found)
+    {
+        var guid = found.Plan.RecordGuid!.Value;
+        var pending = PendingCreate(request.ProjectPath, guid);
+        if (pending is not null)
+            return Refused(RefusalCodes.RecordImportGuidPending, FailureReason.Refused,
+                "Proposal " + pending + " already creates " + guid.ToString("D") + ". Apply or discard it first, or use another GUID.",
+                ("guid", CanonicalId.FromGuid(guid).Value), ("proposal", pending));
+        return Refused(RefusalCodes.RecordImportCreateKindNotCreatable, FailureReason.Refused,
+            CreateNotLowered, ("reason", "not-yet-lowered"), ("recordKind", found.Plan.Kind ?? ""),
+            ("guid", CanonicalId.FromGuid(guid).Value));
+    }
+
+    internal const string CreateNotLowered =
+        "The file plans a new record, but creating a record from a file is not yet lowered to operations, so nothing was staged. Use the dry run to check the file.";
+
+    /// <summary>The name or id of an open Draft or Proposal whose content names the entity id, or null.</summary>
+    private static string? PendingCreate(string projectPath, Guid guid)
+    {
+        var id = CanonicalId.FromGuid(guid).Value;
+        var scan = ProjectStoreCommand.ReadExisting(projectPath, CommandOutcome<PendingScan>.Success(new(null)), (database, _) =>
+        {
+            var repository = new SIL.Motif.Worker.Store.ProposalRepository(database);
+            var open = repository.ListDrafts().Concat(repository.List(new(null, false)));
+            foreach (var record in open)
+                if (record.ProposalJson?.Contains(id, StringComparison.Ordinal) == true)
+                    return CommandOutcome<PendingScan>.Success(new(record.DraftName ?? record.ProposalId.Value));
+            return CommandOutcome<PendingScan>.Success(new(null));
+        });
+        return scan.Succeeded ? scan.Value!.Name : null;
+    }
+
+    private sealed record PendingScan(string? Name);
+
+    private static string? CodeFor(RecordRefusalKind kind) => kind switch
+    {
+        RecordRefusalKind.CreateKindNotCreatable => RefusalCodes.RecordImportCreateKindNotCreatable,
+        RecordRefusalKind.CreatePartial => RefusalCodes.RecordImportCreatePartial,
+        RecordRefusalKind.RecordGone => RefusalCodes.RecordImportRecordGone,
+        RecordRefusalKind.GuidInvalid => RefusalCodes.RecordImportGuidInvalid,
+        RecordRefusalKind.GuidRetired => RefusalCodes.RecordImportGuidRetired,
+        _ => null,
+    };
+
     private static Refusal WholeFileRefusal(Planned found)
     {
         var whole = found.Plan.ChangeSet.Refusals.First(item => item.WholeFile);
@@ -176,7 +226,7 @@ public static partial class RecordImportCommand
         };
         if (found.Plan.Kind is { } kind) facts["recordKind"] = kind;
         if (whole.Field.Length > 0) facts["field"] = whole.Field;
-        return new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused,
+        return new Refusal(CodeFor(whole.Kind) ?? RefusalCodes.RecordImportPlanRefused, FailureReason.Refused,
             "The record file was refused whole (" + whole.Kind + "): " + Clip(whole.Reason, 300), facts);
     }
 

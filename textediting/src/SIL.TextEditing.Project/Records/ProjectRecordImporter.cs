@@ -21,6 +21,10 @@ namespace SIL.TextEditing.Project
         Stale,
         /// <summary>The file has no <c>base:</c> (<see cref="RecordRefusalKind.MissingBase"/>).</summary>
         Missing,
+        /// <summary>The file has no <c>base:</c> and a <c>guid:</c> the project does not have: it plans a new record, diffed against an empty one. There is no export to compare with.</summary>
+        New,
+        /// <summary>The file has no <c>base:</c> and says exactly what the project's record already holds, so there is nothing to change.</summary>
+        Unchanged,
     }
 
     /// <summary>What <see cref="ProjectRecordImporter.Plan(string, WritableFields?)"/> made of a record file: the changes it would make and what it refuses, and whether the file was made from the
@@ -111,7 +115,20 @@ namespace SIL.TextEditing.Project
             var kind = Schema.Kind(file.Kind)!;
             var record = Locate(kind, file, out string? problem);
             if (record == null)
+            {
+                // A partial file that names an unknown object and has no base is a create attempt, not a lost record.
+                if (file.Base == null && file.Root != null && file.Data.Guid is Guid partialGuid && !Exists(partialGuid) && IsCreatableKind(kind.Name))
+                    return Whole(file, ProjectRecordBaseVerdict.NotChecked, null, null, read, new[] { Refusal(RecordRefusalKind.CreatePartial,
+                        "A new record must be a whole file. Remove root: or export an existing record to edit part of it.") });
                 return Whole(file, ProjectRecordBaseVerdict.NotChecked, null, null, read, new[] { Refusal(RecordRefusalKind.UnknownRecord, problem!) });
+            }
+            if (!Exists(record.Value) && IsWholeFile(kind, file))
+            {
+                if (file.Base != null)
+                    return Whole(file, ProjectRecordBaseVerdict.NotChecked, record, null, read, new[] { Refusal(RecordRefusalKind.RecordGone,
+                        "The file's base: comes from record " + record.Value.ToString("D") + ", which the project no longer has. To create it anew, remove base: and give it a new guid.", record) });
+                return PlanCreate(kind, file, record.Value, read, writable);
+            }
 
             ProjectRecordExport export;
             try { export = ExportOverride != null ? ExportOverride(kind.Name, record.Value) : _exporter.Export(kind.Name, record.Value); }
@@ -122,6 +139,8 @@ namespace SIL.TextEditing.Project
             if (export.Text == null)
                 return Whole(file, ProjectRecordBaseVerdict.NotChecked, record, export, read, new[] { Refusal(RecordRefusalKind.ExportFailed, "The project's record could not be written as a file, so the file cannot be compared with it.", record) });
 
+            if (file.Base == null && IsUnchanged(file, export, read))
+                return new ProjectRecordPlan(new RecordChangeSet(new List<RecordChange>().AsReadOnly(), new List<RecordRefusal>().AsReadOnly(), file.Root != null), ProjectRecordBaseVerdict.Unchanged, kind.Name, record, export, read.Diagnostics);
             if (file.Base == null)
                 return Whole(file, ProjectRecordBaseVerdict.Missing, record, export, read,
                     new[] { Refusal(RecordRefusalKind.MissingBase, "The file has no base:, so it cannot be shown to be made from the project as it is. Export the record again and edit that file.", record) });
@@ -143,7 +162,12 @@ namespace SIL.TextEditing.Project
                 return Whole(file, ProjectRecordBaseVerdict.Fresh, record, export, read, new[] { Refusal(RecordRefusalKind.UnreadableFile, "The file cannot be compared with the project's record: " + e.Message, record) });
             }
 
-            var run = new CheckRun(this, export, baseRead.Document, writable);
+            return Check(diff, new CheckRun(this, export, baseRead.Document, writable, record.Value, null), ProjectRecordBaseVerdict.Fresh, kind.Name, record, export, read.Diagnostics);
+        }
+
+        /// <summary>Checks each change of a diff against the project, dropping the changes it refuses, and builds the plan.</summary>
+        ProjectRecordPlan Check(RecordChangeSet diff, CheckRun run, ProjectRecordBaseVerdict verdict, string kindName, Guid? record, ProjectRecordExport? export, IReadOnlyList<MarkdownDiagnostic> diagnostics)
+        {
             var accepted = new List<RecordChange>();
             var refusals = new List<RecordRefusal>(diff.Refusals);
             var dropped = new HashSet<int>();
@@ -163,7 +187,80 @@ namespace SIL.TextEditing.Project
                     if (change.Anchor != null && change.Anchor.Kind == RecordAnchorKind.Added)
                         change.Anchor = RecordAnchor.AddedBy(accepted.IndexOf(diff.Changes[change.Anchor.ChangeIndex]));
             }
-            return new ProjectRecordPlan(new RecordChangeSet(accepted.AsReadOnly(), refusals.AsReadOnly(), diff.IsPartial), ProjectRecordBaseVerdict.Fresh, kind.Name, record, export, read.Diagnostics);
+            return new ProjectRecordPlan(new RecordChangeSet(accepted.AsReadOnly(), refusals.AsReadOnly(), diff.IsPartial), verdict, kindName, record, export, diagnostics);
+        }
+
+        // ------------------------------------------------------------------ creating a record
+
+        /// <summary>The kinds whose records a file may create. A list item is never invented from a file; a phonological rule is made by its own composer.</summary>
+        static bool IsCreatableKind(string kindName) => kindName == "lexicon/entry" || kindName == "notebook/record";
+
+        /// <summary>For tests and hosts: says whether a GUID belonged to an object the project's home has deleted, so a new object may not take it again. Null when the home keeps no such record.</summary>
+        public Func<Guid, bool>? IsRetiredGuid { get; set; }
+
+        bool Exists(Guid guid) => _cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out _);
+
+        static bool IsWholeFile(RecordKind kind, RecordDocument file)
+        {
+            var path = file.Root == null ? null : ProjectPath.Parse(file.Root);
+            return file.Root == null || (path != null && path.Segments.Count == kind.PathSegments && path.Field == null);
+        }
+
+        /// <summary>Why <paramref name="guid"/> cannot name a new object, or null: not the nil or all-ones GUID, RFC 4122 variant, and version 4, 5 or 7.</summary>
+        internal static string? GuidProblem(Guid guid)
+        {
+            string text = guid.ToString("D");
+            if (guid == Guid.Empty || text.All(c => c == 'f' || c == '-'))
+                return text + " is not a usable GUID: the nil and all-ones GUIDs are not allowed.";
+            if ("89ab".IndexOf(text[19]) < 0)
+                return text + " is not a usable GUID: it is not an RFC 4122 variant GUID.";
+            if (text[14] != '4' && text[14] != '5' && text[14] != '7')
+                return text + " is not a usable GUID: use a random (version 4), name-based (version 5) or time-ordered (version 7) GUID, lowercase with hyphens.";
+            return null;
+        }
+
+        /// <summary>True when a file with no <c>base:</c> says exactly what the project's record already holds.</summary>
+        bool IsUnchanged(RecordDocument file, ProjectRecordExport export, RecordReadResult read)
+        {
+            if (read.HasErrors) return false;
+            var baseRead = RecordFileReader.Read(export.Text!, Schema, _exporter.CreateReadOptions());
+            if (baseRead.Document == null || baseRead.HasErrors) return false;
+            try
+            {
+                var diff = RecordDiffer.Diff(baseRead.Document, file, Schema);
+                return diff.Changes.Count == 0 && diff.Refusals.Count == 0;
+            }
+            catch (ArgumentException) { return false; }
+        }
+
+        /// <summary>Plans a file for a record the project does not have, and which has no <c>base:</c>: every field is a change against an empty record of the same GUID and class.
+        /// The record is made as FieldWorks makes one (ADR 0003 D1); the host lowers the plan.</summary>
+        ProjectRecordPlan PlanCreate(RecordKind kind, RecordDocument file, Guid guid, RecordReadResult read, WritableFields? writable)
+        {
+            if (!IsCreatableKind(kind.Name))
+            {
+                string why = kind.Name.StartsWith("lists/", StringComparison.Ordinal) ? "Motif never invents list items; add it in FieldWorks."
+                    : "a new phonological rule is made by its own composer, not by a file.";
+                return Whole(file, ProjectRecordBaseVerdict.NotChecked, guid, null, read, new[] { Refusal(RecordRefusalKind.CreateKindNotCreatable,
+                    "A " + kind.Name + " (" + (file.Data.Class ?? kind.Root.Name) + ") cannot be created from a record file: " + why, guid) });
+            }
+            string? problem = GuidProblem(guid);
+            if (problem != null)
+                return Whole(file, ProjectRecordBaseVerdict.NotChecked, guid, null, read, new[] { Refusal(RecordRefusalKind.GuidInvalid, problem, guid) });
+            if (IsRetiredGuid != null && IsRetiredGuid(guid))
+                return Whole(file, ProjectRecordBaseVerdict.NotChecked, guid, null, read, new[] { Refusal(RecordRefusalKind.GuidRetired,
+                    guid.ToString("D") + " belonged to an object deleted from this project. A new object needs a new GUID.", guid) });
+            var errors = MapDiagnostics(read, null, null);
+            if (errors.Count > 0) return Whole(file, ProjectRecordBaseVerdict.New, guid, null, read, errors);
+
+            var empty = new RecordDocument(file.Kind) { Schema = file.Schema, Data = new RecordObject { Guid = guid, Class = file.Data.Class } };
+            RecordChangeSet diff;
+            try { diff = RecordDiffer.Diff(empty, file, Schema); }
+            catch (ArgumentException e)
+            {
+                return Whole(file, ProjectRecordBaseVerdict.New, guid, null, read, new[] { Refusal(RecordRefusalKind.UnreadableFile, "The new record cannot be planned: " + e.Message, guid) });
+            }
+            return Check(diff, new CheckRun(this, null, empty, writable, guid, file), ProjectRecordBaseVerdict.New, kind.Name, guid, null, read.Diagnostics);
         }
 
         // ------------------------------------------------------------------ the file
@@ -227,8 +324,7 @@ namespace SIL.TextEditing.Project
         {
             problem = null;
             var path = file.Root == null ? null : ProjectPath.Parse(file.Root);
-            bool whole = file.Root == null || (path != null && path.Segments.Count == kind.PathSegments && path.Field == null);
-            if (whole)
+            if (IsWholeFile(kind, file))
             {
                 if (file.Data.Guid != null) return file.Data.Guid;
                 problem = "The file's record-data has no guid:, so the record it is about cannot be found.";
@@ -285,8 +381,10 @@ namespace SIL.TextEditing.Project
         sealed class CheckRun
         {
             readonly ProjectRecordImporter _in;
-            readonly ProjectRecordExport _export;
+            readonly ProjectRecordExport? _export;
             readonly WritableFields? _writable;
+            readonly HashSet<Guid> _newGuids = new HashSet<Guid>();
+            readonly bool _creating;
             readonly HashSet<Guid> _documentGuids = new HashSet<Guid>();
             readonly HashSet<string> _locked = new HashSet<string>(StringComparer.Ordinal);
             readonly SchemaBindings _bindings;
@@ -294,17 +392,19 @@ namespace SIL.TextEditing.Project
             readonly LcmCache _cache;
             readonly Guid _record;
 
-            public CheckRun(ProjectRecordImporter importer, ProjectRecordExport export, RecordDocument baseDocument, WritableFields? writable)
+            public CheckRun(ProjectRecordImporter importer, ProjectRecordExport? export, RecordDocument baseDocument, WritableFields? writable, Guid record, RecordDocument? created)
             {
                 _in = importer;
                 _export = export;
                 _writable = writable;
+                _creating = created != null;
+                if (created != null) foreach (var g in Guids(created.Data)) _newGuids.Add(g);
                 _bindings = importer._exporter.Result.Bindings;
                 _metadata = importer._metadata;
                 _cache = importer._cache;
-                _record = export.Guid;
+                _record = record;
                 Collect(baseDocument.Data);
-                foreach (var u in export.Unexported) Lock(u);
+                if (export != null) foreach (var u in export.Unexported) Lock(u);
             }
 
             void Collect(RecordObject o)
@@ -443,6 +543,8 @@ namespace SIL.TextEditing.Project
                 wrongClass = false;
                 if (flid < 0) return "The class of a new object holding this reference could not be determined, so the reference cannot be checked.";
                 if (target == null) return "The reference names no object of the project (its link has no guid).";
+                // A new record's own objects are not in the project yet; the host checks their class when it lowers the plan.
+                if (_creating && _newGuids.Contains(target.Value)) return null;
                 if (!_cache.ServiceLocator.ObjectRepository.TryGetObject(target.Value, out var obj)) return "The project has no object " + target.Value.ToString("D") + ".";
                 if (flid == 0) return "The field that holds the reference could not be resolved, so its class cannot be checked.";
                 int wanted = _metadata.GetDstClsId(flid);
@@ -459,8 +561,12 @@ namespace SIL.TextEditing.Project
                 var subtree = c.Subtree;
                 if (subtree == null) return null;
                 foreach (var guid in Guids(subtree))
+                {
                     if (_cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out _))
                         return ForChange(RecordRefusalKind.GuidInUse, "The project already has an object " + guid.ToString("D") + ".", c);
+                    if (_creating && GuidProblem(guid) is { } badGuid)
+                        return ForChange(RecordRefusalKind.GuidInvalid, badGuid, c);
+                }
                 var type = leaf == null ? null : TypeOf(subtree, leaf.Field.IsList ? leaf.Field.Item! : leaf.Field);
                 if (type == null)
                     return ForChange(RecordRefusalKind.UnknownField, "The class of the new object could not be determined, so its fields cannot be checked.", c);
@@ -532,7 +638,7 @@ namespace SIL.TextEditing.Project
                 if (obj == null)
                     return ForChange(RecordRefusalKind.UnknownDeleteTarget, "The object to delete has no guid or is not in the project, so what it holds cannot be checked.", c);
                 var owned = new HashSet<Guid>(obj.AllOwnedObjects.Select(o => o.Guid)) { obj.Guid };
-                foreach (var u in _export.Unexported)
+                foreach (var u in _export?.Unexported ?? Enumerable.Empty<UnexportedValue>())
                 {
                     if (!owned.Contains(u.Object) || IsTimestamp(u)) continue;
                     return ForChange(RecordRefusalKind.DeleteHasUnexportedData, "The " + obj.ClassName + " " + obj.Guid.ToString("D") + " holds data the file cannot show (" + u.Class + "." + u.Field + "), so deleting it would lose that.", c);

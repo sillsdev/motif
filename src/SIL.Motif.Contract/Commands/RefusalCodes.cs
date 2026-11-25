@@ -342,6 +342,18 @@ public static class RefusalCodes
 
     /// <summary>Staging was asked for, but the file lowers to no operation, so no Draft was made.</summary>
     public const string RecordImportNothingToStage = "record-import.nothing-to-stage";
+    /// <summary>The file would create a record, and a record file cannot create this kind (a list item, a phonological rule), or it can plan the create but cannot yet lower it to operations.</summary>
+    public const string RecordImportCreateKindNotCreatable = "record-import.create-kind-not-creatable";
+    /// <summary>A new record must be a whole file, but the file's root: names part of a record.</summary>
+    public const string RecordImportCreatePartial = "record-import.create-partial";
+    /// <summary>The file's base: comes from a record the project no longer has.</summary>
+    public const string RecordImportRecordGone = "record-import.record-gone";
+    /// <summary>A new object's GUID is the nil or all-ones GUID, not RFC 4122 variant, or not version 4, 5 or 7.</summary>
+    public const string RecordImportGuidInvalid = "record-import.guid-invalid";
+    /// <summary>Another open Draft or Proposal already creates the new record's GUID.</summary>
+    public const string RecordImportGuidPending = "record-import.guid-pending";
+    /// <summary>The new record's GUID belonged to an object the project's home has deleted.</summary>
+    public const string RecordImportGuidRetired = "record-import.guid-retired";
     /// <summary>The feature-structure text is not a bracketed list of feature:value pairs.</summary>
     public const string FsNotationSyntax = "fs-notation.syntax";
     /// <summary>The feature-structure text names a feature the project's feature system does not have.</summary>

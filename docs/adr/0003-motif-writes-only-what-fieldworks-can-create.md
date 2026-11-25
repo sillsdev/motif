@@ -18,7 +18,9 @@ method or the FLEx user action it reproduces, by code reference or UI steps; wit
 A refusal saying “as FieldWorks does” is valid only when FieldWorks or LibLCM really refuses the same thing.
 A Motif-specific refusal states Motif's own reason. An entry may lose its last sense only when it remains a
 variant of a component with a stem analysis; the variant composers cite `CreateVariantEntryAndBackRef` and
-FLEx's Create Variant dialog. These are data-shape rules, not preferences between linguistic analyses
+FLEx's Create Variant dialog. A record file that creates an entry or notebook record is planned from an empty record and, once lowered, takes its shape from these composers: a
+main entry follows `InsertEntryDlg.CreateNewEntryInternal` and `ILexEntryFactory.Create(components)`, a variant `ILexEntry.CreateVariantEntryAndBackRef`, a notebook record
+`InsertRecordDlg.OnClosing` with `IRnGenericRecFactory.Create(notebook, title, type)`; planning alone makes no object. These are data-shape rules, not preferences between linguistic analyses
 ([ADR 0004](0004-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)).
 
 The full-fidelity hand-analysis Home in ADR 0025 preserves native LCM GUIDs, classes, ownership, fields

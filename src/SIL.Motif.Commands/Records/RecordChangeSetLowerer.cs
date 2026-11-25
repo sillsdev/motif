@@ -67,6 +67,20 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
             return new([], [new(RefusalCodes.RecordImportPlanRefused, plan.Kind ?? "", refusal.Field,
                 refusal.ObjectGuid, $"The plan refuses the whole file ({refusal.Kind}): {refusal.Reason}")], set.Refusals);
         }
+        if (plan.BaseVerdict == ProjectRecordBaseVerdict.New)
+        {
+            // A create is planned and shown, never lowered: the record would be missing the parts FieldWorks makes with it.
+            var refused = new Dictionary<int, string>();
+            var rows = new List<RecordLoweringRefusal>();
+            for (var index = 0; index < set.Changes.Count; index++)
+            {
+                var change = set.Changes[index];
+                refused[index] = RefusalCodes.RecordImportCreateKindNotCreatable;
+                rows.Add(new(RefusalCodes.RecordImportCreateKindNotCreatable, change.ObjectType ?? plan.Kind ?? "", change.Field, change.ObjectGuid,
+                    "Creating a record from a file is not yet lowered to operations."));
+            }
+            return new([], rows, set.Refusals, [], refused);
+        }
         var seed = plan.Export?.Base ?? plan.RecordGuid?.ToString("D") ?? "";
         var lowered = LowerChanges(cache, seed, set.Changes);
         return new(lowered.Operations, lowered.Refusals, set.Refusals, lowered.OperationChanges, lowered.RefusedChanges);
