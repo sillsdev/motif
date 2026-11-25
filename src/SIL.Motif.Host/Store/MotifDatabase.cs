@@ -149,7 +149,8 @@ public sealed partial class MotifDatabase : IDisposable
                 EnsureLocatorMatches(metadata.Project, project, path);
                 if (workerVersion < metadata.MinimumWorkerVersion)
                     throw new MotifStoreVersionException(Path.GetFullPath(path),
-                        $"Worker {workerVersion} is older than database minimum {metadata.MinimumWorkerVersion}.")
+                        $"Worker {workerVersion} is older than database minimum {metadata.MinimumWorkerVersion}. " +
+                        "Install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
                     { Newer = true };
             }
         };
