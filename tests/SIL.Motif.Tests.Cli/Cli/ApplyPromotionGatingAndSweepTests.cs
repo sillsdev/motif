@@ -768,6 +768,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
 
     private string ReadyProposal(string draft, string gloss)
     {
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath)).Succeeded);
         var proposalId = FinalizeAndTrial(draft, gloss);
         RecordAssessment(proposalId, GetRecord(proposalId).IntentDigest!, "Correctness", ("alpha", true));
         return proposalId;
