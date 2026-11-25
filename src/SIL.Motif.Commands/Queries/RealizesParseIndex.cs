@@ -45,6 +45,22 @@ internal static class RealizesReasons
     public const string ParseFailed = "parse_failed";
     public const string PieceUnplaced = "piece_unplaced";
     public const string PieceInconsistent = "piece_inconsistent";
+    public const string AllomorphNotGenerated = "allomorph_not_generated";
+    public const string ContextCap = "context_cap";
+    public const string ContextCombinationsUntested = "context_combinations_untested";
+    public const string EdgeNotTested = "edge_not_tested";
+    public const string EffectsPartial = "effects_partial";
+    public const string FormPartial = "form_partial";
+    public const string MayBeUnrealised = "may_be_unrealised";
+    public const string MorphologicalProcess = "morphological_process";
+    public const string NoGeneratedSurface = "no_generated_surface";
+    public const string NoLexicon = "no_lexicon";
+    public const string PieceUnknown = "piece_unknown";
+    public const string RuleInteraction = "rule_interaction";
+    public const string TemplateNotWalked = "template_not_walked";
+    public const string Uncovered = "uncovered";
+    public const string UnwrittenVariant = "unwritten_variant";
+    public const string VariantsCapped = "variants_capped";
 }
 
 /// <summary>One run of surface text a morph occupies: where it starts in the analysis's surface (UTF-16 index) and its text, as PanGloss gives it.</summary>
@@ -505,6 +521,19 @@ internal static class RealizesParseIndexCache
     }
 
     private static string Bare(string digest) => digest[(digest.IndexOf(':') + 1)..];
+
+    /// <summary>The cached index when one exists for this grammar, word list and parser build; null otherwise, and nothing is built.</summary>
+    public static RealizesParseIndex? TryLoad(string root, string grammarPath, IReadOnlyList<string> words, string parserIdentity)
+    {
+        var path = Path.Combine(root, KeyFor(grammarPath, words, parserIdentity));
+        if (!File.Exists(path)) return null;
+        try
+        {
+            using var stream = File.OpenRead(path);
+            return RealizesParseIndex.Read(stream);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException) { return null; }
+    }
 
     /// <summary>The cached index, or one built now; <paramref name="notice"/> hears before a slow build starts.</summary>
     public static (RealizesParseIndex Index, bool Built, double Seconds) GetOrBuild(string root, string grammarPath, IReadOnlyList<string> words,

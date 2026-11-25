@@ -14,7 +14,7 @@ internal static class CorpusQueryCli
     /// <summary>True for <c>query --corpus ...</c>, which never reads a project.</summary>
     public static bool Handles(IReadOnlyDictionary<string, string> flags) => flags.ContainsKey("corpus");
 
-    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "segment-test", "group-by", "what-if-retire", "json"];
+    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "thorough", "segment-test", "group-by", "what-if-retire", "json"];
 
     /// <summary>True for <c>query --corpus &lt;words&gt; forms ...</c>.</summary>
     public static bool IsForms(IReadOnlyList<string> positionals) => positionals.FirstOrDefault() == "forms";
@@ -28,7 +28,7 @@ internal static class CorpusQueryCli
     {
         request = null!;
         if (flags.Keys.Any(key => !FormsFlags.Contains(key)) ||
-            flags.Any(pair => pair.Value == "true" && pair.Key is not ("json" or "fold-case" or "split-hyphens"))) return false;
+            flags.Any(pair => pair.Value == "true" && pair.Key is not ("json" or "fold-case" or "split-hyphens" or "thorough"))) return false;
         string? where = flags.GetValueOrDefault("where");
         if (positionals is ["forms", "where", var text]) where = where is null ? text : null;
         else if (positionals is not ["forms"]) return false;
@@ -51,7 +51,7 @@ internal static class CorpusQueryCli
             limit = parsed;
         }
         request = new CorpusFormsRequest(corpus, where, document, flags.GetValueOrDefault("grammar"), flags.GetValueOrDefault("segments"),
-            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"), flags.GetValueOrDefault("project"), groupBy, retire);
+            flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"), flags.GetValueOrDefault("project"), groupBy, retire, flags.ContainsKey("thorough"));
         return true;
     }
 

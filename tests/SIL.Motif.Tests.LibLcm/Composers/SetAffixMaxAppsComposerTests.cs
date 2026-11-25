@@ -87,10 +87,13 @@ public sealed class SetAffixMaxAppsComposerTests : IDisposable
         Assert.Equal(2, AffixMaxApps.Read(Parameters, _guid));
     }
 
-    [Fact]
-    public void ChangingACountUpdatesTheAttributeInPlaceAndTouchesNothingElseInTheText()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void ChangingACountUpdatesTheAttributeInPlaceAndTouchesNothingElseInTheText(string newLine)
     {
-        const string original = "<ParserParameters>\n  <HC>\n    <AffixRules>\n      <AffixRule guid=\"{0}\" maxApps=\"2\" />\n    </AffixRules>\n    <Strata />\n  </HC>\n</ParserParameters>";
+        var original = "<ParserParameters>\n  <HC>\n    <AffixRules>\n      <AffixRule guid=\"{0}\" maxApps=\"2\" />\n    </AffixRules>\n    <Strata />\n  </HC>\n</ParserParameters>"
+            .Replace("\n", newLine);
         SetParameters(string.Format(original, _guid));
 
         var changed = Apply(2, 3);
