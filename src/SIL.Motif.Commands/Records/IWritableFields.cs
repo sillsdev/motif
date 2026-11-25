@@ -23,8 +23,6 @@ public enum UncoveredFieldReason
     VerbNotExpressible,
     ComputedField,
     CustomField,
-    /// <summary>An owned StText custom field: its paragraphs are replaced by paragraph keys and digests, which no kind takes from a record file.</summary>
-    CustomStText,
     NoOperationKind,
     AmbiguousOperationKind,
     UnsupportedOwnerClass,

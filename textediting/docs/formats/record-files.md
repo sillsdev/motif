@@ -484,6 +484,18 @@ record-data:
 
 The fix replaces the table's lines with `Name | Gloss`, a blank line and `palit | buy`.
 
+## Custom fields
+
+A project's custom field gets the key `custom-<class>-<name>` and a value kind by its type: a string or multistring is rich or plain text, an integer is an integer,
+a reference is a link or a list of links, and an **owned StText** (FieldWorks' multi-paragraph custom field, `AddCustomFieldDlg.cs:395`) is a paragraphs field, written
+the way a notebook section is: one Markdown body, one paragraph per block, a paragraph's identity kept when its text is unchanged. A host that lowers edits writes it
+through its paragraph edit, naming the field by its metadata name.
+
+A **GenDate** custom field has no value kind in a record file, so the schema leaves it out and lists it in `OmittedCustomFields`. Each record that holds one reports it as
+an `UnexportedValue` with the whole value, `AD|BC <year>-<month>-<day> <precision>` (precision is liblcm's `GenDate.PrecisionType`: `Exact`, `Approximate`, `Before` or `After`;
+a zero month or day is unknown), and the `base:` digest covers it. A file that names the key is refused whole as `UnknownField`, and the reason names the project's custom
+field and why it is left out, so the edit is neither applied nor dropped silently. Edit a date in FieldWorks.
+
 ## The schema is data
 
 A `RecordSchema` describes object types and record kinds. Hosts build one with `RecordSchemaBuilder`. The planned
@@ -674,7 +686,7 @@ Refusals the importer adds to the differ's (`RecordRefusalKind`):
 | `StaleBase`, `MissingBase` | The base is not the fresh export's, or is absent. | Whole file |
 | `UnreadableFile` | The text does not read as a record file of the schema (any other reader error, named by id and line). | Whole file |
 | `UnknownRecord` | The file names no record of the project. | Whole file |
-| `UnknownField` | A key the schema does not have for the object, for example `date-modified`, which the export left out (whole file); or a change that cannot be mapped to a project field, which is never accepted unchecked (the change). | Either: read `RecordRefusal.WholeFile` |
+| `UnknownField` | A key the schema does not have for the object, for example `date-modified`, which the export left out, or a custom date, whose reason says so (whole file); or a change that cannot be mapped to a project field, which is never accepted unchecked (the change). | Either: read `RecordRefusal.WholeFile` |
 | `UnknownWritingSystem`, `UndefinedStyle` | A writing system or style the project lacks (`fwmd.ws.unknown`, `fwmd.style.unknown`). | Whole file |
 | `UnknownReference` | A reference whose GUID is not an object of the project, or a link that names none (or `fwmd.link.not-found`, `fwmd.link.ambiguous`). | The change |
 | `WrongReferenceClass` | A reference to an object whose class the field cannot hold (checked against liblcm's metadata, not against which list the item is in). | The change |

@@ -35,6 +35,7 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
         metadata.AddCustomField("LexEntry", "ExampleSet", CellarPropertyType.ReferenceCollection, possibility);
         metadata.AddCustomField("LexEntry", "ExampleFlag", CellarPropertyType.Boolean, 0);
         metadata.AddCustomField("LexEntry", "ExampleDate", CellarPropertyType.GenDate, 0);
+        metadata.AddCustomField("LexEntry", "ExampleText", CellarPropertyType.OwningAtomic, metadata.GetClassId("StText"));
         var schemas = new[]
         {
             ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay),
@@ -167,7 +168,7 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
         {
             "# Runner catalog coverage for record files",
             "# Generated in RecordCatalogCoverageTests from the lexicon entry, notebook record and list item schemas.",
-            "# The Example* fields are project-local custom fields: one of each type a kind writes, a Boolean no kind writes, and a date the schema omits.",
+            "# The Example* fields are project-local custom fields: one of each type a kind writes (an owned StText among them), a Boolean no kind writes, and a date the schema omits.",
             "# One row per reachable concrete schema class, record field key and verb.",
             "# Covered rows are subject to the placement, owner, child and shape in the Runner declarations.",
             "# A Covered row marked written-by-input or written-by-output is written by that rule-formula key, not under its own key.",

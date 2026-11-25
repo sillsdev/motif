@@ -1,6 +1,6 @@
 # Runner catalog coverage for record files
 # Generated in RecordCatalogCoverageTests from the lexicon entry, notebook record and list item schemas.
-# The Example* fields are project-local custom fields: one of each type a kind writes, a Boolean no kind writes, and a date the schema omits.
+# The Example* fields are project-local custom fields: one of each type a kind writes (an owned StText among them), a Boolean no kind writes, and a date the schema omits.
 # One row per reachable concrete schema class, record field key and verb.
 # Covered rows are subject to the placement, owner, child and shape in the Runner declarations.
 # A Covered row marked written-by-input or written-by-output is written by that rule-formula key, not under its own key.
@@ -136,6 +136,8 @@ Covered	LexEntry	custom-LexEntry-ExampleStatus	LexEntry.ExampleStatus	Set	custom
 Covered	LexEntry	custom-LexEntry-ExampleStatus	LexEntry.ExampleStatus	Clear	customField/clearReference	-	-
 Covered	LexEntry	custom-LexEntry-ExampleTag	LexEntry.ExampleTag	SetPlainRich	customField/setString	-	-
 Covered	LexEntry	custom-LexEntry-ExampleTag	LexEntry.ExampleTag	ClearRich	customField/clearString	-	-
+Covered	LexEntry	custom-LexEntry-ExampleText	LexEntry.ExampleText	SetRich	text/setParagraphs	-	-
+Covered	LexEntry	custom-LexEntry-ExampleText	LexEntry.ExampleText	ClearRich	text/setParagraphs	-	-
 Covered	LexEntry	dialect-labels	LexEntry.DialectLabels	AddReference	lexical/lexEntry/addRefDialectLabels	-	-
 Covered	LexEntry	dialect-labels	LexEntry.DialectLabels	RemoveReference	lexical/lexEntry/removeRefDialectLabels	-	-
 Covered	LexEntry	do-not-publish-in	LexEntry.DoNotPublishIn	AddReference	lexical/lexEntry/addRefDoNotPublishIn	-	-
@@ -1825,6 +1827,8 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	system/stText/setRightToLeft	StText	RightToLeft	Set	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	CmPossibility	Discussion	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	CmPossibility	Discussion	SetRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	CustomField	StText	ClearRich	Forbidden	-		Unspecified	False
+# Handler	text/setParagraphs	CustomField	StText	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	LexAppendix	Contents	ClearRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	LexAppendix	Contents	SetRich	Forbidden	-		Unspecified	False
 # Handler	text/setParagraphs	LexDb	Introduction	ClearRich	Forbidden	-		Unspecified	False
