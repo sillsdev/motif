@@ -51,6 +51,8 @@ public static partial class RecordImportCommand
         public int RefusedChanges { get; set; }
         public int Operations => Status is CreatedStatus or UpdatedStatus ? Lowering?.Operations.Count ?? 0 : 0;
 
+        public void Refuse(Refusal refusal) => Refuse(refusal.Code, refusal.Message);
+
         public void Refuse(string code, string reason)
         {
             Status = RefusedStatus;
@@ -59,7 +61,7 @@ public static partial class RecordImportCommand
         }
     }
 
-    /// <summary>The plan of a whole folder: every file's row, the digest a stage compares, and the operations to stage.</summary>
+    /// <summary>The plan of a whole folder: each file's row and the digest a stage compares.</summary>
     private sealed record BatchPlan(IReadOnlyList<DirFile> Files, string Digest)
     {
         public IEnumerable<DirFile> Staged => Files.Where(file => file.Status is CreatedStatus or UpdatedStatus);
@@ -206,7 +208,7 @@ public static partial class RecordImportCommand
             created.Value!.DraftName, created.Value.ProposalId));
     }
 
-    /// <summary>What a Proposal keeps of the folder: the counts, the manifest's digest, and the text of every file that was staged.</summary>
+    /// <summary>What a Proposal keeps of the folder: counts, manifest digest and staged file texts.</summary>
     private static JsonElement ManifestJson(RecordImportRequest request, BatchPlan plan)
     {
         var entries = new JsonArray();
@@ -291,6 +293,7 @@ public static partial class RecordImportCommand
             file.RefusedChanges = Refusals(file.Planned!, file.Lowering).Count;
             if (file.Lowering.Operations.Count == 0 && file.RefusedChanges > 0) RefuseWithFirst(file);
         }
+        RefuseReferencesToNewRecords(files);
         return result;
     }
 
@@ -361,9 +364,9 @@ public static partial class RecordImportCommand
             .GroupBy(file => file.Record!.Value).Where(group => group.Count() > 1).ToList();
         foreach (var group in groups)
             foreach (var file in group)
-                file.Refuse(RefusalCodes.RecordImportRecordTwice,
+                file.Refuse(new Refusal(RefusalCodes.RecordImportRecordTwice, FailureReason.Refused,
                     ListOf(group.Select(item => item.Input.Path)) + " all edit record " + group.Key.ToString("D") +
-                    ". Put the edits in one file.");
+                    ". Put the edits in one file."));
     }
 
     private static void RefuseDuplicateGuids(IReadOnlyList<DirFile> files)
@@ -378,33 +381,33 @@ public static partial class RecordImportCommand
             }
         foreach (var (guid, list) in owners.Where(pair => pair.Value.Count > 1).OrderBy(pair => pair.Key))
             foreach (var file in list.Where(file => file.Status is CreatedStatus or UpdatedStatus))
-                file.Refuse(RefusalCodes.RecordImportGuidDuplicateInBatch,
+                file.Refuse(new Refusal(RefusalCodes.RecordImportGuidDuplicateInBatch, FailureReason.Refused,
                     "GUID " + guid.ToString("D") + " is used by more than one new object (" + ListOf(list.Select(item => item.Input.Path)) +
-                    "). Every new object needs its own GUID.");
+                    "). Every new object needs its own GUID."));
     }
+
+    private static readonly Regex OwnedGuid = new("guid:\\s*\"([0-9a-fA-F-]{36})\"", RegexOptions.Compiled);
+    private static readonly Regex LinkedGuid = new("/objects/([0-9a-fA-F-]{36})", RegexOptions.Compiled);
 
     private static void RefuseReferencesToNewRecords(IReadOnlyList<DirFile> files)
     {
-        var created = files.Where(file => file.Status == CreatedStatus && file.Record is not null)
-            .ToDictionary(file => file.Record!.Value.ToString("D"), file => file);
-        if (created.Count == 0) return;
-        foreach (var file in files.Where(file => file.Planned is not null))
+        var creators = files.Where(file => file.Status == CreatedStatus && file.Input.Text is not null).ToList();
+        if (creators.Count == 0) return;
+        var owned = creators.ToDictionary(file => file, file => OwnedGuid.Matches(file.Input.Text!).Select(m => m.Groups[1].Value.ToLowerInvariant()).ToHashSet());
+        foreach (var file in files.Where(file => file.Planned is not null && file.Input.Text is not null))
         {
-            var texts = new List<string>();
-            var planned = file.Planned!;
-            texts.AddRange(planned.Plan.ChangeSet.Refusals.Select(item => item.Reason + " " + item.New));
-            texts.AddRange(planned.Lowering.Refusals.Select(item => item.Reason));
-            if (planned.Lowering.WholeFile is { } shape) texts.Add(shape.Reason);
-            if (file.Reason is not null) texts.Add(file.Reason);
-            var own = file.Record?.ToString("D");
-            var target = created.Where(pair => pair.Key != own && texts.Any(text =>
-                text.Contains(pair.Key, StringComparison.OrdinalIgnoreCase))).Select(pair => pair.Value).FirstOrDefault();
-            if (target is null) continue;
-            var reason = "This file refers to record " + target.Record!.Value.ToString("D") + ", which " + target.Input.Path +
-                " creates in this folder. References between new records are not imported yet: apply " + target.Input.Path + " first, then import this file.";
-            if (file.Status == RefusedStatus || file.Planned.Lowering.Operations.Count == 0)
+            var mine = owned.TryGetValue(file, out var set) ? set : [];
+            var linked = LinkedGuid.Matches(file.Input.Text!).Select(m => m.Groups[1].Value.ToLowerInvariant()).Distinct();
+            var hit = linked.Where(guid => !mine.Contains(guid))
+                .Select(guid => (Guid: guid, Creator: creators.FirstOrDefault(other => other != file && owned[other].Contains(guid))))
+                .FirstOrDefault(pair => pair.Creator is not null);
+            if (hit.Creator is null) continue;
+            var reason = "This file refers to " + hit.Guid + ", which " + hit.Creator.Input.Path +
+                " creates in this folder. References between new records are not imported yet: apply " + hit.Creator.Input.Path + " first, then import this file.";
+            var lowering = file.Lowering ?? file.Planned!.Lowering;
+            if (file.Status == RefusedStatus || lowering.Operations.Count == 0)
             {
-                file.Refuse(RefusalCodes.RecordImportReferenceToNewInBatch, reason);
+                file.Refuse(new Refusal(RefusalCodes.RecordImportReferenceToNewInBatch, FailureReason.Refused, reason));
                 continue;
             }
             file.Code = RefusalCodes.RecordImportReferenceToNewInBatch;
@@ -486,7 +489,7 @@ public static partial class RecordImportCommand
 
     private static readonly Regex IdToken = new("(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{22}(?![A-Za-z0-9_-])", RegexOptions.CultureInvariant);
 
-    /// <summary>For each record the first open Draft or Proposal that names it, found in one pass over the store.</summary>
+    /// <summary>For each record, the first open Draft or Proposal naming it, in one store pass.</summary>
     private static CommandOutcome<Dictionary<Guid, string>> ScanPendingMany(string projectPath, IReadOnlyList<Guid> guids)
     {
         var found = new Dictionary<Guid, string>();

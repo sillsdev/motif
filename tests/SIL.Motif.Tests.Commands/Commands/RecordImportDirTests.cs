@@ -70,7 +70,7 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         return (schema, new ProjectRecordExporter(cache, schema));
     }
 
-    /// <summary>The export of an existing entry as a file, edited by <paramref name="edit"/>; as a create when <paramref name="asNew"/>.</summary>
+    /// <summary>An entry's export as a file, edited, or as a create when asNew.</summary>
     private string WriteFile(Seed seed, Guid entry, string name, Action<RecordDocument>? edit = null, bool asNew = false)
     {
         using var cache = new FwDataProjectLoader().LoadCache(seed.Project);
@@ -97,11 +97,11 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         ((RecordAlternatives)sense["gloss"]!).Add("en", new RecordScalar("zzedited"));
     }
 
-    private static RecordImportRequest Dry(Seed seed, string? draft = null, bool strict = false, int page = 1, bool? rows = null,
+    private RecordImportRequest Dry(Seed seed, string? draft = null, bool strict = false, int page = 1, bool? rows = null,
         bool? refusedOnly = null, string? report = null) =>
         new(seed.Project, null, draft, page, strict, DirPathOf(seed), rows, refusedOnly, report);
 
-    private static string DirPathOf(Seed seed) => Path.Combine(Path.GetDirectoryName(seed.Project)!, "records");
+    private string DirPathOf(Seed seed) => Folder;
 
     private static Dictionary<string, RecordImportFileRow> AllRows(Seed seed, RecordImportRequest request)
     {
@@ -110,7 +110,7 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         return outcome.Value!.Files!.ToDictionary(row => row.Path);
     }
 
-    /// <summary>Three creates, two updates, a stale file, an unchanged file, an unreadable file and one that is no record, plus ignored entries.</summary>
+    /// <summary>Creates, updates, stale, unchanged, unreadable and non-record files, plus ignored ones.</summary>
     private Seed MixedFolder()
     {
         var seed = Seeded(6);
@@ -262,7 +262,7 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         WriteFile(seed, seed.Entries[0], "create2.fw.md", asNew: true);
         var mixed = RecordImportCommand.Run(Dry(seed, "third"));
         Assert.True(mixed.Succeeded, mixed.Refusal?.Message);
-        Assert.Equal((1, 2), (mixed.Value!.Dir!.Created - mixed.Value.Dir.Refused + 1, mixed.Value.Dir.Refused));
+        Assert.Equal((1, 2), (mixed.Value!.Dir!.Created, mixed.Value.Dir.Refused));
         Assert.All(mixed.Value.Dir.FirstRefused, row => Assert.Equal(RefusalCodes.RecordImportGuidPending, row.Code));
     }
 
@@ -304,12 +304,13 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         var seed = Seeded(2);
         var main = WriteFile(seed, seed.Entries[0], "main.fw.md", asNew: true);
         var mainText = File.ReadAllText(main);
-        var newMain = new Regex("guid: \"?([0-9a-f-]{36})").Match(mainText).Groups[1].Value;
-        // A sense of the second file points its morpho-syntax analysis at the new record, which is not an object of the project.
+        var newMsa = new Regex("guid: \"([0-9a-f-]{36})\"\\s+class: \"MoStemMsa\"").Match(mainText).Groups[1].Value;
+        // The second file's sense points at an analysis that only the first file creates.
         var other = WriteFile(seed, seed.Entries[1], "other.fw.md", asNew: true);
         var otherText = File.ReadAllText(other);
-        var category = new Regex("part-of-speech: \"?([0-9a-f-]{36})").Match(otherText).Groups[1].Value;
-        File.WriteAllText(other, otherText.Replace(category, newMain, StringComparison.OrdinalIgnoreCase));
+        var own = new Regex("morpho-syntax-analysis: \"\\[zznoun\\]\\(/objects/([0-9a-f-]{36})\\)").Match(otherText).Groups[1].Value;
+        var lines = otherText.Split('\n').Select(line => line.Contains("morpho-syntax-analysis: \"[") ? line.Replace(own, newMsa, StringComparison.OrdinalIgnoreCase) : line);
+        File.WriteAllText(other, string.Join('\n', lines));
 
         var rows = AllRows(seed, Dry(seed));
 

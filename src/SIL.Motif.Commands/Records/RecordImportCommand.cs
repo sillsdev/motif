@@ -155,11 +155,11 @@ public static partial class RecordImportCommand
         return new(resolved.Schema, plan, validate ? ValidateOnScratch(cache, plan, full) : full, Digest(full.Operations));
     }
 
-    /// <summary>What one record kind needs to plan and lower a file, made once for as many files as use it.</summary>
+    /// <summary>What one record kind needs to plan and lower a file.</summary>
     private sealed record KindTools(ProjectRecordSchemaResult Schema, ProjectRecordImporter Importer,
         CatalogWritableFields Catalog, RecordChangeSetLowerer Lowerer);
 
-    /// <summary>The overlays' schemas, generated on first need and shared by every file planned against one project.</summary>
+    /// <summary>The overlays' schemas, generated on first need and shared by a batch.</summary>
     private sealed class SchemaSet(LcmCache cache)
     {
         private readonly List<KindTools> _generated = [];

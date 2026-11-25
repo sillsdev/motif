@@ -293,7 +293,7 @@ internal static class AgentTools
             FieldNames = new Dictionary<string, string?>
             {
                 ["FilePath"] = "file", ["DirPath"] = "dir", ["DraftName"] = "draft", ["Page"] = "page", ["Strict"] = "strict",
-                ["RefusedOnly"] = "refusedOnly", ["Source"] = "source", ["Revision"] = "revision", ["Licence"] = "licence",
+                ["RefusedOnly"] = "refusedOnly", ["Source"] = "source", ["Revision"] = "revision", ["Licence"] = "licence", ["Rows"] = null, ["ReportPath"] = null,
             },
         },
 

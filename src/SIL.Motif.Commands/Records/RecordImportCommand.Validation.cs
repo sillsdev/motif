@@ -51,7 +51,7 @@ public static partial class RecordImportCommand
     private static RecordLowering ValidateOnScratch(LcmCache cache, ProjectRecordPlan plan, RecordLowering full) =>
         ValidateOnScratch(cache, [(plan, full)])[0];
 
-    /// <summary>One scratch pass over the operations of every file, with each failure charged to its own file and change.</summary>
+    /// <summary>One scratch pass over every file's operations, each failure charged to its file.</summary>
     private static RecordLowering[] ValidateOnScratch(LcmCache cache, IReadOnlyList<(ProjectRecordPlan Plan, RecordLowering Full)> units)
     {
         var results = units.Select(unit => unit.Full).ToArray();

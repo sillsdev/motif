@@ -232,7 +232,9 @@ namespace SIL.TextEditing.Project
             try
             {
                 var diff = RecordDiffer.Diff(baseRead.Document, file, Schema);
-                return diff.Changes.Count == 0 && diff.Refusals.Count == 0;
+                // A file that creates leaves out what FieldWorks assigns, so those omissions are not edits.
+                return diff.Changes.All(c => c.Kind == RecordChangeKind.Clear && c.Field == "homograph-number") && diff.Refusals.All(r => r.Kind == RecordRefusalKind.ComputedField
+                    && r.Field.IndexOfAny(new[] { '.', '/', '[' }) < 0 && file.Data[r.Field] == null);
             }
             catch (ArgumentException) { return false; }
         }
