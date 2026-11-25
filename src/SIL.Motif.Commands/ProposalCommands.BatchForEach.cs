@@ -108,7 +108,9 @@ public static partial class ProposalCommands
             catch (InvalidOperationException exception)
             {
                 Refuse(forEach.ContainsKey("targetsFile") ? "forEach.targetsFile" : "forEach.targets",
-                    RefusalCodes.DraftInvalid, exception.Message);
+                    exception is ForEachTargetsFileUnavailableException
+                        ? RefusalCodes.DraftForEachTargetsFileUnavailable : RefusalCodes.DraftInvalid,
+                    exception.Message);
                 continue;
             }
             if (targets.Count == 0)
@@ -155,7 +157,7 @@ public static partial class ProposalCommands
                 {
                     output.Add(new JsonObject { ["verb"] = verb, ["intent"] = null });
                     rows.Add(new(from, target, "forEach", RefusalCodes.DraftForEachTargetUnresolved,
-                        $"Intent {position} ({verb}, target '{target}' of forEach intent {from}): target does not resolve: {reason}."));
+                        $"Intent {position} ({verb}, target '{target}' of forEach intent {from}): target does not resolve: {reason}. Nothing in this batch was added."));
                     position++;
                 }
             }
@@ -187,15 +189,18 @@ public static partial class ProposalCommands
         _ => false,
     };
 
+    // One pass over the source text, so substituted text is never expanded again.
     private static JsonNode Substitute(JsonNode node, IReadOnlyDictionary<string, string> values) => node switch
     {
         JsonObject obj => new JsonObject(obj.Select(property => new KeyValuePair<string, JsonNode?>(
             property.Key, property.Value is null ? null : Substitute(property.Value, values)))),
         JsonArray array => new JsonArray(array.Select(item => item is null ? null : Substitute(item, values)).ToArray()),
         JsonValue value when value.TryGetValue<string>(out var text) => JsonValue.Create(
-            values.Aggregate(text, (current, pair) => current.Replace(pair.Key, pair.Value, StringComparison.Ordinal)))!,
+            KnownPlaceholder.Replace(text, match => values.TryGetValue(match.Value, out var replacement) ? replacement : match.Value))!,
         _ => node.DeepClone(),
     };
+
+    private sealed class ForEachTargetsFileUnavailableException(string message) : InvalidOperationException(message);
 
     private static List<string> ReadForEachTargets(JsonObject forEach, string? baseDirectory, int from, string verb)
     {
@@ -209,7 +214,11 @@ public static partial class ProposalCommands
         if (forEach["targetsFile"] is not JsonValue pathValue || !pathValue.TryGetValue<string>(out var relative) ||
             string.IsNullOrWhiteSpace(relative))
             throw new InvalidOperationException($"Intent {from} ({verb}): forEach 'targetsFile' is a path string.");
-        var path = Path.GetFullPath(relative, baseDirectory ?? Directory.GetCurrentDirectory());
+        if (baseDirectory is null)
+            throw new ForEachTargetsFileUnavailableException(
+                $"Intent {from} ({verb}): forEach 'targetsFile' is read from the batch file's folder and is not available " +
+                "here; pass the targets inline as 'targets'.");
+        var path = Path.GetFullPath(relative, baseDirectory);
         if (!File.Exists(path))
             throw new InvalidOperationException(
                 $"Intent {from} ({verb}): forEach targetsFile '{relative}' does not exist (looked for {path}); a relative path " +

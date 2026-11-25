@@ -250,7 +250,7 @@ public sealed record ComposeEditAnalysisDecisionRequest(
 /// </param>
 /// <param name="BaseDirectory">
 /// The folder a <c>forEach</c> <c>targetsFile</c> path is read from, normally the folder of the batch file; the
-/// current directory when absent.
+/// a <c>targetsFile</c> is refused when absent, as over MCP, where callers pass <c>targets</c> inline.
 /// </param>
 public sealed record ComposeBatchRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentsJson, string? BaseDirectory = null);

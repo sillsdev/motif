@@ -119,7 +119,7 @@ public sealed class ComposeBatchForEachTests(PristineProjectFixture pristine)
         Assert.Contains($"target '{missing}' of forEach intent 1", batch.Refusal.Message);
         Assert.Contains("target 'no such form' of forEach intent 1", batch.Refusal.Message);
         Assert.DoesNotContain(SecondEntry, batch.Refusal.Message);
-        Assert.Contains("discarded", batch.Refusal.Message);
+        Assert.Contains("Nothing in this batch was added", batch.Refusal.Message);
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public sealed class ComposeBatchForEachTests(PristineProjectFixture pristine)
     [InlineData("""{"intents":[{"verb":"compose-author-phoneme","forEach":{"targets":["a"],"targetsFile":"x"},"intent":{"name":"{target}","representations":["a"]}}]}""",
         RefusalCodes.DraftInvalid)]
     [InlineData("""{"intents":[{"verb":"compose-author-phoneme","forEach":{"targetsFile":"missing-targets.txt"},"intent":{"name":"{target}","representations":["a"]}}]}""",
-        RefusalCodes.DraftInvalid)]
+        RefusalCodes.DraftForEachTargetsFileUnavailable)]
     [InlineData("""{"intents":[{"verb":"compose-author-phoneme","as":"p","forEach":{"targets":["a"]},"intent":{"name":"{target}","representations":["a"]}}]}""",
         RefusalCodes.DraftInvalid)]
     public void ForEachMisuseIsRefusedWithItsOwnCodeAndStagesNothing(string json, string code)
@@ -171,6 +171,32 @@ public sealed class ComposeBatchForEachTests(PristineProjectFixture pristine)
         Assert.False(refused.Succeeded);
         Assert.Equal(code, refused.Refusal!.Code);
         Assert.Equal("0", refused.Refusal.Facts["intentIndex"]);
+    }
+
+    [Fact]
+    public void ATargetFileThatIsMissingFromTheBatchFolderIsRefused()
+    {
+        var (path, _, _) = NewProject("nofile");
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "nofile", """
+            {"intents":[{"verb":"compose-author-phoneme","forEach":{"targetsFile":"missing-targets.txt"},"intent":{"name":"{target}","representations":["a"]}}]}
+            """, Path.GetTempPath()));
+
+        Assert.Equal("draft.invalid", refused.Refusal?.Code);
+        Assert.Contains("does not exist", refused.Refusal!.Message);
+    }
+
+    [Fact]
+    public void SubstitutedTextIsNeverExpandedAgain()
+    {
+        var (path, _, _) = NewProject("literal");
+        var batch = ProposalCommands.ComposeBatch(new(path, Version, "literal", """
+            {"intents":[{"verb":"compose-author-phoneme","forEach":{"targets":["{target.id}","{target.form}"]},
+              "intent":{"name":"p {target}","representations":["a{target}"]}}]}
+            """));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        var inputs = ReadDraft(path, "literal").ComposerProvenance.Select(item => item.GetProperty("input")).ToArray();
+        Assert.Equal(["p {target.id}", "p {target.form}"], inputs.Select(input => input.GetProperty("name").GetString()));
     }
 
     [Fact]

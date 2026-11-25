@@ -675,6 +675,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.ComposerInvalidDetail, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ComposerUnknownSubject, FailureReason.InvalidArgument),
         Spec(RefusalCodes.DraftInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.DraftForEachTargetsFileUnavailable, FailureReason.InvalidArgument),
         Spec(RefusalCodes.DraftForEachEmpty, FailureReason.InvalidArgument),
         Spec(RefusalCodes.DraftForEachUnknownPlaceholder, FailureReason.InvalidArgument),
         Spec(RefusalCodes.DraftForEachPlaceholderWithoutForEach, FailureReason.InvalidArgument),

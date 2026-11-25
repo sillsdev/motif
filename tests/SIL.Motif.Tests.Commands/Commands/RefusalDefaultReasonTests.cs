@@ -49,6 +49,7 @@ public sealed class RefusalDefaultReasonTests
     // Codes whose reason the scan cannot resolve from a refusal construction.
     private static readonly Dictionary<string, string> NotDeterminable = new(StringComparer.Ordinal)
     {
+        ["draft.foreach-targets-file-unavailable"] = "reason not determinable statically: chosen from the expansion problem code in ProposalCommands.PreflightRefusal",
         ["draft.foreach-empty"] = "reason not determinable statically: chosen from the expansion problem code in ProposalCommands.PreflightRefusal",
         ["draft.foreach-nested"] = "reason not determinable statically: chosen from the expansion problem code in ProposalCommands.PreflightRefusal",
         ["draft.foreach-placeholder-without-foreach"] = "reason not determinable statically: chosen from the expansion problem code in ProposalCommands.PreflightRefusal",

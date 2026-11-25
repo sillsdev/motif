@@ -750,6 +750,8 @@ public static class RefusalCodes
     /// <summary>A Draft request or its content is not valid.</summary>
     public const string DraftInvalid = "draft.invalid";
 
+    /// <summary>A compose-batch <c>forEach</c> asked for a <c>targetsFile</c> from a caller that has no batch file folder, such as MCP.</summary>
+    public const string DraftForEachTargetsFileUnavailable = "draft.foreach-targets-file-unavailable";
     /// <summary>A compose-batch <c>forEach</c> names no targets, so it would compose nothing.</summary>
     public const string DraftForEachEmpty = "draft.foreach-empty";
     /// <summary>A compose-batch intent uses a <c>{...}</c> placeholder that <c>forEach</c> does not define.</summary>
