@@ -108,38 +108,33 @@ public sealed partial class RecordChangeSetLowerer
             if (inChange is { } inputChange)
             {
                 var role = $"{inputChange.Index}:{inputChange.Change.Kind}";
-                var oldTexts = Elements(inputChange.Change, () => RuleNotation.RenderElements(process, RuleField.AffixInput, cache));
-                var newTexts = Elements(inputChange.Change, () => RuleNotation.RenderElements(inputText!, cache));
-                var matches = Match(oldTexts, newTexts);
                 var simulated = oldInputs.ToList();
-                for (var n = 0; n < newTexts.Count; n++)
+                var contexts = process.InputOS.ToList();
+                for (var n = 0; n < inputText!.Nodes.Count; n++)
                 {
-                    if (matches.TryGetValue(n, out var kept))
+                    var node = inputText.Nodes[n];
+                    var kind = InputKind(node, inputChange.Change);
+                    if (n < contexts.Count && InputKind(contexts[n]) == kind)
                     {
-                        newInputs[n] = oldInputs[kept];
+                        newInputs[n] = oldInputs[n];
+                        InputInPlace(inputChange, role, n, contexts[n], node, classes);
                         continue;
                     }
                     var entity = Id($"{role}:input:{n}");
                     newInputs[n] = entity.ToGuid();
-                    var node = inputText!.Nodes[n];
                     var created = Placed(simulated, n == 0 ? null : newInputs[n - 1], entity.ToGuid());
-                    var className = node switch
-                    {
-                        RuleGap => "PhVariable",
-                        RuleGroup => "PhSequenceContext",
-                        RuleClass => "PhSimpleContextNC",
-                        RuleUnit unit => unit.Unit is IPhPhoneme ? "PhSimpleContextSeg" : "PhSimpleContextBdry",
-                        _ => throw Refuse(RefusalCodes.RuleNotationContextNotAllowed, inputChange.Change, "An input column is a gap, a unit, a class or a group."),
-                    };
+                    var className = kind switch { "gap" => "PhVariable", "seq" => "PhSequenceContext", "nc" => "PhSimpleContextNC", "seg" => "PhSimpleContextSeg", _ => "PhSimpleContextBdry" };
                     Add(Operation(Id($"{role}:create:{n}"), MoAffixProcessInputOperationKinds.Create, processId, new { @class = className },
                         created, entity), inputChange.Index);
                     FillInput(inputChange, role, n, entity, node, classes);
+                    if (n < oldInputs.Count)
+                    {
+                        removedInputs.Add(oldInputs[n]);
+                        replacedBy[oldInputs[n]] = newInputs[n];
+                    }
                 }
-                for (var i = 0; i < oldInputs.Count; i++)
-                    if (!matches.ContainsValue(i))
-                        removedInputs.Add(oldInputs[i]);
-                foreach (var (gone, created) in Replacements(matches, oldInputs.Count, newTexts.Count))
-                    replacedBy[oldInputs[gone]] = newInputs[created];
+                for (var n = inputText.Nodes.Count; n < oldInputs.Count; n++)
+                    removedInputs.Add(oldInputs[n]);
             }
 
             var gaps = new HashSet<Guid>();
@@ -184,45 +179,143 @@ public sealed partial class RecordChangeSetLowerer
             catch (FeatureStructureNotationException exception) { throw Refuse(exception.Code, change, exception.Message); }
         }
 
-        private IReadOnlyList<string> Elements(RecordChange change, Func<IReadOnlyList<string>> read)
+        private string InputKind(RuleNode node, RecordChange change) => node switch
         {
-            try { return read(); }
-            catch (RuleNotationException exception) { throw Refuse(exception.Code, change, exception.Message); }
-            catch (FeatureStructureNotationException exception) { throw Refuse(exception.Code, change, exception.Message); }
+            RuleGap => "gap",
+            RuleGroup => "seq",
+            RuleClass => "nc",
+            RuleUnit unit => unit.Unit is IPhPhoneme ? "seg" : "bdry",
+            _ => throw Refuse(RefusalCodes.RuleNotationContextNotAllowed, change, "An input column is a gap, a unit, a class or a group."),
+        };
+
+        private static string InputKind(ICmObject context) => context switch
+        {
+            IPhVariable => "gap",
+            IPhSequenceContext => "seq",
+            IPhSimpleContextNC => "nc",
+            IPhSimpleContextSeg => "seg",
+            IPhSimpleContextBdry => "bdry",
+            _ => "other:" + context.ClassName,
+        };
+
+        private string OutputKind(RuleNode node, RecordChange change) => node switch
+        {
+            RuleCopy => "copy",
+            RuleModify => "modify",
+            RuleClass => "class",
+            RuleInsertUnits => "units",
+            _ => throw Refuse(RefusalCodes.RuleNotationContextNotAllowed, change, "An output holds copies, classes and inserted units."),
+        };
+
+        private static string OutputKind(ICmObject mapping) => mapping switch
+        {
+            IMoCopyFromInput => "copy",
+            IMoModifyFromInput => "modify",
+            IMoInsertNC => "class",
+            IMoInsertPhones => "units",
+            _ => "other:" + mapping.ClassName,
+        };
+
+        /// <summary>Whether a stored class is the one the bracket names.</summary>
+        private static bool SameClass(IPhNaturalClass? held, RuleClass bracket)
+        {
+            if (held is null)
+                return false;
+            if (bracket.NamedClass is { } named)
+                return held.Guid == named.Guid;
+            if (held is not IPhNCFeatures { FeaturesOA: { } structure })
+                return false;
+            var abbreviation = held.Abbreviation.BestAnalysisAlternative.Text;
+            if (!string.IsNullOrEmpty(abbreviation) && !abbreviation.StartsWith("***", StringComparison.Ordinal))
+                return false;
+            var stored = structure.FeatureSpecsOC.OfType<IFsClosedValue>().Select(spec => (spec.FeatureRA?.Guid, spec.ValueRA?.Guid)).ToList();
+            return stored.Count == structure.FeatureSpecsOC.Count && stored.Count == bracket.Features.Count &&
+                stored.ToHashSet().SetEquals(bracket.Features.Select(f => ((Guid?)f.Feature.Guid, (Guid?)f.Value.Guid)));
         }
 
-        /// <summary>Pairs new positions with old ones by longest common subsequence, taking the leftmost match on a tie.</summary>
-        internal static Dictionary<int, int> Match(IReadOnlyList<string> old, IReadOnlyList<string> wanted)
+        /// <summary>Keeps a column's object and sets only the fields its new text changes.</summary>
+        private void InputInPlace((int Index, RecordChange Change) item, string role, int n, ICmObject context, RuleNode node, ClassResolver classes)
         {
-            var table = new int[old.Count + 1, wanted.Count + 1];
-            for (var i = old.Count - 1; i >= 0; i--)
-                for (var j = wanted.Count - 1; j >= 0; j--)
-                    table[i, j] = old[i] == wanted[j] ? table[i + 1, j + 1] + 1 : Math.Max(table[i + 1, j], table[i, j + 1]);
-            var pairs = new Dictionary<int, int>();
-            for (int i = 0, j = 0; i < old.Count && j < wanted.Count;)
+            var id = CanonicalId.FromGuid(context.Guid);
+            switch (node)
             {
-                if (old[i] == wanted[j] && table[i, j] == table[i + 1, j + 1] + 1) pairs[j++] = i++;
-                else if (table[i + 1, j] >= table[i, j + 1]) i++;
-                else j++;
+                case RuleUnit unit:
+                    var held = context is IPhSimpleContextSeg segment ? segment.FeatureStructureRA?.Guid : ((IPhSimpleContextBdry)context).FeatureStructureRA?.Guid;
+                    if (held != unit.Unit.Guid)
+                        SetUnit(item, $"{role}:unit:{n}", id, unit);
+                    break;
+                case RuleClass naturalClass:
+                    if (!SameClass(((IPhSimpleContextNC)context).FeatureStructureRA, naturalClass))
+                        Add(Operation(Id($"{role}:class:{n}"), PhSimpleContextNCFeatureStructureOperationKinds.SetFeatureStructure, id,
+                            new { @ref = classes.Resolve(item, naturalClass, role + ":in" + n).Value }), item.Index);
+                    break;
+                case RuleGroup group:
+                    SequenceInPlace(item, role, n, (IPhSequenceContext)context, group, classes);
+                    break;
             }
-            return pairs;
         }
 
-        /// <summary>Within each gap, the i-th removed element is replaced by the i-th new one.</summary>
-        private static IEnumerable<(int Old, int New)> Replacements(Dictionary<int, int> matches, int oldCount, int newCount)
+        /// <summary>Aligns a sequence's members by position.</summary>
+        private void SequenceInPlace((int Index, RecordChange Change) item, string role, int n, IPhSequenceContext sequence, RuleGroup group, ClassResolver classes)
         {
-            var anchors = matches.OrderBy(pair => pair.Key).Select(pair => (New: pair.Key, Old: pair.Value))
-                .Append((New: newCount, Old: oldCount)).ToList();
-            int previousNew = -1, previousOld = -1;
-            foreach (var (matchedNew, matchedOld) in anchors)
+            var data = cache.LangProject.PhonologicalDataOA;
+            var sequenceId = CanonicalId.FromGuid(sequence.Guid);
+            var old = sequence.MembersRS.ToList();
+            var simulated = old.Select(member => member.Guid).ToList();
+            var final = new Guid[group.Members.Count];
+            var fresh = new List<int>();
+            var dropped = new List<ICmObject>();
+            for (var k = 0; k < group.Members.Count; k++)
             {
-                var removed = Enumerable.Range(previousOld + 1, matchedOld - previousOld - 1).ToList();
-                var added = Enumerable.Range(previousNew + 1, matchedNew - previousNew - 1).ToList();
-                for (var k = 0; k < Math.Min(removed.Count, added.Count); k++)
-                    yield return (removed[k], added[k]);
-                previousNew = matchedNew;
-                previousOld = matchedOld;
+                if (k < old.Count && InputKind(old[k]) == InputKind(group.Members[k], item.Change))
+                {
+                    final[k] = old[k].Guid;
+                    InputInPlace(item, $"{role}:m{n}:{k}", k, old[k], group.Members[k], classes);
+                    continue;
+                }
+                fresh.Add(k);
+                if (k < old.Count)
+                    dropped.Add(old[k]);
             }
+            for (var k = group.Members.Count; k < old.Count; k++)
+                dropped.Add(old[k]);
+            foreach (var member in dropped)
+            {
+                var memberId = CanonicalId.FromGuid(member.Guid);
+                Add(Operation(Id($"{role}:member-remove:{n}:{member.Guid:N}"), PhSequenceContextMembersOperationKinds.RemoveRefMembers, sequenceId,
+                    new { member = memberId.Value }), item.Index);
+                if (member.Owner == data && member.ReferringObjects.All(user => user == sequence))
+                    Add(Operation(Id($"{role}:member-delete:{n}:{member.Guid:N}"), AffixProcessMemberDeleteOperationKinds.DeleteContext, memberId, new { }), item.Index);
+                simulated.Remove(member.Guid);
+            }
+            foreach (var k in fresh)
+            {
+                var member = CreateMember(item, role, n, k, group.Members[k], classes);
+                final[k] = member.ToGuid();
+                Add(Operation(Id($"{role}:m{n}:{k}:add"), PhSequenceContextMembersOperationKinds.AddRefMembers, sequenceId,
+                    new { member = member.Value }, Placed(simulated, k == 0 ? null : final[k - 1], member.ToGuid())), item.Index);
+            }
+        }
+
+        private CanonicalId CreateMember((int Index, RecordChange Change) item, string role, int n, int k, RuleNode node, ClassResolver classes)
+        {
+            var data = CanonicalId.FromGuid(cache.LangProject.PhonologicalDataOA.Guid);
+            var member = Id($"{role}:member:{n}:{k}");
+            var memberRole = $"{role}:m{n}:{k}";
+            if (node is RuleUnit memberUnit)
+            {
+                Add(Operation(Id(memberRole + ":create"), PhPhonDataContextsOperationKinds.Create, data,
+                    new { @class = memberUnit.Unit is IPhPhoneme ? "PhSimpleContextSeg" : "PhSimpleContextBdry" }, entity: member), item.Index);
+                SetUnit(item, memberRole, member, memberUnit);
+            }
+            else
+            {
+                Add(Operation(Id(memberRole + ":create"), PhPhonDataContextsOperationKinds.Create, data,
+                    new { @class = "PhSimpleContextNC" }, entity: member), item.Index);
+                Add(Operation(Id(memberRole + ":class"), PhSimpleContextNCFeatureStructureOperationKinds.SetFeatureStructure, member,
+                    new { @ref = classes.Resolve(item, (RuleClass)node, memberRole).Value }), item.Index);
+            }
+            return member;
         }
 
         /// <summary>The placement that puts a new member right after its predecessor.</summary>
@@ -247,26 +340,11 @@ public sealed partial class RecordChangeSetLowerer
                         new { @ref = classes.Resolve(item, naturalClass, role + ":in" + n).Value }), item.Index);
                     break;
                 case RuleGroup group:
-                    var data = CanonicalId.FromGuid(cache.LangProject.PhonologicalDataOA.Guid);
                     CanonicalId? previous = null;
                     for (var k = 0; k < group.Members.Count; k++)
                     {
-                        var member = Id($"{role}:member:{n}:{k}");
-                        var memberRole = $"{role}:m{n}:{k}";
-                        if (group.Members[k] is RuleUnit memberUnit)
-                        {
-                            Add(Operation(Id(memberRole + ":create"), PhPhonDataContextsOperationKinds.Create, data,
-                                new { @class = memberUnit.Unit is IPhPhoneme ? "PhSimpleContextSeg" : "PhSimpleContextBdry" }, entity: member), item.Index);
-                            SetUnit(item, memberRole, member, memberUnit);
-                        }
-                        else
-                        {
-                            Add(Operation(Id(memberRole + ":create"), PhPhonDataContextsOperationKinds.Create, data,
-                                new { @class = "PhSimpleContextNC" }, entity: member), item.Index);
-                            Add(Operation(Id(memberRole + ":class"), PhSimpleContextNCFeatureStructureOperationKinds.SetFeatureStructure, member,
-                                new { @ref = classes.Resolve(item, (RuleClass)group.Members[k], memberRole).Value }), item.Index);
-                        }
-                        Add(Operation(Id(memberRole + ":add"), PhSequenceContextMembersOperationKinds.AddRefMembers, entity,
+                        var member = CreateMember(item, role, n, k, group.Members[k], classes);
+                        Add(Operation(Id($"{role}:m{n}:{k}:add"), PhSequenceContextMembersOperationKinds.AddRefMembers, entity,
                             new { member = member.Value }, previous is { } prior ? new Placement(prior, null) : null), item.Index);
                         previous = member;
                     }
@@ -289,50 +367,34 @@ public sealed partial class RecordChangeSetLowerer
         {
             var role = $"{item.Index}:{item.Change.Kind}";
             var oldOutputs = process.OutputOS.ToList();
-            var oldTexts = Elements(item.Change, () => RuleNotation.RenderElements(process, RuleField.AffixOutput, cache));
-            var newTexts = Elements(item.Change, () => RuleNotation.RenderElements(text, cache));
-            var matches = Match(oldTexts, newTexts);
+            var kinds = text.Nodes.Select(node => OutputKind(node, item.Change)).ToList();
             var simulated = oldOutputs.Select(output => output.Guid).ToList();
             for (var i = 0; i < oldOutputs.Count; i++)
             {
-                if (matches.ContainsValue(i))
+                if (i < kinds.Count && OutputKind(oldOutputs[i]) == kinds[i])
                     continue;
                 Add(Operation(Id($"{role}:delete:{oldOutputs[i].Guid:N}"), AffixProcessMemberDeleteOperationKinds.DeleteOutput,
                     CanonicalId.FromGuid(oldOutputs[i].Guid), new { }), item.Index);
                 simulated.Remove(oldOutputs[i].Guid);
             }
-            var finalOrder = new Guid[newTexts.Count];
-            for (var n = 0; n < newTexts.Count; n++)
+            var finalOrder = new Guid[kinds.Count];
+            for (var n = 0; n < kinds.Count; n++)
             {
                 var node = text.Nodes[n];
                 if (node is RuleModify stemModify && gaps.Contains(inputs[stemModify.Index - 1]))
                     throw Refuse(RefusalCodes.RuleNotationContextNotAllowed, item.Change, StemModifyReason);
-                CanonicalId entity;
-                if (matches.TryGetValue(n, out var kept))
+                if (node is RuleInsertUnits units && units.Units.Select(unit => unit.Unit.Guid).Distinct().Count() != units.Units.Count)
+                    throw Refuse(RefusalCodes.RuleNotationUnsupportedClass, item.Change,
+                        "An inserted group names one unit twice; the content list holds each unit once.");
+                if (n < oldOutputs.Count && OutputKind(oldOutputs[n]) == kinds[n])
                 {
-                    entity = CanonicalId.FromGuid(oldOutputs[kept].Guid);
-                    finalOrder[n] = oldOutputs[kept].Guid;
-                    var held = oldOutputs[kept] switch
-                    {
-                        IMoCopyFromInput copy => copy.ContentRA?.Guid,
-                        IMoModifyFromInput modify => modify.ContentRA?.Guid,
-                        _ => null,
-                    };
-                    var wanted = node switch { RuleCopy c => inputs[c.Index - 1], RuleModify m => inputs[m.Index - 1], _ => (Guid?)null };
-                    if (wanted is { } target && held != target)
-                        SetContent(item, $"{role}:content:{n}", node, entity, target);
+                    finalOrder[n] = oldOutputs[n].Guid;
+                    OutputInPlace(item, role, n, oldOutputs[n], node, inputs, classes);
                     continue;
                 }
-                entity = Id($"{role}:output:{n}");
+                var entity = Id($"{role}:output:{n}");
                 finalOrder[n] = entity.ToGuid();
-                var className = node switch
-                {
-                    RuleCopy => "MoCopyFromInput",
-                    RuleModify => "MoModifyFromInput",
-                    RuleClass => "MoInsertNC",
-                    RuleInsertUnits => "MoInsertPhones",
-                    _ => throw Refuse(RefusalCodes.RuleNotationContextNotAllowed, item.Change, "An output holds copies, classes and inserted units."),
-                };
+                var className = kinds[n] switch { "copy" => "MoCopyFromInput", "modify" => "MoModifyFromInput", "class" => "MoInsertNC", _ => "MoInsertPhones" };
                 Add(Operation(Id($"{role}:create:{n}"), MoAffixProcessOutputOperationKinds.Create, processId, new { @class = className },
                     Placed(simulated, n == 0 ? null : finalOrder[n - 1], entity.ToGuid()), entity), item.Index);
                 switch (node)
@@ -350,14 +412,50 @@ public sealed partial class RecordChangeSetLowerer
                             new { @ref = classes.Resolve(item, insertClass, $"{role}:out{n}").Value }), item.Index);
                         break;
                     case RuleInsertUnits insert:
-                        if (insert.Units.Select(unit => unit.Unit.Guid).Distinct().Count() != insert.Units.Count)
-                            throw Refuse(RefusalCodes.RuleNotationUnsupportedClass, item.Change,
-                                "An inserted group names one unit twice; the content list holds each unit once.");
                         for (var k = 0; k < insert.Units.Count; k++)
                             Add(Operation(Id($"{role}:unit:{n}:{k}"), MoInsertPhonesContentOperationKinds.AddRefContent, entity,
                                 new { member = CanonicalId.FromGuid(insert.Units[k].Unit.Guid).Value }), item.Index);
                         break;
                 }
+            }
+        }
+
+        /// <summary>Keeps an output mapping's object and sets only the fields its new text changes.</summary>
+        private void OutputInPlace((int Index, RecordChange Change) item, string role, int n, ICmObject mapping, RuleNode node,
+            List<Guid> inputs, ClassResolver classes)
+        {
+            var id = CanonicalId.FromGuid(mapping.Guid);
+            switch (node)
+            {
+                case RuleCopy copy:
+                    if (((IMoCopyFromInput)mapping).ContentRA?.Guid != inputs[copy.Index - 1])
+                        SetContent(item, $"{role}:content:{n}", node, id, inputs[copy.Index - 1]);
+                    break;
+                case RuleModify modify:
+                    var held = (IMoModifyFromInput)mapping;
+                    if (held.ContentRA?.Guid != inputs[modify.Index - 1])
+                        SetContent(item, $"{role}:content:{n}", node, id, inputs[modify.Index - 1]);
+                    if (!SameClass(held.ModificationRA, modify.Modification))
+                        Add(Operation(Id($"{role}:modification:{n}"), MoModifyFromInputModificationOperationKinds.SetModification, id,
+                            new { @ref = classes.Resolve(item, modify.Modification, $"{role}:out{n}").Value }), item.Index);
+                    break;
+                case RuleClass insertClass:
+                    if (!SameClass(((IMoInsertNC)mapping).ContentRA, insertClass))
+                        Add(Operation(Id($"{role}:insert-class:{n}"), MoInsertNCContentOperationKinds.SetContent, id,
+                            new { @ref = classes.Resolve(item, insertClass, $"{role}:out{n}").Value }), item.Index);
+                    break;
+                case RuleInsertUnits insert:
+                    var stored = ((IMoInsertPhones)mapping).ContentRS.Select(unit => unit.Guid).ToList();
+                    var common = 0;
+                    while (common < stored.Count && common < insert.Units.Count && stored[common] == insert.Units[common].Unit.Guid)
+                        common++;
+                    for (var k = common; k < stored.Count; k++)
+                        Add(Operation(Id($"{role}:unit-remove:{n}:{stored[k]:N}"), MoInsertPhonesContentOperationKinds.RemoveRefContent, id,
+                            new { member = CanonicalId.FromGuid(stored[k]).Value }), item.Index);
+                    for (var k = common; k < insert.Units.Count; k++)
+                        Add(Operation(Id($"{role}:unit:{n}:{k}"), MoInsertPhonesContentOperationKinds.AddRefContent, id,
+                            new { member = CanonicalId.FromGuid(insert.Units[k].Unit.Guid).Value }), item.Index);
+                    break;
             }
         }
 

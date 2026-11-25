@@ -335,8 +335,11 @@ constraint on a class); a field the text already says (a copy's, modify's or ins
 a group's members) is shown there and an import refuses a change to it. Adding, removing or moving a member under those keys is not offered, because the
 text is the one key that does it. Clearing `input` or `output` is not offered either: an affix process needs at least one column and one step. The fields of a phonological rule are shown and an import refuses a change to one with `rule-notation.read-only`.
 
-- **Writing an affix process.** An import reads the new text, checks it, and diffs it against the project by longest common subsequence of the canonical text of
-  each element (Input columns, Output steps), leftmost on a tie. A kept element keeps its object; a changed or moved element is deleted and created, and a copy or
+- **Writing an affix process.** An import reads the new text, checks it, and aligns it with the project position by position, separately for Input columns and Output steps,
+  with no move detection. At a position whose kind is unchanged (a copy, a modify, an insertion of units, an insertion of a class, a segment, class or boundary
+  context, a group, the gap) the object and its GUID are kept and only the changed fields are set (content, modification class, phoneme, boundary, class, the units of
+  an insertion, the members of a group); `A B C D` becoming `A B D C` is two in-place edits. A position whose kind differs, or that exists on one side only, deletes
+  the old object and creates the new one. A copy or
   modify has its content set explicitly from its `$n` against the Input as it will stand, so a change to Input and Output in one file is checked together. An
   Input-only change that would leave a kept Output step pointing at a column it removes is refused (`rule-notation.dangling-index`). A column that was a group
   also drops the member contexts only it used, as FieldWorks's editor does. An anonymous class written in a bracket is created as a new natural class named
@@ -426,6 +429,11 @@ record-data:
 - **What an import writes.** `name`, `description`, `direction` (a whole number) and `disabled` (true when the rule is switched off), and on each right-hand side
   `input-poses`, `req-rule-feats` and `excl-rule-feats` (links to the categories and rule properties the right-hand side requires or excludes). Each is a typed
   operation, as a lexicon scalar is. The same holds for a metathesis rule's `name` and `description`.
+  Each is a shape FieldWorks's own rule editor makes (Motif ADR 0003), in `MorphologyParts.xml` of the FieldWorks Configuration folder: `name` and `description` are the
+  `PhSegmentRule-Detail-NameAllA` and `PhSegmentRule-Detail-DescriptionAllA` multistring slices, `disabled` is the "Active" checkbox
+  (`PhSegmentRule-Detail-Active`, toggled), `direction` is the `PhSegmentRule-Detail-Direction` combo box over `LeftToRightIterative`, `RightToLeftIterative` and `Simultaneous`,
+  and `input-poses`, `req-rule-feats` and `excl-rule-feats` are the `PhSegRuleRHS-Detail-RequiredPOSes`, `-RequiredRuleFeats` and `-ExcludedRuleFeats` vector reference slices
+  (`defaultVectorReference`, as `VectorReferenceLauncher` adds and removes a link). A metathesis rule takes the same `PhSegmentRule` parts.
 - **What an import refuses.** `struc-desc`, `struc-change`, `left-context` and `right-context` are shown in [rule-formula notation](#rule-formula-notation) and a
   change to one is refused with `rule-notation.read-only`, and its siblings in the same file with it. A rule with several right-hand sides shows each of them,
   and adding or removing one in the file is refused (`CreateNotWritable`, `DeleteNotWritable`): they are made by the typed composers.

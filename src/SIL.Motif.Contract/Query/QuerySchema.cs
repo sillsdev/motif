@@ -81,7 +81,9 @@ public static class QuerySchema
             ["x-columns"] = columns,
             ["x-reserved"] = new JsonArray([.. QueryOps.ReservedKinds.Select(kind => (JsonNode?)kind)]),
         };
-        return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) + "\n";
+        // The indented writer emits Environment.NewLine; pin LF so output is identical on every platform.
+        return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping })
+            .ReplaceLineEndings("\n") + "\n";
     }
 
     private static string CamelCase(string name) => char.ToLowerInvariant(name[0]) + name[1..];

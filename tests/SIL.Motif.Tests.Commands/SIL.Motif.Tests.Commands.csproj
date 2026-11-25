@@ -14,6 +14,7 @@
     <EmbeddedResource Include="Fixtures/WhyNotRecorded/*.json" LogicalName="WhyNotRecorded.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Fixtures/WhyLost/*" LogicalName="WhyLost.%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\..\manifest\record-catalog-coverage.tsv" LogicalName="record-catalog-coverage.tsv" />
+    <EmbeddedResource Include="Fixtures/RecordExport/*" LogicalName="RecordExport.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Store/schema49.sql" />
     <SupportedPlatform Include="windows" />
     <ProjectReference Include="..\..\src\SIL.Motif.Cli\SIL.Motif.Cli.csproj" />

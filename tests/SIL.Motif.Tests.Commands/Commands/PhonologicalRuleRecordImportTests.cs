@@ -205,7 +205,6 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
             category = cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Last().Guid;
             feat = cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS.Single().Guid;
         }
-        static string Link(Guid target) => "[x](/objects/" + target.ToString("D") + "){.name guid=" + target.ToString("D") + "}";
         Import(path, "scalars", ruleId, document =>
         {
             document.Data.Set("direction", RecordScalar.Of(1));
@@ -223,6 +222,111 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
             Assert.True(rule.Disabled);
             Assert.Empty(PlanEdit(cache, ruleId, _ => { }, out _).ChangeSet.Changes);
         }
+    }
+
+    private static string Link(Guid target) => "[x](/objects/" + target.ToString("D") + "){.name guid=" + target.ToString("D") + "}";
+
+    private static void Seed(string path, string draft, Guid rule, bool regular)
+    {
+        Guid category, feat;
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            category = cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Last().Guid;
+            feat = cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS.Single().Guid;
+        }
+        Import(path, draft, rule, document =>
+        {
+            document.Data.Set("description", new RecordAlternatives().Add("en", new RecordScalar("Seeded **bold** description.")));
+            document.Data.Set("direction", RecordScalar.Of(1));
+            document.Data.Set("disabled", RecordScalar.Of(true));
+            if (!regular) return;
+            Rhs(document).Set("input-poses", new RecordList().Add(new RecordScalar(Link(category))));
+            Rhs(document).Set("req-rule-feats", new RecordList().Add(new RecordScalar(Link(feat))));
+            Rhs(document).Set("excl-rule-feats", new RecordList().Add(new RecordScalar(Link(feat))));
+        });
+    }
+
+    [Fact]
+    public void ClearingAndRemovingTypedFieldsOnARegularRuleLowerToTheirOperationsAndReadBack()
+    {
+        var path = Start(out var ruleId, out _);
+        Seed(path, "seed", ruleId, regular: true);
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            var rule = (IPhRegularRule)cache.ServiceLocator.GetObject(ruleId);
+            Assert.True(rule.Description.get_String(cache.DefaultAnalWs).RunCount > 1);
+            Assert.Single(rule.RightHandSidesOS.Single().ExclRuleFeatsRC);
+            Assert.Equal(new[]
+            {
+                "grammar/phSegRuleRHS/removeRefExclRuleFeats", "grammar/phSegRuleRHS/removeRefInputPOSes", "grammar/phSegRuleRHS/removeRefReqRuleFeats",
+                "grammar/phSegmentRule/clearDirection", "grammar/phSegmentRule/clearDisabled", "grammar/phSegmentRule/clearName", "text/setRichString",
+            }, Lower(cache, ruleId, ClearEverything).Operations.Select(operation => operation.Kind).Order().ToArray());
+        }
+        Import(path, "clear", ruleId, ClearEverything);
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            var rule = (IPhRegularRule)cache.ServiceLocator.GetObject(ruleId);
+            var rhs = rule.RightHandSidesOS.Single();
+            Assert.Equal(string.Empty, rule.Name.get_String(cache.DefaultAnalWs).Text ?? string.Empty);
+            Assert.Equal(string.Empty, rule.Description.get_String(cache.DefaultAnalWs).Text ?? string.Empty);
+            Assert.False(rule.Disabled);
+            Assert.Empty(rhs.InputPOSesRC);
+            Assert.Empty(rhs.ReqRuleFeatsRC);
+            Assert.Empty(rhs.ExclRuleFeatsRC);
+            Assert.Empty(PlanEdit(cache, ruleId, _ => { }, out _).ChangeSet.Changes);
+        }
+    }
+
+    [Fact]
+    public void ClearingTheTypedFieldsOnAMetathesisRuleLowerToTheirOperationsAndReadBack()
+    {
+        var path = Start(out _, out var swapId);
+        Seed(path, "seed", swapId, regular: false);
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+            Assert.Equal(new[]
+            {
+                "grammar/phSegmentRule/clearDirection", "grammar/phSegmentRule/clearDisabled", "grammar/phSegmentRule/clearName", "text/setRichString",
+            }, Lower(cache, swapId, ClearScalars).Operations.Select(operation => operation.Kind).Order().ToArray());
+        Import(path, "clear", swapId, ClearScalars);
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            var swap = (IPhMetathesisRule)cache.ServiceLocator.GetObject(swapId);
+            Assert.Equal(string.Empty, swap.Name.get_String(cache.DefaultAnalWs).Text ?? string.Empty);
+            Assert.Equal(string.Empty, swap.Description.get_String(cache.DefaultAnalWs).Text ?? string.Empty);
+            Assert.False(swap.Disabled);
+            Assert.Empty(PlanEdit(cache, swapId, _ => { }, out _).ChangeSet.Changes);
+        }
+    }
+
+    [Fact]
+    public void ExcludedRulePropertiesAddAndRemoveThroughTheirOperations()
+    {
+        var path = Start(out var ruleId, out _);
+        Guid feat;
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            feat = cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS.Single().Guid;
+            Assert.Equal(new[] { "grammar/phSegRuleRHS/addRefExclRuleFeats" }, Lower(cache, ruleId, document =>
+                Rhs(document).Set("excl-rule-feats", new RecordList().Add(new RecordScalar(Link(feat))))).Operations.Select(operation => operation.Kind).ToArray());
+        }
+        Import(path, "excl", ruleId, document => Rhs(document).Set("excl-rule-feats", new RecordList().Add(new RecordScalar(Link(feat)))));
+        using var held = new FwDataProjectLoader().LoadCache(path);
+        Assert.Equal(feat, ((IPhRegularRule)held.ServiceLocator.GetObject(ruleId)).RightHandSidesOS.Single().ExclRuleFeatsRC.Single().Guid);
+    }
+
+    private static void ClearScalars(RecordDocument document)
+    {
+        ((RecordAlternatives)document.Data["name"]!).Items.Clear();
+        ((RecordAlternatives)document.Data["description"]!).Items.Clear();
+        document.Data["direction"] = null;
+        document.Data["disabled"] = null;
+    }
+
+    private static void ClearEverything(RecordDocument document)
+    {
+        ClearScalars(document);
+        foreach (var key in new[] { "input-poses", "req-rule-feats", "excl-rule-feats" })
+            ((RecordList)Rhs(document)[key]!).Items.Clear();
     }
 
     [Fact]

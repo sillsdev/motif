@@ -391,6 +391,7 @@ Covered	MoInflClass	name	MoInflClass.Name	ClearAlternative	grammar/moInflClass/c
 Covered	MoInflClass	subclasses	MoInflClass.Subclasses	AddObject	grammar/moInflClass/createSubclasses	-	-
 Covered	MoInsertNC	content	MoInsertNC.Content	Set	grammar/moInsertNC/setContent	written-by-output	-
 Covered	MoInsertPhones	content	MoInsertPhones.Content	AddReference	grammar/moInsertPhones/addRefContent	written-by-output	-
+Covered	MoInsertPhones	content	MoInsertPhones.Content	RemoveReference	grammar/moInsertPhones/removeRefContent	written-by-output	-
 Covered	MoModifyFromInput	content	MoModifyFromInput.Content	Set	grammar/moModifyFromInput/setContent	written-by-output	-
 Covered	MoModifyFromInput	modification	MoModifyFromInput.Modification	Set	grammar/moModifyFromInput/setModification	written-by-output	-
 Covered	MoMorphType	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
@@ -458,15 +459,6 @@ Covered	PhIterationContext	description	PhPhonContext.Description	SetRich	text/se
 Covered	PhIterationContext	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
 Covered	PhIterationContext	member	PhIterationContext.Member	Set	grammar/phIterationContext/setMember	-	-
 Covered	PhIterationContext	member	PhIterationContext.Member	Clear	grammar/phIterationContext/clearMember	-	-
-Covered	PhMetathesisRule	description	PhSegmentRule.Description	SetPlainRich	text/setRichString	-	-
-Covered	PhMetathesisRule	description	PhSegmentRule.Description	SetRich	text/setRichString	-	-
-Covered	PhMetathesisRule	description	PhSegmentRule.Description	ClearRich	text/setRichString	-	-
-Covered	PhMetathesisRule	direction	PhSegmentRule.Direction	Set	grammar/phSegmentRule/setDirection	-	-
-Covered	PhMetathesisRule	direction	PhSegmentRule.Direction	Clear	grammar/phSegmentRule/clearDirection	-	-
-Covered	PhMetathesisRule	disabled	PhSegmentRule.Disabled	Set	grammar/phSegmentRule/setDisabled	-	-
-Covered	PhMetathesisRule	disabled	PhSegmentRule.Disabled	Clear	grammar/phSegmentRule/clearDisabled	-	-
-Covered	PhMetathesisRule	name	PhSegmentRule.Name	SetAlternative	grammar/phSegmentRule/setName	-	-
-Covered	PhMetathesisRule	name	PhSegmentRule.Name	ClearAlternative	grammar/phSegmentRule/clearName	-	-
 Covered	PhPhonRuleFeat	abbreviation	CmPossibility.Abbreviation	SetAlternative	lists/cmPossibility/setAbbreviation	-	-
 Covered	PhPhonRuleFeat	abbreviation	CmPossibility.Abbreviation	ClearAlternative	lists/cmPossibility/clearAbbreviation	-	-
 Covered	PhPhonRuleFeat	description	CmPossibility.Description	SetPlainRich	text/setRichString	-	-
@@ -478,33 +470,11 @@ Covered	PhPhonRuleFeat	item	PhPhonRuleFeat.Item	Set	grammar/phPhonRuleFeat/setIt
 Covered	PhPhonRuleFeat	item	PhPhonRuleFeat.Item	Clear	grammar/phPhonRuleFeat/clearItem	-	-
 Covered	PhPhonRuleFeat	name	CmPossibility.Name	SetAlternative	lists/cmPossibility/setName	-	-
 Covered	PhPhonRuleFeat	name	CmPossibility.Name	ClearAlternative	lists/cmPossibility/clearName	-	-
-Covered	PhRegularRule	description	PhSegmentRule.Description	SetPlainRich	text/setRichString	-	-
-Covered	PhRegularRule	description	PhSegmentRule.Description	SetRich	text/setRichString	-	-
-Covered	PhRegularRule	description	PhSegmentRule.Description	ClearRich	text/setRichString	-	-
-Covered	PhRegularRule	direction	PhSegmentRule.Direction	Set	grammar/phSegmentRule/setDirection	-	-
-Covered	PhRegularRule	direction	PhSegmentRule.Direction	Clear	grammar/phSegmentRule/clearDirection	-	-
-Covered	PhRegularRule	disabled	PhSegmentRule.Disabled	Set	grammar/phSegmentRule/setDisabled	-	-
-Covered	PhRegularRule	disabled	PhSegmentRule.Disabled	Clear	grammar/phSegmentRule/clearDisabled	-	-
-Covered	PhRegularRule	name	PhSegmentRule.Name	SetAlternative	grammar/phSegmentRule/setName	-	-
-Covered	PhRegularRule	name	PhSegmentRule.Name	ClearAlternative	grammar/phSegmentRule/clearName	-	-
-Covered	PhSegRuleRHS	excl-rule-feats	PhSegRuleRHS.ExclRuleFeats	AddReference	grammar/phSegRuleRHS/addRefExclRuleFeats	-	-
-Covered	PhSegRuleRHS	excl-rule-feats	PhSegRuleRHS.ExclRuleFeats	RemoveReference	grammar/phSegRuleRHS/removeRefExclRuleFeats	-	-
-Covered	PhSegRuleRHS	input-poses	PhSegRuleRHS.InputPOSes	AddReference	grammar/phSegRuleRHS/addRefInputPOSes	-	-
-Covered	PhSegRuleRHS	input-poses	PhSegRuleRHS.InputPOSes	RemoveReference	grammar/phSegRuleRHS/removeRefInputPOSes	-	-
-Covered	PhSegRuleRHS	req-rule-feats	PhSegRuleRHS.ReqRuleFeats	AddReference	grammar/phSegRuleRHS/addRefReqRuleFeats	-	-
-Covered	PhSegRuleRHS	req-rule-feats	PhSegRuleRHS.ReqRuleFeats	RemoveReference	grammar/phSegRuleRHS/removeRefReqRuleFeats	-	-
-Covered	PhSegmentRule	description	PhSegmentRule.Description	SetPlainRich	text/setRichString	-	-
-Covered	PhSegmentRule	description	PhSegmentRule.Description	SetRich	text/setRichString	-	-
-Covered	PhSegmentRule	description	PhSegmentRule.Description	ClearRich	text/setRichString	-	-
-Covered	PhSegmentRule	direction	PhSegmentRule.Direction	Set	grammar/phSegmentRule/setDirection	-	-
-Covered	PhSegmentRule	direction	PhSegmentRule.Direction	Clear	grammar/phSegmentRule/clearDirection	-	-
-Covered	PhSegmentRule	disabled	PhSegmentRule.Disabled	Set	grammar/phSegmentRule/setDisabled	-	-
-Covered	PhSegmentRule	disabled	PhSegmentRule.Disabled	Clear	grammar/phSegmentRule/clearDisabled	-	-
-Covered	PhSegmentRule	name	PhSegmentRule.Name	SetAlternative	grammar/phSegmentRule/setName	-	-
-Covered	PhSegmentRule	name	PhSegmentRule.Name	ClearAlternative	grammar/phSegmentRule/clearName	-	-
 Covered	PhSequenceContext	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSequenceContext	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
 Covered	PhSequenceContext	members	PhSequenceContext.Members	AddReference	grammar/phSequenceContext/addRefMembers	written-by-input	-
+Covered	PhSequenceContext	members	PhSequenceContext.Members	InsertReference	grammar/phSequenceContext/addRefMembers	written-by-input	-
+Covered	PhSequenceContext	members	PhSequenceContext.Members	RemoveReference	grammar/phSequenceContext/removeRefMembers	written-by-input	-
 Covered	PhSimpleContextBdry	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSimpleContextBdry	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
 Covered	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructure	Set	grammar/phSimpleContextBdry/setFeatureStructure	written-by-input	-
@@ -1133,7 +1103,6 @@ OtherFields	MoInflClass	stem-names	MoInflClass.StemNames	RemoveObject	none	NoOpe
 OtherFields	MoInflClass	subclasses	MoInflClass.Subclasses	RemoveObject	none	NoOperationKind	-
 OtherFields	MoInsertNC	content	MoInsertNC.Content	Clear	none	NoOperationKind	-
 OtherFields	MoInsertPhones	content	MoInsertPhones.Content	InsertReference	none	NoOperationKind	-
-OtherFields	MoInsertPhones	content	MoInsertPhones.Content	RemoveReference	none	NoOperationKind	-
 OtherFields	MoInsertPhones	content	MoInsertPhones.Content	MoveReference	none	NoOperationKind	-
 OtherFields	MoModifyFromInput	content	MoModifyFromInput.Content	Clear	none	NoOperationKind	-
 OtherFields	MoModifyFromInput	modification	MoModifyFromInput.Modification	Clear	none	NoOperationKind	-
@@ -1251,8 +1220,6 @@ OtherFields	PhIterationContext	minimum	PhIterationContext.Minimum	Set	none	NoOpe
 OtherFields	PhIterationContext	minimum	PhIterationContext.Minimum	Clear	none	NoOperationKind	-
 OtherFields	PhIterationContext	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhIterationContext	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
-OtherFields	PhMetathesisRule	struc-desc	PhSegmentRule.StrucDesc	Set	none	UnsupportedChildClass	-
-OtherFields	PhMetathesisRule	struc-desc	PhSegmentRule.StrucDesc	Clear	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	confidence	CmPossibility.Confidence	Set	none	NoOperationKind	-
@@ -1280,21 +1247,6 @@ OtherFields	PhPhonRuleFeat	under-color	CmPossibility.UnderColor	Set	none	NoOpera
 OtherFields	PhPhonRuleFeat	under-color	CmPossibility.UnderColor	Clear	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	under-style	CmPossibility.UnderStyle	Set	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	under-style	CmPossibility.UnderStyle	Clear	none	NoOperationKind	-
-OtherFields	PhRegularRule	right-hand-sides	PhRegularRule.RightHandSides	AddObject	none	NoOperationKind	-
-OtherFields	PhRegularRule	right-hand-sides	PhRegularRule.RightHandSides	RemoveObject	none	NoOperationKind	-
-OtherFields	PhRegularRule	right-hand-sides	PhRegularRule.RightHandSides	MoveObject	none	NoOperationKind	-
-OtherFields	PhRegularRule	struc-desc	PhSegmentRule.StrucDesc	Set	none	UnsupportedChildClass	-
-OtherFields	PhRegularRule	struc-desc	PhSegmentRule.StrucDesc	Clear	none	NoOperationKind	-
-OtherFields	PhSegRuleRHS	left-context	PhSegRuleRHS.LeftContext	Set	none	UnsupportedChildClass	-
-OtherFields	PhSegRuleRHS	left-context	PhSegRuleRHS.LeftContext	Clear	none	NoOperationKind	-
-OtherFields	PhSegRuleRHS	right-context	PhSegRuleRHS.RightContext	Set	none	UnsupportedChildClass	-
-OtherFields	PhSegRuleRHS	right-context	PhSegRuleRHS.RightContext	Clear	none	NoOperationKind	-
-OtherFields	PhSegRuleRHS	struc-change	PhSegRuleRHS.StrucChange	Set	none	UnsupportedChildClass	-
-OtherFields	PhSegRuleRHS	struc-change	PhSegRuleRHS.StrucChange	Clear	none	NoOperationKind	-
-OtherFields	PhSegmentRule	struc-desc	PhSegmentRule.StrucDesc	Set	none	UnsupportedChildClass	-
-OtherFields	PhSegmentRule	struc-desc	PhSegmentRule.StrucDesc	Clear	none	NoOperationKind	-
-OtherFields	PhSequenceContext	members	PhSequenceContext.Members	InsertReference	none	NoOperationKind	-
-OtherFields	PhSequenceContext	members	PhSequenceContext.Members	RemoveReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	members	PhSequenceContext.Members	MoveReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSequenceContext	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
@@ -1645,6 +1597,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/phPhonData/createNaturalClasses	PhPhonData	NaturalClasses	AddObject	RequiredWhenNonempty	-	PhNCFeatures,PhNCSegments	Unspecified	False
 # Handler	grammar/phPhonData/createPhonRules	PhPhonData	PhonRules	AddObject	RequiredWhenNonempty	-	PhMetathesisRule,PhRegularRule	Unspecified	False
 # Handler	grammar/phPhonData/createPhonemeSets	PhPhonData	PhonemeSets	AddObject	RequiredWhenNonempty	-	PhPhonemeSet	Unspecified	False
+# Handler	grammar/phPhonData/deleteContext	PhPhonData	Contexts	RemoveObject	Forbidden	-	PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg	Unspecified	False
 # Handler	grammar/phPhonData/deleteEnvironments	(no direct field edit)
 # Handler	grammar/phPhonData/deleteNaturalClasses	(no direct field edit)
 # Handler	grammar/phPhonData/deletePhonRules	PhPhonData	PhonRules	RemoveObject	Forbidden	-		Unspecified	False

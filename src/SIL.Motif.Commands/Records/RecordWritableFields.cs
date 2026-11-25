@@ -51,7 +51,7 @@ public sealed class RecordWritableFields : IWritableFields
                     var candidates = (IsTypedOnlyMembership(binding.DeclaringClass, binding.Field) ? Array.Empty<Candidate>() : (binding.IsCustom
                         ? catalog[(CustomFieldOperationKinds.DeclaringClass, CustomFieldCatalog.TypeOf(field) ?? "", handlerVerb)]
                         : parts || (IsRuleFormula(field) && verb == RecordWriteVerb.Clear) ? [] : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)])).ToArray();
-                    var formula = owned && verb is RecordWriteVerb.Set or RecordWriteVerb.AddReference
+                    var formula = owned && verb is RecordWriteVerb.Set or RecordWriteVerb.AddReference or RecordWriteVerb.RemoveReference or RecordWriteVerb.InsertReference
                         ? catalog[(binding.DeclaringClass, binding.Field, handlerVerb)].ToArray() : [];
                     entries.Add((type.Name, field.Name, verb), new FieldEntry(type.Name, field, structure ? handlerVerb : verb, candidates, refusal,
                         IsFeatureStructure(field) ? [FeatureStructureClass] : IsRuleFormula(field) ? RuleFormulaChildren(binding.Field) : null,

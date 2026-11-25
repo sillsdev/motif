@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Xml.Linq;
 using SIL.LCModel;
 using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -13,7 +14,8 @@ using Xunit;
 namespace SIL.TextEditing.Project.Tests
 {
     /// <summary>Checks an exported file, read back, against the project itself: every schema field of every owned object is read from the cache again,
-    /// by code that shares nothing with the exporter, and compared with what the file says. A stored field that is neither in the file nor reported fails too.</summary>
+    /// by code that shares nothing with the exporter, and compared with what the file says. A stored field that is neither in the file nor reported fails too.
+    /// The field behind each schema key is found here, from the shipped overlays and the metadata, and never from the schema's own bindings, so a wrong binding fails.</summary>
     static class ExportOracle
     {
         const string Plumbing = "|Self|Owner|OwningFlid|OwnOrd|Guid|ClassID|ShortNameTSS|";
@@ -26,6 +28,43 @@ namespace SIL.TextEditing.Project.Tests
             Object(cache, result, export, root, type, read.Data, export.Path);
         }
 
+        static readonly XElement[] Overlays = new[] { ProjectRecordSchema.LexiconEntryOverlay, ProjectRecordSchema.NotebookRecordOverlay, ProjectRecordSchema.ListItemOverlay }
+            .Select(xml => XDocument.Parse(xml).Root!).ToArray();
+
+        /// <summary>The field a schema key stands for on a class: a declared key through the shipped overlays and the class's ancestors, a <c>custom-</c> key through the project's custom fields.</summary>
+        static int Flid(IFwMetaDataCache md, IFwMetaDataCacheManaged managed, string className, string key)
+        {
+            int classId = md.GetClassId(className);
+            if (key.StartsWith("custom-", StringComparison.Ordinal))
+            {
+                foreach (int flid in managed.GetFields(classId, true, -1))
+                    if (managed.IsCustom(flid) && CustomKey(md.GetOwnClsName(flid), md.GetFieldName(flid)) == key) return flid;
+                throw new InvalidOperationException("No custom field has the key " + key + " on " + className + ".");
+            }
+            for (int id = classId; id != 0; id = md.GetBaseClsId(id))
+            {
+                foreach (var overlay in Overlays)
+                    foreach (var field in overlay.Elements("class").Where(c => (string?)c.Attribute("name") == md.GetClassName(id)).SelectMany(c => c.Elements("field")))
+                        if ((string?)field.Attribute("key") == key) return md.GetFieldId2(id, (string)field.Attribute("name")!, false);
+                if (md.GetClassName(id) == "CmObject") break;
+            }
+            throw new InvalidOperationException("No overlay declares the key " + key + " on " + className + ".");
+        }
+
+        static string CustomKey(string owner, string name)
+        {
+            var key = new StringBuilder("custom-" + owner + "-");
+            for (int i = 0; i < name.Length; i++)
+            {
+                string text = char.IsHighSurrogate(name[i]) && i + 1 < name.Length ? name.Substring(i++, 2) : name[i].ToString();
+                int value = char.ConvertToUtf32(text, 0);
+                bool escape = value < 0x20 || (value >= 0x7F && value < 0xA0) || char.IsWhiteSpace(text, 0) || "./#%\\:*?\"<>|".Contains(text) || (value >= 0xFFFE && value <= 0xFFFF) || value == 0xFEFF;
+                if (!escape) key.Append(text);
+                else foreach (byte b in Encoding.UTF8.GetBytes(text)) key.Append('%').Append(b.ToString("X2"));
+            }
+            return key.ToString();
+        }
+
         static string N(string? s) => (s ?? string.Empty).Normalize(NormalizationForm.FormD);
 
         static void Object(LcmCache cache, ProjectRecordSchemaResult result, ProjectRecordExport export, ICmObject obj, RecordObjectType type, RecordObject data, string where)
@@ -34,7 +73,7 @@ namespace SIL.TextEditing.Project.Tests
             var md = (IFwMetaDataCache)cache.MetaDataCacheAccessor;
             var managed = (IFwMetaDataCacheManaged)md;
             Assert.Equal(obj.Guid, data.Guid);
-            var keys = result.Bindings.Keys[type.Name];
+            var keys = type.Fields.ToDictionary(f => f.Name, f => Flid(md, managed, type.Name, f.Name), StringComparer.Ordinal);
             foreach (var field in type.Fields)
             {
                 int flid = keys[field.Name];
@@ -123,7 +162,7 @@ namespace SIL.TextEditing.Project.Tests
             foreach (int flid in managed.GetFields(md.GetClassId(obj.ClassName), true, -1))
             {
                 string name = md.GetFieldName(flid);
-                if (Plumbing.Contains("|" + name + "|") || md.get_IsVirtual(flid) || keys.Values.Contains(flid)) continue;
+                if ((!managed.IsCustom(flid) && Plumbing.Contains("|" + name + "|")) || md.get_IsVirtual(flid) || keys.Values.Contains(flid)) continue;
                 if (!HasData(cache, obj, flid, (CellarPropertyType)md.GetFieldType(flid))) continue;
                 Assert.True(export.Unexported.Any(u => u.Object == obj.Guid && u.Field == name), where + " " + obj.ClassName + "." + name + " has data and is neither exported nor reported");
             }

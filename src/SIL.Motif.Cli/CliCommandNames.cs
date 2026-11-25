@@ -30,6 +30,8 @@ internal static class CliCommandNames
         if (verb == "proposal" && positionals.Count >= 2 && positionals[0] == "comment" &&
             positionals[1] is "add" or "edit" or "delete")
             return "proposal comment " + positionals[1];
+        if (verb == "record" && positionals is ["export"])
+            return "record export";
         if (verb == "proposal" && positionals is ["compare", ..])
             return "proposal compare";
         if (verb == "proposal" && positionals is ["trial", "export", ..])

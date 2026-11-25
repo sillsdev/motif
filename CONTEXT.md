@@ -59,6 +59,29 @@ _Avoid_: topic, category, area, tag
 Turning one Motif operation into the concrete changes that realize it against a particular store.
 _Avoid_: compilation, translation, expansion
 
+**Typed operation**:
+A named, checked change to one field of one object, such as setting a value, clearing it, or adding or moving a reference.
+Every edit, whether it comes from a Record file, a Composer or an agent, is lowered to Typed operations before it reaches a Proposal.
+_Avoid_: patch, raw write, setter
+
+**Harmony change type**:
+The kind of change Harmony records in a project's change log for one field. Every editable field has one, so that an edit made
+through Motif syncs and merges like the same edit made in FieldWorks.
+_Avoid_: CRDT op, event type
+
+**Record file**:
+One FieldWorks record (a lexical entry, a notebook record, a list item), or part of one, as one text file: its fields in a front
+matter, and its main long text as a Markdown body. People and agents edit a Record file and import it, and the differences come back
+as a Proposal. Its text form covers rich text, grammar notation and labels; other fields appear in it but change through Typed
+operations.
+_Avoid_: YAML file, entry file, export
+
+**Rule formula**:
+The text form of a rule's structure: what it matches and what it produces, written with phonemes, natural classes, features and
+boundaries, for example `[cons] / _ #`, or an affix process's input and output columns. It is how a rule appears in a Record file
+and in a diff.
+_Avoid_: rule string, rule text, regex
+
 **Proposal**:
 A stored, named set of Motif operations that is reviewable as one unit. It owns its attached
 Assessments, has a lifecycle, and can be applied to a language project or discarded. A Proposal does
@@ -182,6 +205,14 @@ superset: standard LIFT wherever LIFT has a place, and a small published set of 
 FieldWorks field. Other sources are converted to LIFT by tools outside Motif. It is exempt from the gain gate, never
 from the no-loss checks ([ADR 0033](docs/adr/0033-lexicon-import-accepts-only-lift-and-lowers-through-composers.md)).
 _Avoid_: merge (FieldWorks' LIFT merge is a different thing), JSONL import, dictionary load
+
+**Record file**:
+Motif's own edit and bulk format for records (a lexicon entry, a notebook record or a list
+item): `motif record export` writes it, a person or agent edits it, and `motif import` plans the edits back as Draft
+operations. It lists every value it leaves out, and it is refused whole once the project changes after the export; it
+is not an interchange format, and a lexicon from outside still enters as LIFT
+([ADR 0033](docs/adr/0033-lexicon-import-accepts-only-lift-and-lowers-through-composers.md) D1).
+_Avoid_: export file (Apply's read-back and Trial exports are different), LIFT file, backup
 
 **Attribution**:
 The source and licence of imported lexicon data, kept in the project: a short tag `<source>@<revision> <licence>` in
