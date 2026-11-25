@@ -76,6 +76,8 @@ public static class CorpusQueryCommand
         if (request.WithCounts && request.WriteWords is null) return Invalid("with-counts goes with write-words.");
         if (request.WriteWords is { } target0 && string.IsNullOrWhiteSpace(target0)) return Invalid("write-words names a file.");
         var groupsColumns = wantsCauses ? null : groupColumns;
+        // Refused before the slow parse index is built.
+        if (request.WriteWords is { } early && File.Exists(early) && !request.Force) return WriteWordsExists(early);
         foreach (var text in request.WhatIfRetire ?? [])
         {
             if (ReadingTarget.TryParse(text, out var target)) retire.Add(target);
@@ -220,9 +222,7 @@ public static class CorpusQueryCommand
             WordsWritten? written = null;
             if (request.WriteWords is { } writePath)
             {
-                if (File.Exists(writePath) && !request.Force)
-                    return CommandOutcome<CorpusFormsResponse>.Refused(new Refusal(RefusalCodes.QueryWriteWordsExists, FailureReason.InvalidArgument,
-                        $"write-words: '{writePath}' exists; nothing was written. Give --force to overwrite it or name another file."));
+                if (File.Exists(writePath) && !request.Force) return WriteWordsExists(writePath);
                 try { WriteWords(writePath, rows, request.WithCounts); }
                 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                 { return Invalid($"write-words: '{writePath}' cannot be written: {exception.Message}"); }
@@ -254,6 +254,10 @@ public static class CorpusQueryCommand
             return Invalid(exception.Message);
         }
     }
+
+    private static CommandOutcome<CorpusFormsResponse> WriteWordsExists(string path) =>
+        CommandOutcome<CorpusFormsResponse>.Refused(new Refusal(RefusalCodes.QueryWriteWordsExists, FailureReason.InvalidArgument,
+            $"write-words: '{path}' exists; nothing was written. Give --force to overwrite it or name another file."));
 
     // Written beside the target and moved into place, so a failed write never leaves half a word list.
     private static void WriteWords(string path, IReadOnlyList<CorpusFormRow> rows, bool withCounts)

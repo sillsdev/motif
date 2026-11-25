@@ -131,7 +131,7 @@ if (HelpFlagRewrite(args) is { } helpArguments)
 
 var usageVerb = args.Length > 0 ? args[0] : "cli";
 var usageArguments = args.Length > 0
-    ? ParseArgs(args[1..])
+    ? ParseArgs(args[1..], usageVerb == "query")
     : (new Dictionary<string, string>(StringComparer.Ordinal), new List<string>(),
         (IReadOnlyList<string>)Array.Empty<string>());
 usageArguments.Item2 = CliCommandNames.NormalizeQueryWords(usageVerb, usageArguments.Item1, usageArguments.Item2);
@@ -175,7 +175,7 @@ string? namedProject = null;
 
 try
 {
-    var (flags, parsedPositionals, forwardedArguments) = ParseArgs(rest);
+    var (flags, parsedPositionals, forwardedArguments) = ParseArgs(rest, verb == "query");
     // Pinned by `ASuccessfulJsonVerbPrintsExactlyOneDocumentAndPickKeepsTheNamedFields`.
     var pickSpec = flags.Remove("pick", out var pickValue) ? pickValue : null;
     var positionals = CliCommandNames.NormalizeQueryWords(verb, flags, parsedPositionals);
@@ -4156,7 +4156,7 @@ static bool TryParseExpectedContext(string? value, out ExpectedContext? expected
 }
 
 static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyList<string> Forwarded) ParseArgs(
-    string[] tokens)
+    string[] tokens, bool joinRepeatedCorpus = false)
 {
     var flags = new Dictionary<string, string>(StringComparer.Ordinal);
     var positionals = new List<string>();
@@ -4176,8 +4176,8 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
                 flags[name] = "true";
                 continue;
             }
-            // --autonomous is a switch, so the token after it stays a positional unless it is an explicit true or false.
-            if (name == CommandSurfacePolicy.AutonomousFlag[2..])
+            // --autonomous and --force are switches: the next token stays a positional unless it is true or false.
+            if (name == CommandSurfacePolicy.AutonomousFlag[2..] || name == "force")
             {
                 var explicitValue = i + 1 < tokens.Length && tokens[i + 1] is "true" or "false";
                 flags[name] = explicitValue ? tokens[++i] : "true";
@@ -4191,7 +4191,8 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
             else
             {
                 var value = tokens[++i];
-                flags[name] = name is "assessment" or "expect" or "job" or "with" or "corpus" && flags.TryGetValue(name, out var previous)
+                var joins = name is "assessment" or "expect" or "job" or "with" || (name == "corpus" && joinRepeatedCorpus);
+                flags[name] = joins && flags.TryGetValue(name, out var previous)
                     ? previous + "\n" + value
                     : value;
             }

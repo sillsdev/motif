@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Query.Corpus;
+using SIL.Motif.Contract.Query.Readings;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -230,5 +231,91 @@ public sealed class CorpusGroupsQueryTests : IDisposable
         Assert.NotNull(readings.Value.ReadingsInfo);
         var pair = Go("parse.state,readings").Value!.Groups!;
         Assert.Contains("parsed | 2", pair.Groups.Select(group => group.Key));
+    }
+
+    private static string Flagged(string line, string flag)
+    {
+        var node = JsonNode.Parse(line)!.AsObject();
+        node[flag] = true;
+        return node.ToJsonString();
+    }
+
+    [Fact]
+    public void CappedTimedOutAndUnsegmentableWordsGroupAsTheirOwnStates()
+    {
+        var recording = string.Join("\n", Flagged(Line("kaonan", ["kaon", "an"]), "capped"), Flagged(Line("kaonin", ["kaon", "in"]), "timedOut"),
+            Line("baha", ["baha"])) + "\n";
+        var grammar = Write("g.json", "g");
+        var response = CorpusQueryCommand.Forms(new CorpusFormsRequest(Listed(), GrammarPath: grammar, GroupBy: "parse.state"), null, default,
+            new Recorded(recording), Path.Combine(_folder, "cache-states")).Value!;
+        var states = response.Groups!.Groups.ToDictionary(group => group.Key, group => group.Types);
+        Assert.Equal(1, states["capped"]);
+        Assert.Equal(1, states["timed-out"]);
+        Assert.Equal(1, states["parsed"]);
+        Assert.False(response.ReadingsInfo!.Complete);
+        Assert.Equal(6, response.Groups.Groups.Sum(group => group.Types));
+    }
+
+    private sealed class NoIndex : IReadingSource
+    {
+        public SIL.Motif.Contract.Query.Readings.WordReadings? Get(string word) => null;
+    }
+
+    [Fact]
+    public void AWordTheParseHasNoEntryForGroupsAsFailedLikeTheReportCountsIt()
+    {
+        var corpus = CorpusWordList.ParseTsv("kaon\t3\tparsed\nbaha\t1\n");
+        var rows = CorpusFormsQuery.Run(corpus, null, null);
+        var groups = CorpusFormsQuery.Group(corpus, rows, ["parse.state"], new NoIndex());
+        Assert.Equal("failed", Assert.Single(groups.Groups).Key);
+        Assert.Equal(2, groups.Groups[0].Types);
+    }
+
+    [Fact]
+    public void AnExistingWordFileIsRefusedBeforeTheParseIndexIsBuilt()
+    {
+        var file = Write("have.txt", "old\n");
+        var grammar = Write("g.json", "g");
+        var outcome = CorpusQueryCommand.Forms(new CorpusFormsRequest(Listed(), GrammarPath: grammar, GroupBy: "parse.state", WriteWords: file), null, default,
+            new Throwing(), Path.Combine(_folder, "cache-early"));
+        Assert.Equal(RefusalCodes.QueryWriteWordsExists, outcome.Refusal!.Code);
+        Assert.Equal(["old"], File.ReadAllLines(file));
+    }
+
+    private sealed class Throwing : IRealizesIndexBuilder
+    {
+        public string Identity => "must-not-run".PadRight(16, '0');
+
+        public string Build(string grammarPath, IReadOnlyList<string> words, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("the parse index was built");
+    }
+
+    [Fact]
+    public void AWordFileInAFolderWithSpacesHasNoByteOrderMarkAndLfLines()
+    {
+        var folder = Path.Combine(_folder, "my words", "set one");
+        var file = Path.Combine(folder, "out file.txt");
+        var outcome = Forms(new CorpusFormsRequest(Listed(), WriteWords: file));
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var bytes = File.ReadAllBytes(file);
+        Assert.False(bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF);
+        Assert.DoesNotContain((byte)'\r', bytes);
+        Assert.Equal((byte)'\n', bytes[^1]);
+        Assert.Empty(Directory.GetFiles(folder, "*.tmp-*"));
+    }
+
+    [Fact]
+    public void ADecomposedAndAComposedSpellingInTwoSourcesAreOneTypeAndFoldCaseMergesCase()
+    {
+        var composed = "k\u00e1on";
+        var decomposed = "ka\u0301on";
+        var one = Write("one.tsv", decomposed + "\t2\nKaon\t4\n");
+        var two = Write("two.tsv", composed + "\t3\nkaon\t1\n");
+        var plain = Forms(new CorpusFormsRequest(one + "," + two, Sum: "tokens")).Value!;
+        Assert.Equal(new TypesTokens(3, 10), plain.Totals);
+        Assert.Equal(5L, plain.Rows.Single(row => row.Form == composed).Tokens);
+        var folded = Forms(new CorpusFormsRequest(one + "," + two, Sum: "tokens", FoldCase: true)).Value!;
+        Assert.Equal(new TypesTokens(2, 10), folded.Totals);
+        Assert.Equal(new[] { 2, 2 }, folded.Corpus.Sources!.Select(source => source.Types));
     }
 }

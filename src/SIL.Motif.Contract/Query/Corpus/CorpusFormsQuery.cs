@@ -201,7 +201,8 @@ public static class CorpusFormsQuery
         if (readings is null) return row.Get(column);
         var word = readings.Get(row.Word.Form);
         if (column == "readings") return word is null ? [] : [word.Readings.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)];
-        if (column == ParseStateColumn) return word is null ? row.Get(column) : [word.State];
+        // A word with no parse entry is counted failed by the readings report, so it groups there.
+        if (column == ParseStateColumn) return [word?.State ?? ReadingStates.Failed];
         return row.Get(column);
     }
 

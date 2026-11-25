@@ -160,4 +160,26 @@ public sealed class CorpusQueryCliTests : IDisposable
         Assert.Equal(1, Run("query", "--corpus", Words(), "forms", "--sample", "many").Code);
         Assert.Equal(1, Run("query", "--corpus", Words(), "forms", "--seed", "x", "--sample", "2").Code);
     }
+
+    [Fact]
+    public void ForceIsASwitchSoItMayComeBeforeWhereOrLast()
+    {
+        var file = Path.Combine(_folder, "force.txt");
+        Assert.Equal(0, Run("query", "--corpus", Words(), "forms", "--write-words", file, "where", "form ~ \"kaon.*\"").Code);
+        var before = Run("query", "--corpus", Words(), "forms", "--force", "where", "form ~ \"bah.*\"", "--write-words", file);
+        Assert.Equal(0, before.Code);
+        Assert.Equal(["bahaan", "baha"], File.ReadAllLines(file));
+        Assert.Equal(0, Run("query", "--corpus", Words(), "forms", "where", "form ~ \"lis.*\"", "--write-words", file, "--force").Code);
+        Assert.Equal(["lisan", "lis"], File.ReadAllLines(file));
+        Assert.NotEqual(0, Run("query", "--corpus", Words(), "forms", "where", "form ~ \"kaon.*\"", "--write-words", file, "--force", "false").Code);
+    }
+
+    [Fact]
+    public void ARepeatedCorpusFlagOnAnotherVerbStaysLastWins()
+    {
+        var once = Run("corpus-open", "--project", Path.Combine(_folder, "p.fwdata"), "--corpus", "b", "--doc", "d", "--json");
+        var twice = Run("corpus-open", "--project", Path.Combine(_folder, "p.fwdata"), "--corpus", "a", "--corpus", "b", "--doc", "d", "--json");
+        Assert.Equal(once.Code, twice.Code);
+        Assert.Equal(once.Output + once.Error, twice.Output + twice.Error);
+    }
 }
