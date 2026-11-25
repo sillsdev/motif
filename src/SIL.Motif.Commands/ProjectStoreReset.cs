@@ -20,9 +20,12 @@ public sealed record ProjectStoreResetRequest(string ProjectPath);
 public sealed record ProjectStoreResetResponse(string StorePath, bool Deleted);
 
 /// <summary>
-/// Deletes a project's Motif store when another version of Motif made it, so the next open recreates it. A
-/// stored shape from another version is refused rather than migrated, so this is how a person gets past it,
-/// pinned by `ARefusedStoreIsDeletedAloneAndTheNextOpenRecreatesIt`.
+/// Deletes a project's Motif store that this version cannot upgrade, so the next open recreates it. An older
+/// store is upgraded on open, not reset, and a newer store is never reset: it is refused with the
+/// <c>storeNewer</c> fact, pointing to installing the newer Motif or restoring a pre-upgrade backup, pinned by
+/// `ANewerStoreIsNeverResetAndIsLeftByteForByte`. The backup-first reset arrives in a later slice of #466.
+/// A store no upgrade step reaches is how a person gets past it, pinned by
+/// `ARefusedStoreIsDeletedAloneAndTheNextOpenRecreatesIt`.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -76,6 +79,12 @@ public static class ProjectStoreReset
         {
             var deleted = catalog.DeleteIfOtherVersion(project, ownershipPatience);
             return CommandOutcome<ProjectStoreResetResponse>.Success(new ProjectStoreResetResponse(storePath, deleted));
+        }
+        catch (MotifStoreVersionException exception) when (exception.Newer)
+        {
+            // A newer store is never reset: install the newer Motif or restore a pre-upgrade backup.
+            return CommandOutcome<ProjectStoreResetResponse>.Refused(
+                ProjectStoreCommand.VersionRefusal(exception, request.ProjectPath));
         }
         catch (MotifStoreLockException exception)
         {
