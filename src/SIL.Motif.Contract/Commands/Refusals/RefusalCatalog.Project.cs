@@ -45,7 +45,6 @@ public static partial class RefusalCatalog
         RefusalCodes.ProjectNotFound,
         RefusalCodes.ProjectOperationIo,
         RefusalCodes.ProjectStoreIo,
-        RefusalCodes.ProjectStoreInUse,
         RefusalCodes.ProjectUnloadable,
         RefusalCodes.ProjectWaitCancelled,
     ];
