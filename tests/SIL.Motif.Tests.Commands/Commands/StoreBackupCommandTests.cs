@@ -301,7 +301,7 @@ public sealed class StoreBackupCommandTests : IDisposable
     }
 
     [Fact]
-    public void ARestoreMovesANonEmptyWalAndItsShmAsideWhenNoProcessHoldsTheStore()
+    public void ARestoreFoldsANonEmptyWalIntoTheMovedStoreAndLeavesNoSidecarWhenNoProcessHoldsTheStore()
     {
         AddMarker(Store, "kept");
         var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
@@ -310,10 +310,9 @@ public sealed class StoreBackupCommandTests : IDisposable
         var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
-        Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-wal")));
-        Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-shm")));
+        // The checkpoint's last close removes the WAL and shm; its row is in the moved store.
         Assert.Equal(["kept", "later"], Markers(Backed(result.Value!, "store.sqlite")));
-        Assert.False(File.Exists(Store + "-wal"));
+        Assert.All(new[] { "-wal", "-shm", "-journal" }, suffix => Assert.False(File.Exists(Store + suffix), suffix));
         Assert.Equal(["kept"], Markers(Store));
     }
 
