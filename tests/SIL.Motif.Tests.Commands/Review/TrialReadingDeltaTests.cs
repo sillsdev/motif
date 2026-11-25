@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.HandAnalysis;
@@ -509,5 +510,17 @@ public sealed class TrialReadingDeltaTests
         Assert.False(File.Exists(path));
         Assert.Equal(RefusalCodes.TrialDeltaRequestInvalid,
             TrialReadingDelta.Check(request, new TrialExpectations(), receiptPath: path).Refusal?.Code);
+    }
+
+    [Fact]
+    public void ApplyStopsOnAReceiptThatIsMissingBeforeItReadsAnythingElse()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = ProposalWithAllClasses(fixture);
+
+        var applied = ProposalCommands.ApplyWithinLease(new ApplyRequest(fixture.Project, MotifProductVersion.CurrentText, proposal,
+            Attribution: new ApplyAttribution(ReceiptPath: Path.Combine(fixture.Root, "absent.json"))));
+
+        Assert.Equal(RefusalCodes.ApplyReceiptInvalid, applied.Refusal?.Code);
     }
 }

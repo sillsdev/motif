@@ -166,7 +166,7 @@ public sealed class TrialDeltaArgvTests
     }
 
     [Fact]
-    public async Task WriteReceiptWritesTheFileOnlyForAGreenTrialAndApplyRefusesWithoutAUsableOne()
+    public async Task WriteReceiptWritesTheFileOnlyForAGreenTrialAndAllPendingTakesNoReceipt()
     {
         using var fixture = new ReviewAcceptanceFixture();
         var proposal = "";
@@ -204,13 +204,9 @@ public sealed class TrialDeltaArgvTests
         Assert.Equal(6, mismatch.ExitCode);
         Assert.False(File.Exists(receipt));
 
-        var applied = await CliProcess.RunAsync(runnerRoot, null, false, "apply", "--proposal", proposal, "--project", fixture.Project,
-            "--receipt", receipt, "--json");
-        Assert.NotEqual(0, applied.ExitCode);
-        Assert.Contains("apply.receipt-invalid", applied.Output + applied.Error);
         var pending = await CliProcess.RunAsync(runnerRoot, null, false, "apply", "--all-pending", "--project", fixture.Project,
             "--receipt", receipt, "--json");
         Assert.NotEqual(0, pending.ExitCode);
-        Assert.DoesNotContain("apply.receipt", pending.Output + pending.Error);
+        Assert.Contains("--receipt", pending.Output + pending.Error);
     }
 }
