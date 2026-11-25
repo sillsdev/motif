@@ -95,10 +95,10 @@ public sealed class RefusalCodeRegistryTests
         Assert.Empty(methods.Where(method => !method.IsPrivate || !method.IsStatic || method.GetParameters().Length != 0 ||
             method.ReturnType != (method.Name.StartsWith("Specs", StringComparison.Ordinal) ? typeof(IEnumerable<RefusalSpec>) : typeof(IEnumerable<string>)))
             .Select(method => method.Name));
-        Assert.Empty(windowAreas.Select(method => method.Name["WindowCodes".Length..]).Where(area => !specAreas.Contains(area)));
+        Assert.All(windowAreas, method => Assert.Contains(method.Name["WindowCodes".Length..], specAreas));
 
         var window = windowAreas.SelectMany(method => (IEnumerable<string>)method.Invoke(null, null)!).ToList();
-        Assert.Empty(window.Where(code => !RefusalCatalog.Specs.ContainsKey(code)));
+        Assert.All(window, code => Assert.Contains(code, RefusalCatalog.Specs.Keys));
         Assert.Equal(window.Count, window.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(208, window.Count);
         Assert.Equal(window.Order(StringComparer.Ordinal), RefusalCatalog.Specs.Values.Where(spec => spec.ShownInWindow).Select(spec => spec.Code).Order(StringComparer.Ordinal));
