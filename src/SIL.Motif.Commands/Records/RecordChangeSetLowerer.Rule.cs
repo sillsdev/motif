@@ -43,7 +43,7 @@ public sealed partial class RecordChangeSetLowerer
                     var other = Changes[member];
                     _siblingRefusals.Add((member, new(stop.Refusal.Code, other.ObjectType ?? "", other.Field, other.ObjectGuid, stop.Refusal.Reason)));
                 }
-                throw;
+                throw Refuse(stop.Refusal.Code, change, stop.Refusal.Reason);
             }
         }
 
@@ -231,30 +231,18 @@ public sealed partial class RecordChangeSetLowerer
                 owned ? PhonologicalRuleDeleteOperationKinds.DeleteContexts : AffixProcessMemberDeleteOperationKinds.DeleteContext,
                 CanonicalId.FromGuid(context.Guid), new { }), item.Index);
 
-        /// <summary>Deletes pooled contexts once nothing in the rule refers to them; an iteration goes before the context it repeats.</summary>
+        /// <summary>Deletes a pooled context once nothing else refers to it; LCM deletes what a context owns or repeats along with it.</summary>
         private void DeletePooled((int Index, RecordChange Change) item, string role, IPhPhonContext context, ICmObject referrer)
         {
             if (context.Owner != cache.LangProject.PhonologicalDataOA || context.ReferringObjects.Any(user => user != referrer))
                 return;
             Delete(item, role, context, owned: false);
-            if (context is IPhIterationContext { MemberRA: { } inner })
-                DeletePooled(item, role, inner, context);
         }
 
         private void DeleteTree((int Index, RecordChange Change) item, string role, IPhPhonContext owned, HashSet<Guid> tree)
         {
             Guard(item, owned, tree, deleting: true);
             Delete(item, role, owned, owned: true);
-            switch (owned)
-            {
-                case IPhSequenceContext sequence:
-                    foreach (var member in sequence.MembersRS.Cast<IPhPhonContext>().ToList())
-                        DeletePooled(item, role, member, sequence);
-                    break;
-                case IPhIterationContext { MemberRA: { } member } iteration:
-                    DeletePooled(item, role, member, iteration);
-                    break;
-            }
         }
 
         /// <summary>Aligns a rule-owned flat list of simple contexts by position.</summary>

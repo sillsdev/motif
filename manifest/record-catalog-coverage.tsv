@@ -488,12 +488,16 @@ Covered	PhRegularRule	disabled	PhSegmentRule.Disabled	Set	grammar/phSegmentRule/
 Covered	PhRegularRule	disabled	PhSegmentRule.Disabled	Clear	grammar/phSegmentRule/clearDisabled	-	-
 Covered	PhRegularRule	name	PhSegmentRule.Name	SetAlternative	grammar/phSegmentRule/setName	-	-
 Covered	PhRegularRule	name	PhSegmentRule.Name	ClearAlternative	grammar/phSegmentRule/clearName	-	-
+Covered	PhRegularRule	struc-desc	PhSegmentRule.StrucDesc	Set	grammar/phSegmentRule/createStrucDesc	-	-
 Covered	PhSegRuleRHS	excl-rule-feats	PhSegRuleRHS.ExclRuleFeats	AddReference	grammar/phSegRuleRHS/addRefExclRuleFeats	-	-
 Covered	PhSegRuleRHS	excl-rule-feats	PhSegRuleRHS.ExclRuleFeats	RemoveReference	grammar/phSegRuleRHS/removeRefExclRuleFeats	-	-
 Covered	PhSegRuleRHS	input-poses	PhSegRuleRHS.InputPOSes	AddReference	grammar/phSegRuleRHS/addRefInputPOSes	-	-
 Covered	PhSegRuleRHS	input-poses	PhSegRuleRHS.InputPOSes	RemoveReference	grammar/phSegRuleRHS/removeRefInputPOSes	-	-
+Covered	PhSegRuleRHS	left-context	PhSegRuleRHS.LeftContext	Set	grammar/phSegRuleRHS/createLeftContext	-	-
 Covered	PhSegRuleRHS	req-rule-feats	PhSegRuleRHS.ReqRuleFeats	AddReference	grammar/phSegRuleRHS/addRefReqRuleFeats	-	-
 Covered	PhSegRuleRHS	req-rule-feats	PhSegRuleRHS.ReqRuleFeats	RemoveReference	grammar/phSegRuleRHS/removeRefReqRuleFeats	-	-
+Covered	PhSegRuleRHS	right-context	PhSegRuleRHS.RightContext	Set	grammar/phSegRuleRHS/createRightContext	-	-
+Covered	PhSegRuleRHS	struc-change	PhSegRuleRHS.StrucChange	Set	grammar/phSegRuleRHS/createStrucChange	-	-
 Covered	PhSegmentRule	description	PhSegmentRule.Description	SetPlainRich	text/setRichString	-	-
 Covered	PhSegmentRule	description	PhSegmentRule.Description	SetRich	text/setRichString	-	-
 Covered	PhSegmentRule	description	PhSegmentRule.Description	ClearRich	text/setRichString	-	-
@@ -503,6 +507,7 @@ Covered	PhSegmentRule	disabled	PhSegmentRule.Disabled	Set	grammar/phSegmentRule/
 Covered	PhSegmentRule	disabled	PhSegmentRule.Disabled	Clear	grammar/phSegmentRule/clearDisabled	-	-
 Covered	PhSegmentRule	name	PhSegmentRule.Name	SetAlternative	grammar/phSegmentRule/setName	-	-
 Covered	PhSegmentRule	name	PhSegmentRule.Name	ClearAlternative	grammar/phSegmentRule/clearName	-	-
+Covered	PhSegmentRule	struc-desc	PhSegmentRule.StrucDesc	Set	grammar/phSegmentRule/createStrucDesc	-	-
 Covered	PhSequenceContext	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSequenceContext	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
 Covered	PhSequenceContext	members	PhSequenceContext.Members	AddReference	grammar/phSequenceContext/addRefMembers	written-by-input	-
@@ -1253,7 +1258,7 @@ OtherFields	PhIterationContext	minimum	PhIterationContext.Minimum	Set	none	NoOpe
 OtherFields	PhIterationContext	minimum	PhIterationContext.Minimum	Clear	none	NoOperationKind	-
 OtherFields	PhIterationContext	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhIterationContext	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
-OtherFields	PhMetathesisRule	struc-desc	PhSegmentRule.StrucDesc	Set	none	UnsupportedChildClass	-
+OtherFields	PhMetathesisRule	struc-desc	PhSegmentRule.StrucDesc	Set	none	NoOperationKind	-
 OtherFields	PhMetathesisRule	struc-desc	PhSegmentRule.StrucDesc	Clear	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	back-color	CmPossibility.BackColor	Set	none	NoOperationKind	-
 OtherFields	PhPhonRuleFeat	back-color	CmPossibility.BackColor	Clear	none	NoOperationKind	-
@@ -1285,15 +1290,10 @@ OtherFields	PhPhonRuleFeat	under-style	CmPossibility.UnderStyle	Clear	none	NoOpe
 OtherFields	PhRegularRule	right-hand-sides	PhRegularRule.RightHandSides	AddObject	none	NoOperationKind	-
 OtherFields	PhRegularRule	right-hand-sides	PhRegularRule.RightHandSides	RemoveObject	none	NoOperationKind	-
 OtherFields	PhRegularRule	right-hand-sides	PhRegularRule.RightHandSides	MoveObject	none	NoOperationKind	-
-OtherFields	PhRegularRule	struc-desc	PhSegmentRule.StrucDesc	Set	none	UnsupportedChildClass	-
 OtherFields	PhRegularRule	struc-desc	PhSegmentRule.StrucDesc	Clear	none	NoOperationKind	-
-OtherFields	PhSegRuleRHS	left-context	PhSegRuleRHS.LeftContext	Set	none	UnsupportedChildClass	-
 OtherFields	PhSegRuleRHS	left-context	PhSegRuleRHS.LeftContext	Clear	none	NoOperationKind	-
-OtherFields	PhSegRuleRHS	right-context	PhSegRuleRHS.RightContext	Set	none	UnsupportedChildClass	-
 OtherFields	PhSegRuleRHS	right-context	PhSegRuleRHS.RightContext	Clear	none	NoOperationKind	-
-OtherFields	PhSegRuleRHS	struc-change	PhSegRuleRHS.StrucChange	Set	none	UnsupportedChildClass	-
 OtherFields	PhSegRuleRHS	struc-change	PhSegRuleRHS.StrucChange	Clear	none	NoOperationKind	-
-OtherFields	PhSegmentRule	struc-desc	PhSegmentRule.StrucDesc	Set	none	UnsupportedChildClass	-
 OtherFields	PhSegmentRule	struc-desc	PhSegmentRule.StrucDesc	Clear	none	NoOperationKind	-
 OtherFields	PhSequenceContext	members	PhSequenceContext.Members	MoveReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
@@ -1646,7 +1646,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/phPhonData/createNaturalClasses	PhPhonData	NaturalClasses	AddObject	RequiredWhenNonempty	-	PhNCFeatures,PhNCSegments	Unspecified	False
 # Handler	grammar/phPhonData/createPhonRules	PhPhonData	PhonRules	AddObject	RequiredWhenNonempty	-	PhMetathesisRule,PhRegularRule	Unspecified	False
 # Handler	grammar/phPhonData/createPhonemeSets	PhPhonData	PhonemeSets	AddObject	RequiredWhenNonempty	-	PhPhonemeSet	Unspecified	False
-# Handler	grammar/phPhonData/deleteContext	PhPhonData	Contexts	RemoveObject	Forbidden	-	PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg	Unspecified	False
+# Handler	grammar/phPhonData/deleteContext	PhPhonData	Contexts	RemoveObject	Forbidden	-	PhIterationContext,PhSimpleContextBdry,PhSimpleContextNC,PhSimpleContextSeg	Unspecified	False
 # Handler	grammar/phPhonData/deleteEnvironments	(no direct field edit)
 # Handler	grammar/phPhonData/deleteNaturalClasses	(no direct field edit)
 # Handler	grammar/phPhonData/deletePhonRules	PhPhonData	PhonRules	RemoveObject	Forbidden	-		Unspecified	False
