@@ -408,7 +408,7 @@ public static class HandoffCommand
                 if (request.Assess && request.InvocationId is null && request.Selection.Words.Count == 1)
                 {
                     var word = request.Selection.Words[0];
-                    var traceOutcome = new PanGlossTracer(invoker)
+                    var traceOutcome = new PanGlossTracer(invoker, ProjectWorkLimit.Effective(database, project))
                         .TraceAsync(grammarPath, word, cancellationToken).GetAwaiter().GetResult();
                     if (traceOutcome is PanGlossTraceOutcome.Cancelled)
                         return CommandOutcome<HandoffCommandResponse>.Refused(Cancelled(request.ProjectPath));
