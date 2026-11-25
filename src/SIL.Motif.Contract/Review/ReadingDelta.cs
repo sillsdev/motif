@@ -91,9 +91,12 @@ public sealed record ReadingManifestSummary(string Kind, string? Path, long Rows
 /// <param name="Classes">The requested classes, each with a page of rows.</param>
 /// <param name="Manifests">The retired and added manifests, in that order, or empty when none was requested.</param>
 /// <param name="Limitations">Why some forms are not in the delta, by code.</param>
+/// <param name="Expectations">The delta held to manifests and doubled caps, present only when the read was given any.</param>
 public sealed record ReadingDelta(int SchemaVersion, string JobId, string ProposalRevision, ReadingDeltaCounts Counts,
     IReadOnlyList<ReadingDeltaClass> Classes, IReadOnlyList<ReadingManifestSummary> Manifests,
-    IReadOnlyList<string> Limitations)
+    IReadOnlyList<string> Limitations,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    ReadingExpectationResult? Expectations = null)
 {
     /// <summary>The current version of this shape.</summary>
     public const int Version = 1;

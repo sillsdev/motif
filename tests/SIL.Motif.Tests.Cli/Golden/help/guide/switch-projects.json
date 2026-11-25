@@ -1,0 +1,9 @@
+{
+  "kind": "guide",
+  "code": "switch-projects",
+  "slug": "switch-projects",
+  "title": "Switching projects",
+  "description": "Use the project menu at the top of the Motif window to move between FieldWorks projects.",
+  "helpPage": "# Switching projects\n\nUse the project menu at the top of the Motif window to move between FieldWorks projects.\n\n1. Choose **Select new\u2026** to browse for a \u0060.fwdata\u0060 file, or choose **Open recent** and select a project Motif already knows.\n2. Wait for the project\u2019s Baseline, Selection, and stored results to load.\n3. Check the project name on **Progress** before taking an action.\n\nEach project has its own Motif workflow information. Switching away does not move its pending changes into another project; when you open it again, its changes are shown with that project. If Parse all words or AI Handoff is running, switching projects cancels that work before Motif loads the new project.\n\nChoose **Configure\u2026** from the project menu to reopen the project\u2019s saved Selection and parsing limits. Use **Refresh** to read the saved project and capture a new Baseline, then choose **Parse all words** to measure the saved Selection; opening the project alone only reads stored results.\n",
+  "url": "https://motif-docs.pages.dev/guide/switch-projects/"
+}

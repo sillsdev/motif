@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "source where",
+  "slug": "source-where",
+  "title": "Place a chapter in the Sources",
+  "description": "Says whether a chapter is in each Source\u0027s Context, is the Current chapter, or comes later.",
+  "helpPage": "# Place a chapter in the Sources\n\n\u0060source where \u003Cref\u003E\u0060 says where a chapter such as \u0060MAT 5\u0060 sits in a Source: \u0060InContext\u0060 when its Context includes it, \u0060Current\u0060 when it is outside the Context but is the Current chapter, otherwise \u0060Later\u0060. With no \u0060--source\u0060 it answers for every Active Source, one row each.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif source where --project Koro.fwdata \u0022MAT 5\u0022 --source WEB --json\n\u0060\u0060\u0060\n\nWhen the Source has a folder on this machine, the Paratext text is opened and a chapter the text does not hold is reported as an error on that row. With no folder, the place comes from the Context and the Current chapter alone.\n\n## Related commands\n\n- [Read the Current chapters](cmd:current%20get) reads the Current chapters.\n- [Show one Source](cmd:source%20show) reads a Source.\n",
+  "usage": [
+    "Usage: motif source where --project \u003Cfwdata\u003E \u003Cref\u003E [--source \u003Cid\u003E] [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/source-where/"
+}

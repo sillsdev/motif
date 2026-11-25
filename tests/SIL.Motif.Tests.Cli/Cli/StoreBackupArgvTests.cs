@@ -56,7 +56,8 @@ public sealed class StoreBackupArgvTests : IDisposable
         Assert.True(restore.ExitCode == 0, restore.Error);
         using var restored = JsonDocument.Parse(restore.Output);
         Assert.Equal(Path.Combine(_root, "p.motif.db"), restored.RootElement.GetProperty("storePath").GetString());
-        Assert.Equal(JsonValueKind.Object, restored.RootElement.GetProperty("preRestoreBackup").ValueKind);
+        Assert.False(restored.RootElement.TryGetProperty("preRestoreBackup", out _));
+        Assert.Equal(JsonValueKind.String, restored.RootElement.GetProperty("preRestoreDirectory").ValueKind);
     }
 
     [Fact]

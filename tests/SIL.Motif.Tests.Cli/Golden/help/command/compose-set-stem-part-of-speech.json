@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-set-stem-part-of-speech",
+  "slug": "compose-set-stem-part-of-speech",
+  "title": "Set a stem\u0027s part of speech",
+  "description": "Sets the part of speech of one existing stem analysis after checking the expected current value. A sub-category keeps the class and features it inherits; a class or feature the new category cannot hold is dropped by LibLCM and named in a warning; Motif stages a Draft for a person to review and Apply.",
+  "helpPage": "# Set a stem\u0027s part of speech\n\nSet the part of speech of an existing stem analysis. The expected value is the stored part of speech, or \u0060null\u0060 when the analysis has none.\n\n\u0060\u0060\u0060sh\nmotif compose-set-stem-part-of-speech --project language.fwdata --draft numerals \\\n  --intent \u0027{\u0022target\u0022:\u0022\u003Cstem-analysis-id\u003E\u0022,\u0022expectedPartOfSpeech\u0022:null,\u0022partOfSpeech\u0022:\u0022\u003Cpart-of-speech-id\u003E\u0022}\u0027\n\u0060\u0060\u0060\n\nAll three intent fields are required and the intent is closed. The target must be a stem analysis. A sub-category inherits its parent\u0027s inflection classes and feature selections, so moving a stem to a sub-category keeps both. When the move would drop the stem\u0027s inflection class or a feature selection that neither the new part of speech nor one of its ancestors holds (LibLCM removes them on the move), the command does not refuse: the operation\u0027s rationale says \u0060Warning: the move drops ...\u0060 and the Dry Run shows the result for a person to judge. To keep a feature, make it bearable by the new part of speech or an ancestor first. When the expected and desired values are the same, the command adds no operations. The command only sets a part of speech; it never clears one.\n\nRun many at once with \u0060compose-batch\u0060, so a whole clean-up becomes one Proposal. Each operation carries a rationale; the Draft still needs its own Rationale (\u0060proposal rationale\u0060) before Finalize.\n\nUse this editor through the CLI; it is not exposed as an MCP tool. Add \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 (at most 300 characters) to cite every operation this command produces. Review the Dry Run effects and run a Trial on affected words before Finalize; only a person can Apply the Proposal.\n",
+  "usage": [
+    "Usage: motif compose-set-stem-part-of-speech --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-set-stem-part-of-speech/"
+}

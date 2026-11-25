@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-table-open-details",
+  "slug": "shortcut-table-open-details",
+  "title": "Open Row Details",
+  "description": "Show the selected row\u0027s details.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-table-open-details/"
+}

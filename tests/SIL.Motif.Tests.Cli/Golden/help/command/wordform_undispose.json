@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "wordform undispose",
+  "slug": "wordform-undispose",
+  "title": "Clear word type dispositions",
+  "description": "Removes the standing disposition of each word type. The removed disposition stays in the type\u0027s history, and a type that had none is reported and left alone.",
+  "helpPage": "# Clear word type dispositions\n\n\u0060wordform undispose\u0060 removes the standing disposition of each word type you name, so the type is analysed like any other word again. The removed disposition is not deleted: it stays in the type\u0027s history with who cleared it, when, and the reason.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif wordform undispose Nairobi Mombasa --project \u003Cfwdata\u003E --reason \u0022attested as a common noun in the Gazetteer\u0022\n\u0060\u0060\u0060\n\nA type that has no disposition is reported as \u0060not-recorded\u0060 and left alone, so repeating the command is safe. \u0060--by \u003Cname\u003E\u0060 records who cleared it and defaults to the signed-in user. See the earlier dispositions of a type with [disposition show](cmd:disposition%20show).\n\n## Related commands\n\n- [Give word types a disposition](cmd:wordform%20dispose) records one.\n",
+  "usage": [
+    "Usage: motif wordform undispose \u003Cform\u003E... --project \u003Cfwdata\u003E [--reason \u003Ctext\u003E] [--by \u003Cname\u003E] [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/wordform-undispose/"
+}

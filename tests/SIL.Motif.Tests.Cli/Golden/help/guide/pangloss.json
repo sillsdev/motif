@@ -1,0 +1,9 @@
+{
+  "kind": "guide",
+  "code": "pangloss",
+  "slug": "pangloss",
+  "title": "PanGloss",
+  "description": "In Texts, PanGloss runs the project\u0027s grammar on selected texts and compares its analyses with what FieldWorks stores.",
+  "helpPage": "# PanGloss\n\nIn Texts, PanGloss runs the project\u0027s grammar on selected texts and compares its analyses with what FieldWorks stores.\n\nPanGloss parses the project\u0027s grammar. Motif records parser warnings and refusals alongside the results.\n\nFor a FieldWorks Opinion, A means Approved, U means Unknown, and D means Disapproved. An empty dashed box in the FieldWorks Opinion position means no analysis is stored. In Texts, \u2260 with a solid underline marks a new or different PanGloss result; \u2205 with a dashed underline means no parse, and \u25D6 with a dotted underline means a stopped search. These PanGloss cues are separate from the FieldWorks Opinion, and their glyphs and line styles carry meaning alongside color. Staged means a choice is waiting for **Apply**.\n\n![The compact word strip for geldi](shot:explained-word-card/approved-agrees)\n",
+  "url": "https://motif-docs.pages.dev/guide/pangloss/"
+}

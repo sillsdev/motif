@@ -1,0 +1,9 @@
+{
+  "kind": "term",
+  "code": "dry-run",
+  "slug": "dry-run",
+  "title": "Effects measured on a copy",
+  "description": "A Dry Run applies a Proposal to a throwaway project copy and reads back the effects. It leaves the live model unchanged.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/terms/dry-run/"
+}

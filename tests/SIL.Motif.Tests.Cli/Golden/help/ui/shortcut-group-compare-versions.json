@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-group-compare-versions",
+  "slug": "shortcut-group-compare-versions",
+  "title": "Compare Two Versions",
+  "description": "Keyboard shortcuts for comparing your version of a text with the FieldWorks version.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-compare-versions/"
+}

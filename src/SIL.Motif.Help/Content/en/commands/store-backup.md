@@ -7,7 +7,7 @@ motif store backup --project "D:\Projects\Koro\Koro.fwdata"
 motif store backup --project "D:\Projects\Koro\Koro.fwdata" --to "D:\Backups\koro-before-switch" --json
 ```
 
-Without `--to` the backup goes into a timestamped folder beside the store, named `<project>.motif-backup-<time>`. A folder named with `--to` must be missing or empty, and must not be the store file or lie inside a folder Motif owns: the store's `trial-exports` folder or `<project>.motif-backups` (`store.backup-destination-owned`), so a backup never contains a backup.
+Without `--to` the backup goes into a timestamped folder beside the store, named `<project>.motif-backup-<time>`. A folder named with `--to` must be missing or empty, and must not be the store file or lie inside a folder Motif owns: the store's `trial-exports` folder or `<project>.motif-backups` (`store.backup-destination-owned`), so a backup never contains a backup. The check follows symlinks and junctions to their real target, and Windows 8.3 short names to their long names, so a `--to` reached through a link into those folders is refused too.
 
 The store is copied with SQLite's online backup, so the copy is one consistent snapshot even while a runner or another command is reading or writing the store. The command takes the same shared lease every reader takes, so it refuses only when another Motif process is resetting or restoring the store (`project.busy`). If the store stays locked past the busy timeout it refuses with `cli.store-busy`; repeat the call.
 

@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-reader-last-line",
+  "slug": "shortcut-reader-last-line",
+  "title": "Go to the Last Line of the Text",
+  "description": "Focus the last line of the Text.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-reader-last-line/"
+}

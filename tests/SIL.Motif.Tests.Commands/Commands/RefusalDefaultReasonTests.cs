@@ -237,7 +237,6 @@ public sealed class RefusalDefaultReasonTests
             foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Static).Where(f => f.IsLiteral))
                 byName.Add(field.Name, (string)field.GetRawConstantValue()!);
         var registered = byName.Values.ToHashSet(StringComparer.Ordinal);
-        var catalog = Path.Combine("Contract", "Commands", "RefusalCatalog.cs");
         var result = new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
 
         void Vote(string? code, string reason)
@@ -255,7 +254,7 @@ public sealed class RefusalDefaultReasonTests
         foreach (var file in Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories))
         {
             var sep = Path.DirectorySeparatorChar;
-            if (file.Contains(sep + "obj" + sep) || file.EndsWith(catalog, StringComparison.Ordinal)) continue;
+            if (file.Contains(sep + "obj" + sep) || Path.GetFileName(file).StartsWith("RefusalCatalog", StringComparison.Ordinal)) continue;
             var text = File.ReadAllText(file);
 
             // A code spelled before a reason in the same statement, or a reason followed by `code: ...`.

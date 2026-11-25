@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-group-window",
+  "slug": "shortcut-group-window",
+  "title": "Window",
+  "description": "Keyboard shortcuts available throughout the window.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-window/"
+}

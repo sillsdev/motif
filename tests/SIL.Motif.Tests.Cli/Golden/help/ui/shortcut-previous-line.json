@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-previous-line",
+  "slug": "shortcut-previous-line",
+  "title": "Move Focus to the First Word on the Previous Line",
+  "description": "Focus the first word on the previous line of the Text.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-previous-line/"
+}

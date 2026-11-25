@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-next-line",
+  "slug": "shortcut-next-line",
+  "title": "Move Focus to the First Word on the Next Line",
+  "description": "Focus the first word on the next line of the Text.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-next-line/"
+}

@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-activate-menu-item",
+  "slug": "shortcut-activate-menu-item",
+  "title": "Choose a Menu Item",
+  "description": "Choose the menu item that has keyboard focus, as Enter does.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-activate-menu-item/"
+}
