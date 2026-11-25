@@ -29,7 +29,7 @@ public sealed class RecordCreateNotebookTests(PristineProjectFixture pristine) :
 
     private sealed record Seed(string Project, Guid Record, Guid Parent, Guid OtherType);
 
-    private Seed Seeded(bool withJudgmentField = false)
+    private Seed Seeded(bool withJudgmentField = false, bool withoutObservation = false)
     {
         Directory.CreateDirectory(_folder);
         using var cache = pristine.NewScratch();
@@ -64,6 +64,8 @@ public sealed class RecordCreateNotebookTests(PristineProjectFixture pristine) :
             holder.Title = TsStringUtils.MakeString("zzparent", cache.DefaultAnalWs);
             parent = holder.Guid;
         });
+        if (withoutObservation && cache.ServiceLocator.ObjectRepository.TryGetObject(RnResearchNbkTags.kguidRecObservation, out var observation))
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => cache.DomainDataByFlid.DeleteObj(observation.Hvo));
         if (withJudgmentField) HumanJudgmentFieldDefinition.CreateDefinition(cache);
         new FwDataProjectLoader().Save(cache);
         return new(cache.ProjectId.Path, record, parent, other);
@@ -212,6 +214,48 @@ public sealed class RecordCreateNotebookTests(PristineProjectFixture pristine) :
         Assert.Equal(CanonicalIdOf(seed.Parent), dry.Value.RecordId);
         Assert.Contains(dry.Value.Refusals ?? [], row => row.Field == "sub-records");
         Assert.DoesNotContain(dry.Value.Operations ?? [], operation => operation.Kind.EndsWith("createRecords", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AFileWithNoTypeIsRefusedWholeWhenTheProjectHasNoObservationType()
+    {
+        var seed = Seeded(withoutObservation: true);
+        var file = NewFile(seed, seed.Record, (document, _) => document.Data["type"] = null);
+
+        var outcome = RecordImportCommand.Run(new(seed.Project, file, DraftName));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(RefusalCodes.RecordImportCreateShape, outcome.Refusal!.Code);
+        Assert.Contains("Observation", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(0, Drafts(seed.Project));
+    }
+
+    [Fact]
+    public void ARecordThatIsItsOwnSubRecordIsRefusedAndMakesNoDraft()
+    {
+        var seed = Seeded();
+        var child = Guid.NewGuid();
+        var file = NewFile(seed, seed.Record, (document, _) =>
+        {
+            var nested = new RecordObject { Guid = child };
+            nested["title"] = new RecordScalar("zzself");
+            document.Data["sub-records"] = new RecordList().Add(nested);
+        });
+        Guid root;
+        Guid renamed;
+        using (var cache = new FwDataProjectLoader().LoadCache(seed.Project))
+        {
+            var schema = Exported(cache, seed.Record).Schema;
+            var document = RecordFileReader.Read(File.ReadAllText(file), schema.Schema, default).Document!;
+            root = document.Data.Guid!.Value;
+            renamed = ((RecordObject)((RecordList)document.Data["sub-records"]!).Items[0]).Guid!.Value;
+        }
+        File.WriteAllText(file, File.ReadAllText(file).Replace(renamed.ToString("D"), root.ToString("D"), StringComparison.OrdinalIgnoreCase));
+
+        var outcome = RecordImportCommand.Run(new(seed.Project, file, DraftName));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(0, Drafts(seed.Project));
     }
 
     private static string CanonicalIdOf(Guid guid) => SIL.Motif.Contract.Ids.CanonicalId.FromGuid(guid).Value;
