@@ -683,7 +683,9 @@ Refusals the importer adds to the differ's (`RecordRefusalKind`):
 
 | Kind | When | Scope |
 |---|---|---|
-| `StaleBase`, `MissingBase` | The base is not the fresh export's, or is absent. | Whole file |
+| `StaleBase`, `MissingBase` | The base is not the fresh export's, or is absent (and the file is not an exact copy of the record: see "Creating a record"). | Whole file |
+| `RecordGone` | The file has a `base:` and a `guid:` the project does not have: the record it came from is gone. To create it anew, remove `base:` and use a new `guid:`. | Whole file |
+| `CreatePartial`, `CreateKindNotCreatable`, `GuidInvalid`, `GuidRetired` | A create that is not a whole file; a list item or phonological rule; a `guid:` that is not a version 4, 5 or 7 RFC 4122 GUID (an owned object's is that change only); a `guid:` the host says was deleted. | Whole file (`GuidInvalid` on an owned object: the change) |
 | `UnreadableFile` | The text does not read as a record file of the schema (any other reader error, named by id and line). | Whole file |
 | `UnknownRecord` | The file names no record of the project. | Whole file |
 | `UnknownField` | A key the schema does not have for the object, for example `date-modified`, which the export left out, or a custom date, whose reason says so (whole file); or a change that cannot be mapped to a project field, which is never accepted unchecked (the change). | Either: read `RecordRefusal.WholeFile` |
@@ -699,6 +701,14 @@ Refusals the importer adds to the differ's (`RecordRefusalKind`):
 | `GuidInUse` | A new object's GUID is already an object of the project. | The change |
 | `DependsOnRefusedChange` | A change is placed after an added object whose change was refused. | The change |
 | `ExportFailed` | The project's record could not be written as a file to compare with. | Whole file |
+
+### Creating a record (partial)
+
+A whole file with no `base:` and a `guid:` the project does not have is planned as a **create** (`ProjectRecordBaseVerdict.New`): the importer diffs it against an empty record of the same GUID and
+class, so every field is an ordinary change addressed to the new GUID, with the same references, writing-system, style and `GuidInUse` checks as an edit (a reference to a new object of the same file is
+accepted; the host checks its class). Only `lexicon/entry` and `notebook/record` create. The record has no export, so `Export` is null. A file with no `base:` whose content equals the project's record reads as
+`Unchanged` and plans nothing; one with a `guid:` the project has and any difference stays `MissingBase`. A host may set `ProjectRecordImporter.IsRetiredGuid` for a home that keeps deletions.
+Planning is as far as creation goes so far: a host does not yet lower a create to operations, and the minimal shape of an entry (lexeme form, sense, category) is not yet checked.
 
 **Delete by omission** (a whole file leaves out an object; `ByOmission`) is allowed only when the object and everything it owns have no unexported data other than their
 timestamps (those go with the object) and no object outside it refers to it or to anything it owns, whether by a liblcm reference or by a link inside rich text (the project's strings are searched once per plan, only when something is deleted). A clear by omission of a scalar or an alternative follows the field rule:
