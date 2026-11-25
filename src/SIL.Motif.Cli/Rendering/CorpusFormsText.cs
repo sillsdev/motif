@@ -11,9 +11,9 @@ internal static class CorpusFormsText
     private static void AppendReadings(StringBuilder text, CorpusFormsResponse response)
     {
         if (response.ReadingsInfo is { } info)
-            text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Readings: {0} ({1} word types parsed; {2} capped, {3} timed out, {4} no answer, {5} unsegmentable; morph classes {6}){7}",
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Readings: {0} ({1} word types parsed; {2} capped, {3} timed out, {4} no answer, {5} unsegmentable, {8} analyses unknown to the project; morph classes {6}){7}",
                 info.Complete ? "complete" : "INCOMPLETE", info.Types, info.Capped, info.TimedOut, info.Failed, info.Unsegmentable, info.MorphClasses,
-                info.Note is null ? "" : ". " + info.Note));
+                info.Note is null ? "" : ". " + info.Note, info.UnknownMsa));
         if (response.Causes is { } causes)
         {
             text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Causes: {0} word types, {1} tokens have more than one reading{2}",
@@ -33,9 +33,13 @@ internal static class CorpusFormsText
                 what.Estimate ? "ESTIMATE, " + what.Note : "exact", what.Method, what.Complete ? "" : "; INCOMPLETE parse"));
             text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  {0} types ({1} tokens) use them; {2} types ({3} tokens) would lose every reading; {4} types ({5} tokens) would keep fewer",
                 what.Affected.Types, what.Affected.Tokens, what.Lost.Types, what.Lost.Tokens, what.Reduced.Types, what.Reduced.Tokens));
+            if (what.Capped.Types > 0 || what.Failed.Types > 0)
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  not counted above: {0} types ({1} tokens) with a capped parse that use them, {2} types ({3} tokens) the batch gave no answer for",
+                    what.Capped.Types, what.Capped.Tokens, what.Failed.Types, what.Failed.Tokens));
             foreach (var word in what.Words)
                 text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  {0}\t{1}\t{2}\t{3} via, {4} other of {5}{6}", word.Word, word.Tokens,
-                    word.Lost ? "LOST" : "reduced", word.ReadingsVia, word.ReadingsOther, word.Readings, word.MayHaveMore ? " (parse capped: may keep a hidden reading)" : ""));
+                    word.Lost ? "LOST" : "reduced", word.ReadingsVia, word.ReadingsOther, word.Readings, word.MayHaveMore ? " (parse capped: may keep a hidden reading)" : "") +
+                    (word.Alternative is { Count: > 0 } alternative ? "; keeps " + string.Join(" | ", alternative) : ""));
         }
     }
 

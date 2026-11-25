@@ -53,7 +53,7 @@ public static class CorpusQueryCommand
     // A test passes the parser that replays recorded replies in place of the resident one.
     internal static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath,
         CancellationToken cancellationToken,
-        IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null)
+        IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null, MorphCatalog? catalog = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         QueryExpr? where;
@@ -137,11 +137,14 @@ public static class CorpusQueryCommand
                 var needsEntries = OnlyViaLowering.Find(where).Select(via => new ReadingTarget(via.Kind, via.Id)).Concat(retire).Where(target => target.Kind == "entry").ToList();
                 var needsClasses = wantsCauses || retire.Count > 0 || OnlyViaLowering.Find(where).Count > 0;
                 string? catalogFailure = null;
-                var catalog = needsClasses ? MorphCatalog.TryLoad(request.ProjectPath, request.GrammarPath, out catalogFailure) : null;
-                if (needsEntries.Count > 0 && catalog is null) throw ReadingsRefusals.NeedsProject(needsEntries[0], catalogFailure);
+                var loaded = catalog;
+                if (needsClasses && loaded is null) loaded = MorphCatalog.TryLoad(request.ProjectPath, request.GrammarPath, out catalogFailure);
+                if (wantsCauses && loaded is null) throw ReadingsIdRefusals.CausesNeedProject(catalogFailure);
+                if (needsEntries.Count > 0 && loaded is null) throw ReadingsRefusals.NeedsProject(needsEntries[0], catalogFailure);
+                var catalogUsed = loaded;
                 // A bare id is an entry when the project says so, else an analysis or a form id: both are exact.
                 for (var at = 0; at < retire.Count; at++)
-                    if (retire[at].Kind == "id" && catalog is not null && catalog.HasEntry(retire[at].Id)) retire[at] = retire[at] with { Kind = "entry" };
+                    if (retire[at].Kind == "id" && catalogUsed is not null && catalogUsed.HasEntry(retire[at].Id)) retire[at] = retire[at] with { Kind = "entry" };
                 var words = corpus.Words.Select(word => word.Form).ToList();
                 (RealizesParseIndex Index, bool Built, double Seconds) built;
                 try
@@ -150,8 +153,20 @@ public static class CorpusQueryCommand
                         indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), notice ?? (_ => { }), cancellationToken);
                 }
                 catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
-                readings = new ParsedReadings(built.Index, catalog);
+                readings = new ParsedReadings(built.Index, catalogUsed);
                 readingsReport = readings.Report(words, needsClasses);
+                var asked = OnlyViaLowering.Find(where).Select(via => new ReadingTarget(via.Kind, via.Id)).Concat(retire);
+                foreach (var target in asked)
+                {
+                    var known = target.Kind switch
+                    {
+                        "entry" => catalogUsed!.HasEntry(target.Id),
+                        "msa" => readings.Mentions(target.Id) || catalogUsed?.Of(target.Id) is not null,
+                        "form" => readings.Mentions(target.Id),
+                        _ => readings.Mentions(target.Id),
+                    };
+                    if (!known) throw ReadingsIdRefusals.Unknown(target, catalogUsed is not null);
+                }
             }
             catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
         }
@@ -183,7 +198,7 @@ public static class CorpusQueryCommand
             if (readings is not null && retire.Count > 0)
                 whatIf = Retirement.Estimate(readings, [.. rows.Select(row => (row.Form, row.Tokens))], retire, readingsReport!.Complete, limit);
             return CommandOutcome<CorpusFormsResponse>.Success(new CorpusFormsResponse(CorpusFormsResponse.SchemaName, summary,
-                where is null ? null : QueryExprText.Print(where), rows.Count, readingsOnly ? [] : [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
+                where is null ? null : QueryExprText.Print(where), rows.Count, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
                 realizes?.Sets, readingsReport, causes, whatIf));
         }
         catch (QueryRefusalException refused)

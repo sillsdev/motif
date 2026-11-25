@@ -7,7 +7,7 @@ public static class ReadingCause
     public const string LexicalisedVsDerived = "lexicalised-vs-derived";
     /// <summary>The readings hold the same morphs in a different order.</summary>
     public const string SameMorphsReordered = "same-morphs-reordered";
-    /// <summary>The readings differ only in affixes that spell the same but have different analyses (SM versus OM); harmless.</summary>
+    /// <summary>The readings differ only in inflectional affixes that spell the same but have different analyses (SM versus OM); harmless.</summary>
     public const string HomophonousAffix = "homophonous-affix";
     /// <summary>None of the above.</summary>
     public const string Other = "other";
@@ -52,7 +52,10 @@ public static class ReadingCause
         return left.SequenceEqual(right);
     }
 
-    /// <summary>Same length, and every position is the same morph or one with the same text and a different analysis; no stem differs.</summary>
+    /// <summary>
+/// Same length, and every position is the same morph or one with the same text and a different analysis, both inflectional affixes
+/// (agreement markers that spell alike). A stem, a derivational affix or a morph of unknown class never counts as benign.
+/// </summary>
     internal static bool IsHomophonous(WordReading a, WordReading b)
     {
         if (a.Morphs.Count != b.Morphs.Count || SameMorphs(a, b)) return false;
@@ -60,7 +63,7 @@ public static class ReadingCause
         {
             if (x.Key == y.Key) continue;
             if (x.Msa == y.Msa || x.Text.Length == 0 || x.Start < 0 || x.Start != y.Start || !string.Equals(x.Text, y.Text, StringComparison.Ordinal)) return false;
-            if (x.Kind == MorphKinds.Stem || y.Kind == MorphKinds.Stem) return false;
+            if (x.Kind != MorphKinds.Inflectional || y.Kind != MorphKinds.Inflectional) return false;
         }
         return true;
     }
@@ -101,7 +104,8 @@ public static class ReadingCause
 /// <param name="Text">The surface text.</param>
 /// <param name="Entry">The entry id when known.</param>
 /// <param name="Kind">The morph class when known.</param>
-public sealed record CauseMorph(string Form, string Msa, string Text, string? Entry = null, string? Kind = null);
+/// <param name="Gloss">The entry's gloss when the project has one.</param>
+public sealed record CauseMorph(string Form, string Msa, string Text, string? Entry = null, string? Kind = null, string? Gloss = null);
 
 /// <summary>One example reading.</summary>
 /// <param name="Morphs">Its ordered morphs.</param>
@@ -145,7 +149,7 @@ public sealed class CauseGroupBuilder
             var group = _groups[cause];
             return new CauseGroup(cause, ReadingCause.Benign(cause), group.Words, group.Tokens, new CauseExample(group.Word,
                 [.. group.Readings.Readings.Take(ExampleReadings).Select(reading => new CauseReading(
-                    [.. reading.Morphs.Select(morph => new CauseMorph(morph.Form, morph.Msa, morph.Text, morph.Entry, morph.Kind))]))]));
+                    [.. reading.Morphs.Select(morph => new CauseMorph(morph.Form, morph.Msa, morph.Text, morph.Entry, morph.Kind, morph.Gloss))]))]));
         }),
     ];
 }

@@ -96,13 +96,22 @@ public sealed class ReadingsQueryTests(PristineProjectFixture pristine) : IDispo
         return path;
     }
 
+    private static readonly string[] Entries = Enumerable.Range(1, 6).Select(n => Guid.Parse($"00000000-0000-0000-0000-0000000000e{n}").ToString("D")).ToArray();
+
+    /// <summary>The project's view of the test analyses, each its own entry.</summary>
+    private static MorphCatalog Catalog(bool withOm = true) => MorphCatalog.From(new (string, string, string, string?)[]
+    {
+        (Root, Entries[0], MorphKinds.Stem, "root"), (Fused, Entries[1], MorphKinds.Stem, null), (Deriv, Entries[2], MorphKinds.Derivational, null),
+        (Sm, Entries[3], MorphKinds.Inflectional, "subject"), (Om, Entries[4], MorphKinds.Inflectional, "object"),
+    }.Where(row => withOm || row.Item1 != Om));
+
     private CommandOutcome<CorpusFormsResponse> Run(string? where, string? groupBy = null, string[]? retire = null, string? project = null,
-        string? grammar = "grammar.json", int? limit = null, string? json = null)
+        string? grammar = "grammar.json", int? limit = null, string? json = null, MorphCatalog? catalog = null)
     {
         var grammarPath = grammar is null ? null : Path.Combine(_folder, grammar);
         if (grammarPath is not null && !File.Exists(grammarPath)) File.WriteAllText(grammarPath, "grammar");
         return CorpusQueryCommand.Forms(new CorpusFormsRequest(Corpus(), where, json, grammarPath, ProjectPath: project, Limit: limit, GroupBy: groupBy, WhatIfRetire: retire),
-            null, default, new Recorded(Recording), Path.Combine(_folder, "cache"));
+            null, default, new Recorded(Recording), Path.Combine(_folder, "cache"), catalog: catalog);
     }
 
     [Fact]
@@ -145,10 +154,10 @@ public sealed class ReadingsQueryTests(PristineProjectFixture pristine) : IDispo
     [Fact]
     public void GroupByCauseNamesEachKindInPriorityOrderWithAnExample()
     {
-        var outcome = Run(null, groupBy: "cause");
+        var outcome = Run(null, groupBy: "cause", catalog: Catalog());
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var causes = outcome.Value!.Causes!;
-        Assert.Empty(outcome.Value.Rows);
+        Assert.Equal(8, outcome.Value.Rows.Count);
         Assert.False(causes.Complete);
         Assert.Equal((4, 20 + 19 + 18 + 17), (causes.Words, (int)causes.Tokens));
         Assert.Equal(["lexicalised-vs-derived", "same-morphs-reordered", "homophonous-affix", "other"], causes.Groups.Select(group => group.Cause));
@@ -156,6 +165,7 @@ public sealed class ReadingsQueryTests(PristineProjectFixture pristine) : IDispo
         Assert.Equal(("tofauti", 1, false), (lexicalised.Example.Word, lexicalised.Words, lexicalised.Benign));
         Assert.Equal(["tofauti"], lexicalised.Example.Readings[0].Morphs.Select(morph => morph.Text));
         Assert.Equal(["tofaut", "i"], lexicalised.Example.Readings[1].Morphs.Select(morph => morph.Text));
+        Assert.Equal("root", lexicalised.Example.Readings[1].Morphs[0].Gloss);
         Assert.Equal("same-morphs-reordered", causes.Groups[1].Cause);
         Assert.Equal("kulishana", causes.Groups[1].Example.Word);
         Assert.True(causes.Groups[2].Benign);
@@ -166,8 +176,9 @@ public sealed class ReadingsQueryTests(PristineProjectFixture pristine) : IDispo
     [Fact]
     public void GroupByCauseHonoursTheWhereAndRefusesAnythingButCause()
     {
-        var outcome = Run("tokens < 19", groupBy: "cause");
+        var outcome = Run("tokens < 19", groupBy: "cause", catalog: Catalog());
         Assert.Equal(2, outcome.Value!.Causes!.Words);
+        Assert.Equal(["pendwa", "dupe", "solo", "cappedw", "nothing", "missing"], outcome.Value.Rows.Select(row => row.Form));
         var refused = Run(null, groupBy: "word");
         Assert.Equal(RefusalCodes.QueryCorpusInvalid, refused.Refusal!.Code);
     }
@@ -215,30 +226,85 @@ public sealed class ReadingsQueryTests(PristineProjectFixture pristine) : IDispo
         Assert.False(what.Exact);
         Assert.Contains("confirm with a Trial", what.Note);
         Assert.Equal([$"msa:{Sm}"], what.Retire);
-        Assert.Equal(["kulishana", "solo", "cappedw", "pendwa", "dupe"], what.Words.Select(word => word.Word));
+        Assert.Equal(["kulishana", "solo", "pendwa", "dupe"], what.Words.Select(word => word.Word));
         var lost = what.Words[0];
         Assert.Equal((2, 2, 0, true, false), (lost.Readings, lost.ReadingsVia, lost.ReadingsOther, lost.Lost, lost.Reduced));
-        Assert.True(what.Words[2].MayHaveMore);
         Assert.False(what.Words[0].MayHaveMore);
-        var reduced = what.Words[3];
+        var reduced = what.Words[2];
         Assert.Equal((2, 1, 1, false, true), (reduced.Readings, reduced.ReadingsVia, reduced.ReadingsOther, reduced.Lost, reduced.Reduced));
-        Assert.Equal(new TypesTokens(5, 19 + 18 + 17 + 16 + 15), what.Affected);
-        Assert.Equal(new TypesTokens(3, 19 + 16 + 15), what.Lost);
+        Assert.Equal(["pend+wa"], reduced.Alternative);
+        Assert.Equal(new TypesTokens(4, 19 + 18 + 17 + 16), what.Affected);
+        Assert.Equal(new TypesTokens(2, 19 + 16), what.Lost);
         Assert.Equal(new TypesTokens(2, 18 + 17), what.Reduced);
+        // The capped word and the word the batch left out are counted apart, never as lost.
+        Assert.Equal(new TypesTokens(1, 15), what.Capped);
+        Assert.Equal(new TypesTokens(1, 13), what.Failed);
         Assert.False(what.Complete);
     }
 
     [Fact]
-    public void WhatIfRetireTokensAddUpAndAnIdTheCorpusLacksAffectsNothing()
+    public void WhatIfRetireTokensAddUpAndACappedWordIsNeverCalledLost()
     {
         var what = Run(null, retire: [Fused]).Value!.WhatIf!;
         Assert.Equal([$"id:{Fused}"], what.Retire);
-        Assert.Equal(["cappedw", "tofauti"], what.Words.Select(word => word.Word));
-        Assert.Equal(new TypesTokens(2, 20 + 15), what.Affected);
-        Assert.Equal(new TypesTokens(1, 15), what.Lost);
+        Assert.Equal(["tofauti"], what.Words.Select(word => word.Word));
+        Assert.Equal(new TypesTokens(1, 20), what.Affected);
+        Assert.Equal(new TypesTokens(0, 0), what.Lost);
         Assert.Equal(new TypesTokens(1, 20), what.Reduced);
-        var none = Run(null, retire: ["ffffffff-ffff-ffff-ffff-ffffffffffff"]).Value!.WhatIf!;
-        Assert.Equal((0, 0), (none.Affected.Types, none.Words.Count));
+        Assert.Equal(new TypesTokens(1, 15), what.Capped);
+        Assert.Equal(["tofaut+i"], what.Words[0].Alternative);
+    }
+
+    [Fact]
+    public void AnIdNoMorphOrEntryCarriesIsRefusedNotAnsweredWithZero()
+    {
+        var stranger = "ffffffff-ffff-ffff-ffff-ffffffffffff";
+        var bare = Run(null, retire: [stranger]);
+        Assert.Equal(RefusalCodes.QueryRetireIdUnknown, bare.Refusal!.Code);
+        Assert.Contains(stranger, bare.Refusal.Message);
+        Assert.Contains("--project", bare.Refusal.Message);
+        Assert.Equal(RefusalCodes.QueryRetireIdUnknown, Run($"only-via(msa:{stranger})").Refusal!.Code);
+        Assert.Equal(RefusalCodes.QueryRetireIdUnknown, Run(null, retire: [$"form:{stranger}"]).Refusal!.Code);
+        var withProject = Run(null, retire: [stranger], catalog: Catalog());
+        Assert.Equal(RefusalCodes.QueryRetireIdUnknown, withProject.Refusal!.Code);
+        var entry = Run(null, retire: [$"entry:{stranger}"], catalog: Catalog());
+        Assert.Equal(RefusalCodes.QueryRetireIdUnknown, entry.Refusal!.Code);
+        Assert.Contains("not an entry of the project", entry.Refusal.Message);
+    }
+
+    [Fact]
+    public void AnEntryIdTheProjectKnowsRetiresItsAnalysesBareOrNamed()
+    {
+        var named = Run(null, retire: [$"entry:{Entries[2]}"], catalog: Catalog()).Value!.WhatIf!;
+        var bare = Run(null, retire: [Entries[2]], catalog: Catalog()).Value!.WhatIf!;
+        Assert.Equal(["dupe", "tofauti"], named.Words.Select(word => word.Word).Order(StringComparer.Ordinal));
+        Assert.Equal(named.Affected, bare.Affected);
+        Assert.Equal([$"entry:{Entries[2]}"], bare.Retire);
+    }
+
+    [Fact]
+    public void AnAnalysisTheProjectLacksMakesTheCountsIncompleteAndIsNamed()
+    {
+        File.WriteAllText(Path.Combine(_folder, "g.json"), "g");
+        var path = Path.Combine(_folder, "one.tsv");
+        File.WriteAllText(path, "pendwa\t3\n");
+        CommandOutcome<CorpusFormsResponse> Go(MorphCatalog catalog) => CorpusQueryCommand.Forms(new CorpusFormsRequest(path, "readings > 0", GrammarPath: Path.Combine(_folder, "g.json")),
+            null, default, new Recorded(Recording), Path.Combine(_folder, "cache4"), catalog: catalog);
+        var matching = Go(Catalog()).Value!.ReadingsInfo!;
+        Assert.True(matching.Complete);
+        Assert.Equal(0, matching.UnknownMsa);
+        var mismatched = Go(Catalog(withOm: false)).Value!.ReadingsInfo!;
+        Assert.False(mismatched.Complete);
+        Assert.Equal(1, mismatched.UnknownMsa);
+        Assert.Contains("not in the project", mismatched.Note);
+    }
+
+    [Fact]
+    public void GroupByCauseWithNoProjectIsRefusedBecauseAHomophoneCannotBeToldFromARoot()
+    {
+        var outcome = Run(null, groupBy: "cause");
+        Assert.Equal(RefusalCodes.QueryReadingsNeedsProject, outcome.Refusal!.Code);
+        Assert.Contains("--project", outcome.Refusal.Message);
     }
 
     [Fact]

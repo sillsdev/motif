@@ -48,8 +48,9 @@ public static class ReadingStates
 /// <param name="Entry">The lexical entry id: from the project lexicon, or from PanGloss when its batch names it; null when neither is known.</param>
 /// <param name="Kind">One of <see cref="MorphKinds"/> from the project lexicon; null when no project was named.</param>
 /// <param name="Signature">PanGloss's own signature of the morph when its batch gives one; null today.</param>
+/// <param name="Gloss">The entry's gloss from the project lexicon; null when none.</param>
 public sealed record ReadingMorph(string Form, string Msa, string Text, int Start, int End, string? InflType = null,
-    string? Entry = null, string? Kind = null, string? Signature = null)
+    string? Entry = null, string? Kind = null, string? Signature = null, string? Gloss = null)
 {
     /// <summary>The identity two readings compare a morph by.</summary>
     [JsonIgnore]

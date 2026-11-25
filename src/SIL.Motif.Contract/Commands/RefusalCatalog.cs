@@ -483,6 +483,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.QueryRealizesNeedsProject, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryReadingsNeedsGrammar, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryReadingsNeedsProject, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.QueryRetireIdUnknown, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryDocumentInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryMixedUnits, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryNoTrialRows, FailureReason.NotFound),

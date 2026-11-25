@@ -62,6 +62,26 @@ public sealed class ReadingCausesTests
     }
 
     [Fact]
+    public void MorphsOfUnknownClassAreNeverBenignSoARootHomographWithoutAProjectIsOther()
+    {
+        var first = R(M("x", "pend", 0, msa: "s1"));
+        var second = R(M("x", "pend", 0, msa: "s2"));
+        Assert.Equal(ReadingCause.Other, ReadingCause.Of([first, second]));
+        var half = R(M("x", "pend", 0, MorphKinds.Inflectional, msa: "s1"));
+        Assert.Equal(ReadingCause.Other, ReadingCause.Of([half, second]));
+    }
+
+    [Fact]
+    public void DerivationalAffixesThatSpellAlikeAreNotBenign()
+    {
+        var first = R(M("root", "kul", 0), M("a", "ish", 3, MorphKinds.Derivational, msa: "d1"));
+        var second = R(M("root", "kul", 0), M("a", "ish", 3, MorphKinds.Derivational, msa: "d2"));
+        Assert.Equal(ReadingCause.Other, ReadingCause.Of([first, second]));
+        var mixed = R(M("root", "kul", 0), M("a", "ish", 3, MorphKinds.Inflectional, msa: "i1"));
+        Assert.Equal(ReadingCause.Other, ReadingCause.Of([first, mixed]));
+    }
+
+    [Fact]
     public void ADifferentStemWithTheSameSpellingIsNotHomophonousAffix()
     {
         var first = R(M("x", "pend", 0, MorphKinds.Stem, msa: "s1"));

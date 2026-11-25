@@ -418,6 +418,8 @@ public static class RefusalCodes
     public const string QueryReadingsNeedsGrammar = "query.readings-needs-grammar";
     /// <summary>A readings query named an entry, and only a project's lexicon says which entry owns a morph's analysis.</summary>
     public const string QueryReadingsNeedsProject = "query.readings-needs-project";
+    /// <summary><c>only-via</c> or <c>--what-if-retire</c> named an id that no morph of the corpus parse and no entry of the project carries, so it would silently match nothing.</summary>
+    public const string QueryRetireIdUnknown = "query.retire-id-unknown";
     /// <summary>A motif.query.v2 document or text expression is malformed or names an unsupported version.</summary>
     public const string QueryDocumentInvalid = "query.document-invalid";
     public const string QueryNoTrialRows = "query.no-trial-rows";

@@ -34,15 +34,16 @@ public sealed record CorpusFormRow(string Form, long Tokens, string? ParseState 
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? Readings = null);
 
 /// <summary>What the corpus parse behind a readings query covers, and whether its counts can be trusted.</summary>
-/// <param name="Complete">False when a word's parse was capped, timed out or got no answer, so its readings may be fewer than the grammar's.</param>
+/// <param name="Complete">False when a word's parse was capped, timed out or got no answer, or a morph is unknown to the project, so its readings may be fewer than the grammar's.</param>
 /// <param name="Types">The word types parsed.</param>
 /// <param name="Capped">Words stopped at the parser's work limit.</param>
 /// <param name="TimedOut">Words stopped at the word timeout.</param>
 /// <param name="Failed">Words the batch gave no answer for.</param>
 /// <param name="Unsegmentable">Words the grammar's characters cannot segment; they have no reading and do not make the counts incomplete.</param>
+/// <param name="UnknownMsa">Distinct analysis ids in the parse that the project's lexicon does not have (a grammar and project that do not match); they make the counts incomplete.</param>
 /// <param name="MorphClasses"><c>project</c> when the project's lexicon named each morph's entry and class, else <c>unavailable</c> and entry ids and classes are absent.</param>
 /// <param name="Note">What an incomplete or class-less run means for the answer; null when nothing needs saying.</param>
-public sealed record ReadingsReport(bool Complete, int Types, int Capped, int TimedOut, int Failed, int Unsegmentable, string MorphClasses, string? Note);
+public sealed record ReadingsReport(bool Complete, int Types, int Capped, int TimedOut, int Failed, int Unsegmentable, int UnknownMsa, string MorphClasses, string? Note);
 
 /// <summary>The words with more than one reading, grouped by cause (<c>--group-by cause</c>).</summary>
 /// <param name="Complete">Mirrors <see cref="ReadingsReport.Complete"/>.</param>
@@ -60,7 +61,9 @@ public sealed record CauseReport(bool Complete, int Words, long Tokens, IReadOnl
 /// <param name="Lost">Every reading uses them, so the word would lose its parse.</param>
 /// <param name="Reduced">Some but not all use them, so the word would keep fewer readings.</param>
 /// <param name="MayHaveMore">The word's parse was capped or timed out, so a hidden reading may keep it.</param>
-public sealed record WhatIfWord(string Word, long Tokens, int Readings, int ReadingsVia, int ReadingsOther, bool Lost, bool Reduced, bool MayHaveMore);
+/// <param name="Alternative">For a reduced word, the readings that remain, each as its PanGloss signature or its morph texts joined by +; null otherwise.</param>
+public sealed record WhatIfWord(string Word, long Tokens, int Readings, int ReadingsVia, int ReadingsOther, bool Lost, bool Reduced, bool MayHaveMore,
+    IReadOnlyList<string>? Alternative = null);
 
 /// <summary>Types and tokens of one class of word.</summary>
 /// <param name="Types">Word types.</param>
@@ -74,12 +77,14 @@ public sealed record TypesTokens(int Types, long Tokens);
 /// <param name="Note">The caution to read with it.</param>
 /// <param name="Retire">The morphemes retired.</param>
 /// <param name="Complete">Mirrors <see cref="ReadingsReport.Complete"/>.</param>
-/// <param name="Affected">Words with at least one reading via the morphemes.</param>
+/// <param name="Affected">Words with a finished parse and at least one reading via the morphemes; capped and failed words are counted apart, so the totals add up.</param>
 /// <param name="Lost">Words that would lose every reading.</param>
 /// <param name="Reduced">Words that would keep some readings.</param>
+/// <param name="Capped">Words whose parse stopped at the work limit or the word timeout and that use the morphemes in a reading shown: not counted in Lost or Reduced, because a hidden reading may keep them.</param>
+/// <param name="Failed">Matched words the batch gave no answer for: nothing is known about them.</param>
 /// <param name="Words">The affected words, lost first then by tokens; at most the limit.</param>
 public sealed record WhatIfReport(bool Estimate, bool Exact, string Method, string Note, IReadOnlyList<string> Retire, bool Complete,
-    TypesTokens Affected, TypesTokens Lost, TypesTokens Reduced, IReadOnlyList<WhatIfWord> Words);
+    TypesTokens Affected, TypesTokens Lost, TypesTokens Reduced, TypesTokens Capped, TypesTokens Failed, IReadOnlyList<WhatIfWord> Words);
 
 /// <summary>The words of a corpus that satisfy a query, versioned <see cref="SchemaName"/>.</summary>
 /// <param name="Schema">The schema name.</param>
