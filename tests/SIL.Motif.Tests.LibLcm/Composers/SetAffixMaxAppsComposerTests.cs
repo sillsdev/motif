@@ -99,7 +99,7 @@ public sealed class SetAffixMaxAppsComposerTests : IDisposable
     }
 
     [Fact]
-    public void ACountOfOneRemovesTheElementAndThenTheEmptyAffixRulesElementLeavingTheRestByteForByte()
+    public void ACountOfOneRemovesTheElementAndThenTheEmptyAffixRulesElementLeavingTheRestSemanticallyPreserved()
     {
         const string withOther = "<ParserParameters><HC><AffixRules><AffixRule guid=\"00000000-0000-0000-0000-000000000001\" maxApps=\"3\"/>" +
             "<AffixRule guid=\"{0}\" maxApps=\"2\"/></AffixRules><Strata /></HC></ParserParameters>";
@@ -162,6 +162,17 @@ public sealed class SetAffixMaxAppsComposerTests : IDisposable
         var malformed = Assert.Throws<InvalidOperationException>(() => SetAffixMaxAppsComposer.Build(_cache, new(_msa, 1, 2)));
         Assert.Contains("not well-formed", malformed.Message, StringComparison.Ordinal);
         Assert.Equal("<ParserParameters>", Parameters);
+    }
+
+    [Fact]
+    public void ParserSettingsWithAForeignRootAreRefusedAndLeftAlone()
+    {
+        SetParameters("<Other><HC/></Other>");
+
+        var refusal = Assert.Throws<InvalidOperationException>(() => SetAffixMaxAppsComposer.Build(_cache, new(_msa, 1, 2)));
+
+        Assert.Contains("not <ParserParameters>", refusal.Message, StringComparison.Ordinal);
+        Assert.Equal("<Other><HC/></Other>", Parameters);
     }
 
     [Fact]

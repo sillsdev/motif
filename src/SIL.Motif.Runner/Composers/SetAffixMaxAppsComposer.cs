@@ -58,7 +58,11 @@ public static class SetAffixMaxAppsComposer
         var msa = AffixMaxApps.ResolveAffixMsa(cache, intent.Msa);
         var morphData = cache.LangProject.MorphologicalDataOA;
         int current;
-        try { current = AffixMaxAppsParserParameters.Read(morphData.ParserParameters, msa.Guid); }
+        try
+        {
+            AffixMaxAppsParserParameters.RequireRoot(morphData.ParserParameters);
+            current = AffixMaxAppsParserParameters.Read(morphData.ParserParameters, msa.Guid);
+        }
         catch (System.Xml.XmlException error)
         {
             throw new InvalidOperationException(

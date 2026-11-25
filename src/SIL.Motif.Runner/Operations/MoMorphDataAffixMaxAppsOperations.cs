@@ -116,7 +116,7 @@ public static class AffixMaxApps
 
 /// <summary>
 /// Reads and edits one affix count in ParserParameters. Every other element, attribute and text in the XML is kept
-/// byte for byte; a count of 1 removes its element and an empty <c>AffixRules</c> element is removed with it.
+/// as XML (the text is re-serialised, so empty elements may gain a space and a declaration is dropped); a count of 1 removes its element and an empty <c>AffixRules</c> element is removed with it.
 /// </summary>
 public static class AffixMaxAppsParserParameters
 {
@@ -135,9 +135,19 @@ public static class AffixMaxAppsParserParameters
         return count;
     }
 
-    /// <summary>The XML with the count for <paramref name="msa"/> set, unchanged byte for byte when it already is.</summary>
+    /// <summary>Throws when the XML's root is not <c>ParserParameters</c>, which FieldWorks never writes.</summary>
+    public static void RequireRoot(string? parserParameters)
+    {
+        if (string.IsNullOrWhiteSpace(parserParameters)) return;
+        var name = XElement.Parse(parserParameters).Name.LocalName;
+        if (name != "ParserParameters")
+            throw new InvalidOperationException($"The project's parser settings start with <{name}>, not <ParserParameters>; fix it in FieldWorks first.");
+    }
+
+    /// <summary>The XML with the count for <paramref name="msa"/> set, returned as given when it already is.</summary>
     public static string Write(string? parserParameters, Guid msa, int maxApps)
     {
+        RequireRoot(parserParameters);
         if (Read(parserParameters, msa) == maxApps && (maxApps == AffixMaxApps.Default ||
             Find(XElement.Parse(parserParameters!).Element("HC"), msa) is not null))
             return parserParameters ?? "";
