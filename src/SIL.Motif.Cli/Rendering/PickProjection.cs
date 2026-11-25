@@ -14,7 +14,7 @@ namespace SIL.Motif.Cli.Rendering;
 /// A path is dot-separated property names (case-sensitive, as printed). <c>name[]</c> takes every element of an array and
 /// yields an array of what follows; <c>name[2]</c> takes one element. A property missing from some elements of a
 /// <c>[]</c> array gives null for those elements. A path that matches nothing at all is refused with the names that
-/// exist at the point it failed, never printed as null. Pinned by `PickProjectionTests`.
+/// exist at the point it failed, never printed as null. A property name containing '.', '[' or ']' cannot be addressed. Pinned by `PickProjectionTests`.
 /// </remarks>
 public static class PickProjection
 {

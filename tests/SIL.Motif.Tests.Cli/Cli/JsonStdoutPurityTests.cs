@@ -11,7 +11,8 @@ namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
 /// With <c>--json</c>, stdout is exactly one JSON document, or empty when the command refused (the refusal goes to
-/// stderr); a log line, banner or warning on stdout makes a script slice the text by hand. Issue 446.
+/// stderr); a log line, banner or warning on stdout makes a script slice the text by hand. The sweep runs each verb
+/// against a missing project, so it mostly exercises the refusal path.
 /// </summary>
 public sealed class JsonStdoutPurityTests
 {
@@ -61,7 +62,12 @@ public sealed class JsonStdoutPurityTests
             AssertOneDocumentOrNothing(plain.Out, commandName);
             var picked = Run(root, [.. argv, "--pick", "no.such.field"]);
             AssertOneDocumentOrNothing(picked.Out, commandName + " --pick");
-            if (plain.Exit != 0) Assert.Empty(picked.Out);
+            if (plain.Exit != 0)
+            {
+                Assert.Empty(picked.Out);
+                Assert.Equal(plain.Exit, picked.Exit);
+                Assert.Equal(plain.Err, picked.Err);
+            }
         }
         finally { Directory.Delete(root, recursive: true); }
     }

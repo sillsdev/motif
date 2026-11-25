@@ -241,11 +241,14 @@ try
     }
 
     // Pinned by `ASuccessfulJsonVerbPrintsExactlyOneDocumentAndPickKeepsTheNamedFields`.
+    var pickRefused = false;
     CommandResult Picked(CommandResult printed)
     {
-        if (pickSpec is null || !asJson) return printed;
+        // A failing command keeps its own failure; projecting its text would replace the real error.
+        if (pickSpec is null || !asJson || printed.ExitCode != 0) return printed;
         var picked = PickProjection.Apply(printed, pickSpec);
-        if (picked.ExitCode == 0) return printed.ExitCode == 0 ? picked : picked with { ExitCode = printed.ExitCode };
+        if (picked.ExitCode == 0) return picked;
+        pickRefused = true;
         error.Write(picked.Output);
         return picked with { Output = "" };
     }
@@ -1258,7 +1261,7 @@ try
             {
                 var pickedTrial = Picked(result);
                 output.Write(pickedTrial.Output);
-                return pickedTrial.Reason is not null ? pickedTrial.ExitCode : trialResultExit;
+                return pickRefused ? pickedTrial.ExitCode : trialResultExit;
             }
             break;
 
@@ -3592,7 +3595,7 @@ try
         output.Write(result.Output);
         return result.ExitCode;
     }
-    if (pickSpec is not null && asJson && result.Output.Length == 0) return result.ExitCode;
+    if (pickRefused) return result.ExitCode;
     // A caller that asked for JSON gets JSON when it goes wrong too; a Proposal verb already did this itself.
     error.Write(!alreadyRendered && asJson && result.Reason is { } reason
         ? ProjectionJson.Serialize(new FailureEnvelope(reason, result.Output.Trim())) + Environment.NewLine
