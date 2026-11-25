@@ -93,13 +93,16 @@ public sealed record ReadingManifestSummary(string Kind, string? Path, long Rows
 /// <param name="Limitations">Why some forms are not in the delta, by code.</param>
 /// <param name="Expectations">The delta held to manifests and doubled caps, present only when the read was given any.</param>
 /// <param name="Receipt">The receipt written for a green Trial, present only when the read was asked to write one and it earned one.</param>
+/// <param name="Siblings">The sibling words the Trial measured beside its own list and how they fared, present only when it sampled any.</param>
 public sealed record ReadingDelta(int SchemaVersion, string JobId, string ProposalRevision, ReadingDeltaCounts Counts,
     IReadOnlyList<ReadingDeltaClass> Classes, IReadOnlyList<ReadingManifestSummary> Manifests,
     IReadOnlyList<string> Limitations,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     ReadingExpectationResult? Expectations = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    TrialReceiptSummary? Receipt = null)
+    TrialReceiptSummary? Receipt = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    TrialSiblings? Siblings = null)
 {
     /// <summary>The current version of this shape.</summary>
     public const int Version = 1;

@@ -26,6 +26,8 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.TrialTouchedNeedsWords, FailureReason.InvalidArgument),
         Spec(RefusalCodes.TrialTouchedNoBaseline, FailureReason.NotFound),
         Spec(RefusalCodes.TrialTouchedNoObjects, FailureReason.NotFound),
+        Spec(RefusalCodes.TrialSiblingsInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.TrialSiblingsNone, FailureReason.NotFound),
         Spec(RefusalCodes.TrialNone, FailureReason.NotFound),
         Spec(RefusalCodes.TrialScratchGone, FailureReason.NotFound),
     ];

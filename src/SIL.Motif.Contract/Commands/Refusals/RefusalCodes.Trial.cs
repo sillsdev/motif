@@ -37,6 +37,10 @@ public static partial class RefusalCodes
     public const string TrialTouchedNoBaseline = "trial.touched-no-baseline";
     /// <summary><c>--touched</c> resolved none of the Proposal's edited objects to an allomorph or grammatical info in the Baseline.</summary>
     public const string TrialTouchedNoObjects = "trial.touched-no-objects";
+    /// <summary>The sibling options contradict each other, name no corpus-types file, need a word list that was not given, or the file cannot be read.</summary>
+    public const string TrialSiblingsInvalid = "trial.siblings-invalid";
+    /// <summary>The sibling sample is empty: no touched form was found, or no corpus word shares one that the word list does not already hold.</summary>
+    public const string TrialSiblingsNone = "trial.siblings-none";
     /// <summary>The Proposal has not been tried yet.</summary>
     public const string TrialNone = "trial.none";
     /// <summary>The Trial's scratch project was removed, so the trace cannot be reopened.</summary>

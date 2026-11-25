@@ -1166,7 +1166,7 @@ try
             {
                 return Usage(
                     "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
-                    "[--words <file>|--all-words] [--touched] [--no-base-sample] [--wait] [--no-background] [--expect-loss <file>] [--json]", asJson);
+                    "[--words <file>|--all-words] [--touched] [--siblings --corpus-types <file> [--siblings-max <n>] [--siblings-pattern <regex>]|--no-siblings] [--no-base-sample] [--wait] [--no-background] [--expect-loss <file>] [--json]", asJson);
             }
             IReadOnlyList<string>? trialWords = null;
             IReadOnlyList<string>? reviewSets = null;
@@ -1206,9 +1206,15 @@ try
             var trialWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                 "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
-                "[--words <file>|--all-words] [--touched] [--no-base-sample] " +
+                "[--words <file>|--all-words] [--touched] [--siblings --corpus-types <file> [--siblings-max <n>] [--siblings-pattern <regex>]|--no-siblings] [--no-base-sample] " +
                 "--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--verbose] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
+            var siblingsRequest = TrialSiblingsCli.Read(flags, out var siblingsRefusal);
+            if (siblingsRefusal is not null)
+            {
+                result = RenderCommand(CommandOutcome<JobEnqueuedResponse>.Refused(siblingsRefusal), successAsJson: false);
+                break;
+            }
             var trialResultExit = 0;
             result = RunWithConsoleCancellation(cancellationToken =>
             {
@@ -1218,12 +1224,14 @@ try
                         Words: trialWords, AllWords: flags.ContainsKey("all-words"),
                         NoBackground: flags.ContainsKey("no-background"),
                         NoBaseSample: flags.ContainsKey("no-base-sample"))
-                    { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses, Touched = flags.ContainsKey("touched") },
+                    { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses, Touched = flags.ContainsKey("touched"), Siblings = siblingsRequest },
                     ResolveRoot(), null, BaselineMode.BestEffort, cancellationToken);
                 if (!queued.Succeeded)
                     return RenderCommand(CommandOutcome<JobEnqueuedResponse>.Refused(queued.Refusal!), successAsJson: false);
                 if (queued.Value!.Touched is { } touched)
                     error.WriteLine(touched.Describe());
+                if (queued.Value!.Siblings is { } siblingsNote)
+                    error.WriteLine(siblingsNote);
                 if (queued.Value!.BaselineWarning is { } reason)
                     error.WriteLine(
                         "warning: the Trial has no Baseline Assessment, so `difference produce` will refuse it: " + reason);
@@ -4232,7 +4240,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens" or "thorough" or "with-counts")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "siblings" or "no-siblings" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens" or "thorough" or "with-counts")
             {
                 flags[name] = "true";
                 continue;

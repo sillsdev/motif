@@ -133,6 +133,8 @@ public static class TrialReadingDelta
                     FailureReason.InvalidArgument, $"The manifests could not be written to '{manifestDirectory}': {exception.Message}"));
             }
         }
+        var (siblings, siblingsProblem) = SiblingsOf(database, receipt, forms);
+        if (siblingsProblem is not null) limitations.Add(siblings is null ? "siblings-unreadable" : "siblings-unmeasured");
         ReadingExpectationResult? held = null;
         if (expectations is not null)
         {
@@ -152,7 +154,7 @@ public static class TrialReadingDelta
             var (expectedAliases, expectedRefusal) = Aliases(database, receipt, request, options);
             if (expectedRefusal is not null) return expectedRefusal;
             held = TrialExpectationCheck.Evaluate(forms, counts, expectations, retired, added, expectedAliases, options.KeepCase,
-                NotCurrent(database, receipt, request, counts));
+                NotCurrent(database, receipt, request, counts) ?? siblingsProblem);
         }
         TrialReceiptSummary? written = null;
         if (receiptPath is not null && expectations is not null)
@@ -167,7 +169,7 @@ public static class TrialReadingDelta
             }
         }
         return CommandOutcome<ReadingDelta>.Success(new ReadingDelta(ReadingDelta.Version, receipt.JobId,
-            receipt.ProposalRevision, counts, shown, manifests, [.. limitations], held, written));
+            receipt.ProposalRevision, counts, shown, manifests, [.. limitations], held, written, siblings));
     }
 
     // The receipt of a green Trial, bound to the revision and Baseline just proved current.
@@ -189,6 +191,36 @@ public static class TrialReadingDelta
         {
             return (null, new Refusal(RefusalCodes.TrialDeltaIncomplete, FailureReason.Refused,
                 "The receipt could not be bound to the Trial: " + exception.Message));
+        }
+    }
+
+    // The sampled siblings and, when they cannot be held to expectations, why.
+    private static (TrialSiblings? Siblings, string? Problem) SiblingsOf(MotifDatabase database, TrialExportReceipt receipt,
+        IReadOnlyList<ReadingDeltaForm> forms)
+    {
+        try
+        {
+            if (new JobRepository(database).Get(receipt.JobId) is not { } job ||
+                TrialJobInput.Parse(job.InputJson).Siblings is not { } input)
+                return (null, null);
+            var sampled = JobWordLists.Read(database, input.Words)
+                .Select(word => word.Normalize(NormalizationForm.FormC)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var mine = forms.Where(form => sampled.Contains(form.Word)).ToArray();
+            string[] Sample(string name) => [.. mine.Where(form => form.Classes.Contains(name))
+                .Select(form => form.Word).Order(StringComparer.Ordinal).Take(20)];
+            var block = new TrialSiblings(input.Pattern, input.Seed, input.Max, input.TouchedForms, input.CorpusTypesSha256,
+                input.Candidates, input.ParsedCandidates, sampled.Count, mine.Length,
+                Count(mine, ReadingDeltaClasses.Lost), Sample(ReadingDeltaClasses.Lost),
+                Count(mine, ReadingDeltaClasses.Doubled), Sample(ReadingDeltaClasses.Doubled), input.Warning);
+            return (block, mine.Length < sampled.Count
+                ? $"{sampled.Count - mine.Length} of {sampled.Count} sampled siblings were not measured on both sides, so the delta cannot be held to the expectations."
+                : null);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or JsonException or
+            UnauthorizedAccessException)
+        {
+            return (null, "The Trial sampled siblings but their record could not be read (" + exception.Message +
+                "), so the delta cannot be held to the expectations.");
         }
     }
 

@@ -58,6 +58,102 @@ public sealed class TrialReadingDeltaTests
     }
 
     [Fact]
+    public void SiblingsAreReportedSeparatelyAndJudgedByTheSameExpectations()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var forms = new[] { Form("gold", [1], [1]), Form("kuish", [2], []), Form("kuishe", [3], [3, 4]), Form("kuishi", [5], [5]) };
+        var proposal = "";
+        var result = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, located) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, located, forms, siblings: ["kuish", "kuishe", "kuishi"]);
+            ProposalCompareExports.RecordCurrentBaseline(database, located);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+
+        var delta = TrialReadingDelta.Read(request).Value!;
+        var siblings = delta.Siblings!;
+
+        Assert.Equal(3, siblings.Sampled);
+        Assert.Equal(3, siblings.Measured);
+        Assert.Equal(1, siblings.Lost);
+        Assert.Equal(["kuish"], siblings.LostSample);
+        Assert.Equal(1, siblings.Doubled);
+        Assert.Equal(["kuishe"], siblings.DoubledSample);
+        Assert.Equal((42L, 1000, "per-form"), (siblings.Seed, siblings.Max, siblings.Pattern));
+        Assert.Equal(["ish"], siblings.TouchedForms);
+        var directory = Path.Combine(fixture.Root, "manifests");
+        TrialReadingDelta.ReadAndWrite(request, directory);
+        var green = TrialReadingDelta.Check(request, new TrialExpectations(Rows(directory, "expect-retired.jsonl"),
+            Rows(directory, "expect-added.jsonl"))).Value!;
+        Assert.Equal(ReadingExpectationStates.Green, green.Expectations!.State);
+        Assert.Equal(1, green.Siblings!.Lost);
+        // A sibling lost with no manifest row is a mismatch, and no new state is added for it.
+        var lostUndeclared = Rows(directory, "expect-retired.jsonl").Where(line => !line.Contains("\"kuish\"")).ToArray();
+        var gate = TrialReadingDelta.Check(request, new TrialExpectations(lostUndeclared, Rows(directory, "expect-added.jsonl")))
+            .Value!.Expectations!;
+        Assert.Equal(ReadingExpectationStates.Mismatch, gate.State);
+        Assert.Contains(gate.Mismatches, item => item.Word == "kuish");
+        // A doubled sibling counts toward the doubled cap.
+        var capped = TrialReadingDelta.Check(request, new TrialExpectations(Rows(directory, "expect-retired.jsonl"),
+            Rows(directory, "expect-added.jsonl"), MaxDoubled: 0)).Value!.Expectations!;
+        Assert.Equal(ReadingExpectationStates.DoubledOverCap, capped.State);
+    }
+
+    private static string TrialWithSiblings(ReviewAcceptanceFixture fixture, string[] sampled, bool purgeList = false)
+    {
+        var proposal = "";
+        var result = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, located) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, located, [Form("gold", [1], [1]), Form("kuish", [2], [2])], siblings: sampled);
+            ProposalCompareExports.RecordCurrentBaseline(database, located);
+            if (purgeList)
+                foreach (var file in Directory.GetFiles(Path.GetFullPath(database.FullPath) + ".job-inputs")) File.Delete(file);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        return proposal;
+    }
+
+    [Fact]
+    public void ASampledSiblingTheTrialDidNotMeasureMakesTheExpectationsUnmeasuredNotGreen()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: TrialWithSiblings(fixture, ["kuish", "absent", "gone"]));
+
+        var delta = TrialReadingDelta.Check(request, new TrialExpectations([], [])).Value!;
+
+        Assert.Equal(ReadingExpectationStates.Unmeasured, delta.Expectations!.State);
+        Assert.Contains("2 of 3 sampled siblings were not measured", delta.Expectations.Reason);
+        Assert.Contains("siblings-unmeasured", delta.Limitations);
+        Assert.Equal(1, delta.Siblings!.Measured);
+    }
+
+    [Fact]
+    public void ASiblingRecordThatCannotBeReadIsReportedNotTakenForNoSiblings()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: TrialWithSiblings(fixture, ["kuish"], purgeList: true));
+
+        var delta = TrialReadingDelta.Check(request, new TrialExpectations([], [])).Value!;
+
+        Assert.Null(delta.Siblings);
+        Assert.Contains("siblings-unreadable", delta.Limitations);
+        Assert.Equal(ReadingExpectationStates.Unmeasured, delta.Expectations!.State);
+        Assert.Contains("record could not be read", delta.Expectations.Reason);
+    }
+
+    [Fact]
+    public void ATrialThatSampledNoSiblingsCarriesNoSiblingsBlock()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("lost", [1], []));
+
+        Assert.Null(TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal)).Value!.Siblings);
+    }
+
+    [Fact]
     public void ManifestsMatchTheLaneFormatAndEnumerateTheWholeDelta()
     {
         using var fixture = new ReviewAcceptanceFixture();
