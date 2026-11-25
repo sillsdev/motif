@@ -3242,6 +3242,24 @@ try
                     new ProjectWordFormingRequest(wordFormingProject, wordFormingAdd)));
                 break;
             }
+            if (positionals is ["backup"])
+            {
+                if (!flags.TryGetValue("project", out var backupProject) ||
+                    flags.Keys.Any(key => key is not ("project" or "to" or "json")))
+                    return Usage(UsageLineFor("project backup"), asJson);
+                result = RenderCommand(ProjectBackupCommand.Backup(
+                    new ProjectBackupRequest(backupProject, flags.GetValueOrDefault("to"))));
+                break;
+            }
+            if (positionals is ["restore", ..])
+            {
+                if (positionals.Count != 2 || !flags.TryGetValue("project", out var restoreProject) ||
+                    flags.Keys.Any(key => key is not ("project" or "json")))
+                    return Usage(UsageLineFor("project restore"), asJson);
+                result = RenderCommand(ProjectBackupCommand.Restore(
+                    new ProjectRestoreRequest(restoreProject, positionals[1])));
+                break;
+            }
             if (positionals is ["tag"] && flags.ContainsKey("set") && !HasProjectTagValue(rest))
                 return Usage(UsageLineFor("project tag --set"), asJson);
             if (positionals is ["tag"] && flags.TryGetValue("project", out var tagProject))

@@ -383,6 +383,19 @@ internal sealed class MotifSqliteStore : IDisposable
         }
     }
 
+    /// <summary>
+    /// Runs <paramref name="act"/> under the creation lock and an exclusive use lease, without opening the database, so
+    /// a Motif process holding the store makes this refuse.
+    /// </summary>
+    /// <exception cref="MotifStoreLockException">Another Motif process holds the store open.</exception>
+    public static T WithExclusiveFiles<T>(string path, TimeSpan? ownershipPatience, Func<T> act)
+    {
+        var fullPath = Path.GetFullPath(path);
+        using var ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience);
+        using var useLease = AcquireExclusiveUseLease(fullPath);
+        return act();
+    }
+
     public SqliteConnection OpenConnection()
     {
         lock (_stateGate)

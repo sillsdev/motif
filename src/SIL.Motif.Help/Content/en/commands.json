@@ -69,6 +69,16 @@
     "description": "Removes older Assessments that are no longer needed by retained evidence. It also reclaims available space in the project store.",
     "source": "Hand-written from the project store retention behavior."
   },
+  "project backup": {
+    "title": "Back up a Motif store",
+    "description": "Writes a consistent copy of the project's Motif store and the files Motif owns for it into a new folder, while other Motif processes keep reading and writing. The receipt lists each file's size and sha256 and the store's schema version. It does not include the FieldWorks project file.",
+    "source": "Hand-written from the project backup behavior."
+  },
+  "project restore": {
+    "title": "Restore a Motif store",
+    "description": "Puts a Motif backup back beside the project after checking every file against its receipt. It refuses while the store is open or busy, when the backup is of a newer schema, and when a file does not match its sha256. It saves the store it replaces first and swaps the restored one in by rename.",
+    "source": "Hand-written from the project backup behavior."
+  },
   "project initialize": {
     "title": "Prepare a project for Motif",
     "description": "Creates Motif's reserved human judgment field in a FieldWorks project after explicit confirmation. It does not add a judgment or create a writing system.",

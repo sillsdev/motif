@@ -465,6 +465,19 @@ public static class RefusalCodes
     public const string QueryPhonFailed = "query.phon-failed";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
+
+    /// <summary><c>project backup</c> found no Motif store beside the project.</summary>
+    public const string ProjectBackupNoStore = "project.backup-no-store";
+    /// <summary><c>project backup</c> was given a destination folder that already holds files; nothing was written.</summary>
+    public const string ProjectBackupDestinationExists = "project.backup-destination-exists";
+    /// <summary><c>project restore</c> was given a folder with no readable backup receipt, or a receipt that names a file the folder lacks.</summary>
+    public const string ProjectBackupInvalid = "project.backup-invalid";
+    /// <summary><c>project restore</c> was given a backup whose store schema is newer than this build understands.</summary>
+    public const string ProjectBackupNewerSchema = "project.backup-newer-schema";
+    /// <summary><c>project restore</c> found a backed-up file whose sha256 differs from its receipt; nothing was changed.</summary>
+    public const string ProjectBackupChecksumMismatch = "project.backup-checksum-mismatch";
+    /// <summary><c>project restore</c> was given the backup of a different project's store; nothing was changed.</summary>
+    public const string ProjectBackupOtherProject = "project.backup-other-project";
     public const string ProjectBusy = "project.busy";
     /// <summary>A runner that <c>worker stop</c> ended did not exit within the wait.</summary>
     public const string WorkerStopFailed = "worker.stop-failed";

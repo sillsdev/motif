@@ -87,6 +87,10 @@ public static class CliVerbCatalog
                 "project create --into <folder> --name <ProjectName> --vernacular <bcp47> [--vernacular-name <text>] " +
                 "[--word-forming <characters>] [--analysis <bcp47>] [--json]",
             }),
+        new CliVerbDescriptor("Project", "project backup", "project backup",
+            new[] { "project backup --project <fwdata> [--to <dir>] [--json]" }),
+        new CliVerbDescriptor("Project", "project restore", "project restore",
+            new[] { "project restore <backup-dir> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Project", "project word-forming", "project word-forming",
             new[] { "project word-forming --project <fwdata> --add <characters> [--json]" }),
         new CliVerbDescriptor("Project", "project tag", "project tag",
