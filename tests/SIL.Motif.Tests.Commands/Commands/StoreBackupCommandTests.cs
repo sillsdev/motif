@@ -582,10 +582,7 @@ public sealed class StoreBackupCommandTests : IDisposable
         }
     }
 
-    /// <summary>
-    /// Commits a row held only in the WAL, then closes every handle and puts a copy of the WAL and shm back, so the
-    /// sidecars exist, the WAL is non-empty and no process holds the store open (the Windows case).
-    /// </summary>
+    /// <summary>Commits to the WAL, closes every handle, then puts a WAL copy and shm back with no holder.</summary>
     private void CommitOnlyToTheWalWithNoHolder(string marker)
     {
         CommitOnlyToTheWal(marker, closeOnWindows: false);
