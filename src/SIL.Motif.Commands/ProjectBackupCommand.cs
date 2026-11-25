@@ -22,13 +22,24 @@ namespace SIL.Motif.Commands;
 /// copied: FieldWorks backs that up itself, and the receipt says so.
 /// </para>
 /// <para>
-/// A restore checks the receipt, the schema and the project, then, under the store's exclusive lease, stages
-/// every file beside its target, checks the staged copy's sha256, backs up the store it replaces and swaps the
-/// staged files in by rename. Every refusal leaves the store as it was, pinned by
-/// `AFileThatDoesNotMatchItsShaIsRefusedAndTheStoreIsLeftAsItWas`.
+/// A restore checks the receipt, the schema and the project (by LibLCM project GUID, else by project identity;
+/// <c>--force</c> overrides), then, under the store's exclusive lease, stages every file beside its target and checks
+/// the staged copy's sha256. Nothing is deleted: the store, its <c>-wal</c>, <c>-shm</c> and <c>-journal</c> and every
+/// other owned file the restore replaces or the backup lacks (a trial export, a config, an upgrade report) are
+/// moved into <c>&lt;stem&gt;.motif-backups/pre-restore-&lt;time&gt;/moved</c>, and the response lists each one. Every
+/// refusal leaves the store as it was, pinned by `AFileThatDoesNotMatchItsShaIsRefusedAndTheStoreIsLeftAsItWas`.
+/// </para>
+/// <para>
+/// Crash states, in order. (1) Before any move: the old project is untouched; leftover <c>*.restore-*</c> staged files
+/// are deleted by the next restore. (2) Other owned files moved and swapped, store not yet moved: the old store is live
+/// beside the new config and trial files, a mixed state a rerun of the same restore repairs. (3) The old store and its
+/// sidecars moved as one set, the staged store not yet renamed: no store is at the path, the complete old store is in
+/// <c>moved</c> and the complete new one is staged; Motif sees no store, never a half or mixed one, and a rerun
+/// completes the restore. (4) The staged store renamed: the new store is live, complete. A failure the process
+/// survives (an <see cref="IOException"/>) moves everything back instead, and names the pre-restore folder.
 /// </para>
 /// </remarks>
-public static class ProjectBackupCommand
+public static partial class ProjectBackupCommand
 {
     /// <summary>The receipt's file name inside a backup folder.</summary>
     public const string ReceiptName = "motif-backup.json";
@@ -66,6 +77,12 @@ public static class ProjectBackupCommand
                 $"'{destination}' already exists and is not empty. Name a new folder with --to, or leave it off for a timestamped one.",
                 project, storePath, ("destination", destination));
 
+        if (OwnedFolderHolding(destination, storePath, project) is { } owned)
+            return Refuse<ProjectBackupResponse>(RefusalCodes.ProjectBackupDestinationOwned, FailureReason.InvalidArgument,
+                $"'{destination}' is inside '{owned}', which Motif owns, so a backup written there would be backed up into itself. " +
+                "Name a folder outside the store's own files with --to, or leave it off for a timestamped one.",
+                project, storePath, ("destination", destination), ("ownedPath", owned));
+
         var created = !Directory.Exists(destination);
         try
         {
@@ -100,39 +117,44 @@ public static class ProjectBackupCommand
 
         if (receipt.SchemaVersion > MotifSchema.CurrentSchema)
             return NewerSchema(receipt.SchemaVersion, project, storePath);
-        if (!string.Equals(receipt.ProjectPath, project.FullFwDataPath, StringComparison.OrdinalIgnoreCase))
+        if (!request.Force && !SameProject(receipt, project))
             return Refuse<ProjectRestoreResponse>(RefusalCodes.ProjectBackupOtherProject, FailureReason.Refused,
-                $"This backup is of the store for '{receipt.ProjectPath}', not for '{project.FullFwDataPath}'. " +
-                "Restore it for that project; nothing was changed.", project, storePath,
-                (RefusalFactNames.RegisteredProjectPath, receipt.ProjectPath));
+                $"This backup is of project '{receipt.ProjectIdentity}'" +
+                (receipt.ProjectGuid is null ? "" : $" ({receipt.ProjectGuid})") +
+                $" (store of '{receipt.ProjectPath}'), not of '{project.FullFwDataPath}'. " +
+                "Restore it for that project, or pass --force to restore it here anyway; nothing was changed.", project, storePath,
+                (RefusalFactNames.RegisteredProjectPath, receipt.ProjectPath), ("backupProjectIdentity", receipt.ProjectIdentity),
+                ("backupProjectGuid", receipt.ProjectGuid ?? ""));
 
         var now = clock?.GetUtcNow() ?? DateTimeOffset.UtcNow;
         var staging = Guid.NewGuid().ToString("N");
         var staged = new List<StagedFile>();
+        var progress = new RestoreProgress();
         try
         {
             return MotifDatabase.WithExclusiveStoreFiles(storePath, null, () =>
-                RestoreLocked(project, storePath, directory, receipt, targets, staging, staged, now));
+                RestoreLocked(project, storePath, directory, receipt, targets, staging, staged, now, progress));
         }
         catch (Exception exception) when (exception is MotifStoreLockException or InvalidDataException or IOException
             or UnauthorizedAccessException)
         {
             foreach (var file in staged) file.Discard();
-            return Failed<ProjectRestoreResponse>(exception, project, storePath, "restore");
+            return Failed<ProjectRestoreResponse>(exception, project, storePath, "restore", progress.Directory);
         }
     }
 
     private static CommandOutcome<ProjectRestoreResponse> RestoreLocked(ProjectLocator project, string storePath,
         string directory, ProjectBackupResponse receipt, List<Target> targets, string staging, List<StagedFile> staged,
-        DateTimeOffset now)
+        DateTimeOffset now, RestoreProgress progress)
     {
+        RemoveLeftoverStagedFiles(project, storePath);
         foreach (var target in targets)
         {
             var stagedPath = target.Destination + ".restore-" + staging;
             Directory.CreateDirectory(Path.GetDirectoryName(stagedPath)!);
             var file = new StagedFile(target, stagedPath);
             staged.Add(file);
-            CopyShared(Path.Combine(directory, target.Entry.Name), stagedPath);
+            CopyShared(Path.Combine(directory, target.Entry.Name.Replace('/', Path.DirectorySeparatorChar)), stagedPath);
             var (bytes, sha) = Measure(stagedPath);
             if (bytes != target.Entry.Bytes || !string.Equals(sha, target.Entry.Sha256, StringComparison.OrdinalIgnoreCase))
             {
@@ -143,12 +165,13 @@ public static class ProjectBackupCommand
                     project, storePath, ("file", target.Entry.Name), ("expectedSha256", target.Entry.Sha256), ("actualSha256", sha));
             }
         }
+        Step("staged");
 
-        var stagedStore = staged.First(file => file.Target.Entry.Role == "store").StagedPath;
+        var stagedStore = staged.First(file => file.Target.Entry.Role == "store");
         StoreFileFacts facts;
         try
         {
-            facts = MotifDatabase.ReadStoreFileFacts(stagedStore);
+            facts = MotifDatabase.ReadStoreFileFacts(stagedStore.StagedPath);
         }
         catch (InvalidDataException exception)
         {
@@ -162,22 +185,175 @@ public static class ProjectBackupCommand
             return NewerSchema(facts.SchemaVersion, project, storePath);
         }
 
+        var preRestore = Path.Combine(Path.GetDirectoryName(storePath)!,
+            Path.GetFileNameWithoutExtension(project.FullFwDataPath) + ".motif-backups", "pre-restore-" + Stamp(now));
+        for (var n = 2; Directory.Exists(preRestore) || File.Exists(preRestore); n++)
+            preRestore = Path.Combine(Path.GetDirectoryName(preRestore)!, "pre-restore-" + Stamp(now) + "-" + n);
+        var movedRoot = Path.Combine(preRestore, "moved");
+        var sidecars = new[] { "", "-wal", "-shm", "-journal" };
+
+        // A corrupt store is not a reason to refuse: its raw files are moved aside below.
         ProjectBackupResponse? previous = null;
         if (File.Exists(storePath))
         {
-            var saved = Path.Combine(Path.GetDirectoryName(storePath)!,
-                Path.GetFileNameWithoutExtension(project.FullFwDataPath) + ".motif-backups", "pre-restore-" + Stamp(now));
-            previous = WriteBackup(project, storePath, saved, now, file => MotifDatabase.BackUpHeldExclusively(storePath, file));
+            progress.Directory = preRestore;
+            try
+            {
+                previous = WriteBackup(project, storePath, preRestore, now,
+                    file => MotifDatabase.BackUpHeldExclusively(storePath, file));
+            }
+            catch (InvalidDataException)
+            {
+                previous = null;
+                // The raw files are moved aside below; the half-made copy is not a backup.
+                try { Directory.Delete(preRestore, recursive: true); }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+            }
         }
+        Step("pre-restore-saved");
 
-        foreach (var suffix in new[] { "-wal", "-shm", "-journal" })
-            if (File.Exists(storePath + suffix)) File.Delete(storePath + suffix);
-        foreach (var file in staged) file.SwapIn();
+        var moved = new List<ProjectQuarantinedFile>();
+        var swapped = new List<StagedFile>();
+        try
+        {
+            // 1. Every other owned file the restore replaces or the backup lacks moves aside whole; nothing is overwritten.
+            var restoredDestinations = new HashSet<string>(targets.Select(target => target.Destination), FileSystemComparer);
+            var others = new List<(string Original, string Relative)>
+            {
+                (Path.ChangeExtension(project.FullFwDataPath, ".motif.toml"), ConfigName),
+                (storePath + ".upgrade.json", UpgradeReportName),
+            };
+            var trialRoot = MotifDatabase.TrialExportDirectory(storePath);
+            if (Directory.Exists(trialRoot))
+                foreach (var source in Directory.EnumerateFiles(trialRoot, "*", SearchOption.AllDirectories)
+                    .Where(path => !IsStagedName(path)).Order(StringComparer.Ordinal))
+                    others.Add((source, TrialExportsPrefix + Path.GetRelativePath(trialRoot, source).Replace('\\', '/')));
+            foreach (var (original, relative) in others)
+                if (File.Exists(original))
+                    MoveAside(original, Path.Combine(movedRoot, relative.Replace('/', Path.DirectorySeparatorChar)),
+                        restoredDestinations.Contains(original) ? "replaced" : "not-in-backup", moved, progress, preRestore);
+            Step("owned-quarantined");
+
+            foreach (var file in staged.Where(file => file.Target.Entry.Role != "store"))
+            {
+                file.SwapIn();
+                swapped.Add(file);
+            }
+            Step("owned-swapped");
+
+            // 2. The old store and every sidecar move as one set, then the staged store renames into the empty place.
+            foreach (var suffix in sidecars)
+                if (File.Exists(storePath + suffix))
+                    MoveAside(storePath + suffix, Path.Combine(movedRoot, StoreName + suffix), "replaced", moved, progress, preRestore);
+            Step("old-store-moved");
+
+            stagedStore.SwapIn();
+            swapped.Add(stagedStore);
+            Step("store-swapped");
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            RollBack(swapped, moved);
+            throw;
+        }
 
         var restored = targets.Select(target => new ProjectBackupFile(target.Entry.Role, target.Entry.Name,
             target.Destination, target.Entry.Bytes, target.Entry.Sha256)).ToList();
         return CommandOutcome<ProjectRestoreResponse>.Success(new ProjectRestoreResponse(
-            storePath, directory, facts.SchemaVersion, now, restored, previous));
+            storePath, directory, facts.SchemaVersion, now, restored, previous,
+            moved.Count > 0 || previous is not null ? preRestore : null, moved));
+    }
+
+    private static void MoveAside(string original, string destination, string reason, List<ProjectQuarantinedFile> moved,
+        RestoreProgress progress, string preRestore)
+    {
+        progress.Directory = preRestore;
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        File.Move(original, destination);
+        moved.Add(new ProjectQuarantinedFile(original, destination, reason));
+    }
+
+    /// <summary>Undoes a survivable failure: removes what was swapped in, moves back what was set aside.</summary>
+    private static void RollBack(List<StagedFile> swapped, List<ProjectQuarantinedFile> moved)
+    {
+        foreach (var file in swapped)
+            try { File.Delete(file.Target.Destination); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        for (var index = moved.Count - 1; index >= 0; index--)
+            try { File.Move(moved[index].MovedTo, moved[index].OriginalPath); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+    }
+
+    private static string? OwnedFolderHolding(string destination, string storePath, ProjectLocator project)
+    {
+        var windows = OperatingSystem.IsWindows();
+        var parent = Path.GetDirectoryName(storePath)!;
+        foreach (var owned in OwnedPaths(storePath, parent, Path.GetFileNameWithoutExtension(project.FullFwDataPath)))
+            if (IsInside(destination, owned, windows)) return owned;
+        return null;
+    }
+
+    /// <summary>The store file, the folders Motif owns beside it, and the folder pre-restore copies go in.</summary>
+    internal static IEnumerable<string> OwnedPaths(string storePath, string parent, string stem) =>
+    [
+        storePath, MotifDatabase.TrialExportDirectory(storePath), Path.Combine(parent, stem + ".motif-backups"),
+    ];
+
+    /// <summary>Whether <paramref name="path"/> is <paramref name="root"/> or lies under it, by whole path segments.</summary>
+    internal static bool IsInside(string path, string root, bool windows)
+    {
+        string Normal(string value)
+        {
+            if (windows) value = value.Replace('\\', '/');
+            return value.Length > 1 ? value.TrimEnd('/') : value;
+        }
+        var comparison = windows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var (p, r) = (Normal(path), Normal(root));
+        return string.Equals(p, r, comparison) || p.StartsWith(r + "/", comparison);
+    }
+
+    private static StringComparer FileSystemComparer =>
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
+    private static bool IsStagedName(string path) => StagedSuffix().IsMatch(path);
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\.restore-[0-9a-f]{32}$")]
+    private static partial System.Text.RegularExpressions.Regex StagedSuffix();
+
+    /// <summary>Deletes staged files a crashed restore left behind.</summary>
+    private static void RemoveLeftoverStagedFiles(ProjectLocator project, string storePath)
+    {
+        var parent = Path.GetDirectoryName(storePath)!;
+        var stem = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
+        var leftovers = new List<string>();
+        if (Directory.Exists(parent))
+            leftovers.AddRange(Directory.EnumerateFiles(parent, stem + ".motif*.restore-*"));
+        var trialRoot = MotifDatabase.TrialExportDirectory(storePath);
+        if (Directory.Exists(trialRoot))
+            leftovers.AddRange(Directory.EnumerateFiles(trialRoot, "*.restore-*", SearchOption.AllDirectories));
+        foreach (var path in leftovers.Where(IsStagedName))
+            try { File.Delete(path); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+    }
+
+    /// <summary>Whether the backup is of this project: by LibLCM project GUID, else by identity.</summary>
+    private static bool SameProject(ProjectBackupResponse receipt, ProjectLocator project)
+    {
+        var current = FwDataProjectGuid.TryRead(project.FullFwDataPath);
+        if (receipt.ProjectGuid is not null && current is not null)
+            return string.Equals(receipt.ProjectGuid, current, StringComparison.OrdinalIgnoreCase);
+        return string.Equals(receipt.ProjectIdentity, project.FieldWorksProjectIdentity, StringComparison.Ordinal);
+    }
+
+    /// <summary>Where a restore is, for tests that fail or stop it between steps.</summary>
+    [ThreadStatic]
+    internal static Action<string>? StepHook;
+
+    private static void Step(string name) => StepHook?.Invoke(name);
+
+    private sealed class RestoreProgress
+    {
+        public string? Directory { get; set; }
     }
 
     private static ProjectBackupResponse WriteBackup(ProjectLocator project, string storePath, string destination,
@@ -206,9 +382,13 @@ public static class ProjectBackupCommand
                 CopyOwned("trial-export", TrialExportsPrefix + Path.GetRelativePath(trialRoot, source).Replace('\\', '/'), source);
 
         var receiptPath = Path.Combine(destination, ReceiptName);
-        var receipt = new ProjectBackupResponse(destination, receiptPath, project.FullFwDataPath, facts.SchemaVersion,
+        var receipt = new ProjectBackupResponse(destination, receiptPath, project.FullFwDataPath,
+            FwDataProjectGuid.TryRead(project.FullFwDataPath), project.FieldWorksProjectIdentity, facts.SchemaVersion,
             MotifProductVersion.CurrentText, now, files, false, FwDataNote);
-        File.WriteAllText(receiptPath, JsonSerializer.Serialize(receipt, ReceiptJson));
+        // Written beside, then renamed in, so a half-written receipt is never mistaken for a finished backup.
+        var receiptTemp = receiptPath + ".tmp";
+        File.WriteAllText(receiptTemp, JsonSerializer.Serialize(receipt, ReceiptJson));
+        File.Move(receiptTemp, receiptPath, overwrite: true);
         return receipt;
     }
 
@@ -233,14 +413,14 @@ public static class ProjectBackupCommand
         {
             return Invalid($"'{receiptPath}' cannot be read: {exception.Message}");
         }
-        if (receipt?.Files is null || string.IsNullOrWhiteSpace(receipt.ProjectPath) || receipt.SchemaVersion < 1)
+        if (receipt?.Files is null || string.IsNullOrWhiteSpace(receipt.ProjectPath) ||
+            string.IsNullOrWhiteSpace(receipt.ProjectIdentity) || receipt.SchemaVersion < 1)
             return Invalid($"'{receiptPath}' is not a Motif backup receipt.");
 
         var targets = new List<Target>();
         foreach (var entry in receipt.Files)
         {
-            if (string.IsNullOrWhiteSpace(entry.Name) || entry.Sha256 is null || Path.IsPathRooted(entry.Name) ||
-                entry.Name.Split('/', '\\').Contains(".."))
+            if (!IsPlainRelativeName(entry.Name) || entry.Sha256 is null)
                 return Invalid($"The receipt names a file it cannot restore: '{entry.Name}'.");
             var destination = entry.Role switch
             {
@@ -255,11 +435,25 @@ public static class ProjectBackupCommand
             if (destination is null) return Invalid($"The receipt lists '{entry.Name}' with the unknown role '{entry.Role}'.");
             if (!File.Exists(Path.Combine(directory, entry.Name.Replace('/', Path.DirectorySeparatorChar))))
                 return Invalid($"The receipt lists '{entry.Name}', which is not in the backup folder.");
+            if (targets.Any(target => FileSystemComparer.Equals(target.Destination, destination)))
+                return Invalid($"The receipt lists '{entry.Name}' more than once, or two names for one file.");
             targets.Add(new Target(entry, destination));
         }
         if (targets.Count(target => target.Entry.Role == "store") != 1)
             return Invalid("The receipt must list exactly one store.");
         return new Read((directory, receipt, targets), null);
+    }
+
+    /// <summary>
+    /// A receipt file name that is the same on every OS: no empty, rooted, drive-qualified, UNC or <c>..</c> segment,
+    /// and none of Windows' reserved characters, so a receipt made on one OS cannot reach outside the backup on another.
+    /// </summary>
+    internal static bool IsPlainRelativeName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(['\0', ':', '*', '?', '"', '<', '>', '|']) >= 0) return false;
+        var segments = name.Split('/', '\\');
+        return segments.All(segment => segment.Length > 0 && segment is not ("." or "..") && segment.TrimEnd() == segment
+            && !segment.EndsWith('.'));
     }
 
     private sealed record Target(ProjectBackupFile Entry, string Destination);
@@ -292,8 +486,8 @@ public static class ProjectBackupCommand
     private static CommandOutcome<ProjectRestoreResponse> NewerSchema(int schema, ProjectLocator project, string storePath) =>
         NewerSchema<ProjectRestoreResponse>(schema, project, storePath);
 
-    private static CommandOutcome<T> Failed<T>(Exception exception, ProjectLocator project, string storePath, string action)
-        where T : class
+    private static CommandOutcome<T> Failed<T>(Exception exception, ProjectLocator project, string storePath, string action,
+        string? savedIn = null) where T : class
     {
         if (exception is MotifStoreLockException)
         {
@@ -305,8 +499,9 @@ public static class ProjectBackupCommand
         // A store another process kept locked past the busy timeout is the CLI's retryable cli.store-busy.
         if (SqliteConnections.IsBusyInChain(exception)) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(exception);
         return Refuse<T>(RefusalCodes.ProjectStoreIo, FailureReason.Refused,
-            $"Motif could not {action} its file for this project, '{Path.GetFileName(storePath)}'.",
-            project, storePath, ("exceptionDetail", exception.Message));
+            $"Motif could not {action} its file for this project, '{Path.GetFileName(storePath)}'." +
+            (savedIn is null ? "" : $" The store it was replacing, and any file moved aside, are in '{savedIn}'."),
+            project, storePath, ("exceptionDetail", exception.Message), ("preRestoreDirectory", savedIn ?? ""));
     }
 
     private static CommandOutcome<T> Refuse<T>(string code, FailureReason reason, string message, ProjectLocator project,

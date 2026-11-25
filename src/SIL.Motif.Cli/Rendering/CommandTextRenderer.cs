@@ -74,7 +74,7 @@ public static class CommandTextRenderer
                 r.BackupDirectory, r.SchemaVersion, r.Files.Count, r.FwDataNote) + Environment.NewLine,
             ProjectRestoreResponse r => string.Format(CultureInfo.CurrentCulture, CliStrings.ProjectRestoreFormat,
                 r.StorePath, r.SchemaVersion, r.BackupDirectory,
-                r.PreRestoreBackup?.BackupDirectory ?? "(there was no store to replace)") + Environment.NewLine,
+                r.PreRestoreDirectory ?? "(there was no store to replace)", r.Quarantined.Count) + Environment.NewLine,
             StoreRelocateResponse r => string.Format(CultureInfo.CurrentCulture,
                 r.Changed ? CliStrings.StoreRelocateFormat : CliStrings.StoreRelocateUnchangedFormat,
                 r.OldProjectPath, r.NewProjectPath, r.IdentityEvidence) +

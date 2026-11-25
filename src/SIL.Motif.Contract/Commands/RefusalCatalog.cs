@@ -509,6 +509,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.ProjectBackupNoStore, FailureReason.NotFound),
         Spec(RefusalCodes.ProjectBackupDestinationExists, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProjectBackupInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.ProjectBackupDestinationOwned, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProjectBackupNewerSchema, FailureReason.Refused,
             NextStep.PersonStep()),
         Spec(RefusalCodes.ProjectBackupChecksumMismatch, FailureReason.Refused,

@@ -76,7 +76,7 @@
   },
   "project restore": {
     "title": "Restore a Motif store",
-    "description": "Puts a Motif backup back beside the project after checking every file against its receipt. It refuses while the store is open or busy, when the backup is of a newer schema, and when a file does not match its sha256. It saves the store it replaces first and swaps the restored one in by rename.",
+    "description": "Puts a Motif backup back beside the project after checking every file against its receipt. It refuses while the store is open or busy, when the backup is of a newer schema or a different project (unless --force is given), and when a file does not match its sha256. It never deletes: the old store, its -wal and -shm, and any owned file the backup lacks move into a pre-restore folder before the restored files are renamed in.",
     "source": "Hand-written from the project backup behavior."
   },
   "project initialize": {

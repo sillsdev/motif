@@ -3254,10 +3254,10 @@ try
             if (positionals is ["restore", ..])
             {
                 if (positionals.Count != 2 || !flags.TryGetValue("project", out var restoreProject) ||
-                    flags.Keys.Any(key => key is not ("project" or "json")))
+                    flags.Keys.Any(key => key is not ("project" or "force" or "json")))
                     return Usage(UsageLineFor("project restore"), asJson);
-                result = RenderCommand(ProjectBackupCommand.Restore(
-                    new ProjectRestoreRequest(restoreProject, positionals[1])));
+                result = RenderCommand(ProjectBackupCommand.Restore(new ProjectRestoreRequest(restoreProject, positionals[1],
+                    flags.TryGetValue("force", out var restoreForce) && IsTruthyFlag(restoreForce))));
                 break;
             }
             if (positionals is ["tag"] && flags.ContainsKey("set") && !HasProjectTagValue(rest))

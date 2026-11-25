@@ -14,7 +14,9 @@ public sealed record ProjectBackupFile(string Role, string Name, string Path, lo
 /// </summary>
 /// <param name="BackupDirectory">The folder holding the backup.</param>
 /// <param name="ReceiptPath">The receipt file inside that folder.</param>
-/// <param name="ProjectPath">The FieldWorks project data file the backed-up store is registered to.</param>
+/// <param name="ProjectPath">The FieldWorks project data file the backed-up store is registered to; secondary to the identity.</param>
+/// <param name="ProjectGuid">The LibLCM project GUID read from that file when the backup was taken; null when the file held none.</param>
+/// <param name="ProjectIdentity">Motif's own project identity for it, the file's name without its extension.</param>
 /// <param name="SchemaVersion">The store's schema version.</param>
 /// <param name="ProductVersion">The Motif build that took the backup.</param>
 /// <param name="CreatedUtc">When the backup was taken.</param>
@@ -22,7 +24,7 @@ public sealed record ProjectBackupFile(string Role, string Name, string Path, lo
 /// <param name="FwDataIncluded">Always false: the FieldWorks project file is not part of a Motif backup.</param>
 /// <param name="FwDataNote">What to use to back up the FieldWorks project file itself.</param>
 public sealed record ProjectBackupResponse(string BackupDirectory, string ReceiptPath, string ProjectPath,
-    int SchemaVersion, string ProductVersion, DateTimeOffset CreatedUtc, IReadOnlyList<ProjectBackupFile> Files,
+    string? ProjectGuid, string ProjectIdentity, int SchemaVersion, string ProductVersion, DateTimeOffset CreatedUtc, IReadOnlyList<ProjectBackupFile> Files,
     bool FwDataIncluded, string FwDataNote);
 
 /// <summary>What a restore put back, and where the store it replaced was saved.</summary>
@@ -31,6 +33,15 @@ public sealed record ProjectBackupResponse(string BackupDirectory, string Receip
 /// <param name="SchemaVersion">The restored store's schema version.</param>
 /// <param name="RestoredUtc">When the swap completed.</param>
 /// <param name="Restored">The files put in place, each verified against the backup's receipt.</param>
-/// <param name="PreRestoreBackup">The backup of the store the restore replaced; null when there was none.</param>
+/// <param name="PreRestoreBackup">The online backup of the store the restore replaced; null when there was none, or the store was too damaged to back up.</param>
+/// <param name="PreRestoreDirectory">The folder holding that backup and the files moved aside; null when nothing was moved.</param>
+/// <param name="Quarantined">Every file the restore moved out of the project, each with where it went and why.</param>
 public sealed record ProjectRestoreResponse(string StorePath, string BackupDirectory, int SchemaVersion,
-    DateTimeOffset RestoredUtc, IReadOnlyList<ProjectBackupFile> Restored, ProjectBackupResponse? PreRestoreBackup);
+    DateTimeOffset RestoredUtc, IReadOnlyList<ProjectBackupFile> Restored, ProjectBackupResponse? PreRestoreBackup,
+    string? PreRestoreDirectory, IReadOnlyList<ProjectQuarantinedFile> Quarantined);
+
+/// <summary>A file a restore moved out of the project into the pre-restore folder instead of deleting or overwriting it.</summary>
+/// <param name="OriginalPath">Where the file was.</param>
+/// <param name="MovedTo">Where it is now.</param>
+/// <param name="Reason"><c>replaced</c> when the backup holds a file for that place, or <c>not-in-backup</c> when it does not.</param>
+public sealed record ProjectQuarantinedFile(string OriginalPath, string MovedTo, string Reason);

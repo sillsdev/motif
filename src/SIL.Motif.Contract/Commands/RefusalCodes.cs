@@ -478,6 +478,8 @@ public static class RefusalCodes
     public const string ProjectBackupChecksumMismatch = "project.backup-checksum-mismatch";
     /// <summary><c>project restore</c> was given the backup of a different project's store; nothing was changed.</summary>
     public const string ProjectBackupOtherProject = "project.backup-other-project";
+    /// <summary><c>project backup</c> was given a destination inside the store's own files or a folder Motif owns, such as its trial exports; nothing was written.</summary>
+    public const string ProjectBackupDestinationOwned = "project.backup-destination-owned";
     public const string ProjectBusy = "project.busy";
     /// <summary>A runner that <c>worker stop</c> ended did not exit within the wait.</summary>
     public const string WorkerStopFailed = "worker.stop-failed";

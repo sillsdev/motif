@@ -8,4 +8,5 @@ public sealed record ProjectBackupRequest(string ProjectPath, string? To = null)
 /// <summary>Restores a project's Motif store and owned files from a backup folder.</summary>
 /// <param name="ProjectPath">The FieldWorks project's data-file path.</param>
 /// <param name="BackupPath">The backup folder, or its <c>motif-backup.json</c> receipt.</param>
-public sealed record ProjectRestoreRequest(string ProjectPath, string BackupPath);
+/// <param name="Force">Restore a backup of a different project (a different LibLCM project GUID or identity) into this one.</param>
+public sealed record ProjectRestoreRequest(string ProjectPath, string BackupPath, bool Force = false);

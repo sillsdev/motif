@@ -193,7 +193,7 @@ public sealed class ProjectBackupCommandTests : IDisposable
         Assert.Equal(RefusalCodes.ProjectBackupInvalid, none.Refusal?.Code);
 
         var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
-        RewriteReceipt(backup, schema: backup.SchemaVersion, projectPath: Path.Combine(_root, "Other.fwdata"));
+        File.WriteAllText(backup.ReceiptPath, JsonSerializer.Serialize(backup with { ProjectIdentity = "Other" }, ReceiptOptions));
         var other = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
         Assert.Equal(RefusalCodes.ProjectBackupOtherProject, other.Refusal?.Code);
     }
@@ -223,6 +223,341 @@ public sealed class ProjectBackupCommandTests : IDisposable
         Assert.Equal(RefusalCodes.ProjectBusy, result.Refusal?.Code);
         Assert.False(Directory.Exists(Folder("b1")));
     }
+
+    private const string GuidA = "11111111-1111-1111-1111-111111111111";
+    private const string GuidB = "22222222-2222-2222-2222-222222222222";
+
+    private string TrialRoot => Store + ".trial-exports";
+
+    private string Config => Path.Combine(_root, "Koro.motif.toml");
+
+    private void WriteTrial(string name, string text)
+    {
+        var path = Path.Combine(TrialRoot, name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, text);
+    }
+
+    private static string Backed(ProjectRestoreResponse response, string relative) =>
+        Path.Combine(response.PreRestoreDirectory!, "moved", relative.Replace('/', Path.DirectorySeparatorChar));
+
+    [Fact]
+    public void ARestoreMovesTrialExportsConfigAndReportsTheBackupLacksIntoThePreRestoreFolderAndListsThem()
+    {
+        AddMarker(Store, "kept");
+        WriteTrial("a.json", "A1");
+        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        Assert.Contains(backup.Files, file => file.Role == "trial-export" && file.Name == "trial-exports/a.json");
+        WriteTrial("a.json", "A2");
+        WriteTrial("sub/c.json", "C");
+        File.WriteAllText(Config, "collect = []");
+        File.WriteAllText(Store + ".upgrade.json", "{}");
+
+        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var response = result.Value!;
+        Assert.Equal("A1", File.ReadAllText(Path.Combine(TrialRoot, "a.json")));
+        Assert.False(File.Exists(Path.Combine(TrialRoot, "sub", "c.json")));
+        Assert.False(File.Exists(Config));
+        Assert.False(File.Exists(Store + ".upgrade.json"));
+        Assert.Equal("A2", File.ReadAllText(Backed(response, "trial-exports/a.json")));
+        Assert.Equal("C", File.ReadAllText(Backed(response, "trial-exports/sub/c.json")));
+        Assert.Equal("collect = []", File.ReadAllText(Backed(response, "Config.motif.toml")));
+        Assert.Equal("{}", File.ReadAllText(Backed(response, "store.upgrade.json")));
+        var reasons = response.Quarantined.ToDictionary(file => Path.GetFileName(file.OriginalPath), file => file.Reason);
+        Assert.Equal("replaced", reasons["a.json"]);
+        Assert.Equal("not-in-backup", reasons["c.json"]);
+        Assert.Equal("not-in-backup", reasons["Koro.motif.toml"]);
+        Assert.Equal("not-in-backup", reasons["Koro.motif.db.upgrade.json"]);
+        Assert.Equal(["kept"], Markers(Backed(response, "store.sqlite")));
+    }
+
+    [Fact]
+    public void ARestoreMovesTheOldStoreItsWalAndShmTogetherAndNeverDeletesThem()
+    {
+        AddMarker(Store, "kept");
+        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        AddMarker(Store, "later");
+        File.WriteAllText(Store + "-wal", "wal-bytes");
+        File.WriteAllText(Store + "-shm", "shm-bytes");
+
+        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-wal")));
+        Assert.True(File.Exists(Backed(result.Value!, "store.sqlite-shm")));
+        Assert.Equal(["kept", "later"], Markers(Backed(result.Value!, "store.sqlite")));
+        Assert.False(File.Exists(Store + "-wal"));
+        Assert.Equal(["kept"], Markers(Store));
+    }
+
+    [Fact]
+    public void AStoreTooDamagedToBackUpIsMovedAsideAndAGoodBackupReplacesIt()
+    {
+        AddMarker(Store, "kept");
+        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        File.WriteAllText(Store, "this is not a database");
+
+        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Null(result.Value!.PreRestoreBackup);
+        Assert.Equal("this is not a database", File.ReadAllText(Backed(result.Value, "store.sqlite")));
+        Assert.Equal(["kept"], Markers(Store));
+    }
+
+    [Theory]
+    [InlineData("trial")]
+    [InlineData("backups")]
+    [InlineData("trial-nested")]
+    public void ABackupToAFolderInsideAnOwnedFolderIsRefusedAndWritesNothing(string where)
+    {
+        var destination = where switch
+        {
+            "trial" => TrialRoot,
+            "backups" => Path.Combine(_root, "Koro.motif-backups", "mine"),
+            _ => Path.Combine(TrialRoot, "deep", "x"),
+        };
+
+        var result = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, destination));
+
+        Assert.Equal(RefusalCodes.ProjectBackupDestinationOwned, result.Refusal?.Code);
+        Assert.False(Directory.Exists(destination));
+    }
+
+    [Fact]
+    public void ABackupBesideTheOwnedFoldersAndALaterBackupNeverContainAnEarlierOne()
+    {
+        WriteTrial("a.json", "A");
+        var first = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1")));
+        var second = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b2")));
+
+        Assert.True(first.Succeeded && second.Succeeded);
+        Assert.Equal(first.Value!.Files.Select(file => file.Name), second.Value!.Files.Select(file => file.Name));
+        Assert.DoesNotContain(second.Value.Files, file => file.Name.Contains("motif-backup", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(@"D:\Projects\Koro.motif.db.trial-exports", @"D:\Projects\Koro.motif.db.trial-exports\x", true, true)]
+    [InlineData(@"D:\Projects\Koro.motif.db.trial-exports", @"d:\projects\KORO.motif.db.TRIAL-EXPORTS\x\y", true, true)]
+    [InlineData(@"D:\Projects\Koro.motif.db.trial-exports", @"D:\Projects\Koro.motif.db.trial-exports-other", true, false)]
+    [InlineData("/p/Koro.motif.db.trial-exports", "/p/koro.motif.db.trial-exports/x", false, false)]
+    [InlineData("/p/Koro.motif.db.trial-exports", "/p/Koro.motif.db.trial-exports/x", false, true)]
+    public void TheOwnedFolderCheckIsBySegmentAndFollowsTheFileSystemCaseRule(string owned, string path, bool windows, bool inside) =>
+        Assert.Equal(inside, ProjectBackupCommand.IsInside(path, owned, windows));
+
+    [Theory]
+    [InlineData("store.sqlite", true)]
+    [InlineData("trial-exports/sub/a.json", true)]
+    [InlineData("../evil", false)]
+    [InlineData("trial-exports/../../evil", false)]
+    [InlineData("/etc/passwd", false)]
+    [InlineData("C:evil.txt", false)]
+    [InlineData(@"C:\evil.txt", false)]
+    [InlineData(@"\\server\share\x", false)]
+    [InlineData(@"trial-exports\..\x", false)]
+    [InlineData("CON:", false)]
+    [InlineData("a//b", false)]
+    [InlineData("name.", false)]
+    [InlineData("a|b", false)]
+    public void AReceiptNameIsAPlainRelativeNameOnEveryOs(string name, bool plain) =>
+        Assert.Equal(plain, ProjectBackupCommand.IsPlainRelativeName(name));
+
+    [Theory]
+    [InlineData("../evil")]
+    [InlineData("C:evil.txt")]
+    [InlineData(@"\\server\share\x")]
+    [InlineData("trial-exports/a/../../../x")]
+    public void AReceiptNamingAFileOutsideTheBackupIsInvalid(string name)
+    {
+        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var tampered = backup with { Files = [.. backup.Files, new ProjectBackupFile("trial-export", name, "", 1, "00")] };
+        File.WriteAllText(backup.ReceiptPath, JsonSerializer.Serialize(tampered, ReceiptOptions));
+
+        var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+
+        Assert.Equal(RefusalCodes.ProjectBackupInvalid, result.Refusal?.Code);
+    }
+
+    [Fact]
+    public void ADuplicatedOrRenamedOrMissingOrGarbledReceiptIsInvalidAndTheStoreIsLeftAsItWas()
+    {
+        AddMarker(Store, "kept");
+        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        var receiptText = File.ReadAllText(backup.ReceiptPath);
+        AddMarker(Store, "later");
+
+        void Refused(string why)
+        {
+            var result = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+            Assert.True(RefusalCodes.ProjectBackupInvalid == result.Refusal?.Code, why + ": " + result.Refusal?.Code);
+            Assert.Equal(["kept", "later"], Markers(Store));
+            Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
+        }
+
+        File.WriteAllText(backup.ReceiptPath, JsonSerializer.Serialize(
+            backup with { Files = [.. backup.Files, backup.Files[0]] }, ReceiptOptions));
+        Refused("duplicate");
+
+        File.WriteAllText(backup.ReceiptPath, "{ not json");
+        Refused("garbled");
+
+        File.WriteAllText(backup.ReceiptPath, JsonSerializer.Serialize(backup with { ProjectIdentity = " " }, ReceiptOptions));
+        Refused("no identity");
+
+        File.WriteAllText(backup.ReceiptPath, receiptText);
+        var renamedReceipt = Path.Combine(backup.BackupDirectory, "renamed.json");
+        File.Move(backup.ReceiptPath, renamedReceipt);
+        Refused("receipt renamed");
+        var byRenamed = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, renamedReceipt));
+        Assert.Equal(RefusalCodes.ProjectBackupInvalid, byRenamed.Refusal?.Code);
+        File.Move(renamedReceipt, backup.ReceiptPath);
+
+        var store = Path.Combine(backup.BackupDirectory, "store.sqlite");
+        File.Move(store, store + ".old");
+        Refused("store renamed");
+        File.Move(store + ".old", store);
+
+        Assert.True(ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory)).Succeeded);
+    }
+
+    [Fact]
+    public void ABackupOfADifferentProjectGuidIsRefusedUnlessForcedButAMovedPathWithTheSameGuidIsAccepted()
+    {
+        File.WriteAllText(Project, $"<languageproject>\n<rt class=\"LangProject\" guid=\"{GuidA}\">\n</languageproject>");
+        AddMarker(Store, "kept");
+        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        Assert.Equal(GuidA, backup.ProjectGuid);
+        Assert.Equal("Koro", backup.ProjectIdentity);
+        AddMarker(Store, "later");
+
+        // Same project, different recorded path: the path is only secondary.
+        RewriteReceipt(backup, backup.SchemaVersion, projectPath: Path.Combine(_root, "Elsewhere", "Koro.fwdata"));
+        var moved = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        Assert.True(moved.Succeeded, moved.Refusal?.Message);
+        Assert.Equal(["kept"], Markers(Store));
+
+        // A different project: refused and untouched, then restored with force.
+        AddMarker(Store, "again");
+        File.WriteAllText(Project, $"<languageproject>\n<rt class=\"LangProject\" guid=\"{GuidB}\">\n</languageproject>");
+        var refused = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        Assert.Equal(RefusalCodes.ProjectBackupOtherProject, refused.Refusal?.Code);
+        Assert.Contains(GuidA, refused.Refusal!.Message, StringComparison.Ordinal);
+        Assert.Equal(["kept", "again"], Markers(Store));
+
+        var forced = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory, Force: true));
+        Assert.True(forced.Succeeded, forced.Refusal?.Message);
+        Assert.Equal(["kept"], Markers(Store));
+    }
+
+    [Fact]
+    public void WithoutAGuidTheProjectIdentityDecidesAndForceOverridesIt()
+    {
+        AddMarker(Store, "kept");
+        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        Assert.Null(backup.ProjectGuid);
+        File.WriteAllText(backup.ReceiptPath, JsonSerializer.Serialize(backup with { ProjectIdentity = "Other" }, ReceiptOptions));
+
+        var refused = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+        Assert.Equal(RefusalCodes.ProjectBackupOtherProject, refused.Refusal?.Code);
+        Assert.True(ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory, true)).Succeeded);
+    }
+
+    private sealed class SimulatedCrash : Exception;
+
+    private static readonly string[] RestoreSteps =
+        ["staged", "pre-restore-saved", "owned-quarantined", "owned-swapped", "old-store-moved", "store-swapped"];
+
+    public static TheoryData<string> Steps() => new(RestoreSteps);
+
+    private ProjectBackupResponse BackupThenDiverge()
+    {
+        AddMarker(Store, "kept");
+        File.WriteAllText(Config, "old-config");
+        WriteTrial("a.json", "A1");
+        var backup = ProjectBackupCommand.Backup(new ProjectBackupRequest(Project, Folder("b1"))).Value!;
+        AddMarker(Store, "later");
+        File.WriteAllText(Config, "new-config");
+        WriteTrial("a.json", "A2");
+        WriteTrial("c.json", "C");
+        File.WriteAllText(Store + "-wal", "");
+        return backup;
+    }
+
+    private static CommandOutcome<ProjectRestoreResponse> RestoreStoppingAt(string step, Func<Exception> fail, ProjectLocatorArgs args)
+    {
+        ProjectBackupCommand.StepHook = reached => { if (reached == step) throw fail(); };
+        try { return ProjectBackupCommand.Restore(new ProjectRestoreRequest(args.Project, args.Backup)); }
+        finally { ProjectBackupCommand.StepHook = null; }
+    }
+
+    private sealed record ProjectLocatorArgs(string Project, string Backup);
+
+    [Theory]
+    [MemberData(nameof(Steps))]
+    public void AProcessThatDiesAtAnyStepOfARestoreLeavesTheOldOrTheNewStoreCompleteAndARerunFinishesIt(string step)
+    {
+        var backup = BackupThenDiverge();
+
+        Assert.Throws<SimulatedCrash>(() => RestoreStoppingAt(step, () => new SimulatedCrash(),
+            new ProjectLocatorArgs(Project, backup.BackupDirectory)));
+
+        var backups = Path.Combine(_root, "Koro.motif-backups");
+        var moved = Directory.Exists(backups) ? Directory.GetDirectories(backups, "pre-restore-*") : [];
+        switch (step)
+        {
+            case "old-store-moved":
+                // Between the two renames there is no store at the path: neither a half nor a mixed one.
+                Assert.False(File.Exists(Store));
+                Assert.Equal(["kept", "later"], Markers(Path.Combine(moved.Single(), "moved", "store.sqlite")));
+                Assert.Equal(["kept"], Markers(Directory.GetFiles(_root, "Koro.motif.db.restore-*").Single()));
+                break;
+            case "store-swapped":
+                Assert.Equal(["kept"], Markers(Store));
+                break;
+            default:
+                Assert.Equal(["kept", "later"], Markers(Store));
+                Assert.Equal(["ok"], Scalars(Store, "PRAGMA integrity_check;"));
+                break;
+        }
+
+        var rerun = ProjectBackupCommand.Restore(new ProjectRestoreRequest(Project, backup.BackupDirectory));
+
+        Assert.True(rerun.Succeeded, rerun.Refusal?.Message);
+        Assert.Equal(["kept"], Markers(Store));
+        Assert.Equal("old-config", File.ReadAllText(Config));
+        Assert.Equal("A1", File.ReadAllText(Path.Combine(TrialRoot, "a.json")));
+        Assert.False(File.Exists(Path.Combine(TrialRoot, "c.json")));
+        Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
+        Assert.Empty(Directory.GetFiles(TrialRoot, "*.restore-*"));
+        Assert.True(ProjectStoreCommand.Run(Project, MotifProductVersion.CurrentText,
+            (_, _) => CommandOutcome<string>.Success("opened")).Succeeded);
+    }
+
+    [Theory]
+    [MemberData(nameof(Steps))]
+    public void AFailureThatTheProcessSurvivesPutsEverythingBackAndNamesThePreRestoreFolder(string step)
+    {
+        var backup = BackupThenDiverge();
+
+        var result = RestoreStoppingAt(step, () => new IOException("disk full"),
+            new ProjectLocatorArgs(Project, backup.BackupDirectory));
+
+        Assert.Equal(RefusalCodes.ProjectStoreIo, result.Refusal?.Code);
+        Assert.Equal(["kept", "later"], Markers(Store));
+        Assert.Equal(["ok"], Scalars(Store, "PRAGMA integrity_check;"));
+        Assert.Equal("new-config", File.ReadAllText(Config));
+        Assert.Equal("A2", File.ReadAllText(Path.Combine(TrialRoot, "a.json")));
+        Assert.Equal("C", File.ReadAllText(Path.Combine(TrialRoot, "c.json")));
+        Assert.True(File.Exists(Store + "-wal"));
+        Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
+        if (step != "staged") Assert.Contains("pre-restore-", result.Refusal!.Message, StringComparison.Ordinal);
+        Assert.True(ProjectStoreCommand.Run(Project, MotifProductVersion.CurrentText,
+            (_, _) => CommandOutcome<string>.Success("opened")).Succeeded);
+    }
+
+    private static readonly JsonSerializerOptions ReceiptOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     private static void RewriteReceipt(ProjectBackupResponse backup, int schema, string? projectPath = null)
     {

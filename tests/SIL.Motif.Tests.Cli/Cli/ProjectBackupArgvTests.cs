@@ -6,8 +6,10 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -58,6 +60,54 @@ public sealed class ProjectBackupArgvTests : IDisposable
     }
 
     [Fact]
+    public async Task ABackupInASecondProcessIsConsistentWhileThisProcessHoldsAReadSnapshotAndKeepsWriting()
+    {
+        var store = Path.Combine(_root, "p.motif.db");
+        using var database = MotifDatabase.OpenOwned(store,
+            new SIL.Motif.Contract.Projects.ProjectLocator(Project, "p"), MotifSchema.CurrentSchema, MotifProductVersion.Current);
+        using var reader = database.OpenConnection();
+        using var readTransaction = reader.BeginTransaction(deferred: true);
+        using (var count = reader.CreateCommand())
+        {
+            count.Transaction = readTransaction;
+            count.CommandText = "SELECT COUNT(*) FROM StoreRelocations;";
+            Assert.Equal(0L, count.ExecuteScalar());
+        }
+        using var stop = new CancellationTokenSource();
+        var written = 0;
+        var writer = Task.Run(() =>
+        {
+            using var connection = database.OpenConnection();
+            while (!stop.IsCancellationRequested)
+            {
+                using var insert = connection.CreateCommand();
+                insert.CommandText = "INSERT INTO StoreRelocations (OldFwDataPath, NewFwDataPath, RelocatedUtc, Basis) " +
+                    "VALUES ('w', 'x', 't', 'name');";
+                insert.ExecuteNonQuery();
+                Interlocked.Increment(ref written);
+            }
+        });
+        SpinWait.SpinUntil(() => Volatile.Read(ref written) > 20, TimeSpan.FromSeconds(30));
+
+        var folder = Path.Combine(_root, "live-backup");
+        var backup = Run($"project backup --project \"{Project}\" --to \"{folder}\" --json");
+        stop.Cancel();
+        await writer;
+
+        Assert.True(backup.ExitCode == 0, backup.Error);
+        using var copy = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = Path.Combine(folder, "store.sqlite"), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+        }.ToString());
+        copy.Open();
+        using var command = copy.CreateCommand();
+        command.CommandText = "PRAGMA integrity_check;";
+        Assert.Equal("ok", command.ExecuteScalar());
+        command.CommandText = "SELECT COUNT(*) FROM StoreRelocations;";
+        Assert.InRange((long)command.ExecuteScalar()!, 20, Volatile.Read(ref written));
+    }
+
+    [Fact]
     public void ARestoreOfAFolderWithNoReceiptRefusesWithItsCode()
     {
         var result = Run($"project restore \"{_root}\" --project \"{Project}\" --json");
@@ -75,7 +125,7 @@ public sealed class ProjectBackupArgvTests : IDisposable
 
         var restore = Run($"project restore --project \"{Project}\"");
         Assert.Equal(1, restore.ExitCode);
-        Assert.Contains("project restore <backup-dir> --project <fwdata>", restore.Error, StringComparison.Ordinal);
+        Assert.Contains("project restore <backup-dir> --project <fwdata> [--force]", restore.Error, StringComparison.Ordinal);
         Assert.Contains(CommandCatalog.All, command => command.Name == "project backup");
         Assert.Contains(CommandCatalog.All, command => command.Name == "project restore");
     }
