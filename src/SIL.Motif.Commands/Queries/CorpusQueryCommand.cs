@@ -91,7 +91,7 @@ public static class CorpusQueryCommand
         }
         var readingsOnly = wantsCauses || wantsMorphSeqs || request.WhatIfRetire is { Count: > 0 };
         if (request.WhatIfRetire is { Count: 0 }) return Invalid("what-if-retire needs at least one id.");
-        if ((request.Where is null) == (request.QueryJson is null) && !((readingsOnly || groupsColumns is not null || request.Sum is not null || request.Sample is not null || request.WriteWords is not null) && request.Where is null && request.QueryJson is null))
+        if ((request.Where is null) == (request.QueryJson is null) && !((readingsOnly || groupsColumns is not null || request.BaselineGrammarPath is not null || request.Sum is not null || request.Sample is not null || request.WriteWords is not null) && request.Where is null && request.QueryJson is null))
             return Invalid("Give the query as --where <expression> or as --query-json, one of the two.");
         if (limit < 1) return Invalid("limit is a positive whole number.");
         try
@@ -127,6 +127,17 @@ public static class CorpusQueryCommand
                 return Invalid($"{beyond} names template {TwinSet.Template(beyond)}, and --twin was given {twins.Count}.");
             if (twinColumns.FirstOrDefault(TwinSet.NeedsParse) is { } needsParse && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(ReadingsRefusals.NeedsGrammar(needsParse).Refusal);
+            var baselineColumns = QueryExprTools.Leaves(where).Select(leaf => leaf.Field).Concat(groupsColumns ?? []).Where(BaselineSet.IsColumn).ToList();
+            if (request.BaselineGrammarPath is { } baselinePath)
+            {
+                if (string.IsNullOrWhiteSpace(baselinePath)) return Invalid("baseline-grammar names a grammar.");
+                if (string.IsNullOrWhiteSpace(request.GrammarPath)) return CommandOutcome<CorpusFormsResponse>.Refused(ReadingsRefusals.NeedsGrammar("--baseline-grammar").Refusal);
+                if (SameFile(baselinePath, request.GrammarPath))
+                    return CommandOutcome<CorpusFormsResponse>.Refused(new Refusal(RefusalCodes.QueryBaselineSameGrammar, FailureReason.InvalidArgument,
+                        $"--baseline-grammar and --grammar are the same file ('{request.GrammarPath}'), so every word would be unchanged. Compare two different grammars, such as the original and a copy you changed."));
+            }
+            else if (baselineColumns.Count > 0)
+                return Invalid($"{baselineColumns[0]} is a column of --baseline-grammar; give the grammar to compare with, such as --baseline-grammar before.fwdata.");
             if (request.ByMorph && !RealizesLowering.Has(where)) return Invalid("by-morph groups the rows of a realizes(...) query; the query has none.");
             if (QueryExprTools.HasPatterns(where) && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(QueryRefusalException.PhonNeedsGrammar().Refusal);
@@ -168,11 +179,14 @@ public static class CorpusQueryCommand
         }
         ParsedReadings? readings = null;
         ReadingsReport? readingsReport = null;
+        ReadingsReport? baselineReport = null;
+        BaselineCells? baseline = null;
         var liveState = !string.IsNullOrWhiteSpace(request.GrammarPath) && QueryExprTools.Leaves(where).Any(leaf => leaf.Field == CorpusFormsQuery.ParseStateColumn);
         var groupsRead = !string.IsNullOrWhiteSpace(request.GrammarPath) && groupsColumns?.Any(column => column is "readings" or CorpusFormsQuery.ParseStateColumn) == true;
         var seqItems = MorphSeqSupport.ItemsOf(where);
         var twinParse = twins is not null && !string.IsNullOrWhiteSpace(request.GrammarPath);
-        var usesReadings = readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState || groupsRead || seqItems.Count > 0 || twinParse;
+        var comparing = request.BaselineGrammarPath is not null;
+        var usesReadings = comparing || readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState || groupsRead || seqItems.Count > 0 || twinParse;
         MorphSeqPlan? seqPlan = null;
         if (usesReadings)
         {
@@ -209,6 +223,20 @@ public static class CorpusQueryCommand
                 if (twins is not null)
                     reported = [.. words, .. BindTwins(twins, corpus, readings, catalogUsed, request.GrammarPath!, cacheRoot, indexBuilder, parserPath, notice, cancellationToken)];
                 readingsReport = readings.Report(reported, needsClasses);
+                if (comparing)
+                {
+                    (RealizesParseIndex Index, bool Built, double Seconds) before;
+                    try
+                    {
+                        before = RealizesParseIndexCache.GetOrBuild(cacheRoot ?? RealizesParseIndexCache.DefaultRoot, request.BaselineGrammarPath!, words,
+                            indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), notice ?? (_ => { }), cancellationToken);
+                    }
+                    catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed("The baseline grammar: " + failed.Message); }
+                    var beforeReadings = new ParsedReadings(before.Index, null);
+                    baselineReport = beforeReadings.Report(words, false);
+                    baseline = BaselineCells.Bind(words, beforeReadings, readings);
+                    readingsReport = WithBaseline(readingsReport, baselineReport, words.Count(word => baseline.Cell(word)?.Change == BaselineSet.Unknown));
+                }
                 if (seqItems.Count > 0)
                 {
                     seqPlan = MorphSeqSupport.Compile(realizes is null ? where! : realizes.Lowered!, request.Adjacent, item =>
@@ -245,13 +273,13 @@ public static class CorpusQueryCommand
         {
             var lowered = OnlyViaLowering.Lower(realizes is null ? where : realizes.Lowered);
             if (seqPlan is not null) lowered = OnlyViaLowering.Lower(seqPlan.Lowered);
-            var rows = CorpusFormsQuery.Run(corpus, lowered, phon, readings, seqPlan?.Tests, twins);
+            var rows = CorpusFormsQuery.Run(corpus, lowered, phon, readings, seqPlan?.Tests, twins, baseline);
             if (realizes is not null) rows = [.. rows.Select(row => row with { Realizes = realizes.HitsFor(row.Form) })];
             var summary = new CorpusSummary(sources.Count > 1 ? string.Join(",", sources.Select(source => source.Path)) : request.CorpusPath, corpus.TypeCount, corpus.TokenCount,
                 phon is { Ran: true } ? "grammar" : corpus.SegmentationLabel, request.FoldCase, sources.Count > 1 ? sources : null);
             var matched = rows.Count;
             var matchedRows = rows;
-            ValueGroups? groups = groupsColumns is null ? null : CorpusFormsQuery.Group(corpus, rows, groupsColumns, readings, twins);
+            ValueGroups? groups = groupsColumns is null ? null : CorpusFormsQuery.Group(corpus, rows, groupsColumns, readings, twins, baseline);
             TypesTokens? totals = groups is not null || request.Sum is not null ? new TypesTokens(rows.Count, rows.Sum(row => row.Tokens)) : null;
             SampleInfo? sample = null;
             if (request.Sample is { } sampleSize)
@@ -295,7 +323,7 @@ public static class CorpusQueryCommand
                 whatIf = Retirement.Estimate(readings, [.. matchedRows.Select(row => (row.Form, row.Tokens))], retire, readingsReport!.Complete, limit);
             return CommandOutcome<CorpusFormsResponse>.Success(new CorpusFormsResponse(CorpusFormsResponse.SchemaName, summary,
                 printed is null ? null : QueryExprText.Print(printed), matched, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
-                realizes?.Sets, readingsReport, causes, whatIf, groups, totals, sample, written, morphSeqs, byMorph));
+                realizes?.Sets, readingsReport, causes, whatIf, groups, totals, sample, written, morphSeqs, byMorph, baselineReport));
         }
         catch (QueryRefusalException refused)
         {
@@ -305,6 +333,18 @@ public static class CorpusQueryCommand
         {
             return Invalid(exception.Message);
         }
+    }
+
+    private static bool SameFile(string first, string second) =>
+        string.Equals(Path.GetFullPath(first), Path.GetFullPath(second), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+
+    // The target report, incomplete when the baseline has a word that did not finish.
+    private static ReadingsReport WithBaseline(ReadingsReport target, ReadingsReport baseline, int unknownWords)
+    {
+        if (baseline.Complete && unknownWords == 0) return target;
+        var note = $"The baseline grammar's parse: {baseline.Capped} words stopped at the work limit, {baseline.TimedOut} at the word timeout and {baseline.Failed} got no answer. " +
+            $"{unknownWords} word types therefore have change = unknown: they are neither gained nor lost.";
+        return target with { Complete = target.Complete && baseline.Complete, Note = target.Note is null ? note : target.Note + " " + note };
     }
 
     /// <summary>The most word types the twins may add to the corpus parse: one batch parses the ones the corpus lacks.</summary>
