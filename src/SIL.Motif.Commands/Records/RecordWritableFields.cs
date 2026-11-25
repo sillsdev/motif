@@ -137,7 +137,7 @@ public sealed class RecordWritableFields : IWritableFields
         if (field.Computed)
             return new(UncoveredFieldReason.ComputedField);
         if (binding.IsCustom && CustomFieldCatalog.TypeOf(field) is null)
-            return new(field.Kind == RecordFieldKind.Rich && field.Paragraphs ? UncoveredFieldReason.CustomStText : UncoveredFieldReason.CustomField);
+            return new(UncoveredFieldReason.CustomField);
         return null;
     }
 
@@ -242,6 +242,7 @@ internal static class CustomFieldCatalog
     internal static string? TypeOf(RecordField field) => (field.Kind, field.Item?.Kind, field.IsList, field.MultiWritingSystem) switch
     {
         (RecordFieldKind.Text, _, false, true) => "MultiUnicode",
+        (RecordFieldKind.Rich, _, false, false) when field.Paragraphs => TextParagraphFields.CustomType,
         (RecordFieldKind.Rich, _, false, true) when !field.Paragraphs => "MultiString",
         (RecordFieldKind.Rich, _, false, false) when !field.Paragraphs => "String",
         (RecordFieldKind.Integer, _, false, _) => "Integer",

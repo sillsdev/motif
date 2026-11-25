@@ -4,8 +4,11 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.LCModel.Application;
+using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
@@ -36,6 +39,10 @@ public static class TextParagraphsOperationKinds
             {
                 FieldWriteCapability.ForAddress(field, RecordWriteVerb.SetRich, FieldWritePayload.Bespoke),
                 FieldWriteCapability.ForAddress(field, RecordWriteVerb.ClearRich, FieldWritePayload.Bespoke),
+            }).Concat(new[]
+            {
+                new FieldWriteCapability(CustomFieldOperationKinds.DeclaringClass, TextParagraphFields.CustomType, RecordWriteVerb.SetRich) { Payload = FieldWritePayload.Bespoke },
+                new FieldWriteCapability(CustomFieldOperationKinds.DeclaringClass, TextParagraphFields.CustomType, RecordWriteVerb.ClearRich) { Payload = FieldWritePayload.Bespoke },
             }).ToArray());
         OperationSlotRegistry.Register(Set, operation => new OperationSlot(OperationSlotRegistry.Target(operation),
             FieldPrefix + TextParagraphsPayload.FieldOf(OperationSlotRegistry.After(operation))));
@@ -80,14 +87,62 @@ public static class TextParagraphFields
             owner => ((IRnGenericRec)owner).ResearchPlanOA, (owner, text) => ((IRnGenericRec)owner).ResearchPlanOA = text),
     };
 
-    /// <summary>Every editable field, as <c>Class.Field</c>.</summary>
+    /// <summary>Every stock editable field, as <c>Class.Field</c>.</summary>
     public static IReadOnlyCollection<string> Names => Accessors.Keys.ToArray();
 
-    internal static bool IsAllowed(string field) => Accessors.ContainsKey(field);
+    /// <summary>The type name a custom owned-StText field is declared under in the catalog.</summary>
+    public const string CustomType = "StText";
 
-    internal static IStText? Read(ICmObject owner, string field) => Accessor(owner, field).Get(owner);
+    /// <summary>The prefix that names a project's custom field: <c>custom:Class.Name</c>, by its LibLCM metadata name.</summary>
+    public const string CustomPrefix = "custom:";
 
-    internal static void Attach(ICmObject owner, string field, IStText text) => Accessor(owner, field).Set(owner, text);
+    internal static bool IsAllowed(string field) => Accessors.ContainsKey(field) || IsCustom(field);
+
+    private static bool IsCustom(string field) => field.StartsWith(CustomPrefix, StringComparison.Ordinal) &&
+        field.IndexOf('.', CustomPrefix.Length) is var dot && dot > CustomPrefix.Length && dot < field.Length - 1;
+
+    internal static IStText? Read(ICmObject owner, string field)
+    {
+        if (!IsCustom(field))
+            return Accessor(owner, field).Get(owner);
+        var hvo = CustomText(owner, field, out var flid).get_ObjectProp(owner.Hvo, flid);
+        return hvo == 0 ? null : (IStText)owner.Cache.ServiceLocator.GetObject(hvo);
+    }
+
+    /// <summary>A new, empty text owned by the field; a custom field's takes a fresh identity, as FieldWorks' own StTextSlice.cs:217 makes it.</summary>
+    internal static IStText Create(ICmObject owner, string field, Guid minted)
+    {
+        if (IsCustom(field))
+        {
+            var data = CustomText(owner, field, out var flid);
+            return (IStText)owner.Cache.ServiceLocator.GetObject(data.MakeNewObject(StTextTags.kClassId, owner.Hvo, flid, -2));
+        }
+        var text = owner.Cache.ServiceLocator.GetInstance<IStTextFactory>().Create(minted);
+        Accessor(owner, field).Set(owner, text);
+        return text;
+    }
+
+    // AddCustomFieldDlg.cs:395 makes the field; ISilDataAccess edits it by field id.
+    private static ISilDataAccessManaged CustomText(ICmObject owner, string field, out int flid)
+    {
+        var name = field[CustomPrefix.Length..];
+        var dot = name.IndexOf('.');
+        var (owning, member) = (name[..dot], name[(dot + 1)..]);
+        var metadata = (IFwMetaDataCacheManaged)owner.Cache.MetaDataCacheAccessor;
+        flid = 0;
+        if (!metadata.FieldExists(owner.ClassID, member, true) ||
+            metadata.GetOwnClsName(metadata.GetFieldId2(owner.ClassID, member, true)) != owning)
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldMissing, TextParagraphsOperationKinds.Set, member,
+                $"{owner.ClassName} has no field '{member}' declared on {owning}.");
+        flid = metadata.GetFieldId2(owner.ClassID, member, true);
+        if (!metadata.IsCustom(flid))
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldNotCustom, TextParagraphsOperationKinds.Set, member,
+                $"'{member}' on {owner.ClassName} is a stock field, which its own kinds write.");
+        if ((CellarPropertyType)metadata.GetFieldType(flid) != CellarPropertyType.OwningAtomic || metadata.GetDstClsName(flid) != "StText")
+            throw new CustomFieldRefusal(RefusalCodes.CustomFieldWrongType, TextParagraphsOperationKinds.Set, member,
+                $"Custom field '{member}' is not an owned StText, which this kind writes as paragraphs.");
+        return (ISilDataAccessManaged)owner.Cache.DomainDataByFlid;
+    }
 
     private static FieldAccess Accessor(ICmObject owner, string field)
     {
@@ -258,8 +313,7 @@ internal sealed class TextParagraphsHandler : IOperationHandler
 
         if (text is null)
         {
-            text = cache.ServiceLocator.GetInstance<IStTextFactory>().Create(Minted(operation, "text"));
-            TextParagraphFields.Attach(owner, payload.Field, text);
+            text = TextParagraphFields.Create(owner, payload.Field, Minted(operation, "text"));
         }
         var existing = text.ParagraphsOS.Cast<IStTxtPara>().ToDictionary(Key, StringComparer.Ordinal);
         foreach (var key in payload.Removed)
