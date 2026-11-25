@@ -11,23 +11,110 @@ public sealed class ProjectWorkLimitTests
 {
     private static readonly ParserWorkLimit Flag = new(1_000);
     private static readonly ParserWorkLimit Project = new(60_000_000);
-    private static readonly ParserWorkLimit Saved = new(5_000_000);
 
     [Fact]
-    public void AnExplicitLimitOutranksTheProjectSettingTheSavedLimitAndTheDefault() =>
-        Assert.Equal(Flag, ProjectWorkLimit.Resolve(Flag, Project, Saved));
+    public void AnExplicitLimitOutranksTheConfiguredOne() =>
+        Assert.Equal(Flag, ProjectWorkLimit.Resolve(Flag, Project));
 
     [Fact]
-    public void TheProjectSettingOutranksTheSavedLimit() =>
-        Assert.Equal(Project, ProjectWorkLimit.Resolve(null, Project, Saved));
-
-    [Fact]
-    public void TheSavedLimitOutranksTheDefault() =>
-        Assert.Equal(Saved, ProjectWorkLimit.Resolve(null, null, Saved));
+    public void TheConfiguredLimitOutranksTheDefault() =>
+        Assert.Equal(Project, ProjectWorkLimit.Resolve(null, Project));
 
     [Fact]
     public void WithNothingSetTheDefaultApplies() =>
-        Assert.Equal(ParserWorkLimit.Default, ProjectWorkLimit.Resolve(null, null, null));
+        Assert.Equal(ParserWorkLimit.Default, ProjectWorkLimit.Resolve(null, null));
+
+    [Fact]
+    public void AnInvalidProjectSettingIsRefusedNotSwallowed()
+    {
+        var folder = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var fwdata = Path.Combine(folder, "p.fwdata");
+            File.WriteAllText(fwdata, "<x/>");
+            File.WriteAllText(Path.Combine(folder, "p.motif.toml"), "[parser]\nwork-limit = \"lots\"\n");
+
+            Assert.Throws<SIL.Motif.Host.Config.ProjectConfigurationException>(() => ProjectWorkLimit.ForProject(fwdata));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    public void WithoutAStoreTheProjectSettingStillApplies()
+    {
+        var folder = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var fwdata = Path.Combine(folder, "p.fwdata");
+            File.WriteAllText(fwdata, "<x/>");
+            File.WriteAllText(Path.Combine(folder, "p.motif.toml"), "[parser]\nwork-limit = 60000000\n");
+
+            Assert.Equal(Project, ProjectWorkLimit.ForProject(fwdata).Limit);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Theory]
+    [InlineData("work_limit", true)]
+    [InlineData("timed_out", true)]
+    [InlineData("invalid_shape", true)]
+    [InlineData("unrelated", false)]
+    public void ANonzeroExitIsReadOnlyWhenTheTraceRecordsAStoppedSearch(string reason, bool accepted)
+    {
+        var folder = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var trace = Path.Combine(folder, PanGlossRequest.RejectionTrace.ArtifactName);
+            File.WriteAllText(trace,
+                "{\"type\":\"header\"}\n{\"type\":\"word_end\",\"search\":{\"status\":\"stopped\",\"stopReasons\":[\"" + reason + "\"]}}\n");
+
+            Assert.Equal(accepted, new PanGlossRequest.RejectionTrace("g.fwdata", "w", 3) { WorkLimit = Project }
+                .AcceptsNonzeroExit("", folder));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    public void ACompileFailureWithNoTraceKeepsItsTypedRefusal()
+    {
+        var folder = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            Assert.False(new PanGlossRequest.RejectionTrace("g.fwdata", "w", 3) { WorkLimit = Project }
+                .AcceptsNonzeroExit("", folder));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    public void ATraceWithNoRecordedStopKeepsItsRefusalEvenWithALimit()
+    {
+        var folder = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(folder, PanGlossRequest.RejectionTrace.ArtifactName),
+                "{\"type\":\"word_end\",\"search\":{\"status\":\"complete\",\"stopReasons\":[]}}\n");
+
+            Assert.False(new PanGlossRequest.RejectionTrace("g.fwdata", "w", 3) { WorkLimit = Project }
+                .AcceptsNonzeroExit("", folder));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
 
     [Fact]
     public void ARejectionTraceRequestPassesTheWorkLimitToTheParser()
@@ -57,12 +144,5 @@ public sealed class ProjectWorkLimitTests
         new PanGlossRequest.RejectionTrace("g.fwdata", "word", 3).AddArguments(start, "scratch");
 
         Assert.DoesNotContain("--work-cap", start.ArgumentList);
-    }
-
-    [Fact]
-    public void ACappedParseExitIsReadWhenALimitWasPassedAndRefusedWhenNoneWas()
-    {
-        Assert.True(new PanGlossRequest.RejectionTrace("g.fwdata", "word", 3) { WorkLimit = Project }.AcceptsNonzeroExit(""));
-        Assert.False(new PanGlossRequest.RejectionTrace("g.fwdata", "word", 3).AcceptsNonzeroExit(""));
     }
 }

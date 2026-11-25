@@ -423,10 +423,8 @@ public static class JobCommands
             var scopes = configuration.Scopes;
             var scope = scopes.FirstOrDefault(declared => declared.Name == (scopeName ?? AssessmentScopeConfiguration.DefaultName))
                 ?? scopes[0];
-            // The project's own limit outranks the one a saved Selection took by default; a flag outranks both.
-            if (limits is not null)
-                return configuration.ParserWorkLimit is null ? limits
-                    : SelectionLimitPolicy.WithWorkLimit(limits, scope.PerWordParserWorkLimit);
+            // A saved Selection's limit, then the scope's own (which takes the project's work-limit when it names none).
+            if (limits is not null) return limits;
             return SelectionLimitPolicy.Estimated(scope.PerWordParserWorkLimit);
         }
         catch (ProjectConfigurationException)

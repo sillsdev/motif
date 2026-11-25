@@ -1,12 +1,13 @@
-using System.Collections.Concurrent;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host;
-using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Config;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
+using System.Collections.Concurrent;
 
 namespace SIL.Motif.Commands.Queries;
 
@@ -48,14 +49,32 @@ public static class TryWordSessions
             if (target is null)
                 return new WarmSessionState(WarmSessionPhase.Failed, "wordtrace.no-baseline",
                     "The project has no Baseline yet.");
+            ResolvedWorkLimit limit;
+            try
+            {
+                limit = ProjectWorkLimit.ForProject(projectPath);
+            }
+            catch (ProjectConfigurationException exception)
+            {
+                return new WarmSessionState(WarmSessionPhase.Failed, RefusalCodes.ConfigInvalid, exception.Message);
+            }
             return await PoolFor(parserPath).Prewarm(projectPath, target.Value.Token, target.Value.GrammarPath,
-                ProjectWorkLimit.ForProject(projectPath)).ConfigureAwait(false);
+                limit.Limit).ConfigureAwait(false);
         });
     }
 
     /// <summary>The state of a project's session: Idle, Loading, Ready or Failed.</summary>
-    public static WarmSessionState GetState(string projectPath, string? parserPath = null) =>
-        PoolFor(parserPath).GetState(projectPath, ProjectWorkLimit.ForProject(projectPath));
+    public static WarmSessionState GetState(string projectPath, string? parserPath = null)
+    {
+        try
+        {
+            return PoolFor(parserPath).GetState(projectPath, ProjectWorkLimit.ForProject(projectPath).Limit);
+        }
+        catch (ProjectConfigurationException exception)
+        {
+            return new WarmSessionState(WarmSessionPhase.Failed, RefusalCodes.ConfigInvalid, exception.Message);
+        }
+    }
 
     /// <summary>
     /// Kills and drops every resident session for the project, whichever parser it runs; idempotent. Call before a

@@ -320,7 +320,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 if (process.ExitCode != 0 &&
                     (PanGlossOutcome.Refused.Classify(process.ExitCode, standardError, process.TerminationSignal) is
                         JobFailureCategory.ParserKilled or JobFailureCategory.OutOfMemory ||
-                     !request.AcceptsNonzeroExit(standardOutput)))
+                     !request.AcceptsNonzeroExit(standardOutput, scratch)))
                 {
                     if (request is PanGlossRequest.Batch interrupted) PublishPartial(interrupted, scratch);
                     return new PanGlossOutcome.Refused(process.ExitCode, StandardError: standardError,

@@ -33,7 +33,7 @@ public static class TrialExportReads
         });
     }
 
-    private static SIL.Motif.Contract.Assess.ParserWorkLimit? FrozenWorkLimit(SIL.Motif.Host.Store.MotifDatabase database, string jobId)
+    internal static SIL.Motif.Contract.Assess.ParserWorkLimit? FrozenWorkLimit(SIL.Motif.Host.Store.MotifDatabase database, string jobId)
     {
         var job = new JobRepository(database).Get(jobId);
         return job is null ? null : TrialJobInput.Parse(job.InputJson).Limits?.PerWordParserWorkLimit;

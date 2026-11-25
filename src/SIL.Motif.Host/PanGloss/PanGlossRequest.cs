@@ -30,6 +30,9 @@ public abstract record PanGlossRequest
     /// <summary>Whether a nonzero exit that wrote <paramref name="standardOutput"/> still produced a usable result.</summary>
     internal virtual bool AcceptsNonzeroExit(string standardOutput) => false;
 
+    /// <summary>The same question for a request that must look at what it wrote into <paramref name="scratch"/>.</summary>
+    internal virtual bool AcceptsNonzeroExit(string standardOutput, string scratch) => AcceptsNonzeroExit(standardOutput);
+
     /// <summary>Throws for a request a caller has built wrongly; this is programmer error, not an outcome.</summary>
     internal abstract void Validate();
 
@@ -325,11 +328,40 @@ public abstract record PanGlossRequest
 
         public override string Subcommand => "parse";
 
+        /// <summary>The stop reasons that make PanGloss exit 1 after it writes the trace.</summary>
+        private static readonly string[] AcceptedStopReasons = ["work_limit", "timed_out", "invalid_shape"];
+
         /// <summary>
-        /// A parse that stops at the work limit exits 1 ("parse incomplete: capped") yet still writes the trace that names
-        /// the stop. Accepting the exit lets <see cref="Finish"/> read it; with no trace file the run is still refused.
+        /// PanGloss exits 1 for a parse that stopped at the work limit, timed out or hit an invalid shape, yet writes a
+        /// trace that names the stop. Only such a trace is read; a compile or load failure, or a missing trace, keeps the
+        /// typed refusal.
         /// </summary>
-        internal override bool AcceptsNonzeroExit(string standardOutput) => WorkLimit is not null;
+        internal override bool AcceptsNonzeroExit(string standardOutput, string scratch) =>
+            RecordsAcceptedStop(Path.Combine(scratch, ArtifactName));
+
+        internal static bool RecordsAcceptedStop(string tracePath)
+        {
+            try
+            {
+                var info = new FileInfo(tracePath);
+                if (!info.Exists || info.Length > MaxCaptureBytes + 4096 + 3072) return false;
+                foreach (var line in File.ReadLines(tracePath))
+                {
+                    if (!line.Contains("\"word_end\"", StringComparison.Ordinal)) continue;
+                    using var json = JsonDocument.Parse(line);
+                    if (!json.RootElement.TryGetProperty("search", out var search) ||
+                        !search.TryGetProperty("stopReasons", out var reasons) || reasons.ValueKind != JsonValueKind.Array)
+                        continue;
+                    if (reasons.EnumerateArray().Any(r => r.ValueKind == JsonValueKind.String &&
+                        AcceptedStopReasons.Contains(r.GetString(), StringComparer.Ordinal))) return true;
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+            {
+                return false;
+            }
+            return false;
+        }
 
         internal override void Validate()
         {
