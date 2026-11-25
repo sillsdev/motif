@@ -1,6 +1,8 @@
+using System.Text;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
+using SIL.Motif.Contract.Gdr;
 using SIL.Motif.Contract.Responses;
 using SIL.TextEditing;
 using SIL.TextEditing.Markdown;
@@ -104,6 +106,8 @@ public static class GdrSyncChecker
                 "The project has no Grammar Guide list, so no rule has a section. Create the first with 'guide add --title <text>', apply it, then capture a Baseline (ADR 0005).",
                 null, null, null, 0, []));
 
+        AddInterlinear(findings, sections, cache);
+
         // (c) examples against the stored rows.
         var examples = sections.Where(section => section.Expectation != Expectation.None)
             .SelectMany(section => section.Paragraphs.SelectMany(paragraph => paragraph.Words.Select(word => (section, paragraph, word))))
@@ -155,6 +159,48 @@ public static class GdrSyncChecker
         return new GdrCheckResponse(true, findings.Count == 0, coverage, findings, counts);
     }
 
+    // Interlinear blocks (ADR 0005): morphemes the lexicon lacks, and lines that do not pair up.
+    private static void AddInterlinear(List<GdrSyncFinding> findings, List<Section> sections, LcmCache cache)
+    {
+        var parsed = sections.Select(section => (section, result: GuideInterlinear.ParseStored(section.Texts))).Where(item => item.result.Blocks.Count > 0 || item.result.Diagnostics.Count > 0).ToArray();
+        if (parsed.Length == 0) return;
+        HashSet<string>? lexicon = null;
+        foreach (var group in parsed.GroupBy(item => (item.section.Gdr, item.section.Title)))
+        {
+            var section = group.Key.Title.Length == 0 ? null : group.Key.Title;
+            var unknown = new List<string>();
+            var misaligned = new List<string>();
+            foreach (var (_, result) in group)
+            {
+                foreach (var diagnostic in result.Diagnostics)
+                    misaligned.Add($"{diagnostic.Message}");
+                foreach (var block in result.Blocks)
+                    foreach (var column in block.Columns)
+                        foreach (var piece in column.MorphemePieces)
+                        {
+                            lexicon ??= LexiconForms(cache);
+                            if (!lexicon.Contains(LexiconKey(piece)) && !unknown.Contains(piece)) unknown.Add(piece);
+                        }
+            }
+            Add(findings, GdrSyncCodes.InterlinearUnknownMorpheme, unknown, group.Key.Gdr, section,
+                "interlinear morpheme(s) match no form in the lexicon. Add the entry or allomorph, or correct the example.");
+            Add(findings, GdrSyncCodes.InterlinearMisaligned, misaligned, group.Key.Gdr, section,
+                "interlinear problem(s): the lines do not pair up token for token and morpheme for gloss. Fix the example.");
+        }
+    }
+
+    private static HashSet<string> LexiconForms(LcmCache cache)
+    {
+        var forms = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var form in cache.ServiceLocator.GetInstance<IMoFormRepository>().AllInstances())
+            foreach (var ws in form.Form.AvailableWritingSystemIds)
+                if (form.Form.get_String(ws).Text is { Length: > 0 } text) forms.Add(LexiconKey(text));
+        return forms;
+    }
+
+    private static string LexiconKey(string text) =>
+        TextNormalizer.Normalize(text.Trim('-', '=', '~', '*', ' '), NormalizationForm.FormC).ToLowerInvariant();
+
     private static void Add(List<GdrSyncFinding> findings, string code, List<string> words, string gdr, string? section, string tail)
     {
         if (words.Count == 0) return;
@@ -204,7 +250,8 @@ public static class GdrSyncChecker
 
     private enum Expectation { None, Parses, DoesNotParse }
 
-    private sealed record Section(string Gdr, string Title, Expectation Expectation, IReadOnlyList<Paragraph> Paragraphs);
+    private sealed record Section(string Gdr, string Title, Expectation Expectation, IReadOnlyList<Paragraph> Paragraphs,
+        IReadOnlyList<string> Texts);
 
     private sealed record Paragraph(IReadOnlyList<Guid> Links, IReadOnlyList<string> Words);
 
@@ -213,23 +260,27 @@ public static class GdrSyncChecker
         var title = "";
         var expectation = Expectation.None;
         var current = new List<Paragraph>();
+        var texts = new List<string>();
         var started = false;
         foreach (var paragraph in record.Paragraphs)
         {
             if (HeadingLevel(paragraph.StyleName) > 0)
             {
-                if (started || current.Count > 0) yield return new Section(record.Label, title, expectation, current);
+                if (started || current.Count > 0) yield return new Section(record.Label, title, expectation, current, texts);
                 title = paragraph.Contents.Text?.Trim() ?? "";
                 var key = Normal(title);
                 expectation = key.StartsWith("examples", StringComparison.Ordinal) ? Expectation.Parses
                     : NegativeHeadings.Contains(key) ? Expectation.DoesNotParse : Expectation.None;
                 current = [];
+                texts = [];
                 started = true;
                 continue;
             }
-            current.Add(Read(paragraph.Contents, vernacular, expectation != Expectation.None));
+            texts.Add(paragraph.Contents.Text ?? "");
+            var morphemeLine = (paragraph.Contents.Text ?? "").StartsWith("morphemes:", StringComparison.OrdinalIgnoreCase);
+            current.Add(Read(paragraph.Contents, vernacular, expectation != Expectation.None && !morphemeLine));
         }
-        if (started || current.Count > 0) yield return new Section(record.Label, title, expectation, current);
+        if (started || current.Count > 0) yield return new Section(record.Label, title, expectation, current, texts);
     }
 
     // "Heading N" is the SIL.TextEditing Markdown reader default and the name a new FieldWorks project has.

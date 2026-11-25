@@ -21,6 +21,12 @@ public static class GdrSyncCodes
     /// <summary>A hypothesis names a Guide section that the project does not hold.</summary>
     public const string LedgerLinkMissing = "guide.ledger-link-missing";
 
+    /// <summary>An interlinear example names a morpheme that no lexical form matches.</summary>
+    public const string InterlinearUnknownMorpheme = "guide.interlinear-unknown-morpheme";
+
+    /// <summary>An interlinear example's lines do not pair up, token for token or morpheme for gloss.</summary>
+    public const string InterlinearMisaligned = "guide.interlinear-misaligned";
+
     /// <summary>A word an Examples section shows as parsing has no analysis in the latest rows.</summary>
     public const string ExampleNotParsing = "guide.example-not-parsing";
 
