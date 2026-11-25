@@ -90,6 +90,10 @@ public static class QueryExprText
                 return "realizes(" + Quote(realizes.Morpheme, forList: true) + ", " + realizes.Tier + ")";
             case QueryOnlyVia via:
                 return "only-via(" + via.Kind + ":" + via.Id + ")";
+            case QueryMorphIs morph:
+                return "morph(" + Quote(morph.Item, forList: true) + ")";
+            case QueryMorphSeq seq:
+                return "seq(" + string.Join(", ", seq.Items.Select(item => Quote(item, forList: true))) + (seq.Adjacent ? ", adjacent=true" : "") + ")";
             case QueryPhon phon:
                 return "phon(" + phon.Pattern + ")";
             case QueryEnv env:
@@ -187,12 +191,48 @@ public static class QueryExprText
             if (_at < text.Length && text[_at] == '(' && field is "phon" or "env") return ParsePattern(field);
             if (_at < text.Length && text[_at] == '(' && field == "realizes") return ParseRealizes();
             if (_at < text.Length && text[_at] == '(' && field == "only-via") return ParseOnlyVia();
+            if (_at < text.Length && text[_at] == '(' && field is "morph" or "seq") return field == "morph" ? ParseMorph() : ParseSeq();
             if (_at < text.Length && text[_at] == '(' && QueryOps.Reserved.Contains(field))
                 throw QueryRefusalException.NotYetAvailable(field);
             SkipSpace();
             var op = ReadOp();
             if (op.Op == QueryOps.Exists) return new QueryField(field, QueryOps.Exists, op.Text != "missing");
             return new QueryField(field, op.Op, ReadValue(op.Op));
+        }
+
+        // morph(<item>)
+        private QueryExpr ParseMorph()
+        {
+            _at++;
+            SkipSpace();
+            var item = ReadOne(forList: true);
+            SkipSpace();
+            if (_at >= text.Length || text[_at] != ')') throw Error("Expected ')' to close morph(...); it takes one item. Use seq(a, b) for an order.");
+            _at++;
+            return new QueryMorphIs(item.Trim());
+        }
+
+        // seq(<item>, <item>, ...[, adjacent=true])
+        private QueryExpr ParseSeq()
+        {
+            _at++;
+            var items = new List<string>();
+            var adjacent = false;
+            while (true)
+            {
+                SkipSpace();
+                var item = ReadOne(forList: true);
+                if (item is "adjacent=true" or "adjacent=false") adjacent = item == "adjacent=true";
+                else if (adjacent) throw Error("adjacent=... must be the last argument of seq(...).");
+                else items.Add(item.Trim());
+                SkipSpace();
+                if (_at < text.Length && text[_at] == ',') { _at++; continue; }
+                break;
+            }
+            if (_at >= text.Length || text[_at] != ')') throw Error("Expected ')' to close seq(...).");
+            _at++;
+            if (items.Count < 2) throw Error("seq(...) needs at least two items; use morph(...) for one.");
+            return new QueryMorphSeq(items, adjacent);
         }
 
         // only-via(entry:<guid>), or msa: or form: in place of entry:.

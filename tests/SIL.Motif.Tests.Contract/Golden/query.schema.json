@@ -217,7 +217,7 @@
   },
   "$defs": {
     "expr": {
-      "description": "One of: and, or, not, a field predicate, phon, env, realizes, only-via, or a reserved kind (parsed, refused as not yet available).",
+      "description": "One of: and, or, not, a field predicate, phon, env, realizes, only-via, morph or seq.",
       "oneOf": [
         {
           "type": "object",
@@ -352,15 +352,48 @@
           }
         },
         {
-          "description": "Reserved: morph, seq.",
           "type": "object",
-          "minProperties": 1,
-          "maxProperties": 1,
-          "propertyNames": {
-            "enum": [
-              "morph",
-              "seq"
-            ]
+          "additionalProperties": false,
+          "required": [
+            "morph"
+          ],
+          "properties": {
+            "morph": {
+              "description": "Words with a reading that has the morph: an item is entry:ID, msa:ID or form:ID (a guid; a bare guid is an analysis or form id), root:FORM, pfx:FORM or sfx:FORM (a form in the project's lexicon, named as realizes names it; needs --project), text:SURFACE (the morph's own surface text), or a class token such as CAUS or RECP, which matches a morph whose entry gloss, class (stem, derivational, inflectional, affix) or inflection type equals it, ignoring case (needs --project). Runs over a corpus with --grammar.",
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seq"
+          ],
+          "properties": {
+            "seq": {
+              "description": "Words with a reading whose morphs match the items in order, each morph used once; gaps are allowed unless adjacent is true. Each item is as for morph. an item is entry:ID, msa:ID or form:ID (a guid; a bare guid is an analysis or form id), root:FORM, pfx:FORM or sfx:FORM (a form in the project's lexicon, named as realizes names it; needs --project), text:SURFACE (the morph's own surface text), or a class token such as CAUS or RECP, which matches a morph whose entry gloss, class (stem, derivational, inflectional, affix) or inflection type equals it, ignoring case (needs --project). Runs over a corpus with --grammar.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "items"
+              ],
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "adjacent": {
+                  "type": "boolean",
+                  "description": "The morphs must be next to each other (default false)."
+                }
+              }
+            }
           }
         }
       ]
@@ -834,8 +867,5 @@
       }
     ]
   },
-  "x-reserved": [
-    "morph",
-    "seq"
-  ]
+  "x-reserved": []
 }

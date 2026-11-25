@@ -193,7 +193,7 @@ public static class QuerySchema
         };
         var expr = new JsonObject
         {
-            ["description"] = "One of: and, or, not, a field predicate, phon, env, realizes, only-via, or a reserved kind (parsed, refused as not yet available).",
+            ["description"] = "One of: and, or, not, a field predicate, phon, env, realizes, only-via, morph or seq.",
             ["oneOf"] = new JsonArray(
                 Wrapper("and", new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = "#/$defs/expr" }, ["minItems"] = 1 }),
                 Wrapper("or", new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["$ref"] = "#/$defs/expr" }, ["minItems"] = 1 }),
@@ -222,17 +222,33 @@ public static class QuerySchema
                     ["propertyNames"] = new JsonObject { ["enum"] = new JsonArray("entry", "msa", "form") },
                     ["additionalProperties"] = new JsonObject { ["type"] = "string", ["minLength"] = 1 },
                 }),
-                new JsonObject
+                Wrapper("morph", new JsonObject
                 {
-                    ["description"] = "Reserved: " + string.Join(", ", QueryOps.ReservedKinds) + ".",
-                    ["type"] = "object",
-                    ["minProperties"] = 1,
-                    ["maxProperties"] = 1,
-                    ["propertyNames"] = new JsonObject { ["enum"] = new JsonArray([.. QueryOps.ReservedKinds.Select(k => (JsonNode?)k)]) },
+                    ["description"] = "Words with a reading that has the morph: " + MorphItemSyntax,
+                    ["type"] = "string",
+                    ["minLength"] = 1,
                 }),
+                Wrapper("seq", new JsonObject
+                {
+                    ["description"] = "Words with a reading whose morphs match the items in order, each morph used once; gaps are allowed unless adjacent is true. Each item is as for morph. " + MorphItemSyntax,
+                    ["type"] = "object",
+                    ["additionalProperties"] = false,
+                    ["required"] = new JsonArray("items"),
+                    ["properties"] = new JsonObject
+                    {
+                        ["items"] = new JsonObject { ["type"] = "array", ["minItems"] = 2, ["items"] = new JsonObject { ["type"] = "string", ["minLength"] = 1 } },
+                        ["adjacent"] = new JsonObject { ["type"] = "boolean", ["description"] = "The morphs must be next to each other (default false)." },
+                    },
+                })),
         };
         return new JsonObject { ["expr"] = expr, ["field"] = field };
     }
+
+    /// <summary>The items of <c>morph</c> and <c>seq</c>.</summary>
+    public const string MorphItemSyntax =
+        "an item is entry:ID, msa:ID or form:ID (a guid; a bare guid is an analysis or form id), root:FORM, pfx:FORM or sfx:FORM (a form in the project's lexicon, named as realizes names it; needs --project), " +
+        "text:SURFACE (the morph's own surface text), or a class token such as CAUS or RECP, which matches a morph whose entry gloss, class (stem, derivational, inflectional, affix) or inflection type equals it, ignoring case (needs --project). " +
+        "Runs over a corpus with --grammar.";
 
     /// <summary>The pattern language of <c>phon</c> and <c>env</c>, as PanGloss's match op reads it.</summary>
     public const string PatternSyntax =

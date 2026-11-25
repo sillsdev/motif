@@ -14,7 +14,7 @@ internal static class CorpusQueryCli
     /// <summary>True for <c>query --corpus ...</c>, which never reads a project.</summary>
     public static bool Handles(IReadOnlyDictionary<string, string> flags) => flags.ContainsKey("corpus");
 
-    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "thorough", "segment-test", "group-by", "what-if-retire", "sum", "sample", "seed", "write-words", "with-counts", "force", "json"];
+    private static readonly string[] FormsFlags = ["corpus", "where", "query-json", "grammar", "segments", "fold-case", "split-hyphens", "limit", "project", "thorough", "segment-test", "group-by", "what-if-retire", "sum", "sample", "seed", "write-words", "with-counts", "force", "count-by", "adjacent", "by-morph", "json"];
 
     /// <summary>True for <c>query --corpus &lt;words&gt; forms ...</c>.</summary>
     public static bool IsForms(IReadOnlyList<string> positionals) => positionals.FirstOrDefault() == "forms";
@@ -28,7 +28,7 @@ internal static class CorpusQueryCli
     {
         request = null!;
         if (flags.Keys.Any(key => !FormsFlags.Contains(key)) ||
-            flags.Any(pair => pair.Value == "true" && pair.Key is not ("json" or "fold-case" or "split-hyphens" or "thorough" or "with-counts" or "force"))) return false;
+            flags.Any(pair => pair.Value == "true" && pair.Key is not ("json" or "fold-case" or "split-hyphens" or "thorough" or "with-counts" or "force" or "adjacent" or "by-morph"))) return false;
         string? where = flags.GetValueOrDefault("where");
         if (positionals is ["forms", "where", var text]) where = where is null ? text : null;
         else if (positionals is not ["forms"]) return false;
@@ -42,7 +42,7 @@ internal static class CorpusQueryCli
             document = readJson(source);
             if (document is null) return false;
         }
-        var readingsOnly = groupBy is not null || retire is not null || flags.ContainsKey("sum") || flags.ContainsKey("sample") || flags.ContainsKey("write-words");
+        var readingsOnly = groupBy is not null || retire is not null || flags.ContainsKey("sum") || flags.ContainsKey("count-by") || flags.ContainsKey("sample") || flags.ContainsKey("write-words");
         if (!flags.TryGetValue("corpus", out var corpus) || ((where is null) == (document is null) && !(readingsOnly && where is null && document is null))) return false;
         int? limit = null;
         if (flags.TryGetValue("limit", out var raw))
@@ -64,7 +64,8 @@ internal static class CorpusQueryCli
         }
         request = new CorpusFormsRequest(corpus, where, document, flags.GetValueOrDefault("grammar"), flags.GetValueOrDefault("segments"),
             flags.ContainsKey("fold-case"), flags.ContainsKey("split-hyphens"), limit, flags.GetValueOrDefault("segment-test"), flags.GetValueOrDefault("project"), groupBy, retire, flags.ContainsKey("thorough"),
-            flags.GetValueOrDefault("sum"), sample, seed, flags.GetValueOrDefault("write-words"), flags.ContainsKey("with-counts"), flags.TryGetValue("force", out var force) && force != "false");
+            flags.GetValueOrDefault("sum"), sample, seed, flags.GetValueOrDefault("write-words"), flags.ContainsKey("with-counts"), flags.TryGetValue("force", out var force) && force != "false",
+            flags.GetValueOrDefault("count-by"), flags.TryGetValue("adjacent", out var adjacent) && adjacent != "false", flags.TryGetValue("by-morph", out var byMorph) && byMorph != "false");
         return true;
     }
 

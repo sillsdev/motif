@@ -162,6 +162,20 @@ public sealed class CorpusQueryCliTests : IDisposable
     }
 
     [Fact]
+    public void MorphSeqCountByAdjacentAndByMorphAreAcceptedAndNeedAGrammarOrARealizes()
+    {
+        var seq = Run("query", "--corpus", Words(), "forms", "where", "seq(a, b)", "--adjacent");
+        Assert.NotEqual(0, seq.Code);
+        Assert.Contains("Pass --grammar", seq.Output + seq.Error);
+        var count = Run("query", "--corpus", Words(), "forms", "--count-by", "morph-seq", "--json");
+        Assert.Contains("query.readings-needs-grammar", count.Output + count.Error);
+        var byMorph = Run("query", "--corpus", Words(), "forms", "where", "form ~ a", "--by-morph", "--json");
+        Assert.Contains("query.corpus-invalid", byMorph.Output + byMorph.Error);
+        var other = Run("query", "--corpus", Words(), "forms", "--count-by", "other", "--json");
+        Assert.Contains("query.corpus-invalid", other.Output + other.Error);
+    }
+
+    [Fact]
     public void ForceIsASwitchSoItMayComeBeforeWhereOrLast()
     {
         var file = Path.Combine(_folder, "force.txt");

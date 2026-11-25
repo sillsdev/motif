@@ -27,6 +27,21 @@ internal static class CorpusFormsText
                         string.Join(" ", reading.Morphs.Select(morph => (morph.Kind is { } kind ? kind[..1] + ":" : "") + morph.Msa[..Math.Min(8, morph.Msa.Length)])) + "]");
             }
         }
+        if (response.MorphSeqs is { } seqs)
+        {
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture, "Morph sequences: {0} distinct over {1} word types, {2} tokens{3}", seqs.Distinct, seqs.Words, seqs.Tokens,
+                seqs.Complete ? "" : " (INCOMPLETE: capped or failed words may have more readings, so counts are lower bounds)"));
+            foreach (var entry in seqs.Sequences)
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  {0}\t{1} types\t{2} tokens\te.g. {3}", string.Join(" + ", entry.Seq), entry.Types, entry.Tokens,
+                    string.Join(", ", entry.Examples)));
+            if (seqs.Distinct > seqs.Sequences.Count) text.AppendLine("  ... " + (seqs.Distinct - seqs.Sequences.Count).ToString(CultureInfo.InvariantCulture) + " more sequences; --limit shows more");
+        }
+        if (response.ByMorph is { } morphemes)
+        {
+            text.AppendLine("By morpheme:");
+            foreach (var group in morphemes)
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  {0}\t{1} types\t{2} tokens\te.g. {3}", group.Morpheme, group.Types, group.Tokens, string.Join(", ", group.Examples)));
+        }
         if (response.WhatIf is { } what)
         {
             text.AppendLine(string.Format(CultureInfo.InvariantCulture, "What if retired {0} ({1}; {2}{3}):", string.Join(", ", what.Retire),

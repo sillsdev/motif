@@ -6,12 +6,12 @@ using SIL.Motif.Contract.Query;
 namespace SIL.Motif.Commands.Queries;
 
 /// <summary>A morpheme as PanGloss names it in a parse: by entry and analysis, or by one id that is either.</summary>
-internal sealed record RealizesTarget(string? EntryId, string? MsaId, string? AnyId, bool? IsRoot = null)
+internal sealed record RealizesTarget(string? EntryId, string? MsaId, string? AnyId, bool? IsRoot = null, IReadOnlySet<string>? MsaIds = null)
 {
     /// <summary>Whether a morph of the index names the morpheme; the batch gives a form and an analysis id, not the entry.</summary>
     public bool Matches(IndexedMorph morph) => AnyId is { } any
         ? string.Equals(morph.Form, any, StringComparison.OrdinalIgnoreCase) || string.Equals(morph.Msa, any, StringComparison.OrdinalIgnoreCase)
-        : string.Equals(morph.Msa, MsaId, StringComparison.OrdinalIgnoreCase);
+        : MsaIds is not null ? MsaIds.Contains(morph.Msa) : string.Equals(morph.Msa, MsaId, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

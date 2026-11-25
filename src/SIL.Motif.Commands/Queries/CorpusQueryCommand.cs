@@ -54,7 +54,7 @@ public static class CorpusQueryCommand
     internal static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath,
         CancellationToken cancellationToken,
         IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null, MorphCatalog? catalog = null,
-        IRealizesGrammar? realizesGrammar = null)
+        IRealizesGrammar? realizesGrammar = null, Func<MorphItem, string?>? entryOfForm = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         QueryExpr? where;
@@ -63,6 +63,10 @@ public static class CorpusQueryCommand
         var groupColumns = request.GroupBy is null ? null : request.GroupBy.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var wantsCauses = groupColumns is ["cause"];
         var retire = new List<ReadingTarget>();
+        var listed = new RealizesListed();
+        QueryExpr? printed = null;
+        if (request.CountBy is not null && !string.Equals(request.CountBy, "morph-seq", StringComparison.Ordinal)) return Invalid("count-by is 'morph-seq'.");
+        var wantsMorphSeqs = request.CountBy is not null;
         if (request.GroupBy is not null)
         {
             if (groupColumns is not { Length: 1 or 2 } || groupColumns.Distinct(StringComparer.Ordinal).Count() != groupColumns.Length)
@@ -84,7 +88,7 @@ public static class CorpusQueryCommand
             else if (FormsMorphemeResolver.TryGuid(text, out var guid)) retire.Add(new ReadingTarget("id", guid));
             else return Invalid($"what-if-retire takes entry:<id>, msa:<id> or form:<id>, or a bare id, not '{text}'.");
         }
-        var readingsOnly = wantsCauses || request.WhatIfRetire is { Count: > 0 };
+        var readingsOnly = wantsCauses || wantsMorphSeqs || request.WhatIfRetire is { Count: > 0 };
         if (request.WhatIfRetire is { Count: 0 }) return Invalid("what-if-retire needs at least one id.");
         if ((request.Where is null) == (request.QueryJson is null) && !((readingsOnly || groupsColumns is not null || request.Sum is not null || request.Sample is not null || request.WriteWords is not null) && request.Where is null && request.QueryJson is null))
             return Invalid("Give the query as --where <expression> or as --query-json, one of the two.");
@@ -108,15 +112,18 @@ public static class CorpusQueryCommand
                     return CommandOutcome<CorpusFormsResponse>.Refused(textRefusal);
                 segmentTest = PhonSegmentTest.Normalize(request.SegmentTest, "segment-test");
             }
+            printed = where;
+            if (RealizesFiles.Has(where)) where = RealizesFiles.Expand(where, listed);
+            if (request.ByMorph && !RealizesLowering.Has(where)) return Invalid("by-morph groups the rows of a realizes(...) query; the query has none.");
             if (QueryExprTools.HasPatterns(where) && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(QueryRefusalException.PhonNeedsGrammar().Refusal);
             if (RealizesLowering.Has(where) && string.IsNullOrWhiteSpace(request.GrammarPath) && string.IsNullOrWhiteSpace(request.ProjectPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(RealizesRefusals.NeedsProject().Refusal);
             if (groupsColumns?.Contains("readings") == true && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(ReadingsRefusals.NeedsGrammar("--group-by readings").Refusal);
-            if ((readingsOnly || OnlyViaLowering.UsesReadings(where)) && string.IsNullOrWhiteSpace(request.GrammarPath))
+            if ((readingsOnly || OnlyViaLowering.UsesReadings(where) || MorphSeqLowering.Has(where)) && string.IsNullOrWhiteSpace(request.GrammarPath))
                 return CommandOutcome<CorpusFormsResponse>.Refused(ReadingsRefusals.NeedsGrammar(
-                    wantsCauses ? "--group-by cause" : readingsOnly ? "--what-if-retire" : "readings and only-via").Refusal);
+                    wantsCauses ? "--group-by cause" : wantsMorphSeqs ? "--count-by morph-seq" : readingsOnly ? "--what-if-retire" : MorphSeqLowering.Has(where) ? "morph and seq" : "readings and only-via").Refusal);
         }
         catch (QueryRefusalException refused)
         {
@@ -142,24 +149,33 @@ public static class CorpusQueryCommand
                 () => indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), cacheRoot ?? RealizesParseIndexCache.DefaultRoot,
                 notice ?? (_ => { }),
                 string.IsNullOrWhiteSpace(request.GrammarPath) && realizesGrammar is null ? null
-                    : () => realizesGrammar ?? new ResidentRealizesGrammar(request.GrammarPath!, parserPath), request.Thorough);
-            try { realizes = RealizesQuery.Prepare(where!, context, cancellationToken); }
+                    : () => realizesGrammar ?? new ResidentRealizesGrammar(request.GrammarPath!, parserPath), request.Thorough, catalog is null ? null : catalog.MsasOf);
+            try { realizes = RealizesQuery.Prepare(where!, context, cancellationToken, listed); }
             catch (QueryRefusalException refused) { return CommandOutcome<CorpusFormsResponse>.Refused(refused.Refusal); }
         }
         ParsedReadings? readings = null;
         ReadingsReport? readingsReport = null;
         var liveState = !string.IsNullOrWhiteSpace(request.GrammarPath) && QueryExprTools.Leaves(where).Any(leaf => leaf.Field == CorpusFormsQuery.ParseStateColumn);
         var groupsRead = !string.IsNullOrWhiteSpace(request.GrammarPath) && groupsColumns?.Any(column => column is "readings" or CorpusFormsQuery.ParseStateColumn) == true;
-        var usesReadings = readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState || groupsRead;
+        var seqItems = MorphSeqSupport.ItemsOf(where);
+        var usesReadings = readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState || groupsRead || seqItems.Count > 0;
+        MorphSeqPlan? seqPlan = null;
         if (usesReadings)
         {
             try
             {
                 var needsEntries = OnlyViaLowering.Find(where).Select(via => new ReadingTarget(via.Kind, via.Id)).Concat(retire).Where(target => target.Kind == "entry").ToList();
-                var needsClasses = wantsCauses || retire.Count > 0 || OnlyViaLowering.Find(where).Count > 0;
+                var needsClasses = wantsCauses || retire.Count > 0 || OnlyViaLowering.Find(where).Count > 0 || seqItems.Any(item => item.NeedsProject);
                 string? catalogFailure = null;
                 var loaded = catalog;
-                if (needsClasses && loaded is null) loaded = MorphCatalog.TryLoad(request.ProjectPath, request.GrammarPath, out catalogFailure);
+                var formEntries = new Dictionary<string, string?>(StringComparer.Ordinal);
+                if (needsClasses && loaded is null)
+                    loaded = MorphCatalog.TryLoad(request.ProjectPath, request.GrammarPath, out catalogFailure, cache =>
+                    {
+                        foreach (var item in seqItems.Where(item => item.NeedsLexiconForm))
+                            formEntries[item.Kind + ":" + item.Value] = RealizesQuery.Resolve(cache, item.Value, item.Kind == "root" ? true : false).EntryGuid;
+                    });
+                if (loaded is null && seqItems.FirstOrDefault(item => item.NeedsProject) is { } needy) throw MorphSeqRefusals.NeedsProject(needy, catalogFailure);
                 if (wantsCauses && loaded is null) throw ReadingsIdRefusals.CausesNeedProject(catalogFailure);
                 if (needsEntries.Count > 0 && loaded is null) throw ReadingsRefusals.NeedsProject(needsEntries[0], catalogFailure);
                 var catalogUsed = loaded;
@@ -176,6 +192,15 @@ public static class CorpusQueryCommand
                 catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
                 readings = new ParsedReadings(built.Index, catalogUsed);
                 readingsReport = readings.Report(words, needsClasses);
+                if (seqItems.Count > 0)
+                {
+                    seqPlan = MorphSeqSupport.Compile(realizes is null ? where! : realizes.Lowered!, request.Adjacent, item =>
+                        formEntries.TryGetValue(item.Kind + ":" + item.Value, out var resolved) ? resolved : entryOfForm?.Invoke(item));
+                    if (seqItems.FirstOrDefault(item => item.NeedsLexiconForm && !formEntries.ContainsKey(item.Kind + ":" + item.Value) && entryOfForm?.Invoke(item) is null) is { } unresolved)
+                        throw MorphSeqRefusals.NeedsProject(unresolved, catalogFailure);
+                    if (MorphSeqLowering.Find(where).Any(found => found.Negated) && !readingsReport.Complete) throw MorphSeqRefusals.NegationIncomplete(readingsReport);
+                    if (MorphSeqSupport.FirstUnmatched(seqPlan, readings, words) is { } unmatched) throw MorphSeqRefusals.ItemUnknown(unmatched, catalogUsed is not null);
+                }
                 var asked = OnlyViaLowering.Find(where).Select(via => new ReadingTarget(via.Kind, via.Id)).Concat(retire);
                 foreach (var target in asked)
                 {
@@ -201,7 +226,8 @@ public static class CorpusQueryCommand
         try
         {
             var lowered = OnlyViaLowering.Lower(realizes is null ? where : realizes.Lowered);
-            var rows = CorpusFormsQuery.Run(corpus, lowered, phon, readings);
+            if (seqPlan is not null) lowered = OnlyViaLowering.Lower(seqPlan.Lowered);
+            var rows = CorpusFormsQuery.Run(corpus, lowered, phon, readings, seqPlan?.Tests);
             if (realizes is not null) rows = [.. rows.Select(row => row with { Realizes = realizes.HitsFor(row.Form) })];
             var summary = new CorpusSummary(sources.Count > 1 ? string.Join(",", sources.Select(source => source.Path)) : request.CorpusPath, corpus.TypeCount, corpus.TokenCount,
                 phon is { Ran: true } ? "grammar" : corpus.SegmentationLabel, request.FoldCase, sources.Count > 1 ? sources : null);
@@ -218,7 +244,7 @@ public static class CorpusQueryCommand
                 if (request.Limit is null) limit = Math.Max(limit, sampleSize);
             }
             // A grouping is a summary: it lists no rows unless --limit asks for some.
-            if (groups is not null && request.Sample is null && request.Limit is null && request.QueryJson is null) limit = 0;
+            if ((groups is not null || wantsMorphSeqs) && request.Sample is null && request.Limit is null && request.QueryJson is null) limit = 0;
             WordsWritten? written = null;
             if (request.WriteWords is { } writePath)
             {
@@ -239,11 +265,19 @@ public static class CorpusQueryCommand
                     if (readings.Get(row.Form) is { Readings.Count: > 1 } word) { builder.Add(row.Form, row.Tokens, word); count++; tokens += row.Tokens; }
                 causes = new CauseReport(readingsReport!.Complete, count, tokens, builder.Build());
             }
+            MorphSeqReport? morphSeqs = null;
+            if (readings is not null && wantsMorphSeqs)
+            {
+                var keep = seqPlan is null ? (_ => true) : seqPlan.Tests.ReadingFilter(seqPlan.Lowered);
+                morphSeqs = MorphSeqSupport.Count(matchedRows, readings, keep, readingsReport!.Complete, request.Limit ?? DefaultLimit);
+            }
+            IReadOnlyList<MorphemeGroup>? byMorph = null;
+            if (request.ByMorph && realizes is not null) byMorph = ByMorphemes(realizes, matchedRows);
             if (readings is not null && retire.Count > 0)
                 whatIf = Retirement.Estimate(readings, [.. matchedRows.Select(row => (row.Form, row.Tokens))], retire, readingsReport!.Complete, limit);
             return CommandOutcome<CorpusFormsResponse>.Success(new CorpusFormsResponse(CorpusFormsResponse.SchemaName, summary,
-                where is null ? null : QueryExprText.Print(where), matched, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
-                realizes?.Sets, readingsReport, causes, whatIf, groups, totals, sample, written));
+                printed is null ? null : QueryExprText.Print(printed), matched, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
+                realizes?.Sets, readingsReport, causes, whatIf, groups, totals, sample, written, morphSeqs, byMorph));
         }
         catch (QueryRefusalException refused)
         {
@@ -253,6 +287,19 @@ public static class CorpusQueryCommand
         {
             return Invalid(exception.Message);
         }
+    }
+
+    // One group per morpheme set, including the ones no word carries, so a stem list shows its zeros.
+    private static IReadOnlyList<MorphemeGroup> ByMorphemes(RealizesRun run, IReadOnlyList<CorpusFormRow> rows)
+    {
+        var found = new Dictionary<string, List<CorpusFormRow>>(StringComparer.Ordinal);
+        foreach (var set in run.Sets) found.TryAdd(set.Morpheme, []);
+        foreach (var row in rows)
+            foreach (var hit in row.Realizes ?? [])
+                if (found.TryGetValue(hit.Morpheme, out var list) && !list.Contains(row)) list.Add(row);
+        return [.. found.Select(pair => new MorphemeGroup(pair.Key, pair.Value.Count, pair.Value.Sum(row => row.Tokens),
+                [.. pair.Value.OrderByDescending(row => row.Tokens).ThenBy(row => row.Form, StringComparer.Ordinal).Take(5).Select(row => row.Form)]))
+            .OrderByDescending(group => group.Tokens).ThenBy(group => group.Morpheme, StringComparer.Ordinal)];
     }
 
     private static CommandOutcome<CorpusFormsResponse> WriteWordsExists(string path) =>
