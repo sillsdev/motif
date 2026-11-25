@@ -4273,6 +4273,7 @@ public static class MotifAppStrings
     public static string GuideOnThisPage => Text("MotifApp.GuideOnThisPage");
     public static string GuideSectionsName => Text("MotifApp.GuideSectionsName");
     public static string GuideExamplesHeading => Text("MotifApp.GuideExamplesHeading");
+    public static string GuideInterlinearHeading => Text("MotifApp.GuideInterlinearHeading");
     public static string GuideStaleNotice => Text("MotifApp.GuideStaleNotice");
     public static string GuideQueriesHeading => Text("MotifApp.GuideQueriesHeading");
     public static string RefusalQueryAsOfUnavailable => Text("MotifApp.RefusalQueryAsOfUnavailable");

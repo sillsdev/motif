@@ -7747,6 +7747,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.GuideOnThisPage" xml:space="preserve"><value>On This Page</value></data>
   <data name="MotifApp.GuideSectionsName" xml:space="preserve"><value>Grammar Guide Sections</value></data>
   <data name="MotifApp.GuideExamplesHeading" xml:space="preserve"><value>Examples from Your Texts</value></data>
+  <data name="MotifApp.GuideInterlinearHeading" xml:space="preserve"><value>Interlinear examples</value></data>
   <data name="MotifApp.GuideStaleNotice" xml:space="preserve"><value>The project has been saved since this section was read. Your typing is safe.</value></data>
   <data name="MotifApp.GuideQueriesHeading" xml:space="preserve"><value>Grouping Commands</value></data>
   <data name="MotifApp.RefusalQueryAsOfUnavailable" xml:space="preserve"><value>This query cannot be read for that Proposal. Run a Trial on it, or check that the project has a saved Baseline, then run the query again.</value></data>
