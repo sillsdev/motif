@@ -535,9 +535,7 @@ public sealed class StoreBackupCommandTests : IDisposable
         command.Parameters.AddWithValue("$marker", marker);
         command.ExecuteNonQuery();
         Assert.True(new FileInfo(Store + "-wal").Length > 0, "the committed row must be only in the WAL");
-        // Windows cannot rename a file another handle holds open, so a restore refuses (and puts everything
-        // back) while the holder lives. Close it there: the row is then folded into the store, and no sidecar
-        // is left to move.
+        // Windows cannot rename a file a handle holds open, so close the holder there.
         if (OperatingSystem.IsWindows())
         {
             _walHolder.Dispose();
@@ -546,7 +544,7 @@ public sealed class StoreBackupCommandTests : IDisposable
         }
     }
 
-    /// <summary>True where a connection can stay open across the restore's renames, so the WAL and shm remain to be moved.</summary>
+    /// <summary>True where the holder stays open, so the WAL and shm remain to be moved.</summary>
     private static bool SidecarsSurviveTheHolder => !OperatingSystem.IsWindows();
 
     private StoreBackupResponse BackupThenDiverge()
