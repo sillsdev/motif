@@ -75,7 +75,7 @@ public sealed record ComposeAdvisory(string Code, string Message, IReadOnlyList<
 /// <summary>The stable codes of <see cref="ComposeAdvisory"/>.</summary>
 public static class ComposeAdvisoryCodes
 {
-    /// <summary>Five or more intents add the same analysis, or give forms the same environments.</summary>
+    /// <summary>Five or more intents add the same analysis, or give forms one environment spelled with literal sounds.</summary>
     public const string RepeatedCondition = "compose.repeated-condition";
 
     /// <summary>An environment with a word boundary on both sides and only literal sounds between them.</summary>

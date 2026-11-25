@@ -60,13 +60,14 @@ There is no limit by intent or operation count.
 
 Use `forEach` only if each target is a listed exception that no grammar generalization covers; otherwise make the one change that covers them all. The same operation over many targets usually means the change belongs somewhere else (Black, *Parsing Conceptual Introduction*):
 
-- the same environment on many forms: a phonological rule (sec. 3.1, 6.1.2), or one environment written with a natural class (sec. 3.1.2, 3.1.3);
-- the same analysis or affix form on a group of stems with no difference in meaning: an inflection class, defined at the highest category that shares it (sec. 2.1.2.6, 2.1.2.8);
+- the same environment, spelled with literal sounds, on many forms: one environment written with a natural class (sec. 3.1.2, 3.1.3), or, when the project parses with HermitCrab, one phonological rule (sec. 6.1.2); forms that already share one natural-class environment are the intended model (sec. 3.1);
+- the same analysis added to many entries: a derivational affix, possibly zero (sec. 2.1.5);
+- different affix forms with one meaning for a group of stems: an inflection class, defined at the highest category that shares it (sec. 2.1.2.6, 2.1.2.8);
 - a stem form chosen by the word's inflection features, such as a past-tense stem: a stem name (sec. 3.7.1);
 - an affix limited to an arbitrary list of stems: one exception feature, tagged with `compose-tag-stems-by-query` (sec. 2.1.6);
 - whole words for a regular derivation: the derivational affix (sec. 2.1.5).
 
-The batch report carries advisories when it sees these patterns; they never refuse. `compose.repeated-condition` names an analysis or set of environments that five or more intents add, `compose.whole-word-environment` an environment with a word boundary on both sides and only literal sounds between, and `compose.one-stem-inflection-class` an inflection class the batch leaves with one stem. Read each, and either change the model or keep the batch and say why in the Rationale.
+The batch report carries advisories when it sees these patterns; they never refuse. `compose.repeated-condition` names an analysis that five or more intents add, or environments spelled with literal sounds that five or more forms share (it names a phonological rule only when the project parses with HermitCrab or already has rules), `compose.whole-word-environment` an environment with a word boundary on both sides and only literal sounds between, and `compose.one-stem-inflection-class` an inflection class the batch leaves with one stem. Read each, and either change the model or keep the batch and say why in the Rationale.
 
 An entry may carry `"forEach": {"targets": [...]}` or `"forEach": {"targetsFile": "<path>"}` instead of being copied N times. Each target is an id or a form. The file has one target per line (blank lines are skipped; a line that starts with `"` is read as a JSON string), and a relative path is read from the folder of the batch file. Beside it the entry keeps its `verb`, its `intent` and an optional `citation`; it cannot carry `as`.
 
@@ -87,7 +88,7 @@ Add a Verb analysis to many entries (a new category, then the same intent per en
 ]}
 ```
 
-Put one environment on listed allomorphs that no rule predicts (one environment, then one alternate form per entry from `entries.txt`; five or more raise `compose.repeated-condition`):
+Put one environment on listed allomorphs that no rule predicts (one environment, then one alternate form per entry from `entries.txt`; five or more raise `compose.repeated-condition` only if the environment spells literal sounds):
 
 ```json
 {"intents": [

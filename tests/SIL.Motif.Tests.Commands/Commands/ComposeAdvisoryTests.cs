@@ -1,4 +1,5 @@
 using SIL.LCModel;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Ids;
@@ -76,7 +77,7 @@ public sealed class ComposeAdvisoryTests(PristineProjectFixture pristine)
         var advisory = Assert.Single(batch.Value!.Advisories!);
         Assert.Equal(ComposeAdvisoryCodes.RepeatedCondition, advisory.Code);
         Assert.Equal([1, 2, 3, 4, 5], advisory.Intents);
-        Assert.Contains("inflection class", advisory.Message);
+        Assert.Contains("derivational affix", advisory.Message);
         Assert.Same(batch.Value.Advisories, batch.Value.Bounded(1).Advisories);
     }
 
@@ -86,6 +87,44 @@ public sealed class ComposeAdvisoryTests(PristineProjectFixture pristine)
         var project = NewProject("few");
 
         var batch = ProposalCommands.ComposeBatch(new(project.Path, Version, "few", AddMsaBatch(project, project.Entries)));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        Assert.Null(batch.Value!.Advisories);
+    }
+
+    private static string SharedEnvironmentBatch(Project project, string environment, string? naturalClass = null) => $$$"""
+        {"intents":[
+          {"verb":"compose-author-phoneme","intent":{"name":"a","representations":["zz"]},"as":"ph"},
+          {{{naturalClass ?? ""}}}
+          {"verb":"compose-author-environment","as":"env","intent":{"name":"shared","left":[{{{environment}}}],"right":[]}},
+          {"verb":"compose-author-alternate-form","forEach":{"targets":[{{{string.Join(",", project.Entries.Select(entry => $"\"{entry}\""))}}}]},
+           "intent":{"entry":"{target}","form":"x","formWs":"{{{project.Vernacular}}}","morphType":"{{{CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem).Value}}}","environments":["@env"]}}
+        ]}
+        """;
+
+    [Fact]
+    public void FiveFormsSharingALiteralEnvironmentAreAdvisedTowardANaturalClass()
+    {
+        var project = NewProject("literal", extraEntries: 3);
+
+        var batch = ProposalCommands.ComposeBatch(new(project.Path, Version, "literal",
+            SharedEnvironmentBatch(project, """{"phoneme":"@ph:phonemes"}""")));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        var advisory = Assert.Single(batch.Value!.Advisories!);
+        Assert.Equal(ComposeAdvisoryCodes.RepeatedCondition, advisory.Code);
+        Assert.Equal(5, advisory.Intents.Count);
+        Assert.Contains("natural class", advisory.Message);
+    }
+
+    [Fact]
+    public void FormsSharingANaturalClassEnvironmentAreAlreadyTheModelAndCarryNoAdvisory()
+    {
+        var project = NewProject("classed", extraEntries: 3);
+
+        var batch = ProposalCommands.ComposeBatch(new(project.Path, Version, "classed", SharedEnvironmentBatch(project,
+            """{"naturalClass":"@nc"}""",
+            """{"verb":"compose-author-natural-class","as":"nc","intent":{"name":"Zeds","abbreviation":"Z","members":["@ph:phonemes"]}},""")));
 
         Assert.True(batch.Succeeded, batch.Refusal?.Message);
         Assert.Null(batch.Value!.Advisories);

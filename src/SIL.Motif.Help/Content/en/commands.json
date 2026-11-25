@@ -287,7 +287,7 @@
       "phonological-rules",
       "feature-rules"
     ],
-    "redirect": "Use only if a regular sound change holds across many morphemes in a context you can state; otherwise use an alternate form for one irregular word. If you see the same environment on many forms, write one rule (guide phonological-rules)."
+    "redirect": "Use only if the project parses with HermitCrab and a regular sound change holds across many morphemes in a context you can state; otherwise use an alternate form for one irregular word. A rule can be limited by category with inputCategories (guide phonological-rules)."
   },
   "compose-author-metathesis-rule": {
     "title": "Author a metathesis rule",
@@ -354,7 +354,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Use only if one morpheme has a listed form that no regular sound pattern predicts; otherwise use a phonological rule or a natural-class environment. If you see the same environment on many entries' forms, look for a rule (guide conditioned-allomorphs)."
+    "redirect": "Use only if one morpheme has a listed form that no regular sound pattern predicts; otherwise use a phonological rule when the project parses with HermitCrab. Forms that share one natural-class environment are already the intended model (guide conditioned-allomorphs)."
   },
   "compose-author-part-of-speech": {
     "title": "Author a part of speech",
@@ -785,7 +785,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "Use only if the language repeats this one affix within a word; otherwise leave it at one. HermitCrab tries a form once per word; Trial repeated forms and ask the linguist (guide workflow)."
+    "redirect": "Use only if the language repeats this one affix within a word; otherwise leave it at one. HermitCrab tries a form once per word, so Trial repeated forms and ask the linguist (guide workflow)."
   },
   "compose-set-not-on-clitics": {
     "title": "Set rules on clitics",
@@ -1249,7 +1249,7 @@
       "Delete a natural class nothing uses",
       "Clean up classes left behind after a merge"
     ],
-    "redirect": "Use only if no rule, environment or other class uses the class; otherwise move its users with compose-relink-natural-class first. If you see two classes with the same members, keep one."
+    "redirect": "Use only if no rule, environment or other class uses the class; otherwise move its users with compose-relink-natural-class first. Two classes with the same members today may differ once features change."
   },
   "compose-delete-text-segment-note": {
     "title": "Delete a text segment Note",
@@ -1485,7 +1485,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "Use only if a rule applies to some stems only, by exception feature or inflection class; otherwise narrow or widen its context. Tag the stems first, such as with compose-tag-stems-by-query (guide suffix-prefix-slots)."
+    "redirect": "Use only if a rule applies to some stems only, by exception feature or inflection class; otherwise narrow its context, or limit it by category with inputCategories in compose-edit-phonological-rule. Tag stems with compose-tag-stems-by-query (guide suffix-prefix-slots)."
   },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",
@@ -1499,7 +1499,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Use only if one form's environments are wrong; otherwise fix the shared environment. If you set the same environments on many forms, look for a phonological rule or a natural-class environment (guide conditioned-allomorphs)."
+    "redirect": "Use only if one form's environments are wrong; otherwise fix the shared environment itself. Write environments with natural classes; under HermitCrab a regular alternation can instead be one phonological rule (guide conditioned-allomorphs)."
   },
   "compose-edit-natural-class": {
     "title": "Edit a natural class",
@@ -1717,7 +1717,7 @@
       "suffix-prefix-slots",
       "workflow"
     ],
-    "redirect": "Use only if one form also serves another category or class; otherwise add a sense with compose-add-sense or retype with compose-change-affix-kind. If you see one analysis added to many entries, look for an inflection class or derivational affix."
+    "redirect": "Use only if one form also serves another category or class; otherwise add a sense with compose-add-sense or retype with compose-change-affix-kind. If you see one analysis added to many entries, look for a derivational affix, possibly zero."
   },
   "compose-author-allomorph-required-features": {
     "title": "Add Required Features",
@@ -2369,7 +2369,7 @@
       "Remove the Attaches to Categories restriction from a clitic",
       "Replace the set of parts of speech a clitic attaches to"
     ],
-    "redirect": "Use only if the form is a clitic that attaches to words of several categories; otherwise make it an affix in a slot of its one category, or retype it with compose-set-stem-part-of-speech."
+    "redirect": "Use only if the clitic's Attaches to Categories list is wrong; otherwise leave it. A clitic that attaches to one category is still a clitic, since attachment, not category count, makes it one."
   },
   "compose-edit-phonological-rule": {
     "title": "Edit a sound rule",
@@ -2397,7 +2397,7 @@
       "feature-rules",
       "phonological-rules"
     ],
-    "redirect": "Use only if an existing rule has the wrong output, context or cases; otherwise author a new rule, or gate it by stem with compose-edit-phonological-rule-features (guide phonological-rules)."
+    "redirect": "Use only if an existing rule has the wrong output, context, cases or inputCategories; otherwise author a new rule, or gate it by stem with compose-edit-phonological-rule-features (guide phonological-rules)."
   },
   "compose-order-phonological-rules": {
     "title": "Reorder sound rules",

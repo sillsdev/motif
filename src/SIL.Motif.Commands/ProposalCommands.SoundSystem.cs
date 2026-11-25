@@ -509,6 +509,7 @@ public static partial class ProposalCommands
                 .ToArray();
             foreach (var kept in draft.Operations.Where(operation => operation.DependsOn.Any(bridged.ContainsKey)))
                 kept.DependsOn = BridgeDependencies(kept.DependsOn, bridged).ToList();
+            IReadOnlyList<ComposeAdvisory> scratchAdvisories = [];
             var composed = ProjectReadCache.ReadSaved(project, (_, cache) =>
             {
                 if (retained.Any(operation => operation.DependsOn.Any(dependency =>
@@ -685,12 +686,14 @@ public static partial class ProposalCommands
                     }
                 }
                 if (expansionFailures.Count > 0) throw new ComposeStepFailures(expansionFailures);
+                // Assigned, not appended, so a retried read leaves one copy.
                 if (advisories is not null)
-                    advisories.AddRange(OneStemClassAdvisories(cache, steps,
-                        results.Select(result => (result.Input, result.Added)).ToArray()));
+                    scratchAdvisories = ScratchAdvisories(cache, steps,
+                        results.Select(result => (result.Input, result.Added)).ToArray());
                 writes.Complete();
                 return results;
             });
+            advisories?.AddRange(scratchAdvisories);
             draft.Operations = draft.Operations.Where(operation => !replacedSet.Contains(operation.OperationId)).ToList();
             foreach (var (step, result) in steps.Zip(composed))
             {
