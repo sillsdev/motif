@@ -102,6 +102,8 @@ public sealed class RefusalDefaultReasonTests
         ["rule-notation.limit-exceeded"] = "reason not determinable statically: RecordLoweringRefusal carries the code a RuleNotationException names and always reports Refused",
         ["rule-notation.unsupported-class"] = "reason not determinable statically: RecordLoweringRefusal carries the code a RuleNotationException names and always reports Refused",
         ["rule-notation.read-only"] = "reason not determinable statically: RecordLoweringRefusal carries the code chosen at the lowering site and always reports Refused",
+        ["rule-notation.shared-class"] = "reason not determinable statically: RecordLoweringRefusal carries the code chosen at the lowering site and always reports Refused",
+        ["rule-notation.context-has-data"] = "reason not determinable statically: RecordLoweringRefusal carries the code chosen at the lowering site and always reports Refused",
         ["rule-notation.unrenderable"] = "reason not determinable statically: RecordLoweringRefusal carries the code a RuleNotationException names and always reports Refused",
         ["evidence.missing"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["evidence.wrong-target"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",

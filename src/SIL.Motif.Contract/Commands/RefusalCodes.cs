@@ -382,6 +382,10 @@ public static class RefusalCodes
     public const string RuleNotationUnsupportedClass = "rule-notation.unsupported-class";
     /// <summary>The project's rule-formula field holds something the text cannot show, so a change to it cannot be checked.</summary>
     public const string RuleNotationUnrenderable = "rule-notation.unrenderable";
+    /// <summary>An object outside the rule refers to a context the rule-formula text would keep, change or delete.</summary>
+    public const string RuleNotationSharedClass = "rule-notation.shared-class";
+    /// <summary>The rule-formula text would delete a context that has a name or description, which the file cannot show.</summary>
+    public const string RuleNotationContextHasData = "rule-notation.context-has-data";
     /// <summary>The page asked for is not a page number from 1.</summary>
     public const string RecordImportInvalidPage = "record-import.invalid-page";
     /// <summary>The request names neither one record nor all records of a kind, or both, or an unusable value.</summary>

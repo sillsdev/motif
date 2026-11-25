@@ -849,6 +849,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.RuleNotationLimitExceeded, FailureReason.Refused),
         Spec(RefusalCodes.RuleNotationUnsupportedClass, FailureReason.Refused),
         Spec(RefusalCodes.RuleNotationUnrenderable, FailureReason.Refused),
+        Spec(RefusalCodes.RuleNotationSharedClass, FailureReason.Refused),
+        Spec(RefusalCodes.RuleNotationContextHasData, FailureReason.Refused),
         Spec(RefusalCodes.RecordExportInvalidRequest, FailureReason.InvalidArgument),
         Spec(RefusalCodes.RecordExportNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.RecordExportOutputUnwritable, FailureReason.InvalidArgument),

@@ -36,7 +36,7 @@ public sealed partial class RecordChangeSetLowerer
             var index = IndexOf(change);
             if (binding.DeclaringClass != "MoAffixProcess" || binding.Field is not ("Input" or "Output") || index < 0)
                 throw Refuse(RefusalCodes.RuleNotationReadOnly, change,
-                    "This field is shown as rule-formula text, which an import does not write yet; edit it in the project.");
+                    "This field is shown as rule-formula text, which an import does not write; edit it in the project.");
             if (_affixDone.Contains(index))
                 return;
             var group = Enumerable.Range(0, Changes.Count).Where(i => Changes[i].ObjectGuid == change.ObjectGuid &&
@@ -102,7 +102,7 @@ public sealed partial class RecordChangeSetLowerer
                     throw Refuse(RefusalCodes.RuleNotationLimitExceeded, outputItem.Change, $"An affix process has at most {OutputLimit} output mappings.");
             }
 
-            var classes = new ClassResolver(this, process);
+            var classes = new ClassResolver(this, process.Form.BestVernacularAlternative?.Text ?? "");
             var removedInputs = new List<Guid>();
             var replacedBy = new Dictionary<Guid, Guid>();
             if (inChange is { } inputChange)
@@ -466,7 +466,7 @@ public sealed partial class RecordChangeSetLowerer
         }
 
         /// <summary>A named class, or a new private class per bracket (SetMappingFeatures).</summary>
-        private sealed class ClassResolver(Run run, IMoAffixProcess process)
+        private sealed class ClassResolver(Run run, string ownerLabel)
         {
             private readonly List<Guid> _classes = run.Cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Select(item => item.Guid).ToList();
 
@@ -479,11 +479,10 @@ public sealed partial class RecordChangeSetLowerer
                 var signature = string.Join(",", bracket.Features.OrderBy(s => s.Feature.Guid).Select(s => s.Feature.Guid.ToString("N") + "=" + s.Value.Guid.ToString("N")));
                 var id = run.Id(role + ":featureclass:" + signature);
                 var data = CanonicalId.FromGuid(run.Cache.LangProject.PhonologicalDataOA.Guid);
-                var form = process.Form.BestVernacularAlternative?.Text ?? "";
                 run.Add(Operation(run.Id(role + ":featureclass-create:" + signature), PhPhonDataNaturalClassesOperationKinds.Create, data,
                     new { @class = "PhNCFeatures" }, Placed(_classes, _classes.Count == 0 ? null : _classes[^1], id.ToGuid()), id), item.Index);
                 run.Add(Operation(run.Id(role + ":featureclass-name:" + signature), PhNaturalClassNameOperationKinds.SetName, id,
-                    new { ws = run.Cache.WritingSystemFactory.GetStrFromWs(run.Cache.DefaultAnalWs), text = $"Created automatically for rule \"{form}\"" }), item.Index);
+                    new { ws = run.Cache.WritingSystemFactory.GetStrFromWs(run.Cache.DefaultAnalWs), text = $"Created automatically for rule \"{ownerLabel}\"" }), item.Index);
                 var structure = run.Id(role + ":featureclass-structure:" + signature);
                 run.Add(Operation(run.Id(role + ":featureclass-features:" + signature), PhNCFeaturesFeaturesOperationKinds.Create, id,
                     new { }, entity: structure), item.Index);

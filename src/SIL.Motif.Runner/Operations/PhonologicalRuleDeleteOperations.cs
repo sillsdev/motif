@@ -61,7 +61,7 @@ internal sealed class PhonologicalRuleDeleteHandler(string kind) : IOperationHan
         if (operation.After is not { } after)
             throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{kind}' requires 'after'.");
         FsFeatStrucFeatureSpecsPayload.Parse(after, kind);
-        var (id, member) = Resolve(cache, operation);
+        var (id, member) = Resolve(cache, operation, applying: true);
         touchedTargets.Add(id);
         var before = ReferenceFieldAlternatives.ToAlternatives(id);
         member.Delete();
@@ -75,7 +75,7 @@ internal sealed class PhonologicalRuleDeleteHandler(string kind) : IOperationHan
         return new ExpectedEffect(id, Field, current, current);
     }
 
-    private (CanonicalId Id, ICmObject Member) Resolve(LcmCache cache, OperationEnvelope operation)
+    private (CanonicalId Id, ICmObject Member) Resolve(LcmCache cache, OperationEnvelope operation, bool applying = false)
     {
         if (IsRule)
         {
@@ -94,7 +94,31 @@ internal sealed class PhonologicalRuleDeleteHandler(string kind) : IOperationHan
         if (!ownedByRule)
             throw new InvalidOperationException(
                 $"'{kind}': '{contextId.Value}' is not a context that a rule or its right-hand side owns directly.");
+        if (applying)
+        {
+            var subtree = Subtree(context).Select(part => part.Guid).ToHashSet();
+            foreach (var part in Subtree(context))
+            {
+                var user = part.ReferringObjects.FirstOrDefault(candidate => !subtree.Contains(candidate.Guid));
+                if (user is not null)
+                    throw new InvalidOperationException(
+                        $"'{kind}': '{part.Guid:D}' inside '{contextId.Value}' is still used by a {user.ClassName} ({user.Guid:D}); remove that use first.");
+            }
+        }
         return (contextId, context);
+    }
+
+    private static IEnumerable<ICmObject> Subtree(ICmObject context)
+    {
+        yield return context;
+        var below = context switch
+        {
+            IPhSequenceContext sequence => sequence.MembersRS.Cast<ICmObject>().ToList(),
+            IPhIterationContext { MemberRA: { } member } => [(ICmObject)member],
+            _ => new List<ICmObject>(),
+        };
+        foreach (var part in below.SelectMany(Subtree))
+            yield return part;
     }
 
     private static bool IsOwnedBy(ICmObject value, ICmObject owner)

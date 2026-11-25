@@ -26,7 +26,7 @@ public static class AffixProcessMemberDeleteOperationKinds
     /// <summary>Deletes one output mapping of an affix process.</summary>
     public const string DeleteOutput = "grammar/moAffixProcess/deleteOutput";
 
-    /// <summary>Deletes one simple context that a sequence no longer lists and nothing else uses.</summary>
+    /// <summary>Deletes one simple or iteration context that a sequence or iteration no longer holds and nothing else uses.</summary>
     public const string DeleteContext = "grammar/phPhonData/deleteContext";
 
 #pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
@@ -44,7 +44,7 @@ public static class AffixProcessMemberDeleteOperationKinds
             { Payload = FieldWritePayload.Composer, ChildClasses = ["MoCopyFromInput", "MoInsertPhones", "MoInsertNC", "MoModifyFromInput"] });
         OperationHandlerRegistry.Register(DeleteContext, new AffixProcessMemberDeleteHandler(DeleteContext, SnapshotFields.PhPhonDataContexts),
             new FieldWriteCapability("PhPhonData", "Contexts", RecordWriteVerb.RemoveObject)
-            { Payload = FieldWritePayload.Composer, ChildClasses = ["PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry"] });
+            { Payload = FieldWritePayload.Composer, ChildClasses = ["PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhIterationContext"] });
         OperationSlotRegistry.RegisterEntityDeletion(DeleteInput);
         OperationSlotRegistry.RegisterEntityDeletion(DeleteOutput);
         OperationSlotRegistry.RegisterEntityDeletion(DeleteContext);
@@ -87,10 +87,10 @@ internal sealed class AffixProcessMemberDeleteHandler(string kind, string field)
             throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{kind}' requires 'after'.");
         FsFeatStrucFeatureSpecsPayload.Parse(after, kind);
         var (id, member) = TargetResolution.Resolve<ICmObject>(cache, operation, kind);
-        var ok = IsContext ? member is IPhSimpleContext && member.Owner is IPhPhonData : IsInput ? member is IPhVariable or IPhSimpleContext or IPhSequenceContext && member.Owner is IMoAffixProcess process && process.InputOS.Contains(member)
+        var ok = IsContext ? member is IPhSimpleContext or IPhIterationContext && member.Owner is IPhPhonData : IsInput ? member is IPhVariable or IPhSimpleContext or IPhSequenceContext && member.Owner is IMoAffixProcess process && process.InputOS.Contains(member)
             : member is IMoRuleMapping && member.Owner is IMoAffixProcess owner && owner.OutputOS.Contains(member);
         if (!ok)
-            throw new InvalidOperationException($"'{kind}': '{id.Value}' is not {(IsContext ? "a simple context of the phonological data" : IsInput ? "a member of an affix process's Input" : "a member of an affix process's Output")}.");
+            throw new InvalidOperationException($"'{kind}': '{id.Value}' is not {(IsContext ? "a simple or iteration context of the phonological data" : IsInput ? "a member of an affix process's Input" : "a member of an affix process's Output")}.");
         if (requireUnreferenced && IsContext)
         {
             var user = member.ReferringObjects.FirstOrDefault();

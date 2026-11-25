@@ -224,7 +224,10 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
             }
             if (field is not null && RecordWritableFields.IsRuleFormula(field))
             {
-                LowerAffixFormula(change, type, key);
+                if (schema.FieldBinding(type, key)!.Value.DeclaringClass == "MoAffixProcess")
+                    LowerAffixFormula(change, type, key);
+                else
+                    LowerRuleFormula(change, type);
                 return;
             }
             var set = change.Kind == RecordChangeKind.Set;

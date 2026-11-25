@@ -48,7 +48,8 @@ public sealed class RecordWritableFields : IWritableFields
                     var structure = IsFeatureStructure(field) || IsRuleFormula(field);
                     var handlerVerb = structure ? (verb == RecordWriteVerb.Set ? RecordWriteVerb.AddObject : RecordWriteVerb.RemoveObject)
                         : verb == RecordWriteVerb.InsertReference ? RecordWriteVerb.AddReference : verb;
-                    var candidates = (IsTypedOnlyMembership(binding.DeclaringClass, binding.Field) ? Array.Empty<Candidate>() : (binding.IsCustom
+                    var candidates = (IsTypedOnlyMembership(binding.DeclaringClass, binding.Field) || type.Name == "PhMetathesisRule" && IsRuleFormula(field)
+                        ? Array.Empty<Candidate>() : (binding.IsCustom
                         ? catalog[(CustomFieldOperationKinds.DeclaringClass, CustomFieldCatalog.TypeOf(field) ?? "", handlerVerb)]
                         : parts || (IsRuleFormula(field) && verb == RecordWriteVerb.Clear) ? [] : catalog[(binding.DeclaringClass, binding.Field, handlerVerb)])).ToArray();
                     var formula = owned && verb is RecordWriteVerb.Set or RecordWriteVerb.AddReference or RecordWriteVerb.RemoveReference or RecordWriteVerb.InsertReference
@@ -101,9 +102,13 @@ public sealed class RecordWritableFields : IWritableFields
         ("MoInsertPhones", "Content") or ("MoInsertNC", "Content") or ("PhSequenceContext", "Members") or
         ("PhSimpleContextSeg", "FeatureStructure") or ("PhSimpleContextNC", "FeatureStructure") or ("PhSimpleContextBdry", "FeatureStructure");
 
-    private static string[] RuleFormulaChildren(string field) => field == "Input"
-        ? ["PhVariable", "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext"]
-        : ["MoCopyFromInput", "MoInsertPhones", "MoInsertNC", "MoModifyFromInput"];
+    private static string[] RuleFormulaChildren(string field) => field switch
+    {
+        "Input" => ["PhVariable", "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext"],
+        "StrucDesc" or "StrucChange" => ["PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry"],
+        "LeftContext" or "RightContext" => ["PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext", "PhIterationContext"],
+        _ => ["MoCopyFromInput", "MoInsertPhones", "MoInsertNC", "MoModifyFromInput"],
+    };
 
     private static RecordWriteVerb[] Verbs(RecordField field) => (field.Kind, field.Item?.Kind) switch
     {

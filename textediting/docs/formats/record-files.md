@@ -333,7 +333,7 @@ process shows its text under its field's one key, `input` and `output`, and an i
 objects also appear under `input-parts` and `output-parts`, which an import uses only to reach what the text cannot say (a context's description, an alpha
 constraint on a class); a field the text already says (a copy's, modify's or insertion's content, a modification class, a context's phoneme, boundary or class,
 a group's members) is shown there and an import refuses a change to it. Adding, removing or moving a member under those keys is not offered, because the
-text is the one key that does it. Clearing `input` or `output` is not offered either: an affix process needs at least one column and one step. The fields of a phonological rule are shown and an import refuses a change to one with `rule-notation.read-only`.
+text is the one key that does it. Clearing `input` or `output` is not offered either: an affix process needs at least one column and one step. The structural description, structural change and contexts of a regular phonological rule are written the same way (see Phonological rule files); a metathesis rule's, and every alpha variable, are shown or refused with `rule-notation.read-only`.
 
 - **Writing an affix process.** An import reads the new text, checks it, and aligns it with the project position by position, separately for Input columns and Output steps,
   with no move detection. At a position whose kind is unchanged (a copy, a modify, an insertion of units, an insertion of a class, a segment, class or boundary
@@ -386,7 +386,7 @@ text is the one key that does it. Clearing `input` or `output` is not offered ei
   copy whose content is not in the process's input, a class with a constraint in an affix field.
 - **Codes.** `rule-notation.syntax`, `rule-notation.bad-repeat`, `rule-notation.unknown-phoneme`, `rule-notation.unknown-natural-class`,
   `rule-notation.ambiguous-label`, `rule-notation.alpha-mismatch`, `rule-notation.index-out-of-range`, `rule-notation.dangling-index`, `rule-notation.context-not-allowed`,
-  `rule-notation.limit-exceeded`, `rule-notation.unsupported-class`, `rule-notation.unrenderable` and, for an import of a rule field, `rule-notation.read-only`; a feature label that does not resolve reports its `fs-notation.*` code.
+  `rule-notation.limit-exceeded`, `rule-notation.unsupported-class`, `rule-notation.unrenderable`, `rule-notation.shared-class` and `rule-notation.context-has-data` (a phonological rule's contexts) and, for an import of a field it does not write, `rule-notation.read-only`; a feature label that does not resolve reports its `fs-notation.*` code.
 - **Examples.** An affix process `m a $1` (prefix `ma-`), input `[C] *` with output `$1 u m $2` (infix), input `<[C] [V]> *` with output `$1 $1 $2`
   (reduplication), output `$1~[voi:+] $2` (voice the first consonant); a rule context `# [C]{1,3} (a) [V]`, a change `[voi:α]` with a right context
   `[cons:+ voi:α]` (assimilation), and `[cons:+ voi:-α]` (dissimilation).
@@ -434,9 +434,26 @@ record-data:
   (`PhSegmentRule-Detail-Active`, toggled), `direction` is the `PhSegmentRule-Detail-Direction` combo box over `LeftToRightIterative`, `RightToLeftIterative` and `Simultaneous`,
   and `input-poses`, `req-rule-feats` and `excl-rule-feats` are the `PhSegRuleRHS-Detail-RequiredPOSes`, `-RequiredRuleFeats` and `-ExcludedRuleFeats` vector reference slices
   (`defaultVectorReference`, as `VectorReferenceLauncher` adds and removes a link). A metathesis rule takes the same `PhSegmentRule` parts.
-- **What an import refuses.** `struc-desc`, `struc-change`, `left-context` and `right-context` are shown in [rule-formula notation](#rule-formula-notation) and a
-  change to one is refused with `rule-notation.read-only`, and its siblings in the same file with it. A rule with several right-hand sides shows each of them,
-  and adding or removing one in the file is refused (`CreateNotWritable`, `DeleteNotWritable`): they are made by the typed composers.
+- **Writing the formula.** For a regular rule an import writes `struc-desc` and, on each right-hand side, `struc-change`, `left-context` and `right-context`. The
+  four fields of one rule are lowered as a group, so a refusal in one refuses its siblings in the same file. The new text is read and checked against the
+  project, then aligned with the stored contexts position by position, with no move detection: where the kind is unchanged (a segment, a class, a boundary, a
+  repeat, a sequence) the object and its GUID are kept and only what changed is set (the phoneme, boundary or class a context names, a repeat's counts, a
+  sequence's members); `A B C D` becoming `A B D C` is two in-place edits. A position whose kind differs, or that exists on one side only, deletes the old
+  context and creates the new one at that position only. The shape of a left or right context (none, one simple context, one repeat, a sequence) is compared first:
+  a change of shape (a simple context that gains a second, a context that becomes a repeat, anything cleared) deletes the owned context with the pooled contexts only
+  it used and creates the new shape, so a rule's context keeps its GUID through edits that keep its shape and loses it through one that changes it. The shapes
+  are the ones FieldWorks's editor makes (Motif ADR 0003): a simple context in `StrucDesc` or `StrucChange` is `RegRuleFormulaControl.InsertPhoneme`, `InsertBdry`
+  and `InsertNC` through `InsertContext`; the first left or right context is owned directly by the right-hand side (`InsertContext`); a second makes a
+  `PhSequenceContext` whose members live in the project's context pool (`CreateSeqCtxt`); a repeat is a `PhIterationContext` over a pooled simple context with its
+  counts set, and `(x)` is 0 to 1 (`SetContextOccurrence`, `InsertContextsFromEnv`). A natural class is never deleted: a bracket that names an abbreviation only
+  references the class, and a bracket written out as features creates a new natural class named `Created automatically for rule "..."` (`RuleFormulaControl.m_insertionControl_Insert`)
+  each time its features change; the earlier class stays. A context to be deleted that has a name or description is refused with `rule-notation.context-has-data`,
+  because the file cannot show what would be lost; a context that an object outside the rule also refers to is refused with `rule-notation.shared-class`.
+  Also refused with `rule-notation.context-not-allowed`: `#` in `struc-desc` or `struc-change`, and a repeat of any boundary marker (`+{0,1}`, `(+)`);
+  with `rule-notation.limit-exceeded`: more than eight members in a left or right context; with `rule-notation.read-only`: any alpha variable, written or held by
+  the field (alpha constraints are written in the project), and every formula field of a metathesis rule.
+- **What an import refuses.** Adding or removing a right-hand side in the file is refused (`CreateNotWritable`, `DeleteNotWritable`): a rule with several
+  right-hand sides shows each of them, and they are made by the typed composers.
 - **Not in the file.** A rule's strata, its feature constraints (the alpha letters of the formula stand for them), its order and the name and description of
   its member contexts. A metathesis rule's structural description and change are not text: they are reported unexported with `rule-notation.unrenderable`
   and are written by the typed `compose-author-metathesis-rule`.
