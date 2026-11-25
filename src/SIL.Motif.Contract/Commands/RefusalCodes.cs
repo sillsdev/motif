@@ -356,6 +356,10 @@ public static class RefusalCodes
     public const string RecordImportGuidPendingUnchecked = "record-import.guid-pending-unchecked";
     /// <summary>The new record's GUID belonged to an object the project's home has deleted.</summary>
     public const string RecordImportGuidRetired = "record-import.guid-retired";
+    /// <summary>A new entry lacks a part FieldWorks makes with one (a lexeme form with a morph type, a sense with a gloss and grammatical info, or a variant link), or its parts do not fit together.</summary>
+    public const string RecordImportCreateShape = "record-import.create-shape";
+    /// <summary>A new record's file sets a field FieldWorks computes for it.</summary>
+    public const string RecordImportCreateComputedField = "record-import.create-computed-field";
     /// <summary>The feature-structure text is not a bracketed list of feature:value pairs.</summary>
     public const string FsNotationSyntax = "fs-notation.syntax";
     /// <summary>The feature-structure text names a feature the project's feature system does not have.</summary>

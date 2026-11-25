@@ -141,6 +141,19 @@ public static class AuthorLexicalEntryIntentParser
         element.TryGetProperty(name, out _) ? SoundSystemIntentParsing.Id(element, name) : null;
 }
 
+/// <summary>The ids a caller chooses for the objects a composer creates, so a record file's GUIDs become the new objects' ids.</summary>
+/// <param name="Entry">The entry.</param>
+/// <param name="Form">The lexeme form.</param>
+/// <param name="Msa">The grammatical info; absent for an entry that has none.</param>
+/// <param name="Sense">The sense; absent for an entry that has none.</param>
+/// <param name="VariantRef">The variant reference of a variant entry.</param>
+public sealed record NewEntryIds(
+    CanonicalId Entry,
+    CanonicalId Form,
+    CanonicalId? Msa = null,
+    CanonicalId? Sense = null,
+    CanonicalId? VariantRef = null);
+
 /// <summary>
 /// Lowers one <see cref="AuthorLexicalEntryIntent"/> into the Layer-0 operations that make a complete entry:
 /// the entry, its lexeme form, its grammatical info with category and slots or class, and one sense with gloss,
@@ -159,6 +172,24 @@ public static class AuthorLexicalEntryComposer
         LcmCache cache, AuthorLexicalEntryIntent intent, Func<CanonicalId>? mintId = null) =>
         BuildEntry(cache, intent, mintId, null);
 
+    /// <summary>Authors one entry whose new objects take the ids in <paramref name="ids"/>; <paramref name="mintId"/> makes only operation ids.</summary>
+    public static IReadOnlyList<OperationEnvelope> Build(
+        LcmCache cache, AuthorLexicalEntryIntent intent, NewEntryIds ids, Func<CanonicalId> mintId)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        ArgumentNullException.ThrowIfNull(mintId);
+        return BuildEntry(cache, intent, mintId, null, ids: ids);
+    }
+
+    /// <summary>The concrete lexeme-form class FieldWorks gives a form of <paramref name="morphType"/>: MoStemAllomorph or MoAffixAllomorph.</summary>
+    public static string FormClassName(LcmCache cache, CanonicalId morphType)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        var resolved = LexicalFormAuthoring.Resolve<IMoMorphType>(cache, LexicalFormAuthoring.Normalize(morphType), ConstructName);
+        return MoFormConcreteClassSelection.ClassFor(resolved, ConstructName) == MoFormConcreteClass.StemAllomorph
+            ? "MoStemAllomorph" : "MoAffixAllomorph";
+    }
+
     /// <summary>
     /// Builds an entry whose lexeme form is created from <paramref name="formPayload"/> when it is given. With
     /// <paramref name="withSense"/> false the entry gets no sense, gloss or definition, because a sense that already
@@ -167,7 +198,7 @@ public static class AuthorLexicalEntryComposer
     /// </summary>
     internal static IReadOnlyList<OperationEnvelope> BuildEntry(
         LcmCache cache, AuthorLexicalEntryIntent intent, Func<CanonicalId>? mintId, object? formPayload,
-        bool withSense = true, bool withMsa = true)
+        bool withSense = true, bool withMsa = true, NewEntryIds? ids = null)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
@@ -216,18 +247,18 @@ public static class AuthorLexicalEntryComposer
         var source = mintId ?? (() => CanonicalId.Mint());
         CanonicalId Mint() => LexicalFormAuthoring.Normalize(source());
         var operations = new List<OperationEnvelope>();
-        var entryId = Mint();
+        var entryId = ids is null ? Mint() : LexicalFormAuthoring.Normalize(ids.Entry);
         var createEntry = Add(LexDbEntriesOperationKinds.Create, CanonicalId.FromGuid(cache.LangProject.LexDbOA.Guid),
             new { }, entityId: entryId);
         var afterEntry = new[] { new OperationDependency(createEntry) };
-        var formId = Mint();
+        var formId = ids is null ? Mint() : LexicalFormAuthoring.Normalize(ids.Form);
         var createForm = Add(LexEntryLexemeFormOperationKinds.CreateLexemeForm, entryId,
             formPayload ?? new { morphType = intent.MorphType.Value, ws = intent.FormWritingSystem, text = form },
             entityId: formId, dependsOn: afterEntry);
         foreach (var (kind, member) in LexicalFormAuthoring.Links(formClass, environments, restrictedClasses))
             Add(kind, formId, new { member = member.Value }, dependsOn: [new OperationDependency(createForm)]);
 
-        var msaId = Mint();
+        var msaId = ids?.Msa is { } given ? LexicalFormAuthoring.Normalize(given) : Mint();
         var createMsa = default(CanonicalId);
         if (withMsa)
         {
@@ -239,7 +270,7 @@ public static class AuthorLexicalEntryComposer
         }
 
         if (!withSense) return operations;
-        var senseId = Mint();
+        var senseId = ids?.Sense is { } givenSense ? LexicalFormAuthoring.Normalize(givenSense) : Mint();
         var createSense = Add(LexEntrySensesOperationKinds.Create, entryId, new { }, entityId: senseId,
             dependsOn: afterEntry);
         var afterSense = new[] { new OperationDependency(createSense) };

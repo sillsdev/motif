@@ -107,6 +107,8 @@ namespace SIL.TextEditing.Markdown.Records
         GuidInvalid,
         /// <summary>A new object's GUID belonged to an object the project's home has deleted; re-creating it would read as an undelete. The whole file is refused.</summary>
         GuidRetired,
+        /// <summary>A new record's file sets a field FieldWorks computes for it. The whole file is refused.</summary>
+        CreateComputedField,
     }
 
     /// <summary>Whether a span of a word-level summary is in both values, only the old one or only the new one.</summary>

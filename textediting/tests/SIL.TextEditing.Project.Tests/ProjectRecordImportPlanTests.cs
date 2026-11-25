@@ -1086,6 +1086,34 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void ACreateThatSetsAComputedFieldIsRefusedWholeAsCreateComputedField()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var plan = Plan(exporter, CreateFile(exporter, w, null, d => d.Data["head-word"] = new RecordScalar("[other]{.v}")));
+            var refusal = Single(plan, RecordRefusalKind.CreateComputedField);
+            Assert.True(refusal.WholeFile);
+            Assert.Equal("head-word", refusal.Field);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void AReferenceToANewObjectOfTheWrongClassIsRefusedOnACreate()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            string Pointing(Func<RecordDocument, Guid> target) => CreateFile(exporter, w, null, d =>
+            {
+                var guid = target(d);
+                ((RecordList)SenseAt(d, 0)["semantic-domains"]!).Add(new RecordScalar("[new](/objects/" + guid.ToString("D") + "){.name guid=" + guid.ToString("D") + "}"));
+            });
+            var wrong = Plan(exporter, Pointing(d => ((RecordObject)((RecordList)SenseAt(d, 0)["examples"]!).Items[0]).Guid!.Value));
+            Assert.StartsWith("LexExampleSentence ", Single(wrong, RecordRefusalKind.WrongReferenceClass).Reason);
+        }
+
+        [Fact]
         public void AnOwnedObjectGuidTheProjectHasIsStillRefusedOnACreate()
         {
             using var fixture = new ProjectFixture();
