@@ -105,10 +105,13 @@ public static partial class ProposalCommands
                 return CommandOutcome<ComposedBatchResponse>.Refused(
                     DraftInvalid(exception.Message, ("draftName", request.DraftName)));
             }
-            var outcome = ComposeStepsIntoDraft(database, project, request.DraftName, steps, describeBatchFailure: true);
+            var advisories = IntentAdvisories(steps);
+            var outcome = ComposeStepsIntoDraft(database, project, request.DraftName, steps, describeBatchFailure: true,
+                advisories: advisories);
             if (!outcome.Succeeded)
                 return CommandOutcome<ComposedBatchResponse>.Refused(outcome.Refusal!);
-            return CommandOutcome<ComposedBatchResponse>.Success(BatchResponse(request.DraftName, steps, outcome.Value!));
+            return CommandOutcome<ComposedBatchResponse>.Success(
+                BatchResponse(request.DraftName, steps, outcome.Value!, advisories));
         });
 
     /// <summary>
@@ -151,21 +154,26 @@ public static partial class ProposalCommands
                 return CommandOutcome<ComposedBatchResponse>.Refused(
                     DraftInvalid(exception.Message, ("draftName", request.Proposal)));
             }
+            var advisories = IntentAdvisories(steps);
             var outcome = ComposeStepsIntoDraft(database, project, request.Proposal, steps,
-                describeBatchFailure: true, remove: request.Remove);
+                describeBatchFailure: true, remove: request.Remove, advisories: advisories);
             return outcome.Succeeded
-                ? CommandOutcome<ComposedBatchResponse>.Success(BatchResponse(request.Proposal, steps, outcome.Value!))
+                ? CommandOutcome<ComposedBatchResponse>.Success(
+                    BatchResponse(request.Proposal, steps, outcome.Value!, advisories))
                 : CommandOutcome<ComposedBatchResponse>.Refused(outcome.Refusal!);
         });
 
     private static ComposedBatchResponse BatchResponse(string draftName, IReadOnlyList<ComposeStep> steps,
-        ComposedOperationsResponse[] results) => new(draftName,
+        ComposedOperationsResponse[] results, IReadOnlyList<ComposeAdvisory> advisories) => new(draftName,
         results.Select((result, index) => new ComposedIntentResult(index, steps[index].Verb!,
             result.ComposerName, result.Operations, result.RelatedObjects)
         {
             CreatedObjects = result.CreatedObjects,
         }).ToArray(),
-        results.Length == 0 ? 0 : results[^1].OperationCount);
+        results.Length == 0 ? 0 : results[^1].OperationCount)
+    {
+        Advisories = advisories.Count == 0 ? null : advisories,
+    };
 
     private const int MaximumLabelLength = 21;
     private const string MetathesisRuleComposerVerb = "compose-author-metathesis-rule";

@@ -89,6 +89,12 @@ public static partial class RecordImportCommand
         if (request.DraftName is null)
             return CommandOutcome<RecordImportResponse>.Success(Summarize(found, found.Lowering, DryRun, request.Page, null, null));
 
+        if (found.Plan.BaseVerdict == ProjectRecordBaseVerdict.New)
+        {
+            var creating = StageCreate(request, found);
+            if (creating is not null) return creating;
+        }
+
         if (request.Strict && Refusals(found, found.Lowering).Count > 0)
             return Refused(RefusalCodes.RecordImportStrictRefused, FailureReason.Refused,
                 "Strict mode: the file has changes that were refused, so no Draft was made. Run it without a Draft name to list them.",
@@ -166,6 +172,49 @@ public static partial class RecordImportCommand
         return null;
     }
 
+    private static CommandOutcome<RecordImportResponse>? StageCreate(RecordImportRequest request, Planned found)
+    {
+        var guid = found.Plan.RecordGuid!.Value;
+        var scan = ScanPending(request.ProjectPath, guid);
+        if (!scan.Succeeded)
+            return Refused(RefusalCodes.RecordImportGuidPendingUnchecked, FailureReason.Refused,
+                "Other Drafts and Proposals could not be read to see whether one already creates " + guid.ToString("D") + ", so nothing was staged. Try again.",
+                ("guid", CanonicalId.FromGuid(guid).Value), ("storeRefusal", scan.Refusal!.Code));
+        if (scan.Value!.Name is { } pending)
+            return Refused(RefusalCodes.RecordImportGuidPending, FailureReason.Refused,
+                "Proposal " + pending + " already creates " + guid.ToString("D") + ". Apply or discard it first, or use another GUID.",
+                ("guid", CanonicalId.FromGuid(guid).Value), ("proposal", pending));
+        return Refused(RefusalCodes.RecordImportCreateKindNotCreatable, FailureReason.Refused,
+            CreateNotLowered, ("reason", "not-yet-lowered"), ("recordKind", found.Plan.Kind ?? ""),
+            ("guid", CanonicalId.FromGuid(guid).Value));
+    }
+
+    internal const string CreateNotLowered =
+        "The file plans a new record, but creating a record from a file is not yet lowered to operations, so nothing was staged. Use the dry run to check the file.";
+
+    /// <summary>Tests replace the pending scan to make the store unreadable.</summary>
+    internal static Func<string, Guid, CommandOutcome<PendingScan>>? PendingScanOverride { get; set; }
+
+    /// <summary>The first open Draft or Proposal that names the entity id.</summary>
+    private static CommandOutcome<PendingScan> ScanPending(string projectPath, Guid guid)
+    {
+        if (PendingScanOverride is { } replaced) return replaced(projectPath, guid);
+        var id = CanonicalId.FromGuid(guid).Value;
+        return ProjectStoreCommand.ReadExisting(projectPath, CommandOutcome<PendingScan>.Success(new(null)), (database, _) =>
+        {
+            var repository = new SIL.Motif.Worker.Store.ProposalRepository(database);
+            foreach (var record in repository.ListDrafts())
+                if (record.ProposalJson?.Contains(id, StringComparison.Ordinal) == true)
+                    return CommandOutcome<PendingScan>.Success(new(record.DraftName ?? record.ProposalId.Value));
+            foreach (var record in repository.List(new(null, false)).Where(record => record.DraftName is null))
+                if (record.ProposalJson?.Contains(id, StringComparison.Ordinal) == true)
+                    return CommandOutcome<PendingScan>.Success(new(record.ProposalId.Value));
+            return CommandOutcome<PendingScan>.Success(new(null));
+        });
+    }
+
+    internal sealed record PendingScan(string? Name);
+
     private static Refusal WholeFileRefusal(Planned found)
     {
         var whole = found.Plan.ChangeSet.Refusals.First(item => item.WholeFile);
@@ -176,8 +225,16 @@ public static partial class RecordImportCommand
         };
         if (found.Plan.Kind is { } kind) facts["recordKind"] = kind;
         if (whole.Field.Length > 0) facts["field"] = whole.Field;
-        return new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused,
-            "The record file was refused whole (" + whole.Kind + "): " + Clip(whole.Reason, 300), facts);
+        var message = "The record file was refused whole (" + whole.Kind + "): " + Clip(whole.Reason, 300);
+        return whole.Kind switch
+        {
+            RecordRefusalKind.CreateKindNotCreatable => new Refusal(RefusalCodes.RecordImportCreateKindNotCreatable, FailureReason.Refused, message, facts),
+            RecordRefusalKind.CreatePartial => new Refusal(RefusalCodes.RecordImportCreatePartial, FailureReason.Refused, message, facts),
+            RecordRefusalKind.RecordGone => new Refusal(RefusalCodes.RecordImportRecordGone, FailureReason.Refused, message, facts),
+            RecordRefusalKind.GuidInvalid => new Refusal(RefusalCodes.RecordImportGuidInvalid, FailureReason.Refused, message, facts),
+            RecordRefusalKind.GuidRetired => new Refusal(RefusalCodes.RecordImportGuidRetired, FailureReason.Refused, message, facts),
+            _ => new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused, message, facts),
+        };
     }
 
     private static List<RecordImportRefusal> Refusals(Planned found, RecordLowering lowering)

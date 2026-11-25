@@ -387,7 +387,7 @@
   },
   {
     "name": "motif_add_lexeme_form",
-    "description": "Author a lexeme form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation). Stages a lexeme form with explicitly authored spelling, writing system and morph type in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.\nCommand: compose-author-lexeme-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a lexeme form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if an entry needs its main form written; otherwise add a form with compose-author-alternate-form. Keep one entry per morpheme, and leave a regular sound change to a phonological rule (guide conditioned-allomorphs). Stages a lexeme form with explicitly authored spelling, writing system and morph type in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.\nCommand: compose-author-lexeme-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -455,7 +455,7 @@
   },
   {
     "name": "motif_add_feature_structure",
-    "description": "Author grammatical features. Research first: motif_guide topic feature-conditioned-slots; check best practice. Restrict a slot\u0027s affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots). Stages an empty feature structure on an existing or earlier-staged stem, inflectional affix or derivational affix MSA (side from or to) in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.\nCommand: compose-author-feature-structure. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: Closed {msa, side?} input naming the exact canonical MSA identity; side (from or to) is required for a derivational affix and refused otherwise. Its MsFeatures, InflFeats, FromMsFeatures or ToMsFeatures owning slot must be unoccupied; a present structure is refused even with no selections. Inflectional affix features are word requirements. Use the returned structure identity for selections.",
+    "description": "Author grammatical features. Research first: motif_guide topic feature-conditioned-slots; check best practice. Use only if an affix or stem carries or requires inflection features such as person or tense; otherwise use an inflection class for arbitrary stem groups. Restrict by feature value instead of copying affixes or slots (guide feature-conditioned-slots). Stages an empty feature structure on an existing or earlier-staged stem, inflectional affix or derivational affix MSA (side from or to) in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.\nCommand: compose-author-feature-structure. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: Closed {msa, side?} input naming the exact canonical MSA identity; side (from or to) is required for a derivational affix and refused otherwise. Its MsFeatures, InflFeats, FromMsFeatures or ToMsFeatures owning slot must be unoccupied; a present structure is refused even with no selections. Inflectional affix features are word requirements. Use the returned structure identity for selections.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -489,7 +489,7 @@
   },
   {
     "name": "motif_add_phoneme",
-    "description": "Author a phoneme. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Add a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs). Stages a phoneme with literal representations, including symbols such as parentheses and slash, and optional explicit feature values. Put case spellings of the same sound on that phoneme; use its created identity in natural classes or phonological rules. Only a person can Apply.\nCommand: compose-author-phoneme. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a phoneme. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if the orthography writes a sound that has no phoneme yet, or a rule needs it as output; otherwise add a spelling with compose-edit-phoneme. HermitCrab parses no word with an undefined phoneme (guide nasal-assimilation). Stages a phoneme with literal representations, including symbols such as parentheses and slash, and optional explicit feature values. Put case spellings of the same sound on that phoneme; use its created identity in natural classes or phonological rules. Only a person can Apply.\nCommand: compose-author-phoneme. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -549,7 +549,7 @@
   },
   {
     "name": "motif_add_natural_class",
-    "description": "Author a natural class. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation). Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.\nCommand: compose-author-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a natural class. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if a rule or environment needs this set of sounds and no class has it yet; otherwise reuse that class. List only the sounds the pattern needs; one class replaces environments that list sounds one by one (guide nasal-assimilation). Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.\nCommand: compose-author-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -613,7 +613,7 @@
   },
   {
     "name": "motif_add_environment",
-    "description": "Author an environment. Research first: motif_guide topic conditioned-allomorphs or nasal-assimilation; check best practice. Keep the environment as narrow as the evidence. For a regular change across many forms use a phonological rule, not environments (guide nasal-assimilation). Stages an environment with explicitly declared left and right contexts in a Draft. Contexts use project phonemes, natural classes or boundaries. Only a person can Apply.\nCommand: compose-author-environment. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author an environment. Research first: motif_guide topic conditioned-allomorphs or nasal-assimilation; check best practice. Use only if a form\u0027s occurrence depends on neighbouring sounds; otherwise use a stem name, inflection class or required features. Name natural classes, not sound lists; an environment that spells one whole word is a stem list (guide conditioned-allomorphs). Stages an environment with explicitly declared left and right contexts in a Draft. Contexts use project phonemes, natural classes or boundaries. Only a person can Apply.\nCommand: compose-author-environment. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -705,7 +705,7 @@
   },
   {
     "name": "motif_add_phonological_rule",
-    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or phonological-rules or feature-rules; check best practice. Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs). Stages one regular phonological rule in a Draft, with one or more ordered right-hand sides, each with its own Output, contexts and rule features, and up to eight items in each Input and Output sequence. Output classes allow lexical alternatives; overlapping right-hand sides use the first applicable case, while feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or phonological-rules or feature-rules; check best practice. Use only if the project parses with HermitCrab and a regular sound change holds across many morphemes in a context you can state; otherwise use an alternate form for one irregular word. A rule can be limited by category with inputCategories (guide phonological-rules). Stages one regular phonological rule in a Draft, with one or more ordered right-hand sides, each with its own Output, contexts and rule features, and up to eight items in each Input and Output sequence. Output classes allow lexical alternatives; overlapping right-hand sides use the first applicable case, while feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1333,7 +1333,7 @@
   },
   {
     "name": "motif_add_inflection_feature",
-    "description": "Author inflection feature. Research first: motif_guide topic feature-conditioned-slots; check best practice. Restrict a slot\u0027s affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots). Adds a closed morphosyntactic feature and its named values to a Draft. Use the created ids in feature-structure and stem-name authoring, then Dry Run and Trial the Draft before Finalize.\nCommand: compose-author-inflection-feature. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection feature input, resolved against the prepared Draft.",
+    "description": "Author inflection feature. Research first: motif_guide topic feature-conditioned-slots; check best practice. Use only if the contrast has meaning or takes part in agreement, such as gender, number or tense; otherwise use an inflection class for arbitrary declension or conjugation groups (guide feature-conditioned-slots). Adds a closed morphosyntactic feature and its named values to a Draft. Use the created ids in feature-structure and stem-name authoring, then Dry Run and Trial the Draft before Finalize.\nCommand: compose-author-inflection-feature. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection feature input, resolved against the prepared Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1394,7 +1394,7 @@
   },
   {
     "name": "motif_add_inflection_class",
-    "description": "Author inflection class. Research first: motif_guide topic feature-conditioned-slots; check best practice. Use only when stems arbitrarily pattern differently for the same affix. A value that must agree is a feature, not a class (guide feature-conditioned-slots). Adds an inflection class or subclass, such as a noun class, to a Draft. Its owner is explicit and the category\u0027s default is unchanged; use the created id when authoring a stem.\nCommand: compose-author-inflection-class. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection class input, resolved against the prepared Draft.",
+    "description": "Author inflection class. Research first: motif_guide topic feature-conditioned-slots; check best practice. Use only if a group of stems takes different affix forms with the same meaning, not set by sound or agreement; otherwise use an inflection feature or environment. Define it at the highest category; one stem is not a class (guide feature-conditioned-slots). Adds an inflection class or subclass, such as a noun class, to a Draft. Its owner is explicit and the category\u0027s default is unchanged; use the created id when authoring a stem.\nCommand: compose-author-inflection-class. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection class input, resolved against the prepared Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1442,7 +1442,7 @@
   },
   {
     "name": "motif_add_stem_name",
-    "description": "Author a stem name. Research first: motif_guide topic conditioned-allomorphs; check best practice. Only names feature conditions; attach it with compose-edit-stem-allomorph-stem-name. For sound-conditioned forms use environments, not a stem name (guide conditioned-allomorphs). Adds a category-owned stem name with explicit feature regions to a Draft. Each region states where an allomorph bearing this stem name is eligible; attaching it to an allomorph is a separate operation.\nCommand: compose-author-stem-name. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed stem name input, resolved against the prepared Draft.",
+    "description": "Author a stem name. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if a stem\u0027s form depends on the word\u0027s inflection features, such as a past-tense stem; otherwise use environments for sound, or an inflection class for stem groups. Attach it with compose-edit-stem-allomorph-stem-name (guide conditioned-allomorphs). Adds a category-owned stem name with explicit feature regions to a Draft. Each region states where an allomorph bearing this stem name is eligible; attaching it to an allomorph is a separate operation.\nCommand: compose-author-stem-name. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed stem name input, resolved against the prepared Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1513,7 +1513,7 @@
   },
   {
     "name": "motif_add_lexical_entry",
-    "description": "Author a lexical entry. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. For an affix, prefer an inflectional or derivational MSA with categories and a slot over unclassified (guide suffix-prefix-slots). One entry per morpheme, not per stem. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. An inflectional affix can name the inflection classes its form attaches to; use compose-edit-derivational-affix-restriction for a derivational affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a lexical entry. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if the morpheme is new to the lexicon; otherwise add a form, sense or analysis to its entry. Classify an affix as inflectional or derivational. If you see whole words for a regular derivation, author the affix (guide suffix-prefix-slots). Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. An inflectional affix can name the inflection classes its form attaches to; use compose-edit-derivational-affix-restriction for a derivational affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1628,7 +1628,7 @@
   },
   {
     "name": "motif_add_alternate_form",
-    "description": "Author an alternate form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use for a listed variant of one morpheme. Not for a regular sound change, a phonological rule (guide nasal-assimilation), or a pattern-based form (compose-author-affix-process-allomorph). Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, when the entry has inflectional grammatical info, inflection classes. Use compose-edit-derivational-affix-restriction for a derivational analysis. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.\nCommand: compose-author-alternate-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author an alternate form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if one morpheme has a listed form that no regular sound pattern predicts; otherwise use a phonological rule when the project parses with HermitCrab. Forms that share one natural-class environment are already the intended model (guide conditioned-allomorphs). Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, when the entry has inflectional grammatical info, inflection classes. Use compose-edit-derivational-affix-restriction for a derivational analysis. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.\nCommand: compose-author-alternate-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1701,7 +1701,7 @@
   },
   {
     "name": "motif_add_part_of_speech",
-    "description": "Author a part of speech. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Add a category only when the evidence needs one; slots and classes belong to a category, so author it before them (guide suffix-prefix-slots). Stages a new part of speech, at the top of the category list or under an existing category, with its name and optional abbreviation. Later composer calls in the same Draft can use it as the category of entries, slots and affixes.\nCommand: compose-author-part-of-speech. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a part of speech. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if stems need their own category for slots, templates or classes; otherwise use an existing category, or a subcategory under it, which inherits its templates and slots (guide suffix-prefix-slots). Stages a new part of speech, at the top of the category list or under an existing category, with its name and optional abbreviation. Later composer calls in the same Draft can use it as the category of entries, slots and affixes.\nCommand: compose-author-part-of-speech. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2254,7 +2254,7 @@
   },
   {
     "name": "motif_add_affix_process",
-    "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts, inserts phonemes, inserts a segment of a natural class, or copies a part with the features of a feature class laid over it: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
+    "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use only if the affix infixes, reduplicates or rewrites the stem; otherwise author a plain affix with compose-author-lexical-entry. Regular assimilation at a boundary is a phonological rule (guide nasal-assimilation). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts, inserts phonemes, inserts a segment of a natural class, or copies a part with the features of a feature class laid over it: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2393,7 +2393,7 @@
   },
   {
     "name": "motif_add_affix_process_allomorph",
-    "description": "Add an affix process allomorph. Research first: motif_guide topic conditioned-allomorphs or workflow; check best practice. Use for one morpheme with several pattern-based forms. Plain spelling variants use an alternate form; a new morpheme needs its own entry (guide conditioned-allomorphs). Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry whose forms may be plain allomorphs or processes. The lexeme form\u0027s morph type is copied and the form applies to all of the entry\u0027s grammatical info. It refuses a stem, a repeated pattern and a missing placement.\nCommand: compose-author-affix-process-allomorph. Agent class: Draft.",
+    "description": "Add an affix process allomorph. Research first: motif_guide topic conditioned-allomorphs or workflow; check best practice. Use only if one morpheme has another pattern-based form; otherwise use compose-author-alternate-form for a plain form, or a new entry for a new morpheme. If the forms follow sound, look for a phonological rule (guide conditioned-allomorphs). Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry whose forms may be plain allomorphs or processes. The lexeme form\u0027s morph type is copied and the form applies to all of the entry\u0027s grammatical info. It refuses a stem, a repeated pattern and a missing placement.\nCommand: compose-author-affix-process-allomorph. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2498,7 +2498,7 @@
   },
   {
     "name": "motif_add_feature_value",
-    "description": "Author a feature value. Research first: motif_guide topic feature-conditioned-slots; check best practice. Restrict a slot\u0027s affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots). Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.\nCommand: compose-author-feature-value. Agent class: Draft.",
+    "description": "Author a feature value. Research first: motif_guide topic feature-conditioned-slots; check best practice. Use only if the structure must carry or require this feature value; otherwise use an inflection class for arbitrary stem groups. Restrict by feature value instead of copying affixes or slots per value (guide feature-conditioned-slots). Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.\nCommand: compose-author-feature-value. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2537,7 +2537,7 @@
   },
   {
     "name": "motif_add_allomorph_required_features",
-    "description": "Add Required Features. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use for one form\u0027s Required Features; whole-affix requirements use compose-author-feature-structure. Stages Required Features on an ordinary affix allomorph in a Draft. Populate the returned structure with feature values to select the form by the stem\u0027s grammatical features, including on derivational affixes. Only a person can Apply.\nCommand: compose-author-allomorph-required-features. Agent class: Draft.",
+    "description": "Add Required Features. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if one affix form is chosen by the word\u0027s inflection features, not by sound; otherwise use an environment for sound, or compose-author-feature-structure for the whole affix (guide conditioned-allomorphs). Stages Required Features on an ordinary affix allomorph in a Draft. Populate the returned structure with feature values to select the form by the stem\u0027s grammatical features, including on derivational affixes. Only a person can Apply.\nCommand: compose-author-allomorph-required-features. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2567,7 +2567,7 @@
   },
   {
     "name": "motif_remove_feature_value",
-    "description": "Remove a feature value. Research first: motif_guide topic feature-conditioned-slots; check best practice. Remove a requirement only when the affix really takes every value; to change a value, remove it and author the new one (guide feature-conditioned-slots). Stages the removal of one feature\u0027s specification from a stem\u0027s MsFeatures, an inflectional affix\u0027s InflFeats, or a derivational affix\u0027s FromMsFeatures or ToMsFeatures, so the stem stops carrying the feature or the affix stops requiring or giving it. The feature structure stays. Refuses a feature the structure does not specify. Only a person can Apply.\nCommand: compose-remove-feature-value. Agent class: Draft.",
+    "description": "Remove a feature value. Research first: motif_guide topic feature-conditioned-slots; check best practice. Use only if the affix or stem really takes every value of the feature; otherwise change the value by removing it and authoring the new one with compose-author-feature-value (guide feature-conditioned-slots). Stages the removal of one feature\u0027s specification from a stem\u0027s MsFeatures, an inflectional affix\u0027s InflFeats, or a derivational affix\u0027s FromMsFeatures or ToMsFeatures, so the stem stops carrying the feature or the affix stops requiring or giving it. The feature structure stays. Refuses a feature the structure does not specify. Only a person can Apply.\nCommand: compose-remove-feature-value. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2602,7 +2602,7 @@
   },
   {
     "name": "motif_change_affix_kind",
-    "description": "Change an affix\u2019s kind. Research first: motif_guide topic suffix-prefix-slots; check best practice. Choose inflectional or derivational on the evidence and change it later if it was wrong; leaving an affix unclassified is a stopgap (guides suffix-prefix-slots). Stages a change of one affix between inflectional, derivational and unclassified in place, keeping its category and the senses that use it. What the new kind cannot hold, such as a template slot or a To category, is reported as a warning, not refused. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-change-affix-kind. Agent class: Draft.",
+    "description": "Change an affix\u2019s kind. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if the evidence, such as paradigms or a category change, now decides inflectional or derivational; otherwise keep the kind. Unclassified is a stopgap that lets the parser find wrong parses (guide suffix-prefix-slots). Stages a change of one affix between inflectional, derivational and unclassified in place, keeping its category and the senses that use it. What the new kind cannot hold, such as a template slot or a To category, is reported as a warning, not refused. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-change-affix-kind. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2653,7 +2653,7 @@
   },
   {
     "name": "motif_edit_phoneme",
-    "description": "Edit a phoneme\u0027s representations. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Edit a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs). Stages new written representations for an existing phoneme, or respells one it has, so a multigraph such as ng, ts or dy is another way the same segment is written and never a second phoneme. It refuses a spelling another phoneme or boundary already has, and a respelling that an environment writes. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-edit-phoneme. Agent class: Draft.",
+    "description": "Edit a phoneme\u0027s representations. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if a phoneme has another written form of the same sound, such as a digraph; otherwise author a phoneme for a real contrast. HermitCrab reads the longest spelling first (guides nasal-assimilation, conditioned-allomorphs). Stages new written representations for an existing phoneme, or respells one it has, so a multigraph such as ng, ts or dy is another way the same segment is written and never a second phoneme. It refuses a spelling another phoneme or boundary already has, and a respelling that an environment writes. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-edit-phoneme. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2719,7 +2719,7 @@
   },
   {
     "name": "motif_add_phonological_feature",
-    "description": "Author a phonological feature. Research first: motif_guide topic nasal-assimilation or archiphonemes; check best practice. Use for a phonological feature of sounds. An inflection or part-of-speech feature uses compose-author-inflection-feature; a word-level exception uses compose-author-exception-feature (guide archiphonemes). Stages a closed phonological feature and its values in the project\u0027s phonological feature system, such as place with labial, coronal and velar. Phonemes carry the values and a natural class can be defined by them. Defining the first feature of a featureless project changes how rewrite rules that name segment classes are read, so Trial the rules after it. Only a person can Apply.\nCommand: compose-author-phonological-feature. Agent class: Draft.",
+    "description": "Author a phonological feature. Research first: motif_guide topic nasal-assimilation or archiphonemes; check best practice. Use only if rules or natural classes need a phonological feature of sounds; otherwise use compose-author-inflection-feature for grammar, or compose-author-exception-feature for a stem list (guide archiphonemes). Stages a closed phonological feature and its values in the project\u0027s phonological feature system, such as place with labial, coronal and velar. Phonemes carry the values and a natural class can be defined by them. Defining the first feature of a featureless project changes how rewrite rules that name segment classes are read, so Trial the rules after it. Only a person can Apply.\nCommand: compose-author-phonological-feature. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2773,7 +2773,7 @@
   },
   {
     "name": "motif_add_phonological_feature_value",
-    "description": "Add a phonological feature value. Research first: motif_guide topic nasal-assimilation; check best practice. Extend a feature that exists. Create the feature first with compose-author-phonological-feature (guide nasal-assimilation). Stages one more value for an existing closed phonological feature. The feature must belong to the phonological feature system, and the value name and abbreviation must be new to it. Only a person can Apply.\nCommand: compose-add-phonological-feature-value. Agent class: Draft.",
+    "description": "Add a phonological feature value. Research first: motif_guide topic nasal-assimilation; check best practice. Use only if the feature exists and the language needs one more value of it; otherwise create the feature first with compose-author-phonological-feature (guide nasal-assimilation). Stages one more value for an existing closed phonological feature. The feature must belong to the phonological feature system, and the value name and abbreviation must be new to it. Only a person can Apply.\nCommand: compose-add-phonological-feature-value. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2812,7 +2812,7 @@
   },
   {
     "name": "motif_edit_phoneme_features",
-    "description": "Set a phoneme\u0027s features. Research first: motif_guide topic nasal-assimilation or archiphonemes; check best practice. Set the features of a phoneme that exists; a new phoneme can take features when it is authored (guides nasal-assimilation, archiphonemes). Stages feature values on an existing phoneme: set a value (a feature the phoneme already has takes the new value in place, one it lacks gains it) and clear features. A phoneme with no feature structure gets one. It refuses a value that does not belong to its feature, a feature both set and cleared, a clear of an absent feature and a change that alters nothing. Only a person can Apply.\nCommand: compose-edit-phoneme-features. Agent class: Draft.",
+    "description": "Set a phoneme\u0027s features. Research first: motif_guide topic nasal-assimilation or archiphonemes; check best practice. Use only if a phoneme\u0027s features must change so rules and classes pick it; otherwise give a new phoneme its features when authoring it. Specify each phoneme fully (guides nasal-assimilation, archiphonemes). Stages feature values on an existing phoneme: set a value (a feature the phoneme already has takes the new value in place, one it lacks gains it) and clear features. A phoneme with no feature structure gets one. It refuses a value that does not belong to its feature, a feature both set and cleared, a clear of an absent feature and a change that alters nothing. Only a person can Apply.\nCommand: compose-edit-phoneme-features. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2869,7 +2869,7 @@
   },
   {
     "name": "motif_edit_natural_class_features",
-    "description": "Edit a natural class\u0027s features. Research first: motif_guide topic nasal-assimilation; check best practice. Change the feature constraints of a class defined by features. A class defined by segments changes its members with compose-edit-natural-class (guide nasal-assimilation). Stages a change to the feature values that define a feature-based natural class: set a constraint (a feature the class already constrains takes the new value in place) and clear constraints. The class must keep at least one constraint, and a segment class is refused. The response lists the environments, rules and insertions that use the class. Only a person can Apply.\nCommand: compose-edit-natural-class-features. Agent class: Draft.",
+    "description": "Edit a natural class\u0027s features. Research first: motif_guide topic nasal-assimilation; check best practice. Use only if a class defined by features picks the wrong sounds; otherwise use compose-edit-natural-class for a class defined by segments. Every rule and environment using it changes too (guide nasal-assimilation). Stages a change to the feature values that define a feature-based natural class: set a constraint (a feature the class already constrains takes the new value in place) and clear constraints. The class must keep at least one constraint, and a segment class is refused. The response lists the environments, rules and insertions that use the class. Only a person can Apply.\nCommand: compose-edit-natural-class-features. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2926,7 +2926,7 @@
   },
   {
     "name": "motif_merge_phoneme",
-    "description": "Merge a phoneme into another. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Merge phonemes only when the language has no contrast between them, since the contrast cannot be recovered from the words afterwards (guides nasal-assimilation, conditioned-allomorphs). Stages a merge of one phoneme into another: each spelling of the first becomes another way to write the second, and the first phoneme is removed from the inventory and from its natural classes. It refuses a spelling another phoneme has, a natural class the first phoneme alone fills, and a rule or environment that uses the first phoneme. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-merge-phoneme. Agent class: Draft.",
+    "description": "Merge a phoneme into another. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if the language has no contrast between the two phonemes; otherwise keep both, since the contrast cannot be recovered from the words afterwards (guides nasal-assimilation, conditioned-allomorphs). Stages a merge of one phoneme into another: each spelling of the first becomes another way to write the second, and the first phoneme is removed from the inventory and from its natural classes. It refuses a spelling another phoneme has, a natural class the first phoneme alone fills, and a rule or environment that uses the first phoneme. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-merge-phoneme. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2961,7 +2961,7 @@
   },
   {
     "name": "motif_split_phoneme",
-    "description": "Split a spelling into a phoneme. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Split a spelling out only for a real contrast, then add the new phoneme to its natural classes (guides nasal-assimilation, conditioned-allomorphs). Stages the move of one spelling of a phoneme into a new phoneme of its own, which undoes a merge. The phoneme keeps its other spellings, and the new phoneme starts with no natural class and no features. It refuses a spelling an environment writes. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-split-phoneme. Agent class: Draft.",
+    "description": "Split a spelling into a phoneme. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if a spelling marks a real contrast; otherwise keep it as another spelling of the phoneme. Then add the new phoneme to its natural classes and give it features (guides nasal-assimilation, conditioned-allomorphs). Stages the move of one spelling of a phoneme into a new phoneme of its own, which undoes a merge. The phoneme keeps its other spellings, and the new phoneme starts with no natural class and no features. It refuses a spelling an environment writes. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-split-phoneme. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3001,7 +3001,7 @@
   },
   {
     "name": "motif_edit_derivational_affix_restriction",
-    "description": "Restrict a derivational affix. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes). Sets, replaces or explicitly clears the From Inflection Class and the To Inflection Class, and can set the exact From Exception Features and To Exception Features on an existing affix entry\u0027s derivational grammatical info; alsoMsas applies the same change to many affixes. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-derivational-affix-restriction. Agent class: Draft.",
+    "description": "Restrict a derivational affix. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if a derivational affix takes or gives one inflection class or exception-feature set; otherwise use compose-edit-affix-inflection-classes for an inflectional form. One analysis on a parent class covers its subclasses (guide suffix-prefix-slots). Sets, replaces or explicitly clears the From Inflection Class and the To Inflection Class, and can set the exact From Exception Features and To Exception Features on an existing affix entry\u0027s derivational grammatical info; alsoMsas applies the same change to many affixes. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-derivational-affix-restriction. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3088,7 +3088,7 @@
   },
   {
     "name": "motif_author_exception_feature",
-    "description": "Add an exception feature. Research first: motif_guide topic suffix-prefix-slots; check best practice. Add a feature only for a lexical class with a reason, since a feature per stem is just a stem list (guides suffix-prefix-slots). Stages a new exception feature in the project\u0027s Exception Features list, the tag that stems carry and affixes or rules can require. It refuses a name the list already has. Only a person can Apply.\nCommand: compose-author-exception-feature. Agent class: Draft.",
+    "description": "Add an exception feature. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if an affix, rule or compound must be limited to an arbitrary set of stems; otherwise use an inflection class for a declension or conjugation, or a category. A feature for one stem is a stem list (guide suffix-prefix-slots). Stages a new exception feature in the project\u0027s Exception Features list, the tag that stems carry and affixes or rules can require. It refuses a name the list already has. Only a person can Apply.\nCommand: compose-author-exception-feature. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3127,7 +3127,7 @@
   },
   {
     "name": "motif_edit_exception_features",
-    "description": "Set exception features. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a stem, clitic or inflectional affix. A derivational affix uses compose-edit-derivational-affix-restriction (guides suffix-prefix-slots). Sets the exact exception features a stem or clitic carries, or the ones an inflectional affix requires of its stem. An empty list clears the set. Derivational affixes use their own command. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-exception-features. Agent class: Draft.",
+    "description": "Set exception features. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if one stem, clitic or inflectional affix carries an arbitrary restriction; otherwise use an inflection class, or compose-edit-derivational-affix-restriction for derivation. Many stems: compose-tag-stems-by-query (guide suffix-prefix-slots). Sets the exact exception features a stem or clitic carries, or the ones an inflectional affix requires of its stem. An empty list clears the set. Derivational affixes use their own command. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-exception-features. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3165,7 +3165,7 @@
   },
   {
     "name": "motif_edit_phonological_rule_features",
-    "description": "Set rule features. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a rule that exists. Tag the stems with compose-edit-exception-features first. Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes. An empty list clears a set. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-phonological-rule-features. Agent class: Draft.",
+    "description": "Set rule features. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if a rule applies to some stems only, by exception feature or inflection class; otherwise narrow its context, or limit it by category with inputCategories in compose-edit-phonological-rule. Tag stems with compose-tag-stems-by-query (guide suffix-prefix-slots). Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes. An empty list clears a set. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-phonological-rule-features. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {

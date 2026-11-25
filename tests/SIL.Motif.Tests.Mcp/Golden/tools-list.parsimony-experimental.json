@@ -40,7 +40,7 @@
   },
   {
     "name": "motif_add_natural_class",
-    "description": "Author a natural class. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation). Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.\nCommand: compose-author-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a natural class. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if a rule or environment needs this set of sounds and no class has it yet; otherwise reuse that class. List only the sounds the pattern needs; one class replaces environments that list sounds one by one (guide nasal-assimilation). Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.\nCommand: compose-author-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -104,7 +104,7 @@
   },
   {
     "name": "motif_edit_natural_class",
-    "description": "Edit a natural class. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation). Adds or removes phonemes from one existing segment natural class after checking its exact current members. The response lists rules, environments and insertions that still use the class. Only a person can Apply.\nCommand: compose-edit-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Edit a natural class. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if the class lacks a sound its pattern needs or has one it must not; otherwise author a separate class. Every listed user changes with it (guide nasal-assimilation). Adds or removes phonemes from one existing segment natural class after checking its exact current members. The response lists rules, environments and insertions that still use the class. Only a person can Apply.\nCommand: compose-edit-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -150,7 +150,7 @@
   },
   {
     "name": "motif_relink_natural_class",
-    "description": "Relink natural-class users. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation). Moves explicitly named environments and rewrite-rule contexts to a replacement class created earlier in the Draft. Other users remain on the source class. Only a person can Apply.\nCommand: compose-relink-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Relink natural-class users. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if some users of a class should move to a replacement class; otherwise change the class itself with compose-edit-natural-class (guide nasal-assimilation). Moves explicitly named environments and rewrite-rule contexts to a replacement class created earlier in the Draft. Other users remain on the source class. Only a person can Apply.\nCommand: compose-relink-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -278,7 +278,7 @@
   },
   {
     "name": "motif_add_phonological_rule",
-    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or phonological-rules or feature-rules; check best practice. Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs). Stages one regular phonological rule in a Draft, with one or more ordered right-hand sides, each with its own Output, contexts and rule features, and up to eight items in each Input and Output sequence. Output classes allow lexical alternatives; overlapping right-hand sides use the first applicable case, while feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or phonological-rules or feature-rules; check best practice. Use only if the project parses with HermitCrab and a regular sound change holds across many morphemes in a context you can state; otherwise use an alternate form for one irregular word. A rule can be limited by category with inputCategories (guide phonological-rules). Stages one regular phonological rule in a Draft, with one or more ordered right-hand sides, each with its own Output, contexts and rule features, and up to eight items in each Input and Output sequence. Output classes allow lexical alternatives; overlapping right-hand sides use the first applicable case, while feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -906,7 +906,7 @@
   },
   {
     "name": "motif_add_affix_slot",
-    "description": "Author an affix slot. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Put affixes in slots in speakers\u0027 order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots). Stages a named inflectional affix slot owned by an existing category and can assign existing inflectional affixes to it in the same Draft. Inspect its Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author an affix slot. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if the category has a new position for affixes in speakers\u0027 order; otherwise reuse a slot with compose-edit-inflectional-affix. Put it on the highest category that shares it; never one slot per stem or class (guide suffix-prefix-slots). Stages a named inflectional affix slot owned by an existing category and can assign existing inflectional affixes to it in the same Draft. Inspect its Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -958,7 +958,7 @@
   },
   {
     "name": "motif_add_affix_template",
-    "description": "Author an affix template. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Put affixes in slots in speakers\u0027 order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots). Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether a word can end after this template. Only a person can Apply.\nCommand: compose-author-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author an affix template. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if the category needs another slot order; otherwise change the template with compose-edit-affix-template. A template on a parent category also serves its subcategories, so never one per stem or class (guide suffix-prefix-slots). Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether a word can end after this template. Only a person can Apply.\nCommand: compose-author-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1049,7 +1049,7 @@
   },
   {
     "name": "motif_edit_adhoc_prohibition",
-    "description": "Edit an ad hoc prohibition. Research first: motif_guide topic ask-the-linguist or suffix-prefix-slots or feature-conditioned-slots; check best practice. Only disables or enables an existing prohibition. Prefer a slot, template, feature or environment that removes the need (guides suffix-prefix-slots, feature-conditioned-slots). Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. The expected value guards against stale evidence; Motif never Applies this change automatically. Only a person can Apply.\nCommand: compose-edit-adhoc-prohibition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Edit an ad hoc prohibition. Research first: motif_guide topic ask-the-linguist or suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if an existing prohibition should be switched off or on; otherwise remove the need with a slot, template, feature or environment (guides suffix-prefix-slots, feature-conditioned-slots). Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. The expected value guards against stale evidence; Motif never Applies this change automatically. Only a person can Apply.\nCommand: compose-edit-adhoc-prohibition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1089,7 +1089,7 @@
   },
   {
     "name": "motif_edit_affix_slot",
-    "description": "Edit an affix slot. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Put affixes in slots in speakers\u0027 order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots). Changes whether an existing inflectional affix slot is optional, renames it, or both. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Edit an affix slot. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if a slot is renamed or becomes optional or obligatory; otherwise move affixes with compose-edit-inflectional-affix. A slot is obligatory unless marked optional (guide suffix-prefix-slots). Changes whether an existing inflectional affix slot is optional, renames it, or both. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1139,7 +1139,7 @@
   },
   {
     "name": "motif_edit_affix_template",
-    "description": "Edit an affix template. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Put affixes in slots in speakers\u0027 order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots). Adds, removes or reorders the existing prefix or suffix slots of a known affix template. Motif stages a Draft without Applying it automatically. Only a person can Apply.\nCommand: compose-edit-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Edit an affix template. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if the category\u0027s slot order or membership changes; otherwise author another template with compose-author-affix-template for a separate order. Never one template per stem or class (guide suffix-prefix-slots). Adds, removes or reorders the existing prefix or suffix slots of a known affix template. Motif stages a Draft without Applying it automatically. Only a person can Apply.\nCommand: compose-edit-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1201,7 +1201,7 @@
   },
   {
     "name": "motif_edit_inflectional_affix",
-    "description": "Edit an inflectional affix. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Put affixes in slots in speakers\u0027 order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots). Changes which existing category slots an inflectional affix MSA uses. Other MSA kinds and slots outside the category hierarchy are refused; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-inflectional-affix. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Edit an inflectional affix. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if an inflectional affix belongs in other slots of its category; otherwise author a slot with compose-author-affix-slot. Never copy an affix per slot or per stem class (guide suffix-prefix-slots). Changes which existing category slots an inflectional affix MSA uses. Other MSA kinds and slots outside the category hierarchy are refused; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-inflectional-affix. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1247,7 +1247,7 @@
   },
   {
     "name": "motif_edit_allomorph_condition",
-    "description": "Edit an allomorph condition. Research first: motif_guide topic conditioned-allomorphs; check best practice. Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation). Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them. Only a person can Apply.\nCommand: compose-edit-allomorph-condition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Edit an allomorph condition. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if one form\u0027s environments are wrong; otherwise fix the shared environment itself. Write environments with natural classes; under HermitCrab a regular alternation can instead be one phonological rule (guide conditioned-allomorphs). Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them. Only a person can Apply.\nCommand: compose-edit-allomorph-condition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {

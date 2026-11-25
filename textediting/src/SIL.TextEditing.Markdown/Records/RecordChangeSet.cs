@@ -97,6 +97,16 @@ namespace SIL.TextEditing.Markdown.Records
         ExportFailed,
         /// <summary>The object a removal names has no GUID or is not in the project, so the delete rule cannot be checked.</summary>
         UnknownDeleteTarget,
+        /// <summary>The file has no <c>base:</c>, a <c>root:</c> that names part of a record, and a GUID the project does not have. A new record must be a whole file. The whole file is refused.</summary>
+        CreatePartial,
+        /// <summary>The file's <c>base:</c> comes from a record the project no longer has. The whole file is refused.</summary>
+        RecordGone,
+        /// <summary>The file would create a record of a kind a file may not create (a list item, a phonological rule). The whole file is refused.</summary>
+        CreateKindNotCreatable,
+        /// <summary>A new object's GUID is the nil or all-ones GUID, not RFC 4122 variant, or not version 4, 5 or 7.</summary>
+        GuidInvalid,
+        /// <summary>A new object's GUID belonged to an object the project's home has deleted; re-creating it would read as an undelete. The whole file is refused.</summary>
+        GuidRetired,
     }
 
     /// <summary>Whether a span of a word-level summary is in both values, only the old one or only the new one.</summary>
