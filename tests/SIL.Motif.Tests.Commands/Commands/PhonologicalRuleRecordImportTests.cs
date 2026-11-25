@@ -101,6 +101,13 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
             var swap = cache.ServiceLocator.GetInstance<IPhMetathesisRuleFactory>().Create();
             data.PhonRulesOS.Add(swap);
             swap.Name.set_String(cache.DefaultAnalWs, TsStringUtils.MakeString("Swap", cache.DefaultAnalWs));
+            foreach (var code in new[] { "t", "k" })
+            {
+                var switched = cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create();
+                swap.StrucDescOS.Add(switched);
+                switched.FeatureStructureRA = phonemes[code];
+            }
+            swap.StrucChange = TsStringUtils.MakeString("-1 0 -1 1 -1", cache.DefaultAnalWs);
             var category = cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create();
             cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(category);
             category.Name.set_String(cache.DefaultAnalWs, "category");
@@ -260,7 +267,7 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
             {
                 "grammar/phSegRuleRHS/removeRefExclRuleFeats", "grammar/phSegRuleRHS/removeRefInputPOSes", "grammar/phSegRuleRHS/removeRefReqRuleFeats",
                 "grammar/phSegmentRule/clearDirection", "grammar/phSegmentRule/clearDisabled", "grammar/phSegmentRule/clearName", "text/setRichString",
-            }, Lower(cache, ruleId, ClearEverything).Operations.Select(operation => operation.Kind).Order().ToArray());
+            }, Lower(cache, ruleId, ClearEverything).Operations.Select(operation => operation.Kind).Order(StringComparer.Ordinal).ToArray());
         }
         Import(path, "clear", ruleId, ClearEverything);
         using (var cache = new FwDataProjectLoader().LoadCache(path))
@@ -286,7 +293,7 @@ public sealed class PhonologicalRuleRecordImportTests(PristineProjectFixture pri
             Assert.Equal(new[]
             {
                 "grammar/phSegmentRule/clearDirection", "grammar/phSegmentRule/clearDisabled", "grammar/phSegmentRule/clearName", "text/setRichString",
-            }, Lower(cache, swapId, ClearScalars).Operations.Select(operation => operation.Kind).Order().ToArray());
+            }, Lower(cache, swapId, ClearScalars).Operations.Select(operation => operation.Kind).Order(StringComparer.Ordinal).ToArray());
         Import(path, "clear", swapId, ClearScalars);
         using (var cache = new FwDataProjectLoader().LoadCache(path))
         {
