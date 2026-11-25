@@ -485,6 +485,22 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void HelpAllListsEntriesByKindThenOrdinalCode()
+    {
+        var result = Run("help", "--all", "--json");
+        using var document = JsonDocument.Parse(result.Output);
+        var entries = document.RootElement.GetProperty("entries").EnumerateArray()
+            .Select(entry => (Kind: entry.GetProperty("kind").GetString()!, Code: entry.GetProperty("code").GetString()!)).ToList();
+        string[] kinds = ["command", "ui", "term", "guide"];
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(
+            entries.OrderBy(entry => Array.IndexOf(kinds, entry.Kind)).ThenBy(entry => entry.Code, StringComparer.Ordinal),
+            entries);
+        Assert.DoesNotContain(entries, entry => Array.IndexOf(kinds, entry.Kind) < 0);
+    }
+
+    [Fact]
     public void AdvancedAiHelpListsEveryCommandWithAUsageLine()
     {
         var result = Run(true, "help", "--all", "--json");
