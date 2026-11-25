@@ -267,8 +267,8 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     public void FencedBlocksNextToProseAndHeadingsAreStoredAsOneParagraphPerLineAndTheAppParserReadsThem()
     {
         var path = ProjectWithGdrs(HeadingStyles);
-        var blocks = "# Evidence\n\nBefore.\n\n```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms --project p\n```\n\n" +
-            "Between.\n\n```motif-show\nquery: forms\nshow: table\n```\n\n## After\n\nEnd.";
+        var blocks = "### Evidence\n\nBefore.\n\n```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms --project p\n```\n\n" +
+            "Between.\n\n```motif-show\nquery: forms\nshow: table\n```\n\n### After\n\nEnd.";
 
         var staged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", blocks));
 
