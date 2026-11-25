@@ -352,7 +352,7 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         var path = ProjectWithGdrs(cache => SeedLines(cache, "GDR-2", lines.Select(line => (line, cache.DefaultAnalWs, (string?)null)).ToArray()));
         var markdown = Markdown(path, "GDR-2");
 
-        Assert.Contains("\n::: {field=discussion}\n" + string.Join("\n", lines[..5]) + "\n\n" + string.Join("\n", lines[5..]) + "\n:::\n", markdown, StringComparison.Ordinal);
+        Assert.Contains("\n" + string.Join("\n", lines[..5]) + "\n\n" + string.Join("\n", lines[5..]) + "\n", markdown, StringComparison.Ordinal);
         var same = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", markdown));
         Assert.True(same.Succeeded, same.Refusal?.Message);
         Assert.Equal(0, same.Value!.OperationCount);

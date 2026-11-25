@@ -11,6 +11,8 @@ namespace SIL.Motif.Host.Gdr;
 public static class GdrQueryBlockMarkdown
 {
     private const int WsProperty = 1;
+    private const int ParagraphStyleProperty = 133;
+    private const int RightToLeftProperty = 128;
 
     private const string TokenPrefix = "MOTIFBLOCKPLACEHOLDER";
 
@@ -53,9 +55,9 @@ public static class GdrQueryBlockMarkdown
     // Lifted only when the stored form reproduces the line exactly; any other line stays prose.
     private static bool IsPlain(Paragraph paragraph, string? analysisWs) =>
         (paragraph.Style.Length == 0 || paragraph.Style == "Normal") && paragraph.Runs.Count <= 1 && !paragraph.Rtl &&
-        paragraph.Props.IntProps.Count == 0 && paragraph.Props.StrProps.Count == 0 &&
+        paragraph.Props.IntProps.Keys.All(key => key == RightToLeftProperty) && paragraph.Props.StrProps.Keys.All(key => key == ParagraphStyleProperty) &&
         paragraph.Runs.All(run => run.ObjData is null && !run.Text.Contains('\n', StringComparison.Ordinal) &&
-            analysisWs is not null && string.Equals(run.Ws, analysisWs, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(run.Ws, analysisWs is { Length: > 0 } ? analysisWs : paragraph.DefaultWs, StringComparison.OrdinalIgnoreCase) &&
             run.Props.IntProps.Keys.All(key => key == WsProperty) && run.Props.StrProps.Count == 0);
 
     /// <summary>The written Markdown with each stand-in replaced by its block as a real fence.</summary>
