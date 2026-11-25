@@ -83,7 +83,27 @@ public sealed class HelpCatalogTests
         foreach (var entry in catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command && entry.Guides is not null))
         {
             Assert.False(string.IsNullOrWhiteSpace(entry.Redirect), $"'{entry.Code}' has guides but no redirect.");
-            Assert.InRange(entry.Redirect!.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, 8, 26);
+            Assert.InRange(entry.Redirect!.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, 8, 45);
+        }
+    }
+
+    // MCP descriptions and motif help both show the redirect, so it is where an agent learns when not to compose.
+    [Fact]
+    public void EveryComposingCommandSaysWhenToUseItAndWhatToUseOtherwise()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var composing = catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command &&
+            (entry.Code == "compose" || entry.Code.StartsWith("compose-", StringComparison.Ordinal))).ToArray();
+
+        Assert.Contains(composing, entry => entry.Code == "compose-batch");
+        foreach (var entry in composing)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(entry.Redirect), $"'{entry.Code}' does not say when to use it.");
+            Assert.Matches(new Regex("^Use only (if|when) [^;]+; otherwise "), entry.Redirect!);
+            Assert.InRange(Regex.Matches(entry.Redirect!, @"[.!?](?:\s|$)").Count, 1, 3);
+            Assert.InRange(entry.Redirect!.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, 8, 45);
+            foreach (Match named in Regex.Matches(entry.Redirect!, @"\bcompose-[a-z-]*[a-z]"))
+                Assert.NotNull(catalog.Find(HelpEntryKind.Command, named.Value));
         }
     }
 

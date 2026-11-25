@@ -227,17 +227,6 @@ public static partial class RecordImportCommand
 
     internal sealed record PendingScan(string? Name);
 
-    private static string? CodeFor(RecordRefusalKind kind) => kind switch
-    {
-        RecordRefusalKind.CreateKindNotCreatable => RefusalCodes.RecordImportCreateKindNotCreatable,
-        RecordRefusalKind.CreatePartial => RefusalCodes.RecordImportCreatePartial,
-        RecordRefusalKind.RecordGone => RefusalCodes.RecordImportRecordGone,
-        RecordRefusalKind.GuidInvalid => RefusalCodes.RecordImportGuidInvalid,
-        RecordRefusalKind.GuidRetired => RefusalCodes.RecordImportGuidRetired,
-        RecordRefusalKind.CreateComputedField => RefusalCodes.RecordImportCreateComputedField,
-        _ => null,
-    };
-
     private static Refusal WholeFileRefusal(Planned found)
     {
         var whole = found.Plan.ChangeSet.Refusals.First(item => item.WholeFile);
@@ -248,8 +237,17 @@ public static partial class RecordImportCommand
         };
         if (found.Plan.Kind is { } kind) facts["recordKind"] = kind;
         if (whole.Field.Length > 0) facts["field"] = whole.Field;
-        return new Refusal(CodeFor(whole.Kind) ?? RefusalCodes.RecordImportPlanRefused, FailureReason.Refused,
-            "The record file was refused whole (" + whole.Kind + "): " + Clip(whole.Reason, 300), facts);
+        var message = "The record file was refused whole (" + whole.Kind + "): " + Clip(whole.Reason, 300);
+        return whole.Kind switch
+        {
+            RecordRefusalKind.CreateKindNotCreatable => new Refusal(RefusalCodes.RecordImportCreateKindNotCreatable, FailureReason.Refused, message, facts),
+            RecordRefusalKind.CreatePartial => new Refusal(RefusalCodes.RecordImportCreatePartial, FailureReason.Refused, message, facts),
+            RecordRefusalKind.RecordGone => new Refusal(RefusalCodes.RecordImportRecordGone, FailureReason.Refused, message, facts),
+            RecordRefusalKind.GuidInvalid => new Refusal(RefusalCodes.RecordImportGuidInvalid, FailureReason.Refused, message, facts),
+            RecordRefusalKind.GuidRetired => new Refusal(RefusalCodes.RecordImportGuidRetired, FailureReason.Refused, message, facts),
+            RecordRefusalKind.CreateComputedField => new Refusal(RefusalCodes.RecordImportCreateComputedField, FailureReason.Refused, message, facts),
+            _ => new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused, message, facts),
+        };
     }
 
     private static List<RecordImportRefusal> Refusals(Planned found, RecordLowering lowering)

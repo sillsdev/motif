@@ -70,6 +70,11 @@ public static class CommandTextRenderer
             ProjectConfigurationProjection p => ProjectionText.Render(p),
             StorePruneResponse r => RenderStorePrune(r),
             WorkerStopResponse r => RenderWorkerStop(r),
+            StoreBackupResponse r => string.Format(CultureInfo.CurrentCulture, CliStrings.StoreBackupFormat,
+                r.BackupDirectory, r.SchemaVersion, r.Files.Count, r.FwDataNote) + Environment.NewLine,
+            StoreRestoreResponse r => string.Format(CultureInfo.CurrentCulture, CliStrings.StoreRestoreFormat,
+                r.StorePath, r.SchemaVersion, r.BackupDirectory,
+                r.PreRestoreDirectory ?? "(there was no store to replace)", r.Quarantined.Count) + Environment.NewLine,
             StoreRelocateResponse r => string.Format(CultureInfo.CurrentCulture,
                 r.Changed ? CliStrings.StoreRelocateFormat : CliStrings.StoreRelocateUnchangedFormat,
                 r.OldProjectPath, r.NewProjectPath, r.IdentityEvidence) +

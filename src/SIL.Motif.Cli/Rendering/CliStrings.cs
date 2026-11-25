@@ -6,6 +6,8 @@ internal static class CliStrings
 {
     private static readonly ResourceManager Resources = new("SIL.Motif.Cli.Rendering.CliStrings", typeof(CliStrings).Assembly);
 
+    internal static string StoreBackupFormat => Resources.GetString(nameof(StoreBackupFormat))!;
+    internal static string StoreRestoreFormat => Resources.GetString(nameof(StoreRestoreFormat))!;
     internal static string StoreRelocateFormat => Resources.GetString(nameof(StoreRelocateFormat))!;
     internal static string StoreRelocateOldStillExists => Resources.GetString(nameof(StoreRelocateOldStillExists))!;
     internal static string StoreRelocateUnchangedFormat => Resources.GetString(nameof(StoreRelocateUnchangedFormat))!;

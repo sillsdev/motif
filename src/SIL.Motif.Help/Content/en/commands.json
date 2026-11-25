@@ -69,6 +69,16 @@
     "description": "Removes older Assessments that are no longer needed by retained evidence. It also reclaims available space in the project store.",
     "source": "Hand-written from the project store retention behavior."
   },
+  "store backup": {
+    "title": "Back up a Motif store",
+    "description": "Writes a consistent copy of the project's Motif store and the files Motif owns for it into a new folder, while other Motif processes keep reading and writing. The receipt lists each file's size and sha256 and the store's schema version. It does not include the FieldWorks project file.",
+    "source": "Hand-written from the store backup behavior."
+  },
+  "store restore": {
+    "title": "Restore a Motif store",
+    "description": "Puts a Motif backup back beside the project after checking every file against its receipt. It refuses while the store is open or busy, when the backup is of a newer schema or a different project (unless --force is given), and when a file does not match its sha256. It never deletes: the old store, its -wal and -shm, and any owned file the backup lacks move into a pre-restore folder before the restored files are renamed in.",
+    "source": "Hand-written from the store backup behavior."
+  },
   "project initialize": {
     "title": "Prepare a project for Motif",
     "description": "Creates Motif's reserved human judgment field in a FieldWorks project after explicit confirmation. It does not add a judgment or create a writing system.",
@@ -211,7 +221,8 @@
       "Keep a finding as it is",
       "Decide to fix a finding later",
       "Record a question about a finding"
-    ]
+    ],
+    "redirect": "Use only if you reviewed one Parsimony finding and chose keep, fix, ask or defer; otherwise fix the grammar with the composer the finding names. A keep records a choice and hides nothing."
   },
   "retire-allomorph": {
     "title": "Retire or merge forms",
@@ -276,7 +287,7 @@
       "phonological-rules",
       "feature-rules"
     ],
-    "redirect": "Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs)."
+    "redirect": "Use only if the project parses with HermitCrab and a regular sound change holds across many morphemes in a context you can state; otherwise use an alternate form for one irregular word. A rule can be limited by category with inputCategories (guide phonological-rules)."
   },
   "compose-author-metathesis-rule": {
     "title": "Author a metathesis rule",
@@ -290,7 +301,7 @@
     "guides": [
       "phonological-rules"
     ],
-    "redirect": "Use for two adjacent sounds that trade places. Not for a sound that changes in place: use compose-author-phonological-rule."
+    "redirect": "Use only if two adjacent sounds regularly trade places; otherwise use compose-author-phonological-rule for a sound that changes in place, or an alternate form for one word."
   },
   "compose-author-lexical-entry": {
     "title": "Author a lexical entry",
@@ -306,7 +317,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "For an affix, prefer an inflectional or derivational MSA with categories and a slot over unclassified (guide suffix-prefix-slots). One entry per morpheme, not per stem."
+    "redirect": "Use only if the morpheme is new to the lexicon; otherwise add a form, sense or analysis to its entry. Classify an affix as inflectional or derivational. If you see whole words for a regular derivation, author the affix (guide suffix-prefix-slots)."
   },
   "compose-author-affix-process-allomorph": {
     "title": "Add an affix process allomorph",
@@ -329,7 +340,7 @@
       "conditioned-allomorphs",
       "workflow"
     ],
-    "redirect": "Use for one morpheme with several pattern-based forms. Plain spelling variants use an alternate form; a new morpheme needs its own entry (guide conditioned-allomorphs)."
+    "redirect": "Use only if one morpheme has another pattern-based form; otherwise use compose-author-alternate-form for a plain form, or a new entry for a new morpheme. If the forms follow sound, look for a phonological rule (guide conditioned-allomorphs)."
   },
   "compose-author-alternate-form": {
     "title": "Author an alternate form",
@@ -343,7 +354,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Use for a listed variant of one morpheme. Not for a regular sound change, a phonological rule (guide nasal-assimilation), or a pattern-based form (compose-author-affix-process-allomorph)."
+    "redirect": "Use only if one morpheme has a listed form that no regular sound pattern predicts; otherwise use a phonological rule when the project parses with HermitCrab. Forms that share one natural-class environment are already the intended model (guide conditioned-allomorphs)."
   },
   "compose-author-part-of-speech": {
     "title": "Author a part of speech",
@@ -358,7 +369,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Add a category only when the evidence needs one; slots and classes belong to a category, so author it before them (guide suffix-prefix-slots)."
+    "redirect": "Use only if stems need their own category for slots, templates or classes; otherwise use an existing category, or a subcategory under it, which inherits its templates and slots (guide suffix-prefix-slots)."
   },
   "compose-author-affix-slot": {
     "title": "Author an affix slot",
@@ -373,7 +384,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
+    "redirect": "Use only if the category has a new position for affixes in speakers' order; otherwise reuse a slot with compose-edit-inflectional-affix. Put it on the highest category that shares it; never one slot per stem or class (guide suffix-prefix-slots)."
   },
   "compose-author-affix-template": {
     "title": "Author an affix template",
@@ -388,7 +399,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
+    "redirect": "Use only if the category needs another slot order; otherwise change the template with compose-edit-affix-template. A template on a parent category also serves its subcategories, so never one per stem or class (guide suffix-prefix-slots)."
   },
   "compare": {
     "title": "Compare two Assessments",
@@ -599,7 +610,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Only disables or enables an existing prohibition. Prefer a slot, template, feature or environment that removes the need (guides suffix-prefix-slots, feature-conditioned-slots)."
+    "redirect": "Use only if an existing prohibition should be switched off or on; otherwise remove the need with a slot, template, feature or environment (guides suffix-prefix-slots, feature-conditioned-slots)."
   },
   "compose-author-adhoc-prohibition": {
     "title": "Create an ad hoc prohibition",
@@ -623,7 +634,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Last resort. Prefer a slot, template, feature or environment that removes the need before forbidding a combination (guides suffix-prefix-slots, feature-conditioned-slots)."
+    "redirect": "Use only if slots, templates, inflection classes, features and environments cannot rule out the wrong parse; otherwise use them. Make it as tight as possible: adjacent before somewhere before anywhere (guides suffix-prefix-slots, feature-conditioned-slots)."
   },
   "compose-author-compound-rule": {
     "title": "Create a compound rule",
@@ -648,7 +659,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "Creates the rule only; it sets no linker, features or stem allomorph. Trial known compounds and ask the linguist first (guide workflow)."
+    "redirect": "Use only if the language joins stems of two known categories productively; otherwise enter the compound as a stem. If the rule builds non-words, restrict its members with exception features; ask the linguist first (guide workflow)."
   },
   "compose-edit-compound-rule": {
     "title": "Turn a compound rule off or on",
@@ -669,7 +680,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "Only turns existing compounding off or on; it builds and fixes nothing. Trial known compounds before and after, and ask the linguist first (guide workflow)."
+    "redirect": "Use only if an existing compound rule should be switched off or on; otherwise restrict its members with exception features, or author a narrower rule. Trial known compounds before and after, and ask the linguist (guide workflow)."
   },
   "compose-set-entry-do-not-parse": {
     "title": "Set entry parsing flag",
@@ -689,7 +700,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "The flag changes no parse, so it does not retire an entry. To stop a stem parsing, retype or delete it."
+    "redirect": "Use only if FieldWorks' do-not-parse flag must be recorded; otherwise retype or delete it to stop a stem parsing. Every parser still parses a flagged entry."
   },
   "lexicon-import": {
     "title": "Lexicon import and attribution",
@@ -715,7 +726,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "Only records the source and licence in the Bibliography field; it authors no entry. Also stage compose-set-project-attribution once for the project."
+    "redirect": "Use only if imported entries need their source and licence recorded; otherwise state the project notice with compose-set-project-attribution, once per project. It authors no entry."
   },
   "compose-set-project-attribution": {
     "title": "State the project's source",
@@ -734,7 +745,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "Only states the source and licence in the project Description; per-entry tags are staged by compose-set-entry-attribution."
+    "redirect": "Use only if the project needs its one source and licence notice; otherwise tag entries with compose-set-entry-attribution."
   },
   "compose-set-no-default-compounding": {
     "title": "Set default compounding",
@@ -753,7 +764,7 @@
     "guides": [
       "workflow"
     ],
-    "redirect": "Only turns the parser's built-in default compounding off or on; it authors no compound rule. Trial known compounds first and ask the linguist (guide workflow)."
+    "redirect": "Use only if the parser's default compounding builds non-words; otherwise keep it, or author real compounds with compose-author-compound-rule. Trial known compounds first and ask the linguist (guide workflow)."
   },
   "compose-set-affix-max-apps": {
     "title": "Set an affix's repeat count",
@@ -774,7 +785,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "Only sets one existing affix's repeat count; it repeats no template slot. Trial repeated forms first and ask the linguist (guide workflow)."
+    "redirect": "Use only if the language repeats this one affix within a word; otherwise leave it at one. HermitCrab tries a form once per word, so Trial repeated forms and ask the linguist (guide workflow)."
   },
   "compose-set-not-on-clitics": {
     "title": "Set rules on clitics",
@@ -794,7 +805,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "Only chooses where phonological rules run relative to clitics; it authors no rule or clitic. Trial clitic words first and ask the linguist (guide workflow)."
+    "redirect": "Use only if phonological rules must also see the attached clitic; otherwise keep the default. Trial clitic words first and ask the linguist (guide workflow)."
   },
   "compose-set-character-class": {
     "title": "Set a character's class",
@@ -815,7 +826,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "Only moves characters between word and punctuation; no other writing-system setting. Trial the affected Texts and ask the linguist (guide workflow)."
+    "redirect": "Use only if a character is wrongly read as part of a word or as punctuation; otherwise leave writing-system settings alone. Trial the affected Texts and ask the linguist (guide workflow)."
   },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
@@ -831,7 +842,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
+    "redirect": "Use only if a slot is renamed or becomes optional or obligatory; otherwise move affixes with compose-edit-inflectional-affix. A slot is obligatory unless marked optional (guide suffix-prefix-slots)."
   },
   "compose-edit-affix-template": {
     "title": "Edit an affix template",
@@ -846,7 +857,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
+    "redirect": "Use only if the category's slot order or membership changes; otherwise author another template with compose-author-affix-template for a separate order. Never one template per stem or class (guide suffix-prefix-slots)."
   },
   "compose-edit-inflectional-affix": {
     "title": "Edit an inflectional affix",
@@ -860,7 +871,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
+    "redirect": "Use only if an inflectional affix belongs in other slots of its category; otherwise author a slot with compose-author-affix-slot. Never copy an affix per slot or per stem class (guide suffix-prefix-slots)."
   },
   "compose-edit-part-of-speech-inflection-class-default": {
     "title": "Set a category class default",
@@ -880,7 +891,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Sets only the default class for a category's stems. Use it when most stems share a class, not to cover exceptions (guide feature-conditioned-slots)."
+    "redirect": "Use only if most stems of the category share one inflection class; otherwise set classes on stems with compose-edit-stem-inflection-class. A default never covers exceptions (guide feature-conditioned-slots)."
   },
   "compose-edit-stem-allomorph-stem-name": {
     "title": "Set a stem allomorph's name",
@@ -899,7 +910,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation)."
+    "redirect": "Use only if one stem form occurs only with certain inflection features; otherwise use environments for sound-conditioned forms, or a phonological rule for a regular change (guide conditioned-allomorphs)."
   },
   "compose-edit-stem-inflection-class": {
     "title": "Set a stem's class",
@@ -919,7 +930,7 @@
     "guides": [
       "feature-conditioned-slots"
     ],
-    "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
+    "redirect": "Use only if the stem belongs to a declension or conjugation class its affix forms follow; otherwise use a feature for agreement. If you see a class with one stem, look for an exception feature or listed form (guide feature-conditioned-slots)."
   },
   "compose-link-variant": {
     "title": "Link a variant",
@@ -934,7 +945,8 @@
     "goals": [
       "Link a variant to its main entry",
       "Replace a variant's target or type"
-    ]
+    ],
+    "redirect": "Use only if the variant reference exists and its main entry, sense or type is wrong; otherwise create the link with compose-make-variant-of. An irregularly inflected variant needs no senses: compose-strip-variant-senses."
   },
   "compose-make-variant-of": {
     "title": "Make an entry a variant",
@@ -951,7 +963,8 @@
       "Mark an entry as a spelling variant of another entry",
       "Make one existing entry a variant of another",
       "Record a dialect or free variant of a main entry"
-    ]
+    ],
+    "redirect": "Use only if the entry is a form of another entry's meaning, such as an irregular plural or a spelling variant; otherwise keep it a separate entry. Many at once: compose-make-variants-of; copied senses: compose-strip-variant-senses."
   },
   "compose-make-variants-of": {
     "title": "Make many entries variants",
@@ -966,7 +979,8 @@
     "goals": [
       "Convert cross-reference stub entries to variants in bulk",
       "Make a list of existing entries variants of their main entries"
-    ]
+    ],
+    "redirect": "Use only if many existing entries are each a form of another entry with one variant type; otherwise link one with compose-make-variant-of. If the variants share a regular pattern, look for an affix or phonological rule."
   },
   "compose-strip-variant-senses": {
     "title": "Strip copied variant senses",
@@ -979,7 +993,8 @@
     "goals": [
       "Replace a copied gloss and analysis on a stem variant with the main sense",
       "Clean up two-stem entries that copy their main entry"
-    ]
+    ],
+    "redirect": "Use only if variants copy their main entry's sense; otherwise link them with compose-make-variant-of. An irregularly inflected variant must have no senses, or the parser does not read it as intended."
   },
   "compose-author-variant-entry": {
     "title": "Author a variant entry",
@@ -998,7 +1013,8 @@
     "goals": [
       "Add a second shape of a stem as a variant of its sense",
       "Create a sense-less variant of a sense"
-    ]
+    ],
+    "redirect": "Use only if the form is an irregular or spelling variant of one sense and has no meaning of its own; otherwise link an existing entry with compose-make-variant-of. If many variants share one pattern, look for an affix or phonological rule."
   },
   "compose-delete-empty-sense": {
     "title": "Delete an empty sense",
@@ -1013,7 +1029,8 @@
       "Remove an empty sense from a variant entry",
       "Delete a sense and its unused analysis",
       "Clean up blank senses left by an import"
-    ]
+    ],
+    "redirect": "Use only if the sense has no gloss, definition or example and nothing refers to it; otherwise use compose-delete-sense, or keep its content with compose-move-sense-to-entry."
   },
   "compose-move-sense-to-entry": {
     "title": "Move a sense to a new entry",
@@ -1031,7 +1048,8 @@
       "Give a derived word its own entry",
       "Take a headword out of its root's senses",
       "Split a sense into an entry of its own"
-    ]
+    ],
+    "redirect": "Use only if the sense is a separate word whose meaning does not follow from its parts; otherwise keep it, or parse the word with a derivational affix. If you see a regular derivation folded in as a sense, parse it."
   },
   "compose-delete-lexical-entry": {
     "title": "Delete an entry",
@@ -1045,7 +1063,8 @@
       "Delete a duplicate entry after its forms moved to another entry",
       "Replace an old entry with a new one",
       "Remove an entry that was added by mistake"
-    ]
+    ],
+    "redirect": "Use only if the entry is redundant and nothing refers to it; otherwise merge it with compose-merge-lexical-entries or link it with compose-make-variant-of. If you see whole words for a regular derivation, delete them once the affix parses them."
   },
   "compose-merge-lexical-entries": {
     "title": "Merge entries",
@@ -1060,7 +1079,8 @@
       "Merge two entries for one word into one entry",
       "Merge a duplicate entry into the entry that stays",
       "Keep a spelling variant's form as an alternate form of the main entry"
-    ]
+    ],
+    "redirect": "Use only if both entries are one morpheme with one meaning; otherwise link a variant with compose-make-variant-of. If you see one morpheme spread over several entries, merge them and keep its forms as alternate forms."
   },
   "compose-delete-sense": {
     "title": "Delete a sense",
@@ -1075,7 +1095,8 @@
       "Delete a meaning that now duplicates a separate entry",
       "Delete a nested meaning that repeats its parent",
       "Clean up meanings folded into a root entry"
-    ]
+    ],
+    "redirect": "Use only if the meaning is kept elsewhere and nothing refers to the sense; otherwise move it with compose-move-sense-to-entry or compose-set-sense-msa. An empty sense uses compose-delete-empty-sense."
   },
   "compose-move-example": {
     "title": "Move an example to another sense",
@@ -1092,7 +1113,8 @@
       "Keep an example when a duplicate meaning is deleted",
       "Put an example under the meaning it illustrates",
       "Gather the examples of two entries onto one meaning"
-    ]
+    ],
+    "redirect": "Use only if the example illustrates another sense better than its own; otherwise add a new one with compose-add-example."
   },
   "compose-add-example": {
     "title": "Add an example to a sense",
@@ -1111,7 +1133,8 @@
       "Record a sentence that shows how a meaning is used",
       "Add an example with a translation",
       "Give a new meaning its first example"
-    ]
+    ],
+    "redirect": "Use only if the sentence shows how this one sense is used; otherwise move an existing example with compose-move-example, or keep notes on form in compose-edit-lexical-note."
   },
   "compose-add-sense": {
     "title": "Add a sense to an entry",
@@ -1130,7 +1153,7 @@
       "Add a sense under the analysis an entry already has",
       "Record a further gloss for a lexeme found in the texts"
     ],
-    "redirect": "Use when the entry's existing analysis suits the new meaning. A new meaning that needs its own grammatical analysis: compose-add-morphosyntax-analysis with gloss. A meaning that is a separate word: compose-author-lexical-entry."
+    "redirect": "Use only if the new meaning shares the entry's existing analysis and forms; otherwise use compose-add-morphosyntax-analysis for its own analysis, or compose-author-lexical-entry for a separate word."
   },
   "compose-set-sense-msa": {
     "title": "Re-point a meaning's analysis",
@@ -1146,7 +1169,7 @@
       "Choose the analysis that suits a meaning",
       "Re-file a meaning without deleting it"
     ],
-    "redirect": "Use when the entry already has the analysis. An analysis the entry lacks: compose-add-morphosyntax-analysis with senses. A sense that should be an entry of its own: compose-move-sense-to-entry."
+    "redirect": "Use only if the entry already has the analysis the sense needs; otherwise add it with compose-add-morphosyntax-analysis, or give the sense its own entry with compose-move-sense-to-entry."
   },
   "compose-remove-alternate-form": {
     "title": "Remove an alternate form",
@@ -1161,7 +1184,8 @@
       "Remove an alternate form that was added as a stand-in for an entry",
       "Remove a redundant allomorph",
       "Drop an alternate spelling nothing uses"
-    ]
+    ],
+    "redirect": "Use only if nothing refers to the form and no word needs it; otherwise move its references first. If you see many listed forms that one rule predicts, remove them once the rule parses their words."
   },
   "compose-retire-affix-slot": {
     "title": "Retire an affix slot",
@@ -1179,7 +1203,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "Move the slot's affixes and drop it from its templates first. To rename it or make it optional, edit it instead (guide suffix-prefix-slots)."
+    "redirect": "Use only if no affix or template uses the slot any more; otherwise move its affixes with compose-edit-inflectional-affix first. To rename it or make it optional, use compose-edit-affix-slot (guide suffix-prefix-slots)."
   },
   "compose-delete-exception-feature": {
     "title": "Delete an exception feature",
@@ -1194,7 +1218,8 @@
       "Free room under the 64-feature cap",
       "Drop a tag that nothing refers to any more",
       "Delete a duplicate after merging its uses"
-    ]
+    ],
+    "redirect": "Use only if nothing uses the exception feature any more; otherwise use compose-remove-exception-feature, which clears every use in one Proposal."
   },
   "compose-delete-environment": {
     "title": "Delete a phonological environment",
@@ -1208,7 +1233,8 @@
     "goals": [
       "Delete an environment nothing uses",
       "Clean up environments left behind by a rule or allomorph change"
-    ]
+    ],
+    "redirect": "Use only if no form or rule uses the environment any more; otherwise move its users first with compose-edit-allomorph-condition. If you see many literal environments, replace them with one natural-class environment or a phonological rule."
   },
   "compose-delete-natural-class": {
     "title": "Delete a natural class",
@@ -1222,7 +1248,8 @@
     "goals": [
       "Delete a natural class nothing uses",
       "Clean up classes left behind after a merge"
-    ]
+    ],
+    "redirect": "Use only if no rule, environment or other class uses the class; otherwise move its users with compose-relink-natural-class first. Two classes with the same members today may differ once features change."
   },
   "compose-delete-text-segment-note": {
     "title": "Delete a text segment Note",
@@ -1236,7 +1263,8 @@
     "goals": [
       "Remove a stale placeholder Note",
       "Clear a Note that no longer applies"
-    ]
+    ],
+    "redirect": "Use only if one Note of one segment should go; otherwise replace segment Notes in bulk with compose-edit-text-notes."
   },
   "compose-retire-boundary-marker": {
     "title": "Retire a boundary marker",
@@ -1250,7 +1278,8 @@
       "Clear a refusal that the phoneme set has conflicting boundary markers",
       "Remove a second plus marker that no rule uses",
       "Retire a duplicate word boundary marker"
-    ]
+    ],
+    "redirect": "Use only if the duplicate boundary marker is unused; otherwise repoint its users with compose-merge-boundary-markers."
   },
   "compose-rewrite-lexeme-form": {
     "title": "Rewrite lexeme forms",
@@ -1270,7 +1299,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation)."
+    "redirect": "Use only if main forms should hold the underlying form that rules start from; otherwise edit one listed form with compose-edit-allomorph-form. Keep one entry per morpheme (guide conditioned-allomorphs)."
   },
   "compose-set-stem-part-of-speech": {
     "title": "Set a stem's part of speech",
@@ -1291,7 +1320,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Changes one stem's category, and with it which slots its affixes may fill. Check the evidence that the stem belongs to that category first (guide suffix-prefix-slots)."
+    "redirect": "Use only if the evidence says the stem belongs to another category; otherwise add an analysis with compose-add-morphosyntax-analysis for a form that serves both. Its affixes' slots follow the category (guide suffix-prefix-slots)."
   },
   "compose-edit-affix-inflection-classes": {
     "title": "Edit affix class restrictions",
@@ -1313,7 +1342,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "For inflectional affixes only. Use compose-edit-derivational-affix-restriction for derivational affixes; use a feature for agreement (guide feature-conditioned-slots)."
+    "redirect": "Use only if an inflectional affix form goes on some inflection classes only; otherwise use compose-edit-derivational-affix-restriction for derivation, or a feature for agreement. Tag every form of the entry (guide feature-conditioned-slots)."
   },
   "compose-edit-derivational-affix-restriction": {
     "title": "Restrict a derivational affix",
@@ -1338,7 +1367,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes)."
+    "redirect": "Use only if a derivational affix takes or gives one inflection class or exception-feature set; otherwise use compose-edit-affix-inflection-classes for an inflectional form. One analysis on a parent class covers its subclasses (guide suffix-prefix-slots)."
   },
   "compose-author-exception-feature": {
     "title": "Add an exception feature",
@@ -1358,7 +1387,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "Add a feature only for a lexical class with a reason, since a feature per stem is just a stem list (guides suffix-prefix-slots)."
+    "redirect": "Use only if an affix, rule or compound must be limited to an arbitrary set of stems; otherwise use an inflection class for a declension or conjugation, or a category. A feature for one stem is a stem list (guide suffix-prefix-slots)."
   },
   "compose-edit-exception-features": {
     "title": "Set exception features",
@@ -1377,7 +1406,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "For a stem, clitic or inflectional affix. A derivational affix uses compose-edit-derivational-affix-restriction (guides suffix-prefix-slots)."
+    "redirect": "Use only if one stem, clitic or inflectional affix carries an arbitrary restriction; otherwise use an inflection class, or compose-edit-derivational-affix-restriction for derivation. Many stems: compose-tag-stems-by-query (guide suffix-prefix-slots)."
   },
   "compose-add-exception-features": {
     "title": "Add exception features to many entries",
@@ -1397,7 +1426,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "Adds only; compose-edit-exception-features replaces one entry's whole set, and compose-edit-derivational-affix-restriction replaces a derivational affix's sets (guides suffix-prefix-slots)."
+    "redirect": "Use only if an affix or rule is limited to an arbitrary list of stems that no category, inflection class or sound picks out; otherwise use those. For stems a query selects, use compose-tag-stems-by-query (guide suffix-prefix-slots)."
   },
   "compose-tag-stems-by-query": {
     "title": "Tag stems by query",
@@ -1418,7 +1447,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "Tags stems only; it edits no rule or affix, so afterwards set the rule's required or excluded features with compose-edit-phonological-rule-features (guides suffix-prefix-slots)."
+    "redirect": "Use only if the stems share no category, sound context or inflection class a rule or affix could name instead; otherwise use that. Then gate the rule with compose-edit-phonological-rule-features (guide suffix-prefix-slots)."
   },
   "compose-remove-exception-feature": {
     "title": "Remove exception feature",
@@ -1437,7 +1466,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "Does not edit affix restrictions; compose-tag-stems-by-query tags or untags stems by a query, and compose-edit-phonological-rule-features sets one rule's sets (guides suffix-prefix-slots)."
+    "redirect": "Use only if the exception feature should go from every stem and rule; otherwise untag stems with compose-tag-stems-by-query, or set one rule's sets with compose-edit-phonological-rule-features (guide suffix-prefix-slots)."
   },
   "compose-edit-phonological-rule-features": {
     "title": "Set rule features",
@@ -1456,7 +1485,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "For a rule that exists. Tag the stems with compose-edit-exception-features first."
+    "redirect": "Use only if a rule applies to some stems only, by exception feature or inflection class; otherwise narrow its context, or limit it by category with inputCategories in compose-edit-phonological-rule. Tag stems with compose-tag-stems-by-query (guide suffix-prefix-slots)."
   },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",
@@ -1470,7 +1499,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation)."
+    "redirect": "Use only if one form's environments are wrong; otherwise fix the shared environment itself. Write environments with natural classes; under HermitCrab a regular alternation can instead be one phonological rule (guide conditioned-allomorphs)."
   },
   "compose-edit-natural-class": {
     "title": "Edit a natural class",
@@ -1485,7 +1514,7 @@
       "nasal-assimilation",
       "conditioned-allomorphs"
     ],
-    "redirect": "Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation)."
+    "redirect": "Use only if the class lacks a sound its pattern needs or has one it must not; otherwise author a separate class. Every listed user changes with it (guide nasal-assimilation)."
   },
   "compose-relink-natural-class": {
     "title": "Relink natural-class users",
@@ -1499,7 +1528,7 @@
       "nasal-assimilation",
       "conditioned-allomorphs"
     ],
-    "redirect": "Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation)."
+    "redirect": "Use only if some users of a class should move to a replacement class; otherwise change the class itself with compose-edit-natural-class (guide nasal-assimilation)."
   },
   "find-composer": {
     "title": "Find a composer",
@@ -1513,7 +1542,7 @@
     "guides": [
       "workflow"
     ],
-    "redirect": "Prefer the specific typed composer; batch only stages several in one Draft. One small Proposal per grammar question (guide workflow)."
+    "redirect": "Use only if one grammar question needs several intents in one Draft; otherwise call the typed composer. A forEach repeating one change over many stems usually belongs in an inflection class, phonological rule, natural class or stem name (guide workflow)."
   },
   "compose": {
     "title": "Compose steps in a Draft",
@@ -1522,7 +1551,7 @@
     "guides": [
       "workflow"
     ],
-    "redirect": "Prefer the specific typed composer; batch only stages several in one Draft. One small Proposal per grammar question (guide workflow)."
+    "redirect": "Use only if several typed steps must stand or fall together; otherwise call the typed composer. If you see one step repeated per stem, look for an inflection class, phonological rule, natural class or stem name (guide workflow)."
   },
   "compose-author-text": {
     "title": "Author a text",
@@ -1532,7 +1561,8 @@
       "Enter a text to analyse",
       "Add an interlinear text paragraph by paragraph",
       "Create a text from segments of words"
-    ]
+    ],
+    "redirect": "Use only if the project lacks the Text you want to analyse; otherwise edit its segment Notes with compose-edit-text-notes. A Text is evidence, not grammar."
   },
   "compose-edit-text-notes": {
     "title": "Edit the Notes of existing text segments",
@@ -1547,7 +1577,8 @@
       "Replace placeholder Notes on many words of an existing Text",
       "Set the Note of a segment of an existing Text",
       "Record dispositions on tracked words in bulk"
-    ]
+    ],
+    "redirect": "Use only if you replace segment Notes, giving one intent with many edits; otherwise remove one Note with compose-delete-text-segment-note. Notes change no parse."
   },
   "compose-record-source-validated-decision": {
     "title": "Stage a source-validated decision",
@@ -1564,7 +1595,8 @@
       "Record that a published grammar and dictionary support an analysis",
       "Record why a spelling is a typo or ill-formed without changing its spelling status",
       "Stage an approval from cited sources that is clearly not a person's"
-    ]
+    ],
+    "redirect": "Use only if a named program made the decision from cited sources; otherwise a person's decision uses compose-edit-analysis-decision. It never stands for a person's agreement."
   },
   "compose-edit-analysis-decision": {
     "title": "Decide an analysis",
@@ -1579,7 +1611,7 @@
     "guides": [
       "ask-the-linguist"
     ],
-    "redirect": "Records a decision about an analysis. If the evidence does not decide, ask the linguist instead of guessing (guide ask-the-linguist)."
+    "redirect": "Use only if the evidence decides the analysis; otherwise ask the linguist instead of guessing. A program's decision from cited sources uses compose-record-source-validated-decision (guide ask-the-linguist)."
   },
   "order-allomorphs": {
     "title": "Order alternate forms",
@@ -1605,7 +1637,7 @@
     "guides": [
       "feature-conditioned-slots"
     ],
-    "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
+    "redirect": "Use only if an affix or stem carries or requires inflection features such as person or tense; otherwise use an inflection class for arbitrary stem groups. Restrict by feature value instead of copying affixes or slots (guide feature-conditioned-slots)."
   },
   "compose-author-affix-process": {
     "title": "Author an affix process",
@@ -1632,7 +1664,7 @@
       "workflow",
       "conditioned-allomorphs"
     ],
-    "redirect": "Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation)."
+    "redirect": "Use only if the affix infixes, reduplicates or rewrites the stem; otherwise author a plain affix with compose-author-lexical-entry. Regular assimilation at a boundary is a phonological rule (guide nasal-assimilation)."
   },
   "compose-author-circumfix": {
     "title": "Author a circumfix",
@@ -1660,7 +1692,7 @@
       "workflow",
       "suffix-prefix-slots"
     ],
-    "redirect": "Use when one meaning is marked on both sides of the stem at once. Markers that can occur apart are two entries in slots (guide suffix-prefix-slots)."
+    "redirect": "Use only if one meaning is marked on both sides of the stem and neither part occurs alone; otherwise author two affixes in slots (guide suffix-prefix-slots)."
   },
   "compose-add-morphosyntax-analysis": {
     "title": "Add a grammatical analysis",
@@ -1685,7 +1717,7 @@
       "suffix-prefix-slots",
       "workflow"
     ],
-    "redirect": "Use when one form serves two categories. For a sense under its analysis: compose-add-sense. For an affix kind change: compose-change-affix-kind. A new entry: compose-author-lexical-entry."
+    "redirect": "Use only if one form also serves another category or class; otherwise add a sense with compose-add-sense or retype with compose-change-affix-kind. If you see one analysis added to many entries, look for a derivational affix, possibly zero."
   },
   "compose-author-allomorph-required-features": {
     "title": "Add Required Features",
@@ -1702,7 +1734,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Use for one form's Required Features; whole-affix requirements use compose-author-feature-structure."
+    "redirect": "Use only if one affix form is chosen by the word's inflection features, not by sound; otherwise use an environment for sound, or compose-author-feature-structure for the whole affix (guide conditioned-allomorphs)."
   },
   "compose-author-feature-value": {
     "title": "Author a feature value",
@@ -1722,7 +1754,7 @@
     "guides": [
       "feature-conditioned-slots"
     ],
-    "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
+    "redirect": "Use only if the structure must carry or require this feature value; otherwise use an inflection class for arbitrary stem groups. Restrict by feature value instead of copying affixes or slots per value (guide feature-conditioned-slots)."
   },
   "compose-remove-feature-value": {
     "title": "Remove a feature value",
@@ -1741,7 +1773,7 @@
     "guides": [
       "feature-conditioned-slots"
     ],
-    "redirect": "Remove a requirement only when the affix really takes every value; to change a value, remove it and author the new one (guide feature-conditioned-slots)."
+    "redirect": "Use only if the affix or stem really takes every value of the feature; otherwise change the value by removing it and authoring the new one with compose-author-feature-value (guide feature-conditioned-slots)."
   },
   "compose-author-phoneme": {
     "title": "Author a phoneme",
@@ -1756,7 +1788,7 @@
       "nasal-assimilation",
       "conditioned-allomorphs"
     ],
-    "redirect": "Add a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs)."
+    "redirect": "Use only if the orthography writes a sound that has no phoneme yet, or a rule needs it as output; otherwise add a spelling with compose-edit-phoneme. HermitCrab parses no word with an undefined phoneme (guide nasal-assimilation)."
   },
   "compose-edit-phoneme": {
     "title": "Edit a phoneme's representations",
@@ -1777,7 +1809,7 @@
       "nasal-assimilation",
       "conditioned-allomorphs"
     ],
-    "redirect": "Edit a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs)."
+    "redirect": "Use only if a phoneme has another written form of the same sound, such as a digraph; otherwise author a phoneme for a real contrast. HermitCrab reads the longest spelling first (guides nasal-assimilation, conditioned-allomorphs)."
   },
   "compose-author-phonological-feature": {
     "title": "Author a phonological feature",
@@ -1798,7 +1830,7 @@
       "nasal-assimilation",
       "archiphonemes"
     ],
-    "redirect": "Use for a phonological feature of sounds. An inflection or part-of-speech feature uses compose-author-inflection-feature; a word-level exception uses compose-author-exception-feature (guide archiphonemes)."
+    "redirect": "Use only if rules or natural classes need a phonological feature of sounds; otherwise use compose-author-inflection-feature for grammar, or compose-author-exception-feature for a stem list (guide archiphonemes)."
   },
   "compose-add-phonological-feature-value": {
     "title": "Add a phonological feature value",
@@ -1817,7 +1849,7 @@
     "guides": [
       "nasal-assimilation"
     ],
-    "redirect": "Extend a feature that exists. Create the feature first with compose-author-phonological-feature (guide nasal-assimilation)."
+    "redirect": "Use only if the feature exists and the language needs one more value of it; otherwise create the feature first with compose-author-phonological-feature (guide nasal-assimilation)."
   },
   "compose-edit-phoneme-features": {
     "title": "Set a phoneme's features",
@@ -1838,7 +1870,7 @@
       "nasal-assimilation",
       "archiphonemes"
     ],
-    "redirect": "Set the features of a phoneme that exists; a new phoneme can take features when it is authored (guides nasal-assimilation, archiphonemes)."
+    "redirect": "Use only if a phoneme's features must change so rules and classes pick it; otherwise give a new phoneme its features when authoring it. Specify each phoneme fully (guides nasal-assimilation, archiphonemes)."
   },
   "compose-edit-natural-class-features": {
     "title": "Edit a natural class's features",
@@ -1858,7 +1890,7 @@
     "guides": [
       "nasal-assimilation"
     ],
-    "redirect": "Change the feature constraints of a class defined by features. A class defined by segments changes its members with compose-edit-natural-class (guide nasal-assimilation)."
+    "redirect": "Use only if a class defined by features picks the wrong sounds; otherwise use compose-edit-natural-class for a class defined by segments. Every rule and environment using it changes too (guide nasal-assimilation)."
   },
   "compose-merge-phoneme": {
     "title": "Merge a phoneme into another",
@@ -1878,7 +1910,7 @@
       "nasal-assimilation",
       "conditioned-allomorphs"
     ],
-    "redirect": "Merge phonemes only when the language has no contrast between them, since the contrast cannot be recovered from the words afterwards (guides nasal-assimilation, conditioned-allomorphs)."
+    "redirect": "Use only if the language has no contrast between the two phonemes; otherwise keep both, since the contrast cannot be recovered from the words afterwards (guides nasal-assimilation, conditioned-allomorphs)."
   },
   "compose-split-phoneme": {
     "title": "Split a spelling into a phoneme",
@@ -1898,7 +1930,7 @@
       "nasal-assimilation",
       "conditioned-allomorphs"
     ],
-    "redirect": "Split a spelling out only for a real contrast, then add the new phoneme to its natural classes (guides nasal-assimilation, conditioned-allomorphs)."
+    "redirect": "Use only if a spelling marks a real contrast; otherwise keep it as another spelling of the phoneme. Then add the new phoneme to its natural classes and give it features (guides nasal-assimilation, conditioned-allomorphs)."
   },
   "compose-author-natural-class": {
     "title": "Author a natural class",
@@ -1913,7 +1945,7 @@
       "nasal-assimilation",
       "conditioned-allomorphs"
     ],
-    "redirect": "Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation)."
+    "redirect": "Use only if a rule or environment needs this set of sounds and no class has it yet; otherwise reuse that class. List only the sounds the pattern needs; one class replaces environments that list sounds one by one (guide nasal-assimilation)."
   },
   "compose-author-environment": {
     "title": "Author an environment",
@@ -1928,7 +1960,7 @@
       "conditioned-allomorphs",
       "nasal-assimilation"
     ],
-    "redirect": "Keep the environment as narrow as the evidence. For a regular change across many forms use a phonological rule, not environments (guide nasal-assimilation)."
+    "redirect": "Use only if a form's occurrence depends on neighbouring sounds; otherwise use a stem name, inflection class or required features. Name natural classes, not sound lists; an environment that spells one whole word is a stem list (guide conditioned-allomorphs)."
   },
   "show": {
     "title": "Show a Proposal",
@@ -2124,7 +2156,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation)."
+    "redirect": "Use only if an entry needs its main form written; otherwise add a form with compose-author-alternate-form. Keep one entry per morpheme, and leave a regular sound change to a phonological rule (guide conditioned-allomorphs)."
   },
   "list": {
     "title": "List Proposals",
@@ -2228,7 +2260,7 @@
     "guides": [
       "feature-conditioned-slots"
     ],
-    "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
+    "redirect": "Use only if the contrast has meaning or takes part in agreement, such as gender, number or tense; otherwise use an inflection class for arbitrary declension or conjugation groups (guide feature-conditioned-slots)."
   },
   "compose-author-inflection-class": {
     "title": "Author inflection class",
@@ -2243,7 +2275,7 @@
     "guides": [
       "feature-conditioned-slots"
     ],
-    "redirect": "Use only when stems arbitrarily pattern differently for the same affix. A value that must agree is a feature, not a class (guide feature-conditioned-slots)."
+    "redirect": "Use only if a group of stems takes different affix forms with the same meaning, not set by sound or agreement; otherwise use an inflection feature or environment. Define it at the highest category; one stem is not a class (guide feature-conditioned-slots)."
   },
   "compose-author-stem-name": {
     "title": "Author a stem name",
@@ -2257,7 +2289,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Only names feature conditions; attach it with compose-edit-stem-allomorph-stem-name. For sound-conditioned forms use environments, not a stem name (guide conditioned-allomorphs)."
+    "redirect": "Use only if a stem's form depends on the word's inflection features, such as a past-tense stem; otherwise use environments for sound, or an inflection class for stem groups. Attach it with compose-edit-stem-allomorph-stem-name (guide conditioned-allomorphs)."
   },
   "phonology-examples save": {
     "title": "Save phonology examples",
@@ -2298,7 +2330,8 @@
       "Make a stem form a clitic by changing its morph type",
       "Correct a stem form's morph type without recreating the entry",
       "Correct an affix's morph type, such as a prefix that is really a suffix, in place"
-    ]
+    ],
+    "redirect": "Use only if the form stays in its family, stem among stems or affix among affixes; otherwise author a new entry with compose-author-lexical-entry. If you see a prefix or suffix that lands inside the stem, retype it as an infix."
   },
   "compose-change-affix-kind": {
     "title": "Change an affix’s kind",
@@ -2319,7 +2352,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "Choose inflectional or derivational on the evidence and change it later if it was wrong; leaving an affix unclassified is a stopgap (guides suffix-prefix-slots)."
+    "redirect": "Use only if the evidence, such as paradigms or a category change, now decides inflectional or derivational; otherwise keep the kind. Unclassified is a stopgap that lets the parser find wrong parses (guide suffix-prefix-slots)."
   },
   "compose-edit-clitic-attachment": {
     "title": "Edit a clitic’s Attaches to Categories",
@@ -2335,7 +2368,8 @@
       "Restrict the categories a clitic attaches to",
       "Remove the Attaches to Categories restriction from a clitic",
       "Replace the set of parts of speech a clitic attaches to"
-    ]
+    ],
+    "redirect": "Use only if the clitic's Attaches to Categories list is wrong; otherwise leave it. A clitic that attaches to one category is still a clitic, since attachment, not category count, makes it one."
   },
   "compose-edit-phonological-rule": {
     "title": "Edit a sound rule",
@@ -2363,7 +2397,7 @@
       "feature-rules",
       "phonological-rules"
     ],
-    "redirect": "For a rule that exists. A new rule is compose-author-phonological-rule; features are compose-edit-phonological-rule-features."
+    "redirect": "Use only if an existing rule has the wrong output, context, cases or inputCategories; otherwise author a new rule, or gate it by stem with compose-edit-phonological-rule-features (guide phonological-rules)."
   },
   "compose-order-phonological-rules": {
     "title": "Reorder sound rules",
@@ -2383,7 +2417,7 @@
     "guides": [
       "nasal-assimilation"
     ],
-    "redirect": "Order matters whenever one rule feeds or bleeds another. Try a word that needs the chain."
+    "redirect": "Use only if one rule feeds or bleeds another; otherwise leave the order. Each rule reads the output of the one before it, so Trial a word that needs the chain (guide nasal-assimilation)."
   },
   "compose-set-phonological-rule-disabled": {
     "title": "Turn a sound rule off or on",
@@ -2398,7 +2432,8 @@
     "goals": [
       "Test a grammar without one rule",
       "Hold a rule back until its words are in"
-    ]
+    ],
+    "redirect": "Use only if you want the grammar without the rule while keeping it to restore; otherwise fix it with compose-edit-phonological-rule or remove it with compose-delete-phonological-rule."
   },
   "compose-delete-phonological-rule": {
     "title": "Delete a sound rule",
@@ -2412,7 +2447,8 @@
     "goals": [
       "Remove a rule that is wrong",
       "Clean up after a rule chain was rebuilt"
-    ]
+    ],
+    "redirect": "Use only if the rule is wrong or another rule now does its work; otherwise fix it with compose-edit-phonological-rule or switch it off with compose-set-phonological-rule-disabled. Trial the words it covered first."
   },
   "compose-merge-boundary-markers": {
     "title": "Merge a boundary marker",
@@ -2425,7 +2461,8 @@
     "goals": [
       "Clear a refusal that the phoneme set has conflicting boundary markers",
       "Merge a second plus marker that a rule already uses"
-    ]
+    ],
+    "redirect": "Use only if a duplicate word or morpheme boundary marker is used by rules or environments; otherwise remove an unused duplicate with compose-retire-boundary-marker."
   },
   "compose-edit-adhoc-prohibition-references": {
     "title": "Retarget a prohibition",
@@ -2445,7 +2482,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Use when a retained restriction must follow a replacement form or grammatical analysis of the same entry (guide conditioned-allomorphs)."
+    "redirect": "Use only if a kept prohibition must follow a replacement form or analysis of the same entry; otherwise delete it with compose-delete-adhoc-prohibition (guide conditioned-allomorphs)."
   },
   "compose-delete-adhoc-prohibition": {
     "title": "Delete a prohibition",
@@ -2463,7 +2500,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Remove a restriction when it should disappear; keep and retarget it when replacing forms (guide conditioned-allomorphs)."
+    "redirect": "Use only if a slot, feature or environment now rules out the combination, or the prohibition was wrong; otherwise keep it, retargeting it with compose-edit-adhoc-prohibition-references when forms are replaced (guide conditioned-allomorphs)."
   },
   "compose-delete-affix-process": {
     "title": "Delete an affix process",
@@ -2483,7 +2520,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Replace a pattern with a plain form after moving or removing every incoming reference (guide conditioned-allomorphs)."
+    "redirect": "Use only if a plain form or a phonological rule now does the pattern's work and every reference has moved; otherwise keep the pattern or add another with compose-author-affix-process-allomorph (guide conditioned-allomorphs)."
   },
   "compose-edit-allomorph-form": {
     "title": "Edit an allomorph form",
@@ -2504,7 +2541,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Edit an existing ordinary alternate in place. For a regular change across forms, use a phonological rule."
+    "redirect": "Use only if one listed form is misspelled; otherwise use a phonological rule for a regular change across forms, or compose-rewrite-lexeme-form for main forms (guide conditioned-allomorphs)."
   },
   "compose-edit-citation-form": {
     "title": "Edit a citation form",
@@ -2524,7 +2561,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Retain the selected source headword here. Parser forms need represented underlying distinctions and ordered rules for written realization."
+    "redirect": "Use only if the dictionary headword differs from the form the parser reads; otherwise fix the parser form with compose-rewrite-lexeme-form. A citation form changes no parse (guide conditioned-allomorphs)."
   },
   "compose-edit-definition": {
     "title": "Edit Definition",
@@ -2538,7 +2575,8 @@
     "goals": [
       "Write the full meaning in Definition",
       "Clear a Definition alternative"
-    ]
+    ],
+    "redirect": "Use only if the sense needs its full meaning written out; otherwise use compose-edit-gloss for a short equivalent or compose-edit-lexical-note for notes. A definition changes no parse."
   },
   "compose-edit-gloss": {
     "title": "Edit Gloss",
@@ -2552,7 +2590,8 @@
     "goals": [
       "Edit a short translation equivalent",
       "Clear a Gloss alternative"
-    ]
+    ],
+    "redirect": "Use only if the sense needs a short translation equivalent; otherwise use compose-edit-definition for the full meaning or compose-edit-lexical-note for notes."
   },
   "compose-edit-lexical-note": {
     "title": "Edit lexical notes",
@@ -2568,7 +2607,8 @@
       "Record an example word in an affix entry Note",
       "Edit a General Note or Grammar Note",
       "Record examples for particular allomorphs in their entry Note"
-    ]
+    ],
+    "redirect": "Use only if the text documents the entry, such as example words for an affix and its forms; otherwise use compose-edit-definition for meaning. A note changes no parse."
   },
   "source passage": {
     "title": "Read a Source Passage",
@@ -2610,7 +2650,8 @@
     "goals": [
       "Add a Bible translation as a Source",
       "Record which books a reference translation covers"
-    ]
+    ],
+    "redirect": "Use only if the project needs a new Paratext Source in its Motif Sources list; otherwise edit one with compose-set-source-name, compose-set-source-context or compose-set-source-status."
   },
   "compose-set-source-name": {
     "title": "Rename a Source",
@@ -2624,7 +2665,8 @@
     "goals": [
       "Change the display name of a Source",
       "Correct a misspelled Source name"
-    ]
+    ],
+    "redirect": "Use only if the display name of a Source changes; otherwise use compose-set-source-context, compose-set-source-versification or compose-set-source-status."
   },
   "compose-set-source-context": {
     "title": "Change a Source's Context",
@@ -2638,7 +2680,8 @@
     "goals": [
       "Change which books a Source covers",
       "Widen or narrow the chapters of a Source"
-    ]
+    ],
+    "redirect": "Use only if the Source covers different books or chapters; otherwise rename it with compose-set-source-name or change its versification with compose-set-source-versification."
   },
   "compose-set-source-versification": {
     "title": "Change a Source's versification",
@@ -2652,7 +2695,8 @@
     "goals": [
       "Switch a Source to the versification its text uses",
       "Fix a Source recorded with the wrong verse numbering"
-    ]
+    ],
+    "redirect": "Use only if the Source's versification is wrong and its Context still reads in the new one; otherwise change the Context first with compose-set-source-context."
   },
   "compose-set-source-status": {
     "title": "Remove or restore a Source",
@@ -2666,7 +2710,8 @@
     "goals": [
       "Stop using a Source without losing its id",
       "Bring back a Source that was removed"
-    ]
+    ],
+    "redirect": "Use only if a Source should leave the list or return to it; otherwise edit it with compose-set-source-context or compose-set-source-name. A removed Source keeps its id."
   },
   "source add": {
     "title": "Add a Source",
@@ -2835,6 +2880,7 @@
     "goals": [
       "Choose the analysis a word of a Source has",
       "Return an approved word of a Source to a guess"
-    ]
+    ],
+    "redirect": "Use only if one word of a Paratext Source has an analysis you checked; otherwise record a decision about a project analysis with compose-edit-analysis-decision."
   }
 }

@@ -3357,6 +3357,24 @@ try
                 }
                 return Usage(UsageLineFor("store upgrade"), asJson);
             }
+            if (positionals is ["backup"])
+            {
+                if (!flags.TryGetValue("project", out var backupProject) ||
+                    flags.Keys.Any(key => key is not ("project" or "to" or "json")))
+                    return Usage(UsageLineFor("store backup"), asJson);
+                result = RenderCommand(StoreBackupCommand.Backup(
+                    new StoreBackupRequest(backupProject, flags.GetValueOrDefault("to"))));
+                break;
+            }
+            if (positionals is ["restore", ..])
+            {
+                if (positionals.Count != 2 || !flags.TryGetValue("project", out var restoreProject) ||
+                    flags.Keys.Any(key => key is not ("project" or "force" or "json")))
+                    return Usage(UsageLineFor("store restore"), asJson);
+                result = RenderCommand(StoreBackupCommand.Restore(new StoreRestoreRequest(restoreProject, positionals[1],
+                    flags.TryGetValue("force", out var restoreForce) && IsTruthyFlag(restoreForce))));
+                break;
+            }
             if (positionals is ["relocate"] && flags.TryGetValue("project", out var relocateProject) &&
                 flags.Keys.All(key => key is "project" or "confirm" or "match-by-name" or "json"))
             {

@@ -432,6 +432,8 @@ public static class RefusalCodes
     public const string QueryRealizesNegationIncomplete = "query.realizes-negation-incomplete";
     /// <summary><c>realizes(M, attested)</c> found no stored analysis that uses the morpheme to read its forms from.</summary>
     public const string QueryRealizesNoParses = "query.realizes-no-parses";
+    /// <summary><c>--baseline-grammar</c> names the same file as <c>--grammar</c>, so nothing could change.</summary>
+    public const string QueryBaselineSameGrammar = "query.baseline-same-grammar";
     /// <summary><c>--twin</c> was given with no <c>form ~</c> or <c>form matches</c> regex to rewrite the matches of.</summary>
     public const string QueryTwinNeedsRegex = "query.twin-needs-regex";
     /// <summary><c>--twin</c> was given with several distinct <c>form ~</c> patterns, or one under <c>or</c>, so the rewrite has no single regex.</summary>
@@ -483,6 +485,21 @@ public static class RefusalCodes
     public const string QueryPhonFailed = "query.phon-failed";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
+
+    /// <summary><c>store backup</c> found no Motif store beside the project.</summary>
+    public const string StoreBackupNoStore = "store.backup-no-store";
+    /// <summary><c>store backup</c> was given a destination folder that already holds files; nothing was written.</summary>
+    public const string StoreBackupDestinationExists = "store.backup-destination-exists";
+    /// <summary><c>store restore</c> was given a folder with no readable backup receipt, or a receipt that names a file the folder lacks.</summary>
+    public const string StoreRestoreInvalid = "store.restore-invalid";
+    /// <summary><c>store restore</c> was given a backup whose store schema is newer than this build understands.</summary>
+    public const string StoreRestoreNewerSchema = "store.restore-newer-schema";
+    /// <summary><c>store restore</c> found a backed-up file whose sha256 differs from its receipt; nothing was changed.</summary>
+    public const string StoreRestoreChecksumMismatch = "store.restore-checksum-mismatch";
+    /// <summary><c>store restore</c> was given the backup of a different project's store; nothing was changed.</summary>
+    public const string StoreRestoreOtherProject = "store.restore-other-project";
+    /// <summary><c>store backup</c> was given a destination inside the store's own files or a folder Motif owns, such as its trial exports; nothing was written.</summary>
+    public const string StoreBackupDestinationOwned = "store.backup-destination-owned";
     public const string ProjectBusy = "project.busy";
     /// <summary>A runner that <c>worker stop</c> ended did not exit within the wait.</summary>
     public const string WorkerStopFailed = "worker.stop-failed";
