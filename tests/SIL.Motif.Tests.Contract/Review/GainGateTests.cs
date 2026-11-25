@@ -54,6 +54,38 @@ public sealed class GainGateTests
     }
 
     [Fact]
+    public void ARecordImportIsExemptAndAnAddedRuleKeepsItsOwnOutcome()
+    {
+        var policy = new GainGatePolicy(GainGateMode.Hold, 1.5);
+        var imported = GainSummary.Create(0, 0, Objects(40), policy, false, recordImport: true);
+        Assert.Equal(GainOutcome.RecordImport, imported.Gate.Outcome);
+        Assert.False(imported.Gate.Hold);
+        Assert.Equal(GainOutcome.UnderThreshold, GainSummary.Create(0, 0, Objects(40), policy, false).Gate.Outcome);
+        Assert.Equal(GainOutcome.RuleAdded,
+            GainSummary.Create(0, 0, Objects(5) with { PhonologicalRules = 1 }, policy, false, recordImport: true).Gate.Outcome);
+    }
+
+    [Fact]
+    public void AnImportNeverHidesIncompleteEvidenceNoObjectsOrAnOffPolicy()
+    {
+        var policy = new GainGatePolicy(GainGateMode.Hold, 1.5);
+        Assert.Equal(GainOutcome.Incomplete, GainSummary.Create(0, 0, Objects(9), policy, true, recordImport: true).Gate.Outcome);
+        Assert.Equal(GainOutcome.NoObjectsAdded, GainSummary.Create(0, 0, GrammarSizeDelta.None, policy, false, recordImport: true).Gate.Outcome);
+        Assert.Equal(GainOutcome.NotEvaluated,
+            GainSummary.Create(0, 0, Objects(9), new GainGatePolicy(GainGateMode.Off, 1.5), false, recordImport: true).Gate.Outcome);
+    }
+
+    [Fact]
+    public void TheRecordImportOutcomeIsNamedInTheContract()
+    {
+        var json = JsonSerializer.Serialize(GainSummary.Create(0, 0, Objects(2), GainGatePolicy.Default, false, recordImport: true),
+            ReviewJson.Options);
+        Assert.Contains("\"outcome\":\"record-import\"", json);
+        Assert.Equal(GainOutcome.RecordImport,
+            JsonSerializer.Deserialize<GainSummary>(json, ReviewJson.Options)!.Gate.Outcome);
+    }
+
+    [Fact]
     public void NoObjectsOrIncompleteEvidenceOrAnOffPolicyNeverHold()
     {
         var policy = new GainGatePolicy(GainGateMode.Hold, 1.5);

@@ -5,6 +5,8 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Analysis;
@@ -150,6 +152,8 @@ internal static class ReviewTrialCapture
                         GainGate = configuration.GainGate,
                         ParsimonyBlockOn = configuration.ParsimonyBlockOn.Count == 0 ? null : configuration.ParsimonyBlockOn,
                         VariantForms = VariantFormCapture.Read(cache, request.ReviewProposal),
+                        RecordImport = request.ReviewProposal is { } stored &&
+                            RecordImportProvenance.WritesEveryOperation(ProposalJsonParser.Parse(JobCommands.CanonicalProposalJson(stored))),
                     };
                 if (!request.NoBaseSample)
                     inputs = inputs with { DeclaredGate = DeclaredTrialGatePolicy.Capture(configuration, inputs) };

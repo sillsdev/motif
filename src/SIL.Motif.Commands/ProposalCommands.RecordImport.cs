@@ -52,7 +52,7 @@ public static partial class ProposalCommands
             {
                 var steps = new List<ComposeStep>
                 {
-                    new(null, "RecordImport", (cache, _) =>
+                    new(null, RecordImportProvenance.ComposerName, (cache, _) =>
                     {
                         lowering = lower(cache);
                         return (input(lowering), lowering.Operations);
