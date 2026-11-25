@@ -9,7 +9,8 @@ namespace SIL.Motif.Host.Store;
 /// from <see cref="MotifSchema"/>'s so the two files can never be mistaken for one another, pinned by
 /// <c>OpeningAProjectDatabaseAsAMachineDatabaseIsRefused</c> and
 /// <c>OpeningAMachineDatabaseAsAProjectDatabaseIsRefused</c>. Like <see cref="MotifSchema"/>, an existing
-/// database at any other schema is refused rather than migrated.
+/// database at any other schema is not migrated: ADR 0023 D7 rebuilds it empty after a backup, since it holds
+/// only recreatable records.
 /// </remarks>
 public static class MachineSchema
 {
