@@ -7,7 +7,7 @@ Filters combine, and every text comparison ignores case and Unicode normalizatio
 - `--form-regex <regex>` keeps entries where the headword, the lexeme form or an alternate form matches the regular expression, searched in NFC text; anchor with `^` and `$` for a whole form. A pattern that is invalid or takes over two seconds on one form is refused with `lexicon-find.invalid-request`.
 - `--suffix <text>` keeps entries where some form or the headword ends with the text.
 - `--class <name|id>` keeps entries with an analysis in that inflection class, by name, abbreviation, canonical id or guid. A class also matches through its parent, so naming a parent finds the stems of its subclasses.
-- `--query`, `--exact`, `--morph-type`, `--affix`, `--category`, `--headword`, `--headword-contains` and `--has-gloss` read as in [Read grammar objects](cmd:grammar-read). `--affix` and `--has-gloss` take `true` or `false`; alone they mean true.
+- `--query`, `--exact`, `--morph-type`, `--affix`, `--category`, `--headword`, `--headword-contains` and `--has-gloss` read as in [Read grammar objects](cmd:grammar%20read). `--affix` and `--has-gloss` take `true` or `false`; alone they mean true.
 - `--at baseline|<proposalId>` reads the grammar a Proposal's latest Trial ran against.
 
 `--id-format canonical|guid` spells every id in the result as a canonical id (the default, the form a Proposal's intent names) or as a hyphenated guid (the form the project file stores). Both spellings are accepted by `--class` and `--category`.

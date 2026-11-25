@@ -59,6 +59,7 @@ public sealed class LexiconFindArgvTests(PristineProjectFixture pristine) : IDis
     public void RefusesABadRegexAnOutOfRangePageAndAnUnknownIdFormat()
     {
         using var project = new WalkthroughProject(pristine, _root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), _root).Succeeded);
         foreach (var (extra, code) in new[]
                  {
                      (new[] { "--form-regex", "(" }, "lexicon-find.invalid-request"),
