@@ -118,7 +118,7 @@ public static class CorpusQueryCommand
             if (request.Twin is { Count: 0 }) return Invalid("twin takes a template such as '$1ில்'.");
             if (request.Twin is { Count: > 0 } templates)
             {
-                try { twins = TwinSet.Compile(where, templates); }
+                try { twins = TwinSet.Compile(where, templates, request.FoldCase); }
                 catch (ArgumentException exception) when (exception is not QueryRefusalException) { return Invalid(exception.Message); }
             }
             var twinColumns = QueryExprTools.Leaves(where).Select(leaf => leaf.Field).Concat(groupsColumns ?? []).Where(TwinSet.IsColumn).ToList();
@@ -205,8 +205,10 @@ public static class CorpusQueryCommand
                 }
                 catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
                 readings = new ParsedReadings(built.Index, catalogUsed);
-                readingsReport = readings.Report(words, needsClasses);
-                if (twins is not null) BindTwins(twins, corpus, readings, catalogUsed, request.GrammarPath!, cacheRoot, indexBuilder, parserPath, notice, cancellationToken);
+                var reported = words;
+                if (twins is not null)
+                    reported = [.. words, .. BindTwins(twins, corpus, readings, catalogUsed, request.GrammarPath!, cacheRoot, indexBuilder, parserPath, notice, cancellationToken)];
+                readingsReport = readings.Report(reported, needsClasses);
                 if (seqItems.Count > 0)
                 {
                     seqPlan = MorphSeqSupport.Compile(realizes is null ? where! : realizes.Lowered!, request.Adjacent, item =>
@@ -306,10 +308,10 @@ public static class CorpusQueryCommand
     }
 
     /// <summary>The most word types the twins may add to the corpus parse: one batch parses the ones the corpus lacks.</summary>
-    internal const int MaxAbsentTwins = 100_000;
+    internal static int MaxAbsentTwins { get; set; } = 100_000;
 
     // A twin of a corpus word reads the corpus index; one the corpus lacks is parsed by a cached batch of its own.
-    private static void BindTwins(TwinSet twins, CorpusWordList corpus, ParsedReadings readings, MorphCatalog? catalog, string grammarPath, string? cacheRoot,
+    private static IReadOnlyList<string> BindTwins(TwinSet twins, CorpusWordList corpus, ParsedReadings readings, MorphCatalog? catalog, string grammarPath, string? cacheRoot,
         IRealizesIndexBuilder? indexBuilder, string? parserPath, Action<string>? notice, CancellationToken cancellationToken)
     {
         var absent = twins.AbsentForms(corpus);
@@ -321,13 +323,16 @@ public static class CorpusQueryCommand
         {
             try
             {
-                var built = RealizesParseIndexCache.GetOrBuild(cacheRoot ?? RealizesParseIndexCache.DefaultRoot, grammarPath, absent,
+                // Their own folder, so a run of twin batches never evicts the corpus index.
+                var built = RealizesParseIndexCache.GetOrBuild(Path.Combine(cacheRoot ?? RealizesParseIndexCache.DefaultRoot, "twins"), grammarPath, absent,
                     indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), notice ?? (_ => { }), cancellationToken);
                 extra = new ParsedReadings(built.Index, catalog);
             }
             catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
         }
-        twins.Bind(corpus, form => readings.Get(form) ?? extra?.Get(form));
+        readings.Extra = extra;
+        twins.Bind(corpus, readings.Get);
+        return absent;
     }
 
     // One group per morpheme set, including the ones no word carries, so a stem list shows its zeros.

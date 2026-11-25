@@ -416,6 +416,8 @@ public static class RefusalCodes
     public const string QueryRealizesNoParses = "query.realizes-no-parses";
     /// <summary><c>--twin</c> was given with no <c>form ~</c> or <c>form matches</c> regex to rewrite the matches of.</summary>
     public const string QueryTwinNeedsRegex = "query.twin-needs-regex";
+    /// <summary><c>--twin</c> was given with several distinct <c>form ~</c> patterns, or one under <c>or</c>, so the rewrite has no single regex.</summary>
+    public const string QueryTwinRegexAmbiguous = "query.twin-regex-ambiguous";
     /// <summary>A <c>--twin</c> template names a group its regex does not have, or is malformed.</summary>
     public const string QueryTwinGroupUnknown = "query.twin-group-unknown";
     /// <summary><c>realizes(M, attested)</c> was given an id that no morph of the parse and no entry of the project carries.</summary>

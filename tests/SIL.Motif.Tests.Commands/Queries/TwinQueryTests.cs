@@ -62,13 +62,26 @@ public sealed class TwinQueryTests : IDisposable
     {
         public int Builds { get; private set; }
 
+        public int FailAt { get; set; }
+
+        public HashSet<string> Capped { get; } = [];
+
         public string Identity { get; } = "twin-recording".PadRight(16, '0');
 
         public string Build(string grammarPath, IReadOnlyList<string> words, CancellationToken cancellationToken)
         {
             Builds++;
+            if (Builds == FailAt) throw new RealizesIndexException("the twin batch failed");
             var path = Path.Combine(Directory.CreateTempSubdirectory("recorded-twin").FullName, "analyses.jsonl");
-            File.WriteAllText(path, Recording);
+            var text = Recording;
+            if (Capped.Count > 0)
+                text = string.Join("\n", Recording.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line =>
+                {
+                    var node = JsonNode.Parse(line)!;
+                    if (Capped.Contains((string)node["word"]!)) node["capped"] = true;
+                    return node.ToJsonString();
+                })) + "\n";
+            File.WriteAllText(path, text);
             return path;
         }
     }
@@ -155,5 +168,68 @@ public sealed class TwinQueryTests : IDisposable
     public void TheParseColumnsOfATwinNeedAGrammar()
     {
         Assert.Equal(RefusalCodes.QueryReadingsNeedsGrammar, Run(Suffix + " and twin.parse.state is \"none\"", ["$1il"], grammar: false).Refusal!.Code);
+    }
+
+    [Fact]
+    public void MoreThanOneDistinctRegexOrOneUnderOrIsRefusedAndTheSameRegexTwiceIsNot()
+    {
+        Assert.Equal(RefusalCodes.QueryTwinRegexAmbiguous, Run(Suffix + " and form ~ \"tamil\"", ["$1il"], grammar: false).Refusal!.Code);
+        Assert.Equal(RefusalCodes.QueryTwinRegexAmbiguous, Run(Suffix + " or form ~ \"plain\"", ["$1il"], grammar: false).Refusal!.Code);
+        Assert.Equal(RefusalCodes.QueryTwinRegexAmbiguous, Run("(" + Suffix + " or tokens > 3)", ["$1il"], grammar: false).Refusal!.Code);
+        Assert.Equal(RefusalCodes.QueryTwinRegexAmbiguous, Run(Suffix + " and form matches \".*\"", ["$1il"], grammar: false).Refusal!.Code);
+        Ok(Run(Suffix + " and " + Suffix + " and not form ~ \"zzz\"", ["$1il"], grammar: false));
+    }
+
+    [Fact]
+    public void TwinFormsAreNormalisedLikeCorpusFormsBeforeTheLookup()
+    {
+        // The corpus holds composed e-acute; the template types it decomposed.
+        File.WriteAllText(Path.Combine(_folder, "nfc.tsv"), "tam\u00e9lirunthu\t5\ntam\u00e9l\t9\n");
+        var response = Ok(RunCorpus(Path.Combine(_folder, "nfc.tsv"), "form ~ \"^(tam)\u00e9lirunthu$\"", ["$1e\u0301l"]));
+        var cell = Assert.Single(response.Rows.Single().Twins!);
+        Assert.Equal(("tam\u00e9l", 9L, true), (cell.Form, cell.Tokens, cell.InCorpus));
+        File.WriteAllText(Path.Combine(_folder, "fold.tsv"), "kadilirunthu\t5\nkadil\t2\n");
+        var folded = Ok(RunCorpus(Path.Combine(_folder, "fold.tsv"), "form ~ \"^(kad)ilirunthu$\"", ["$1IL"], foldCase: true));
+        var foldedCell = Assert.Single(folded.Rows.Single().Twins!);
+        Assert.Equal(("kadil", 2L, true), (foldedCell.Form, foldedCell.Tokens, foldedCell.InCorpus));
+        var plain = Ok(RunCorpus(Path.Combine(_folder, "fold.tsv"), "form ~ \"^(kad)ilirunthu$\"", ["$1IL"]));
+        Assert.False(plain.Rows.Single().Twins![0].InCorpus);
+    }
+
+    private CommandOutcome<CorpusFormsResponse> RunCorpus(string corpus, string where, string[] twin, bool foldCase = false) =>
+        CorpusQueryCommand.Forms(new CorpusFormsRequest(corpus, where, FoldCase: foldCase, Twin: twin), null, default, _builder, Path.Combine(_folder, "cache"));
+
+    [Fact]
+    public void ACappedTwinMakesTheReadingsReportIncompleteAndTheTwinBatchKeepsItsOwnFolder()
+    {
+        _builder.Capped.Add("vedil");
+        var response = Ok(Run(Suffix, ["$1il"]));
+        Assert.False(response.ReadingsInfo!.Complete);
+        Assert.Equal(1, response.ReadingsInfo.Capped);
+        Assert.Equal(6 + 2, response.ReadingsInfo.Types);
+        Assert.Equal("capped", response.Rows.Single(row => row.Form == "vedilirunthu").Twins![0].ParseState);
+        Assert.True(Directory.GetFiles(Path.Combine(_folder, "cache", "twins"), "*.gz").Length >= 1);
+    }
+
+    [Fact]
+    public void AFailedTwinBatchIsARefusedRunAndTooManyAbsentTwinsAreRefusedBeforeParsing()
+    {
+        _builder.FailAt = 2;
+        Assert.Equal(RefusalCodes.QueryRealizesIndexFailed, Run(Suffix, ["$1il"]).Refusal!.Code);
+        var cap = CorpusQueryCommand.MaxAbsentTwins;
+        try
+        {
+            CorpusQueryCommand.MaxAbsentTwins = 1;
+            var refused = Run(Suffix, ["$1il"]);
+            Assert.Equal(RefusalCodes.QueryCorpusInvalid, refused.Refusal!.Code);
+        }
+        finally { CorpusQueryCommand.MaxAbsentTwins = cap; }
+    }
+
+    [Fact]
+    public void DollarZeroIsTheMatchedSpanUnderContainsAndTheWholeWordUnderMatches()
+    {
+        Assert.Equal("tam[il]ilirunthu", Ok(Run("form ~ \"il\"", ["[$0]"], grammar: false)).Rows.Single(row => row.Form == "tamililirunthu").Twins![0].Form);
+        Assert.Equal("<kadilirunthu>", Ok(Run("form matches \"kad.*\"", ["<$0>"], grammar: false)).Rows.Single().Twins![0].Form);
     }
 }

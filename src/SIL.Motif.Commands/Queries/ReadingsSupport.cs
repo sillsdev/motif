@@ -122,7 +122,10 @@ internal sealed class ParsedReadings(RealizesParseIndex index, MorphCatalog? cat
     /// <summary>Whether morphs carry entry ids and classes.</summary>
     public bool HasCatalog => catalog is not null;
 
-    public WordReadings? Get(string word) => _cache.GetOrAdd(word, key => Index.Get(key) is { } indexed ? Convert(indexed) : null);
+    /// <summary>The parse of the twin forms the corpus lacks, which answers for them; null when there are none.</summary>
+    public ParsedReadings? Extra { get; set; }
+
+    public WordReadings? Get(string word) => _cache.GetOrAdd(word, key => Index.Get(key) is { } indexed ? Convert(indexed) : null) ?? Extra?.Get(word);
 
     private WordReadings Convert(IndexedWord indexed)
     {

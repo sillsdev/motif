@@ -29,8 +29,11 @@ public sealed class TwinSet
     private readonly IReadOnlyList<IReadOnlyList<Part>> _templates;
     private readonly Dictionary<string, TwinCell[]> _cells = new(StringComparer.Ordinal);
 
-    private TwinSet(Regex regex, IReadOnlyList<IReadOnlyList<Part>> templates)
+    private readonly bool _foldCase;
+
+    private TwinSet(Regex regex, IReadOnlyList<IReadOnlyList<Part>> templates, bool foldCase)
     {
+        _foldCase = foldCase;
         _regex = regex;
         _templates = templates;
     }
@@ -82,10 +85,16 @@ public sealed class TwinSet
 
     /// <summary>Compiles the templates against the regex of the first positive <c>form ~</c> or <c>form matches</c> of <paramref name="where"/>.</summary>
     /// <exception cref="QueryRefusalException">There is no such regex, a template is malformed or names a group the regex lacks, or the regex is not valid.</exception>
-    public static TwinSet Compile(QueryExpr? where, IReadOnlyList<string> templates)
+    public static TwinSet Compile(QueryExpr? where, IReadOnlyList<string> templates, bool foldCase = false)
     {
-        var leaf = FormRegex(where, true) ?? throw Refuse(RefusalCodes.QueryTwinNeedsRegex,
+        var found = new List<(QueryField Field, bool UnderOr)>();
+        FormRegexes(where, true, false, found);
+        if (found.Count == 0) throw Refuse(RefusalCodes.QueryTwinNeedsRegex,
             "--twin rewrites the words a `form ~ \"regex\"` (or `form matches`) predicate matches, so the where must have one that is not under `not`.");
+        if (found.Any(item => item.UnderOr) || found.Select(item => (item.Field.Op, (string)item.Field.Value)).Distinct().Count() > 1)
+            throw Refuse(RefusalCodes.QueryTwinRegexAmbiguous,
+                "--twin needs exactly one `form ~` or `form matches` pattern, and not under `or`, so every row has the twin of the same regex; split the query in two.");
+        var leaf = found[0].Field;
         var pattern = (string)leaf.Value;
         if (pattern.Length > FormQuery.MaximumRegexLength) throw new ArgumentException("Regular expression is too long.");
         Regex regex;
@@ -106,21 +115,23 @@ public sealed class TwinSet
                         $"The --twin template '{template}' names group '{group.Name}', which the regex '{pattern}' does not have (it has {Describe(regex)}).");
             parsed.Add(parts);
         }
-        return new TwinSet(regex, parsed);
+        return new TwinSet(regex, parsed, foldCase);
     }
 
     /// <summary>Whether the where has a twin column anywhere, or a twin column is asked for by a group.</summary>
     public static bool UsesColumns(QueryExpr? where, IEnumerable<string>? groups) =>
         QueryExprTools.Leaves(where).Any(leaf => IsColumn(leaf.Field)) || (groups?.Any(IsColumn) ?? false);
 
-    private static QueryField? FormRegex(QueryExpr? expr, bool positive) => expr switch
+    private static void FormRegexes(QueryExpr? expr, bool positive, bool underOr, List<(QueryField, bool)> found)
     {
-        QueryField { Field: "form", Op: QueryOps.Regex or QueryOps.Contains, Value: string } field when positive => field,
-        QueryAnd and => and.Items.Select(item => FormRegex(item, positive)).FirstOrDefault(found => found is not null),
-        QueryOr or => or.Items.Select(item => FormRegex(item, positive)).FirstOrDefault(found => found is not null),
-        QueryNot not => FormRegex(not.Item, !positive),
-        _ => null,
-    };
+        switch (expr)
+        {
+            case QueryField { Field: "form", Op: QueryOps.Regex or QueryOps.Contains, Value: string } field when positive: found.Add((field, underOr)); break;
+            case QueryAnd and: foreach (var item in and.Items) FormRegexes(item, positive, underOr, found); break;
+            case QueryOr or: foreach (var item in or.Items) FormRegexes(item, positive, true, found); break;
+            case QueryNot not: FormRegexes(not.Item, !positive, underOr, found); break;
+        }
+    }
 
     private static bool Exists(Regex regex, string name) =>
         int.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out var number)
@@ -179,7 +190,7 @@ public sealed class TwinSet
             foreach (var part in parts)
                 builder.Append(part is Literal literal ? literal.Text : match.Groups[((Group)part).Name].Value);
             builder.Append(word[(match.Index + match.Length)..]);
-            return builder.ToString();
+            return CorpusWordList.Normalize(builder.ToString(), _foldCase);
         })];
     }
 
