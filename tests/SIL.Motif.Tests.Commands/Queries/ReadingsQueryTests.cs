@@ -160,7 +160,7 @@ public sealed class ReadingsQueryTests(PristineProjectFixture pristine) : IDispo
         Assert.Equal(8, outcome.Value.Rows.Count);
         Assert.False(causes.Complete);
         Assert.Equal((4, 20 + 19 + 18 + 17), (causes.Words, (int)causes.Tokens));
-        Assert.Equal(["lexicalised-vs-derived", "same-morphs-reordered", "homophonous-affix", "other"], causes.Groups.Select(group => group.Cause));
+        Assert.Equal(["lexicalised-vs-derived", "same-morphs-reordered", "homophonous-affix", "boundary-shift"], causes.Groups.Select(group => group.Cause));
         var lexicalised = causes.Groups[0];
         Assert.Equal(("tofauti", 1, false), (lexicalised.Example.Word, lexicalised.Words, lexicalised.Benign));
         Assert.Equal(["tofauti"], lexicalised.Example.Readings[0].Morphs.Select(morph => morph.Text));
@@ -171,6 +171,7 @@ public sealed class ReadingsQueryTests(PristineProjectFixture pristine) : IDispo
         Assert.True(causes.Groups[2].Benign);
         Assert.Equal(("pendwa", "dupe"), (causes.Groups[2].Example.Word, causes.Groups[3].Example.Word));
         Assert.False(causes.Groups[3].Benign);
+        Assert.All(causes.Groups, group => Assert.Null(group.Detail));
     }
 
     [Fact]

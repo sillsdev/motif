@@ -31,7 +31,7 @@ public sealed class ReadingCausesTests
     {
         var fused = R(M("stem", "ab", 0, MorphKinds.Stem));
         var split = R(M("root", "a", 0, MorphKinds.Stem), M("infl", "b", 1, MorphKinds.Inflectional));
-        Assert.Equal(ReadingCause.Other, ReadingCause.Of([fused, split]));
+        Assert.Equal(ReadingCause.CliticOrStemSplit, ReadingCause.Of([fused, split]));
     }
 
     [Fact]
@@ -66,9 +66,9 @@ public sealed class ReadingCausesTests
     {
         var first = R(M("x", "pend", 0, msa: "s1"));
         var second = R(M("x", "pend", 0, msa: "s2"));
-        Assert.Equal(ReadingCause.Other, ReadingCause.Of([first, second]));
+        Assert.Equal((ReadingCause.SameSegmentation, ReadingCause.Mixed), ReadingCause.Classify([first, second]));
         var half = R(M("x", "pend", 0, MorphKinds.Inflectional, msa: "s1"));
-        Assert.Equal(ReadingCause.Other, ReadingCause.Of([half, second]));
+        Assert.Equal((ReadingCause.SameSegmentation, ReadingCause.Mixed), ReadingCause.Classify([half, second]));
     }
 
     [Fact]
@@ -76,9 +76,61 @@ public sealed class ReadingCausesTests
     {
         var first = R(M("root", "kul", 0), M("a", "ish", 3, MorphKinds.Derivational, msa: "d1"));
         var second = R(M("root", "kul", 0), M("a", "ish", 3, MorphKinds.Derivational, msa: "d2"));
-        Assert.Equal(ReadingCause.Other, ReadingCause.Of([first, second]));
+        Assert.Equal(ReadingCause.SameSegmentation, ReadingCause.Of([first, second]));
         var mixed = R(M("root", "kul", 0), M("a", "ish", 3, MorphKinds.Inflectional, msa: "i1"));
-        Assert.Equal(ReadingCause.Other, ReadingCause.Of([first, mixed]));
+        Assert.Equal(ReadingCause.SameSegmentation, ReadingCause.Of([first, mixed]));
+    }
+
+    [Fact]
+    public void TheSameSegmentationWithADifferentStemEntryIsLabelledStems()
+    {
+        var first = R(M("x", "lubas", 0, MorphKinds.Stem, msa: "s1"));
+        var second = R(M("x", "lubas", 0, MorphKinds.Stem, msa: "s2"));
+        Assert.Equal((ReadingCause.SameSegmentation, ReadingCause.Stems), ReadingCause.Classify([first, second]));
+        Assert.False(ReadingCause.Benign(ReadingCause.SameSegmentation));
+    }
+
+    [Fact]
+    public void TheSameSegmentationWithDifferentDerivationalAffixesIsLabelledAffixesAndStemPlusAffixIsMixed()
+    {
+        var first = R(M("root", "kul", 0, MorphKinds.Stem), M("a", "ish", 3, MorphKinds.Derivational, msa: "d1"));
+        var second = R(M("root", "kul", 0, MorphKinds.Stem), M("a", "ish", 3, MorphKinds.Derivational, msa: "d2"));
+        Assert.Equal((ReadingCause.SameSegmentation, ReadingCause.Affixes), ReadingCause.Classify([first, second]));
+        var both = R(M("root", "kul", 0, MorphKinds.Stem, msa: "s2"), M("a", "ish", 3, MorphKinds.Derivational, msa: "d2"));
+        Assert.Equal((ReadingCause.SameSegmentation, ReadingCause.Mixed), ReadingCause.Classify([first, both]));
+    }
+
+    [Fact]
+    public void InflectionalHomophonesAreMoreSpecificThanTheSameSegmentation()
+    {
+        var subject = R(M("root", "pend", 0, MorphKinds.Stem), M("a", "wa", 4, MorphKinds.Inflectional, msa: "sm"));
+        var obj = R(M("root", "pend", 0, MorphKinds.Stem), M("a", "wa", 4, MorphKinds.Inflectional, msa: "om"));
+        Assert.Equal((ReadingCause.HomophonousAffix, null), ReadingCause.Classify([subject, obj]));
+    }
+
+    [Fact]
+    public void ASingleStemAgainstAStemAndAShortMorphIsACliticOrStemSplit()
+    {
+        var whole = R(M("na", "na", 0, MorphKinds.Inflectional), M("tambug", "tambug", 2, MorphKinds.Stem));
+        var split = R(M("na", "na", 0, MorphKinds.Inflectional), M("tambu", "tambu", 2, MorphKinds.Stem), M("g", "g", 7, MorphKinds.Stem));
+        Assert.Equal((ReadingCause.CliticOrStemSplit, null), ReadingCause.Classify([whole, split]));
+        Assert.Equal((ReadingCause.CliticOrStemSplit, null), ReadingCause.Classify([split, whole]));
+    }
+
+    [Fact]
+    public void TheSameNumberOfMorphsCutAtDifferentPlacesIsABoundaryShift()
+    {
+        var first = R(M("mag", "mag", 0, MorphKinds.Inflectional), M("kama", "kama", 3, MorphKinds.Stem));
+        var second = R(M("magka", "magka", 0, MorphKinds.Inflectional), M("ma", "ma", 5, MorphKinds.Stem));
+        Assert.Equal((ReadingCause.BoundaryShift, null), ReadingCause.Classify([first, second]));
+    }
+
+    [Fact]
+    public void ReadingsThatSegmentDifferentlyAndShareNoShapeStayOther()
+    {
+        var one = R(M("a", "ab", 0, MorphKinds.Stem));
+        var three = R(M("b", "a", 0, MorphKinds.Stem), M("c", "b", 1, MorphKinds.Derivational), M("d", "x", 2, MorphKinds.Stem));
+        Assert.Equal(ReadingCause.Other, ReadingCause.Of([one, three]));
     }
 
     [Fact]
@@ -86,16 +138,16 @@ public sealed class ReadingCausesTests
     {
         var first = R(M("x", "pend", 0, MorphKinds.Stem, msa: "s1"));
         var second = R(M("x", "pend", 0, MorphKinds.Stem, msa: "s2"));
-        Assert.Equal(ReadingCause.Other, ReadingCause.Of([first, second]));
+        Assert.NotEqual(ReadingCause.HomophonousAffix, ReadingCause.Of([first, second]));
     }
 
     [Fact]
-    public void AMixOfHomophonousAndOtherDifferencesIsOtherAndPriorityIsKept()
+    public void AMixOfHomophonousAndBoundaryDifferencesIsBoundaryShiftAndPriorityIsKept()
     {
         var one = R(M("root", "pend", 0), M("a", "wa", 4, msa: "sm"));
         var two = R(M("root", "pend", 0), M("a", "wa", 4, msa: "om"));
         var three = R(M("other", "pendw", 0), M("a", "a", 5));
-        Assert.Equal(ReadingCause.Other, ReadingCause.Of([one, two, three]));
+        Assert.Equal(ReadingCause.BoundaryShift, ReadingCause.Of([one, two, three]));
         var fused = R(M("stem", "pendwa", 0));
         Assert.Equal(ReadingCause.LexicalisedVsDerived, ReadingCause.Of([one, two, fused]));
     }

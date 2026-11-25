@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SIL.Motif.Contract.Query.Readings;
 
 /// <summary>Why a word has more than one reading; the kinds are tried in this order.</summary>
@@ -9,11 +11,25 @@ public static class ReadingCause
     public const string SameMorphsReordered = "same-morphs-reordered";
     /// <summary>The readings differ only in inflectional affixes that spell the same but have different analyses (SM versus OM); harmless.</summary>
     public const string HomophonousAffix = "homophonous-affix";
+    /// <summary>The readings segment the word identically (same morph texts at the same spans) and differ only in which entry or analysis carries a morph.</summary>
+    public const string SameSegmentation = "same-segmentation";
+    /// <summary>One reading has a single stem over a span that another splits into several morphs, none of them derivational (a clitic, an inflectional affix or a short stem).</summary>
+    public const string CliticOrStemSplit = "clitic-or-stem-split";
+    /// <summary>The readings have the same number of morphs but cut the word at different places.</summary>
+    public const string BoundaryShift = "boundary-shift";
     /// <summary>None of the above.</summary>
     public const string Other = "other";
 
     /// <summary>Every kind in priority order.</summary>
-    public static IReadOnlyList<string> All { get; } = [LexicalisedVsDerived, SameMorphsReordered, HomophonousAffix, Other];
+    public static IReadOnlyList<string> All { get; } =
+        [LexicalisedVsDerived, SameMorphsReordered, HomophonousAffix, SameSegmentation, CliticOrStemSplit, BoundaryShift, Other];
+
+    /// <summary>The sub-label of <see cref="SameSegmentation"/> when every differing morph is a stem (homograph roots).</summary>
+    public const string Stems = "stems";
+    /// <summary>The sub-label when every differing morph is an affix.</summary>
+    public const string Affixes = "affixes";
+    /// <summary>The sub-label when stems and affixes both differ, or a class is unknown.</summary>
+    public const string Mixed = "mixed";
 
     /// <summary>Whether the cause only reflects spelling and does not change what the word means.</summary>
     public static bool Benign(string cause) => cause == HomophonousAffix;
@@ -21,15 +37,69 @@ public static class ReadingCause
     /// <summary>The most readings of one word compared pairwise; the rest are compared to the first.</summary>
     public const int PairwiseLimit = 40;
 
-    /// <summary>The cause of a word's extra readings: the highest-priority kind any pair shows; homophonous only when every differing pair is.</summary>
-    public static string Of(IReadOnlyList<WordReading> readings)
+    /// <summary>The cause of a word's extra readings.</summary>
+    public static string Of(IReadOnlyList<WordReading> readings) => Classify(readings).Cause;
+
+    /// <summary>
+    /// The cause and its sub-label. Each word gets its most specific cause: the structural kinds that any pair shows come first
+    /// (lexicalised, reordered); then the kinds that must hold for every differing pair, narrowest first (homophonous inflectional
+    /// affixes are a case of same segmentation, so they rank before it); then the segmentation differences any pair shows.
+    /// </summary>
+    public static (string Cause, string? Detail) Classify(IReadOnlyList<WordReading> readings)
     {
         var pairs = Pairs(readings).Where(pair => !SameMorphs(pair.A, pair.B)).ToList();
-        if (pairs.Count == 0) return Other;
-        if (pairs.Any(pair => IsLexicalisedVsDerived(pair.A, pair.B) || IsLexicalisedVsDerived(pair.B, pair.A))) return LexicalisedVsDerived;
-        if (pairs.Any(pair => IsReordered(pair.A, pair.B))) return SameMorphsReordered;
-        if (pairs.All(pair => IsHomophonous(pair.A, pair.B))) return HomophonousAffix;
-        return Other;
+        if (pairs.Count == 0) return (Other, null);
+        if (pairs.Any(pair => IsLexicalisedVsDerived(pair.A, pair.B) || IsLexicalisedVsDerived(pair.B, pair.A))) return (LexicalisedVsDerived, null);
+        if (pairs.Any(pair => IsReordered(pair.A, pair.B))) return (SameMorphsReordered, null);
+        if (pairs.All(pair => IsHomophonous(pair.A, pair.B))) return (HomophonousAffix, null);
+        if (pairs.All(pair => SameSegmentationOf(pair.A, pair.B) is not null))
+        {
+            var labels = pairs.Select(pair => SameSegmentationOf(pair.A, pair.B)!).Distinct().ToList();
+            return (SameSegmentation, labels.Count == 1 ? labels[0] : Mixed);
+        }
+        if (pairs.Any(pair => IsSplit(pair.A, pair.B) || IsSplit(pair.B, pair.A))) return (CliticOrStemSplit, null);
+        if (pairs.Any(pair => IsBoundaryShift(pair.A, pair.B))) return (BoundaryShift, null);
+        return (Other, null);
+    }
+
+    /// <summary>
+    /// The sub-label when the readings have the same morph texts at the same spans and differ only in the entry or analysis of some
+    /// morphs: <see cref="Stems"/>, <see cref="Affixes"/> or <see cref="Mixed"/>; null when they segment differently or a span is unplaced.
+    /// </summary>
+    internal static string? SameSegmentationOf(WordReading a, WordReading b)
+    {
+        if (a.Morphs.Count != b.Morphs.Count || SameMorphs(a, b)) return null;
+        var stems = 0;
+        var affixes = 0;
+        var unknown = false;
+        foreach (var (x, y) in a.Morphs.Zip(b.Morphs))
+        {
+            if (x.Start < 0 || x.Start != y.Start || x.End != y.End || x.Text.Length == 0 || !string.Equals(x.Text, y.Text, StringComparison.Ordinal)) return null;
+            if (x.Key == y.Key) continue;
+            if (x.Kind is null || y.Kind is null) unknown = true;
+            else if (x.Kind == MorphKinds.Stem && y.Kind == MorphKinds.Stem) stems++;
+            else if (x.Kind != MorphKinds.Stem && y.Kind != MorphKinds.Stem) affixes++;
+            else unknown = true;
+        }
+        return unknown || stems > 0 && affixes > 0 ? Mixed : stems > 0 ? Stems : Affixes;
+    }
+
+    /// <summary>After the shared head and tail, <paramref name="single"/> keeps one stem over the span that <paramref name="split"/> covers with several morphs.</summary>
+    internal static bool IsSplit(WordReading single, WordReading split)
+    {
+        var (left, right) = Middle(single, split);
+        if (left.Count != 1 || right.Count < 2) return false;
+        var one = left[0];
+        if (one.Start < 0 || right.Any(morph => morph.Start < 0)) return false;
+        if (one.Start != right.Min(morph => morph.Start) || one.End != right.Max(morph => morph.End)) return false;
+        return one.Kind == MorphKinds.Stem;
+    }
+
+    /// <summary>The same number of morphs, cut at different places.</summary>
+    internal static bool IsBoundaryShift(WordReading a, WordReading b)
+    {
+        if (a.Morphs.Count != b.Morphs.Count || a.Morphs.Any(morph => morph.Start < 0) || b.Morphs.Any(morph => morph.Start < 0)) return false;
+        return a.Morphs.Zip(b.Morphs).Any(pair => pair.First.Start != pair.Second.Start || pair.First.End != pair.Second.End);
     }
 
     private static IEnumerable<(WordReading A, WordReading B)> Pairs(IReadOnlyList<WordReading> readings)
@@ -122,7 +192,9 @@ public sealed record CauseExample(string Word, IReadOnlyList<CauseReading> Readi
 /// <param name="Words">How many word types.</param>
 /// <param name="Tokens">Their token total.</param>
 /// <param name="Example">The most frequent word of the group.</param>
-public sealed record CauseGroup(string Cause, bool Benign, int Words, long Tokens, CauseExample Example);
+/// <param name="Detail">The sub-label (<c>stems</c>, <c>affixes</c> or <c>mixed</c> for <see cref="ReadingCause.SameSegmentation"/>); null otherwise.</param>
+public sealed record CauseGroup(string Cause, bool Benign, int Words, long Tokens, CauseExample Example,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Detail = null);
 
 /// <summary>Collects the words of a query into cause groups.</summary>
 public sealed class CauseGroupBuilder
@@ -130,26 +202,28 @@ public sealed class CauseGroupBuilder
     /// <summary>The most readings an example shows.</summary>
     public const int ExampleReadings = 6;
 
-    private readonly Dictionary<string, (int Words, long Tokens, string Word, long Best, WordReadings Readings)> _groups = [];
+    private readonly Dictionary<(string Cause, string Detail), (int Words, long Tokens, string Word, long Best, WordReadings Readings)> _groups = [];
 
     /// <summary>Adds a word with more than one reading.</summary>
     public void Add(string word, long tokens, WordReadings readings)
     {
-        var cause = ReadingCause.Of(readings.Readings);
-        _groups[cause] = _groups.TryGetValue(cause, out var group)
+        var (cause, detail) = ReadingCause.Classify(readings.Readings);
+        var key = (cause, detail ?? "");
+        _groups[key] = _groups.TryGetValue(key, out var group)
             ? (group.Words + 1, group.Tokens + tokens, tokens > group.Best ? word : group.Word, Math.Max(group.Best, tokens), tokens > group.Best ? readings : group.Readings)
             : (1, tokens, word, tokens, readings);
     }
 
-    /// <summary>The groups in cause priority order.</summary>
+    /// <summary>The groups in cause priority order, a cause's sub-labels together.</summary>
     public IReadOnlyList<CauseGroup> Build() =>
     [
-        .. ReadingCause.All.Where(_groups.ContainsKey).Select(cause =>
+        .. _groups.Keys.OrderBy(key => ReadingCause.All.ToList().IndexOf(key.Cause)).ThenBy(key => key.Detail, StringComparer.Ordinal).Select(key =>
         {
-            var group = _groups[cause];
-            return new CauseGroup(cause, ReadingCause.Benign(cause), group.Words, group.Tokens, new CauseExample(group.Word,
+            var group = _groups[key];
+            return new CauseGroup(key.Cause, ReadingCause.Benign(key.Cause), group.Words, group.Tokens, new CauseExample(group.Word,
                 [.. group.Readings.Readings.Take(ExampleReadings).Select(reading => new CauseReading(
-                    [.. reading.Morphs.Select(morph => new CauseMorph(morph.Form, morph.Msa, morph.Text, morph.Entry, morph.Kind, morph.Gloss))]))]));
+                    [.. reading.Morphs.Select(morph => new CauseMorph(morph.Form, morph.Msa, morph.Text, morph.Entry, morph.Kind, morph.Gloss))]))]),
+                key.Detail.Length == 0 ? null : key.Detail);
         }),
     ];
 }
