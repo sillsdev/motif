@@ -1440,6 +1440,25 @@ NotUserEditable	MoUnclassifiedAffixMsa	lift-residue	MoMorphSynAnalysis.LiftResid
 ComputedFields	LexEntry	head-word	LexEntry.HeadWord	SetPlainRich	none	ComputedField	-
 ComputedFields	LexEntry	head-word	LexEntry.HeadWord	SetRich	none	ComputedField	-
 ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField	-
+# Root create	grammar/phonological-rule	PhMetathesisRule	Uncovered	compose-author-phonological-rule
+# Root create	grammar/phonological-rule	PhRegularRule	Uncovered	compose-author-phonological-rule
+# Root create	grammar/phonological-rule	PhSegmentRule	Uncovered	compose-author-phonological-rule
+# Root create	lexicon/entry	LexEntry	Covered	lowered through AuthorLexicalEntryComposer and AuthorVariantEntryComposer; a complex form has no operation yet
+# Root create	lists/item	ChkTerm	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	CmAnnotationDefn	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	CmAnthroItem	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	CmCustomItem	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	CmLocation	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	CmPerson	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	CmPossibility	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	CmSemanticDomain	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	LexEntryInflType	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	LexEntryType	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	LexRefType	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	MoMorphType	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	PartOfSpeech	Uncovered	ADR 0033 D1: never invents list items
+# Root create	lists/item	PhPhonRuleFeat	Uncovered	ADR 0033 D1: never invents list items
+# Root create	notebook/record	RnGenericRec	Uncovered	no lowering yet
 # Parser-only kinds: lexical/entry/create, sequence/move
 # Runner declarations	Kind	Declaring class	Field	Verb	Placement	Owner restriction	Child classes	Shape	Fallback
 # Handler	analysis/decisionEvidence/record	(no direct field edit)

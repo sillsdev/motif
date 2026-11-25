@@ -12,7 +12,8 @@ namespace SIL.Motif.Commands.Records;
 
 public sealed partial class RecordChangeSetLowerer
 {
-    private const string EntryKind = "lexicon/entry";
+    /// <summary>The record kind whose creation is lowered, through the entry composers.</summary>
+    public const string EntryKind = "lexicon/entry";
     private const string MainEntryPath = "InsertEntryDlg.CreateNewEntryInternal, ILexEntryFactory.Create";
     private const string VariantPath = "LinkVariantToEntryOrSense, ILexEntry.CreateVariantEntryAndBackRef";
 
@@ -105,6 +106,8 @@ public sealed partial class RecordChangeSetLowerer
             if (form.Class is { } declared && declared != formClass)
                 return Whole(plan, "a lexeme form whose class matches its morph type", MainEntryPath,
                     $"The form is a {declared}, and the morph type gives a {formClass}.");
+            if (variant && Targets(form, "inflection-classes").Count > 0)
+                return Whole(plan, "a lexeme form without inflection classes, since a variant has no grammatical info to check them against", VariantPath);
             var environments = Targets(form, "phone-env").Select(item => CanonicalId.FromGuid(item)).ToList();
             var inflectionClasses = Targets(form, "inflection-classes").Select(item => CanonicalId.FromGuid(item)).ToList();
             var created = new List<OperationEnvelope>();
@@ -115,7 +118,7 @@ public sealed partial class RecordChangeSetLowerer
             var required = new HashSet<int> { formIndex };
             var consumed = new Dictionary<int, (CanonicalId Entity, Func<string, string?, bool> Written)>
             {
-                [formIndex] = (formId, (key, item) => key is "morph-type" or "phone-env" or "inflection-classes" || key == "form" && item == formWs),
+                [formIndex] = (formId, (key, item) => key is "morph-type" or "phone-env" || key == "inflection-classes" || key == "form" && item == formWs),
             };
             var skeletonClasses = new Dictionary<Guid, string> { [record] = Changes[formIndex].ObjectType ?? "LexEntry" };
 

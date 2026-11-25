@@ -157,6 +157,42 @@ public sealed class RecordCreateEntryTests(PristineProjectFixture pristine) : ID
     public void AMainEntryIsStagedAppliedAndReadsBackAsTheFile() => RoundTrips(seed => seed.Main);
 
     [Fact]
+    public void AnAffixVariantWithInflectionClassesIsRefusedByName()
+    {
+        var seed = Seeded();
+        Guid affixVariant = default;
+        using (var cache = new FwDataProjectLoader().LoadCache(seed.Project))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var services = cache.ServiceLocator;
+                var pos = cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.OfType<IPartOfSpeech>().First();
+                var inflClass = services.GetInstance<IMoInflClassFactory>().Create();
+                pos.InflectionClassesOC.Add(inflClass);
+                inflClass.Name.set_String(cache.DefaultAnalWs, "zzclass");
+                var entry = services.GetInstance<ILexEntryRepository>().GetObject(seed.Main);
+                var kind = services.GetInstance<ILexEntryTypeRepository>().GetObject(seed.VariantType);
+                var variant = entry.CreateVariantEntryAndBackRef(kind, TsStringUtils.MakeString("zzsuf", cache.DefaultVernWs)).OwnerOfClass<ILexEntry>();
+                affixVariant = variant.Guid;
+                var form = services.GetInstance<IMoAffixAllomorphFactory>().Create();
+                variant.LexemeFormOA = form;
+                form.MorphTypeRA = services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphSuffix);
+                form.Form.set_String(cache.DefaultVernWs, "zzsuf");
+                form.InflectionClassesRC.Add(inflClass);
+            });
+            new FwDataProjectLoader().Save(cache);
+        }
+        var file = NewFile(seed, affixVariant);
+        Assert.Contains("zzclass", File.ReadAllText(file), StringComparison.Ordinal);
+
+        var outcome = RecordImportCommand.Run(new(seed.Project, file, DraftName));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(RefusalCodes.RecordImportCreateShape, outcome.Refusal!.Code);
+        Assert.Contains("inflection classes", outcome.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AVariantEntryIsStagedAppliedAndReadsBackAsTheFile() => RoundTrips(seed => seed.Variant);
 
     private static RecordObject Form(RecordDocument d) => (RecordObject)d.Data["lexeme-form"]!;
@@ -278,5 +314,34 @@ public sealed class RecordCreateEntryTests(PristineProjectFixture pristine) : ID
 
         Assert.False(outcome.Succeeded);
         Assert.Equal(RefusalCodes.RecordImportCreateComputedField, outcome.Refusal!.Code);
+    }
+
+    [Fact]
+    public void AnEditFileThatAddsASenseWithAGlossAndAnAnalysisLinkLowersAndApplies()
+    {
+        var seed = Seeded();
+        string file;
+        Guid sense = Guid.NewGuid();
+        using (var cache = new FwDataProjectLoader().LoadCache(seed.Project))
+        {
+            var (schema, document) = Exported(cache, seed.Main);
+            var added = new RecordObject { Guid = sense };
+            added["gloss"] = new RecordAlternatives().Add("en", new RecordScalar("zzsecond"));
+            added["morpho-syntax-analysis"] = ((RecordObject)((RecordList)document.Data["senses"]!).Items[0])["morpho-syntax-analysis"];
+            ((RecordList)document.Data["senses"]!).Add(added);
+            file = Path.Combine(_folder, "edit.md");
+            File.WriteAllText(file, RecordFileWriter.Write(document, schema.Schema));
+        }
+
+        var dry = RecordImportCommand.Run(new(seed.Project, file));
+
+        Assert.True(dry.Succeeded, dry.Refusal?.Message);
+        Assert.True(dry.Value!.RefusalCount == 0, string.Join("; ", dry.Value.Refusals?.Select(row => row.Code + " " + row.Field + " " + row.Reason) ?? []));
+        Assert.True(dry.Value.OperationCount >= 1, dry.Value.OperationCount.ToString());
+        StageFinalizeApply(seed.Project, file);
+        using var reopened = new FwDataProjectLoader().LoadCache(seed.Project);
+        var added2 = reopened.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(sense);
+        Assert.Equal("zzsecond", added2.Gloss.get_String(reopened.DefaultAnalWs).Text);
+        Assert.NotNull(added2.MorphoSyntaxAnalysisRA);
     }
 }
