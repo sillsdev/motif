@@ -37,3 +37,7 @@ See [Review a Proposal's changes](cmd:proposal%20review) and [Apply pending chan
 Apply does not report before/after project hashes. Its save check verifies the applied-log entry; the effect digest identifies the effects list.
 
 The summary shows at most ten warnings, each limited to 240 characters, with total and omitted counts. Complete warnings remain in the effects list. Effects files expire after seven days; a per-project 64 MiB budget may remove files older than one day sooner.
+
+## Require a Trial receipt
+
+`--receipt <file>` makes Apply stop unless the file is a green receipt written by `proposal trial delta --write-receipt` for this Proposal's current revision, the current Baseline and this build of the gate rules: `apply.receipt-invalid` for a missing, edited or non-green file, `apply.receipt-stale` for a changed revision, Baseline, Trial or gate build. It is checked before the project is loaded and also with `--force`.

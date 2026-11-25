@@ -428,4 +428,86 @@ public sealed class TrialReadingDeltaTests
         Assert.DoesNotContain("created:", added);
         Assert.StartsWith("{\"word\": \"Kata\"", added);
     }
+
+    private static TrialExpectations Declared(string directory) =>
+        new(Rows(directory, "expect-retired.jsonl"), Rows(directory, "expect-added.jsonl"));
+
+    private static Refusal? Verify(string project, string proposal, string receiptPath)
+    {
+        Refusal? refusal = null;
+        Change(project, (database, located) => refusal = TrialReceiptFile.Verify(database, located,
+            new SIL.Motif.Worker.Store.ProposalRepository(database).Get(CanonicalId.Parse(proposal)), receiptPath));
+        return refusal;
+    }
+
+    [Fact]
+    public void AGreenTrialWritesAReceiptThatApplyHonoursUntilTheRevisionOrBaselineMoves()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = ProposalWithAllClasses(fixture);
+        var directory = Path.Combine(fixture.Root, "manifests");
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+        Assert.True(TrialReadingDelta.ReadAndWrite(request, directory).Succeeded);
+        var path = Path.Combine(fixture.Root, "receipt.json");
+
+        var result = TrialReadingDelta.Check(request, Declared(directory), receiptPath: path);
+
+        Assert.Equal(ReadingExpectationStates.Green, result.Value!.Expectations!.State);
+        Assert.Equal(Path.GetFullPath(path), result.Value.Receipt!.Path);
+        Assert.Equal(TrialReceiptFile.GateCodeDigest, result.Value.Receipt.GateCodeDigest);
+        Assert.Null(Verify(fixture.Project, proposal, path));
+
+        Change(fixture.Project, (database, located) => ProposalCompareExports.RecordCurrentBaseline(database, located, 'b'));
+        Assert.Equal(RefusalCodes.ApplyReceiptStale, Verify(fixture.Project, proposal, path)?.Code);
+    }
+
+    [Fact]
+    public void AReceiptIsRefusedAfterTheProposalChangesOrTheFileIsEditedOrAnotherBuildIssuedIt()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = ProposalWithAllClasses(fixture);
+        var directory = Path.Combine(fixture.Root, "manifests");
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+        Assert.True(TrialReadingDelta.ReadAndWrite(request, directory).Succeeded);
+        var path = Path.Combine(fixture.Root, "receipt.json");
+        Assert.True(TrialReadingDelta.Check(request, Declared(directory), receiptPath: path).Value!.Receipt is not null);
+        var text = File.ReadAllText(path);
+
+        Assert.Equal(RefusalCodes.ApplyReceiptInvalid, Verify(fixture.Project, proposal, Path.Combine(fixture.Root, "absent.json"))?.Code);
+        File.WriteAllText(path, text.Replace("green", "mismatch"));
+        Assert.Equal(RefusalCodes.ApplyReceiptInvalid, Verify(fixture.Project, proposal, path)?.Code);
+        File.WriteAllText(path, "not json");
+        Assert.Equal(RefusalCodes.ApplyReceiptInvalid, Verify(fixture.Project, proposal, path)?.Code);
+
+        var receipt = System.Text.Json.JsonSerializer.Deserialize<TrialReceipt>(text, SIL.Motif.Contract.MotifJson.CreateOptions())!;
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(
+            TrialReceiptFile.Seal(receipt with { GateCodeDigest = "other-build" }), SIL.Motif.Contract.MotifJson.CreateOptions()));
+        var otherBuild = Verify(fixture.Project, proposal, path);
+        Assert.Equal(RefusalCodes.ApplyReceiptStale, otherBuild?.Code);
+        Assert.Contains("other-build", otherBuild!.Message);
+
+        File.WriteAllText(path, text);
+        Assert.Null(Verify(fixture.Project, proposal, path));
+        Change(fixture.Project, (database, _) => ProposalCompareExports.SaveProposal(database, proposal,
+            ProposalCompareExports.OtherProposalJson(proposal)));
+        Assert.Equal(RefusalCodes.ApplyReceiptStale, Verify(fixture.Project, proposal, path)?.Code);
+    }
+
+    [Fact]
+    public void ATrialThatIsNotGreenWritesNoReceiptAndRemovesAnEarlierOne()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = ProposalWithAllClasses(fixture);
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+        var path = Path.Combine(fixture.Root, "receipt.json");
+        File.WriteAllText(path, "{}");
+
+        var result = TrialReadingDelta.Check(request, new TrialExpectations([], []), receiptPath: path);
+
+        Assert.Equal(ReadingExpectationStates.Mismatch, result.Value!.Expectations!.State);
+        Assert.Null(result.Value.Receipt);
+        Assert.False(File.Exists(path));
+        Assert.Equal(RefusalCodes.TrialDeltaRequestInvalid,
+            TrialReadingDelta.Check(request, new TrialExpectations(), receiptPath: path).Refusal?.Code);
+    }
 }

@@ -38,3 +38,7 @@ The summary shows at most ten warnings, each limited to 240 characters, with tot
 
 `--no-background` applies without queuing the Source index refresh and without waking the job runner. The Source index reads as pending until a later `baseline capture` or Apply without the switch refreshes it. A runner start does not.
 
+
+## Require a Trial receipt
+
+`--receipt <file>` makes Apply stop unless the file is a green receipt written by `proposal trial delta --write-receipt` for this Proposal's current revision, the current Baseline and this build of the gate rules: `apply.receipt-invalid` for a missing, edited or non-green file, `apply.receipt-stale` for a changed revision, Baseline, Trial or gate build. It is checked before the project is loaded and also with `--force`.

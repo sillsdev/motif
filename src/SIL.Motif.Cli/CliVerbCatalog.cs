@@ -316,7 +316,7 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply",
-            new[] { "apply <proposalId> --project <fwdata> [--force] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
+            new[] { "apply <proposalId> --project <fwdata> [--force] [--receipt <file>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply --all-pending",
             new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
@@ -494,7 +494,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "proposal compare", "proposal compare",
             new[] { "proposal compare <proposalId> <proposalId> [<proposalId>...] --project <fwdata> [--at <digest>] [--job <jobId>]... [--page <N> --snapshot <token>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial delta", "proposal trial delta",
-            new[] { "proposal trial delta --project <fwdata> (--job <jobId> | --proposal <id>) [--classes lost,gained,changed,doubled,stopped-negative] [--write-manifests <dir> [--alias-created true|false] [--keep-case]] [--expect-retired <file>] [--expect-added <file>] [--max-doubled <n>] [--max-doubled-frac <0-1>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
+            new[] { "proposal trial delta --project <fwdata> (--job <jobId> | --proposal <id>) [--classes lost,gained,changed,doubled,stopped-negative] [--write-manifests <dir> [--alias-created true|false] [--keep-case]] [--expect-retired <file>] [--expect-added <file>] [--max-doubled <n>] [--max-doubled-frac <0-1>] [--write-receipt <file>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial export", "proposal trial export",
             new[] { "proposal trial export <jobId> --project <fwdata> [--at <digest>] [--page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",
@@ -783,7 +783,7 @@ public static class CliVerbCatalog
                 "--evidence-digest <digest>] [--clear] [--json]",
             }),
         new CliVerbDescriptor("Commands", "apply", "apply --proposal",
-            new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
+            new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--receipt <file>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
     }.Concat(SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Select(composer =>
         new CliVerbDescriptor("Commands", composer.Verb, composer.Verb, new[] { ComposerUsage(composer.Verb) })))
         .ToArray());

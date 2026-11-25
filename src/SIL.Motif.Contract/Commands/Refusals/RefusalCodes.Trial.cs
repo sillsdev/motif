@@ -41,4 +41,6 @@ public static partial class RefusalCodes
     public const string TrialNone = "trial.none";
     /// <summary>The Trial's scratch project was removed, so the trace cannot be reopened.</summary>
     public const string TrialScratchGone = "trial.scratch-gone";
+    /// <summary>The receipt file could not be written to the requested path.</summary>
+    public const string TrialReceiptUnwritable = "trial.receipt-unwritable";
 }

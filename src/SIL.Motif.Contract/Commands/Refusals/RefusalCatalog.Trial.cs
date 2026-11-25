@@ -16,6 +16,7 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.TrialDeltaRequestInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.TrialDeltaIncomplete, FailureReason.Refused),
         Spec(RefusalCodes.TrialDeltaManifestUnwritable, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.TrialReceiptUnwritable, FailureReason.InvalidArgument),
         Spec(RefusalCodes.TrialReviewInputUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.TrialNoBaseSampleInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.TrialWorkingSetNotAGate, FailureReason.Refused),
