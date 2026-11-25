@@ -147,7 +147,7 @@
   },
   {
     "name": "motif_record_parsimony_disposition",
-    "description": "Stage a Parsimony ruling. Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. A pending keep does not suppress current findings, and only a person can Apply it.\nCommand: compose-record-parsimony-disposition. Agent class: Draft.",
+    "description": "Stage a Parsimony ruling. Use only if you reviewed one Parsimony finding and chose keep, fix, ask or defer; otherwise fix the grammar with the composer the finding names. A keep records a choice and hides nothing. Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. A pending keep does not suppress current findings, and only a person can Apply it.\nCommand: compose-record-parsimony-disposition. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
