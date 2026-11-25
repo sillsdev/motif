@@ -26,6 +26,9 @@ public static class RefusalFactNames
     /// <summary>Present, as "true", on a store.other-version refusal whose store is older and a normal open upgrades it.</summary>
     public const string StoreUpgradable = "storeUpgradable";
 
+    /// <summary>Present, as "true", on a store.other-version refusal whose store a newer Motif made: never reset or deleted; install the newer Motif or restore a pre-upgrade backup.</summary>
+    public const string StoreNewer = "storeNewer";
+
     /// <summary>Fact key for the parser refusal code on a grammarcheck.not-run refusal.</summary>
     public const string LastParserRefusalCode = "lastParserRefusalCode";
 

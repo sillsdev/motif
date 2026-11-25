@@ -751,6 +751,81 @@ public sealed class ApplyPromotionGatingAndSweepTests
         }
     }
 
+    // The receipt a green Trial of this Proposal would write, bound to the Baseline as it stands now.
+    private string WriteReceipt(string proposalId, string name)
+    {
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var project = new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath));
+        var record = new ProposalRepository(database).Get(CanonicalId.Parse(proposalId));
+        var job = Trials.NewestFirst(Trials.JobsFor(database, project, CanonicalId.Parse(proposalId))).First();
+        var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project))!.Token;
+        var receipt = TrialReceiptFile.Build(proposalId, Trials.ReadCurrentIntentDigest(record)!, baseline.SemanticSnapshotDigest,
+            job.JobId, new TrialExpectations([], []), new ReadingDeltaCounts(1, 1, 0, 0, 0, 0, 0, 0, 0, 0));
+        var path = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, name);
+        Assert.Null(TrialReceiptFile.Write(path, receipt));
+        return path;
+    }
+
+    private string ReadyProposal(string draft, string gloss)
+    {
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath)).Succeeded);
+        var proposalId = FinalizeAndTrial(draft, gloss);
+        RecordAssessment(proposalId, GetRecord(proposalId).IntentDigest!, "Correctness", ("alpha", true));
+        return proposalId;
+    }
+
+    [Fact]
+    public void ApplyWithAReceiptThatBindsTheCurrentRevisionAndBaselineSucceeds()
+    {
+        var proposalId = ReadyProposal("receipt-valid", "receipt valid gloss");
+        var receipt = WriteReceipt(proposalId, "receipt.json");
+
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId,
+            Attribution: new ApplyAttribution(ReceiptPath: receipt)));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal("applied", GetRecord(proposalId).Status);
+    }
+
+    [Fact]
+    public void ApplyWithAReceiptIsRefusedAfterAnotherApplyMovedTheBaseline()
+    {
+        var first = ReadyProposal("receipt-first", "receipt first gloss");
+        var second = ReadyProposal("receipt-second", "receipt second gloss");
+        var receipt = WriteReceipt(second, "receipt.json");
+        Assert.True(ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, first)).Succeeded);
+
+        var refused = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, second,
+            Attribution: new ApplyAttribution(ReceiptPath: receipt)));
+
+        Assert.False(refused.Succeeded);
+        Assert.Equal("apply.receipt-stale", refused.Refusal!.Code);
+        Assert.Equal("proposed", GetRecord(second).Status);
+    }
+
+    [Fact]
+    public void ApplyWithAReceiptIsRefusedAfterFieldWorksDataChangedSinceTheBaseline()
+    {
+        var proposalId = ReadyProposal("receipt-edited", "receipt edited gloss");
+        var receipt = WriteReceipt(proposalId, "receipt.json");
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.LangProject.PartsOfSpeechOA.PossibilitiesOS[0].Name.set_String(cache.DefaultAnalWs,
+                    TsStringUtils.MakeString("External category", cache.DefaultAnalWs)));
+            loader.Save(cache);
+        }
+
+        var refused = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId,
+            Attribution: new ApplyAttribution(ReceiptPath: receipt)));
+
+        Assert.False(refused.Succeeded);
+        Assert.Equal("apply.receipt-stale", refused.Refusal!.Code);
+        Assert.Contains("FieldWorks data changed", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal("proposed", GetRecord(proposalId).Status);
+    }
+
     private void WriteGateConfiguration()
     {
         File.WriteAllText(Path.ChangeExtension(_fwDataPath, ".motif.toml"),

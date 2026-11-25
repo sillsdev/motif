@@ -1276,6 +1276,9 @@ try
                 result = RenderProposal(CommandOutcome<ApplyPendingResult>.Refused(applyAttributionRefusal));
                 break;
             }
+            if (flags.ContainsKey("receipt") && (flags["receipt"] is "true" or "" || flags.ContainsKey("all-pending")))
+                return Usage("--receipt <file> names a Trial receipt and applies to 'apply <proposalId>' and 'apply --proposal' only.", asJson);
+            if (flags.TryGetValue("receipt", out var receiptFlag)) applyAttribution = applyAttribution with { ReceiptPath = receiptFlag };
             if (flags.ContainsKey("all-pending"))
             {
                 if (positionals.Count != 0 || flags.ContainsKey("user") ||

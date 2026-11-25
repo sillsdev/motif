@@ -18,6 +18,8 @@ public static partial class RefusalCatalog
             NextStep.PersonStep()),
         Spec(RefusalCodes.ProjectOperationIo, FailureReason.Busy),
         Spec(RefusalCodes.ProjectStoreIo, FailureReason.Busy),
+        Spec(RefusalCodes.ProjectStoreInUse, FailureReason.Busy,
+            NextStep.Repeat()),
         Spec(RefusalCodes.ProjectTagInvalid, FailureReason.InvalidArgument,
             Command("project tag --set", Caller("project"))),
         Spec(RefusalCodes.ProjectTagTaken, FailureReason.Refused,

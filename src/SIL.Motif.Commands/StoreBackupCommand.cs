@@ -550,10 +550,25 @@ public static partial class StoreBackupCommand
         }
         // A store another process kept locked past the busy timeout is the CLI's retryable cli.store-busy.
         if (SqliteConnections.IsBusyInChain(exception)) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(exception);
+        // Windows reports a file another process holds open as a sharing violation; name that cause.
+        if (IsSharingViolation(exception))
+            return Refuse<T>(RefusalCodes.ProjectStoreInUse, FailureReason.Busy,
+                "Another process has the store open; close Motif sessions and retry. " +
+                $"Nothing was changed{(savedIn is null ? "" : $", and the store and any file moved aside are as they were (see '{savedIn}')")}.",
+                project, storePath, ("exceptionDetail", exception.Message), ("preRestoreDirectory", savedIn ?? ""));
         return Refuse<T>(RefusalCodes.ProjectStoreIo, FailureReason.Refused,
             $"Motif could not {action} its file for this project, '{Path.GetFileName(storePath)}'." +
             (savedIn is null ? "" : $" The store it was replacing, and any file moved aside, are in '{savedIn}'."),
             project, storePath, ("exceptionDetail", exception.Message), ("preRestoreDirectory", savedIn ?? ""));
+    }
+
+    /// <summary>True for a Windows sharing or lock violation in the exception chain.</summary>
+    private static bool IsSharingViolation(Exception? exception)
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        for (; exception is not null; exception = exception.InnerException)
+            if (exception is IOException && (exception.HResult & 0xFFFF) is 32 or 33) return true;
+        return false;
     }
 
     private static CommandOutcome<T> Refuse<T>(string code, FailureReason reason, string message, ProjectLocator project,

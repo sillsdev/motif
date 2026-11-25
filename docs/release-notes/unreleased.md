@@ -12,6 +12,11 @@ The Grammar Design Records list is now the Grammar Guide, and its commands are r
 - Record ids stay `GDR-n`, and the Motif store keeps its existing hypothesis columns; nothing is migrated.
 - `MOTIF_DEVELOPER_COMMANDS=1` no longer opens the Autonomous commands, which now refuse with `command.autonomous-required`. Set `MOTIF_AUTONOMOUS=1` or pass the global `--autonomous` flag instead; there is no alias. Moved commands: `discard-draft`, `discard-empty-drafts`, `reopen`, `duplicate`, `split`, `defer`, `reject`, `supersede`, `promote-gloss`, `preflight`, `add-delete-lexeme-form`, `project create`, `guide list` and `guide check`. They are never MCP tools. The same switch also makes `apply` an Autonomous-mode Apply, which needs a green Gate and `--message`; `motif help autonomous` explains it.
 
+## Stores
+
+- An older project store is upgraded when the project opens. Authored work is carried and derived data (Trials, Assessments, Baselines, Jobs, indexes) is dropped. The original is kept beside the store as `.schemaN.bak`, and `motif store restore` can bring a backup back.
+- A store made by a newer Motif is refused with the `storeNewer` fact. The window and `motif store delete-refused` no longer offer or perform a reset for it: install the newer Motif, or restore a backup made before the upgrade.
+
 ## Window
 
 - The window and its Help call the list the Grammar Guide, and its entries Guide sections, instead of Grammar Design Records. A project whose list is still named "Grammar Design Records" opens the Guide read-only with a sentence saying to rename it in FieldWorks (Lists). Both names present shows a sentence saying to remove one in FieldWorks.

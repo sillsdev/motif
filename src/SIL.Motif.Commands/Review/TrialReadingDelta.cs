@@ -27,12 +27,18 @@ public static class TrialReadingDelta
     /// Reads the delta and holds it to <paramref name="expectations"/>, as the lane gate does: the delta's
     /// <see cref="ReadingDelta.Expectations"/> says green, mismatch, doubled-over-cap or unmeasured.
     /// </summary>
+    /// <remarks>
+    /// With <paramref name="receiptPath"/>, a green state also writes the receipt that <c>apply --receipt</c> honours;
+    /// any other state writes none, and a file left by an earlier run is removed so it cannot be mistaken for this one.
+    /// </remarks>
     public static CommandOutcome<ReadingDelta> Check(ReadTrialDeltaRequest request, TrialExpectations expectations,
-        ManifestOptions? options = null)
+        ManifestOptions? options = null, string? receiptPath = null)
     {
         ArgumentNullException.ThrowIfNull(expectations);
         if (TrialExpectationCheck.Invalid(expectations) is { } invalid) return Invalid(invalid);
-        return Run(request, null, options ?? new ManifestOptions(), expectations.Any ? expectations : null);
+        if (receiptPath is not null && !expectations.Any)
+            return Invalid("A receipt records what the Trial was held to: give --expect-retired, --expect-added, --max-doubled or --max-doubled-frac.");
+        return Run(request, null, options ?? new ManifestOptions(), expectations.Any ? expectations : null, receiptPath);
     }
 
     /// <summary>Reads the delta and writes the two manifests into <paramref name="manifestDirectory"/>.</summary>
@@ -41,7 +47,7 @@ public static class TrialReadingDelta
         ManifestOptions? options = null) => Run(request, manifestDirectory, options ?? new ManifestOptions());
 
     private static CommandOutcome<ReadingDelta> Run(ReadTrialDeltaRequest request, string? manifestDirectory,
-        ManifestOptions? options = null, TrialExpectations? expectations = null)
+        ManifestOptions? options = null, TrialExpectations? expectations = null, string? receiptPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var classes = request.Classes is { Count: > 0 } ? request.Classes : ReadingDeltaClasses.Default;
@@ -61,7 +67,7 @@ public static class TrialReadingDelta
             {
                 var receipt = Locate(database, project, request);
                 if (receipt is null) return Unavailable("No retained evidence export matches this Trial.");
-                return Build(database, receipt, request, classes, manifestDirectory, options ?? new ManifestOptions(), expectations);
+                return Build(database, receipt, request, classes, manifestDirectory, options ?? new ManifestOptions(), expectations, receiptPath);
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or
                 UnauthorizedAccessException or JsonException)
@@ -83,7 +89,7 @@ public static class TrialReadingDelta
 
     private static CommandOutcome<ReadingDelta> Build(MotifDatabase database, TrialExportReceipt receipt,
         ReadTrialDeltaRequest request, IReadOnlyList<string> classes, string? manifestDirectory, ManifestOptions options,
-        TrialExpectations? expectations)
+        TrialExpectations? expectations, string? receiptPath)
     {
         var inputs = new List<ReadingDeltaInput>();
         var unmeasured = new HashSet<string>(StringComparer.Ordinal);
@@ -148,8 +154,42 @@ public static class TrialReadingDelta
             held = TrialExpectationCheck.Evaluate(forms, counts, expectations, retired, added, expectedAliases, options.KeepCase,
                 NotCurrent(database, receipt, request, counts));
         }
+        TrialReceiptSummary? written = null;
+        if (receiptPath is not null && expectations is not null)
+        {
+            if (File.Exists(receiptPath)) File.Delete(receiptPath);
+            if (held?.State == ReadingExpectationStates.Green)
+            {
+                var issued = IssueReceipt(database, receipt, expectations, counts);
+                if (issued.Refusal is not null) return CommandOutcome<ReadingDelta>.Refused(issued.Refusal);
+                if (TrialReceiptFile.Write(receiptPath, issued.Receipt!) is { } unwritable) return CommandOutcome<ReadingDelta>.Refused(unwritable);
+                written = new TrialReceiptSummary(Path.GetFullPath(receiptPath), issued.Receipt!.ReceiptDigest, issued.Receipt.GateCodeDigest);
+            }
+        }
         return CommandOutcome<ReadingDelta>.Success(new ReadingDelta(ReadingDelta.Version, receipt.JobId,
-            receipt.ProposalRevision, counts, shown, manifests, [.. limitations], held));
+            receipt.ProposalRevision, counts, shown, manifests, [.. limitations], held, written));
+    }
+
+    // The receipt of a green Trial, bound to the revision and Baseline just proved current.
+    private static (TrialReceipt? Receipt, Refusal? Refusal) IssueReceipt(MotifDatabase database, TrialExportReceipt receipt,
+        TrialExpectations expectations, ReadingDeltaCounts counts)
+    {
+        try
+        {
+            var job = new JobRepository(database).Get(receipt.JobId) ?? throw new InvalidDataException("The Trial job is gone.");
+            var proposalId = Trials.ProposalOf(job);
+            var record = new SIL.Motif.Worker.Store.ProposalRepository(database).Get(CanonicalId.Parse(proposalId));
+            var intent = Trials.ReadCurrentIntentDigest(record) ?? throw new InvalidDataException("The Proposal's revision cannot be read.");
+            var baseline = TrialExportArtifact.ReadBaselineSemantic(database, receipt.JobId)
+                ?? throw new InvalidDataException("The Trial's Baseline cannot be read.");
+            return (TrialReceiptFile.Build(proposalId, intent, baseline, receipt.JobId, expectations, counts), null);
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException or KeyNotFoundException or
+            ArgumentException or ContractParseException or InvalidOperationException)
+        {
+            return (null, new Refusal(RefusalCodes.TrialDeltaIncomplete, FailureReason.Refused,
+                "The receipt could not be bound to the Trial: " + exception.Message));
+        }
     }
 
     // Why this Trial cannot speak for the Proposal and Baseline as they stand now, or null when it can.

@@ -164,4 +164,49 @@ public sealed class TrialDeltaArgvTests
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("--write-manifests", result.Output + result.Error);
     }
+
+    [Fact]
+    public async Task WriteReceiptWritesTheFileOnlyForAGreenTrialAndAllPendingTakesNoReceipt()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = "";
+        var published = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, project,
+                [new("lost", [], []) { BeforeSignatures = [Sig(1)], AfterSignatures = [] }]);
+            ProposalCompareExports.RecordCurrentBaseline(database, project);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(published.Succeeded, published.Refusal?.Message);
+        var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
+        var directory = Path.Combine(fixture.Root, "manifests");
+        var receipt = Path.Combine(fixture.Root, "receipt.json");
+        var written = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--write-manifests", directory, "--json");
+        Assert.True(written.ExitCode == 0, written.Error);
+        var retired = Path.Combine(directory, "expect-retired.jsonl");
+
+        var noExpectations = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--write-receipt", receipt);
+        Assert.NotEqual(0, noExpectations.ExitCode);
+        Assert.False(File.Exists(receipt));
+
+        var green = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--expect-retired", retired, "--write-receipt", receipt, "--json");
+        Assert.True(green.ExitCode == 0, green.Error);
+        Assert.True(File.Exists(receipt));
+        using (var json = JsonDocument.Parse(green.Output))
+            Assert.Equal(Path.GetFullPath(receipt), json.RootElement.GetProperty("receipt").GetProperty("path").GetString());
+
+        File.WriteAllText(retired, "");
+        var mismatch = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--expect-retired", retired, "--write-receipt", receipt, "--json");
+        Assert.Equal(6, mismatch.ExitCode);
+        Assert.False(File.Exists(receipt));
+
+        var pending = await CliProcess.RunAsync(runnerRoot, null, false, "apply", "--all-pending", "--project", fixture.Project,
+            "--receipt", receipt, "--json");
+        Assert.NotEqual(0, pending.ExitCode);
+        Assert.Contains("--receipt", pending.Output + pending.Error);
+    }
 }

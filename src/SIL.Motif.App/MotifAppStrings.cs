@@ -2542,6 +2542,8 @@ public static class MotifAppStrings
 
     public static string RefusalStoreFromOtherVersion => Text("MotifApp.RefusalStoreFromOtherVersion");
 
+    public static string RefusalStoreNewer => Text("MotifApp.RefusalStoreNewer");
+
     public static string RefusalStoreUpgradable => Text("MotifApp.RefusalStoreUpgradable");
 
     public static string RefusalStoreDamaged => Text("MotifApp.RefusalStoreDamaged");
