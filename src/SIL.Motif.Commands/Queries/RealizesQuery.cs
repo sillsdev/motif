@@ -69,7 +69,7 @@ internal static class RealizesQuery
     }
 
     /// <summary>Lowers the expression; a refusal comes back as a <see cref="QueryRefusalException"/>.</summary>
-    public static RealizesRun Prepare(QueryExpr where, RealizesContext context, CancellationToken cancellationToken)
+    public static RealizesRun Prepare(QueryExpr where, RealizesContext context, CancellationToken cancellationToken, ISet<QueryRealizes>? listed = null)
     {
         var found = RealizesLowering.Find(where);
         foreach (var tier in found.Select(item => item.Node.Tier).Distinct())
@@ -130,6 +130,14 @@ internal static class RealizesQuery
                     finding.Add($"none of the {parse.Parsed} parsed word types has an analysis that contains it");
                 }
                 var merged = Merge(parts, resolved is not null);
+                if (merged.Forms.Count == 0 && listed?.Contains(node) == true)
+                {
+                    var absent = new RealizesResult(RealizesResult.SchemaName, Describe(resolved, target, text), node.Tier, false,
+                        [new RealizesReason(RealizesLowering.AbsentReason, string.Join("; ", finding))], null, [],
+                        RealizesPatternCompiler.Pattern([], merged.Anchor), report);
+                    sets.Add(absent);
+                    return seen[node] = (absent, []);
+                }
                 if (merged.Forms.Count == 0) throw RealizesRefusals.NoParses(node.Morpheme, string.Join("; ", finding));
                 var forms = RealizesPatternCompiler.Normalize(merged.Terms ?? merged.Forms.Select(form => form.Form), context.FoldCase);
                 var pattern = RealizesPatternCompiler.Pattern(forms, merged.Anchor);

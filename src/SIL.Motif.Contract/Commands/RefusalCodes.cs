@@ -408,7 +408,7 @@ public static class RefusalCodes
     public const string QueryMixedUnits = "query.mixed-units";
     /// <summary>A query's op does not fit the type of the column it names, such as a numeric comparison on text.</summary>
     public const string QueryOpTypeMismatch = "query.op-type-mismatch";
-    /// <summary>A query uses a kind the schema reserves for a later release: morph or seq, or a realizes tier that is not built yet.</summary>
+    /// <summary>A query uses a kind the schema reserves for a later release, or a realizes tier that is not built yet.</summary>
     public const string QueryNotYetAvailable = "query.not-yet-available";
     /// <summary><c>not realizes(...)</c> was asked over a variant set that is not complete, so the absence it would claim is not proven.</summary>
     public const string QueryRealizesNegationIncomplete = "query.realizes-negation-incomplete";
@@ -443,6 +443,10 @@ public static class RefusalCodes
     public const string QueryCorpusInvalid = "query.corpus-invalid";
     /// <summary><c>--write-words</c> names a file that exists and <c>--force</c> was not given; nothing was written.</summary>
     public const string QueryWriteWordsExists = "query.write-words-exists";
+    /// <summary><c>not morph(...)</c> or <c>not seq(...)</c> was asked over a corpus parse that is not complete, so the absence it would claim is not proven.</summary>
+    public const string QuerySeqNegationIncomplete = "query.seq-negation-incomplete";
+    /// <summary>An item of <c>morph(...)</c> or <c>seq(...)</c> matches no morph of the corpus parse, so the query would silently answer nothing.</summary>
+    public const string QuerySeqItemUnknown = "query.seq-item-unknown";
     /// <summary>A <c>phon</c> or <c>env</c> predicate ran with no grammar to segment words and name natural classes; corpus mode needs <c>--grammar</c>.</summary>
     public const string QueryPhonNeedsGrammar = "query.phon-needs-grammar";
     /// <summary>The installed PanGloss does not declare the <c>match</c> serve op, so <c>phon</c> and <c>env</c> cannot run.</summary>

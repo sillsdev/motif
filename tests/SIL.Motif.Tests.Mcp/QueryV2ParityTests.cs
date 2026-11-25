@@ -107,9 +107,9 @@ public sealed class QueryV2ParityTests : IDisposable
     }
 
     [Fact]
-    public async Task AReservedKindIsRefusedAsNotYetAvailableAndAMixedCallIsInvalid()
+    public async Task AMorphPredicateOnAProjectSourceIsRefusedAsNotYetAvailableAndAMixedCallIsInvalid()
     {
-        const string reserved = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"morph\":{\"and\":[]}}}";
+        const string reserved = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":{\"morph\":\"CAUS\"}}";
         var result = await Mcp(new JsonObject { ["query"] = JsonNode.Parse(reserved) });
         Assert.Equal(RefusalCodes.QueryNotYetAvailable, result.Refusal?.Code);
         await Assert.ThrowsAsync<ToolArgumentException>(() =>

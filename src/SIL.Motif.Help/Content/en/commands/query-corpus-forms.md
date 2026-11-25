@@ -42,3 +42,34 @@ motif query --corpus bible_h.weights.json --corpus bible_x.weights.json forms wh
 # 50 unparsed words of a pattern, chosen by seed, as a working set with counts
 motif query --corpus a.tsv,b.weights.json forms where 'parse.state = none and form ~ ".*ப்பட்.*"' --grammar tam.fwdata --sample 50 --seed 7 --write-words work.tsv --with-counts
 ```
+
+## Ordered morphs: `morph`, `seq`, `--count-by morph-seq`
+
+`morph(<item>)` keeps the words with a reading that has the morph; `seq(<item>, <item>, ...)` keeps the words with a reading whose morphs match the items in that order. Both read the readings of the cached corpus parse, so they need `--grammar` (refused as `query.readings-needs-grammar` without it). Gaps between the matched morphs are allowed; `seq(a, b, adjacent=true)` (JSON `{"seq": {"items": ["a", "b"], "adjacent": true}}`, a single `morph` as `{"morph": "a"}`) or `--adjacent` for every `seq` of the query needs them next to each other. Each morph matches one item, so `seq(x, x)` needs two morphs. An item is one of:
+
+- `entry:<guid>`, `msa:<guid>` or `form:<guid>`: the morph's entry, analysis or form id; a bare guid is an analysis or form id. `entry:` needs the project.
+- `root:<form>`, `pfx:<form>` or `sfx:<form>`: a form in the project's lexicon, resolved to its entry exactly as `realizes` resolves it (`root:` takes a stem, the others an affix); a form of several entries or analyses is refused as ambiguous, and then `entry:` or `msa:` names the one. Needs `--project` (or a `.fwdata` as `--grammar`).
+- `text:<surface>`: the surface text the morph occupies, ignoring case; needs no project.
+- any other token, such as `CAUS` or `RECP`: a class token. It matches a morph whose entry gloss, class (`stem`, `derivational`, `inflectional`, `affix`) or PanGloss inflection type equals the token, ignoring case. The gloss and class come from the project's lexicon, so a class token needs `--project`; without one it is refused as `query.readings-needs-project`.
+
+An item that matches no morph of any reading of the parse is refused as `query.seq-item-unknown`, never answered with zero (a misspelt `CUAS` is caught that way). `not morph(...)` and `not seq(...)` are refused as `query.seq-negation-incomplete` unless the corpus parse is complete (no capped, timed-out or unanswered word), because a capped word may hide the reading. `readingsInfo.complete` says whether it is.
+
+`--count-by morph-seq` counts the distinct morph sequences of the readings that satisfy the query's `morph` and `seq` predicates (every reading when there are none; a `not`, a field or another predicate says nothing about a single reading, so it never removes one). A sequence is written by its morphs in surface order, each as its text, then `/` and the entry gloss when the project gives one (`fany/do`, `ish/CAUS`, `an/RECP`). A word counts once per distinct sequence, however many readings give it. The JSON adds `morphSeqs:{complete, words, tokens, distinct, sequences:[{seq:[...], types, tokens, examples:[word]}]}`, by tokens; `--limit` (default 100) caps how many sequences are listed, `distinct` is how many there are, and `complete` is false when a capped or unanswered word may hide readings, so the counts are lower bounds. It needs no `where` and lists no rows unless `--limit` is given.
+
+```powershell
+# how many words carry root fanya + CAUS + RECP in that order, and in what exact chains
+motif query --corpus swh.weights.json forms where 'seq(root:fanya, CAUS, RECP)' --count-by morph-seq --grammar swh.fwdata --project swh.fwdata --json
+# the same chain with the morphs next to each other
+motif query --corpus swh.weights.json forms where 'seq(root:fanya, CAUS, RECP, adjacent=true)' --grammar swh.fwdata
+```
+
+## A stem list: `realizes(@file, attested)` and `--by-morph`
+
+`realizes(@stems.txt, attested)` reads one morpheme spec per line (the same syntax as the single argument: `entry:msa`, an id, or `root:`, `pfx:`, `sfx:` and a form with `--project`; blank lines and lines starting `#` are skipped) and means any of them. One index parse serves the whole list, from the parse's spans; nothing is traced. A line whose morpheme no parsed word carries stands for no word and is listed in `realizes` with the reason `no-parses`, where a lone `realizes(M, attested)` would be refused; `not realizes(@file, ...)` over such a list is refused as `query.realizes-negation-incomplete`. An unreadable file is refused as `query.corpus-unreadable`, and a file with no spec as `query.corpus-invalid`.
+
+`--by-morph` groups the matches per morpheme of a `realizes` query as `byMorph:[{morpheme, types, tokens, examples}]`, by tokens; every line of the file has a group, with zero for one no word carries. It needs a `realizes` predicate in the query.
+
+```powershell
+# the corpus forms of eleven Tamil stems, per stem
+motif query --corpus tam.weights.json forms where 'realizes(@stems.txt, attested)' --by-morph --grammar tam.fwdata --project tam.fwdata --json
+```

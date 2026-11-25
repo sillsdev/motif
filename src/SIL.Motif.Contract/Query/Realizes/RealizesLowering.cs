@@ -57,6 +57,9 @@ public static class RealizesRefusals
 /// </summary>
 public static class RealizesLowering
 {
+    /// <summary>The reason code of a stems-file morpheme that no parsed word carries.</summary>
+    public const string AbsentReason = "no-parses";
+
     /// <summary>The longest alternation one lowered predicate carries; the field engine's own limit on a regular expression.</summary>
     public const int ChunkLimit = FormQuery.MaximumRegexLength - 16;
 
@@ -95,6 +98,12 @@ public static class RealizesLowering
         {
             case QueryRealizes realizes:
                 var (set, forms) = resolve(realizes);
+                // A stems-file morpheme no word carries matches nothing.
+                if (forms.Count == 0 && set.Reasons.Any(reason => reason.Code == AbsentReason))
+                {
+                    if (negated) throw RealizesRefusals.NegationIncomplete(set);
+                    return new QueryField("tokens", QueryOps.Lt, 0L);
+                }
                 if (forms.Count == 0 && (set.Phon?.Count ?? 0) == 0) throw RealizesRefusals.NoParses(set.Morpheme, "no form was found");
                 if (negated && !set.Complete) throw RealizesRefusals.NegationIncomplete(set);
                 IReadOnlyList<string> chunks = forms.Count == 0 ? [] : RealizesPatternCompiler.Chunks(forms, set.Pattern.Anchor, ChunkLimit);

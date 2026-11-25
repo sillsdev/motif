@@ -33,7 +33,7 @@ public static class QueryOps
     public static bool TakesList(string op) => op is In or Nin or Has;
 
     /// <summary>The kinds reserved for later phases: the schema names them so it stays stable, and a query that uses one is refused.</summary>
-    public static IReadOnlyList<string> ReservedKinds { get; } = ["morph", "seq"];
+    public static IReadOnlyList<string> ReservedKinds { get; } = [];
 
     /// <summary>The pattern kinds, which PanGloss's <c>match</c> op runs over surface forms.</summary>
     public static IReadOnlyList<string> PatternKinds { get; } = ["phon", "env"];
@@ -59,7 +59,7 @@ public sealed record QueryNot(QueryExpr Item) : QueryExpr;
 /// <param name="Value">A string, a long (<c>lt</c>, <c>gt</c>), a bool (<c>exists</c>) or a <c>string[]</c> (<c>in</c>, <c>nin</c>, <c>has</c>).</param>
 public sealed record QueryField(string Field, string Op, object Value) : QueryExpr;
 
-/// <summary>A reserved kind (<c>morph</c>, <c>seq</c>): it parses, and running it is refused.</summary>
+/// <summary>A reserved kind: it parses, and running it is refused. No kind is reserved today; the node stays so a later kind can be named before it is built.</summary>
 /// <param name="Kind">The reserved kind.</param>
 /// <param name="Body">The kind's JSON body, kept so the document survives a round trip through the AST.</param>
 public sealed record QueryReserved(string Kind, string Body) : QueryExpr;
@@ -71,3 +71,18 @@ public sealed record QueryPhon(string Pattern) : QueryExpr;
 /// <summary>An environment <c>target / left _ right</c> over the surface form: <c>{env: "[+voice] / # _ V"}</c>, run by PanGloss's <c>match</c> op.</summary>
 /// <param name="Environment">The environment text, as the person or agent wrote it.</param>
 public sealed record QueryEnv(string Environment) : QueryExpr;
+
+/// <summary>
+/// <c>morph(item)</c>: some reading of the word has a morph that matches the item. Running it reads the cached corpus parse, so it needs --grammar.
+/// An item is <c>entry:ID</c>, <c>msa:ID</c>, <c>form:ID</c>, a bare id, <c>root:FORM</c>, <c>pfx:FORM</c>, <c>sfx:FORM</c>, <c>text:SURFACE</c> or a class token.
+/// </summary>
+/// <param name="Item">The item, as written.</param>
+public sealed record QueryMorphIs(string Item) : QueryExpr;
+
+/// <summary>
+/// <c>seq(a, b, c)</c>: some reading of the word has morphs matching the items in that order, each morph used once. Gaps are allowed
+/// unless <paramref name="Adjacent"/>, which needs the morphs to be next to each other.
+/// </summary>
+/// <param name="Items">At least two items, in the order the morphs must come.</param>
+/// <param name="Adjacent">True when no other morph may lie between two matched morphs.</param>
+public sealed record QueryMorphSeq(IReadOnlyList<string> Items, bool Adjacent) : QueryExpr;

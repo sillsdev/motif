@@ -69,7 +69,7 @@ internal sealed class MorphCatalog
     /// Opens the project and reads its catalog. The project is the one named, else the grammar when it is a FieldWorks project file;
     /// null when neither is, or the project cannot be opened.
     /// </summary>
-    public static MorphCatalog? TryLoad(string? projectPath, string? grammarPath, out string? failure)
+    public static MorphCatalog? TryLoad(string? projectPath, string? grammarPath, out string? failure, Action<LcmCache>? alsoRead = null)
     {
         failure = null;
         var path = !string.IsNullOrWhiteSpace(projectPath) ? projectPath
@@ -78,9 +78,10 @@ internal sealed class MorphCatalog
         try
         {
             using var read = BaselineReadCache.Open(path);
+            alsoRead?.Invoke(read.Cache);
             return FromProject(read.Cache);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not (OperationCanceledException or QueryRefusalException))
         {
             failure = $"The project '{path}' could not be opened to name the morphs' entries: {exception.Message}";
             return null;

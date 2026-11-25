@@ -24,11 +24,14 @@ namespace SIL.Motif.Contract.Query.Corpus;
 /// <param name="WriteWords">A file to write the matching (or sampled) forms to, one per line; every match, not just the first <paramref name="Limit"/>.</param>
 /// <param name="WithCounts">Write <c>form&lt;TAB&gt;count</c> lines instead of the form alone.</param>
 /// <param name="Force">Overwrite <paramref name="WriteWords"/> when it exists; otherwise that is refused and nothing is written.</param>
+/// <param name="CountBy"><c>morph-seq</c>: count the distinct morph sequences of the matching readings.</param>
+/// <param name="Adjacent">Every <c>seq(...)</c> needs its morphs next to each other, as if each said <c>adjacent=true</c>.</param>
+/// <param name="ByMorph">Group the rows of a <c>realizes</c> query per morpheme.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null, string? QueryJson = null, string? GrammarPath = null,
     string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null, string? SegmentTest = null,
     string? ProjectPath = null, string? GroupBy = null, IReadOnlyList<string>? WhatIfRetire = null, bool Thorough = false, string? Sum = null, int? Sample = null,
-    long? Seed = null, string? WriteWords = null, bool WithCounts = false, bool Force = false);
+    long? Seed = null, string? WriteWords = null, bool WithCounts = false, bool Force = false, string? CountBy = null, bool Adjacent = false, bool ByMorph = false);
 
 /// <summary>One word of a corpus that satisfied the query.</summary>
 /// <param name="Form">The word.</param>
@@ -94,6 +97,28 @@ public sealed record TypesTokens(int Types, long Tokens);
 public sealed record WhatIfReport(bool Estimate, bool Exact, string Method, string Note, IReadOnlyList<string> Retire, bool Complete,
     TypesTokens Affected, TypesTokens Lost, TypesTokens Reduced, TypesTokens Capped, TypesTokens Failed, IReadOnlyList<WhatIfWord> Words);
 
+/// <summary>One distinct morph sequence of the matching readings (<c>--count-by morph-seq</c>).</summary>
+/// <param name="Seq">The morphs in surface order, each as its text, then <c>/</c> and its gloss when the project gives one; a morph with no placed text shows the first eight characters of its analysis id.</param>
+/// <param name="Types">Word types with a matching reading that has the sequence; a word counts once per distinct sequence.</param>
+/// <param name="Tokens">Their tokens.</param>
+/// <param name="Examples">Up to five of the words, most frequent first.</param>
+public sealed record MorphSeqEntry(IReadOnlyList<string> Seq, int Types, long Tokens, IReadOnlyList<string> Examples);
+
+/// <summary>The distinct morph sequences of the matching readings, by tokens.</summary>
+/// <param name="Complete">Mirrors <see cref="ReadingsReport.Complete"/>: false when a capped, timed-out or unanswered word may hide readings, so counts are lower bounds.</param>
+/// <param name="Words">Matching word types with at least one matching reading.</param>
+/// <param name="Tokens">Their tokens.</param>
+/// <param name="Distinct">How many distinct sequences there are; <paramref name="Sequences"/> lists at most --limit (default 100) of them.</param>
+/// <param name="Sequences">The most frequent sequences, by tokens then types then sequence.</param>
+public sealed record MorphSeqReport(bool Complete, int Words, long Tokens, int Distinct, IReadOnlyList<MorphSeqEntry> Sequences);
+
+/// <summary>The matching words that carry one morpheme of a <c>realizes</c> query (<c>--by-morph</c>).</summary>
+/// <param name="Morpheme">The morpheme as the realizes set names it.</param>
+/// <param name="Types">Matching word types that carry one of its forms.</param>
+/// <param name="Tokens">Their tokens.</param>
+/// <param name="Examples">Up to five of the words, most frequent first.</param>
+public sealed record MorphemeGroup(string Morpheme, int Types, long Tokens, IReadOnlyList<string> Examples);
+
 /// <summary>One value (or pair of values) of the grouped columns with the matching words that carry it.</summary>
 /// <param name="Key">The values joined by <c> | </c>; <c>(none)</c> for a word with no value.</param>
 /// <param name="Values">One value per grouped column, in order.</param>
@@ -133,6 +158,8 @@ public sealed record WordsWritten(string Path, int Words, bool WithCounts);
 /// <param name="Totals">Types and tokens of every match; present with <c>--group-by &lt;column&gt;</c> or <c>--sum tokens</c>.</param>
 /// <param name="Sample">The <c>--sample</c> that was drawn; null when not asked.</param>
 /// <param name="Written">The <c>--write-words</c> file; null when not asked.</param>
+/// <param name="MorphSeqs">The <c>--count-by morph-seq</c> report; null when not asked.</param>
+/// <param name="ByMorph">The <c>--by-morph</c> groups of a <c>realizes</c> query, by tokens; null when not asked.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsResponse(string Schema, CorpusSummary Corpus, string? Where, int Matched,
     IReadOnlyList<CorpusFormRow> Rows, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PhonReport? Phon,
@@ -143,7 +170,9 @@ public sealed record CorpusFormsResponse(string Schema, CorpusSummary Corpus, st
     [property: JsonPropertyName("groups"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ValueGroups? Groups = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TypesTokens? Totals = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SampleInfo? Sample = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] WordsWritten? Written = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] WordsWritten? Written = null,
+    [property: JsonPropertyName("morphSeqs"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] MorphSeqReport? MorphSeqs = null,
+    [property: JsonPropertyName("byMorph"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<MorphemeGroup>? ByMorph = null)
 {
     /// <summary>The schema name of the JSON form.</summary>
     public const string SchemaName = "motif.query.corpus-forms.v1";
@@ -156,7 +185,7 @@ public static class CorpusFormsQuery
     public const string ParseStateColumn = "parse.state";
 
     private static readonly QuerySpec Spec = new(
-        column => column is "form" or "tokens" or ParseStateColumn or "readings" || OnlyViaLowering.IsColumn(column) || QuerySources.IsTextColumn(column),
+        column => column is "form" or "tokens" or ParseStateColumn or "readings" || OnlyViaLowering.IsColumn(column) || MorphSeqLowering.IsColumn(column) || QuerySources.IsTextColumn(column),
         _ => false, column => column is "tokens" or "syllables" or "readings");
 
     /// <summary>Whether a name is a column a corpus word has, so it can be grouped by.</summary>
@@ -208,11 +237,11 @@ public static class CorpusFormsQuery
 
     /// <summary>Runs the expression; the matches and the undecided words come back from <paramref name="phon"/>.</summary>
     /// <returns>Every matching word, by token count then form.</returns>
-    public static IReadOnlyList<CorpusFormRow> Run(CorpusWordList corpus, QueryExpr? where, PhonSession? phon, IReadingSource? readings = null)
+    public static IReadOnlyList<CorpusFormRow> Run(CorpusWordList corpus, QueryExpr? where, PhonSession? phon, IReadingSource? readings = null, ReadingTests? tests = null)
     {
         ArgumentNullException.ThrowIfNull(corpus);
         var record = new QueryRecord(QuerySources.Forms, [], [], Examples: 0, Filter: where);
-        var rows = corpus.Words.Select(word => (IQueryRowView)new CorpusView(corpus.Row(word), readings));
+        var rows = corpus.Words.Select(word => (IQueryRowView)new CorpusView(corpus.Row(word), readings, tests));
         var outcome = QueryEngine.Execute(record, rows, Spec, phon: phon);
         return [.. outcome.Selected.Cast<CorpusView>().Select(view => view.Row.Word)
             .OrderByDescending(word => word.Tokens).ThenBy(word => word.Form, StringComparer.Ordinal)
@@ -220,7 +249,7 @@ public static class CorpusFormsQuery
                 phon is { Ran: true } ? phon.MatchesFor(word.Form) : null, Readings: readings?.Get(word.Form)?.Readings.Count))];
     }
 
-    private sealed class CorpusView(CorpusRow row, IReadingSource? readings) : IQueryRowView
+    private sealed class CorpusView(CorpusRow row, IReadingSource? readings, ReadingTests? tests) : IQueryRowView
     {
         public CorpusRow Row { get; } = row;
         public string Id => Row.Word.Form;
@@ -234,6 +263,8 @@ public static class CorpusFormsQuery
             if (column == ParseStateColumn) return word is null ? Row.Get(column) : [word.State];
             if (OnlyViaLowering.TryTarget(column, out var target))
                 return word is not null && ViaCount.Of(word, [target]).OnlyVia ? ["only"] : [];
+            if (MorphSeqLowering.IsColumn(column))
+                return word is not null && tests is not null && tests.Word(column, word) ? ["yes"] : [];
             return Row.Get(column);
         }
     }
