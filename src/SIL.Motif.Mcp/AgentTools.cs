@@ -1405,6 +1405,16 @@ internal static class AgentTools
         return supportedIntents;
     }
 
+    // Repeating one change over many stems is the commonest padding, so the schema says what it usually means.
+    private static JsonObject ForEachSchema()
+    {
+        var schema = Schema.Object(("targets", Schema.Array("Ids or forms; the entry becomes one intent per target, " +
+            "with {target}, {target.id} and {target.form} replaced in its strings.", Schema.String("An id or a form.")), true));
+        schema["description"] = "Use only if each target is a listed exception; otherwise one change on many stems " +
+            "belongs in an inflection class, phonological rule, natural class or stem name.";
+        return schema;
+    }
+
     private static JsonObject ComposeBatchSchema(IReadOnlyList<AgentTool> tools)
     {
         var supportedIntents = StepIntentSchemas(tools, forCompose: false);
@@ -1415,9 +1425,7 @@ internal static class AgentTools
             ("verb", Schema.String("Composing verb for this intent.", pair.Verb), true),
             ("intent", pair.Schema.DeepClone().AsObject(), true),
             ("citation", citation.DeepClone().AsObject(), false),
-            ("forEach", Schema.Object(("targets", Schema.Array("Ids or forms; the entry becomes one intent per target, " +
-                "with {target}, {target.id} and {target.form} replaced in its strings.", Schema.String("An id or a form.")), true)),
-                false))).ToArray());
+            ("forEach", ForEachSchema(), false))).ToArray());
         var item = new JsonObject
         {
             ["type"] = "object",
@@ -1489,8 +1497,14 @@ internal static class AgentTools
         return ToolOutcome.From(ProposalCommands.Compose(new(context.ProjectPath, context.ProductVersion,
                 arguments.Required("proposal"), parsed, arguments.List("remove"))),
             result => $"Draft now has {result.OperationCount} changes from {result.Intents.Count} steps. " +
-                "Dry Run the Draft, then Finalize for a person to Apply.");
+                AdvisoryNote(result) + "Dry Run the Draft, then Finalize for a person to Apply.");
     }
+
+    // Advisories never refuse, so the summary names them for an agent that reads only the summary.
+    private static string AdvisoryNote(ComposedBatchResponse result) => result.Advisories is { Count: > 0 } advisories
+        ? $"{advisories.Count} advisories ({string.Join(", ", advisories.Select(advisory => advisory.Code).Distinct())}) " +
+            "suggest a different model; read them before going on. "
+        : "";
 
     private static ToolOutcome ComposeBatch(ServerContext context, ToolArgs arguments)
     {
@@ -1527,7 +1541,7 @@ internal static class AgentTools
         return ToolOutcome.From(ProposalCommands.ComposeBatch(new(context.ProjectPath, context.ProductVersion,
                 arguments.Required("draft"), arguments.IntentJson("intents"))),
             result => $"Draft now has {result.OperationCount} changes from {result.IntentTotal ?? result.Intents.Count} intents; " +
-                "every operation is listed. " +
+                "every operation is listed. " + AdvisoryNote(result) +
                 "Dry Run the Draft, then Finalize for a person to Apply.");
     }
 

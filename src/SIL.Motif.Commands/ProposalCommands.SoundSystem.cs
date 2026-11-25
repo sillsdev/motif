@@ -457,7 +457,7 @@ public static partial class ProposalCommands
     /// <summary>Composes every step from one copy and one cache load; saves all of them or none.</summary>
     private static CommandOutcome<ComposedOperationsResponse[]> ComposeStepsIntoDraft(
         MotifDatabase database, ProjectLocator project, string draftName, IReadOnlyList<ComposeStep> steps,
-        bool describeBatchFailure = false, IReadOnlyList<string>? remove = null)
+        bool describeBatchFailure = false, IReadOnlyList<string>? remove = null, List<ComposeAdvisory>? advisories = null)
     {
         using var composeScope = ComposeProjectScope.Ensure(database, project);
         try
@@ -685,6 +685,9 @@ public static partial class ProposalCommands
                     }
                 }
                 if (expansionFailures.Count > 0) throw new ComposeStepFailures(expansionFailures);
+                if (advisories is not null)
+                    advisories.AddRange(OneStemClassAdvisories(cache, steps,
+                        results.Select(result => (result.Input, result.Added)).ToArray()));
                 writes.Complete();
                 return results;
             });

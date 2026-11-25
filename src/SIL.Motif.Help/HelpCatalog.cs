@@ -47,8 +47,8 @@ public enum HelpEntryKind
 /// null when it names none.
 /// </param>
 /// <param name="Redirect">
-/// For a composing command, one short sentence saying when it is the wrong choice and what to use instead; null when
-/// it names none.
+/// For a composing command, at most three sentences in the shape "Use only if ...; otherwise use ...", saying when it is
+/// the right choice, what to use instead, and what a repeated pattern of its use points to; null when it names none.
 /// </param>
 public sealed record HelpEntry(
     HelpEntryKind Kind,
