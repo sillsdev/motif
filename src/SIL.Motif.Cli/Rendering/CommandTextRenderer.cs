@@ -774,7 +774,9 @@ public static class CommandTextRenderer
     {
         var counts = receipt.Denominators;
         var location = receipt.PathIsStoreSuffix ? "Trial evidence next to the paired store" : "Trial evidence";
-        var comparison = receipt.ComparisonComplete ? "Comparison complete" : "Comparison incomplete";
+        var comparison = (receipt.PerWordParserWorkLimit is { } limit
+            ? "Parser work limit: " + (limit.Work is { } work ? work.ToString("N0", CultureInfo.CurrentCulture) + " per word\n" : "none\n")
+            : string.Empty) + (receipt.ComparisonComplete ? "Comparison complete" : "Comparison incomplete");
         var summary = $"{location}: {receipt.Path} ({receipt.Bytes:N0} bytes, {receipt.PublishMilliseconds:N0} ms to write and hash)\n" +
             $"Submitted: {counts.Submitted:N0}  Expanded: {counts.Expanded:N0}\n" +
             $"Before: {counts.Before.Dispatched:N0} dispatched, {counts.Before.Finished:N0} finished\n" +
@@ -786,6 +788,9 @@ public static class CommandTextRenderer
     {
         var text = new StringBuilder();
         text.AppendLine($"Trial {trial.JobId}: {trial.Status} ({trial.Freshness})");
+        if ((trial.Work?.PerWordParserWorkLimit ?? trial.Limits?.PerWordParserWorkLimit) is { } workLimit)
+            text.AppendLine("Parser work limit: " + (workLimit.Work is { } limit
+                ? limit.ToString("N0", CultureInfo.CurrentCulture) + " per word." : "none."));
         AppendDroppedGrammar(text, trial);
         if (trial.ReadingIdentity is { } identity) ProjectionText.AppendReadingIdentity(text, identity);
         if (trial.Work is not { } work)

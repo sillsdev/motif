@@ -37,11 +37,13 @@ public static class ProjectConfigurationFile
     private const string ParsimonyTable = "parsimony";
     private const string ScopeTable = "scope";
     private const string ReviewTable = "review-word-set";
+    private const string ParserTable = "parser";
 
     private static readonly HashSet<string> RegressionKeys = new(StringComparer.Ordinal) { "gate" };
     private static readonly HashSet<string> ApplyKeys = new(StringComparer.Ordinal) { "purge-on-apply" };
     private static readonly HashSet<string> GainGateKeys = new(StringComparer.Ordinal) { "mode", "min-attested-per-object" };
     private static readonly HashSet<string> ParsimonyKeys = new(StringComparer.Ordinal) { "block-on", "fold" };
+    private static readonly HashSet<string> ParserKeys = new(StringComparer.Ordinal) { "work-limit" };
     private static readonly HashSet<string> RetentionKeys = new(StringComparer.Ordinal) { "standalone-assessments-per-kind" };
 
     private static readonly HashSet<string> ScopeKeys = new(StringComparer.Ordinal)
@@ -64,6 +66,7 @@ public static class ProjectConfigurationFile
         List<string>? blockOn = null;
         List<string>? fold = null;
         List<string>? gateSets = null;
+        ParserWorkLimit? projectWorkLimit = null;
         var declaredGate = false;
         var scopes = new List<AssessmentScopeConfiguration>();
         var reviewSets = new List<ReviewWordSetConfiguration>();
@@ -100,7 +103,7 @@ public static class ProjectConfigurationFile
                 var name = HeaderName(trimmed, "[", "]", path, lineNumber);
                 if (name == ScopeTable)
                     throw Malformed(path, lineNumber, "'scope' must be declared as '[[scope]]', not '[scope]'");
-                if (name != RegressionTable && name != ApplyTable && name != RetentionTable && name != GainGateTable && name != ParsimonyTable && name != GateTable)
+                if (name != ParserTable && name != RegressionTable && name != ApplyTable && name != RetentionTable && name != GainGateTable && name != ParsimonyTable && name != GateTable)
                     throw Malformed(path, lineNumber, $"unknown table '[{name}]'");
                 if (name == GateTable)
                 {
@@ -126,6 +129,11 @@ public static class ProjectConfigurationFile
                 case RegressionTable:
                     if (!RegressionKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[regression]");
                     gate = ParseBool(path, lineNumber, key, rawValue);
+                    break;
+                case ParserTable:
+                    if (!ParserKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[parser]");
+                    if (projectWorkLimit is not null) throw Malformed(path, lineNumber, $"duplicate key '{key}'");
+                    projectWorkLimit = ParseParserWorkLimit(path, lineNumber, key, rawValue);
                     break;
                 case ApplyTable:
                     if (!ApplyKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[apply]");
@@ -178,6 +186,10 @@ public static class ProjectConfigurationFile
         FlushReview(reviewSets, review, ref reviewLine, path);
 
         if (scopes.Count == 0) scopes.Add(AssessmentScopeConfiguration.Default());
+        // A scope that names no limit of its own takes the project's, so a single setting reaches every scope.
+        if (projectWorkLimit is not null)
+            for (var i = 0; i < scopes.Count; i++)
+                if (!scopes[i].DeclaresParserWorkLimit) scopes[i] = scopes[i].WithParserWorkLimit(projectWorkLimit);
         var duplicate = scopes.GroupBy(s => s.Name, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1);
         if (duplicate is not null)
             throw new ProjectConfigurationException(
@@ -191,7 +203,7 @@ public static class ProjectConfigurationFile
             standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount, reviewSets,
             new GainGatePolicy(gateMode ?? GainGatePolicy.Default.Mode,
                 gateMinimum ?? GainGatePolicy.Default.MinAttestedPerObject),
-            blockOn, fold, gateSets);
+            blockOn, fold, gateSets) { ParserWorkLimit = projectWorkLimit };
     }
 
     /// <summary>Renders a resolved configuration back to the same TOML shape <see cref="Parse"/> reads.</summary>
@@ -207,6 +219,13 @@ public static class ProjectConfigurationFile
         sb.AppendLine();
         sb.AppendLine($"[{RetentionTable}]");
         sb.AppendLine($"standalone-assessments-per-kind = {configuration.StandaloneAssessmentCount}");
+
+        if (configuration.ParserWorkLimit is { } projectLimit)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"[{ParserTable}]");
+            sb.AppendLine($"work-limit = {projectLimit.ToArgument()}");
+        }
 
         if (configuration.GateWordSets is { } gateSets)
         {

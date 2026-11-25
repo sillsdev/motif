@@ -47,5 +47,6 @@ public static class ConfigCommands
             StandaloneAssessmentCount = configuration.StandaloneAssessmentCount,
             ParsimonyBlockOn = configuration.ParsimonyBlockOn,
             ParsimonyFold = configuration.ParsimonyFold,
+            ParserWorkLimit = configuration.ParserWorkLimit,
         };
 }

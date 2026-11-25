@@ -190,12 +190,14 @@ public static class AssessCommand
             }
             AssessmentScopeConfiguration configured;
             int standaloneAssessmentCount;
+            ParserWorkLimit? projectWorkLimit;
             try
             {
                 // The project's declared default scope sets the kinds and limits a run is held to, as `config show` reports.
                 var configuration = new ProjectConfigurationReader().Read(project);
                 var scopes = configuration.Scopes;
                 standaloneAssessmentCount = configuration.StandaloneAssessmentCount;
+                projectWorkLimit = configuration.ParserWorkLimit;
                 configured = scopes.FirstOrDefault(declared => declared.Name == AssessmentScopeConfiguration.DefaultName)
                     ?? scopes[0];
             }
@@ -365,11 +367,13 @@ public static class AssessCommand
                         "assess.unsupported-kind", FailureReason.Refused,
                         $"The Assessor does not declare required Assessment kind '{unsupported[0]}'.",
                         new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
+                // A flag outranks the project's own limit, which outranks what a saved Default Selection took by default.
+                var projectLimit = projectWorkLimit is null ? null : configured.PerWordParserWorkLimit;
                 var parserWorkLimit = request.PerWordParserWorkLimit ?? selectionRequest.PerWordParserWorkLimit ??
-                    defaultLimits?.PerWordParserWorkLimit ?? configured.PerWordParserWorkLimit;
+                    projectLimit ?? defaultLimits?.PerWordParserWorkLimit ?? configured.PerWordParserWorkLimit;
                 var policy = defaultLimits is null
                     ? SelectionLimitPolicy.Estimated(parserWorkLimit)
-                    : defaultLimits with { PerWordParserWorkLimit = parserWorkLimit };
+                    : SelectionLimitPolicy.WithWorkLimit(defaultLimits, parserWorkLimit);
                 var limits = frozenLimits ?? (request.PerWordLimitMs is { } ms
                     ? new TrialLimits(TimeSpan.FromMilliseconds(ms), parserWorkLimit)
                     : ParseRunLimits.Resolve(policy, ParseRunLimits.ReadRate(assessments)));

@@ -1,3 +1,5 @@
+using SIL.Motif.Contract.Assess;
+
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>A word whose completed Trial required more parser work than its Baseline.</summary>
@@ -37,6 +39,9 @@ public sealed record TrialWork(
     public IReadOnlyList<string> WorkLimitWords { get; init; } = [];
     /// <summary>Trial words stopped only by the time safety net, which depends on how fast this computer is.</summary>
     public IReadOnlyList<string> TimeSafetyNetWords { get; init; } = [];
+
+    /// <summary>The per-word parser work limit the Trial's searches ran under, so a gate can tell which limit measured a word.</summary>
+    public ParserWorkLimit? PerWordParserWorkLimit { get; init; }
 
     /// <summary>The Baseline's total word time on this computer, in milliseconds, when every Trial word has one.</summary>
     [System.Text.Json.Serialization.JsonIgnore]

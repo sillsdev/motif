@@ -34,6 +34,15 @@ public static class SelectionLimitPolicy
     public static SelectionParsingLimits Estimated(ParserWorkLimit parserWorkLimit) =>
         new(parserWorkLimit, SelectionTimeLimitMode.Estimated, null);
 
+    /// <summary>
+    /// Returns <paramref name="limits"/> with another parser work limit. Having no limit allows no explicit time cap, so
+    /// that case goes back to the estimated time cap.
+    /// </summary>
+    public static SelectionParsingLimits WithWorkLimit(SelectionParsingLimits limits, ParserWorkLimit parserWorkLimit) =>
+        parserWorkLimit.IsUnbounded && limits.TimeMode != SelectionTimeLimitMode.Estimated
+            ? new SelectionParsingLimits(parserWorkLimit, SelectionTimeLimitMode.Estimated, null, limits.AssessBudgetSeconds)
+            : limits with { PerWordParserWorkLimit = parserWorkLimit };
+
     /// <summary>Returns an explicit policy with a validated positive millisecond cap.</summary>
     public static SelectionParsingLimits Explicit(ParserWorkLimit parserWorkLimit, int milliseconds)
     {

@@ -414,20 +414,24 @@ public static class JobCommands
             : ParseRunLimits.Resolve(limits, ParseRunLimits.ReadRate(new AssessmentRepository(database)));
     }
 
-    private static SelectionParsingLimits? ReadTrialLimitPolicy(MotifDatabase database, ProjectLocator project, string? scopeName)
+    internal static SelectionParsingLimits? ReadTrialLimitPolicy(MotifDatabase database, ProjectLocator project, string? scopeName)
     {
         var limits = new NamedSelectionRepository(database).GetDefault()?.Limits;
-        if (limits is not null) return limits;
         try
         {
-            var scopes = new ProjectConfigurationReader().Read(project).Scopes;
+            var configuration = new ProjectConfigurationReader().Read(project);
+            var scopes = configuration.Scopes;
             var scope = scopes.FirstOrDefault(declared => declared.Name == (scopeName ?? AssessmentScopeConfiguration.DefaultName))
                 ?? scopes[0];
+            // The project's own limit outranks the one a saved Selection took by default; a flag outranks both.
+            if (limits is not null)
+                return configuration.ParserWorkLimit is null ? limits
+                    : SelectionLimitPolicy.WithWorkLimit(limits, scope.PerWordParserWorkLimit);
             return SelectionLimitPolicy.Estimated(scope.PerWordParserWorkLimit);
         }
         catch (ProjectConfigurationException)
         {
-            return null;
+            return limits;
         }
     }
 

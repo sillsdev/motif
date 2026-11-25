@@ -235,6 +235,50 @@ public sealed class ProjectConfigurationTests : IDisposable
         Assert.Contains("per-word-parser-work-limit = unbounded", ProjectConfigurationFile.Render(parsed), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ProjectParserWorkLimitReachesScopesThatNameNone()
+    {
+        var parsed = ProjectConfigurationFile.Parse(
+            "[[scope]]\nname = \"a\"\n\n[[scope]]\nname = \"b\"\nper-word-parser-work-limit = 5\n\n[parser]\nwork-limit = 60000000\n",
+            "Project.motif.toml");
+
+        Assert.Equal(new ParserWorkLimit(60_000_000), parsed.ParserWorkLimit);
+        Assert.Equal(new ParserWorkLimit(60_000_000), parsed.Scopes[0].PerWordParserWorkLimit);
+        Assert.Equal(new ParserWorkLimit(5), parsed.Scopes[1].PerWordParserWorkLimit);
+        Assert.Equal(new ParserWorkLimit(60_000_000), ProjectConfigurationFile.Parse(
+            ProjectConfigurationFile.Render(parsed), "Project.motif.toml").ParserWorkLimit);
+    }
+
+    [Fact]
+    public void AnAbsentParserTableLeavesTheLimitUndeclared()
+    {
+        var parsed = ProjectConfigurationFile.Parse("[[scope]]\nname = \"a\"\n", "Project.motif.toml");
+
+        Assert.Null(parsed.ParserWorkLimit);
+        Assert.False(parsed.Scopes[0].DeclaresParserWorkLimit);
+        Assert.Equal(ParserWorkLimit.Default, parsed.Scopes[0].PerWordParserWorkLimit);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-3")]
+    [InlineData("lots")]
+    [InlineData("1.5")]
+    public void InvalidProjectParserWorkLimitsRefuseNamingTheLine(string value)
+    {
+        var exception = Assert.Throws<ProjectConfigurationException>(() => ProjectConfigurationFile.Parse(
+            $"[parser]\nwork-limit = {value}\n", "Project.motif.toml"));
+        Assert.Contains("line 2", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("positive whole number", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnknownParserKeysRefuse()
+    {
+        Assert.Throws<ProjectConfigurationException>(() => ProjectConfigurationFile.Parse(
+            "[parser]\nwork_limit = 5\n", "Project.motif.toml"));
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, true); }

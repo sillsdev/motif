@@ -31,6 +31,17 @@ Motif keeps the newest 20 standalone Assessments per kind, as well as Assessment
 standalone-assessments-per-kind = 20
 ```
 
+## Set a parser work limit for the project
+
+A word that needs more parser work than the limit stops, and a Trial reports it as capped, so the gate cannot measure it. To give every parse the same higher limit, add this project setting:
+
+```toml
+[parser]
+work-limit = 60000000
+```
+
+The value is a positive whole number or `unbounded`. Trial, Assess and the Trial an Apply runs all use it, and `parse --trace`, `trace` and `why-lost` pass it to PanGloss, so they stop where the Trial stopped (`parse --trace` and `why-lost` also use a saved Default Selection's limit when the project declares none). A scope's own `per-word-parser-work-limit` wins for that scope, and an explicit `--parser-work-limit` flag wins over both. The project limit also outranks the limit a saved Default Selection took by default. A value that is not a positive whole number or `unbounded` is refused with `config.invalid`, naming the line. `config show --json` reports it as `parserWorkLimit`, and a Trial and its evidence export report the limit that measured their words.
+
 ## Declare an Autonomous Apply gate
 
 Add this to `<project>.motif.toml`, beside the project, to require the saved Selection named Gold words:
