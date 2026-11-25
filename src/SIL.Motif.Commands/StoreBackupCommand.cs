@@ -562,7 +562,7 @@ public static partial class StoreBackupCommand
             project, storePath, ("exceptionDetail", exception.Message), ("preRestoreDirectory", savedIn ?? ""));
     }
 
-    /// <summary>True for a Windows sharing or lock violation (Win32 error 32 or 33) in the exception chain.</summary>
+    /// <summary>True for a Windows sharing or lock violation in the exception chain.</summary>
     private static bool IsSharingViolation(Exception? exception)
     {
         if (!OperatingSystem.IsWindows()) return false;
