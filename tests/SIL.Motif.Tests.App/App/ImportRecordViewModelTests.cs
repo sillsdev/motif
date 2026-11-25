@@ -53,6 +53,23 @@ public sealed class ImportRecordViewModelTests
     }
 
     [UiThreadFact]
+    public async Task StrictIsSentWithTheStageAndTheRefusalCountOfTheStagedDraftIsKept()
+    {
+        var (model, client) = Make((request, _) => Ok(Plan(operations: 2, refusals: request.Strict ? 4 : 0, draft: request.DraftName)));
+        await model.PreviewAsync();
+        model.DraftName = "staged";
+        model.Strict = true;
+
+        await model.StageAsync();
+
+        Assert.Equal(ImportRecordState.Staged, model.State);
+        Assert.True(client.StageRecordImportRequests.Last().Strict);
+        Assert.Equal(4, model.StagedRefusalCount);
+        model.FilePath = "other.md";
+        Assert.Null(model.StagedRefusalCount);
+    }
+
+    [UiThreadFact]
     public async Task PagingRequestsTheNeighbouringPageAndStopsAtTheEnds()
     {
         var (model, client) = Make((request, _) => Ok(Plan(request.Page, pageCount: 2, operations: 5)));

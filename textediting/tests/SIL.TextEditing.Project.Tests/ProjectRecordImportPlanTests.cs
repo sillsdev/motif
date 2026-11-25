@@ -314,6 +314,22 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void AFileWithAnOldBaseThatSaysWhatTheProjectNowHoldsIsUnchangedNotStale()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var before = exporter.Export(w.Entry.Guid);
+            fixture.Change(() => w.Second.Gloss.set_String(fixture.Cache.DefaultAnalWs, Anal(fixture.Cache, "trade")));
+            var after = exporter.Export(w.Entry.Guid);
+            Assert.NotEqual(before.Base, after.Base);
+            var plan = Plan(exporter, after.Text.Replace(after.Base, before.Base));
+            Assert.Equal(ProjectRecordBaseVerdict.Unchanged, plan.BaseVerdict);
+            Assert.Empty(plan.ChangeSet.Changes);
+            Assert.Empty(plan.ChangeSet.Refusals);
+        }
+
+        [Fact]
         public void ACustomFieldAddedAfterTheExportIsASchemaMismatchNotAStaleBase()
         {
             using var fixture = new ProjectFixture();

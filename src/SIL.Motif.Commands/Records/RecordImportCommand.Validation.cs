@@ -48,24 +48,36 @@ public static partial class RecordImportCommand
     }
 
     /// <summary>Runs the operations on a scratch copy in Apply's order, so refusals surface early.</summary>
-    private static RecordLowering ValidateOnScratch(LcmCache cache, ProjectRecordPlan plan, RecordLowering full)
+    private static RecordLowering ValidateOnScratch(LcmCache cache, ProjectRecordPlan plan, RecordLowering full) =>
+        ValidateOnScratch(cache, [(plan, full)])[0];
+
+    /// <summary>One scratch pass over the operations of every file, with each failure charged to its own file and change.</summary>
+    private static RecordLowering[] ValidateOnScratch(LcmCache cache, IReadOnlyList<(ProjectRecordPlan Plan, RecordLowering Full)> units)
     {
-        if (full.Operations.Count == 0 || full.OperationChanges is not { } owners) return full;
-        var changes = plan.ChangeSet.Changes;
-        var changeOf = new Dictionary<CanonicalId, int>();
-        for (var index = 0; index < full.Operations.Count; index++)
-            changeOf[full.Operations[index].OperationId] = owners[index];
-        var failed = new Dictionary<int, string>();
+        var results = units.Select(unit => unit.Full).ToArray();
+        var owner = new Dictionary<CanonicalId, (int Unit, int Change)>();
+        var byId = new Dictionary<CanonicalId, OperationEnvelope>();
+        for (var unit = 0; unit < units.Count; unit++)
+        {
+            var full = units[unit].Full;
+            if (full.Operations.Count == 0 || full.OperationChanges is not { } owners) continue;
+            for (var index = 0; index < full.Operations.Count; index++)
+            {
+                owner[full.Operations[index].OperationId] = (unit, owners[index]);
+                byId[full.Operations[index].OperationId] = full.Operations[index];
+            }
+        }
+        if (byId.Count == 0) return results;
+        var failed = new Dictionary<(int Unit, int Change), string>();
         var failedOperations = new HashSet<CanonicalId>();
-        var own = changeOf.Keys.ToHashSet();
-        var contained = full.Operations.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
+        var contained = byId.Values.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
             operation.EntityId, operation.Target, operation.After, operation.Placement,
-            operation.DependsOn.Where(dependency => own.Contains(dependency.OperationId)).ToArray(),
+            operation.DependsOn.Where(dependency => owner.TryGetValue(dependency.OperationId, out var own) &&
+                own.Unit == owner[operation.OperationId].Unit).ToArray(),
             rationale: operation.Rationale)).ToArray();
-        var byId = full.Operations.ToDictionary(operation => operation.OperationId);
         var handler = cache.ServiceLocator.GetInstance<IActionHandler>();
-        using var unit = new NonUndoableUnitOfWorkHelper(handler);
-        unit.RollBack = false;
+        using var unitOfWork = new NonUndoableUnitOfWorkHelper(handler);
+        unitOfWork.RollBack = false;
         using var writes = DeferredWrites.Begin(cache);
         IReadOnlyList<OperationEnvelope> order;
         try
@@ -79,7 +91,7 @@ public static partial class RecordImportCommand
         foreach (var ordered in order)
         {
             var id = ordered.OperationId;
-            var change = changeOf[id];
+            var change = owner[id];
             if (failed.ContainsKey(change) || ordered.DependsOn.Any(dependency => failedOperations.Contains(dependency.OperationId)))
             {
                 failedOperations.Add(id);
@@ -109,10 +121,21 @@ public static partial class RecordImportCommand
         }
         catch (Exception exception) when (IsRefusalOfOneChange(exception))
         {
-            foreach (var change in changeOf.Values.Distinct().Where(change => !failed.ContainsKey(change)))
+            foreach (var change in owner.Values.Distinct().Where(change => !failed.ContainsKey(change)))
                 failed[change] = "The operations together could not be written: " + exception.Message;
         }
-        if (failed.Count == 0) return full;
+        for (var unit = 0; unit < units.Count; unit++)
+        {
+            var mine = failed.Where(pair => pair.Key.Unit == unit).ToDictionary(pair => pair.Key.Change, pair => pair.Value);
+            if (mine.Count > 0) results[unit] = WithoutFailed(units[unit].Plan, units[unit].Full, mine);
+        }
+        return results;
+    }
+
+    private static RecordLowering WithoutFailed(ProjectRecordPlan plan, RecordLowering full, Dictionary<int, string> failed)
+    {
+        var changes = plan.ChangeSet.Changes;
+        var owners = full.OperationChanges!;
         if (full.RequiredChanges is { } required && failed.Keys.Where(required.Contains).Order().FirstOrDefault(-1) is var fatal and >= 0)
             return new([], full.Refusals, full.PlanRefusals, [], null, new RecordLoweringRefusal(RefusalCodes.RecordImportCreateShape,
                 changes[fatal].ObjectType ?? "", changes[fatal].Field, plan.RecordGuid,

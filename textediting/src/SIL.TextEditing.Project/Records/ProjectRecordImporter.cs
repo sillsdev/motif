@@ -80,6 +80,9 @@ namespace SIL.TextEditing.Project
         readonly IFwMetaDataCache _metadata;
         readonly ProjectPathResolver _paths;
 
+        /// <summary>The project's rich-text links, scanned on first need and kept for every plan this importer makes, so a batch of files scans the project once. The project must not change between plans.</summary>
+        Dictionary<Guid, HashSet<Guid>>? _richLinks;
+
         public ProjectRecordImporter(ProjectRecordExporter exporter)
         {
             _exporter = exporter ?? throw new ArgumentNullException(nameof(exporter));
@@ -139,7 +142,8 @@ namespace SIL.TextEditing.Project
             if (export.Text == null)
                 return Whole(file, ProjectRecordBaseVerdict.NotChecked, record, export, read, new[] { Refusal(RecordRefusalKind.ExportFailed, "The project's record could not be written as a file, so the file cannot be compared with it.", record) });
 
-            if (file.Base == null && IsUnchanged(file, export, read))
+            // A file that already says what the project holds is unchanged whatever its base says: its edits were applied, or it was never an edit.
+            if ((file.Base == null || !string.Equals(file.Base, export.Base, StringComparison.Ordinal)) && IsUnchanged(file, export, read))
                 return new ProjectRecordPlan(new RecordChangeSet(new List<RecordChange>().AsReadOnly(), new List<RecordRefusal>().AsReadOnly(), file.Root != null), ProjectRecordBaseVerdict.Unchanged, kind.Name, record, export, read.Diagnostics);
             if (file.Base == null)
                 return Whole(file, ProjectRecordBaseVerdict.Missing, record, export, read,
@@ -219,7 +223,7 @@ namespace SIL.TextEditing.Project
             return null;
         }
 
-        /// <summary>True when a file with no <c>base:</c> says exactly what the project's record already holds.</summary>
+        /// <summary>True when the file says exactly what the project's record already holds.</summary>
         bool IsUnchanged(RecordDocument file, ProjectRecordExport export, RecordReadResult read)
         {
             if (read.HasErrors) return false;
@@ -696,13 +700,11 @@ namespace SIL.TextEditing.Project
                 return null;
             }
 
-            Dictionary<Guid, HashSet<Guid>>? _richLinks;
-
             /// <summary>For every object GUID that a rich-text link (an object-data run property) names: the GUIDs of the objects whose strings hold such a link. Built on first use by one pass over
             /// every String and MultiString field of every object of the project.</summary>
             Dictionary<Guid, HashSet<Guid>> RichLinks()
             {
-                if (_richLinks != null) return _richLinks;
+                if (_in._richLinks != null) return _in._richLinks;
                 var clock = System.Diagnostics.Stopwatch.StartNew();
                 long read = 0;
                 var found = new Dictionary<Guid, HashSet<Guid>>();
@@ -735,7 +737,7 @@ namespace SIL.TextEditing.Project
                     }
                 }
                 ProjectRecordImporter.LastRichLinkScan = (read, clock.ElapsedMilliseconds);
-                return _richLinks = found;
+                return _in._richLinks = found;
             }
 
             static readonly System.Text.RegularExpressions.Regex GuidText = new System.Text.RegularExpressions.Regex(
