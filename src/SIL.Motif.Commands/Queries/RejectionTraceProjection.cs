@@ -44,6 +44,8 @@ public static class RejectionTraceProjection
         };
         if (search.ValueKind == JsonValueKind.Object && Str(search, "status") != "complete")
             notes.Add("The search did not run to completion, so a path with no recorded stop is not a proven dead end.");
+        if (StopReasonsOf(search).Contains(RejectionTraceSearch.WorkLimitStopReason))
+            notes.Add("PanGloss stopped this word at its work limit, so the paths shown are partial; a higher limit may find more.");
         if (terminal.Count == 0)
             notes.Add("PanGloss kept no terminal path for this word.");
         if (outputs.Count > 0 && terminal.Any(p => Str(p, "outcome") == "rejected"))
@@ -56,7 +58,10 @@ public static class RejectionTraceProjection
                 Str(grammar, "hash"), Str(grammar, "semantics")),
             new RejectionTraceSearch(Str(search, "status") ?? "unknown", Str(search, "outputCensus") ?? "unavailable",
                 Num(search, "outputCount"), Num(search, "workUnits"), Strings(search, "stopReasons"))
-            { ErrorCode = search.ValueKind == JsonValueKind.Object ? Str(Obj(search, "error"), "code") : null },
+            {
+                ErrorCode = search.ValueKind == JsonValueKind.Object ? Str(Obj(search, "error"), "code") : null,
+                WorkCap = WorkCapOf(Obj(Obj(header, "searchOptions"), "workCap")),
+            },
             new RejectionTraceCapture(Str(capture, "coverage") ?? "none", Strings(capture, "truncatedBy"),
                 Count(capture, "omittedPaths"), Count(capture, "omittedEvents"), Count(capture, "omittedOutputs")),
             outputsShown, shown,
@@ -64,6 +69,13 @@ public static class RejectionTraceProjection
                 outputsShown.Count, outputs.Count - outputsShown.Count))
         { Notes = notes };
     }
+
+    private static List<string> StopReasonsOf(JsonElement search) => Strings(search, "stopReasons");
+
+    private static RejectionTraceWorkCap? WorkCapOf(JsonElement resource) =>
+        resource.ValueKind == JsonValueKind.Object && Str(resource, "state") is { } state
+            ? new RejectionTraceWorkCap(state, state == "bounded" ? Num(resource, "value") : null)
+            : null;
 
     private static RejectionTracePath ToPath(
         JsonElement path, Dictionary<int, JsonElement> events, Dictionary<(string, string), JsonElement> mappings)

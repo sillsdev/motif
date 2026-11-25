@@ -76,7 +76,49 @@ public sealed record RejectionTraceSearch(
 {
     /// <summary>The typed error the parser attached to this word, or <see langword="null"/>.</summary>
     public string? ErrorCode { get; init; }
+
+    /// <summary>The work limit the parser recorded for the search; null when its record names none.</summary>
+    public RejectionTraceWorkCap? WorkCap { get; init; }
+
+    /// <summary>Whether the parser recorded that the search stopped at its work limit.</summary>
+    public bool WorkLimitReached => StopReasons.Contains(WorkLimitStopReason);
+
+    /// <summary>The stop reason the parser records for a search that used up its work limit.</summary>
+    public const string WorkLimitStopReason = "work_limit";
+
+    /// <summary>
+    /// How the search ended in words: <c>work limit reached</c> when the parser recorded that stop, with the work done and
+    /// the limit as recorded, and never <c>complete</c> for a search the parser did not finish.
+    /// </summary>
+    public string Description
+    {
+        get
+        {
+            if (WorkLimitReached)
+                return $"work limit reached ({WorkCountText} against {WorkLimitText})";
+            return StopReasons.Count > 0 && Status != "complete"
+                ? $"search {Status} ({string.Join(", ", StopReasons)})"
+                : $"search {Status}";
+        }
+    }
+
+    private string WorkCountText => WorkUnits is { } work
+        ? work.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " work units"
+        : "work count not recorded";
+
+    private string WorkLimitText => WorkCap switch
+    {
+        { State: "bounded", Value: { } limit } => "a limit of " +
+            limit.ToString("N0", System.Globalization.CultureInfo.InvariantCulture),
+        { State: "unbounded" } => "a limit the parser recorded as unbounded",
+        _ => "a limit the parser did not record",
+    };
 }
+
+/// <summary>The work limit a parser's rejection trace recorded for one search.</summary>
+/// <param name="State"><c>bounded</c>, <c>unbounded</c> or <c>unsupported</c>, as the parser wrote it.</param>
+/// <param name="Value">The limit in parser work units when <paramref name="State"/> is <c>bounded</c>.</param>
+public sealed record RejectionTraceWorkCap(string State, long? Value);
 
 /// <summary>What the capture kept and what it dropped.</summary>
 /// <param name="Coverage">How much history the parser kept, as it spells it.</param>

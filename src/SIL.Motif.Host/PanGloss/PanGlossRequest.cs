@@ -320,6 +320,9 @@ public abstract record PanGlossRequest
         /// <summary>The rejection reasons the parser's description lists; set by the invoker, never by a caller.</summary>
         internal IReadOnlyList<string>? DescribedRejectReasons { get; init; }
 
+        /// <summary>The per-word work limit to pass; null leaves the parser's own default.</summary>
+        public ParserWorkLimit? WorkLimit { get; init; }
+
         public override string Subcommand => "parse";
 
         internal override void Validate()
@@ -340,6 +343,9 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(Path.Combine(scratch, ArtifactName));
             startInfo.ArgumentList.Add("--trace-max-paths");
             startInfo.ArgumentList.Add(MaxPaths.ToString(CultureInfo.InvariantCulture));
+            if (WorkLimit is null) return;
+            startInfo.ArgumentList.Add("--work-cap");
+            startInfo.ArgumentList.Add(WorkLimit.ToWorkCapArgument());
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,

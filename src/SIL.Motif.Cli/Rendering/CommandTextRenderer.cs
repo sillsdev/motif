@@ -2210,7 +2210,7 @@ public static class CommandTextRenderer
     private static string RenderRejectionTrace(RejectionTraceResponse response)
     {
         var text = new StringBuilder();
-        text.AppendLine($"Rejection trace of {response.Input} against {response.TracedAgainst}: search {response.Search.Status}, " +
+        text.AppendLine($"Rejection trace of {response.Input} against {response.TracedAgainst}: {response.Search.Description}, " +
             $"{response.Outputs.Count:N0} output(s), {response.Bound.PathsShown:N0} of {response.Bound.TerminalPathsRetained:N0} retained path(s) shown.");
         foreach (var path in response.Paths)
         {

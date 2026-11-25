@@ -76,8 +76,9 @@ public static class WordTraceQuery
         var parser = parserPath ?? PanGlossExecutable.TryLocate();
         using var invoker = new PanGlossInvoker(parser);
         if (!TryWordSessions.Enabled)
-            return Query(request, new PanGlossTracer(invoker), cancellationToken, hostEvidence: false);
-        using var tracer = TryWordSessions.TracerFor(parser, invoker);
+            return Query(request, new PanGlossTracer(invoker, ProjectWorkLimit.Declared(request.ProjectPath)),
+                cancellationToken, hostEvidence: false);
+        using var tracer = TryWordSessions.TracerFor(parser, invoker, ProjectWorkLimit.Declared(request.ProjectPath));
         return Query(request, tracer, cancellationToken, hostEvidence: false);
     }
 
@@ -98,8 +99,9 @@ public static class WordTraceQuery
         Action<AssessmentProgress>? onProgress, bool warm)
     {
         using var invoker = new PanGlossInvoker(parserPath);
-        if (!warm) return Query(request, new PanGlossTracer(invoker), cancellationToken, onProgress);
-        using var tracer = TryWordSessions.TracerFor(parserPath, invoker);
+        var workLimit = ProjectWorkLimit.Declared(request.ProjectPath);
+        if (!warm) return Query(request, new PanGlossTracer(invoker, workLimit), cancellationToken, onProgress);
+        using var tracer = TryWordSessions.TracerFor(parserPath, invoker, workLimit);
         return Query(request, tracer, cancellationToken, onProgress);
     }
 

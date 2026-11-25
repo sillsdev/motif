@@ -4,7 +4,9 @@ using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
@@ -52,17 +54,29 @@ public static class RejectionTraceQuery
                 return CommandOutcome<RejectionTraceResponse>.Refused(ProjectParseLease.BusyRefusal());
             var resolved = TracedGrammar.Resolve(database, project, proposalId);
             if (!resolved.Succeeded) return CommandOutcome<RejectionTraceResponse>.Refused(resolved.Refusal!);
+            ParserWorkLimit projectLimit;
+            try
+            {
+                _ = new ProjectConfigurationReader().Read(project);
+                projectLimit = ProjectWorkLimit.Effective(database, project);
+            }
+            catch (ProjectConfigurationException exception)
+            {
+                return CommandOutcome<RejectionTraceResponse>.Refused(new Refusal(
+                    RefusalCodes.ConfigInvalid, FailureReason.Refused, exception.Message,
+                    new Dictionary<string, string> { ["configPath"] = ProjectConfigurationReader.PathFor(project) }));
+            }
             return Run(invoker, resolved.Value!.FwDataPath, request.ProjectPath, request.Word, maxPaths,
-                resolved.Value.TracedAgainst, cancellationToken);
+                resolved.Value.TracedAgainst, cancellationToken, projectLimit);
         });
     }
 
     /// <summary>Runs the capture on an exact grammar and projects it; the seam the tests drive without a project.</summary>
     internal static CommandOutcome<RejectionTraceResponse> Run(
         IPanGlossInvoker invoker, string grammarPath, string projectPath, string word, int maxPaths,
-        string tracedAgainst, CancellationToken cancellationToken)
+        string tracedAgainst, CancellationToken cancellationToken, ParserWorkLimit? workLimit = null)
     {
-        return RunDescribed(invoker, grammarPath, projectPath, word, maxPaths, tracedAgainst, cancellationToken).Result;
+        return RunDescribed(invoker, grammarPath, projectPath, word, maxPaths, tracedAgainst, cancellationToken, workLimit).Result;
     }
 
     /// <summary>
@@ -71,9 +85,9 @@ public static class RejectionTraceQuery
     /// </summary>
     internal static (CommandOutcome<RejectionTraceResponse> Result, IReadOnlyList<string>? DescribedRejectReasons) RunDescribed(
         IPanGlossInvoker invoker, string grammarPath, string projectPath, string word, int maxPaths,
-        string tracedAgainst, CancellationToken cancellationToken)
+        string tracedAgainst, CancellationToken cancellationToken, ParserWorkLimit? workLimit = null)
     {
-        var outcome = invoker.RunAsync(new PanGlossRequest.RejectionTrace(grammarPath, word, maxPaths),
+        var outcome = invoker.RunAsync(new PanGlossRequest.RejectionTrace(grammarPath, word, maxPaths) { WorkLimit = workLimit },
             "rejection-trace:" + word, cancellationToken).GetAwaiter().GetResult();
         return (Shape(outcome, projectPath, word, maxPaths, tracedAgainst),
             (outcome as PanGlossOutcome.Completed)?.DescribedRejectReasons);

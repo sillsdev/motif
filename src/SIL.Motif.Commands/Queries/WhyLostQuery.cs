@@ -62,11 +62,12 @@ public static class WhyLostQuery
             var trialGrammar = TracedGrammar.Resolve(database, project, request.ProposalId);
             if (!trialGrammar.Succeeded) return CommandOutcome<WhyLostResponse>.Refused(trialGrammar.Refusal!);
 
+            var workLimit = ProjectWorkLimit.Effective(database, project);
             var baseline = RejectionTraceQuery.RunDescribed(invoker, baselineGrammar.Value!.FwDataPath, request.ProjectPath,
-                request.Word, maxPaths, baselineGrammar.Value.TracedAgainst, cancellationToken);
+                request.Word, maxPaths, baselineGrammar.Value.TracedAgainst, cancellationToken, workLimit);
             if (!baseline.Result.Succeeded) return CommandOutcome<WhyLostResponse>.Refused(baseline.Result.Refusal!);
             var trial = RejectionTraceQuery.RunDescribed(invoker, trialGrammar.Value!.FwDataPath, request.ProjectPath,
-                request.Word, maxPaths, trialGrammar.Value.TracedAgainst, cancellationToken);
+                request.Word, maxPaths, trialGrammar.Value.TracedAgainst, cancellationToken, workLimit);
             if (!trial.Result.Succeeded) return CommandOutcome<WhyLostResponse>.Refused(trial.Result.Refusal!);
 
             Proposal proposal;
