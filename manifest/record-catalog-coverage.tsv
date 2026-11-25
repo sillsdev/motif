@@ -1295,8 +1295,6 @@ OtherFields	PhSegRuleRHS	struc-change	PhSegRuleRHS.StrucChange	Set	none	Unsuppor
 OtherFields	PhSegRuleRHS	struc-change	PhSegRuleRHS.StrucChange	Clear	none	NoOperationKind	-
 OtherFields	PhSegmentRule	struc-desc	PhSegmentRule.StrucDesc	Set	none	UnsupportedChildClass	-
 OtherFields	PhSegmentRule	struc-desc	PhSegmentRule.StrucDesc	Clear	none	NoOperationKind	-
-OtherFields	PhSequenceContext	members	PhSequenceContext.Members	InsertReference	none	NoOperationKind	-
-OtherFields	PhSequenceContext	members	PhSequenceContext.Members	RemoveReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	members	PhSequenceContext.Members	MoveReference	none	NoOperationKind	-
 OtherFields	PhSequenceContext	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSequenceContext	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
