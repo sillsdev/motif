@@ -365,7 +365,7 @@
     "source": "Hand-written from the Motif MCP refusal advice."
   },
   "rule-notation.context-in-use": {
-    "why": "A phonological rule context this change deletes is also used by another object since the change was composed. Nothing was deleted; read the rule again and compose the change again.",
+    "why": "A context this change deletes is also used by another object since the change was composed. Nothing was deleted; read the rule again and compose the change again.",
     "source": "Hand-written from the Motif record import refusal advice."
   },
   "clitic-attachment.stale-source": {

@@ -1,9 +1,11 @@
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Records;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Model.DryRun;
 using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
@@ -17,6 +19,7 @@ namespace SIL.Motif.Tests.Commands;
 [Collection(LcmCacheParallelCollections.Group3)]
 public sealed class PhonologicalRuleAlphaImportTests(PristineProjectFixture pristine)
 {
+    private const string Version = "0.1.0";
     private const string Collect = "grammar/phRegularRule/collectUnusedFeatConstraints";
 
     private string Start(out Guid ruleId)
@@ -351,6 +354,50 @@ public sealed class PhonologicalRuleAlphaImportTests(PristineProjectFixture pris
             OperationHandlerRegistry.Resolve(delete.Kind, "apply-time guard test").ApplyAndCaptureEffect(cache, delete, []))));
         Assert.Equal(RefusalCodes.RuleNotationContextInUse, refused.Code);
         Assert.NotNull(cache.ServiceLocator.GetObject(member.Guid));
+    }
+
+    [Fact]
+    public void ADisagreeingVariableThatIsRemovedDropsTheMinusReferenceAndCollectsTheConstraint()
+    {
+        var path = Start(out var ruleId);
+        Edit(path, "disagree", ruleId, left: "[V voi:-α]");
+        using var cache = new FwDataProjectLoader().LoadCache(path);
+        var lowering = Lower(cache, ruleId, left: "[V]");
+        Assert.Empty(lowering.Refusals);
+        Assert.Equal(new[] { "grammar/phSimpleContextNC/removeRefMinusConstr", Collect },
+            Kinds(lowering).OrderBy(kind => kind == Collect).ThenBy(kind => kind, StringComparer.Ordinal).ToArray());
+    }
+
+    [Fact]
+    public void AContextThatIsSharedBetweenStagingAndApplyingIsRefusedThroughTheDraftPipeline()
+    {
+        var path = Start(out var ruleId);
+        PhonologicalRuleRecordImportTests.Import(path, "sequence", ruleId, document => Rhs(document).Set("right-context", new RecordScalar("[V] a")));
+        const string draft = "shared";
+        Guid member;
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            var plan = PhonologicalRuleRecordImportTests.PlanEdit(cache, ruleId, document => Rhs(document).Set("right-context", new RecordScalar("a")), out var schema);
+            Assert.Empty(plan.ChangeSet.Refusals);
+            Assert.True(ProposalCommands.New(new(path, Version, draft, "Record import")).Succeeded);
+            Assert.True(ProposalCommands.StageRecordImport(path, draft, schema, plan).Succeeded);
+        }
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            member = ((IPhSequenceContext)Rule(cache, ruleId).RightHandSidesOS.Single().RightContextOA!).MembersRS[0].Guid;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => AlsoUsedBy(cache, (IPhPhonContext)cache.ServiceLocator.GetObject(member)));
+            new FwDataProjectLoader().Save(cache);
+        }
+        DraftRationale.Author(path, draft, "Imported record", "The record file was edited and imported.");
+        var finalized = ProposalCommands.Finalize(new(path, Version, draft));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var dryRun = DryRunJobRunner.Run(path, Version, finalized.Value!.ProposalId, rebaseline: true);
+        Assert.False(dryRun.Succeeded);
+        Assert.Equal(RefusalCodes.RuleNotationContextInUse, dryRun.Refusal!.Code);
+        var applied = ProposalCommands.Apply(new(path, Version, finalized.Value.ProposalId, Force: true));
+        Assert.False(applied.Succeeded);
+        using var held = new FwDataProjectLoader().LoadCache(path);
+        Assert.NotNull(held.ServiceLocator.GetObject(member));
     }
 
     private static void AlsoUsedBy(LcmCache cache, IPhPhonContext member)
