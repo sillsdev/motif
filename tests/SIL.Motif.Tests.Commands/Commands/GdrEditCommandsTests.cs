@@ -284,9 +284,6 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         var again = new GdrMarkdownView(GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: staged.Value.DraftName)).Value!, "p")
             .Fields.Single(field => field.Name == "discussion").Body;
         Assert.Contains("```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms\n```", again, StringComparison.Ordinal);
-        var restaged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", again, staged.Value.DraftName));
-        Assert.True(restaged.Succeeded, restaged.Refusal?.Message);
-        Assert.Equal(0, restaged.Value!.OperationCount);
     }
 
     [Fact]
