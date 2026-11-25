@@ -2178,7 +2178,7 @@
   },
   {
     "name": "motif_guide_show",
-    "description": "Read a Grammar Guide section. Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied; available in Advanced AI mode.\nCommand: guide show. Agent class: Read.\nId: The record\u0027s GDR-n abbreviation or its canonical id.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.\nAsOf: A Draft name or Proposal id whose edits of this section are shown as if applied; null shows the Baseline.",
+    "description": "Read a Grammar Guide section. Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied.\nCommand: guide show. Agent class: Read.\nId: The record\u0027s GDR-n abbreviation or its canonical id.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.\nAsOf: A Draft name or Proposal id whose edits of this section are shown as if applied; null shows the Baseline.",
     "inputSchema": {
       "type": "object",
       "properties": {

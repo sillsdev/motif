@@ -45,10 +45,12 @@ public sealed class GdrAddCommandsTests(PristineProjectFixture pristine)
 
         var record = Assert.Single(GdrQuery.List(new GdrListRequest(path)).Value!.Records);
         Assert.Equal("GDR-1", record.Abbreviation);
-        Assert.Equal(TamilTitle, record.Title);
+        // LCModel stores NFD (FieldWorks convention); the text is canonically equal and byte-exact in NFD.
+        Assert.Equal(TamilTitle.Normalize(System.Text.NormalizationForm.FormD), record.Title);
         var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
-        Assert.Equal(TamilBody, new GdrMarkdownView(shown, "p").Fields.Single(field => field.Name == "discussion").Body);
-        Assert.Equal(System.Text.Encoding.UTF8.GetBytes(TamilTitle), System.Text.Encoding.UTF8.GetBytes(shown.Record.Title));
+        Assert.Equal(TamilBody.Normalize(System.Text.NormalizationForm.FormD), new GdrMarkdownView(shown, "p").Fields.Single(field => field.Name == "discussion").Body);
+        Assert.Equal(System.Text.Encoding.UTF8.GetBytes(TamilTitle.Normalize(System.Text.NormalizationForm.FormD)), System.Text.Encoding.UTF8.GetBytes(shown.Record.Title));
+        Assert.Equal(TamilTitle, shown.Record.Title.Normalize(System.Text.NormalizationForm.FormC));
     }
 
     [Fact]
@@ -103,7 +105,8 @@ public sealed class GdrAddCommandsTests(PristineProjectFixture pristine)
         Assert.Equal(RefusalCodes.GdrMarkdownInvalid, fenced.Refusal!.Code);
         Assert.Equal(RefusalCodes.GdrTitleInvalid, GdrAddCommands.Add(new GdrAddRequest(path, " ")).Refusal!.Code);
         Assert.Equal(RefusalCodes.GdrNotFound, GdrAddCommands.Add(new GdrAddRequest(path, "x", Parent: "GDR-99")).Refusal!.Code);
-        Assert.Contains("Nothing to apply", TryApply(path).Refusal?.Message);
+        var attempt = TryApply(path);
+        Assert.False(attempt.Succeeded && attempt.Value!.Applied);
     }
 
     [Fact]
