@@ -267,7 +267,7 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     public void FencedBlocksNextToProseAndHeadingsAreStoredAsOneParagraphPerLineAndTheAppParserReadsThem()
     {
         var path = ProjectWithGdrs(HeadingStyles);
-        var blocks = "### Evidence\n\nBefore.\n\n```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms --project p\n```\n\n" +
+        var blocks = "### Evidence\n\nBefore.\n\n```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms\n```\n\n" +
             "Between.\n\n```motif-show\nquery: forms\nshow: table\n```\n\n### After\n\nEnd.";
 
         var staged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", blocks));
@@ -275,7 +275,7 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         Assert.True(staged.Succeeded, staged.Refusal?.Message);
         Assert.Empty(staged.Value!.Warnings);
         var texts = StagedTexts(path, "GDR-2", staged.Value);
-        Assert.Equal(["Evidence", "Before.", "```motif-query", "id: forms", "title: Forms", "", "", "run: motif query forms --project p", "```",
+        Assert.Equal(["Evidence", "Before.", "```motif-query", "id: forms", "title: Forms", "", "", "run: motif query forms", "```",
             "Between.", "```motif-show", "query: forms", "show: table", "```", "After", "End."], texts);
         var found = SIL.Motif.Contract.Gdr.GuideQueryBlocks.Parse(string.Join("\n", texts));
         Assert.Equal("forms", Assert.Single(found.Queries).Id);
@@ -283,7 +283,7 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         Assert.Empty(found.Diagnostics);
         var again = new GdrMarkdownView(GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: staged.Value.DraftName)).Value!, "p")
             .Fields.Single(field => field.Name == "discussion").Body;
-        Assert.Contains("```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms --project p\n```", again, StringComparison.Ordinal);
+        Assert.Contains("```motif-query\nid: forms\ntitle: Forms\n\n\nrun: motif query forms\n```", again, StringComparison.Ordinal);
         var restaged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", again, staged.Value.DraftName));
         Assert.True(restaged.Succeeded, restaged.Refusal?.Message);
         Assert.Equal(0, restaged.Value!.OperationCount);
